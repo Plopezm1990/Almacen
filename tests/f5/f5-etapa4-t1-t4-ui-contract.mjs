@@ -33,6 +33,9 @@ for (const [nombre, source] of fuentes) {
   assert.match(source, /function CocinaA10\(/);
   assert.match(source, /comandas/);
   assert.match(source, /configuracionA04/);
+  assert.match(source, /Nota para cocina/);
+  assert.match(source, /Alérgenos del producto/);
+  assert.match(source, /abc_actualizar_nota_linea/);
 }
 
 console.log("F5 Etapa 4 T1-T4 UI: contrato OK");

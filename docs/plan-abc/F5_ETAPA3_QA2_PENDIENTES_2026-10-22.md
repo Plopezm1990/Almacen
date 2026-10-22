@@ -144,3 +144,25 @@ Resultado: F4 queda cerrado únicamente para el estado seguro de carrito vacío.
 Notas y alérgenos siguen abiertos por ausencia de controles visibles en el
 flujo TPV; la preparación de Cocina y la incidencia de sincronización de
 movimientos siguen pendientes y aisladas.
+
+## Adenda de corrección preparada para notas y alérgenos · 2026-10-22
+
+- El TPV conserva una nota opcional de hasta 500 caracteres por línea
+  configurada y la incluye en el contrato de guardado del pedido.
+- El configurador muestra los alérgenos declarados del producto como
+  información de solo lectura y muestra el campo «Nota para cocina».
+- La nueva migración
+  `20261022130000_abc_f5_tpv_line_notes.sql` añade `pedido_lineas.nota`,
+  expone el RPC idempotente `abc_actualizar_nota_linea` y copia la nota a
+  `comanda_lineas` al crear la comanda.
+- El contrato se mantuvo sincronizado en `fuente.js` y
+  `source-recovery/fuente-recuperado.js`. Pasan `node --check`, `git diff
+  --check`, `f5-etapa3-ui-contract.mjs`, `f5-etapa4-t1-t4-ui-contract.mjs` y
+  `f5-tpv-line-notes-contract.mjs`.
+- La migración está preparada en la rama QA, pero todavía no se ha aplicado al
+  proyecto remoto; por eso la prueba end-to-end de nota en Cocina queda
+  pendiente de una ventana de migración QA y de un nuevo pedido ficticio.
+
+Estado: controles y contrato local preparados; QA-2 no se marca completo hasta
+aplicar la migración en QA y verificar que la nota llega a Cocina. No se tocó
+PROD ni el pedido operativo existente.

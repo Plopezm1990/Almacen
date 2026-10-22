@@ -9522,8 +9522,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function fingerprintLineasA02(lineas) {
     return JSON.stringify((lineas || []).map((l22) => ({
-      productoId: String(l22.productoId || ""),
-      cantidad: Number(l22.cantidad),
+        productoId: String(l22.productoId || ""),
+        cantidad: Number(l22.cantidad),
+        nota: String(l22.nota || "").trim().slice(0, 500),
       configuracionA04: l22.configuracionA04 ? {
         expectedProductVersion: Number(l22.configuracionA04.expectedProductVersion),
         selecciones: (l22.configuracionA04.selecciones || []).map((s22) => ({
@@ -10304,6 +10305,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       normalizadas = (lineas || []).filter((l22) => l22.productoId && Number(l22.cantidad) > 0).map((l22) => ({
         productoId: String(l22.productoId),
         cantidad: Number(l22.cantidad),
+        nota: String(l22.nota || "").trim().slice(0, 500),
         configuracionA04: normalizarConfiguracionLineaA04(l22.configuracionA04)
       }));
     } catch (error) {
@@ -10363,6 +10365,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
             return {
               productoId: l22.productoId,
               cantidad: l22.cantidad,
+              nota: l22.nota,
               configuracionA04: l22.configuracionA04,
               lineaId,
               operationId: `a02.1.line.${lineaId}`,
@@ -10414,6 +10417,24 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       for (const linea of pending.lineas) {
         if (linea.resultado) {
           pedidoVersion = versionServidorA02(linea.resultado.pedido_version, "linea.pedido_version");
+          if (linea.nota && !linea.notaGuardada) {
+            const notaResultado = await rpcA02ConRecuperacion(supabase, "abc_actualizar_nota_linea", {
+              p_operation_id: `${linea.operationId}.nota`,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_linea_id: linea.lineaId,
+              p_nota: linea.nota,
+              p_expected_linea_version: versionServidorA02(linea.resultado.linea_version, "linea.linea_version"),
+              p_expected_pedido_version: pedidoVersion,
+              p_terminal_id: contexto.terminalId,
+              p_session_id: contexto.sessionId,
+              p_operating_day: pending.operatingDay
+            }, empresaId, localActivoId, `${linea.operationId}.nota`);
+            linea.resultado = { ...linea.resultado, ...notaResultado, nota: linea.nota };
+            linea.notaGuardada = true;
+            pedidoVersion = versionServidorA02(notaResultado?.pedido_version, "nota.pedido_version");
+            if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error("persistencia_idempotencia_no_disponible");
+          }
           continue;
         }
         if (!linea.configuracionA04) {
@@ -10448,6 +10469,23 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           }, empresaId, localActivoId, linea.operationId);
         }
         pedidoVersion = versionServidorA02(linea.resultado?.pedido_version, "linea.pedido_version");
+        if (linea.nota) {
+          const notaResultado = await rpcA02ConRecuperacion(supabase, "abc_actualizar_nota_linea", {
+            p_operation_id: `${linea.operationId}.nota`,
+            p_empresa_id: empresaId,
+            p_local_id: localActivoId,
+            p_linea_id: linea.lineaId,
+            p_nota: linea.nota,
+            p_expected_linea_version: versionServidorA02(linea.resultado?.linea_version, "linea.linea_version"),
+            p_expected_pedido_version: pedidoVersion,
+            p_terminal_id: contexto.terminalId,
+            p_session_id: contexto.sessionId,
+            p_operating_day: pending.operatingDay
+          }, empresaId, localActivoId, `${linea.operationId}.nota`);
+          linea.resultado = { ...linea.resultado, ...notaResultado, nota: linea.nota };
+          linea.notaGuardada = true;
+          pedidoVersion = versionServidorA02(notaResultado?.pedido_version, "nota.pedido_version");
+        }
         if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error("persistencia_idempotencia_no_disponible");
       }
 
@@ -10467,6 +10505,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           estado: String(l22.resultado?.estado || "BORRADOR"),
           productoId: l22.productoId,
           cantidad: l22.cantidad,
+          nota: String(l22.nota || ""),
           configuradaA04: !!l22.configuracionA04,
           configuracionA04: l22.configuracionA04 ? {
             expectedProductVersion: Number(l22.configuracionA04.expectedProductVersion),
@@ -21769,6 +21808,7 @@ function lineasBorradorTpvA06(lineas) {
       claveCarrito: String(linea?.claveCarrito || productoId),
       productoId,
       cantidad,
+      nota: String(linea?.nota || "").trim().slice(0, 500),
       configuracionA04
     };
   });
@@ -22311,6 +22351,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
+  const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
   const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
@@ -23047,13 +23088,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const firma = (configuracionA04.selecciones || []).map((s22) => `${s22.grupo_id}:${s22.opcion_id}:${s22.cantidad}:${s22.expected_group_version}:${s22.expected_product_group_version}:${s22.expected_option_version}`).sort().join("|");
     return `${productoId}::a04::${configuracionA04.expectedProductVersion}::${firma}`;
   }
-  function agregarLineaCarritoA04(producto, configuracionA04 = null, cantidad = 1) {
+  function agregarLineaCarritoA04(producto, configuracionA04 = null, cantidad = 1, nota = "") {
     const cantidadNormalizada = Math.max(1, Number(cantidad) || 1);
     const claveCarrito = claveCarritoA04(producto.id, configuracionA04);
     setCarrito((s22) => {
       const existe = s22.find((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito);
       if (existe) return s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: (Number(l22.cantidad) || 0) + cantidadNormalizada } : l22);
-      return [...s22, { claveCarrito, productoId: producto.id, cantidad: cantidadNormalizada, configuracionA04 }];
+      return [...s22, { claveCarrito, productoId: producto.id, cantidad: cantidadNormalizada, nota: String(nota || "").slice(0, 500), configuracionA04 }];
     });
   }
   async function agregar(producto, cantidadSolicitada = 1) {
@@ -23234,10 +23275,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       precioUnitarioPreview,
       currencyCode: configurandoA04.catalogo.currencyCode
     };
-    agregarLineaCarritoA04(configurandoA04.producto, configuracionA04, cantidadRapidaPendienteA04);
+    agregarLineaCarritoA04(configurandoA04.producto, configuracionA04, cantidadRapidaPendienteA04, notaA04);
     setCantidadRapidaPendienteA04(1);
     setConfigurandoA04(null);
     setSeleccionesA04({});
+    setNotaA04("");
     setErrorA04("");
   }
   async function agregarCantidadRapidaA04(producto, cantidad) {
@@ -23315,15 +23357,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   function renderConfiguradorA04() {
     if (!configurandoA04) return null;
     const h4 = import_react4.default.createElement;
+    const alergenosA04 = Array.isArray(configurandoA04.producto?.alergenos) ? configurandoA04.producto.alergenos : [];
     return h4(
       Modal,
       { onClose: () => {
         setConfigurandoA04(null);
         setCantidadRapidaPendienteA04(1);
         setSeleccionesA04({});
+        setNotaA04("");
         setErrorA04("");
       }, title: `Configurar ${configurandoA04.producto.nombre}` },
       h4("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Elige variantes y modificadores. El precio e IVA definitivos se recalculan y validan en el servidor al guardar el pedido."),
+      h4("div", { className: "text-[11.5px] mb-3", "aria-label": "Alérgenos del producto", style: { color: C2.inkSoft } }, "Alérgenos: ", alergenosA04.length ? alergenosA04.join(" · ") : "sin declarar"),
+      h4("label", { className: "block text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Nota para cocina (opcional)", h4("textarea", { value: notaA04, onChange: (e2) => setNotaA04(e2.target.value.slice(0, 500)), maxLength: 500, rows: 2, placeholder: "Sin cebolla, servir aparte…", "aria-label": "Nota para cocina", className: "w-full rounded-md px-2 py-1 mt-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })),
       configurandoA04.grupos.map((grupo) => {
         const elegidas = seleccionesA04[grupo.id] || {};
         const totalGrupo = Object.values(elegidas).reduce((acc, cantidad) => acc + (Number(cantidad) || 0), 0);
@@ -23364,6 +23410,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           setConfigurandoA04(null);
           setCantidadRapidaPendienteA04(1);
           setSeleccionesA04({});
+          setNotaA04("");
           setErrorA04("");
         } }, "Cancelar")
       )
@@ -23631,7 +23678,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setErrorVenta("");
     setEnviandoVenta(true);
     const resultado = await venderCarrito(
-      carrito.map((l22) => ({ productoId: l22.productoId, cantidad: l22.cantidad, configuracionA04: l22.configuracionA04 || null })),
+      carrito.map((l22) => ({ productoId: l22.productoId, cantidad: l22.cantidad, nota: String(l22.nota || "").trim().slice(0, 500), configuracionA04: l22.configuracionA04 || null })),
       { modalidad: modalidadActualA02 || void 0 }
     );
     setEnviandoVenta(false);
@@ -24103,6 +24150,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const sinStock = stockDisponible <= 0;
     const fotoProducto = p22.foto || p22.imagen || p22.fotoUrl || "";
     const masVendido = p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true;
+    const alergenosProducto = Array.isArray(p22.alergenos) ? p22.alergenos : [];
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
       {
@@ -24115,7 +24163,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         className: "rounded-xl p-3 text-left relative",
         style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: sinStock || cargandoA04 ? 0.55 : 1 }
       },
-      fotoProducto ? /* @__PURE__ */ import_react4.default.createElement("img", { src: fotoProducto, alt: "", className: "tpv-product-photo" }) : null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre), masVendido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] font-semibold mb-1", style: { color: C2.amber } }, "Más vendido") : null,
+      fotoProducto ? /* @__PURE__ */ import_react4.default.createElement("img", { src: fotoProducto, alt: "", className: "tpv-product-photo" }) : null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre), masVendido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] font-semibold mb-1", style: { color: C2.amber } }, "Más vendido") : null, alergenosProducto.length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mb-1", "aria-label": "Alérgenos del producto", style: { color: C2.inkSoft } }, "Alérgenos: ", alergenosProducto.join(" · ")) : null,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva)),
       sinStock && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: C2.red } }, "sin stock"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1 mt-2" }, [2, 3].map((cantidad) => /* @__PURE__ */ import_react4.default.createElement("button", { key: "quick-" + p22.id + "-" + cantidad, type: "button", className: "tpv-quick-quantity", onClick: (e2) => { e2.stopPropagation(); if (!sinStock) agregarCantidadRapidaA04(p22, cantidad); }, disabled: sinStock || cargandoA04 }, "+" + cantidad))),      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
