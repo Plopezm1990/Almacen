@@ -11,6 +11,7 @@ for (const [nombre, src] of [['fuente.js', fuente], ['fuente-recuperado.js', rec
   assert.match(src, /function esRespaldoSoloLocalPM16/, `${nombre}: clasifica la copia QA local`);
   assert.match(src, /key !== "historialRespaldos"/, `${nombre}: limita la excepción a la copia automática`);
   assert.match(src, /cuota-o-politica-qa/, `${nombre}: conserva el motivo del estado local`);
+  assert.match(src, /const soloLocal = key === "historialRespaldos" \|\| resultado\?\.soloLocal === true/, `${nombre}: clasifica también el retorno pendiente del almacenamiento`);
   assert.match(src, /!falloGuardadoVisible\.soloLocal &&/, `${nombre}: condiciona el reintento al fallo real`);
   assert.match(src, /\}, "Reintentar"\)/, `${nombre}: conserva el reintento para fallos recuperables`);
 }

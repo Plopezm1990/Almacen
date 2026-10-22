@@ -688,7 +688,8 @@ async function saveKey(key, value) {
   try {
     const resultado = await window.storage.set(key, JSON.stringify(value), false);
     if (resultado?.pendienteSincronizacion && typeof window !== "undefined" && window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, pendiente: true, mensaje: "Guardado en este equipo; pendiente de confirmación del servidor." } }));
+      const soloLocal = key === "historialRespaldos" || resultado?.soloLocal === true;
+      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, pendiente: true, soloLocal, motivo: soloLocal ? "cuota-o-politica-qa" : "pendiente-servidor", mensaje: soloLocal ? "Copia automática conservada solo en este equipo en QA." : "Guardado en este equipo; pendiente de confirmación del servidor." } }));
     } else if (resultado?.confirmadoServidor && typeof window !== "undefined" && window.dispatchEvent) {
       window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key } }));
     }
