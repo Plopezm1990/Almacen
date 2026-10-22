@@ -721,11 +721,22 @@
       if (datosServidor === null) return;
       var enNube = remotoPorId[x.id];
       if (!enNube || !contenidoFilaIgual(enNube, datosServidor)) {
-        filasParaGuardar.push({
+        var filaParaGuardar = {
           id: x.id,
           fecha: datosServidor.fecha || new Date().toISOString().slice(0, 10),
           datos: datosServidor,
-        });
+        };
+        // La política de movimientos no lee empresa/local desde el JSON:
+        // RLS evalúa las columnas de alcance de la fila. Mantenerlas también
+        // en el sobre de Supabase evita que una merma válida, aunque lleve
+        // empresaId/localId dentro de `datos`, se rechace como fila sin
+        // contexto. El JSON se conserva completo para la comparación
+        // canónica y la reconstrucción de la interfaz.
+        if (tabla === "movimientos_registro") {
+          filaParaGuardar.empresa_id = datosServidor.empresaId || null;
+          filaParaGuardar.local_id = datosServidor.localId || null;
+        }
+        filasParaGuardar.push(filaParaGuardar);
       }
     });
 

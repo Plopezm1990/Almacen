@@ -167,7 +167,15 @@ for (const modo of ["http401", "http403"]) {
   const t = setup({ modo: "acepta" });
   await t.context.storage.set("temaOscuro", "true");
   await t.context.storage.set("productos", JSON.stringify([{ id: "p1" }]));
-  assert.equal(t.cloud.calls.upsert.length, 2, "con servidor que acepta, se sube cada clave");
+  await t.context.storage.set("movimientos", JSON.stringify([{
+    id: "mv1", fecha: "2026-10-22", empresaId: "empresa-test", localId: "local-test", tipo: "MERMA"
+  }]));
+  assert.equal(t.cloud.calls.upsert.length, 3, "con servidor que acepta, se sube cada clave");
+  const movimientoSubido = t.cloud.calls.upsert.find((llamada) => llamada.table === "movimientos_registro");
+  assert.equal(movimientoSubido.payload[0].empresa_id, "empresa-test");
+  assert.equal(movimientoSubido.payload[0].local_id, "local-test");
+  assert.equal(movimientoSubido.payload[0].datos.empresaId, "empresa-test");
+  assert.equal(movimientoSubido.payload[0].datos.localId, "local-test");
   assert.deepEqual(t.pendientes(), []);
   assert.deepEqual(t.denegados(), {});
   assert.equal(t.indicador().style.display, "none", "sin pendientes ni denegadas no hay aviso");
