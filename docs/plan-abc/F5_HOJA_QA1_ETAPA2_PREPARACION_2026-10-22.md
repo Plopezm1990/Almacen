@@ -1,7 +1,7 @@
 # Hoja QA-1 · preparación de la Etapa 2
 
 Fecha: 2026-10-22  
-Estado: EN_IMPLEMENTACION_LOCAL; QA_ONLY; PENDIENTE_VALIDACION_QA
+Estado: EN_IMPLEMENTACION_QA; QA_ONLY; PENDIENTE_VALIDACION_MANUAL
 
 ## 1. Puerta de entrada y límites
 
@@ -13,8 +13,11 @@ Estado: EN_IMPLEMENTACION_LOCAL; QA_ONLY; PENDIENTE_VALIDACION_QA
 - El único proyecto remoto inspeccionado en esta preparación fue el QA
   qjqorixtkilwsndqayyx.
 - No se ha consultado ni modificado PROD.
-- No se han aplicado migraciones, no se han ejecutado escrituras en Supabase,
-  no se han creado fixtures y no se han publicado cambios.
+- No se han aplicado migraciones, no se han ejecutado escrituras en Supabase y
+  no se han creado fixtures.
+- El candidato de código QA se publicó en la rama
+  codex/stage1-aud009-aud003, commit cca22bc, y Netlify confirmó el deploy
+  como successful para el preview 172 (deploy 6ada5835fc56cd902c5f8bbb).
 - La consulta al esquema y a las rutinas fue de solo lectura. No se leyeron
   contraseñas, tokens ni valores de autenticación.
 
@@ -165,8 +168,21 @@ Avance aplicado en código local el 2026-10-22:
 - El predicado excluye Entregado, Cancelado y Devuelto.
 - Ambas listas ordenan ahora por fecha y hora de entrega, dejando los registros
   sin fecha al final y usando el id como desempate estable.
-- No se ha desplegado el cambio a QA ni se ha escrito en Supabase.
+- El cambio se ha desplegado en QA; no se ha escrito en Supabase.
 - El contrato tests/pm14/p09-aud006-pendientes-contract.mjs pasa.
+
+Comprobación manual en QA del 2026-10-22, preview 172:
+
+- El contexto abrió correctamente como QA Empresa A, S.L. · Local A1.
+- La pantalla Encargos mostró «No hay encargos pendientes».
+- Los contadores de encargos entregados y de historial (cancelados y
+  devueltos) mostraron 0.
+- No se crearon encargos, no se canceló ni entregó ningún registro y no se
+  alteraron cobros.
+- Resultado: BLOQUEADA POR AUSENCIA DE FIXTURE. La corrección publicada no
+  puede certificarse todavía como PASS porque no hay filas QA que permitan
+  comprobar el filtro de estados, el orden por fecha/hora, la fecha ausente
+  ni la ausencia de cliente.
 
 ### Contraseña inicial · bloque intermedio
 
@@ -224,5 +240,10 @@ cambios aprobados en QA, con preflight, pruebas y rollback.
 - Revisión local de fuente.js, index-storage-bootstrap.js,
   ui-context-bridge.js, plataforma-panel.js y owner-bootstrap-prelock.js:
   solo lectura, 2026-10-22.
-- No se ejecutaron escrituras remotas ni migraciones durante la preparación.
+- Publicación del candidato QA cca22bc y comprobación del deploy 172:
+  2026-10-22.
+- Comprobación manual de Encargos en QA: pantalla sin pendientes y contadores
+  entregados/historial a 0; 2026-10-22.
+- No se ejecutaron escrituras remotas ni migraciones durante la preparación ni
+  durante esta comprobación.
 
