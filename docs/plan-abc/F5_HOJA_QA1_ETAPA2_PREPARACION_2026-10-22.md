@@ -1,7 +1,7 @@
 # Hoja QA-1 · preparación de la Etapa 2
 
 Fecha: 2026-10-22  
-Estado: PREPARADA; QA_ONLY; PENDIENTE_AUTORIZACION_DE_CAMBIOS
+Estado: EN_IMPLEMENTACION_LOCAL; QA_ONLY; PENDIENTE_VALIDACION_QA
 
 ## 1. Puerta de entrada y límites
 
@@ -85,7 +85,7 @@ Hallazgos actuales:
 - No se ha demostrado todavía cómo debe tratarse un producto histórico que
   exista sin empresa en el fixture QA real.
 
-Cambio propuesto, aún no aplicado:
+Cambio propuesto y pendiente de validación QA:
 
 1. Crear o localizar en QA un producto legado ficticio sin empresa_id.
 2. Comprobar el error exacto y conservar el registro sin inventar una empresa.
@@ -133,7 +133,7 @@ específica de QA-1.
 
 ### AUD-006 · Encargos
 
-Estado de preparación: PARCIALMENTE_CUBIERTO; PENDIENTE_QA.
+Estado de preparación: CORRECCION_LOCAL_APLICADA; PENDIENTE_VALIDACION_QA.
 
 Hallazgos actuales en el código:
 
@@ -146,7 +146,7 @@ Hallazgos actuales en el código:
   Entregado; debe alinearse para no reintroducir cancelados o devueltos en
   resúmenes y avisos del contexto local.
 
-Cambio propuesto, aún no aplicado:
+Cambio propuesto y pendiente de validación QA:
 
 1. Unificar la función de pendiente para excluir siempre Cancelado y Devuelto,
    además de Entregado.
@@ -157,6 +157,14 @@ Cambio propuesto, aún no aplicado:
    devuelta.
 6. Probar empresa/local, cliente inexistente, fecha inválida, cancelado,
    devuelto, entregado y encargo activo.
+
+Avance aplicado en código local el 2026-10-22:
+
+- Se creó el predicado común esEncargoPendientePM14.
+- La vista general y la vista del local activo usan ahora el mismo filtro.
+- El predicado excluye Entregado, Cancelado y Devuelto.
+- No se ha desplegado el cambio a QA ni se ha escrito en Supabase.
+- El contrato tests/pm14/p09-aud006-pendientes-contract.mjs pasa.
 
 ### Contraseña inicial · bloque intermedio
 

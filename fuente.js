@@ -104116,7 +104116,11 @@ function GestionAlmacen() {
       return ids.length === 1 && ids[0] === localActivoId;
     });
   }, [encargos, productos, localActivoId]);
-  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => encargosDelLocalActivo.filter((e2) => e2.estado !== "Entregado"), [encargosDelLocalActivo]);
+  const esEncargoPendientePM14 = (e2) => {
+    const estado = String(e2?.estado || "").trim();
+    return estado !== "Entregado" && estado !== "Cancelado" && estado !== "Devuelto";
+  };
+  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => encargosDelLocalActivo.filter(esEncargoPendientePM14), [encargosDelLocalActivo]);
   const encargosUrgentesDelLocalActivo = (0, import_react4.useMemo)(() => {
     const hoy = todayISO();
     const manana = /* @__PURE__ */ new Date();
@@ -105231,7 +105235,7 @@ function GestionAlmacen() {
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
-    return encargos.filter((e2) => e2.estado !== "Entregado" && e2.estado !== "Cancelado" && e2.estado !== "Devuelto").map((e2) => {
+    return encargos.filter(esEncargoPendientePM14).map((e2) => {
       const f22 = new Date(e2.fechaEntrega);
       const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
       const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
