@@ -28,6 +28,7 @@ function makeCloud(mode) {
     if (mode.value === "jwt") return { code: "PGRST301", message: "JWT expired" };
     if (mode.value === "http401") return { status: 401, message: "Unauthorized" };
     if (mode.value === "http403") return { status: 403, message: "Forbidden" };
+    if (mode.value === "qa-timeout") return { message: "La nube tarda demasiado en responder" };
     throw new Error("modo desconocido " + mode.value);
   };
   const builder = (table) => {
@@ -99,7 +100,7 @@ const claveEvento = (events) => events.filter((e) => e.type === "clave-solo-loca
 // La autoridad Supabase puede llegar al navegador como un error HTTP sin
 // código PostgREST. No debe quedarse en "Subiendo…" indefinidamente: se
 // conserva localmente y queda visible como rechazo de autoridad.
-for (const modo of ["http401", "http403"]) {
+for (const modo of ["http401", "http403", "qa-timeout"]) {
   const t = setup({ modo });
   await t.context.storage.set("movimientos", JSON.stringify([{ id: "mv-qa", tipo: "merma" }]));
   assert.deepEqual(t.pendientes(), [], `${modo}: movimientos no queda reintentándose`);

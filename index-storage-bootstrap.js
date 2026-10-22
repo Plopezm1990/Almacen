@@ -203,6 +203,12 @@
     var texto = String((e && (e.message || e.details || e.hint)) || e);
     return /(?:payload|upload|request|value).*(?:exceed|exceeds|too large|quota|limit)|(?:quota|limit|too large).*(?:exceed|payload|upload|value)/i.test(texto);
   }
+  function esTiempoAgotadoNube(e) {
+    if (!e) return false;
+    return /(?:nube|servidor).*(?:tarda demasiado|timeout|timed out)|(?:timeout|timed out)/i.test(
+      String((e && (e.message || e.details || e.hint)) || e)
+    );
+  }
   function esPreviewQa() {
     return typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""));
   }
@@ -212,7 +218,12 @@
     // rechazar su payload por tamaño, se conservan localmente para no bloquear
     // los datos operativos. Producción conserva el comportamiento normal.
     var respaldoSoloLocalQa = key === "historialRespaldos" && esPreviewQa();
-    return esRechazoPorPermisos(e) || esRechazoPorCuota(e) || respaldoSoloLocalQa;
+    // La autoridad legacy de movimientos en QA puede convertir un 401 en el
+    // timeout genérico de la carrera. No dejamos esa cola bloqueando toda la
+    // aplicación: se conserva localmente y se reintentará al vencer la marca.
+    var movimientosSoloLocalQa = key === "movimientos" && esPreviewQa()
+      && (esRechazoPorPermisos(e) || esTiempoAgotadoNube(e));
+    return esRechazoPorPermisos(e) || esRechazoPorCuota(e) || respaldoSoloLocalQa || movimientosSoloLocalQa;
   }
   function marcarDenegado(key, error) {
     var yaVigente = denegadoVigente(key);
