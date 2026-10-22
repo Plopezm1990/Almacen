@@ -163,6 +163,8 @@ Avance aplicado en código local el 2026-10-22:
 - Se creó el predicado común esEncargoPendientePM14.
 - La vista general y la vista del local activo usan ahora el mismo filtro.
 - El predicado excluye Entregado, Cancelado y Devuelto.
+- Ambas listas ordenan ahora por fecha y hora de entrega, dejando los registros
+  sin fecha al final y usando el id como desempate estable.
 - No se ha desplegado el cambio a QA ni se ha escrito en Supabase.
 - El contrato tests/pm14/p09-aud006-pendientes-contract.mjs pasa.
 

@@ -104120,7 +104120,12 @@ function GestionAlmacen() {
     const estado = String(e2?.estado || "").trim();
     return estado !== "Entregado" && estado !== "Cancelado" && estado !== "Devuelto";
   };
-  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => encargosDelLocalActivo.filter(esEncargoPendientePM14), [encargosDelLocalActivo]);
+  const ordenarEncargosPendientesPM14 = (a22, b2) => {
+    const fechaA = /^\d{4}-\d{2}-\d{2}$/.test(String(a22?.fechaEntrega || "")) ? String(a22.fechaEntrega) : "9999-12-31";
+    const fechaB = /^\d{4}-\d{2}-\d{2}$/.test(String(b2?.fechaEntrega || "")) ? String(b2.fechaEntrega) : "9999-12-31";
+    return fechaA.localeCompare(fechaB) || String(a22?.horaEntrega || "99:99").localeCompare(String(b2?.horaEntrega || "99:99")) || String(a22?.id || "").localeCompare(String(b2?.id || ""));
+  };
+  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => encargosDelLocalActivo.filter(esEncargoPendientePM14).sort(ordenarEncargosPendientesPM14), [encargosDelLocalActivo]);
   const encargosUrgentesDelLocalActivo = (0, import_react4.useMemo)(() => {
     const hoy = todayISO();
     const manana = /* @__PURE__ */ new Date();
@@ -105240,7 +105245,7 @@ function GestionAlmacen() {
       const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
       const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
       return { ...e2, dias, total, cliente: clientes.find((c22) => c22.id === e2.clienteId) };
-    }).sort((a22, b2) => (a22.dias ?? 9999) - (b2.dias ?? 9999));
+    }).sort(ordenarEncargosPendientesPM14);
   }, [encargos, clientes]);
   const encargosUrgentes = (0, import_react4.useMemo)(() => encargosPendientes.filter((e2) => e2.dias !== null && e2.dias <= 2), [encargosPendientes]);
   const analisisClientes = (0, import_react4.useMemo)(() => {
