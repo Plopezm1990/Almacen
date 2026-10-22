@@ -117424,8 +117424,11 @@ function Notificaciones({ localActivoId = null }) {
         }),
         guardarSuscripcion: async (suscripcion) => {
           const supabase = await window.getSupabaseClient();
+          const { data: { user }, error: errUser } = await supabase.auth.getUser();
+          if (errUser || !user?.id) throw errUser || new Error("No hay una sesión autenticada para activar notificaciones.");
           const json = suscripcion.toJSON();
           const { error: errInsert } = await supabase.from("suscripciones_push").upsert({
+            user_id: user.id,
             endpoint: json.endpoint,
             p256dh: json.keys.p256dh,
             auth: json.keys.auth,
