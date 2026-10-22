@@ -645,6 +645,14 @@
     // operativa. El filtro queda limitado al marcador explícito del fixture
     // y a previews QA; nunca afecta a movimientos reales ni a producción.
     if (claveColeccion === "movimientos" && esPreviewQa() && String(valor.tipo || "").toUpperCase() === "APERTURA_FIXTURE") return null;
+    // Las mermas sintéticas de las pruebas AUD llevan un motivo QA explícito
+    // y no representan una operación pendiente que deba replicarse. Se dejan
+    // en el almacenamiento local para conservar la evidencia de QA, pero se
+    // excluyen de la tabla heredada cuando el registro no trae empresa propia.
+    if (claveColeccion === "movimientos" && esPreviewQa()
+      && String(valor.tipo || "").toUpperCase() === "MERMA"
+      && !valor.empresaId
+      && /^Merma\s*·\s*QA[-_]/i.test(String(valor.motivo || ""))) return null;
     // Estos movimientos ya viven en movimientos_stock y solo se hidratan en
     // la colección local como referencia autoritativa. No se duplican en la
     // tabla histórica heredada movimientos_registro.

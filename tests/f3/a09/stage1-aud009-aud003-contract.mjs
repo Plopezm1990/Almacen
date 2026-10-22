@@ -94,6 +94,8 @@ assert.equal(storageHelpers.datosFilaParaServidor({ id: 'pm07-1', _pm07Servidor:
   'authoritative PM07 movements must not be mirrored into legacy movements_registro');
 assert.match(storageSource, /claveColeccion === "movimientos" && esPreviewQa\(\).*APERTURA_FIXTURE/,
   'QA opening fixtures must stay local and must not block the operational movement queue');
+assert.match(storageSource, /tipo \\|\\| ""\)\\.toUpperCase\(\) === "MERMA"[\\s\\S]*QA\[-_\]/,
+  'synthetic QA merma rows must stay local and must not block the operational movement queue');
 assert.deepEqual(storageHelpers.datosFilaParaServidor({ id: 'm-2', _pm07Servidor: false, z: 2, a: 1 }, 'movimientos'),
   { a: 1, id: 'm-2', z: 2 }, 'local movement payload must be canonicalized before upload');
 
