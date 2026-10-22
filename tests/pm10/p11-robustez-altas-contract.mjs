@@ -27,7 +27,11 @@ assert.match(proc,/replayed: true/);
 assert.match(proc,/operationId: operationIdRecepcionPM10/);
 assert.match(proc,/movimientoId: `\$\{claveEfectoRecepcionPM11\}:linea:\$\{idxRecepcionPM10\}:producto:\$\{prod\.id\}`/);
 assert.match(proc,/`\$\{claveEfectoRecepcionPM11\}:producto-auto:\$\{idxRecepcionPM10\}`/);
-assert.match(proc,/s22\.some\(\(m22\) => m22\.id === `\$\{claveEfectoRecepcionPM11\}:linea:\$\{idxRecepcionPM10\}:auto`\)/);
+assert.match(albaranes,/const \{ aplicarMovimientoStock, registrarProductoSnapshot, obtenerProductoActual \} = crearMotorStock/);
+assert.match(albaranes,/const productosCreadosRecepcion = \/\* @__PURE__ \*\/ new Map\(\)/);
+assert.match(proc,/productosCreadosRecepcion\.has\(claveProductoRecepcion\)/);
+assert.match(proc,/registrarProductoSnapshot\(nuevo\)/);
+assert.match(proc,/movimientoId: `\$\{claveEfectoRecepcionPM11\}:linea:\$\{idxRecepcionPM10\}:auto`/);
 assert.match(proc,/resultadoRecepcionPM10/);
 assert.match(proc,/_pm10Resultados\.set\(claveEfectoRecepcionPM11, resultadoRecepcionPM10\)/);
 

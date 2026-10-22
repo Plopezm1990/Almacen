@@ -65,7 +65,17 @@ const cuerpo = src.slice(ini, fin);
   // Ambos comparten el mismo selector de local de informe -- el mismo control gobierna
   // el alcance de las dos pantallas, no hay dos selectores independientes que puedan
   // desincronizarse.
-  assert.ok(cuerpo.includes('(tab === "dashboard" || tab === "resultados" || tab === "libroiva") && ') && cuerpo.includes('createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, valor: localInformeId, onChange: seleccionarContextoLocal })'), 'Dashboard/Resultados/LibroIva deben compartir un único selector de contexto de informe');
+  // Lo que se fija aqui es que el MISMO control gobierna las tres pantallas:
+  // un unico selector con el mismo valor y el mismo manejador. Que lista de
+  // locales lo alimenta lo fija tests/pm30/p01 (desde PM30 son todos los
+  // locales activos, agrupados por empresa, para poder cambiar de empresa).
+  assert.ok(cuerpo.includes('(tab === "dashboard" || tab === "resultados" || tab === "libroiva") && '), 'Dashboard/Resultados/LibroIva deben compartir la misma condicion de selector');
+  const usosSelector = cuerpo.split('createElement(SelectorLocalInformes, {').slice(1);
+  assert.ok(usosSelector.length > 0, 'debe existir el selector de contexto de informe');
+  for (const uso of usosSelector) {
+    const props = uso.slice(0, uso.indexOf('}'));
+    assert.ok(props.includes('valor: localInformeId') && props.includes('onChange: seleccionarContextoLocal'), 'Dashboard/Resultados/LibroIva deben compartir un único selector de contexto de informe');
+  }
   console.log('P03_PM20_DASHBOARD_RESULTADOS_MISMO_ALCANCE_INFORME=PASS');
 }
 

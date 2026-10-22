@@ -1,0 +1,88 @@
+name: "ABC F2 M02B -- contrato pagos reservas y reembolsos"
+
+on:
+  push:
+    branches: [abc-f2-m02b-pagos-reservas-reembolsos]
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql"
+      - "supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+      - "supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql"
+      - "tests/f2/m02b/**"
+      - ".github/workflows/abc-f2-m02b-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  m02b-postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Guardar orden y alcance aditivo M02B
+        shell: bash
+        run: |
+          set -euo pipefail
+          m01="supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+          m01b="supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql"
+          m02a="supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+          m02b="supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql"
+          for file in "$m01" "$m01b" "$m02a" "$m02b"; do test -f "$file"; done
+
+          if [[ "$(basename "$m01")" > "$(basename "$m01b")" || "$(basename "$m01")" == "$(basename "$m01b")"
+             || "$(basename "$m01b")" > "$(basename "$m02a")" || "$(basename "$m01b")" == "$(basename "$m02a")"
+             || "$(basename "$m02a")" > "$(basename "$m02b")" || "$(basename "$m02a")" == "$(basename "$m02b")" ]]; then
+            echo "M02B_ORDER_GUARD: se requiere M01 < M01b < M02A < M02B" >&2
+            exit 1
+          fi
+
+          if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$m02b"; then
+            echo "M02B_DESTRUCTIVA: se detectó DDL destructivo" >&2
+            exit 1
+          fi
+
+          if grep -Eiq 'alter[[:space:]]+table[[:space:]]+public\.(pagos_factura|pagos_encargo|devoluciones_venta|stock_operaciones|movimientos_stock|caja_operaciones|arqueos_caja)' "$m02b"; then
+            echo "M02B_SCOPE: se detectó alteración de tabla legacy" >&2
+            exit 1
+          fi
+          echo "M02B_SCOPE_GUARD=PASS"
+
+      - name: Preparar fixture mínimo
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m02b/fixture-m02b.sql
+
+      - name: Aplicar M01
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+
+      - name: Aplicar M01b
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql
+
+      - name: Aplicar M02A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
+
+      - name: Aplicar M02B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql
+
+      - name: Ejecutar contrato M02B
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m02b/m02b-contract.sql

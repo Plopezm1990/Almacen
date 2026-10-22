@@ -45,7 +45,18 @@ const src = fs.readFileSync('fuente.js', 'utf8');
   for (const { titulo, marcador } of modales) {
     assert.ok(src.includes(marcador), `el modal "${titulo}" debe mostrar contextoActivoPM15 inmediatamente tras el título`);
   }
-  assert.match(src, /title: "Desactivar local" }, \/\* @__PURE__ \*\/ import_react4\.default\.createElement\("div", \{ className: "text-\[11px\] mb-2", style: \{ color: C2\.inkSoft \} \}, "Empresa: "/, 'Desactivar local debe mostrar la empresa del local afectado');
+  // PM29 sustituyó el JSX inline de "Desactivar local" por el componente
+  // compartido ConfirmarConContrasenaPM29 (añade confirmación con
+  // contraseña); el contexto de empresa se sigue mostrando, ahora dentro
+  // de su prop `descripcion`, backed by una consulta real de la empresa
+  // del local (no un texto fijo).
+  {
+    const iniTitulo = src.indexOf('titulo: "Desactivar local"');
+    assert.ok(iniTitulo >= 0, 'no se encontró la acción "Desactivar local"');
+    const ventana = src.slice(iniTitulo, iniTitulo + 1200);
+    assert.match(ventana, /descripcion:/, 'Desactivar local debe pasar una prop descripcion con el contexto');
+    assert.match(ventana, /"Empresa: ",\s*empresaDeLocal\(/, 'Desactivar local debe mostrar la empresa real del local afectado (no un texto fijo)');
+  }
   console.log('P02_MEJ01_CINCO_MODALES_MUESTRAN_CONTEXTO=PASS');
 }
 

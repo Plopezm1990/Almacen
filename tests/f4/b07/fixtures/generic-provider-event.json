@@ -1,0 +1,9 @@
+{
+  "event_id": "evt_b07_fixture_001",
+  "merchant": "merchant-qa-001",
+  "reference": "checkout-qa-001",
+  "amount": "22.00",
+  "currency": "EUR",
+  "status": "paid",
+  "occurred_at": "2026-09-30T12:00:00.000Z"
+}

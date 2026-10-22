@@ -1,0 +1,144 @@
+name: A02.1 UI to A03 contract
+
+on:
+  push:
+    branches:
+      - abc-f3-a02-1-ui-a03-adapter
+    paths:
+      - 'source-recovery/fuente-recuperado.js'
+      - 'fuente.js'
+      - 'tests/f3/a02/**'
+      - 'supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11.sql'
+      - '.github/workflows/abc-f3-a02-1-contract.yml'
+
+permissions:
+  contents: write
+
+concurrency:
+  group: abc-f3-a02-1-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  contract:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Guardar alcance y base release
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE=0db9dcccaa11879b88ca09d5f8ada8e58ebffd82
+          git merge-base --is-ancestor "$BASE" HEAD
+          BAD=$(git diff --name-only "$BASE...HEAD" | grep -Ev '^(fuente\.js|source-recovery/fuente-recuperado\.js|tests/f3/a02/|supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11\.sql|\.github/workflows/abc-f3-a02-1-contract\.yml$)' || true)
+          if [ -n "$BAD" ]; then
+            echo "A02_1_SCOPE_FAIL" >&2
+            echo "$BAD" >&2
+            exit 1
+          fi
+          echo "A02_1_SCOPE=PASS"
+
+      - name: Aplicar adaptador A11 de operating_day
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const path = "source-recovery/fuente-recuperado.js";
+          let s = fs.readFileSync(path, "utf8");
+
+          if (s.includes("operatingDay: todayISO(),")) {
+            s = s.replace("operatingDay: todayISO(),", "operatingDay: null,");
+          } else if (!s.includes("operatingDay: null,")) {
+            throw new Error("A02_P06_OPERATING_DAY_INIT_ANCHOR_MISSING");
+          }
+
+          const openParam = "p_operating_day: pending.operatingDay\n        }, empresaId, localActivoId, pending.openOperationId);";
+          if (s.includes(openParam)) {
+            s = s.replace(openParam, "p_operating_day: null\n        }, empresaId, localActivoId, pending.openOperationId);");
+          } else if (!s.includes("p_operating_day: null\n        }, empresaId, localActivoId, pending.openOperationId);")) {
+            throw new Error("A02_P06_OPEN_PARAM_ANCHOR_MISSING");
+          }
+
+          const saveAnchor = "}, empresaId, localActivoId, pending.openOperationId);\n        if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error(\"persistencia_idempotencia_no_disponible\");";
+          const saveReplacement = "}, empresaId, localActivoId, pending.openOperationId);\n        const operatingDayServidor = pending.cuentaResultado?.operating_day || null;\n        if (!operatingDayServidor) throw new Error(\"operating_day_servidor_ausente\");\n        pending.operatingDay = operatingDayServidor;\n        if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error(\"persistencia_idempotencia_no_disponible\");";
+          if (s.includes(saveAnchor)) {
+            s = s.replace(saveAnchor, saveReplacement);
+          } else if (!s.includes("const operatingDayServidor = pending.cuentaResultado?.operating_day || null;")) {
+            throw new Error("A02_P06_SERVER_DAY_ANCHOR_MISSING");
+          }
+
+          const errorAnchor = 'if (msg.includes("sesion_usuario_requerida")) return "No hay una sesión de usuario válida.";';
+          const errorReplacement = errorAnchor + '\n    if (msg.includes("operating_day_configuracion_ausente")) return "El local no tiene configurada todavía su zona horaria y hora de corte operativa.";\n    if (msg.includes("operating_day_configuracion_ambigua")) return "La configuración del día operativo del local es ambigua; se ha bloqueado la operación.";\n    if (msg.includes("operating_day_timezone_invalida")) return "La zona horaria configurada para el local no es válida.";\n    if (msg.includes("operating_day_cliente_no_autoritativo")) return "El día operativo lo determina el servidor; recarga el TPV antes de continuar.";\n    if (msg.includes("operating_day_servidor_ausente")) return "El servidor no devolvió un día operativo válido; no se ha guardado el pedido.";';
+          if (s.includes(errorAnchor) && !s.includes('msg.includes("operating_day_configuracion_ausente")')) {
+            s = s.replace(errorAnchor, errorReplacement);
+          } else if (!s.includes('msg.includes("operating_day_configuracion_ausente")')) {
+            throw new Error("A02_P06_ERROR_MAP_ANCHOR_MISSING");
+          }
+
+          fs.writeFileSync(path, s);
+          NODE
+          echo "A02_P06_SOURCE_PATCH=PASS"
+
+      - name: Materializar runtime desde cuerpo recuperado
+        shell: bash
+        run: |
+          set -euo pipefail
+          node <<'NODE'
+          const fs = require("node:fs");
+          const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
+          const runtime = fs.readFileSync("fuente.js", "utf8");
+          const lines = recovered.split("\n");
+          if (lines[0] !== "// FUENTE RECUPERADO DESDE EL BUNDLE CANDIDATO DE L&A SUITE.") {
+            throw new Error("A02_1_BAD_RECOVERY_HEADER");
+          }
+          const body = lines.slice(14).join("\n");
+          const marker = "var C2 = {";
+          const first = runtime.indexOf(marker);
+          const second = runtime.indexOf(marker, first + 1);
+          if (first < 0 || second >= 0) throw new Error("A02_1_RUNTIME_BOUNDARY_AMBIGUOUS");
+          const next = runtime.slice(0, first) + body;
+          if (!next.endsWith(body)) throw new Error("A02_1_RUNTIME_PARITY_BUILD_FAIL");
+          fs.writeFileSync("fuente.js", next);
+          NODE
+          echo "A02_1_RUNTIME_MATERIALIZED=PASS"
+
+      - name: Verificar source recovery
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 source-recovery/recuperar_candidato.py --check
+          node --check fuente.js
+          echo "A02_1_SOURCE_RECOVERY=PASS"
+
+      - name: Build directo recuperado
+        shell: bash
+        working-directory: source-recovery
+        run: |
+          set -euo pipefail
+          npm ci --no-audit --no-fund
+          npm run check
+          rm -rf dist
+          npm run build
+          node --check dist/fuente.js
+          echo "A02_1_DIRECT_BUILD=PASS"
+
+      - name: Contrato A02.1
+        run: node tests/f3/a02/a02-1-contract.mjs
+
+      - name: Persistir runtime materializado
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add source-recovery/fuente-recuperado.js fuente.js
+          if git diff --cached --quiet; then
+            echo "A02_1_RUNTIME_ALREADY_CURRENT=1"
+            exit 0
+          fi
+          git commit -m "[skip netlify] A02.1 materialize A11 operating day"
+          git push origin "HEAD:${GITHUB_REF_NAME}"
+          echo "A02_1_RUNTIME_COMMITTED=1"

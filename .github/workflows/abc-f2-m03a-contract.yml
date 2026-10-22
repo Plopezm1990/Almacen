@@ -1,0 +1,143 @@
+name: "ABC F2 M03A -- autoridad transaccional"
+
+on:
+  push:
+    branches: [abc-f2-m03a-autoridad-transaccional]
+  pull_request:
+    branches: [release]
+    paths:
+      - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql"
+      - "supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+      - "supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql"
+      - "supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql"
+      - "tests/f2/m03a/**"
+      - ".github/workflows/abc-f2-m03a-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  m03a-postgres-contract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGHOST: 127.0.0.1
+      PGPORT: "5432"
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      PGDATABASE: postgres
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+
+      - name: Guardar orden y alcance aditivo M03A
+        shell: bash
+        run: |
+          set -euo pipefail
+          m01="supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+          m01b="supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql"
+          m02a="supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql"
+          m02b="supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql"
+          m03a="supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql"
+          for file in "$m01" "$m01b" "$m02a" "$m02b" "$m03a"; do test -f "$file"; done
+
+          previous=""
+          for file in "$m01" "$m01b" "$m02a" "$m02b" "$m03a"; do
+            current="$(basename "$file")"
+            if [[ -n "$previous" && ( "$previous" > "$current" || "$previous" == "$current" ) ]]; then
+              echo "M03A_ORDER_GUARD: orden invalido $previous -> $current" >&2
+              exit 1
+            fi
+            previous="$current"
+          done
+
+          if grep -Eiq '(^|[[:space:]])drop[[:space:]]+(table|column|constraint)|alter[[:space:]]+table.*rename|alter[[:space:]]+table.*alter[[:space:]]+column.*type' "$m03a"; then
+            echo "M03A_DESTRUCTIVA: DDL destructivo detectado" >&2
+            exit 1
+          fi
+          if grep -Eiq 'grant[[:space:]]+execute.*(anon|authenticated)' "$m03a"; then
+            echo "M03A_ACL: helper privado expuesto a cliente" >&2
+            exit 1
+          fi
+          echo "M03A_SCOPE_GUARD=PASS"
+
+      - name: Preparar fixture mínimo
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m03a/fixture-m03a.sql
+
+      - name: Aplicar M01
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql
+
+      - name: Aplicar M01b
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923210100_abc_f2_m01b_acl_hardening.sql
+
+      - name: Aplicar M02A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923220000_abc_f2_m02a_core_comercial_fiscal.sql
+
+      - name: Aplicar M02B
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923230000_abc_f2_m02b_pagos_reservas_reembolsos.sql
+
+      - name: Aplicar M03A
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260923233000_abc_f2_m03a_autoridad_transaccional.sql
+
+      - name: Ejecutar contrato M03A
+        run: psql -v ON_ERROR_STOP=1 -f tests/f2/m03a/m03a-contract.sql
+
+      - name: Contrato real de serializacion FOR UPDATE
+        shell: bash
+        run: |
+          set -euo pipefail
+          sale="70000000-0000-0000-0000-000000000001"
+
+          psql -v ON_ERROR_STOP=1 <<SQL &
+          begin;
+          select private.abc_bloquear_ventas('E1','L1',array['$sale'::uuid]);
+          select pg_sleep(4);
+          commit;
+          SQL
+          holder=$!
+
+          sleep 1
+          set +e
+          psql -v ON_ERROR_STOP=1 > /tmp/m03a_lock.out 2>&1 <<SQL
+          begin;
+          set local lock_timeout='1s';
+          select private.abc_bloquear_ventas('E1','L1',array['$sale'::uuid]);
+          commit;
+          SQL
+          rc=$?
+          set -e
+
+          if [[ "$rc" -eq 0 ]]; then
+            cat /tmp/m03a_lock.out
+            wait "$holder" || true
+            echo "M03A_CONCURRENCY_FAIL: segundo lock no espero" >&2
+            exit 1
+          fi
+          if ! grep -Eiq 'lock timeout|canceling statement due to lock timeout' /tmp/m03a_lock.out; then
+            cat /tmp/m03a_lock.out
+            wait "$holder" || true
+            echo "M03A_CONCURRENCY_FAIL: fallo no atribuible al lock" >&2
+            exit 1
+          fi
+
+          wait "$holder"
+
+          psql -v ON_ERROR_STOP=1 <<SQL
+          begin;
+          set local lock_timeout='1s';
+          select private.abc_bloquear_ventas('E1','L1',array['$sale'::uuid]);
+          commit;
+          SQL
+          echo "ABC_F2_M03A_CONCURRENCY=PASS"

@@ -27,7 +27,13 @@ check('RETURN_CROSS_LEDGER_CONFLICT', p08.includes('exists(select 1 from public.
 check('PM09_REVERSO_DATE_CONFLICT', p15.includes("v_fecha_existente<>p_fecha") && p15.includes("raise exception 'operation_id_conflict'"));
 check('FRONTEND_TRANSIENT_ERROR_DETECTED', source.includes('function esErrorTransitorioPM08') || recovered.includes('function esErrorTransitorioPM08'));
 check('FRONTEND_PENDING_DRAFT', source.includes('pendiente: true') || recovered.includes('pendiente: true'));
-check('FRONTEND_PENDING_PAYLOAD_CONFLICT', source.includes('operación anterior pendiente') || recovered.includes('Hay una operación anterior pendiente en este local'));
+// El texto exacto mostrado al usuario cambió en una ronda posterior
+// ("operación anterior pendiente" -> "operación sin confirmar"); lo que
+// importa es que el bloqueo por operación previa sin confirmar sigue
+// presente en ambas fuentes.
+check('FRONTEND_PENDING_PAYLOAD_CONFLICT',
+  (source.includes('operación anterior pendiente') || source.includes('operación sin confirmar')) &&
+  (recovered.includes('operación anterior pendiente') || recovered.includes('operación sin confirmar')));
 check('FRONTEND_DOUBLE_CLICK_GUARD', source.includes('if (enviando) return') || recovered.includes('if (enviando) return'));
 
 if (process.exitCode) throw new Error('PM09_P17_ROBUSTNESS_CONTRACT_FAIL');

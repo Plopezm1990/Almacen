@@ -1,0 +1,139 @@
+name: "P2-PM13 — Fichajes post-reset sobre release actual"
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - '.github/workflows/p2-pm13-release-current.yml'
+      - '.github/scripts/p2-pm13/**'
+      - 'docs/plan-maestro/P2_PM13_RELEASE_CURRENT.md'
+      - 'supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql'
+      - 'supabase/migrations/20260917182000_p2_pm13_fichajes_self_rls_fix.sql'
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  p2-pm13:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      PGPASSWORD: postgres
+      PGHOST: 127.0.0.1
+      PGPORT: 5432
+      PGUSER: postgres
+      PGDATABASE: postgres
+
+    steps:
+      - name: Checkout exact PR head
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
+          fetch-depth: 0
+
+      - name: Node 24
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '24'
+
+      - name: Frontera exacta del candidato
+        shell: bash
+        run: |
+          set -euo pipefail
+          BASE='824d51d5fb76039d1d1d33de0ce32fea9c902f77'
+          ACTUAL_HEAD="$(git rev-parse HEAD)"
+          test "$(git rev-parse origin/release)" = "$BASE"
+          if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
+            test "$ACTUAL_HEAD" = '${{ github.event.pull_request.head.sha }}'
+          fi
+          git merge-base --is-ancestor "$BASE" "$ACTUAL_HEAD"
+          mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
+          printf '%s\n' "${changed[@]}"
+          expected=$'.github/scripts/p2-pm13/concurrency.sh\n.github/scripts/p2-pm13/contract.mjs\n.github/scripts/p2-pm13/ephemeral-fichajes.sql\n.github/workflows/p2-pm13-release-current.yml\ndocs/plan-maestro/P2_PM13_RELEASE_CURRENT.md\nsupabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql\nsupabase/migrations/20260917182000_p2_pm13_fichajes_self_rls_fix.sql'
+          actual="$(printf '%s\n' "${changed[@]}")"
+          test "$actual" = "$expected"
+          echo "P2_PM13_SCOPE=PASS"
+          echo "P2_PM13_BASE=$BASE"
+          echo "P2_PM13_CANDIDATE=$ACTUAL_HEAD"
+
+      - name: Verificar migraciones históricas exactas
+        shell: bash
+        run: |
+          set -euo pipefail
+          b1="$(git hash-object supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql)"
+          b2="$(git hash-object supabase/migrations/20260917182000_p2_pm13_fichajes_self_rls_fix.sql)"
+          test "$b1" = "eff1b98b8e027946a5af9d70babaf6151f610a5f"
+          test "$b2" = "fa026a63128536f40c2639ea6401a2be959177c1"
+          echo "P2_PM13_SQL_MAIN_EXACTO=$b1"
+          echo "P2_PM13_SQL_SELF_RLS_EXACTO=$b2"
+
+      - name: Contrato estático PM13
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-pm13/contract.mjs
+
+      - name: Regresiones R03A R03B R03C PM11 y frontend
+        shell: bash
+        run: |
+          set -euo pipefail
+          node .github/scripts/p2-r03a/contract.mjs
+          node .github/scripts/p2-r03b/contract.mjs
+          node .github/scripts/p2-r03c/contract.mjs
+          node .github/scripts/p2-pm11/contract.mjs
+          node --check fuente.js
+          echo "P2_PM13_R03ABC_PM11_REGRESSION=PASS"
+
+      - name: Preparar harness efímero
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 - <<'PY'
+          from pathlib import Path
+          src=Path('.github/scripts/p2-pm13/ephemeral-fichajes.sql').read_text()
+          reps={
+            r'\ir ../../supabase/migrations/20260917143000_p2_pm11_personal_post_reset.sql':
+              r'\i supabase/migrations/20260917143000_p2_pm11_personal_post_reset.sql',
+            r'\ir ../../supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql':
+              r'\i supabase/migrations/20260917173000_p2_pm13_fichajes_post_reset.sql',
+            r'\ir ../../supabase/migrations/20260917182000_p2_pm13_fichajes_self_rls_fix.sql':
+              r'\i supabase/migrations/20260917182000_p2_pm13_fichajes_self_rls_fix.sql',
+          }
+          for old,new in reps.items():
+              if old not in src:
+                  raise SystemExit('P2_PM13_HARNESS_INCLUDE_NOT_FOUND='+old)
+              src=src.replace(old,new)
+          Path('/tmp/p2-pm13-ephemeral.sql').write_text(src)
+          PY
+
+      - name: Prueba funcional PostgreSQL 16 efímera
+        shell: bash
+        run: |
+          set -euo pipefail
+          psql -h 127.0.0.1 -U postgres -d postgres -v ON_ERROR_STOP=1 -f /tmp/p2-pm13-ephemeral.sql
+
+      - name: Prueba de concurrencia real
+        shell: bash
+        run: |
+          set -euo pipefail
+          bash .github/scripts/p2-pm13/concurrency.sh
+
+      - name: Confirmar árbol limpio
+        if: always()
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -z "$(git status --porcelain)"
+          echo "P2_PM13_GATE=PASS"

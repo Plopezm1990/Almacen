@@ -1,7 +1,9 @@
 import fs from 'node:fs';
 
 const source = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
+const bundle = fs.readFileSync('fuente.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
+const storageBootstrap = fs.readFileSync('index-storage-bootstrap.js', 'utf8');
 
 function functionBlock(name) {
   const re = new RegExp(`(?:async\\s+)?function\\s+${name}\\s*\\(`, 'g');
@@ -64,22 +66,27 @@ const checks = {
   sync_tras_contexto: source.includes('await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });'),
 
   caja_arqueo_async: caja.includes('async function addArqueo(data)'),
-  caja_arqueo_rpc: caja.includes('.rpc("registrar_arqueo_caja"'),
+  caja_arqueo_rpc: caja.includes('.rpc("abc_registrar_arqueo_caja"') && !caja.includes('.rpc("registrar_arqueo_caja"'),
   caja_anulacion_rpc: caja.includes('.rpc("anular_arqueo_caja"'),
   caja_cero_valido: caja.includes('efectivoContado < 0') && !caja.includes('efectivoContado <= 0'),
   caja_sin_borrado_fisico: !caja.includes('setArqueos((s2) => s2.filter'),
   caja_anulacion_trazable_local: caja.includes('estado: "ANULADO"') && caja.includes('anuladoMotivo'),
   caja_efecto_cero_no_falseado: caja.includes('Number.isFinite(efecto) ? efecto : fallback'),
 
-  movimiento_alta_rpc: movimientosCaja.includes('.rpc("registrar_movimiento_caja"'),
-  movimiento_reverso_rpc: movimientosCaja.includes('.rpc("revertir_movimiento_caja"'),
+  movimiento_alta_rpc: movimientosCaja.includes('.rpc("abc_registrar_movimiento_caja"') && !movimientosCaja.includes('.rpc("registrar_movimiento_caja"'),
+  movimiento_reverso_rpc: movimientosCaja.includes('.rpc("abc_revertir_movimiento_caja"') && !movimientosCaja.includes('.rpc("revertir_movimiento_caja"'),
   movimiento_tipo_canonico: movimientosCaja.includes('["ENTRADA", "RETIRADA"]'),
   movimiento_importe_positivo: movimientosCaja.includes('imp <= 0'),
-  movimiento_bloquea_arqueo_activo: movimientosCaja.includes('a2.estado !== "ANULADO"'),
+  // Nombre de variable agnóstico (a2 en origen, a22 tras un renombrado
+  // del empaquetador): lo que importa es la condición en sí.
+  movimiento_bloquea_arqueo_activo: /\w+\.estado !== "ANULADO"/.test(movimientosCaja),
   movimiento_sin_borrado_fisico: !movimientosCaja.includes('setMovimientosCaja((s2) => s2.filter'),
   movimiento_reverso_con_motivo: movimientosCaja.includes('if (!motivoLimpio)'),
 
-  devolucion_cliente_rpc_atomica: devoluciones.includes('.rpc("registrar_devolucion_venta"'),
+  // Prefijo estable: el sufijo de versión de la RPC puede cambiar entre
+  // rondas (renombrada a _pm09 tras esta), lo que importa es que sigue
+  // siendo la RPC atómica de devolución de venta.
+  devolucion_cliente_rpc_atomica: /\.rpc\("registrar_devolucion_venta(_\w+)?"/.test(devoluciones),
   devolucion_proveedor_rpc_atomica: devoluciones.includes('.rpc("registrar_devolucion_proveedor"'),
   devolucion_exige_venta: devoluciones.includes('if (!ventaId)'),
   devolucion_cantidad_positiva: devoluciones.includes('cant <= 0'),
@@ -90,7 +97,10 @@ const checks = {
   devolucion_contexto_local: devoluciones.includes('producto no pertenece al local activo') || devoluciones.includes('El producto no pertenece al local activo'),
 
   idempotencia_borrador_localstorage: source.includes('localStorage.setItem(clave, JSON.stringify(valor))'),
-  idempotencia_conflicto_payload: source.includes('Hay una operación anterior pendiente en este local'),
+  // El texto exacto mostrado al usuario cambió en una ronda posterior;
+  // lo que importa es que sigue existiendo el bloqueo por operación
+  // pendiente sin confirmar (mismo mecanismo que PM09 P17).
+  idempotencia_conflicto_payload: source.includes('operación sin confirmar') || source.includes('operación anterior pendiente'),
   idempotencia_doble_click_devolucion: uiDevoluciones.includes('if (enviando) return'),
   idempotencia_doble_click_movimiento: uiMovimientos.includes('if (enviando || periodoCerrado) return'),
   idempotencia_doble_click_arqueo: uiArqueo.includes('if (enviando || yaArqueado) return'),
@@ -104,11 +114,19 @@ const checks = {
   ui_reverso_no_eliminar: uiMovimientos.includes('Revertir con motivo') && !uiMovimientos.includes('aria-label": "Eliminar movimiento'),
   ui_arqueo_anular_no_borrar: uiArqueo.includes('Anular cierre con motivo') && !uiArqueo.includes('Borrar y repetir'),
 
-  storage_ledgers_rpc: index.includes('var LEDGERS_RPC = {') && index.includes('arqueos: true') && index.includes('movimientosCaja: true') && index.includes('devoluciones: true'),
-  storage_cache_por_usuario_pm08: index.includes('arqueos: true, movimientosCaja: true, devoluciones: true'),
-  storage_get_no_lee_bloque_global: index.includes('if (esLedgerRpc && !esPagosFactura)'),
-  storage_set_no_upsert_bloque_global: index.includes('if (esLedgerRpc) {') && index.includes('Los ledgers remotos solo se escriben mediante RPC transaccional'),
-  storage_pendientes_no_resube_ledger: index.includes('if (LEDGERS_RPC[key])'),
+  storage_bootstrap_wired: /<script src="\.\/index-storage-bootstrap\.js(?:\?[^\"]*)?"><\/script>/.test(index),
+  storage_ledgers_rpc: storageBootstrap.includes('var LEDGERS_RPC = {') && storageBootstrap.includes('arqueos: true') && storageBootstrap.includes('movimientosCaja: true') && storageBootstrap.includes('devoluciones: true'),
+  storage_cache_por_usuario_pm08: storageBootstrap.includes('arqueos: true, movimientosCaja: true, devoluciones: true'),
+  storage_get_no_lee_bloque_global: storageBootstrap.includes('if (esLedgerRpc && !esPagosFactura)'),
+  storage_set_no_upsert_bloque_global: storageBootstrap.includes('if (esLedgerRpc) {') && storageBootstrap.includes('Los ledgers remotos solo se escriben mediante RPC transaccional'),
+  storage_pendientes_no_resube_ledger: storageBootstrap.includes('if (LEDGERS_RPC[key])'),
+
+  // PM08 regresión: una normalización inicial de productos no puede salir
+  // antes de publicar empresa/local, y el guardado reactivo debe reintentarse
+  // cuando ese contexto se hidrata después de la lista.
+  productos_bootstrap_publica_contexto: source.includes('window.__localActivoIdParaContexto = localInicial;') && source.includes('window.__empresaActivaIdParaContexto = localInicialObj?.empresaId || empresaLegacyUnicaId || null;') && source.includes('await saveKey("productos", productosFinales);'),
+  productos_reactivo_depende_contexto: source.includes('window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;') && source.includes('}, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);'),
+  productos_bundle_mantiene_guard: bundle.includes('window.__localActivoIdParaContexto = localInicial;') && bundle.includes('}, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);'),
 };
 
 for (const [name, passed] of Object.entries(checks)) {

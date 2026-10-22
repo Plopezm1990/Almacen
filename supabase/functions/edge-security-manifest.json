@@ -1,0 +1,27 @@
+{
+  "version": 1,
+  "base_release": "e8de01fbdad63bd7fbe57982e3ae978e06d1ca52",
+  "functions": [
+    {
+      "slug": "crear-cuenta-empleado",
+      "verify_jwt": true,
+      "exposure": "authenticated",
+      "service_role": true,
+      "tenant_boundary": "employee empresa/local + active Propietario membership"
+    },
+    {
+      "slug": "enviar-notificacion",
+      "verify_jwt": false,
+      "exposure": "authenticated-or-internal-secret",
+      "service_role": true,
+      "tenant_boundary": "server-resolved empresa/local + recipient memberships"
+    },
+    {
+      "slug": "prefiltro-candidato",
+      "verify_jwt": false,
+      "exposure": "public-token",
+      "service_role": true,
+      "tenant_boundary": "opaque token row carries empresa_id/local_id; HMAC rate limit"
+    }
+  ]
+}

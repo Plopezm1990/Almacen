@@ -1,0 +1,29 @@
+name: "ABC F4 B11 -- frontera offline"
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - "docs/plan-maestro/PM03_CONTRATOS_MINIMOS_PROPUESTA.md"
+      - "docs/plan-abc/F4_B11_CONTRATO_TECNICO_2026-10-01.md"
+      - "docs/plan-abc/F4_B11_CONTINGENCIA_TERMINAL_OFFLINE_2026-10-01.md"
+      - "source-recovery/fuente-recuperado.js"
+      - "tests/pm07/frontend-contract.mjs"
+      - "tests/f4/b11/**"
+      - ".github/workflows/abc-f4-b11-offline-contract.yml"
+  workflow_dispatch: {}
+
+permissions:
+  contents: read
+
+jobs:
+  f4-b11-offline:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: 22
+      - name: Validar frontera B11.1
+        run: node tests/f4/b11/b11-offline-boundary-contract.mjs

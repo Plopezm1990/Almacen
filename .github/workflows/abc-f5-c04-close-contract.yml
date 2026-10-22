@@ -1,0 +1,47 @@
+name: "ABC F5 C04 -- cierre de sesión"
+
+on:
+  push:
+    branches: [codex/f5-c03-cash-reconciliation]
+    paths:
+      - "docs/plan-abc/F5_C04_CONTRATO_CIERRE_SESION_2026-10-01.md"
+      - "tests/f5/c04/**"
+      - "supabase/migrations/20261001140000_abc_f5_c04_close_reopen.sql"
+      - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "supabase/migrations/20260928223000_pm10_cierre_sesion_caja.sql"
+      - "supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql"
+      - "supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql"
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
+      - ".github/workflows/abc-f5-c04-close-contract.yml"
+  pull_request:
+    paths:
+      - "docs/plan-abc/F5_C04_CONTRATO_CIERRE_SESION_2026-10-01.md"
+      - "tests/f5/c04/**"
+      - "supabase/migrations/20261001140000_abc_f5_c04_close_reopen.sql"
+      - "supabase/migrations/20260923210000_abc_f2_m01_base_transaccional_caja.sql"
+      - "supabase/migrations/20260928223000_pm10_cierre_sesion_caja.sql"
+      - "supabase/migrations/20260923234500_abc_f2_m03b_checkout_cobro.sql"
+      - "supabase/migrations/20260923235900_abc_f2_m03c_reembolsos_transaccionales.sql"
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
+      - ".github/workflows/abc-f5-c04-close-contract.yml"
+
+jobs:
+  c04-close-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validar estado real de C04
+        run: node tests/f5/c04/c04-close-contract.mjs
+      - name: Validar implementación candidata C04
+        run: node tests/f5/c04/c04-close-implementation.mjs
+      - name: Validar adaptador UI C04
+        run: node tests/f5/c04/c04-ui-contract.mjs
+      - name: Validar contrato de concurrencia C04
+        run: node tests/f5/c04/c04-concurrency-contract.mjs
+      - name: Validar contrato de seguridad C04
+        run: node tests/f5/c04/c04-security-contract.mjs

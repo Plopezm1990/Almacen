@@ -1,0 +1,51 @@
+name: Validate Netlify publish boundary
+
+on:
+  push:
+    branches:
+      - claude/netlify-publish-boundary
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout exact candidate
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 2
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '20'
+
+      - name: Build isolated publish artifact
+        run: node .github/scripts/build-netlify-publish.mjs
+
+      - name: Validate publish boundary and byte identity
+        run: node tests/netlify-publish-boundary.mjs
+
+      - name: Regress P1 clean first-run semantics
+        run: node tests/p1-empty-kv-first-run.mjs
+
+      - name: Regress anti-resurrection barrier
+        run: node tests/hotfix-barrera-reset-local.mjs
+
+      - name: Check exact candidate diff
+        run: |
+          echo "candidate=${GITHUB_SHA}"
+          git status --short
+          git diff --check HEAD^ HEAD
+
+      - name: Upload publish preview artifact
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
+        with:
+          name: netlify-publish-preview-${{ github.sha }}
+          path: .netlify-dist
+          if-no-files-found: error
+          include-hidden-files: true
+          retention-days: 7

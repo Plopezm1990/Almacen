@@ -1,0 +1,62 @@
+name: Validate PM27 mobile logout modal fix
+
+on:
+  push:
+    branches:
+      - pm27-fix-mobile-logout-modal
+    paths:
+      - ui-context-bridge.js
+      - tests/pm27-mobile-logout-modal-fix.mjs
+      - .github/workflows/validate-pm27-mobile-logout-modal.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout candidate
+        uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node
+        uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: "24"
+
+      - name: Syntax check bridge
+        run: node --check ui-context-bridge.js
+
+      - name: Run focused mobile modal regression
+        run: node tests/pm27-mobile-logout-modal-fix.mjs
+
+      - name: Guard candidate scope
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin release
+          if ! git merge-base --is-ancestor origin/release HEAD; then
+            echo "release is not an ancestor of the candidate" >&2
+            exit 1
+          fi
+          mapfile -t changed < <(git diff --name-only origin/release..HEAD)
+          printf 'Changed files:\n'
+          printf '%s\n' "${changed[@]}"
+          if [ "${#changed[@]}" -ne 3 ]; then
+            echo "Expected exactly 3 changed files, got ${#changed[@]}" >&2
+            exit 1
+          fi
+          for file in "${changed[@]}"; do
+            case "$file" in
+              ui-context-bridge.js|tests/pm27-mobile-logout-modal-fix.mjs|.github/workflows/validate-pm27-mobile-logout-modal.yml)
+                ;;
+              *)
+                echo "Unexpected file in candidate: $file" >&2
+                exit 1
+                ;;
+            esac
+          done

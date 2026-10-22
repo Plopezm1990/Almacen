@@ -39,7 +39,7 @@ ok({ precioVenta:0 }, { parcial:true });
 fail({ precioVenta:-1 }, 'precioVenta', 'valor_fuera_rango', { parcial:true });
 fail({ stock:-1 }, 'stock', 'valor_fuera_rango', { parcial:true });
 
-assert.match(src, /function addProducto\(data\) \{\n    const validacion = validarProductoPM10\(data, \{ parcial: false \}\);/);
+assert.match(src, /function addProducto\(data\)\s*\{\s*const validacion = validarProductoPM10\(data, \{ parcial: false \}\);/);
 assert.match(src, /function updateProducto\(id, data\)[\s\S]{0,500}validarProductoPM10\(data, \{ parcial: true \}\)/);
 assert.doesNotMatch(src, /const nuevo = \{ id: uid\(\), stock: Number\(data\.stock\) \|\| 0, \.\.\.data/);
 assert.doesNotMatch(src, /costo: Number\(nuevoProd\.costo\) \|\| 0/);
