@@ -125,3 +125,22 @@ Resultado: fotos y «Más vendido» quedan cerrados como PASS visual en QA-2.
 Siguen abiertos F4 en un carrito vacío, notas, alérgenos en la comanda y la
 revisión de la estación de Cocina; la incidencia previa de sincronización de
 movimientos también permanece aislada y sin reintento.
+
+## Adenda de cierre seguro de F4 e inspección del configurador · 2026-10-22
+
+- En el preview `deploy-preview-172`, con `QA Empresa A, S.L. · QA Local A1`,
+  el TPV mostró el carrito vacío y los controles `F4 Vaciar` y `F9 Guardar`
+  desactivados. Se considera `F4 PASS (estado vacío seguro)`: no fue necesario
+  pulsar una tecla que pudiera interactuar con el pedido operativo existente.
+- Se abrió y cerró el configurador de `Bocadillo de tortilla (QA)` sin añadir
+  la línea al carrito. El configurador mostró únicamente las opciones `Sin
+  cebolla`, `Extra de queso · +0,80 EUR` y `Pan integral · +0,20 EUR`, junto
+  con `Añadir al carrito` y `Cancelar`.
+- No apareció ningún campo de notas/observaciones ni un bloque de alérgenos en
+  el configurador. No se seleccionaron opciones, no se añadió producto, no se
+  guardó pedido y no se modificó la comanda operativa.
+
+Resultado: F4 queda cerrado únicamente para el estado seguro de carrito vacío.
+Notas y alérgenos siguen abiertos por ausencia de controles visibles en el
+flujo TPV; la preparación de Cocina y la incidencia de sincronización de
+movimientos siguen pendientes y aisladas.
