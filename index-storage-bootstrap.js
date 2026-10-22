@@ -637,6 +637,14 @@
   }
   function datosFilaParaServidor(valor, claveColeccion) {
     if (!valor || typeof valor !== "object") return valor;
+    // Las aperturas que instala el fixture de QA no son operaciones del
+    // negocio: no tienen empresa/local ni una RPC autoritativa detrás. Si se
+    // intentan subir como movimientos heredados, la política de plataforma
+    // las rechaza y deja la colección atascada en «Subiendo…». Se conservan
+    // en este navegador para las pruebas, pero no se envían a la tabla
+    // operativa. El filtro queda limitado al marcador explícito del fixture
+    // y a previews QA; nunca afecta a movimientos reales ni a producción.
+    if (claveColeccion === "movimientos" && esPreviewQa() && String(valor.tipo || "").toUpperCase() === "APERTURA_FIXTURE") return null;
     // Estos movimientos ya viven en movimientos_stock y solo se hidratan en
     // la colección local como referencia autoritativa. No se duplican en la
     // tabla histórica heredada movimientos_registro.
