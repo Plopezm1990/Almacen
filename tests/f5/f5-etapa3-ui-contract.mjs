@@ -21,6 +21,12 @@ for (const [nombre, bundle] of fuentes) {
   assert.match(bundle, /maximumFractionDigits: 3/, `${nombre}: el formateador permite tres decimales`);
   assert.match(bundle, /fmtPrecio\(p22\.costo\)/, `${nombre}: Productos muestra el coste con su precisión`);
   assert.match(bundle, /fmtPrecio\(p22\.precioVenta\)/, `${nombre}: Productos muestra el precio con su precisión`);
+  const productosIni = bundle.indexOf("function Productos(");
+  const productosFin = bundle.indexOf("function InputCalc(", productosIni);
+  const productos = bundle.slice(productosIni, productosFin);
+  const ventaSteps = [...productos.matchAll(/label: "Precio de venta CON IVA.*?step: "0\.001"/gs)];
+  assert.equal(ventaSteps.length, 2, `${nombre}: crear y editar admiten tres decimales en el precio de venta`);
+  assert.match(productos, /precioNeto\(p22\)\.toFixed\(3\)/, `${nombre}: las salidas conservan tres decimales del precio unitario`);
 
   // AUD-005: los roles retirados no se ofrecen al crear una ficha nueva.
   assert.match(bundle, /var NOMBRES_ROLES_ALTA = NOMBRES_ROLES\.filter/);
