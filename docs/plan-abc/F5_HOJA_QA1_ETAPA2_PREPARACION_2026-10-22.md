@@ -145,32 +145,37 @@ de la regla de autoridad y de un rollback revisado.
 
 ### AUD-010 · notificaciones y membresías
 
-Estado de preparación: PENDIENTE_DE_AUDITORIA_DE_EDGE_FUNCTION_Y_GRANTS.
+Estado de preparación: AUDITADO_QA; FUNCION_V2_ACTIVA; BLOQUEADO_POR_SUSCRIPCION_PUSH; SIN_CAMBIOS_APLICADOS.
 
 Hallazgos actuales:
 
 - El cliente invoca enviar-notificacion mediante fetch cuando detecta
   caducidades.
+- La Edge Function QA está activa en versión 2 y hace autenticación propia
+  aunque `verify_jwt=false`: valida el Bearer, perfil activo y membresías
+  activas antes de aplicar el filtro de destinatarios.
 - El esquema QA contiene suscripciones_push y membresias_usuario, ambas con
-  RLS activo.
-- El inventario de rutinas públicas no muestra una RPC de notificaciones.
-- Con la consulta de esquema no es posible afirmar todavía si el fallo está
-  en SELECT de membresías, en el JWT/contexto de usuario, en el filtrado por
-  empresa/local o en la propia Edge Function.
+  RLS activo. Las políticas limitan las suscripciones al propio usuario y las
+  membresías a sus filas activas.
+- Las pruebas negativas en vivo devolvieron 401 sin sesión, 403 para empresa o
+  local contradictorios y 403 para una empresa fuera del alcance; no se
+  observaron fugas entre empresas.
+- QA tiene una sola suscripción push identificada y la sesión usada para la
+  prueba tiene cero suscripciones. El cálculo de destinatarios para
+  QA-EMP-A/QA-A1 devuelve cero; el bloqueo reproducido es de fixture push, no
+  un fallo demostrado de lectura de membresías.
 
-Cambio propuesto, aún no aplicado:
+Resultado de auditoría y siguiente prueba, sin cambios aplicados:
 
-1. Obtener el contrato de entrada/salida de enviar-notificacion sin enviar
-   una notificación real.
-2. Revisar sus logs QA y su identidad de ejecución.
-3. Comprobar el SELECT mínimo sobre membresias_usuario y las tablas de
-   suscripciones, manteniendo RLS y el filtro por empresa/local.
-4. Si hace falta una función SECURITY DEFINER, limitarla a la lectura
-   necesaria, fijar search_path, revocar ejecución pública innecesaria y
-   documentar el propietario y las comprobaciones de pertenencia.
-5. Probar: usuario con membresía activa recibe el aviso; usuario sin
-   membresía no recibe datos; una empresa no puede descubrir membresías de
-   otra; reintentar no duplica suscripciones ni avisos persistidos.
+1. Activar una suscripción push real mediante el flujo normal del navegador en
+   la sesión QA, sin insertar filas manualmente.
+2. Ejecutar un aviso controlado para QA-EMP-A/QA-A1 y confirmar entrega al
+   destinatario correcto.
+3. Repetir los casos negativos ya ejecutados y conservar sus respuestas 401/403.
+4. Confirmar que una empresa no puede descubrir membresías de otra y que una
+   sesión sin suscripción devuelve cero destinatarios sin error.
+5. No tocar la Edge Function, RLS ni grants salvo que la prueba positiva
+   reproduzca un fallo después de existir una suscripción válida.
 
 No se cambiarán grants ni RLS sin una migración revisada y autorización
 específica de QA-1.
@@ -316,13 +321,16 @@ Estado actual de la autorización:
   publicada en QA; no se autoriza PROD.
 - Autorización para fixtures QA de importe cero: CONSUMIDA en la comprobación
   manual documentada arriba.
-- Autorización para migraciones, grants, RLS o funciones QA: PENDIENTE.
+- Autorización para auditar AUD-010 en QA: CONCEDIDA Y CONSUMIDA; no se
+  aplicaron cambios de función, grants, RLS ni migraciones.
+- Autorización para aplicar cambios de migración, grants, RLS o funciones QA:
+  PENDIENTE DE UNA CORRECCIÓN CONCRETA.
 - Autorización para PROD: NO_CONCEDIDA.
 
-La siguiente acción segura es continuar con AUD-010, pendiente de auditoría de
-Edge Function y grants. AUD-006 ya está cerrado para su flujo normal. AUD-004
-queda cerrado en el control QA ejecutado, con borrado físico expresamente fuera
-del contrato por diseño.
+La siguiente acción segura de AUD-010 es activar una suscripción push real por
+el flujo normal del navegador y repetir un aviso controlado. AUD-006 ya está
+cerrado para su flujo normal. AUD-004 queda cerrado en el control QA ejecutado,
+con borrado físico expresamente fuera del contrato por diseño.
 
 ## 7. Registro de comprobaciones realizadas
 
@@ -351,6 +359,11 @@ del contrato por diseño.
 - Reasignación contradictoria AUD-004: RPC rechazada con
   `abc_productos_cambio_contexto_no_admitido`, sin cambios en QA-EMP-A y sin
   exposición en QA-EMP-B, 2026-10-22.
+- Auditoría AUD-010: Edge Function v2 activa; pruebas negativas 401/403/400
+  correctas; RLS y políticas revisadas; cero suscripciones en la sesión QA y
+  cero destinatarios calculados para QA-EMP-A/QA-A1; sin escrituras ni envíos,
+  2026-10-22. Evidencia detallada en
+  `F5_AUD010_AUDITORIA_QA_2026-10-22.md`.
 
 Recomprobación visual posterior en QA, preview 172:
 
