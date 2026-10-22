@@ -22398,6 +22398,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
+  const bloqueoAgregarA04 = (0, import_react4.useRef)(false);
   const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
 
   (0, import_react4.useEffect)(() => {
@@ -23142,7 +23143,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     });
   }
   async function agregar(producto, cantidadSolicitada = 1) {
-    if (cargandoA04) return;
+    if (cargandoA04 || bloqueoAgregarA04.current || configurandoA04) return;
+    bloqueoAgregarA04.current = true;
     const cantidadNormalizada = Math.max(1, Number(cantidadSolicitada) || 1);
     setCantidadRapidaPendienteA04(cantidadNormalizada);
     setErrorVenta("");
@@ -23259,6 +23261,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       else setErrorVenta("No se pudieron cargar las variantes y modificadores del producto.");
     } finally {
       setCargandoA04(false);
+      bloqueoAgregarA04.current = false;
     }
   }
   function cambiarSeleccionA04(grupo, opcion, delta) {
