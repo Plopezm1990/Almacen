@@ -101665,6 +101665,11 @@ function notificarFalloCargaPM16(key, motivo, error) {
   if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return;
   window.dispatchEvent(new CustomEvent("fallo-carga", { detail: { key, motivo, mensaje: error && error.message } }));
 }
+function esRespaldoSoloLocalPM16(key, error) {
+  if (key !== "historialRespaldos") return false;
+  const mensaje = String(error?.message || error || "").toLowerCase();
+  return error?.name === "QuotaExceededError" || error?.code === 22 || mensaje.includes("quota") || mensaje.includes("exceeds") || mensaje.includes("no permite guardarla");
+}
 async function loadKey(key, fallback, retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
@@ -101712,7 +101717,8 @@ async function saveKey(key, value) {
   } catch (e2) {
     console.error("Error guardando", key, e2);
     if (typeof window !== "undefined" && window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, mensaje: e2 && e2.message } }));
+      const soloLocal = esRespaldoSoloLocalPM16(key, e2);
+      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, soloLocal, motivo: soloLocal ? "cuota-o-politica-qa" : "error", mensaje: e2 && e2.message } }));
     }
   }
 }
