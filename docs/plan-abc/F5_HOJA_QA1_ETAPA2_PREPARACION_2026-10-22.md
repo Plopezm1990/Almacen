@@ -1,7 +1,7 @@
 # Hoja QA-1 · preparación de la Etapa 2
 
 Fecha: 2026-10-22  
-Estado: EN_IMPLEMENTACION_QA; QA_ONLY; PENDIENTE_VALIDACION_MANUAL
+Estado: EN_IMPLEMENTACION_QA; QA_ONLY; VALIDACION_MANUAL_AUD006_COMPLETADA_PARCIALMENTE
 
 ## 1. Puerta de entrada y límites
 
@@ -13,16 +13,19 @@ Estado: EN_IMPLEMENTACION_QA; QA_ONLY; PENDIENTE_VALIDACION_MANUAL
 - El único proyecto remoto inspeccionado en esta preparación fue el QA
   qjqorixtkilwsndqayyx.
 - No se ha consultado ni modificado PROD.
-- No se han aplicado migraciones, no se han ejecutado escrituras en Supabase y
-  no se han creado fixtures.
+- No se han aplicado migraciones ni cambios de RLS, grants o funciones.
+- Se han creado únicamente fixtures funcionales de importe cero en QA para
+  validar AUD-006, mediante el flujo normal de la aplicación. No se han creado
+  ventas reales, cobros ni movimientos de stock.
 - El candidato de código QA se publicó en la rama
   codex/stage1-aud009-aud003, commit cca22bc, y Netlify confirmó el deploy
   como successful para el preview 172 (deploy 6ada5835fc56cd902c5f8bbb).
 - La consulta al esquema y a las rutinas fue de solo lectura. No se leyeron
   contraseñas, tokens ni valores de autenticación.
 
-Esta hoja no autoriza todavía una migración, un cambio de RLS, una modificación
-de funciones, una escritura de fixture ni una publicación.
+Esta hoja no autoriza migraciones, cambios de RLS, grants o funciones, ni
+ninguna actuación en PROD. La escritura de fixtures QA de importe cero queda
+limitada a la validación manual documentada en esta misma hoja.
 
 ## 2. Alcance de QA-1 según el plan maestro
 
@@ -174,15 +177,29 @@ Avance aplicado en código local el 2026-10-22:
 Comprobación manual en QA del 2026-10-22, preview 172:
 
 - El contexto abrió correctamente como QA Empresa A, S.L. · Local A1.
-- La pantalla Encargos mostró «No hay encargos pendientes».
-- Los contadores de encargos entregados y de historial (cancelados y
-  devueltos) mostraron 0.
-- No se crearon encargos, no se canceló ni entregó ningún registro y no se
-  alteraron cobros.
-- Resultado: BLOQUEADA POR AUSENCIA DE FIXTURE. La corrección publicada no
-  puede certificarse todavía como PASS porque no hay filas QA que permitan
-  comprobar el filtro de estados, el orden por fecha/hora, la fecha ausente
-  ni la ausencia de cliente.
+- Se crearon mediante la interfaz cinco fixtures de importe 0,00 €, sin
+  producto de catálogo, sin cobro y sin movimiento de stock:
+  `QA-AUD006-PEND-01`, `QA-AUD006-PEND-02`,
+  `QA-AUD006-RETURN-01`, `QA-AUD006-DELIVERED-01` y
+  `QA-AUD006-PEND-03` (el primer fixture se canceló y el tercero se devolvió;
+  se conservaron dos pendientes y uno entregado).
+- La lista principal dejó únicamente los pendientes y los mostró ordenados por
+  fecha/hora: 2026-10-25 11:00 antes de 2026-10-28 08:30. No apareció botón
+  Entregar para los estados cancelado, devuelto o entregado.
+- El contador visible mostró 1 encargo entregado y 2 elementos en el historial
+  de cancelados/devueltos. El historial mostró explícitamente los motivos de
+  cancelación y devolución.
+- La comprobación remota de solo lectura confirmó cinco filas QA con estados
+  `Cancelado`, `Pendiente`, `Devuelto`, `Entregado` y `Pendiente`, todas con
+  cliente `QA-CLI-A` y total `0.00`.
+- Se intentó guardar un encargo sin cliente y sin fecha; la interfaz lo
+  rechazó con «Selecciona o crea un cliente.» y no creó ningún registro. Por
+  tanto, los casos de ausencia de cliente y fecha ausente quedan BLOQUEADOS
+  para una prueba de datos preexistentes: el formulario normal no permite
+  fabricarlos y no se hizo una inserción directa.
+- Resultado AUD-006: PASS para filtro de estados, ordenación, historial y
+  ausencia de acción Entregar en estados no pendientes; BLOQUEADO para
+  validar filas históricas con cliente/fecha ausentes.
 
 ### Contraseña inicial · bloque intermedio
 
@@ -223,15 +240,17 @@ QA-1 podrá considerarse cerrada cuando, en QA y sin PROD:
 Estado actual de la autorización:
 
 - Autorización para inspección de esquema QA: CONSUMIDA; SOLO LECTURA.
-- Autorización para editar código: PENDIENTE_DE_CONFIRMACION_EN_QA-1.
+- Autorización para editar código: CONSUMIDA para la corrección AUD-006
+  publicada en QA; no se autoriza PROD.
+- Autorización para fixtures QA de importe cero: CONSUMIDA en la comprobación
+  manual documentada arriba.
 - Autorización para migraciones, grants, RLS o funciones QA: PENDIENTE.
 - Autorización para PROD: NO_CONCEDIDA.
 
-La siguiente acción segura es revisar esta Hoja QA-1 y autorizar
-expresamente la ventana de cambios QA indicando, como mínimo:
-«Autorizo QA-1 para AUD-004, AUD-010 y AUD-006; no PROD». Después se creará
-una rama de Etapa 2, se prepararán contratos y se aplicarán únicamente los
-cambios aprobados en QA, con preflight, pruebas y rollback.
+La siguiente acción segura es cerrar el resultado de AUD-006 como PASS parcial
+y preparar por separado los fixtures o datos controlados que permitan probar
+cliente/fecha ausentes. AUD-004 y AUD-010 siguen pendientes y no se deben
+modificar por inferencia a partir de esta prueba.
 
 ## 7. Registro de comprobaciones realizadas
 
@@ -244,6 +263,7 @@ cambios aprobados en QA, con preflight, pruebas y rollback.
   2026-10-22.
 - Comprobación manual de Encargos en QA: pantalla sin pendientes y contadores
   entregados/historial a 0; 2026-10-22.
-- No se ejecutaron escrituras remotas ni migraciones durante la preparación ni
-  durante esta comprobación.
+- Se ejecutaron escrituras funcionales en QA para cinco encargos de importe
+  cero y cambios de estado asociados (cancelado, devuelto y entregado); no se
+  ejecutaron migraciones ni escrituras administrativas directas en Supabase.
 
