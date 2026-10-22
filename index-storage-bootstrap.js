@@ -664,13 +664,21 @@
   // que este equipo ha quitado a propósito (una venta anulada, un albarán
   // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
   async function sincronizarColeccionPorFila(tabla, listaLocal, claveColeccion) {
+    // Filtra antes de leer la tabla remota. En QA puede haber una colección
+    // pendiente compuesta únicamente por referencias locales o fixtures; en
+    // ese caso no hay nada que subir y una lectura de autoridad 401 no debe
+    // mantener artificialmente la cola abierta.
+    var filasSubibles = (listaLocal || []).filter(function (x) {
+      if (!x || !x.id) return false;
+      return datosFilaParaServidor(x, claveColeccion) !== null;
+    });
+    if (!filasSubibles.length) return;
     var filasRemotas = await leerFilasCompletas(tabla);
     var remotoPorId = {};
     filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
 
     var filasParaGuardar = [];
-    listaLocal.forEach(function (x) {
-      if (!x || !x.id) return;
+    filasSubibles.forEach(function (x) {
       var datosServidor = datosFilaParaServidor(x, claveColeccion);
       if (datosServidor === null) return;
       var enNube = remotoPorId[x.id];
