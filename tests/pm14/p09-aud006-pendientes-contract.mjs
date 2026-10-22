@@ -19,7 +19,11 @@ assert.match(src, /encargos\.filter\(esEncargoPendientePM14\)/,
   'la lista general no usa el predicado común');
 assert.match(cuerpo, /function|const ordenarEncargosPendientesPM14/,
   'falta el comparador de fecha de entrega');
-assert.match(src, /filter\(esEncargoPendientePM14\)\.sort\(ordenarEncargosPendientesPM14\)/,
+assert.match(src, /filter\(esEncargoPendientePM14\)\.map\(/,
+  'la lista del local activo no enriquece cliente, días y total');
+assert.match(src, /encargosPendientesDelLocalActivo[\s\S]*clientes\.find\(/,
+  'la lista del local activo no hidrata el cliente');
+assert.match(src, /encargosPendientesDelLocalActivo[\s\S]*\.sort\(ordenarEncargosPendientesPM14\)/,
   'la lista del local activo no ordena por fecha');
 assert.match(src, /sort\(ordenarEncargosPendientesPM14\)/,
   'la lista general no ordena por fecha');

@@ -104125,7 +104125,16 @@ function GestionAlmacen() {
     const fechaB = /^\d{4}-\d{2}-\d{2}$/.test(String(b2?.fechaEntrega || "")) ? String(b2.fechaEntrega) : "9999-12-31";
     return fechaA.localeCompare(fechaB) || String(a22?.horaEntrega || "99:99").localeCompare(String(b2?.horaEntrega || "99:99")) || String(a22?.id || "").localeCompare(String(b2?.id || ""));
   };
-  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => encargosDelLocalActivo.filter(esEncargoPendientePM14).sort(ordenarEncargosPendientesPM14), [encargosDelLocalActivo]);
+  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return encargosDelLocalActivo.filter(esEncargoPendientePM14).map((e2) => {
+      const f22 = new Date(e2.fechaEntrega);
+      const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
+      const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
+      return { ...e2, dias, total, cliente: clientes.find((c22) => c22.id === e2.clienteId) };
+    }).sort(ordenarEncargosPendientesPM14);
+  }, [encargosDelLocalActivo, clientes]);
   const encargosUrgentesDelLocalActivo = (0, import_react4.useMemo)(() => {
     const hoy = todayISO();
     const manana = /* @__PURE__ */ new Date();

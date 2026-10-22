@@ -207,6 +207,15 @@ Comprobación manual en QA del 2026-10-22, preview 172:
   representación del cliente y del texto de días en tarjetas pendientes;
   BLOQUEADO para validar filas históricas con cliente/fecha ausentes.
 
+Corrección aplicada después de la prueba, pendiente de nuevo preview QA:
+
+- La lista del local activo ahora recibe el mismo enriquecimiento que la lista
+  general: calcula `dias`, calcula `total` e hidrata `cliente` desde el
+  `clienteId` antes de renderizar las tarjetas.
+- Se conserva el predicado común de estados y la ordenación por fecha/hora.
+- El cambio se ha aplicado en `fuente.js` y en
+  `source-recovery/fuente-recuperado.js`; no modifica Supabase.
+
 ### Contraseña inicial · bloque intermedio
 
 Estado de preparación: VALIDADO_EN_QA; RETIRADA_FISICA_PENDIENTE.
@@ -272,4 +281,7 @@ modificar por inferencia a partir de esta prueba.
 - Se ejecutaron escrituras funcionales en QA para cinco encargos de importe
   cero y cambios de estado asociados (cancelado, devuelto y entregado); no se
   ejecutaron migraciones ni escrituras administrativas directas en Supabase.
+- Tras la corrección local: `node --check` sobre las dos fuentes, contrato
+  AUD-006 y build de publicación Netlify: PASS. Falta publicar el nuevo
+  candidato QA y repetir la comprobación visual.
 
