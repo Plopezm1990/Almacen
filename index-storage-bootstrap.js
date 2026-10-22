@@ -397,6 +397,18 @@
       }
     }
     await window.subirPendientes();
+    // El reintento se ejecuta fuera de saveKey(), por lo que no pasa por el
+    // camino que emite `guardado-confirmado`. Si la sincronización terminó y
+    // la clave no quedó pendiente ni marcada como solo local, notificarlo es
+    // necesario para que la interfaz retire el aviso rojo persistente.
+    if (typeof window.dispatchEvent === "function") {
+      for (var j = 0; j < claves.length; j++) {
+        var claveConfirmada = claves[j];
+        if (pendientes().indexOf(claveConfirmada) === -1 && !denegadoVigente(claveConfirmada)) {
+          window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key: claveConfirmada, reintento: true } }));
+        }
+      }
+    }
     actualizarIndicador();
   };
 
