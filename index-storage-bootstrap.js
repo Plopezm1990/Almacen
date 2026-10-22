@@ -182,6 +182,14 @@
     if (e.code === "42501") return true;
     return /row-level security|permission denied/i.test(String(e.message || ""));
   }
+  function esRechazoPorCuota(e) {
+    if (!e) return false;
+    var texto = String((e && (e.message || e.details || e.hint)) || e);
+    return /(?:payload|upload|request|value).*(?:exceed|exceeds|too large|quota|limit)|(?:quota|limit|too large).*(?:exceed|payload|upload|value)/i.test(texto);
+  }
+  function esRechazoSoloLocal(e) {
+    return esRechazoPorPermisos(e) || esRechazoPorCuota(e);
+  }
   function marcarDenegado(key, error) {
     var yaVigente = denegadoVigente(key);
     var o = denegados();
@@ -189,16 +197,21 @@
     try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
     quitarPendiente(key);
     if (!yaVigente) {
+      var porCuota = esRechazoPorCuota(error);
+      var mensaje = porCuota
+        ? "Guardado en este equipo; el respaldo supera el límite de carga del servidor. Puedes reintentarlo ahora después de reducirlo."
+        : "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora.";
       try {
-        console.warn("[almacén] El servidor no permite guardar «" + key + "» en la nube; se conserva solo en este equipo.", error && error.message);
+        console.warn("[almacén] «" + key + "» se conserva solo en este equipo porque el servidor no pudo aceptarlo.", error && error.message);
       } catch (e) {}
       try {
         if (typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
-          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, mensaje: error && error.message } }));
+          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, motivo: porCuota ? "cuota" : "permisos", mensaje: error && error.message } }));
           window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
             key: key,
             soloLocal: true,
-            mensaje: "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora."
+            motivo: porCuota ? "cuota" : "permisos",
+            mensaje: mensaje
           } }));
         }
       } catch (e) {}
@@ -346,9 +359,10 @@
         quitarPendiente(key);
         quitarDenegado(key);
       } catch (e) {
-        // Rechazo por permisos: no se arregla reintentando (ver arriba).
-        // Cualquier otro fallo (red, tiempo) se reintenta la próxima vez.
-        if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+        // Rechazo por permisos o por tamaño: no se arregla reintentando
+        // automáticamente (ver arriba). Cualquier otro fallo (red, tiempo)
+        // se reintenta la próxima vez.
+        if (esRechazoSoloLocal(e)) marcarDenegado(key, e);
       }
     }
     actualizarIndicador();
@@ -1140,7 +1154,7 @@
             confirmadoServidor = true;
           } catch (e) {
             if (key === "productos") catalogoBloqueado = true;
-            if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+            if (esRechazoSoloLocal(e)) marcarDenegado(key, e);
             else { marcarPendiente(key, value, cacheKey); pendienteSincronizacion = true; }
           }
         }
