@@ -1,7 +1,7 @@
 # AUD-004 · fixture controlado de producto legacy en QA
 
 Fecha: 2026-10-22  
-Estado: PREPARADO; NO_EJECUTADO; QA_ONLY
+Estado: EJECUTADO_QA; ROLLBACK_SOFT_INACTIVE; DELETE_FISICO_BLOQUEADO
 
 ## Objetivo
 
@@ -29,7 +29,7 @@ un `localId` válido y mantener el artículo dentro de la empresa correcta.
 - Contratos locales ejecutados: `tests/pm10/p12-datos-legados-contract.mjs`
   y `tests/pm10/p04-productos-contract.mjs`: PASS.
 
-## Procedimiento propuesto, aún pendiente de autorización específica
+## Procedimiento ejecutado en QA
 
 1. Elegir un identificador de producto nuevo y exclusivo, por ejemplo
    `QA-AUD004-LEGACY-20261022`, y un local ya perteneciente a QA Empresa A.
@@ -50,9 +50,9 @@ un `localId` válido y mantener el artículo dentro de la empresa correcta.
    cambio de contexto; no debe producir reasignación.
 7. Ejecutar una segunda llamada idéntica con un `operation_id` nuevo y
    comprobar que no se duplica el artículo.
-8. Retirar exclusivamente el fixture por la vía de rollback autorizada,
-   volver a leer el recuento y el hash de la lista, y confirmar que el resto de
-   artículos queda idéntico al estado anterior.
+8. Intentar retirar exclusivamente el fixture por la vía de rollback
+   autorizada, volver a leer el recuento y confirmar el resultado de la
+   política de borrado físico.
 
 ## Reglas de seguridad
 
@@ -66,18 +66,41 @@ un `localId` válido y mantener el artículo dentro de la empresa correcta.
 - Cualquier cambio de RLS, grants, migración o función requiere autorización
   separada y no forma parte de este fixture.
 
+## Resultado de ejecución QA (2026-10-22)
+
+- Se creó el fixture `QA-AUD004-LEGACY-20261022` mediante la RPC autenticada
+  `abc_productos_guardar_lista`.
+- La fila de `almacen_kv` siguió perteneciendo a `QA-EMP-A`; el JSON del
+  fixture no contiene `empresaId`, conserva `localId=QA-A1` y `activo=false`.
+- El recuento pasó de 32 a 33 y la pantalla Productos mostró el artículo como
+  producto eliminado/inactivo, sin hacerlo vendible.
+- La lectura de QA-EMP-B no mostró el fixture.
+- La repetición con la misma lista devolvió `productos_cambiados=0` y mantuvo
+  un único fixture.
+- La tentativa de rollback físico mediante la misma RPC fue rechazada por la
+  protección `abc_productos_borrado_fisico_no_admitido`. No se usó SQL directo
+  para saltarla. El fixture queda inactivo, aislado y sin ventas, cobros,
+  catálogo TPV ni movimientos de stock.
+
+Resultado de la prueba: aislamiento e idempotencia PASS; rollback físico
+BLOQUEADO por la política de no borrado físico de la RPC. AUD-004 no se marca
+PASS completo hasta disponer de un rollback aprobado que respete esa política.
+
 ## Aceptación de AUD-004
 
-El caso solo podrá marcarse PASS si se demuestra en QA, con evidencia antes y
-después, que:
+El caso solo podrá marcarse PASS completo si se demuestra en QA, con evidencia
+antes y después, que:
 
 - un producto legacy sin `empresaId` se conserva dentro de la empresa de la
   fila y con un local válido;
 - un `empresaId` contradictorio no puede reasignar el artículo;
 - la repetición es idempotente y no crea duplicados;
 - otra empresa no puede leerlo ni modificarlo;
-- el rollback elimina únicamente el fixture y restaura el estado anterior;
+- el rollback aprobado elimina o retira únicamente el fixture y restaura el
+  estado anterior sin saltarse la política de no borrado físico;
 - los contratos y el build QA continúan pasando.
 
-Hasta ejecutar este procedimiento con autorización específica, el estado de
-AUD-004 es `BLOQUEADO_FIXTURE_CONTROLADO`, no PASS ni FAIL de producto.
+El estado de AUD-004 queda `BLOQUEADO_ROLLBACK_FISICO`: el comportamiento
+observado de empresa, local, aislamiento e idempotencia es correcto, pero la
+eliminación física del fixture no está permitida por la RPC y no se sustituye
+por una escritura SQL directa.

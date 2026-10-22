@@ -78,7 +78,7 @@ como dependencia separada.
 
 ### AUD-004 · producto legado sin empresa
 
-Estado de preparación: PENDIENTE_DE_FIXTURE_CONTROLADO_QA; SOLO_LECTURA_COMPLETADA.
+Estado de preparación: FIXTURE_QA_EJECUTADO; ROLLBACK_FISICO_BLOQUEADO.
 
 Hallazgos actuales:
 
@@ -107,6 +107,21 @@ Preflight QA de solo lectura realizado el 2026-10-22:
 Resultado AUD-004 del preflight: BLOQUEADO por falta de fixture controlado.
 La reproducción y cualquier corrección deben comenzar con un fixture QA
 revisado, una regla de autoridad y un rollback antes de editar datos o servidor.
+
+Ejecución del fixture controlado (2026-10-22):
+
+- El fixture `QA-AUD004-LEGACY-20261022` se creó mediante la RPC autorizada,
+  con `empresaId` ausente en el JSON, `localId=QA-A1` y `activo=false`.
+- El recuento de la lista pasó de 32 a 33; QA-EMP-B no lo ve; la repetición
+  devolvió `productos_cambiados=0` y dejó un único fixture.
+- La pantalla Productos lo mostró como eliminado/inactivo y no vendible.
+- La RPC rechazó el rollback físico con
+  `abc_productos_borrado_fisico_no_admitido`. No se hizo SQL directo para
+  saltarse la protección.
+
+Resultado AUD-004: PASS de aislamiento e idempotencia; BLOQUEADO el rollback
+físico. No se marca PASS completo hasta resolver un rollback compatible con la
+política de no borrado físico.
 
 Cambio propuesto y pendiente de validación QA:
 
@@ -298,12 +313,11 @@ Estado actual de la autorización:
 - Autorización para migraciones, grants, RLS o funciones QA: PENDIENTE.
 - Autorización para PROD: NO_CONCEDIDA.
 
-La siguiente acción segura es preparar, con autorización específica, un fixture
-controlado de AUD-004 en QA que represente un producto legacy sin contexto,
-incluya regla de autoridad y rollback, y permita reproducir la incidencia sin
-alterar PROD. Hasta entonces AUD-004 permanece bloqueado; AUD-010 sigue
-pendiente de auditoría de Edge Function y grants. AUD-006 ya está cerrado para
-su flujo normal.
+La siguiente acción segura es definir un rollback compatible con la política
+de no borrado físico de `abc_productos_guardar_lista` —por ejemplo, una
+limpieza QA aprobada que conserve trazabilidad— antes de cerrar AUD-004.
+AUD-010 sigue pendiente de auditoría de Edge Function y grants. AUD-006 ya
+está cerrado para su flujo normal.
 
 ## 7. Registro de comprobaciones realizadas
 
@@ -326,6 +340,8 @@ su flujo normal.
 - Preflight AUD-004: consulta de columnas, recuentos, claves QA y definiciones
   de las RPC de catálogo; solo lectura, sin fixture legacy presente y sin
   escrituras directas, 2026-10-22.
+- Ejecución AUD-004: creación del fixture por RPC, comprobación visual,
+  aislamiento e idempotencia; rollback físico rechazado por la RPC, 2026-10-22.
 
 Recomprobación visual posterior en QA, preview 172:
 
