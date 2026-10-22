@@ -1,7 +1,7 @@
 # AUD-004 · fixture controlado de producto legacy en QA
 
 Fecha: 2026-10-22  
-Estado: EJECUTADO_QA; ROLLBACK_SOFT_INACTIVE; DELETE_FISICO_BLOQUEADO
+Estado: EJECUTADO_QA; ROLLBACK_LOGICO_PASS; DELETE_FISICO_PROHIBIDO
 
 ## Objetivo
 
@@ -78,13 +78,18 @@ un `localId` válido y mantener el artículo dentro de la empresa correcta.
 - La repetición con la misma lista devolvió `productos_cambiados=0` y mantuvo
   un único fixture.
 - La tentativa de rollback físico mediante la misma RPC fue rechazada por la
-  protección `abc_productos_borrado_fisico_no_admitido`. No se usó SQL directo
-  para saltarla. El fixture queda inactivo, aislado y sin ventas, cobros,
-  catálogo TPV ni movimientos de stock.
+  protección `abc_productos_borrado_fisico_no_admitido`. La baja lógica
+  compatible con el contrato se aplicó después mediante la misma RPC:
+  `activo=false` y `eliminadoEn=2026-10-22`. No se usó SQL directo para saltar
+  la protección.
+- Tras la baja lógica, `catalogo_tpv_productos` devuelve cero coincidencias
+  para el ID del fixture y la pantalla muestra `Ver 1 producto eliminado`.
+  El fixture queda aislado, inactivo y sin ventas, cobros ni movimientos de
+  stock.
 
-Resultado de la prueba: aislamiento e idempotencia PASS; rollback físico
-BLOQUEADO por la política de no borrado físico de la RPC. AUD-004 no se marca
-PASS completo hasta disponer de un rollback aprobado que respete esa política.
+Resultado de la prueba: aislamiento PASS, idempotencia PASS y rollback lógico
+PASS. El borrado físico no forma parte del contrato: la RPC lo prohíbe para
+conservar el histórico y la aplicación utiliza baja lógica trazable.
 
 ## Aceptación de AUD-004
 
@@ -96,11 +101,12 @@ antes y después, que:
 - un `empresaId` contradictorio no puede reasignar el artículo;
 - la repetición es idempotente y no crea duplicados;
 - otra empresa no puede leerlo ni modificarlo;
-- el rollback aprobado elimina o retira únicamente el fixture y restaura el
-  estado anterior sin saltarse la política de no borrado físico;
+- el rollback aprobado retira únicamente el fixture mediante baja lógica y
+  restaura el estado operativo anterior sin saltarse la política de no borrado
+  físico;
 - los contratos y el build QA continúan pasando.
 
-El estado de AUD-004 queda `BLOQUEADO_ROLLBACK_FISICO`: el comportamiento
-observado de empresa, local, aislamiento e idempotencia es correcto, pero la
-eliminación física del fixture no está permitida por la RPC y no se sustituye
-por una escritura SQL directa.
+El estado de limpieza del fixture queda `PASS_ROLLBACK_LOGICO`. El borrado
+físico queda expresamente fuera del contrato por diseño; el siguiente punto de
+AUD-004 es validar el rechazo de una reasignación a otra empresa antes del
+cierre completo de la incidencia.

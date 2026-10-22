@@ -78,7 +78,7 @@ como dependencia separada.
 
 ### AUD-004 · producto legado sin empresa
 
-Estado de preparación: FIXTURE_QA_EJECUTADO; ROLLBACK_FISICO_BLOQUEADO.
+Estado de preparación: FIXTURE_QA_EJECUTADO; ROLLBACK_LOGICO_PASS; REASIGNACION_PENDIENTE.
 
 Hallazgos actuales:
 
@@ -115,13 +115,15 @@ Ejecución del fixture controlado (2026-10-22):
 - El recuento de la lista pasó de 32 a 33; QA-EMP-B no lo ve; la repetición
   devolvió `productos_cambiados=0` y dejó un único fixture.
 - La pantalla Productos lo mostró como eliminado/inactivo y no vendible.
-- La RPC rechazó el rollback físico con
-  `abc_productos_borrado_fisico_no_admitido`. No se hizo SQL directo para
-  saltarse la protección.
+- La RPC rechazó el borrado físico con
+  `abc_productos_borrado_fisico_no_admitido`; la baja lógica compatible se
+  aplicó con `activo=false` y `eliminadoEn=2026-10-22`. No se hizo SQL directo.
+- Tras la baja lógica, el catálogo TPV devuelve cero coincidencias y la
+  pantalla muestra `Ver 1 producto eliminado`.
 
-Resultado AUD-004: PASS de aislamiento e idempotencia; BLOQUEADO el rollback
-físico. No se marca PASS completo hasta resolver un rollback compatible con la
-política de no borrado físico.
+Resultado AUD-004: PASS de aislamiento, idempotencia y rollback lógico. El
+borrado físico no forma parte del contrato; queda pendiente la prueba de
+rechazo de reasignación de empresa antes del cierre completo.
 
 Cambio propuesto y pendiente de validación QA:
 
@@ -313,11 +315,10 @@ Estado actual de la autorización:
 - Autorización para migraciones, grants, RLS o funciones QA: PENDIENTE.
 - Autorización para PROD: NO_CONCEDIDA.
 
-La siguiente acción segura es definir un rollback compatible con la política
-de no borrado físico de `abc_productos_guardar_lista` —por ejemplo, una
-limpieza QA aprobada que conserve trazabilidad— antes de cerrar AUD-004.
-AUD-010 sigue pendiente de auditoría de Edge Function y grants. AUD-006 ya
-está cerrado para su flujo normal.
+La siguiente acción segura es ejecutar la prueba de reasignación de empresa y
+confirmar que la RPC la rechaza sin modificar el fixture. AUD-010 sigue
+pendiente de auditoría de Edge Function y grants. AUD-006 ya está cerrado para
+su flujo normal.
 
 ## 7. Registro de comprobaciones realizadas
 
@@ -341,7 +342,8 @@ está cerrado para su flujo normal.
   de las RPC de catálogo; solo lectura, sin fixture legacy presente y sin
   escrituras directas, 2026-10-22.
 - Ejecución AUD-004: creación del fixture por RPC, comprobación visual,
-  aislamiento e idempotencia; rollback físico rechazado por la RPC, 2026-10-22.
+  aislamiento e idempotencia; borrado físico rechazado y rollback lógico
+  trazable aplicado por la RPC, 2026-10-22.
 
 Recomprobación visual posterior en QA, preview 172:
 
