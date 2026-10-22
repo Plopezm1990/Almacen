@@ -101666,6 +101666,7 @@ function notificarFalloCargaPM16(key, motivo, error) {
   window.dispatchEvent(new CustomEvent("fallo-carga", { detail: { key, motivo, mensaje: error && error.message } }));
 }
 function esRespaldoSoloLocalPM16(key, error) {
+  if (key === "movimientos" && typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""))) return true;
   if (key !== "historialRespaldos") return false;
   const mensaje = String(error?.message || error || "").toLowerCase();
   return error?.name === "QuotaExceededError" || error?.code === 22 || mensaje.includes("quota") || mensaje.includes("exceeds") || mensaje.includes("no permite guardarla");
@@ -101673,6 +101674,7 @@ function esRespaldoSoloLocalPM16(key, error) {
 function esAvisoRespaldoSoloLocalPM16(fallo) {
   if (!fallo) return false;
   if (fallo.soloLocal) return true;
+  if (fallo.key === "movimientos" && typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""))) return true;
   return fallo.key === "historialRespaldos" && typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""));
 }
 async function loadKey(key, fallback, retries = 2) {
@@ -101715,7 +101717,7 @@ async function saveKey(key, value) {
   try {
     const resultado = await window.storage.set(key, JSON.stringify(value), false);
     if (resultado?.pendienteSincronizacion && typeof window !== "undefined" && window.dispatchEvent) {
-      const soloLocal = key === "historialRespaldos" || resultado?.soloLocal === true;
+      const soloLocal = key === "historialRespaldos" || key === "movimientos" && typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || "")) || resultado?.soloLocal === true;
       window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, pendiente: true, soloLocal, motivo: soloLocal ? "cuota-o-politica-qa" : "pendiente-servidor", mensaje: soloLocal ? "Copia automática conservada solo en este equipo en QA." : "Guardado en este equipo; pendiente de confirmación del servidor." } }));
     } else if (resultado?.confirmadoServidor && typeof window !== "undefined" && window.dispatchEvent) {
       window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key } }));
