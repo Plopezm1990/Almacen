@@ -16341,7 +16341,7 @@ function FichasCosto({ fichasCosto, productos, addFichaCosto, updateFichaCosto, 
     })))));
   })());
 }
-var CLAVE_PUBLICA_VAPID = "04IvaGglhv2h5la_1fr7u_W_Q83mMRkqj98lGmS0vGeTAVLYiD37mPkjpmWcMajm5BVklvfSGT1e6ycS-9gFgdLw";
+var CLAVE_PUBLICA_VAPID = "BCRS48qhPLW_RsRA3X4e7DzgFgrbcK2ddFcunizOn-IjTv7iB2YzMgQVWLNEQIBdYMDEE2B8xuKllAiFhgVd6z0";
 function base64UrlABytes(base64Url) {
   const relleno = "=".repeat((4 - base64Url.length % 4) % 4);
   const base64 = (base64Url + relleno).replace(/-/g, "+").replace(/_/g, "/");
