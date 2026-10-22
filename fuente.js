@@ -101670,6 +101670,11 @@ function esRespaldoSoloLocalPM16(key, error) {
   const mensaje = String(error?.message || error || "").toLowerCase();
   return error?.name === "QuotaExceededError" || error?.code === 22 || mensaje.includes("quota") || mensaje.includes("exceeds") || mensaje.includes("no permite guardarla");
 }
+function esAvisoRespaldoSoloLocalPM16(fallo) {
+  if (!fallo) return false;
+  if (fallo.soloLocal) return true;
+  return fallo.key === "historialRespaldos" && typeof location !== "undefined" && /^deploy-preview-\\d+--/i.test(String(location.hostname || ""));
+}
 async function loadKey(key, fallback, retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
@@ -105943,15 +105948,16 @@ function GestionAlmacen() {
   };
   const pestanasFijasMovil = pick(TAB_PRIORITIES_MOVIL[rolNavegacionMovil] || ["dashboard"]);
   const falloGuardadoVisible = fallosGuardado[0] || null;
+  const falloGuardadoSoloLocal = esAvisoRespaldoSoloLocalPM16(falloGuardadoVisible);
   return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, falloGuardadoVisible && /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
-      style: { background: falloGuardadoVisible.soloLocal ? C2.amber : C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
+      style: { background: falloGuardadoSoloLocal ? C2.amber : C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
     },
-    /* @__PURE__ */ import_react4.default.createElement("span", null, falloGuardadoVisible.soloLocal ? "Guardado solo en este equipo (" + falloGuardadoVisible.key + "). En QA no se sube esta copia y los datos operativos siguen disponibles." : "\u26A0 Un cambio no se ha podido guardar (" + falloGuardadoVisible.key + "). Comprueba tu conexi\xF3n o reintenta ahora; mientras tanto queda guardado en este equipo."),
+    /* @__PURE__ */ import_react4.default.createElement("span", null, falloGuardadoSoloLocal ? "Guardado solo en este equipo (" + falloGuardadoVisible.key + "). En QA no se sube esta copia y los datos operativos siguen disponibles." : "\u26A0 Un cambio no se ha podido guardar (" + falloGuardadoVisible.key + "). Comprueba tu conexi\xF3n o reintenta ahora; mientras tanto queda guardado en este equipo."),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-center" },
-      !falloGuardadoVisible.soloLocal && /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => {
+      !falloGuardadoSoloLocal && /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => {
         const key = falloGuardadoVisible && falloGuardadoVisible.key;
         if (typeof window.reintentarSincronizacion === "function") await window.reintentarSincronizacion(key);
       }, style: { color: "#fff", fontWeight: 600 } }, "Reintentar"),
@@ -115421,8 +115427,8 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
       id: "fallos_guardado",
       titulo: "Guardado: cambios sin confirmar",
       valor: fallosGuardado.length,
-      color: fallosGuardado.length ? (fallosGuardado.every((f22) => f22.soloLocal) ? C2.amber : C2.red) : C2.ink,
-      nota: fallosGuardado.length > 0 ? (fallosGuardado.every((f22) => f22.soloLocal) ? "copias conservadas solo en este equipo en QA" : "algo no se ha podido guardar \u2014 revisa la conexi\xF3n antes de seguir") : null,
+      color: fallosGuardado.length ? (fallosGuardado.every(esAvisoRespaldoSoloLocalPM16) ? C2.amber : C2.red) : C2.ink,
+      nota: fallosGuardado.length > 0 ? (fallosGuardado.every(esAvisoRespaldoSoloLocalPM16) ? "copias conservadas solo en este equipo en QA" : "algo no se ha podido guardar \u2014 revisa la conexi\xF3n antes de seguir") : null,
       tab: "respaldos",
       tabNombre: "Respaldos",
       items: fallosGuardado.slice(0, 10).map((f22) => ({
@@ -115430,7 +115436,7 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
         principal: f22.key,
         secundario: f22.mensaje || "Error al guardar",
         derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
-        derechaColor: f22.soloLocal ? C2.amber : C2.red
+        derechaColor: esAvisoRespaldoSoloLocalPM16(f22) ? C2.amber : C2.red
       }))
     },
     {
