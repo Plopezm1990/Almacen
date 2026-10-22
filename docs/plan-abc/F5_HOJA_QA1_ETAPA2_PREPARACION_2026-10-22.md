@@ -78,7 +78,7 @@ como dependencia separada.
 
 ### AUD-004 · producto legado sin empresa
 
-Estado de preparación: FIXTURE_QA_EJECUTADO; ROLLBACK_LOGICO_PASS; REASIGNACION_PENDIENTE.
+Estado de preparación: FIXTURE_QA_EJECUTADO; REASIGNACION_RECHAZADA; ROLLBACK_LOGICO_PASS; AUD004_CONTROL_QA_PASS.
 
 Hallazgos actuales:
 
@@ -120,10 +120,14 @@ Ejecución del fixture controlado (2026-10-22):
   aplicó con `activo=false` y `eliminadoEn=2026-10-22`. No se hizo SQL directo.
 - Tras la baja lógica, el catálogo TPV devuelve cero coincidencias y la
   pantalla muestra `Ver 1 producto eliminado`.
+- La tentativa de reasignación del fixture a `QA-EMP-B` fue rechazada por la
+  RPC con `abc_productos_cambio_contexto_no_admitido`. La colección de
+  QA-EMP-A siguió en 33 elementos, el fixture conservó `localId=QA-A1`,
+  `activo=false` y `eliminadoEn=2026-10-22`, y QA-EMP-B siguió sin verlo.
 
-Resultado AUD-004: PASS de aislamiento, idempotencia y rollback lógico. El
-borrado físico no forma parte del contrato; queda pendiente la prueba de
-rechazo de reasignación de empresa antes del cierre completo.
+Resultado AUD-004: PASS de aislamiento, idempotencia, rechazo de reasignación
+y rollback lógico. El borrado físico no forma parte del contrato. El control
+QA de AUD-004 queda cerrado.
 
 Cambio propuesto y pendiente de validación QA:
 
@@ -315,10 +319,10 @@ Estado actual de la autorización:
 - Autorización para migraciones, grants, RLS o funciones QA: PENDIENTE.
 - Autorización para PROD: NO_CONCEDIDA.
 
-La siguiente acción segura es ejecutar la prueba de reasignación de empresa y
-confirmar que la RPC la rechaza sin modificar el fixture. AUD-010 sigue
-pendiente de auditoría de Edge Function y grants. AUD-006 ya está cerrado para
-su flujo normal.
+La siguiente acción segura es continuar con AUD-010, pendiente de auditoría de
+Edge Function y grants. AUD-006 ya está cerrado para su flujo normal. AUD-004
+queda cerrado en el control QA ejecutado, con borrado físico expresamente fuera
+del contrato por diseño.
 
 ## 7. Registro de comprobaciones realizadas
 
@@ -344,6 +348,9 @@ su flujo normal.
 - Ejecución AUD-004: creación del fixture por RPC, comprobación visual,
   aislamiento e idempotencia; borrado físico rechazado y rollback lógico
   trazable aplicado por la RPC, 2026-10-22.
+- Reasignación contradictoria AUD-004: RPC rechazada con
+  `abc_productos_cambio_contexto_no_admitido`, sin cambios en QA-EMP-A y sin
+  exposición en QA-EMP-B, 2026-10-22.
 
 Recomprobación visual posterior en QA, preview 172:
 

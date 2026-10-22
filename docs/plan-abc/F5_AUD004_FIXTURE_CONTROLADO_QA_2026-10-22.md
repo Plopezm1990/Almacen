@@ -1,7 +1,7 @@
 # AUD-004 · fixture controlado de producto legacy en QA
 
 Fecha: 2026-10-22  
-Estado: EJECUTADO_QA; ROLLBACK_LOGICO_PASS; DELETE_FISICO_PROHIBIDO
+Estado: EJECUTADO_QA; AISLAMIENTO_PASS; IDEMPOTENCIA_PASS; REASIGNACION_RECHAZADA; ROLLBACK_LOGICO_PASS; DELETE_FISICO_PROHIBIDO
 
 ## Objetivo
 
@@ -77,6 +77,10 @@ un `localId` válido y mantener el artículo dentro de la empresa correcta.
 - La lectura de QA-EMP-B no mostró el fixture.
 - La repetición con la misma lista devolvió `productos_cambiados=0` y mantuvo
   un único fixture.
+- La tentativa controlada de reasignarlo a `QA-EMP-B` fue rechazada por la RPC
+  con `abc_productos_cambio_contexto_no_admitido`; QA-EMP-A conservó 33
+  elementos y el fixture mantuvo `localId=QA-A1`, `activo=false` y
+  `eliminadoEn=2026-10-22`. QA-EMP-B siguió sin ver el fixture.
 - La tentativa de rollback físico mediante la misma RPC fue rechazada por la
   protección `abc_productos_borrado_fisico_no_admitido`. La baja lógica
   compatible con el contrato se aplicó después mediante la misma RPC:
@@ -87,9 +91,10 @@ un `localId` válido y mantener el artículo dentro de la empresa correcta.
   El fixture queda aislado, inactivo y sin ventas, cobros ni movimientos de
   stock.
 
-Resultado de la prueba: aislamiento PASS, idempotencia PASS y rollback lógico
-PASS. El borrado físico no forma parte del contrato: la RPC lo prohíbe para
-conservar el histórico y la aplicación utiliza baja lógica trazable.
+Resultado de la prueba: aislamiento PASS, idempotencia PASS, reasignación
+rechazada PASS y rollback lógico PASS. El borrado físico no forma parte del
+contrato: la RPC lo prohíbe para conservar el histórico y la aplicación utiliza
+baja lógica trazable.
 
 ## Aceptación de AUD-004
 
@@ -107,6 +112,6 @@ antes y después, que:
 - los contratos y el build QA continúan pasando.
 
 El estado de limpieza del fixture queda `PASS_ROLLBACK_LOGICO`. El borrado
-físico queda expresamente fuera del contrato por diseño; el siguiente punto de
-AUD-004 es validar el rechazo de una reasignación a otra empresa antes del
-cierre completo de la incidencia.
+físico queda expresamente fuera del contrato por diseño. La prueba de
+reasignación contradictoria queda cerrada con rechazo de autoridad y sin
+alteración del fixture; AUD-004 queda `PASS` en este control QA.
