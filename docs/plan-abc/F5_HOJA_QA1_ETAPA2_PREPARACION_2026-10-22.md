@@ -282,6 +282,14 @@ modificar por inferencia a partir de esta prueba.
   cero y cambios de estado asociados (cancelado, devuelto y entregado); no se
   ejecutaron migraciones ni escrituras administrativas directas en Supabase.
 - Tras la corrección local: `node --check` sobre las dos fuentes, contrato
-  AUD-006 y build de publicación Netlify: PASS. Falta publicar el nuevo
-  candidato QA y repetir la comprobación visual.
+  AUD-006, comprobación de paridad de source-recovery y build de publicación
+  Netlify: PASS. El nuevo candidato QA ya carga en el preview 172 y la
+  comprobación visual posterior confirma el cliente y los días correctamente.
+
+Recomprobación visual posterior en QA, preview 172:
+
+- Las tarjetas pendientes muestran `QA Cliente SOLO A`, la fecha y hora de
+  entrega y el texto calculado (`En 3 días`, `En 6 días`), sin `undefined`.
+- Se conservan los contadores: 2 pendientes, 1 entregado y 2 en historial.
+- Resultado de la corrección de representación: PASS.
 

@@ -644,7 +644,6 @@ function notificarFalloCargaPM16(key, motivo, error) {
   window.dispatchEvent(new CustomEvent("fallo-carga", { detail: { key, motivo, mensaje: error && error.message } }));
 }
 function esRespaldoSoloLocalPM16(key, error) {
-  if (key === "movimientos" && typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""))) return true;
   if (key !== "historialRespaldos") return false;
   const mensaje = String(error?.message || error || "").toLowerCase();
   return error?.name === "QuotaExceededError" || error?.code === 22 || mensaje.includes("quota") || mensaje.includes("exceeds") || mensaje.includes("no permite guardarla");
@@ -652,7 +651,6 @@ function esRespaldoSoloLocalPM16(key, error) {
 function esAvisoRespaldoSoloLocalPM16(fallo) {
   if (!fallo) return false;
   if (fallo.soloLocal) return true;
-  if (fallo.key === "movimientos" && typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""))) return true;
   return fallo.key === "historialRespaldos" && typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""));
 }
 async function loadKey(key, fallback, retries = 2) {
@@ -695,7 +693,7 @@ async function saveKey(key, value) {
   try {
     const resultado = await window.storage.set(key, JSON.stringify(value), false);
     if (resultado?.pendienteSincronizacion && typeof window !== "undefined" && window.dispatchEvent) {
-      const soloLocal = key === "historialRespaldos" || key === "movimientos" && typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || "")) || resultado?.soloLocal === true;
+      const soloLocal = key === "historialRespaldos" || resultado?.soloLocal === true;
       window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, pendiente: true, soloLocal, motivo: soloLocal ? "cuota-o-politica-qa" : "pendiente-servidor", mensaje: soloLocal ? "Copia automática conservada solo en este equipo en QA." : "Guardado en este equipo; pendiente de confirmación del servidor." } }));
     } else if (resultado?.confirmadoServidor && typeof window !== "undefined" && window.dispatchEvent) {
       window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key } }));
@@ -3096,22 +3094,24 @@ function GestionAlmacen() {
       return ids.length === 1 && ids[0] === localActivoId;
     });
   }, [encargos, productos, localActivoId]);
+  const esEncargoPendientePM14 = (e2) => {
+    const estado = String(e2?.estado || "").trim();
+    return estado !== "Entregado" && estado !== "Cancelado" && estado !== "Devuelto";
+  };
+  const ordenarEncargosPendientesPM14 = (a22, b2) => {
+    const fechaA = /^\d{4}-\d{2}-\d{2}$/.test(String(a22?.fechaEntrega || "")) ? String(a22.fechaEntrega) : "9999-12-31";
+    const fechaB = /^\d{4}-\d{2}-\d{2}$/.test(String(b2?.fechaEntrega || "")) ? String(b2.fechaEntrega) : "9999-12-31";
+    return fechaA.localeCompare(fechaB) || String(a22?.horaEntrega || "99:99").localeCompare(String(b2?.horaEntrega || "99:99")) || String(a22?.id || "").localeCompare(String(b2?.id || ""));
+  };
   const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
-    return encargosDelLocalActivo.filter((e2) => {
-      const estado = String(e2?.estado || "").trim();
-      return estado !== "Entregado" && estado !== "Cancelado" && estado !== "Devuelto";
-    }).map((e2) => {
+    return encargosDelLocalActivo.filter(esEncargoPendientePM14).map((e2) => {
       const f22 = new Date(e2.fechaEntrega);
       const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
       const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
       return { ...e2, dias, total, cliente: clientes.find((c22) => c22.id === e2.clienteId) };
-    }).sort((a22, b2) => {
-      const fechaA = /^\d{4}-\d{2}-\d{2}$/.test(String(a22?.fechaEntrega || "")) ? String(a22.fechaEntrega) : "9999-12-31";
-      const fechaB = /^\d{4}-\d{2}-\d{2}$/.test(String(b2?.fechaEntrega || "")) ? String(b2.fechaEntrega) : "9999-12-31";
-      return fechaA.localeCompare(fechaB) || String(a22?.horaEntrega || "99:99").localeCompare(String(b2?.horaEntrega || "99:99")) || String(a22?.id || "").localeCompare(String(b2?.id || ""));
-    });
+    }).sort(ordenarEncargosPendientesPM14);
   }, [encargosDelLocalActivo, clientes]);
   const encargosUrgentesDelLocalActivo = (0, import_react4.useMemo)(() => {
     const hoy = todayISO();
@@ -4227,12 +4227,12 @@ function GestionAlmacen() {
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
-    return encargos.filter((e2) => e2.estado !== "Entregado" && e2.estado !== "Cancelado" && e2.estado !== "Devuelto").map((e2) => {
+    return encargos.filter(esEncargoPendientePM14).map((e2) => {
       const f22 = new Date(e2.fechaEntrega);
       const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
       const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
       return { ...e2, dias, total, cliente: clientes.find((c22) => c22.id === e2.clienteId) };
-    }).sort((a22, b2) => (a22.dias ?? 9999) - (b2.dias ?? 9999));
+    }).sort(ordenarEncargosPendientesPM14);
   }, [encargos, clientes]);
   const encargosUrgentes = (0, import_react4.useMemo)(() => encargosPendientes.filter((e2) => e2.dias !== null && e2.dias <= 2), [encargosPendientes]);
   const analisisClientes = (0, import_react4.useMemo)(() => {
@@ -4943,7 +4943,6 @@ function GestionAlmacen() {
     cambiarTabPM15("devoluciones");
   };
   const pestanasFijasMovil = pick(TAB_PRIORITIES_MOVIL[rolNavegacionMovil] || ["dashboard"]);
-
   const falloGuardadoVisible = fallosGuardado[0] || null;
   const falloGuardadoSoloLocal = esAvisoRespaldoSoloLocalPM16(falloGuardadoVisible);
   return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, falloGuardadoVisible && /* @__PURE__ */ import_react4.default.createElement(
@@ -4966,7 +4965,6 @@ function GestionAlmacen() {
       className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
       style: { background: C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
     },
-
     /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 No se han podido cargar tus datos guardados (", fallosCarga[0].key, fallosCarga[0].motivo === "corrupcion" ? " \u2014 el archivo local parece da\xF1ado" : fallosCarga[0].motivo === "cuota" ? " \u2014 sin espacio de almacenamiento" : " \u2014 revisa el acceso", "). No se ha sobrescrito nada; si tienes un respaldo, restaura desde Respaldos."),
     /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosCarga([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
   ), /* @__PURE__ */ import_react4.default.createElement("style", null, `
@@ -9557,9 +9555,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function fingerprintLineasA02(lineas) {
     return JSON.stringify((lineas || []).map((l22) => ({
-        productoId: String(l22.productoId || ""),
-        cantidad: Number(l22.cantidad),
-        nota: String(l22.nota || "").trim().slice(0, 500),
+      productoId: String(l22.productoId || ""),
+      cantidad: Number(l22.cantidad),
+      nota: String(l22.nota || "").trim().slice(0, 500),
       configuracionA04: l22.configuracionA04 ? {
         expectedProductVersion: Number(l22.configuracionA04.expectedProductVersion),
         selecciones: (l22.configuracionA04.selecciones || []).map((s22) => ({
@@ -14435,36 +14433,8 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
         principal: f22.key,
         secundario: f22.mensaje || "Error al guardar",
         derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
-
         derechaColor: esAvisoRespaldoSoloLocalPM16(f22) ? C2.amber : C2.red
       }))
-    },
-    {
-      id: "fallos_carga",
-      titulo: "Arranque: datos que no se pudieron cargar",
-      valor: fallosCarga.length,
-      color: fallosCarga.length ? C2.red : C2.ink,
-      nota: fallosCarga.length > 0 ? "no se ha sobrescrito nada — revisa Respaldos" : null,
-      tab: "respaldos",
-      tabNombre: "Respaldos",
-      items: fallosCarga.slice(0, 10).map((f22) => ({
-        clave: f22.id,
-        principal: f22.key,
-        secundario: f22.motivo === "corrupcion" ? "Archivo local da\xF1ado" : f22.motivo === "cuota" ? "Sin espacio de almacenamiento" : f22.mensaje || "Fallo de acceso",
-        derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
-
-        derechaColor: C2.red
-      }))
-    },
-    estadoCargaDatosPM12 && {
-      id: "estado_datos_personal",
-      titulo: "Estado de Personal",
-      valor: estadoCargaDatosPM12.empleados === "cargando" ? "…" : estadoCargaDatosPM12.empleados === "error" ? "Error" : estadoCargaDatosPM12.empleados === "vacio_confirmado" ? "Vacío confirmado" : "Cargado",
-      color: estadoCargaDatosPM12.empleados === "error" ? C2.red : estadoCargaDatosPM12.empleados === "vacio_confirmado" ? C2.inkSoft : C2.accent,
-      nota: estadoCargaDatosPM12.pendienteEmpleados ? "pendiente de sincronizar" : "estado del contexto activo",
-      tab: "personal",
-      tabNombre: "Personal",
-      items: []
     },
     {
       id: "fallos_carga",
@@ -14838,8 +14808,8 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
       categoria: p22.categoria || "",
       tipo: p22.tipo || "materia_prima",
       alergenos: p22.alergenos || [],
-      fotoUrl: p22.fotoUrl || p22.foto || p22.imagen || "",
-      masVendido: p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true,
+       fotoUrl: p22.fotoUrl || p22.foto || p22.imagen || "",
+       masVendido: p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true,
       unidad: p22.unidad || "unidad",
       costo: p22.costo ?? "",
       ivaCompra: p22.ivaCompra ?? 10,
@@ -22414,7 +22384,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
-  const [notaA04, setNotaA04] = (0, import_react4.useState)("");
+const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
   const bloqueoAgregarA04 = (0, import_react4.useRef)(false);
@@ -23370,6 +23340,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
   function quitar(claveCarrito) {
     setCarrito((s22) => s22.filter((l22) => (l22.claveCarrito || l22.productoId) !== claveCarrito));
+  }
+  function cambiarNotaLineaA04(claveCarrito, nota) {
+    const texto = String(nota || "").slice(0, 500);
+    setCarrito((s22) => s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, nota: texto } : l22));
   }
   function vaciarCarrito() {
     setCarrito([]);
