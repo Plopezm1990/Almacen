@@ -16350,6 +16350,9 @@ function base64UrlABytes(base64Url) {
   for (let i33 = 0; i33 < cadena.length; i33++) bytes[i33] = cadena.charCodeAt(i33);
   return bytes;
 }
+function esPreviewQaAud010() {
+  return typeof window !== "undefined" && /--chic-entremet-9107cf\.netlify\.app$/.test(window.location.hostname);
+}
 async function activarSuscripcionPushPM17({ suscribir, guardarSuscripcion, deshacerSuscripcion }) {
   const suscripcion = await suscribir();
   try {
@@ -16369,6 +16372,7 @@ function Notificaciones({ localActivoId = null }) {
   const [suscrito, setSuscrito] = (0, import_react4.useState)(false);
   const [cargando, setCargando] = (0, import_react4.useState)(false);
   const [error, setError] = (0, import_react4.useState)("");
+  const [resultadoPruebaQA, setResultadoPruebaQA] = (0, import_react4.useState)("");
   const [esIOS, setEsIOS] = (0, import_react4.useState)(false);
   const [instaladaEnInicio, setEsInstalada] = (0, import_react4.useState)(true);
   (0, import_react4.useEffect)(() => {
@@ -16442,7 +16446,35 @@ function Notificaciones({ localActivoId = null }) {
       setCargando(false);
     }
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Notificaciones"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Avisos en este dispositivo cuando: la caja cierra descuadrada, alg\xFAn producto baja del stock m\xEDnimo, un candidato completa el prefiltro, o una entrevista termina y requiere revisi\xF3n. Se activa por separado en cada dispositivo (m\xF3vil, ordenador...) donde quieras recibirlas.")), !soportado ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este navegador no admite notificaciones push.")) : esIOS && !instaladaEnInicio ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "En iPhone hace falta instalar la app primero"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, 'Las notificaciones en iPhone solo funcionan si la app est\xE1 a\xF1adida a la pantalla de inicio (no basta con tenerla abierta en Safari). Toca el bot\xF3n de compartir de Safari \u2192 "A\xF1adir a pantalla de inicio", abre la app desde ese icono nuevo, y vuelve aqu\xED.')) : permiso === "denied" ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Bloqueaste el permiso de notificaciones para esta web antes. Para activarlo, tienes que cambiarlo desde los ajustes del propio navegador (icono del candado junto a la direcci\xF3n web \u2192 Notificaciones).")) : /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, suscrito ? "Activadas en este dispositivo" : "Desactivadas en este dispositivo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-2.5 h-2.5 rounded-full", style: { background: suscrito ? C2.accent : C2.inkSoft } })), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: suscrito ? desactivar : activar, disabled: cargando, variant: suscrito ? "ghost" : "primary" }, cargando ? "Un momento\u2026" : suscrito ? "Desactivar en este dispositivo" : "Activar en este dispositivo"), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", role: "alert", style: { color: C2.red } }, error)));
+  async function probarAUD010() {
+    setCargando(true);
+    setError("");
+    setResultadoPruebaQA("");
+    try {
+      const empresaId = window.__empresaActivaIdParaContexto || "";
+      const r = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Error en el programa",
+          cuerpo: "AUD-010 prueba controlada QA",
+          empresaId,
+          localId: localActivoId || null,
+          aud010Prueba: true,
+          url: "/"
+        })
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data?.ok !== true) throw new Error(data?.error || `HTTP ${r.status}`);
+      setResultadoPruebaQA(`Prueba AUD-010 enviada: ${data.enviados || 0}/${data.destinatarios || 0} destinatario(s), ${data.timeouts || 0} timeout(s).`);
+    } catch (e2) {
+      setError("No se ha podido ejecutar la prueba AUD-010: " + (e2?.message || "error de conexi\xF3n"));
+    } finally {
+      setCargando(false);
+    }
+  }
+  const mostrarPruebaQA = esPreviewQaAud010() && typeof window !== "undefined" && window.__nubeActiva && suscrito;
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Notificaciones"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Avisos en este dispositivo cuando: la caja cierra descuadrada, alg\xFAn producto baja del stock m\xEDnimo, un candidato completa el prefiltro, o una entrevista termina y requiere revisi\xF3n. Se activa por separado en cada dispositivo (m\xF3vil, ordenador...) donde quieras recibirlas.")), !soportado ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este navegador no admite notificaciones push.")) : esIOS && !instaladaEnInicio ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "En iPhone hace falta instalar la app primero"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, 'Las notificaciones en iPhone solo funcionan si la app est\xE1 a\xF1adida a la pantalla de inicio (no basta con tenerla abierta en Safari). Toca el bot\xF3n de compartir de Safari \u2192 "A\xF1adir a pantalla de inicio", abre la app desde ese icono nuevo, y vuelve aqu\xED.')) : permiso === "denied" ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Bloqueaste el permiso de notificaciones para esta web antes. Para activarlo, tienes que cambiarlo desde los ajustes del propio navegador (icono del candado junto a la direcci\xF3n web \u2192 Notificaciones).")) : /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, suscrito ? "Activadas en este dispositivo" : "Desactivadas en este dispositivo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-2.5 h-2.5 rounded-full", style: { background: suscrito ? C2.accent : C2.inkSoft } })), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: suscrito ? desactivar : activar, disabled: cargando, variant: suscrito ? "ghost" : "primary" }, cargando ? "Un momento\u2026" : suscrito ? "Desactivar en este dispositivo" : "Activar en este dispositivo"), mostrarPruebaQA && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2" }, "Prueba controlada QA — AUD-010"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: probarAUD010, disabled: cargando, variant: "ghost" }, "Enviar aviso de prueba"), resultadoPruebaQA && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", role: "status", style: { color: C2.accent } }, resultadoPruebaQA)), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", role: "alert", style: { color: C2.red } }, error)));
 }
 function ErroresSistema({ diagnosticoLegadosPM10 = null } = {}) {
   const [errores, setErrores] = import_react4.default.useState([]);
