@@ -24196,14 +24196,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const masVendido = p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true;
     const alergenosProducto = Array.isArray(p22.alergenos) ? p22.alergenos : [];
     return /* @__PURE__ */ import_react4.default.createElement(
-      "button",
+      "div",
       {
         key: p22.id,
         role: "button",
         tabIndex: 0,
-        onClick: () => { if (!sinStock) agregar(p22); },
-        onKeyDown: (e2) => { if ((e2.key === "Enter" || e2.key === " ") && !sinStock) { e2.preventDefault(); agregar(p22); } },
-        disabled: sinStock || cargandoA04,
+        "aria-disabled": sinStock || cargandoA04 ? "true" : "false",
+        onClick: () => { if (!sinStock && !cargandoA04) agregar(p22); },
+        onKeyDown: (e2) => { if ((e2.key === "Enter" || e2.key === " ") && !sinStock && !cargandoA04) { e2.preventDefault(); agregar(p22); } },
         className: "rounded-xl p-3 text-left relative",
         style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: sinStock || cargandoA04 ? 0.55 : 1 }
       },
