@@ -4913,6 +4913,7 @@ function GestionAlmacen() {
     cambiarTabPM15("devoluciones");
   };
   const pestanasFijasMovil = pick(TAB_PRIORITIES_MOVIL[rolNavegacionMovil] || ["dashboard"]);
+
   const falloGuardadoVisible = fallosGuardado[0] || null;
   return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, falloGuardadoVisible && /* @__PURE__ */ import_react4.default.createElement(
     "div",
@@ -4934,6 +4935,7 @@ function GestionAlmacen() {
       className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
       style: { background: C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
     },
+
     /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 No se han podido cargar tus datos guardados (", fallosCarga[0].key, fallosCarga[0].motivo === "corrupcion" ? " \u2014 el archivo local parece da\xF1ado" : fallosCarga[0].motivo === "cuota" ? " \u2014 sin espacio de almacenamiento" : " \u2014 revisa el acceso", "). No se ha sobrescrito nada; si tienes un respaldo, restaura desde Respaldos."),
     /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosCarga([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
   ), /* @__PURE__ */ import_react4.default.createElement("style", null, `
@@ -14401,8 +14403,36 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
         principal: f22.key,
         secundario: f22.mensaje || "Error al guardar",
         derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+
         derechaColor: f22.soloLocal ? C2.amber : C2.red
       }))
+    },
+    {
+      id: "fallos_carga",
+      titulo: "Arranque: datos que no se pudieron cargar",
+      valor: fallosCarga.length,
+      color: fallosCarga.length ? C2.red : C2.ink,
+      nota: fallosCarga.length > 0 ? "no se ha sobrescrito nada — revisa Respaldos" : null,
+      tab: "respaldos",
+      tabNombre: "Respaldos",
+      items: fallosCarga.slice(0, 10).map((f22) => ({
+        clave: f22.id,
+        principal: f22.key,
+        secundario: f22.motivo === "corrupcion" ? "Archivo local da\xF1ado" : f22.motivo === "cuota" ? "Sin espacio de almacenamiento" : f22.mensaje || "Fallo de acceso",
+        derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
+
+        derechaColor: C2.red
+      }))
+    },
+    estadoCargaDatosPM12 && {
+      id: "estado_datos_personal",
+      titulo: "Estado de Personal",
+      valor: estadoCargaDatosPM12.empleados === "cargando" ? "…" : estadoCargaDatosPM12.empleados === "error" ? "Error" : estadoCargaDatosPM12.empleados === "vacio_confirmado" ? "Vacío confirmado" : "Cargado",
+      color: estadoCargaDatosPM12.empleados === "error" ? C2.red : estadoCargaDatosPM12.empleados === "vacio_confirmado" ? C2.inkSoft : C2.accent,
+      nota: estadoCargaDatosPM12.pendienteEmpleados ? "pendiente de sincronizar" : "estado del contexto activo",
+      tab: "personal",
+      tabNombre: "Personal",
+      items: []
     },
     {
       id: "fallos_carga",
