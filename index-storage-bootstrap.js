@@ -1260,13 +1260,16 @@
       // el servidor. Con nube confirmada, el fallo afecta únicamente a la
       // caché local y no debe aparentar que el movimiento sigue pendiente.
       if (falloLocal) {
-        if (!confirmadoServidor) {
+        // Si la subida quedó en cola, saveKey() emitirá el aviso específico
+        // de pendiente. No lo sustituimos por una excepción genérica de cuota
+        // que oculte si el servidor aceptó o rechazó la fila.
+        if (!confirmadoServidor && !pendienteSincronizacion) {
           throw new Error(
             "No cabe en el almacenamiento de este equipo (" + key + "). " +
             "Suele significar que hay algo muy grande guardado, como una foto."
           );
         }
-        console.warn("[almacén] La caché local de «" + key + "» está llena; el servidor confirmó el cambio.");
+        console.warn("[almacén] La caché local de «" + key + "» está llena; el cambio queda confirmado o pendiente según el servidor.");
       }
       return {
         key: key, value: value, shared: false,
