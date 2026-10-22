@@ -1256,13 +1256,17 @@
         pendienteSincronizacion = true;
       }
 
-      // Si no cupo en el equipo, se avisa AHORA — pero después de haber
-      // intentado subirlo, para no perderlo por partida doble.
+      // Si no cupo en el equipo, se avisa solo si tampoco quedó confirmado en
+      // el servidor. Con nube confirmada, el fallo afecta únicamente a la
+      // caché local y no debe aparentar que el movimiento sigue pendiente.
       if (falloLocal) {
-        throw new Error(
-          "No cabe en el almacenamiento de este equipo (" + key + "). " +
-          "Suele significar que hay algo muy grande guardado, como una foto."
-        );
+        if (!confirmadoServidor) {
+          throw new Error(
+            "No cabe en el almacenamiento de este equipo (" + key + "). " +
+            "Suele significar que hay algo muy grande guardado, como una foto."
+          );
+        }
+        console.warn("[almacén] La caché local de «" + key + "» está llena; el servidor confirmó el cambio.");
       }
       return {
         key: key, value: value, shared: false,
