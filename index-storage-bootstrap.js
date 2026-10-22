@@ -1142,7 +1142,15 @@
             lista = r.data.value;
           }
           var texto = JSON.stringify(lista);
-          LOCAL.set(cacheKey, texto);
+          // La lectura remota sigue siendo válida aunque este dispositivo no
+          // tenga espacio para actualizar su caché local. No convertir un
+          // fallo de persistencia del navegador en un falso fallo de nube:
+          // el otro contexto debe poder mostrar los datos recién sincronizados.
+          try {
+            LOCAL.set(cacheKey, texto);
+          } catch (eCache) {
+            console.warn("[almacén] No se pudo actualizar la caché local de «" + key + "»; se conserva la lectura remota.", eCache && eCache.message);
+          }
           return { key: key, value: texto, shared: false };
         } catch (e) {
           // La ausencia remota es normal en un first-run. Cualquier otro error
