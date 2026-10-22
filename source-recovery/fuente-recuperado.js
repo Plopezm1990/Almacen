@@ -7471,6 +7471,7 @@ avisosStockBajo.push({ producto: productoBase, teoricoDespues });
         ...operacion.camposExtra || {},
         id: operacion.movimientoId,
         operationId: operacion.operationId || operacion.movimientoId,
+        empresaId: operacion.empresaId || productoBase.empresaId || null,
         productoId: operacion.productoId,
         localId: productoBase.localId || null,
         cantidad: cantidadNum,
