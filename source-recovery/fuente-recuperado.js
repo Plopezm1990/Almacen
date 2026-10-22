@@ -7640,6 +7640,13 @@ function validarProductoPM10(data, { parcial = false } = {}) {
     if (r.vacio) delete salida[campo];
     else salida[campo] = r.valor;
   }
+  if (Object.prototype.hasOwnProperty.call(entrada, "fotoUrl")) {
+    const fotoUrl = String(entrada.fotoUrl ?? "").trim();
+    if (fotoUrl && !/^https:\/\//i.test(fotoUrl)) return errorValidacionPM10("formato_invalido", "fotoUrl", "La foto debe usar una URL HTTPS.");
+    if (fotoUrl) salida.fotoUrl = fotoUrl;
+    else delete salida.fotoUrl;
+  }
+  if (Object.prototype.hasOwnProperty.call(entrada, "masVendido")) salida.masVendido = entrada.masVendido === true;
   return { ok: true, datos: salida };
 }
 function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales = [], empresaId = null }) {
@@ -14670,7 +14677,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     setCruce({ origenId: "", destinoId: "", cantOrigen: "", cantDestino: "", motivo: "" });
     setErrorCruce("");
   }
-  const blank = { codigo: "", codigoBarras: "", nombre: "", categoria: "", unidad: "unidad", tipo: "materia_prima", alergenos: [], costo: "", ivaCompra: 10, udsPorCaja: 1, nombreEmpaque: "caja", precioVenta: "", ivaVenta: 10, stock: "", stockMinimo: "", stockPisoVenta: 0, stockMinimoPisoVenta: "", zona: "", ubicacion: "", proveedorId: "", contenido: "", unidadContenido: "", departamento: "Obrador" };
+  const blank = { codigo: "", codigoBarras: "", nombre: "", categoria: "", unidad: "unidad", tipo: "materia_prima", alergenos: [], fotoUrl: "", masVendido: false, costo: "", ivaCompra: 10, udsPorCaja: 1, nombreEmpaque: "caja", precioVenta: "", ivaVenta: 10, stock: "", stockMinimo: "", stockPisoVenta: 0, stockMinimoPisoVenta: "", zona: "", ubicacion: "", proveedorId: "", contenido: "", unidadContenido: "", departamento: "Obrador" };
   const [form, setForm] = (0, import_react4.useState)(blank);
   const [salidaFor, setSalidaFor] = (0, import_react4.useState)(null);
   const [salidaCant, setSalidaCant] = (0, import_react4.useState)("");
@@ -14729,6 +14736,8 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
       categoria: p22.categoria || "",
       tipo: p22.tipo || "materia_prima",
       alergenos: p22.alergenos || [],
+      fotoUrl: p22.fotoUrl || p22.foto || p22.imagen || "",
+      masVendido: p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true,
       unidad: p22.unidad || "unidad",
       costo: p22.costo ?? "",
       ivaCompra: p22.ivaCompra ?? 10,
@@ -14809,7 +14818,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "utillaje" }, "Utillaje / menaje (jarra, bandeja: no se consume)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "limpieza" }, "Limpieza / qu\xEDmicos (no es mercanc\xEDa, no entra en recetas)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "elaborado" }, "Elaborado (lo que vendes al cliente)")
-  ))), esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "No cuenta en el valor de mercanc\xEDa ni en el ABC, y no aparece como ingrediente en las fichas de costo. Su stock s\xED se sigue controlando, para poder reponerlo. Sigue teniendo stock y aviso de reposici\xF3n, para cuando se rompa algo.")), !esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "2 \xB7 Al\xE9rgenos" }, /* @__PURE__ */ import_react4.default.createElement(
+  ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-4 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Foto del producto (URL HTTPS opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.fotoUrl, onChange: (e2) => setForm({ ...form, fotoUrl: e2.target.value }), placeholder: "https://.../producto.jpg" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[12.5px] mt-6 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: !!form.masVendido, onChange: (e2) => setForm({ ...form, masVendido: e2.target.checked }) }), "Más vendido") ), esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "No cuenta en el valor de mercanc\xEDa ni en el ABC, y no aparece como ingrediente en las fichas de costo. Su stock s\xED se sigue controlando, para poder reponerlo. Sigue teniendo stock y aviso de reposici\xF3n, para cuando se rompa algo.")), !esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "2 \xB7 Al\xE9rgenos" }, /* @__PURE__ */ import_react4.default.createElement(
     SelectorAlergenos,
     {
       seleccionados: form.alergenos || [],
@@ -14940,7 +14949,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "utillaje" }, "Utillaje / menaje (no se consume)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "limpieza" }, "Limpieza / qu\xEDmicos (no es mercanc\xEDa)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "elaborado" }, "Elaborado (venta al cliente)")
-  )), !esNoMercancia(editForm) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement(
+  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Foto del producto (URL HTTPS opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.fotoUrl, onChange: (e2) => setEditForm({ ...editForm, fotoUrl: e2.target.value }), placeholder: "https://.../producto.jpg" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[12.5px] mt-6 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: !!editForm.masVendido, onChange: (e2) => setEditForm({ ...editForm, masVendido: e2.target.checked }) }), "Más vendido") ), !esNoMercancia(editForm) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement(
     SelectorAlergenos,
     {
       seleccionados: editForm.alergenos || [],

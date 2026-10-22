@@ -24,6 +24,13 @@ for (const [nombre, bundle] of fuentes) {
   const productosIni = bundle.indexOf("function Productos(");
   const productosFin = bundle.indexOf("function InputCalc(", productosIni);
   const productos = bundle.slice(productosIni, productosFin);
+  // QA-2 / Etapa 3: el catálogo de Productos permite preparar la ficha
+  // visual que consume el TPV, sin introducir campos fuera del JSON de producto.
+  assert.match(productos, /fotoUrl/, `${nombre}: Productos conserva la URL de foto`);
+  assert.match(productos, /masVendido/, `${nombre}: Productos conserva la marca Más vendido`);
+  assert.match(productos, /Foto del producto \(URL HTTPS opcional\)/, `${nombre}: Productos expone el campo de foto`);
+  assert.match(productos, /Más vendido/, `${nombre}: Productos expone el selector Más vendido`);
+  assert.match(bundle, /La foto debe usar una URL HTTPS/, `${nombre}: la URL de foto se valida como HTTPS`);
   const ventaSteps = [...productos.matchAll(/label: "Precio de venta CON IVA.*?step: "0\.001"/gs)];
   assert.equal(ventaSteps.length, 2, `${nombre}: crear y editar admiten tres decimales en el precio de venta`);
   assert.match(productos, /precioNeto\(p22\)\.toFixed\(3\)/, `${nombre}: las salidas conservan tres decimales del precio unitario`);
