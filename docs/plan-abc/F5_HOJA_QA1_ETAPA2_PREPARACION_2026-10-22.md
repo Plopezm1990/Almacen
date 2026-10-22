@@ -145,7 +145,7 @@ de la regla de autoridad y de un rollback revisado.
 
 ### AUD-010 · notificaciones y membresías
 
-Estado de preparación: AUDITADO_QA; FUNCION_V2_ACTIVA; SUSCRIPCION_QA_PASS; BLOQUEADO_POR_CONFIGURACION_VAPID_QA; SIN_CAMBIOS_APLICADOS.
+Estado de preparación: AUDITADO_QA; FUNCION_V2_ACTIVA; SUSCRIPCION_QA_PASS; VAPID_QA_CONFIGURADO; BLOQUEADO_ENTREGA_PUSH.
 
 Hallazgos actuales:
 
@@ -174,16 +174,22 @@ Push disponible y suscripción inexistente. No se envió el aviso controlado.
 Corrección posterior: el cliente ahora obtiene el usuario autenticado y guarda
 `user_id` al hacer el `upsert` de `suscripciones_push`. En el preview 172 la
 interfaz mostró `Activadas en este dispositivo` y la lectura autenticada
-confirmó una suscripción propia. El único aviso controlado intentado después
-respondió HTTP 500 porque QA no tiene configuradas las claves VAPID requeridas
-por `enviar-notificacion`; no se produjo envío.
+confirmó una suscripción propia. Se configuró una pareja VAPID únicamente en
+los secretos del proyecto Supabase QA; la clave privada no se guardó en el
+repositorio ni en esta hoja. La clave pública coincidente se publicó en el
+preview y la suscripción se renovó mediante la interfaz.
 
-Resultado de auditoría y siguiente prueba, sin cambios aplicados:
+El único aviso controlado autorizado después de esa configuración arrancó la
+Edge Function, pero quedó esperando a `webpush.sendNotification` y terminó
+por tiempo de espera sin respuesta verificable. No se repitió el envío y no se
+certifica entrega.
 
-1. Activar una suscripción push real mediante el flujo normal del navegador en
-   la sesión QA, sin insertar filas manualmente.
-2. Ejecutar un aviso controlado para QA-EMP-A/QA-A1 y confirmar entrega al
-   destinatario correcto.
+Resultado de auditoría y siguiente prueba:
+
+1. Diagnosticar el tiempo de espera de `webpush.sendNotification` en QA y
+   hacer observable el resultado sin repetir envíos.
+2. Solo después, ejecutar un único aviso controlado para QA-EMP-A/QA-A1 y
+   confirmar entrega al destinatario correcto.
 3. Repetir los casos negativos ya ejecutados y conservar sus respuestas 401/403.
 4. Confirmar que una empresa no puede descubrir membresías de otra y que una
    sesión sin suscripción devuelve cero destinatarios sin error.
@@ -340,8 +346,9 @@ Estado actual de la autorización:
   PENDIENTE DE UNA CORRECCIÓN CONCRETA.
 - Autorización para PROD: NO_CONCEDIDA.
 
-La siguiente acción segura de AUD-010 es configurar las claves VAPID solo en QA
-mediante el mecanismo de secretos del proyecto y repetir un aviso controlado.
+La siguiente acción segura de AUD-010 es resolver el tiempo de espera del
+proveedor push en QA y repetir el aviso controlado solo cuando la función tenga
+un resultado acotado y observable.
 AUD-006 ya está
 cerrado para su flujo normal. AUD-004 queda cerrado en el control QA ejecutado,
 con borrado físico expresamente fuera del contrato por diseño.

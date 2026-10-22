@@ -2,14 +2,16 @@
 
 Fecha: 2026-10-22  
 Entorno: Supabase QA `qjqorixtkilwsndqayyx` · preview 172  
-Estado: AUDITADO_QA; FUNCION_V2_ACTIVA; SUSCRIPCION_QA_PASS; BLOQUEADO_POR_CONFIGURACION_VAPID_QA; SIN_CAMBIOS_APLICADOS
+Estado: AUDITADO_QA; FUNCION_V2_ACTIVA; SUSCRIPCION_QA_PASS; VAPID_QA_CONFIGURADO; BLOQUEADO_ENTREGA_PUSH; SIN_PROD
 
 ## Alcance autorizado
 
 Se autorizó la revisión de la Edge Function de notificaciones, sus membresías
-y permisos. La ejecución quedó limitada a QA y a comprobaciones de lectura o
-llamadas negativas. No se enviaron notificaciones reales, no se hicieron
-migraciones, no se cambiaron grants/RLS/funciones y no se consultó PROD.
+y permisos. La ejecución quedó limitada a QA. No se hicieron migraciones, no
+se cambiaron grants/RLS/funciones y no se consultó PROD. Tras la autorización
+expresa posterior se configuraron secretos VAPID únicamente en QA y se intentó
+un único envío controlado; su entrega no quedó confirmada porque la función no
+devolvió respuesta.
 
 ## Comprobaciones de la función
 
@@ -74,7 +76,7 @@ AUD-010 falta repetir exactamente este flujo en un navegador que permita
 resolver el permiso de notificaciones para el preview QA; después se podrá
 enviar una única notificación controlada y verificar `destinatarios=1`.
 
-## Corrección del alta y reintento en preview 172
+## Corrección del alta, configuración VAPID y reintento en preview 172
 
 Se corrigió el cliente para obtener `supabase.auth.getUser()` y enviar
 `user_id` junto con la suscripción. La corrección quedó en `fuente.js` y en
@@ -86,16 +88,36 @@ dispositivo`. La lectura autenticada de QA confirmó una suscripción propia y
 la comprobación agregada confirmó dos suscripciones totales, ambas con usuario,
 una asociada a `QA-A1`.
 
-Se intentó una única notificación controlada:
+Se intentó una primera notificación controlada:
 `Stock bajo` · `QA-AUD010-CONTROLADO-20261022` · `QA-EMP-A` · `QA-A1`.
 La Edge Function respondió HTTP 500 con `Notificaciones push no configuradas.`
 El envío no llegó a la fase de destinatarios porque QA no tiene configuradas
 `VAPID_PUBLIC_KEY` y/o `VAPID_PRIVATE_KEY`. No se envió ninguna notificación.
 
-Conclusión actual: el alta de suscripción y el RLS quedan corregidos y
-verificados; AUD-010 sigue abierto hasta configurar las claves VAPID únicamente
-en QA y repetir el envío controlado. No se deben relajar políticas ni insertar
-suscripciones manualmente.
+Con autorización expresa, se generó una pareja VAPID nueva y se guardó mediante
+la CLI oficial en los secretos del proyecto Supabase QA. La clave pública
+coincidente se actualizó en `fuente.js` y
+`source-recovery/fuente-recuperado.js`; no se registró ninguna clave privada en
+el repositorio ni en esta hoja. Se corrigió además el formato base64url del
+punto público antes de publicar el preview 172.
+
+La suscripción anterior se desactivó desde la interfaz y se volvió a activar
+desde `Más → Notificaciones`, ya con la clave pública correcta. La pantalla
+mostró `Activadas en este dispositivo` y no se hizo ninguna inserción manual.
+
+Se realizó un único reintento controlado posterior a la configuración VAPID,
+con el mismo payload QA. La Edge Function arrancó en la versión configurada,
+pero la llamada desde el navegador quedó esperando a `webpush.sendNotification`
+y terminó por tiempo de espera sin devolver `ok`, `enviados` ni una respuesta
+HTTP verificable. Los logs muestran el arranque de la invocación, pero no una
+respuesta de entrega. Por seguridad no se repitió el envío y no se certifica
+que haya llegado ninguna notificación.
+
+Conclusión actual: el alta de suscripción, el RLS, el aislamiento y la
+configuración VAPID de QA quedan corregidos y verificados; AUD-010 sigue
+abierto por falta de confirmación de entrega del proveedor push. No se deben
+relajar políticas, insertar suscripciones manualmente ni repetir el envío hasta
+resolver el tiempo de espera de la Edge Function.
 
 ## Verificación local
 
@@ -108,11 +130,11 @@ PM17 P01 (wiring nativo) — Notificaciones.activar() conectado al rollback: con
 
 ## Decisión y siguiente prueba
 
-No se justifica cambiar todavía la Edge Function, RLS ni grants. La siguiente
-prueba segura es activar una suscripción push real desde la sesión QA mediante
-el flujo normal del navegador y repetir un aviso controlado para un destinatario
-de QA-EMP-A/QA-A1. Esa prueba sí generará una notificación y debe autorizarse o
-confirmarse justo antes de ejecutarla.
+La siguiente acción segura es diagnosticar el tiempo de espera de
+`webpush.sendNotification` en QA (proveedor push, salida de red y timeout de la
+función) y añadir una prueba técnica que deje el fallo explícito sin duplicar
+envíos. No se debe volver a pulsar el aviso controlado hasta disponer de una
+respuesta acotada y observable.
 
-AUD-010 queda `BLOQUEADO_POR_FIXTURE_DE_SUSCRIPCION`, no por un error demostrado
-de membresías. PROD permanece fuera de alcance.
+AUD-010 queda `BLOQUEADO_ENTREGA_PUSH`, no por un error demostrado de
+membresías, RLS o configuración VAPID. PROD permanece fuera de alcance.
