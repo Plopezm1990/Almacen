@@ -218,11 +218,11 @@
     // rechazar su payload por tamaño, se conservan localmente para no bloquear
     // los datos operativos. Producción conserva el comportamiento normal.
     var respaldoSoloLocalQa = key === "historialRespaldos" && esPreviewQa();
-    // La autoridad legacy de movimientos en QA puede convertir un 401 en el
-    // timeout genérico de la carrera. No dejamos esa cola bloqueando toda la
-    // aplicación: se conserva localmente y se reintentará al vencer la marca.
-    var movimientosSoloLocalQa = key === "movimientos" && esPreviewQa()
-      && (esRechazoPorPermisos(e) || esTiempoAgotadoNube(e));
+    // La autoridad legacy de movimientos en QA puede devolver 401, timeout o
+    // un fallo de transporte sin conservar el detalle HTTP. No dejamos esa
+    // cola bloqueando toda la aplicación: se conserva localmente y se
+    // reintentará al vencer la marca, con aviso visible de estado local.
+    var movimientosSoloLocalQa = key === "movimientos" && esPreviewQa();
     return esRechazoPorPermisos(e) || esRechazoPorCuota(e) || respaldoSoloLocalQa || movimientosSoloLocalQa;
   }
   function marcarDenegado(key, error) {
