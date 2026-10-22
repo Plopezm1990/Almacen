@@ -177,10 +177,26 @@
     try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
     actualizarIndicador();
   }
+  function estadoHttpDelError(e) {
+    var candidatos = [e, e && e.cause, e && e.originalError, e && e.response];
+    for (var i = 0; i < candidatos.length; i++) {
+      var candidato = candidatos[i];
+      if (!candidato) continue;
+      var estado = Number(candidato.status || candidato.statusCode || candidato.httpStatus);
+      if (isFinite(estado) && estado > 0) return estado;
+    }
+    return 0;
+  }
   function esRechazoPorPermisos(e) {
     if (!e) return false;
-    if (e.code === "42501") return true;
-    return /row-level security|permission denied/i.test(String(e.message || ""));
+    var estado = estadoHttpDelError(e);
+    if (estado === 401 || estado === 403) return true;
+    var codigo = String(e.code || e.error_code || e.errorCode || "").toLowerCase();
+    if (codigo === "42501" || codigo === "401" || codigo === "403") return true;
+    var texto = [e.message, e.details, e.hint, e.error_description]
+      .filter(function (parte) { return parte != null; })
+      .join(" ");
+    return /row-level security|permission denied|unauthorized|not authorized|forbidden/i.test(texto);
   }
   function esRechazoPorCuota(e) {
     if (!e) return false;

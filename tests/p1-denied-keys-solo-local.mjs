@@ -26,6 +26,8 @@ function makeCloud(mode) {
     if (mode.value === "rls-sin-codigo") return { message: "new row violates row-level security policy" };
     if (mode.value === "quota") return { message: "Upload payload exceeds 5242880 bytes" };
     if (mode.value === "jwt") return { code: "PGRST301", message: "JWT expired" };
+    if (mode.value === "http401") return { status: 401, message: "Unauthorized" };
+    if (mode.value === "http403") return { status: 403, message: "Forbidden" };
     throw new Error("modo desconocido " + mode.value);
   };
   const builder = (table) => {
@@ -93,6 +95,19 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
 }
 
 const claveEvento = (events) => events.filter((e) => e.type === "clave-solo-local").map((e) => e.detail.key).sort();
+
+// La autoridad Supabase puede llegar al navegador como un error HTTP sin
+// código PostgREST. No debe quedarse en "Subiendo…" indefinidamente: se
+// conserva localmente y queda visible como rechazo de autoridad.
+for (const modo of ["http401", "http403"]) {
+  const t = setup({ modo });
+  await t.context.storage.set("movimientos", JSON.stringify([{ id: "mv-qa", tipo: "merma" }]));
+  assert.deepEqual(t.pendientes(), [], `${modo}: movimientos no queda reintentándose`);
+  assert.deepEqual(Object.keys(t.denegados()), ["movimientos"]);
+  assert.deepEqual([...t.context.__clavesSoloLocal()], ["movimientos"]);
+  assert.match(t.indicador().textContent, /1 colección solo en este equipo/);
+  assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "permisos");
+}
 
 // Un respaldo puede estar correctamente guardado en este navegador y, aun
 // así, superar el límite de carga del servidor. No debe quedarse en la cola
