@@ -20,8 +20,8 @@ Estado: `ETAPA_1_CERRADA; QA2_EN_CURSO; SIN_PROD`
 | Punto | Estado | Condición de cierre |
 | --- | --- | --- |
 | F4 «Vaciar» | PENDIENTE SEGURO | Probar únicamente con carrito vacío y sin pedido pendiente para evitar activar cobro o borrar una comanda operativa. |
-| Fotos de catálogo | PENDIENTE | Preparar un producto QA con imagen válida y comprobar que la tarjeta la muestra. |
-| Distintivo «Más vendido» | PENDIENTE | Preparar un caso QA marcado como más vendido y comprobar la etiqueta visible. |
+| Fotos de catálogo | PASS VISUAL | El fixture `QA Fixture E3 Foto MasVendido Alergenos` muestra en el TPV la imagen `QA-E3` cargada desde la URL HTTPS guardada. |
+| Distintivo «Más vendido» | PASS VISUAL | El fixture aparece con la etiqueta «Más vendido» en la tarjeta del TPV. |
 | Indicador «sin stock» | PASS VISUAL | El producto `QA AUD002 3DEC 20261022` aparece con `sin stock` y sus botones desactivados. Falta conservar captura si se exige evidencia gráfica. |
 | Notas de línea | PENDIENTE | Confirmar que existe un control visible, guardar una nota QA y verificar que llega a la comanda sin cobrar. |
 | Alérgenos | PENDIENTE | Confirmar dónde se muestran y comprobar un producto QA con alérgenos configurados. |
@@ -104,6 +104,24 @@ disponer de stock en piso mediante una operación QA autorizada.
 - Los contratos locales pasan: `f5-etapa3-ui-contract.mjs`,
   `f5-etapa4-t1-t4-ui-contract.mjs`; ambos bundles pasan además `node --check`
   y `git diff --check` no detecta errores.
-- No se ha desplegado ni modificado PROD. QA-2 sigue pendiente de reconstruir
-  el preview, cargar un producto con stock de piso y repetir la comprobación
-  visual de foto, «Más vendido» y alérgenos.
+- No se ha desplegado ni modificado PROD. La comprobación visual de foto y
+  «Más vendido» queda pendiente de registrar en la adenda live siguiente; el
+  caso de alérgenos sigue requiriendo una verificación específica en TPV.
+
+## Adenda de verificación visual live · 2026-10-22
+
+- El preview `deploy-preview-172` cargó correctamente en `QA Empresa A, S.L. ·
+  QA Local A1`.
+- El fixture `QA Fixture E3 Foto MasVendido Alergenos` quedó visible en el
+  catálogo TPV con la imagen `QA-E3`, la etiqueta «Más vendido» y los botones
+  de cantidad rápida `+2` y `+3`.
+- El caso `QA AUD002 3DEC 20261022` siguió visible como «sin stock» y sus
+  botones `+2` y `+3` permanecieron desactivados.
+- No se añadió ningún producto al pedido operativo, no se registró ningún
+  cobro y no se pulsó «Reintentar» sobre el aviso previo de sincronización de
+  movimientos.
+
+Resultado: fotos y «Más vendido» quedan cerrados como PASS visual en QA-2.
+Siguen abiertos F4 en un carrito vacío, notas, alérgenos en la comanda y la
+revisión de la estación de Cocina; la incidencia previa de sincronización de
+movimientos también permanece aislada y sin reintento.
