@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-22  
 Entorno: Supabase QA `qjqorixtkilwsndqayyx` · preview 172  
-Estado: AUDITADO_QA; FUNCION_V2_ACTIVA; BLOQUEADO_SIN_SUSCRIPCION_PUSH; SIN_CAMBIOS_APLICADOS
+Estado: AUDITADO_QA; FUNCION_V2_ACTIVA; BLOQUEADO_POR_PERMISO_DEL_NAVEGADOR_IAB; SIN_CAMBIOS_APLICADOS
 
 ## Alcance autorizado
 
@@ -57,6 +57,22 @@ versión 2 y respuestas `400`; no se observó envío ni borrado de suscripciones
 Conclusión: el síntoma «no llegan las notificaciones» queda reproducido por
 ausencia de suscripción push del usuario destinatario en QA. En esta pasada no
 se reproduce un fallo de lectura de membresías ni una fuga entre empresas.
+
+## Reintento autorizado del 22/10/2026
+
+Se abrió el flujo normal `Más → Notificaciones → Activar en este dispositivo`
+en la sesión autenticada de `QA-EMP-A · QA-A1`. La aplicación mostró
+`Un momento…`, pero el navegador integrado de ChatGPT no presentó el diálogo
+de permiso y la promesa de `Notification.requestPermission()` quedó pendiente.
+La comprobación técnica posterior confirmó: `Notification.permission=default`,
+Service Worker registrado, Push disponible y suscripción inexistente. No se
+envió el aviso controlado porque no había destinatario push confirmado.
+
+No se modificó la base de datos por vías directas, no se cambió el permiso del
+navegador mediante herramientas externas y no se tocó PROD. Para cerrar
+AUD-010 falta repetir exactamente este flujo en un navegador que permita
+resolver el permiso de notificaciones para el preview QA; después se podrá
+enviar una única notificación controlada y verificar `destinatarios=1`.
 
 ## Verificación local
 

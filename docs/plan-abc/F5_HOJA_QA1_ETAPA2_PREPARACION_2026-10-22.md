@@ -145,7 +145,7 @@ de la regla de autoridad y de un rollback revisado.
 
 ### AUD-010 · notificaciones y membresías
 
-Estado de preparación: AUDITADO_QA; FUNCION_V2_ACTIVA; BLOQUEADO_POR_SUSCRIPCION_PUSH; SIN_CAMBIOS_APLICADOS.
+Estado de preparación: AUDITADO_QA; FUNCION_V2_ACTIVA; BLOQUEADO_POR_PERMISO_DEL_NAVEGADOR_IAB; SIN_CAMBIOS_APLICADOS.
 
 Hallazgos actuales:
 
@@ -164,6 +164,12 @@ Hallazgos actuales:
   prueba tiene cero suscripciones. El cálculo de destinatarios para
   QA-EMP-A/QA-A1 devuelve cero; el bloqueo reproducido es de fixture push, no
   un fallo demostrado de lectura de membresías.
+
+Reintento autorizado del 22/10/2026: se abrió `Más → Notificaciones` y se
+pulsó `Activar en este dispositivo` en la sesión QA autenticada. El botón quedó
+en `Un momento…`; no apareció el permiso del navegador integrado. La lectura
+posterior confirmó `Notification.permission=default`, Service Worker registrado,
+Push disponible y suscripción inexistente. No se envió el aviso controlado.
 
 Resultado de auditoría y siguiente prueba, sin cambios aplicados:
 
@@ -327,8 +333,9 @@ Estado actual de la autorización:
   PENDIENTE DE UNA CORRECCIÓN CONCRETA.
 - Autorización para PROD: NO_CONCEDIDA.
 
-La siguiente acción segura de AUD-010 es activar una suscripción push real por
-el flujo normal del navegador y repetir un aviso controlado. AUD-006 ya está
+La siguiente acción segura de AUD-010 es repetir esa activación en un navegador
+que permita resolver el permiso de notificaciones y después repetir un aviso
+controlado. AUD-006 ya está
 cerrado para su flujo normal. AUD-004 queda cerrado en el control QA ejecutado,
 con borrado físico expresamente fuera del contrato por diseño.
 
