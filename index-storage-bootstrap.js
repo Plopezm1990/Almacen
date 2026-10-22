@@ -218,12 +218,11 @@
     // rechazar su payload por tamaño, se conservan localmente para no bloquear
     // los datos operativos. Producción conserva el comportamiento normal.
     var respaldoSoloLocalQa = key === "historialRespaldos" && esPreviewQa();
-    // La autoridad legacy de movimientos en QA puede devolver 401, timeout o
-    // un fallo de transporte sin conservar el detalle HTTP. No dejamos esa
-    // cola bloqueando toda la aplicación: se conserva localmente y se
-    // reintentará al vencer la marca, con aviso visible de estado local.
-    var movimientosSoloLocalQa = key === "movimientos" && esPreviewQa();
-    return esRechazoPorPermisos(e) || esRechazoPorCuota(e) || respaldoSoloLocalQa || movimientosSoloLocalQa;
+    // Los movimientos operativos sí tienen una ruta autoritativa en QA. Solo
+    // se conservan localmente cuando el error aporta una causa verificable
+    // (permisos o cuota); un timeout/transporte debe quedar pendiente para
+    // poder reintentarse y mostrar el fallo real al usuario.
+    return esRechazoPorPermisos(e) || esRechazoPorCuota(e) || respaldoSoloLocalQa;
   }
   function marcarDenegado(key, error) {
     var yaVigente = denegadoVigente(key);

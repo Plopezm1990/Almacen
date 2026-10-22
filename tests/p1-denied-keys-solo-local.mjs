@@ -97,10 +97,11 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
 
 const claveEvento = (events) => events.filter((e) => e.type === "clave-solo-local").map((e) => e.detail.key).sort();
 
-// La autoridad Supabase puede llegar al navegador como un error HTTP sin
-// código PostgREST. No debe quedarse en "Subiendo…" indefinidamente: se
-// conserva localmente y queda visible como rechazo de autoridad.
-for (const modo of ["http401", "http403", "qa-timeout"]) {
+// Un 401/403 de la autoridad Supabase sí es un rechazo verificable: se
+// conserva localmente y queda visible como rechazo de autoridad. Un timeout,
+// en cambio, no demuestra que la escritura esté prohibida; debe quedar
+// pendiente para que el usuario pueda reintentarlo.
+for (const modo of ["http401", "http403"]) {
   const t = setup({ modo });
   await t.context.storage.set("movimientos", JSON.stringify([{ id: "mv-qa", tipo: "merma" }]));
   assert.deepEqual(t.pendientes(), [], `${modo}: movimientos no queda reintentándose`);
@@ -108,6 +109,15 @@ for (const modo of ["http401", "http403", "qa-timeout"]) {
   assert.deepEqual([...t.context.__clavesSoloLocal()], ["movimientos"]);
   assert.match(t.indicador().textContent, /1 colección solo en este equipo/);
   assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "permisos");
+}
+
+{
+  const t = setup({ modo: "qa-timeout" });
+  await t.context.storage.set("movimientos", JSON.stringify([{ id: "mv-qa-timeout", tipo: "merma" }]));
+  assert.deepEqual(t.pendientes(), ["movimientos"], "qa-timeout: movimientos conserva el reintento");
+  assert.deepEqual(t.denegados(), {}, "qa-timeout: no se marca como rechazado por permisos");
+  assert.deepEqual([...t.context.__clavesSoloLocal()], [], "qa-timeout: no se fuerza solo local");
+  assert.match(t.indicador().textContent, /Subiendo 1/);
 }
 
 // Un respaldo puede estar correctamente guardado en este navegador y, aun
