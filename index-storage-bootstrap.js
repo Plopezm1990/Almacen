@@ -187,8 +187,16 @@
     var texto = String((e && (e.message || e.details || e.hint)) || e);
     return /(?:payload|upload|request|value).*(?:exceed|exceeds|too large|quota|limit)|(?:quota|limit|too large).*(?:exceed|payload|upload|value)/i.test(texto);
   }
-  function esRechazoSoloLocal(e) {
-    return esRechazoPorPermisos(e) || esRechazoPorCuota(e);
+  function esPreviewQa() {
+    return typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""));
+  }
+  function esRechazoSoloLocal(key, e) {
+    // Las copias automáticas no son un dato operativo ni tienen una ruta
+    // autoritativa propia. En QA, donde la autoridad puede devolver 401 o
+    // rechazar su payload por tamaño, se conservan localmente para no bloquear
+    // los datos operativos. Producción conserva el comportamiento normal.
+    var respaldoSoloLocalQa = key === "historialRespaldos" && esPreviewQa();
+    return esRechazoPorPermisos(e) || esRechazoPorCuota(e) || respaldoSoloLocalQa;
   }
   function marcarDenegado(key, error) {
     var yaVigente = denegadoVigente(key);
@@ -198,19 +206,23 @@
     quitarPendiente(key);
     if (!yaVigente) {
       var porCuota = esRechazoPorCuota(error);
+      var porQa = key === "historialRespaldos" && esPreviewQa();
       var mensaje = porCuota
         ? "Guardado en este equipo; el respaldo supera el límite de carga del servidor. Puedes reintentarlo ahora después de reducirlo."
+        : porQa
+          ? "Guardado en este equipo; el respaldo automático de QA no se sube a la nube y no bloquea los datos operativos."
         : "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora.";
+      var motivo = porCuota ? "cuota" : porQa ? "respaldo-qa-solo-local" : "permisos";
       try {
         console.warn("[almacén] «" + key + "» se conserva solo en este equipo porque el servidor no pudo aceptarlo.", error && error.message);
       } catch (e) {}
       try {
         if (typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
-          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, motivo: porCuota ? "cuota" : "permisos", mensaje: error && error.message } }));
+          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, motivo: motivo, mensaje: error && error.message } }));
           window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
             key: key,
             soloLocal: true,
-            motivo: porCuota ? "cuota" : "permisos",
+            motivo: motivo,
             mensaje: mensaje
           } }));
         }
@@ -362,7 +374,7 @@
         // Rechazo por permisos o por tamaño: no se arregla reintentando
         // automáticamente (ver arriba). Cualquier otro fallo (red, tiempo)
         // se reintenta la próxima vez.
-        if (esRechazoSoloLocal(e)) marcarDenegado(key, e);
+        if (esRechazoSoloLocal(key, e)) marcarDenegado(key, e);
       }
     }
     actualizarIndicador();
@@ -1154,7 +1166,7 @@
             confirmadoServidor = true;
           } catch (e) {
             if (key === "productos") catalogoBloqueado = true;
-            if (esRechazoSoloLocal(e)) marcarDenegado(key, e);
+            if (esRechazoSoloLocal(key, e)) marcarDenegado(key, e);
             else { marcarPendiente(key, value, cacheKey); pendienteSincronizacion = true; }
           }
         }

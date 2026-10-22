@@ -75,6 +75,7 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
     Promise, JSON, Error, Date: RelojDate,
   };
   context.window = context;
+  context.location = { hostname: "deploy-preview-172--chic-entremet-9107cf.netlify.app" };
   context.globalThis = context;
   context.dispatchEvent = (e) => { events.push(e); return true; };
   vm.createContext(context);
@@ -107,6 +108,18 @@ const claveEvento = (events) => events.filter((e) => e.type === "clave-solo-loca
   assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "cuota");
   const leido = await t.context.storage.get("historialRespaldos");
   assert.equal(leido.value, JSON.stringify([{ id: "backup-grande" }]));
+}
+
+// En preview QA, un 401 de la autoridad no debe dejar el respaldo automático
+// bloqueando toda la cola; los datos operativos sí siguen siendo pendientes.
+{
+  const t = setup({ modo: "jwt" });
+  await t.context.storage.set("historialRespaldos", JSON.stringify([{ id: "backup-qa" }]));
+  assert.deepEqual(t.pendientes(), [], "el respaldo de QA no queda en cola tras un 401");
+  assert.deepEqual(Object.keys(t.denegados()), ["historialRespaldos"]);
+  assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "respaldo-qa-solo-local");
+  await t.context.storage.set("conteos", JSON.stringify([]));
+  assert.deepEqual(t.pendientes(), ["conteos"], "los datos operativos sí conservan el reintento");
 }
 
 // Las preferencias de sesión del dispositivo no son datos de negocio: nunca
