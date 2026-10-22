@@ -186,6 +186,11 @@ Comprobación manual en QA del 2026-10-22, preview 172:
 - La lista principal dejó únicamente los pendientes y los mostró ordenados por
   fecha/hora: 2026-10-25 11:00 antes de 2026-10-28 08:30. No apareció botón
   Entregar para los estados cancelado, devuelto o entregado.
+- En esas mismas tarjetas activas, la aplicación mostró «Sin cliente» y
+  «En undefined días», aunque la consulta QA confirmó `cliente_id=QA-CLI-A` y
+  las fechas de entrega introducidas eran válidas. El historial sí mostró
+  «QA Cliente SOLO A» y las referencias correctamente. Esto deja una
+  discrepancia de presentación/hidratación pendiente de corregir.
 - El contador visible mostró 1 encargo entregado y 2 elementos en el historial
   de cancelados/devueltos. El historial mostró explícitamente los motivos de
   cancelación y devolución.
@@ -198,8 +203,9 @@ Comprobación manual en QA del 2026-10-22, preview 172:
   para una prueba de datos preexistentes: el formulario normal no permite
   fabricarlos y no se hizo una inserción directa.
 - Resultado AUD-006: PASS para filtro de estados, ordenación, historial y
-  ausencia de acción Entregar en estados no pendientes; BLOQUEADO para
-  validar filas históricas con cliente/fecha ausentes.
+  ausencia de acción Entregar en estados no pendientes; FAIL PARCIAL para la
+  representación del cliente y del texto de días en tarjetas pendientes;
+  BLOQUEADO para validar filas históricas con cliente/fecha ausentes.
 
 ### Contraseña inicial · bloque intermedio
 
