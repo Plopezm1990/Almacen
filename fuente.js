@@ -102216,6 +102216,150 @@ async function configRpc(nombre, parametros) {
   if (error) throw error;
   return data;
 }
+async function configSalaContexto(empresaId, localId) {
+  const supabase = await configCliente();
+  const { data: authData, error: authError } = await supabase.auth.getSession();
+  if (authError) throw authError;
+  if (!authData?.session?.user?.id) throw new Error("sesion_usuario_requerida");
+  const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localId}`;
+  let terminalId = null;
+  try {
+    terminalId = localStorage.getItem(storageKey) || null;
+  } catch (e2) {
+    throw new Error("persistencia_terminal_no_disponible");
+  }
+  let qTerminales = supabase.from("terminales_tpv").select("id,nombre").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true);
+  if (terminalId) qTerminales = qTerminales.eq("id", terminalId);
+  const { data: terminales, error: terminalesError } = await qTerminales;
+  if (terminalesError) throw terminalesError;
+  if (terminalId && (!Array.isArray(terminales) || terminales.length !== 1)) throw new Error("terminal_configurado_no_disponible");
+  if (!terminalId) {
+    if (!Array.isArray(terminales) || terminales.length === 0) throw new Error("terminal_no_configurado");
+    if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
+    terminalId = terminales[0].id;
+    try {
+      localStorage.setItem(storageKey, terminalId);
+    } catch (e2) {
+      throw new Error("persistencia_terminal_no_disponible");
+    }
+  }
+  const { data: vinculos, error: vinculosError } = await supabase.from("caja_sesion_terminales").select("session_id,terminal_id,desde").eq("empresa_id", empresaId).eq("local_id", localId).eq("terminal_id", terminalId).is("hasta", null).order("desde", { ascending: false }).limit(2);
+  if (vinculosError) throw vinculosError;
+  if (!Array.isArray(vinculos) || vinculos.length !== 1) throw new Error(vinculos && vinculos.length > 1 ? "terminal_sesion_ambigua" : "terminal_sin_sesion_abierta");
+  const sessionId = vinculos[0].session_id;
+  const { data: sesion, error: sesionError } = await supabase.from("caja_sesiones").select("id,estado").eq("empresa_id", empresaId).eq("local_id", localId).eq("id", sessionId).eq("estado", "ABIERTA").maybeSingle();
+  if (sesionError) throw sesionError;
+  if (!sesion) throw new Error("terminal_sin_sesion_abierta");
+  const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localId });
+  if (diaError) throw diaError;
+  const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+  if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+  return { supabase, empresaId, localId, terminalId, sessionId, operatingDay };
+}
+function ConfigSala({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const [zonas, setZonas] = (0, import_react4.useState)([]);
+  const [zonaId, setZonaId] = (0, import_react4.useState)("");
+  const [codigo, setCodigo] = (0, import_react4.useState)("");
+  const [nombre, setNombre] = (0, import_react4.useState)("");
+  const [capacidad, setCapacidad] = (0, import_react4.useState)("4");
+  const [orden, setOrden] = (0, import_react4.useState)("1");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const cargar = async () => {
+    setCargando(true);
+    setError("");
+    try {
+      const contexto = await configSalaContexto(empresaId, localId);
+      const { data, error: rpcError } = await contexto.supabase.rpc("abc_listar_mapa_sala", {
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_terminal_id: contexto.terminalId,
+        p_session_id: contexto.sessionId,
+        p_operating_day: contexto.operatingDay
+      });
+      if (rpcError) throw rpcError;
+      const lista = Array.isArray(data?.zonas) ? data.zonas : [];
+      setZonas(lista);
+      setZonaId((actual) => actual || lista[0]?.zona_id || "");
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    cargar();
+  }, [empresaId, localId]);
+  const crear = async () => {
+    setError("");
+    setConfirmacion("");
+    const codigoLimpio = codigo.trim().toUpperCase();
+    const nombreLimpio = nombre.trim();
+    const capacidadNumero = Number(capacidad);
+    const ordenNumero = Number(orden);
+    if (!motivo.trim()) return setError("Escribe el motivo del cambio.");
+    if (!zonaId) return setError("Selecciona una zona activa.");
+    if (!/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(codigoLimpio)) return setError("El código debe tener entre 1 y 40 caracteres alfanuméricos.");
+    if (!nombreLimpio || nombreLimpio.length > 80) return setError("Escribe un nombre de hasta 80 caracteres.");
+    if (!Number.isInteger(capacidadNumero) || capacidadNumero < 1 || capacidadNumero > 999) return setError("La capacidad debe ser un entero entre 1 y 999.");
+    if (!Number.isInteger(ordenNumero) || ordenNumero < 0) return setError("El orden debe ser un entero igual o mayor que 0.");
+    setGuardando(true);
+    try {
+      const contexto = await configSalaContexto(empresaId, localId);
+      const { error: rpcError } = await contexto.supabase.rpc("abc_crear_mesa", {
+        p_operation_id: configOperacion("sala.mesa.crear"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_mesa_id: configUuid(),
+        p_zona_id: zonaId,
+        p_codigo: codigoLimpio,
+        p_nombre: nombreLimpio,
+        p_capacidad: capacidadNumero,
+        p_orden: ordenNumero,
+        p_terminal_id: contexto.terminalId,
+        p_session_id: contexto.sessionId,
+        p_operating_day: contexto.operatingDay
+      });
+      if (rpcError) throw rpcError;
+      setConfirmacion(`Mesa ${nombreLimpio} creada mediante la RPC autorizada. Motivo registrado en esta operación: ${motivo.trim()}`);
+      setCodigo("");
+      setNombre("");
+      setMotivo("");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  return h(
+    Card,
+    { className: "mb-4" },
+    h("div", { className: "font-semibold mb-1" }, "Sala y mesas"),
+    h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Consulta las mesas del local y crea una mesa de QA con la RPC autorizada. Solo el Propietario puede hacerlo y la operación exige una sesión de caja abierta."),
+    h(ConfigAviso, { error, confirmacion }),
+    h("div", { className: "flex gap-2 flex-wrap mb-3" }, h(Btn, { small: true, variant: "ghost", onClick: cargar, disabled: cargando || guardando }, cargando ? "Cargando…" : "Actualizar mapa")),
+    zonas.map((zona) => h("div", { key: zona.zona_id, className: "rounded-lg p-3 mb-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+      h("div", { className: "font-medium" }, `${zona.nombre || zona.codigo} · ${zona.tipo || "zona"}`),
+      h("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, `${Array.isArray(zona.mesas) ? zona.mesas.length : 0} mesa(s) activa(s)`),
+      (Array.isArray(zona.mesas) ? zona.mesas : []).map((mesa) => h("div", { key: mesa.mesa_id, className: "text-[12px] mb-1" }, `${mesa.nombre || mesa.codigo} · capacidad ${mesa.capacidad} · ${mesa.estado_efectivo || "NORMAL"}`))
+    )),
+    h("div", { className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+      h("div", { className: "font-medium mb-2" }, "Crear mesa QA"),
+      h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: guardando }),
+      h(Field, { label: "Zona" }, h("select", { value: zonaId, onChange: (e2) => setZonaId(e2.target.value), disabled: guardando || !zonas.length, className: "rounded-lg px-3 py-2 w-full", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, zonas.map((zona) => h("option", { key: zona.zona_id, value: zona.zona_id }, `${zona.nombre || zona.codigo} · ${zona.tipo || "zona"}`)))),
+      h(Field, { label: "Código" }, h(Input, { value: codigo, onChange: (e2) => setCodigo(e2.target.value), placeholder: "M-QA-02", maxLength: 40, disabled: guardando })),
+      h(Field, { label: "Nombre" }, h(Input, { value: nombre, onChange: (e2) => setNombre(e2.target.value), placeholder: "Mesa QA-A1-02", maxLength: 80, disabled: guardando })),
+      h("div", { className: "flex gap-2" }, h(Field, { label: "Capacidad" }, h(Input, { type: "number", min: 1, max: 999, value: capacidad, onChange: (e2) => setCapacidad(e2.target.value), disabled: guardando })), h(Field, { label: "Orden" }, h(Input, { type: "number", min: 0, value: orden, onChange: (e2) => setOrden(e2.target.value), disabled: guardando }))),
+      h(Btn, { onClick: crear, disabled: guardando || cargando || !zonas.length }, guardando ? "Creando…" : "Crear mesa mediante RPC autorizada")
+    )
+  );
+}
 function ConfigAviso({ error = "", confirmacion = "" }) {
   const h = import_react4.default.createElement;
   return h(
@@ -103399,7 +103543,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["sala", "Sala y mesas"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -103410,6 +103554,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
+    seccion === "sala" ? h(ConfigSala, { empresaId, localId }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );

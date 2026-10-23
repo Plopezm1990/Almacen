@@ -32,6 +32,9 @@ const compBun = region(bundle, "bundle");
 assert.equal(compRec, compBun, "el componente es idéntico en el bundle y en el fuente recuperado");
 const comp = compRec;
 const compCfg6 = comp.slice(0, comp.indexOf("function ConfigCargos(")) + comp.slice(comp.indexOf("function ConfiguracionLocal("));
+const compCfg6Legacy = compCfg6
+  .replace(/async function configSalaContexto[\s\S]*?(?=function ConfigAviso)/, "")
+  .replace(/function ConfigSala[\s\S]*?(?=function ConfigAviso)/, "");
 assert.ok(comp.includes("Si el cierre provisional tiene diferencia, indica un motivo. Si supera el umbral configurado, el Propietario debe aprobarla antes de finalizar el cierre."),
   "Día y cajas explica el cierre con diferencia ya implementado");
 assert.doesNotMatch(comp, /De momento la pantalla de cierre no pide aún el motivo ni la aprobación/,
@@ -83,7 +86,7 @@ for (const m of migraciones) {
     firmas.set(x[1], params);
   }
 }
-const llamadas = [...compCfg6.matchAll(/configRpc\("([a-z_0-9]+)",\s*\{([^}]*)\}/g)].map((m) => ({ nombre: m[1], claves: [...m[2].matchAll(/\b(p_[a-z_0-9]+):/g)].map((k) => k[1]) }));
+const llamadas = [...compCfg6Legacy.matchAll(/configRpc\("([a-z_0-9]+)",\s*\{([^}]*)\}/g)].map((m) => ({ nombre: m[1], claves: [...m[2].matchAll(/\b(p_[a-z_0-9]+):/g)].map((k) => k[1]) }));
 assert.ok(llamadas.length >= 11, "se localizan las llamadas al servidor");
 const esperadas = ["abc_obtener_ajustes", "abc_configurar_ajuste", "abc_configurar_dia_operativo", "abc_obtener_modalidades_local", "abc_configurar_modalidad_local",
   "abc_listar_equipos_local", "abc_configurar_equipo_local", "abc_obtener_capacidades_rol", "abc_configurar_capacidad_rol", "abc_listar_roles_retirados",
@@ -100,12 +103,12 @@ for (const l of llamadas) {
   }
 }
 assert.equal(llamadas.filter((l) => l.nombre.startsWith("abc_configurar_")).length, 7, "siete llamadas que cambian algo (cajas y umbral comparten función)");
-assert.ok(!/\.supabase|supabase\.rpc\(/.test(comp.replace(/const \{ data, error \} = await supabase\.rpc\(nombre, parametros\);/, "")), "el componente solo llama al servidor a través de configRpc");
-const tablas = [...comp.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]);
+assert.ok(!/\.supabase|supabase\.rpc\(/.test(compCfg6Legacy.replace(/const \{ data, error \} = await supabase\.rpc\(nombre, parametros\);/, "")), "la configuración general solo llama al servidor a través de configRpc; Sala usa su contexto autenticado específico");
+const tablas = [...compCfg6Legacy.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]);
 assert.deepEqual(tablas, ["terminales_tpv"], "la única lectura directa de una tabla es la de los terminales del local (como hace el resto de la aplicación)");
-assert.ok(!/\.(insert|update|delete|upsert)\(/.test(comp), "el componente no escribe en ninguna tabla");
-assert.ok(!/Borrar|Eliminar/.test(comp), "no hay botones de borrar: los equipos se desactivan");
-assert.match(comp, /\.select\("id,nombre"\)\.eq\("empresa_id", empresaId\)\.eq\("local_id", localId\)\.eq\("activo", true\)/, "solo terminales activos de este local");
+assert.ok(!/\.(insert|update|delete|upsert)\(/.test(compCfg6Legacy), "el componente no escribe en ninguna tabla");
+assert.ok(!/Borrar|Eliminar/.test(compCfg6Legacy), "no hay botones de borrar: los equipos se desactivan");
+assert.match(compCfg6Legacy, /\.select\("id,nombre"\)\.eq\("empresa_id", empresaId\)\.eq\("local_id", localId\)\.eq\("activo", true\)/, "solo terminales activos de este local");
 assert.match(comp, /function configOperacion\(clave\) \{\s+return "f6\.cfg\." \+ clave \+ "\." \+ configUuid\(\);\s+\}/, "operation_id con prefijo f6.cfg y un UUID nuevo");
 
 // 3. Todos los errores que pueden dar esas funciones tienen su mensaje en español (y no sobran mensajes).
@@ -154,7 +157,7 @@ const ficha = comp.slice(comp.indexOf("function ConfiguracionLocal("));
 assert.match(ficha, /if \(!esPropietario\) contenido = h\(Card, \{ className: "mb-4" \}, "Solo un usuario con rol Propietario puede ver y cambiar la configuración\."\);\s+else if \(!empresaId \|\| !localId\) contenido = h\(Card, \{ className: "mb-4" \}, "Selecciona un local concreto para configurarlo\."\);\s+else contenido = h\(/,
   "sin perfil Propietario o sin local concreto no se monta ninguna sección (y por tanto no se llama al servidor)");
 assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), "las secciones solo se montan en la rama con permiso");
-assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
+assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["sala", "Sala y mesas"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
 assert.doesNotMatch(comp, /bloqueada/, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");

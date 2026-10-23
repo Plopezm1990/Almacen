@@ -226,6 +226,24 @@ autenticado del propietario o un fixture QA autorizado y repetir la prueba de
 “cambiar mesa” desde el TPV. No se debe usar una escritura SQL directa ni
 cambiar de local para simular una segunda mesa.
 
+### Preparación del flujo autenticado de fixture
+
+Para no depender de una escritura externa ni de un conector sin sesión de
+usuario, la rama añade en `Configuración` la pestaña `Sala y mesas`. La nueva
+pantalla:
+
+- solo se monta para el Propietario y el local activo;
+- carga la zona y las mesas con `abc_listar_mapa_sala`;
+- resuelve el terminal, la sesión de caja abierta y el día operativo del
+  servidor;
+- valida código, nombre, capacidad, orden y motivo antes de llamar a
+  `abc_crear_mesa`;
+- no expone inserciones, actualizaciones ni borrados directos de tablas.
+
+La pantalla está preparada en la rama, pero T5 no se marca como cerrado hasta
+que el preview autenticado confirme la creación de la segunda mesa y pase el
+traslado de una cuenta real sin cobro.
+
 ### Siguiente paso
 
 1. Habilitar en QA una segunda mesa en `SALA-QA` mediante el flujo autenticado
