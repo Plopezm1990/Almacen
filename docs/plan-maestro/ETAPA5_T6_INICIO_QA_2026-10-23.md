@@ -37,14 +37,23 @@ caja. El cobro sigue necesitando la acción explícita «Cobrar efectivo».
   destinatario/proveedor definidos; no se inventaron esos datos.
 - No se tocó PROD ni se hicieron escrituras SQL directas.
 
-## 4. Verificación pendiente
+## 4. Verificación QA del primer subpunto
 
-La siguiente comprobación es abrir el preview 175 en QA, localizar `Cobro · F4`
-y pulsar una denominación rápida. Debe cambiar solo el campo de efectivo y el
-texto del cambio. Después se repetirá el contrato T6 y se decidirá el diseño
-seguro de Bizum antes de cualquier intento de cobro.
+En el preview 175 se abrió `Cobro · F4` sobre el pedido QA existente de 2,00
+euros y se pulsó `€10`. El resultado visible fue:
 
-**Estado:** T6 iniciada; no cerrada.
+- `Efectivo recibido: 10,00`.
+- `Cambio a devolver: €8,00`.
+- El botón `Cobrar efectivo` permaneció sin pulsar.
+- Confirmado: `€0,00`; pendiente: `€2,00`.
+
+Resultado: **PASS QA** para la preparación de billetes rápidos. El pedido no
+se cobró ni se cambió; no se abrió un intento de pago nuevo.
+
+Después se repetirá el contrato T6 y se decidirá el diseño seguro de Bizum
+antes de cualquier intento de cobro.
+
+**Estado:** T6 iniciada; billetes rápidos **PASS QA**; T6 no cerrada.
 
 ### Lo siguiente
 
