@@ -231,3 +231,10 @@ con la cuenta del servidor. La guarda se ejecuta antes de llamar a la RPC, por
 lo que una recuperación nunca puede sustituir silenciosamente un carrito local.
 El contrato
 `tests/plan-maestro/etapa5-recuperacion-borrador-contract.mjs` fija este orden.
+
+La protección quedó validada en el preview 175, compilación `e1c55f3`: con la
+cuenta `…7f02d9e7` ya recuperada se creó un borrador local de una unidad de
+`Agua 50 cl (QA)` y se intentó recuperar `…fa3d6151`. La interfaz mostró el
+aviso de borrador activo, conservó la línea local y mantuvo `…fa3d6151` en el
+listado; no se guardó, envió ni cobró el borrador y la recuperación quedó
+bloqueada antes de la RPC. **Protección de borrador al recuperar: PASS QA.**
