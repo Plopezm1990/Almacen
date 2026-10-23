@@ -203,21 +203,27 @@ aplicación antes de intentar crear datos adicionales:
   bloqueos de cobro incierto, fiscalización, pedido editable, moneda/día y
   mesas incompatibles. La acción no registra cobros.
 
+En el deploy exacto de la rama (`Deploy Preview #175`, commit `8bf6fca`), se
+inició sesión en el preview de QA, se recuperó la cuenta autorizada terminada
+en `7f02d9e7` y se abrió `Repartir productos`. El TPV mostró el selector de
+cuenta destino, el campo de motivo obligatorio y el botón `Unir cuenta origen
+con destino`. La unión no se ejecutó y no se registró ningún cobro. Resultado:
+**PASS de presencia/guardas de interfaz** para la unión; la prueba funcional
+debe seguir pendiente hasta disponer de una segunda cuenta/mesa aislada.
+
 Por tanto, no es válido marcar como PASS “cambiar mesa” ni “unir mesas”. El
-cambio de mesa está **BLOQUEADO por falta de fixture/configuración accesible**;
-la unión queda **IMPLEMENTADA EN LA RAMA, PENDIENTE DE VALIDACIÓN EN PREVIEW**.
-El próximo trabajo debe habilitar la segunda mesa mediante un flujo autenticado
-del propietario o un fixture QA autorizado y repetir la prueba desde el TPV.
+cambio de mesa y la unión funcional siguen **BLOQUEADOS por falta de
+fixture/configuración accesible**. El próximo trabajo debe habilitar la
+segunda mesa mediante un flujo autenticado del propietario o un fixture QA
+autorizado y repetir la prueba desde el TPV.
 No se debe usar una escritura SQL directa ni cambiar de local para simular una
 segunda mesa.
 
 ### Siguiente paso
 
-1. Esperar el rebuild del preview de esta rama y verificar visualmente el
-   control “Unir cuentas” con sesión autenticada de QA.
-2. Habilitar en QA una segunda mesa en `SALA-QA` mediante el flujo autenticado
+1. Habilitar en QA una segunda mesa en `SALA-QA` mediante el flujo autenticado
    soportado y crear una segunda cuenta operativa sin cobro.
-3. Repetir “cambiar mesa” y “unir mesas” y verificar que las líneas, cocina,
+2. Repetir “cambiar mesa” y “unir mesas” y verificar que las líneas, cocina,
    cortesías y cobros pendientes se conservan.
-4. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
+3. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
    (impresora, puente y cajón) hasta disponer de sus entornos/equipos de QA.
