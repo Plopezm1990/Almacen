@@ -39,10 +39,9 @@ caja. El cobro sigue necesitando la acción explícita «Cobrar efectivo».
 
 ## 4. Preparación segura de Bizum
 
-Se añadió el botón `Preparar Bizum QA` junto al efectivo y la tarjeta. Esta
-acción solo deja constancia local de que el método está seleccionado para la
-prueba y muestra el aviso de que no se ha iniciado ningún cobro ni se ha
-contactado con un proveedor.
+Se añadió el botón `Preparar Bizum QA` junto al efectivo y la tarjeta. El botón
+consulta ahora el handshake server-side de QA y muestra el resultado de
+preparación, sin iniciar ningún cobro ni contactar con un proveedor.
 
 No se ha añadido todavía `BIZUM` como medio aceptado por
 `abc_iniciar_cobro`. El servidor actual trabaja con medios genéricos
@@ -56,7 +55,7 @@ Se dejó una prueba de contrato en
 `tests/plan-maestro/etapa5-t6-bizum-qa-contract.mjs`. La prueba fija tres
 límites antes de ampliar el cobro:
 
-1. `Preparar Bizum QA` solo cambia el estado local de la interfaz y no llama a
+1. `Preparar Bizum QA` llama únicamente a `abc_preparar_bizum_qa`; no llama a
    `iniciarCobroCuentaF4`.
 2. La lista de medios del cliente sigue limitada a efectivo y tarjeta
    simulada.
@@ -79,9 +78,9 @@ parámetros mínimos y devolver un plan `PREPARADO_QA`. Declara explícitamente
 
 La RPC no crea pagos, no reserva saldo, no cambia el checkout y no añade
 `BIZUM` a `abc_iniciar_cobro`. Solo se concede `EXECUTE` al rol
-`authenticated`; la migración no se ha aplicado todavía a QA en esta ronda.
-La aplicación seguirá usando el botón local hasta que el adaptador operativo
-se diseñe y se pruebe con una capacidad QA separada.
+`authenticated`. La migración se aplicó al proyecto QA y la definición se
+verificó como `SECURITY INVOKER`; el auditor posterior solo devolvió avisos
+baseline ya existentes del proyecto.
 
 ## 6. Verificación QA del primer subpunto
 
@@ -96,18 +95,18 @@ euros y se pulsó `€10`. El resultado visible fue:
 Resultado: **PASS QA** para la preparación de billetes rápidos. El pedido no
 se cobró ni se cambió; no se abrió un intento de pago nuevo.
 
-Después se repetirá el contrato T6 y se decidirá el diseño seguro de Bizum
-antes de cualquier intento de cobro.
+Después se añadió la llamada del botón al handshake y se repitió el contrato
+estático; no se ejecutó ningún cobro Bizum.
 
-**Estado:** T6 iniciada; billetes rápidos **PASS QA**; preparación Bizum QA
-visible; Bizum operativo pendiente; T6 no cerrada.
+**Estado:** T6 iniciada; billetes rápidos **PASS QA**; handshake Bizum QA
+**PASS server-side**; Bizum operativo pendiente; T6 no cerrada.
 
 ### Lo siguiente
 
-El contrato de seguridad y el handshake server-side de Bizum quedan preparados
-en código y pruebas, pero el flujo operativo sigue pendiente. El siguiente
-trabajo es aplicar el handshake únicamente en QA, verificar su respuesta sin
-escrituras y después implementar el medio explícito, el estado pendiente, la
-idempotencia y la resolución del adaptador simulado. No se conectará un
-proveedor ni se registrará un cobro. Después se documentarán los bloqueos de
-propina, vale, factura y email.
+El contrato de seguridad y el handshake server-side de Bizum quedan aplicados
+en QA, con el botón conectado y sin escrituras financieras. El siguiente
+trabajo es ejecutar una verificación UI controlada de la llamada, y después
+implementar el medio explícito, el estado pendiente, la idempotencia y la
+resolución del adaptador simulado. No se conectará un proveedor ni se
+registrará un cobro. Después se documentarán los bloqueos de propina, vale,
+factura y email.

@@ -20,7 +20,8 @@ const migracionBizum = fs.readFileSync(
 // de cobro o que BIZUM se clasifique silenciosamente como otro medio.
 for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación", espejo]]) {
   assert.match(contenido, /function prepararBizumF4\(\)/, `${nombre}: falta el preparador local de Bizum`);
-  assert.match(contenido, /Bizum QA preparado como método pendiente/, `${nombre}: falta el mensaje de estado pendiente`);
+  assert.match(contenido, /abc_preparar_bizum_qa/, `${nombre}: falta la llamada al handshake server-side`);
+  assert.match(contenido, /Bizum QA preparado por el servidor/, `${nombre}: falta el mensaje de preparación server-side`);
   assert.doesNotMatch(contenido, /iniciarCobroCuentaF4\(["']BIZUM/, `${nombre}: Bizum no debe iniciar cobro todavía`);
 }
 
