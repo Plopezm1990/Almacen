@@ -26,10 +26,19 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
     `${nombre}: el adaptador debe rechazarse fuera de QA-EMP-A/QA-A1`
   );
   assert.match(contenido, /abc_qa_confirmar_pago_simulado/, `${nombre}: falta la llamada a la RPC ya aplicada en QA`);
+  // El botón vive junto al aviso de "bloqueado" (gated por bloqueado, no por
+  // !bloqueado): un intento de tarjeta pendiente es precisamente lo que
+  // activa `bloqueado` y oculta el bloque normal de botones de cobro, así
+  // que colocarlo ahí lo deja inalcanzable. Ver ETAPA5_T6_CIERRE_TARJETA.
   assert.match(
     contenido,
-    /configEmpresa\?\.id === "QA-EMP-A" && local\?\.id === "QA-A1" && estadoCobroF4\?\.intentos\?\.\[0\]\?\.medio === "TARJETA"/,
-    `${nombre}: el botón debe quedar oculto fuera de QA o sin intento de tarjeta pendiente`
+    /bloqueado && configEmpresa\?\.id === "QA-EMP-A" && local\?\.id === "QA-A1" && ultimoIntento\?\.medio === "TARJETA"/,
+    `${nombre}: el botón debe aparecer junto al aviso de bloqueado, no dentro del bloque !bloqueado`
+  );
+  assert.doesNotMatch(
+    contenido,
+    /estadoCobroF4\?\.intentos\?\.\[0\]\?\.medio === "TARJETA" \? \/\* @__PURE__ \*\/ import_react4\.default\.createElement\(Btn, \{ small: true, variant: "ghost", onClick: aprobarPagoSimuladoQAF4/,
+    `${nombre}: el botón no debe quedar dentro del bloque de botones normales (solo se ve ahí mientras no está bloqueado, y un intento TARJETA pendiente siempre bloquea)`
   );
   assert.match(contenido, /"Aprobar pago simulado \(solo QA\)"/, `${nombre}: falta el texto del botón`);
   assert.doesNotMatch(
