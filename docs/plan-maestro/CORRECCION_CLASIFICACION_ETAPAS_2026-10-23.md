@@ -22,10 +22,10 @@ cinco AUD propios y queda documentada en `ETAPA3_CIERRE_2026-10-23.md`.
 
 - Etapa 2: cerrada, según `ETAPA2_CIERRE_2026-10-22.md`.
 - Etapa 3: cerrada tras verificar AUD-005, AUD-002, AUD-008, AUD-007 y AUD-001.
-- Etapa 4: abierta, con T1–T4 parcialmente verificados en QA.
+- Etapa 4: cerrada en QA tras verificar T1–T4 y la persistencia server-side.
 - No se mezclan tareas del Plan ABC.
 
 ## Lo siguiente
 
-Completar la aceptación conjunta QA-2 de la Etapa 4, conservando por separado
-el cierre ya validado de la Etapa 3.
+La aceptación conjunta QA-2 queda completada. La incidencia de sincronización
+de movimientos se conserva por separado como seguimiento de AUD-009.

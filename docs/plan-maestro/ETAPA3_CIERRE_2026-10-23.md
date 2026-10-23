@@ -74,7 +74,7 @@ AUD-005. El contrato automatizado también pasa: `F5 Etapa 3 UI: contrato OK`.
 
 ## Lo siguiente
 
-La siguiente etapa es la **Etapa 4 — TPV: la base / Hoja QA-2**. Sigue abierta
-con T1–T4 verificados funcionalmente, pero con la aceptación QA-2 pendiente de
-consolidación y de sus límites de persistencia/sincronización. No se debe
-mezclar con el Plan ABC.
+La siguiente etapa era la **Etapa 4 — TPV: la base / Hoja QA-2**. Esa etapa
+queda cerrada en `ETAPA4_CIERRE_QA2_2026-10-23.md` tras comprobar la
+persistencia server-side. Lo siguiente es la **Etapa 5** del Plan Maestro L&A
+Suite. No se debe mezclar con el Plan ABC.
