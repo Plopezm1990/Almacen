@@ -95,9 +95,16 @@ implementada, pero `crearLogicaVenta` no la incluía en el objeto que devuelve.
 Por eso `VentaRapida` recibía `asignarMesaCuentaA07` como `undefined` y el
 guard del formulario salía silenciosamente antes de iniciar la RPC. Se corrigió
 la exportación en `fuente.js` y en `source-recovery/fuente-recuperado.js` para
-mantener ambos artefactos alineados. La asignación aún queda pendiente de
-repetición sobre el preview reconstruido; no se generó ninguna escritura nueva
-durante el diagnóstico.
+mantener ambos artefactos alineados. En el preview reconstruido se repitió la
+prueba una sola vez sobre la cuenta QA recuperada:
+
+- `Mesa QA-A1-01` pasó a `OCUPADA · 2/4 personas · 1 cuenta(s) activa(s)`.
+- La cuenta mantuvo su pedido `ENVIADO` y la línea `Agua 50 cl (QA)` en
+  `ENVIADA`.
+- El cobro no se activó: `Confirmado €0,00` y `Pendiente €2,00`.
+
+Resultado de asignación: **PASS**. La modificación fue exclusivamente de
+ubicación/comensales en QA.
 
 ## 4. Descuento/cortesía A09
 
@@ -134,16 +141,14 @@ validación completa dentro de una venta enviada a Cocina si el caso lo exige.
 La ronda se mantuvo en QA, no accedió a PROD, no ejecutó SQL directo y no
 registró cobros.
 
-**T5 continúa PARCIAL. La Etapa 5 permanece ABIERTA.**
+**La asignación de mesa de T5 queda PASS. T5 continúa PARCIAL y la Etapa 5
+permanece ABIERTA.**
 
 ### Siguiente paso
 
-1. Esperar el preview reconstruido y repetir la asignación de mesa una sola
-   vez con la cuenta QA recuperada; comprobar mesa ocupada, comensales y
-   ubicación persistida sin cobrar.
-2. Validar en Cocina el envío del fixture `Artículo varios (QA)` sin cobrar;
+1. Validar en Cocina el envío del fixture `Artículo varios (QA)` sin cobrar;
    los dos envíos usados en la repetición fueron de `Agua 50 cl (QA)`.
-3. Si el plan exige probar el efecto económico, ejecutar una solicitud A09 de
+2. Si el plan exige probar el efecto económico, ejecutar una solicitud A09 de
    cortesía solo con el motivo y la autorización QA requeridos; no cobrar.
-4. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
+3. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
    (impresora, puente y cajón) hasta disponer de sus entornos/equipos de QA.
