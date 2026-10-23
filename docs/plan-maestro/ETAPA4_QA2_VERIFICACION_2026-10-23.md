@@ -54,6 +54,7 @@ la clasificación anterior y deja la Etapa 4 en estado parcial, no cerrada.
 
 **Etapa 4 abierta — QA-2 parcialmente verificada.**
 
-La ejecución queda conservada como evidencia funcional de T1–T4, pero el plan
-indica que la publicación QA-2 agrupa las etapas 3 y 4. Primero hay que
-completar la Etapa 3 real y después cerrar ambas con la aceptación conjunta.
+La ejecución queda conservada como evidencia funcional de T1–T4. La Etapa 3
+ya quedó cerrada en `ETAPA3_CIERRE_2026-10-23.md`; la Etapa 4 continúa abierta
+hasta formalizar su aceptación QA-2 y resolver sus límites de
+persistencia/sincronización.
