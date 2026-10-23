@@ -168,3 +168,32 @@ ejecutar cargos reales.
 Después habrá que elegir el proveedor/destino de email y aportar una
 impresora de prueba para desbloquear T7. Solo tras implementar y repetir
 T5–T7 en QA se podrá declarar «ETAPA 5 CERRADA».
+
+## Incidencia de recuperación en navegador limpio (preview 175)
+
+La prueba móvil en sesión normal e incógnito mostró al entrar en TPV el aviso
+«Abre o recupera primero un pedido real para resolver el día operativo del
+servidor». El botón `Actualizar` repetía el aviso sin consultar el listado:
+`listarCuentasRecuperablesA06` exigía un día guardado en el navegador antes de
+llamar a `abc_listar_cuentas_recuperables`. El borrador local no era la causa.
+
+La corrección en esta rama consulta el día operativo mediante la RPC de solo
+lectura `abc_obtener_dia_operativo_local`, ya disponible en QA, y usa su valor
+para el listado aunque el navegador no tenga pedido local o conserve un día
+antiguo. La selección posterior sigue validándose con `abc_recuperar_cuenta`;
+no se abre ni se duplica un pedido para obtener el día.
+
+Preflight de solo lectura en QA: `QA-EMP-A` / `QA-A1` tiene una terminal activa
+con sesión `ABIERTA`; la cuenta de prueba está `ABIERTA`, con un pedido y una
+línea activa del 23/10/2026. Ambas RPC de lectura existen y tienen `EXECUTE`
+para el rol autenticado. El test de ejecución
+`tests/plan-maestro/etapa5-recuperacion-dia-runtime.mjs` cubre sesión limpia,
+contexto local de otro día, cuenta actual, contexto local dañado y fallo de
+autorización.
+
+Límite de permisos: la RPC existente que devuelve el día exige
+`ABC_CAJA_OPERAR`, mientras que el listado y la recuperación requieren
+`ABC_CUENTA_OPERAR`. El propietario QA puede ejecutar ambas; un rol que solo
+opere cuentas recibirá un aviso explícito y necesitará una adaptación de
+permisos del servidor antes de aceptar este flujo para todos los perfiles.
+No se ha aplicado ninguna migración en esta corrección.

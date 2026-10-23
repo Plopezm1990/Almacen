@@ -111746,7 +111746,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       contextoLocal = leerContextoCuentaA02(empresaId, localActivoId);
     } catch (error) {
-      return { ok: false, recuperable: false, error: errorRpcA02(error) };
+      if (!cuentaIdSolicitada) return { ok: false, recuperable: false, error: errorRpcA02(error) };
     }
     if (cuentaIdSolicitada) {
       const cuentaId = String(cuentaIdSolicitada || "").trim();
@@ -111885,9 +111885,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       contexto = leerContextoCuentaA02(empresaId, localActivoId);
     } catch (error) {
-      return respuestaErrorA06(error);
+      // Una cuenta local dañada no debe impedir consultar las cuentas del servidor.
     }
-    if (!contexto?.operatingDay) return respuestaErrorA06(new Error("operating_day_context_required"));
 
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
     if (!hayConexion) return { ok: false, error: "Las cuentas recuperables necesitan conexión con el servidor." };
@@ -111896,12 +111895,21 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       const supabase = await window.getSupabaseClient();
       const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId
+      });
+      if (diaError) throw diaError;
+      const operatingDay = String(dia?.operating_day || "");
+      if (!dia?.ok || !/^\d{4}-\d{2}-\d{2}$/.test(operatingDay)) {
+        throw new Error("operating_day_servidor_ausente");
+      }
       const { data, error } = await supabase.rpc("abc_listar_cuentas_recuperables", {
         p_empresa_id: empresaId,
         p_local_id: localActivoId,
         p_terminal_id: terminal.terminalId,
         p_session_id: terminal.sessionId,
-        p_operating_day: contexto.operatingDay,
+        p_operating_day: operatingDay,
         p_abandono_minutos: minutos
       });
       if (error) throw error;
@@ -111915,10 +111923,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         }))
         .filter((cuenta) =>
           uuidPersistidoA02(cuenta.cuenta_id)
-          && String(cuenta.cuenta_id) !== String(contexto.cuentaId || "")
+          && !(contexto?.operatingDay === operatingDay && String(cuenta.cuenta_id) === String(contexto.cuentaId))
           && String(cuenta.estado || "") === "ABIERTA"
           && cuenta.reanudable_mismo_dia !== false
-          && String(cuenta.opened_operating_day || "") === String(contexto.operatingDay)
+          && String(cuenta.opened_operating_day || "") === operatingDay
           && Number(cuenta.pedidos_count) === 1
           && Number(cuenta.lineas_activas_count) > 0
         );
@@ -111928,10 +111936,16 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         cuentas,
         terminalId: terminal.terminalId,
         sessionId: terminal.sessionId,
-        operatingDay: data.operating_day || contexto.operatingDay,
+        operatingDay,
         abandonoMinutos: minutos
       };
     } catch (error) {
+      if (String(error?.message || error || "").includes("abc_caja_no_autorizado")) {
+        return { ok: false, error: "Tu perfil no tiene permiso para consultar el día operativo requerido para recuperar cuentas." };
+      }
+      if (String(error?.message || error || "").includes("operating_day_servidor_ausente")) {
+        return { ok: false, error: "El servidor no devolvió un día operativo válido para consultar las cuentas recuperables." };
+      }
       return respuestaErrorA06(error);
     }
   }
