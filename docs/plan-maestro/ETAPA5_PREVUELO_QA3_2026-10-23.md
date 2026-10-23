@@ -100,6 +100,9 @@ Debe cubrir, como mínimo:
 - `tests/plan-maestro/etapa5-t5-t6-ui-contract.mjs`: PASS (contrato base
   exclusivo del Plan Maestro; ticket/reimpresión, cuenta/sala, recuperación
   visible y cobro base).
+- `tests/plan-maestro/etapa5-tpv-movimientos-caja-contract.mjs`: PASS
+  (acceso desde TPV, resolución del día operativo en servidor y reutilización
+  del flujo seguro de entradas/retiradas).
 - `node --check fuente.js`: PASS.
 
 El runtime de lectura de cobro no se declara verde en este arranque porque el
@@ -118,10 +121,9 @@ En la pantalla TPV y en el código actual no se han localizado aún:
 - billetes rápidos;
 - factura a empresa con NIF y numeración propia desde el cobro;
 - envío de factura/ticket por email;
-- validar en el preview actualizado el nuevo botón `Aparcar cuenta` y el
-  retorno de esa misma cuenta mediante `Recuperar cuenta`. El tramo
-  listar → recuperar → ausencia de duplicado ya pasó en QA con una cuenta
-  abierta preexistente, según la evidencia posterior;
+- completar la validación de movimientos de caja desde el TPV: el acceso y
+  sus contratos ya están implementados, pero falta registrar y revertir una
+  entrada y una retirada controladas en el preview actualizado;
 - artículo varios e invitación;
 - cambio y unión de mesas como operaciones completas del TPV.
 
@@ -162,11 +164,12 @@ T7 queda **BLOQUEADA** hasta disponer de:
 
 ## Decisión y siguiente paso
 
-La Etapa 5 queda **abierta** con prevuelo documentado. La primera corrección
-del bloque T5 está desplegada y el flujo listar → recuperar → comprobar que
-no duplica la cuenta pasó en QA con el propietario de prueba. Aún faltan el
-aparcar explícito, otras operaciones de T5 y los métodos de cobro de T6, sin
-ejecutar cargos reales.
+La Etapa 5 queda **abierta** con prevuelo documentado. Los flujos
+aparcar → listar → recuperar → comprobar que no se duplica la cuenta ya
+pasaron en QA con el propietario de prueba. El acceso TPV a entradas y
+retiradas está implementado y pendiente de su prueba manual controlada. Aún
+faltan otras operaciones de T5 y los métodos de cobro de T6, sin ejecutar
+cargos reales.
 Después habrá que elegir el proveedor/destino de email y aportar una
 impresora de prueba para desbloquear T7. Solo tras implementar y repetir
 T5–T7 en QA se podrá declarar «ETAPA 5 CERRADA».
@@ -240,7 +243,7 @@ aviso de borrador activo, conservó la línea local y mantuvo `…fa3d6151` en e
 listado; no se guardó, envió ni cobró el borrador y la recuperación quedó
 bloqueada antes de la RPC. **Protección de borrador al recuperar: PASS QA.**
 
-## Implementación de aparcado explícito — pendiente de repetición QA
+## Aparcado explícito y recuperación — PASS QA
 
 Se añadió al bloque `Cuentas aparcadas / recuperables` la acción visible
 `Aparcar cuenta`. La operación elimina exclusivamente el enlace local entre
@@ -256,7 +259,36 @@ mensaje rojo obsoleto después de usar `Vaciar carrito` o guardar el pedido.
 
 Los contratos automatizados fijan que el aparcado solo borra la clave local de
 la cuenta, conserva otras claves del navegador, es inocuo al repetirse y no
-contiene operaciones de servidor, cancelación o cobro. Esta implementación no
-se declara todavía `PASS QA`: falta repetir en el nuevo preview la secuencia
-aparcar → comprobar listado → recuperar → verificar cuenta/pedido/líneas/cocina
-y saldo sin duplicados.
+contiene operaciones de servidor, cancelación o cobro.
+
+En el preview 175 se aparcó la cuenta terminada en `7f02d9e7`; la interfaz
+confirmó `Cuenta aparcada correctamente` y la cuenta volvió a aparecer entre
+las recuperables junto a `fa3d6151`. Después se recuperó `7f02d9e7`: dejó de
+figurar en el listado, `fa3d6151` permaneció visible y el pedido volvió con una
+única línea `Agua 50 cl (QA)`, total `1,00 €`, confirmado `0,00 €` y pendiente
+`1,00 €`. La comprobación posterior de solo lectura confirmó una sola cuenta,
+un solo pedido activo, una sola línea activa y una unidad, sin duplicación. No
+se envió ni cobró el pedido. **Aparcar y recuperar cuenta: PASS QA.**
+
+## Entradas y retiradas de caja desde el TPV — implementado, pendiente QA
+
+Se añadió al TPV una sección visible `Caja · entradas y retiradas` con la
+acción `Abrir caja`. Al abrirla, el TPV resuelve primero el día operativo del
+servidor mediante el contexto de la cuenta o la RPC de solo lectura existente
+`abc_obtener_dia_operativo_local`. La ventana muestra ese día antes de admitir
+un movimiento.
+
+El formulario reutiliza sin duplicar reglas el componente
+`BloqueEntradasSalidas` y la lógica de caja ya validados en Arqueo. Las
+categorías siguen siendo `REPOSICION_CAJA`, `INGRESO_MANUAL`,
+`RETIRADA_CAJA` y `GASTO_CAJA`; el alta continúa pasando por la RPC existente
+`abc_registrar_movimiento_caja`, con sesión, terminal, permisos, día operativo,
+idempotencia y auditoría comprobados en el servidor. No se añadió ninguna
+migración, escritura SQL directa ni operación sobre ventas o cobros.
+
+Los contratos `etapa5-tpv-movimientos-caja-contract.mjs`,
+`etapa5-t5-t6-ui-contract.mjs`, `pm08-caja-ui-runtime.mjs` y
+`p10-caja-contract.mjs` pasan. Este punto aún no es `PASS QA`: falta desplegar
+esta revisión y comprobar en el preview una entrada y una retirada pequeñas y
+controladas, además de su reversión trazable. Hasta entonces T5 y la Etapa 5
+permanecen abiertos.

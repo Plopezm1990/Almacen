@@ -105740,7 +105740,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -123093,7 +123093,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
   }
 }
 const ERROR_BORRADOR_RECUPERACION_A06 = "Tienes un borrador local activo. Guárdalo o vacíalo antes de recuperar o aparcar una cuenta. El borrador no se ha borrado ni mezclado con la cuenta del servidor.";
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -123109,6 +123109,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
   const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
   const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
+  const [mostrarMovimientosCajaTpv, setMostrarMovimientosCajaTpv] = (0, import_react4.useState)(false);
+  const [cargandoDiaCajaTpv, setCargandoDiaCajaTpv] = (0, import_react4.useState)(false);
+  const [diaOperativoCajaTpv, setDiaOperativoCajaTpv] = (0, import_react4.useState)("");
+  const [errorMovimientosCajaTpv, setErrorMovimientosCajaTpv] = (0, import_react4.useState)("");
   function datoCorreccionHistorialPM09(m22, clave) {
     if (!m22) return void 0;
     if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
@@ -125111,6 +125115,60 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     }
   }
 
+  async function abrirMovimientosCajaDesdeTpv() {
+    if (cargandoDiaCajaTpv) return;
+    setCargandoDiaCajaTpv(true);
+    setErrorMovimientosCajaTpv("");
+    try {
+      let dia = "";
+      if (typeof leerContextoCuentaA02 === "function" && configEmpresa?.id && local?.id) {
+        try {
+          const contexto = leerContextoCuentaA02(configEmpresa.id, local.id);
+          dia = String(contexto?.operatingDay || "");
+        } catch {
+        }
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) && typeof window !== "undefined" && window.__nubeActiva) {
+        if (!window.__nubeCliente || !configEmpresa?.id || !local?.id) throw new Error("contexto_caja_no_disponible");
+        const resultado = await window.__nubeCliente.rpc("abc_obtener_dia_operativo_local", {
+          p_empresa_id: configEmpresa.id,
+          p_local_id: local.id
+        });
+        if (resultado.error) throw resultado.error;
+        dia = String(resultado.data?.operating_day || "");
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) dia = todayISO();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) throw new Error("operating_day_servidor_ausente");
+      setDiaOperativoCajaTpv(dia);
+      setMostrarMovimientosCajaTpv(true);
+    } catch (error) {
+      setErrorMovimientosCajaTpv(mensajeErrorPM08(error, "No se pudo obtener el día operativo de la caja."));
+    } finally {
+      setCargandoDiaCajaTpv(false);
+    }
+  }
+
+  function renderMovimientosCajaTpv() {
+    const movimientosDelDia = (movimientosCaja || []).filter((movimiento) => movimiento?.fecha === diaOperativoCajaTpv);
+    return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", null,
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Caja · entradas y retiradas"),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Registra movimientos manuales desde el TPV. Importe, sesión, terminal, permisos y día operativo se validan en el servidor.")
+          ),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirMovimientosCajaDesdeTpv, disabled: cargandoDiaCajaTpv || typeof registrarMovimientoCaja !== "function" }, cargandoDiaCajaTpv ? "Abriendo…" : "Abrir caja")
+        ),
+        errorMovimientosCajaTpv ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] mt-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorMovimientosCajaTpv) : null
+      ),
+      mostrarMovimientosCajaTpv ? /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setMostrarMovimientosCajaTpv(false), title: "Caja · entradas y retiradas" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Día operativo del servidor: ", /* @__PURE__ */ import_react4.default.createElement("b", null, diaOperativoCajaTpv), ". Los movimientos no son ventas ni cobros y conservan trazabilidad."),
+        /* @__PURE__ */ import_react4.default.createElement(BloqueEntradasSalidas, { fecha: diaOperativoCajaTpv, movimientosCajaDelDia: movimientosDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja }),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarMovimientosCajaTpv(false) }, "Cerrar"))
+      ) : null
+    );
+  }
+
   function renderCuentasRecuperablesA06() {
     return /* @__PURE__ */ import_react4.default.createElement(
       Card,
@@ -125470,6 +125528,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     conflictoA06.revisionServidor ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[9.5px] mt-1", style: { color: C2.inkSoft } }, "Revisión servidor: ", conflictoA06.revisionServidor) : null,
     /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConflictoA06(null) }, "Entendido")
   ) : null,
+  renderMovimientosCajaTpv(),
   renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-layout" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-product-zone" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
