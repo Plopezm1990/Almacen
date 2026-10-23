@@ -65,6 +65,9 @@ Debe cubrir, como mínimo:
 - QA muestra `Local A1` y tarifa `General`.
 - El TPV conserva el ticket visible, historial de ventas, responsables,
   reparto y pedido operativo.
+- El historial abre una venta y permite entrar en `Ver ticket / reimprimir`;
+  la vista del ticket ofrece `Imprimir / Guardar PDF`. Validado en QA con
+  `V-20261023-152967`.
 - El TPV expone el cobro con `Cobrar efectivo` e `Iniciar tarjeta simulada`.
 - El servidor mantiene la separación entre preparar/enviar/cancelar un
   pedido y cobrarlo; no se ha confirmado ningún cobro en este prevuelo.
@@ -78,6 +81,8 @@ Debe cubrir, como mínimo:
 - `tests/cfg/pm08-caja-ui-runtime.mjs`: PASS (14/14).
 - `tests/pm09/p10-caja-contract.mjs`: PASS.
 - `tests/cfg/cobro-lectura-static-contract.mjs`: PASS.
+- `tests/plan-maestro/etapa5-t5-t6-ui-contract.mjs`: PASS (contrato base
+  exclusivo del Plan Maestro; ticket/reimpresión y cobro base).
 - `node --check fuente.js`: PASS.
 
 El runtime de lectura de cobro no se declara verde en este arranque porque el
@@ -96,9 +101,15 @@ En la pantalla TPV y en el código actual no se han localizado aún:
 - billetes rápidos;
 - factura a empresa con NIF y numeración propia desde el cobro;
 - envío de factura/ticket por email;
-- aparcar y recuperar cuenta;
+- aparcar y recuperar cuenta como flujo visible del TPV (existe una rutina
+  interna de recuperación, pero no una operación de usuario completa);
 - artículo varios e invitación;
 - cambio y unión de mesas como operaciones completas del TPV.
+
+El punto «último ticket y reimpresión» deja de estar pendiente: queda
+**PASS parcial** en QA para abrir el ticket e imprimir/guardar PDF. La salida
+física por impresora sigue dentro de T7 y no se considera validada por esta
+vista del navegador.
 
 Por tanto, T5 y T6 están **PARCIALES**, no aceptados. La existencia de cobro
 en efectivo/tarjeta y de funciones históricas de caja no equivale a cumplir
