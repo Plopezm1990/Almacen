@@ -123706,6 +123706,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [mensajeCobroF4, setMensajeCobroF4] = (0, import_react4.useState)("");
   const [importeCobroF4, setImporteCobroF4] = (0, import_react4.useState)("");
   const [efectivoRecibidoCobroF4, setEfectivoRecibidoCobroF4] = (0, import_react4.useState)("");
+  const billetesRapidosF4 = [5, 10, 20, 50, 100];
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
   const [procesandoIncidenciaB04, setProcesandoIncidenciaB04] = (0, import_react4.useState)(false);
   const [showCobro, setShowCobro] = (0, import_react4.useState)(false);
@@ -125226,6 +125227,8 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
           confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible }), disabled: procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
         ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "Billetes rápidos: prepara el efectivo recibido sin iniciar todavía el cobro."),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-1" }, billetesRapidosF4.map((valor) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: valor, small: true, variant: "ghost", onClick: () => setEfectivoRecibidoCobroF4(String(valor)), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, `€${valor}`))),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "El botón de completar mixto usa el saldo que devuelve el servidor, no el cálculo local del navegador.")
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },

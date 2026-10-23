@@ -14,6 +14,7 @@ const baseT5T6 = [
   ["vista imprimible del ticket", /Imprimir \/ Guardar PDF/],
   ["cobro en efectivo", /Cobrar efectivo/],
   ["tarjeta simulada QA", /Iniciar tarjeta simulada/],
+  ["billetes rápidos", /Billetes rápidos/],
   ["cobro server-side", /iniciarCobroCuentaF4\(medioSolicitado = "EFECTIVO"/],
   ["recuperación server-side de cuenta", /abc_recuperar_cuenta/],
   ["listado server-side de cuentas recuperables", /abc_listar_cuentas_recuperables/],
