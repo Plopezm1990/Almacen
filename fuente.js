@@ -111202,6 +111202,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("abc_qa_simulador_propietario_requerido")) return "Solo el Propietario de QA puede aprobar este pago simulado.";
     if (msg.includes("abc_qa_simulador_importe_distinto") || msg.includes("abc_qa_simulador_importe_invalido")) return "El importe no coincide con el intento simulado.";
     if (msg.includes("abc_qa_simulador_intento_no_encontrado") || msg.includes("abc_qa_simulador_pago_no_encontrado") || msg.includes("abc_qa_simulador_checkout_no_encontrado")) return "No se encontró el intento de pago simulado.";
+    if (msg.includes("abc_qa_simulador_solo_tarjeta")) return "El resolvedor simulado solo aprueba intentos de tarjeta.";
     if (msg.includes("evidencia_datos_tarjeta_prohibidos")) return "La evidencia no puede contener PAN, CVV ni datos completos de tarjeta.";
     if (msg.includes("abc_f4_b04") || msg.includes("abc_abrir_incidencia_cobro") || msg.includes("abc_resolver_incidencia_cobro")) return "La gestión B04 todavía no está disponible en este servidor.";
     if (msg.includes("cobro_incidencia_ya_abierta")) return "Este cobro ya tiene una incidencia abierta.";
@@ -125265,6 +125266,12 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     const confirmadoVisible = Number(estado?.confirmado) || 0;
     const saldoVisible = tieneCheckout ? Number(estado?.saldo) || 0 : Math.max(0,totalPedido-confirmadoVisible);
     const ultimoIntento = Array.isArray(estado?.intentos) ? estado.intentos[0] : null;
+    // abc_estado_pago_mixto_cuenta no incluye "medio" en cada intento (vive
+    // en pagos, no en pago_intentos); se cruza con la lista de pagos ya
+    // leída para saber si el intento pendiente es de tarjeta.
+    const pagoDelUltimoIntento = ultimoIntento && Array.isArray(estado?.pagos)
+      ? estado.pagos.find((p22) => String(p22.id) === String(ultimoIntento.pago_id)) || null
+      : null;
     const bloqueado = !!estado?.cobroIncierto;
     const importeVisible = importeCobroF4 === "" ? saldoVisible : Number(importeCobroF4);
     const recibidoVisible = efectivoRecibidoCobroF4 === "" ? null : Number(efectivoRecibidoCobroF4);
@@ -125287,7 +125294,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       ),
       estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
-      bloqueado && configEmpresa?.id === "QA-EMP-A" && local?.id === "QA-A1" && ultimoIntento?.medio === "TARJETA" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: aprobarPagoSimuladoQAF4, disabled: procesandoCobroF4 }, "Aprobar pago simulado (solo QA)") : null,
+      bloqueado && configEmpresa?.id === "QA-EMP-A" && local?.id === "QA-A1" && pagoDelUltimoIntento?.medio === "TARJETA" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: aprobarPagoSimuladoQAF4, disabled: procesandoCobroF4 }, "Aprobar pago simulado (solo QA)") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Abrir incidencia B04"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Registra el corte de respuesta y conserva la referencia del proveedor. La autorización se valida en el servidor."),

@@ -78,6 +78,24 @@ problema no era de base de datos: nunca se conectó el botón de pantalla.
 - Contratos existentes de la Etapa 5 (T5/T6) y de las Etapas 3-4: todos en
   verde, sin cambios de resultado.
 
+## 5bis. Dos fallos encontrados probando en vivo (Cowork, sesión de Pedro)
+
+Primera ronda publicada: el botón no aparecía. Dos causas, ambas en la
+condición de visibilidad del botón (nunca en la RPC ni en la migración):
+
+1. Lo coloqué dentro del bloque gated por `!bloqueado`. Un intento de
+   tarjeta pendiente activa precisamente `bloqueado=true`, que oculta ese
+   bloque entero (y en su lugar muestra el aviso + "Abrir incidencia B04").
+   Corregido: el botón se movió junto al aviso de bloqueado.
+2. Tras moverlo, seguía sin aparecer: `ultimoIntento?.medio` no existe.
+   `abc_estado_pago_mixto_cuenta` no pone `medio` en cada fila de
+   `intentos` (vive en `pagos`, no en `pago_intentos`). Corregido: se
+   cruza `ultimoIntento.pago_id` con `estado.pagos` para obtener el medio
+   real.
+
+Se añadió también el mensaje de error que faltaba
+(`abc_qa_simulador_solo_tarjeta`).
+
 ## 6. Pendiente
 
 - **El intento real del §1 sigue abierto.** Resolverlo con el botón nuevo

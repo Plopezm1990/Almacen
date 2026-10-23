@@ -32,8 +32,20 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
   // que colocarlo ahí lo deja inalcanzable. Ver ETAPA5_T6_CIERRE_TARJETA.
   assert.match(
     contenido,
-    /bloqueado && configEmpresa\?\.id === "QA-EMP-A" && local\?\.id === "QA-A1" && ultimoIntento\?\.medio === "TARJETA"/,
+    /bloqueado && configEmpresa\?\.id === "QA-EMP-A" && local\?\.id === "QA-A1" && pagoDelUltimoIntento\?\.medio === "TARJETA"/,
     `${nombre}: el botón debe aparecer junto al aviso de bloqueado, no dentro del bloque !bloqueado`
+  );
+  // abc_estado_pago_mixto_cuenta no pone "medio" en cada intento (vive en
+  // pagos, no en pago_intentos); hay que cruzar con la lista de pagos.
+  assert.match(
+    contenido,
+    /const pagoDelUltimoIntento = ultimoIntento && Array\.isArray\(estado\?\.pagos\)\s*\n\s*\? estado\.pagos\.find\(\(p22\) => String\(p22\.id\) === String\(ultimoIntento\.pago_id\)\) \|\| null\s*\n\s*: null;/,
+    `${nombre}: falta el cruce con estado.pagos para saber el medio del intento pendiente`
+  );
+  assert.doesNotMatch(
+    contenido,
+    /ultimoIntento\?\.medio === "TARJETA"/,
+    `${nombre}: ultimoIntento no lleva "medio" (vive en pagos); esa comparación nunca es verdadera`
   );
   assert.doesNotMatch(
     contenido,
@@ -41,6 +53,7 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
     `${nombre}: el botón no debe quedar dentro del bloque de botones normales (solo se ve ahí mientras no está bloqueado, y un intento TARJETA pendiente siempre bloquea)`
   );
   assert.match(contenido, /"Aprobar pago simulado \(solo QA\)"/, `${nombre}: falta el texto del botón`);
+  assert.match(contenido, /abc_qa_simulador_solo_tarjeta/, `${nombre}: falta el mensaje para el único rechazo de la RPC sin traducir`);
   assert.doesNotMatch(
     contenido,
     /abc_qa_confirmar_pago_simulado[\s\S]{0,400}iniciarCobroCuentaF4/,
