@@ -31,30 +31,53 @@ actual del servidor exige `producto_id` y recalcula precio/IVA desde catálogo.
 La invitación debe pasar por el flujo de cortesía A09 y no por un producto de
 precio cero.
 
-## 2. Sala y mesas
+## 2. Recuperación y resincronización
 
-Con la cuenta QA nueva se abrió `Mesa QA-A1-01`, se dejaron los dos comensales
-por defecto y se intentó `Asignar esta cuenta`.
+La cuenta nueva apareció finalmente en `Cuentas aparcadas / recuperables` como
+`Cuenta …5e44b861`, con `1 línea(s) activa(s)` del día operativo. Se pulsó
+`Recuperar cuenta` una sola vez.
+
+- El servidor devolvió `Cuenta recuperada correctamente en este terminal`.
+- El TPV reconstruyó la línea `Artículo varios (QA)` y mantuvo el total de
+  `2,00 €` sin cobro.
+- La línea quedó en estado `BORRADOR`; el pedido no se envió a Cocina.
+
+Resultado: **PASS** para la recuperación y la resincronización del contexto.
+La ausencia inicial de líneas en A09 era un problema de contexto local no
+recuperado, no una ausencia de persistencia del pedido.
+
+## 3. Sala y mesas
+
+Con la cuenta recuperada se abrió `Mesa QA-A1-01`, se dejaron los dos
+comensales por defecto y se intentó `Asignar esta cuenta` mediante el flujo
+visible.
 
 - La mesa siguió mostrando `LIBRE · 0/4 personas`.
-- No apareció confirmación ni error.
-- El formulario permaneció abierto después del intento.
+- No apareció confirmación ni error visible.
+- El formulario permaneció abierto después de varios intentos.
 
-Resultado: **BLOQUEADO / no concluyente**; no es PASS.
+Resultado: **BLOQUEADO / no concluyente**; no es PASS. El pedido sigue en
+`BORRADOR`, por lo que falta repetir esta prueba con la comanda confirmada y
+enviada a Cocina, sin cobrar.
 
-## 3. Descuento/cortesía A09
+## 4. Descuento/cortesía A09
 
-Se abrió el panel `Descuento / cortesía` sin aplicar cambios.
+Se abrió el panel `Descuento / cortesía` después de recuperar la cuenta y sin
+aplicar cambios.
 
 - El panel cargó correctamente.
-- La cuenta se mostró sin líneas comerciales asociadas, aunque el pedido
-  abierto mostraba total `2,00 €`.
-- `Aplicar / solicitar` permaneció deshabilitado.
-- No se aplicó descuento ni cortesía y no se modificó el importe.
+- Ahora sí mostró la línea comercial del servidor:
+  `Producto mvl860eb81drfo · cantidad 1,00 unidad · línea 297-2b6c00699117`.
+- No había descuentos aplicados, autorizaciones pendientes ni líneas fiscales
+  activas.
+- `Aplicar / solicitar` permaneció deshabilitado porque no se rellenó el
+  motivo; no se aplicó descuento ni cortesía y no se modificó el importe.
 
-Resultado: **BLOQUEADO por estado inconsistente de líneas/pedido**.
+Resultado: **PASS** para lectura de líneas y controles de seguridad A09;
+queda pendiente probar una solicitud de cortesía autorizada en un caso de QA
+aislado, si el plan lo exige.
 
-## 4. Catálogo visible
+## 5. Catálogo visible
 
 En este preview ya están visibles los fixtures siguientes:
 
@@ -67,7 +90,7 @@ En este preview ya están visibles los fixtures siguientes:
 Estos puntos dejan de estar bloqueados por ausencia de datos. Falta repetir la
 validación completa dentro de una venta enviada a Cocina si el caso lo exige.
 
-## 5. Estado de Etapa 5
+## 6. Estado de Etapa 5
 
 La ronda se mantuvo en QA, no accedió a PROD, no ejecutó SQL directo y no
 registró cobros.
@@ -76,10 +99,11 @@ registró cobros.
 
 ### Siguiente paso
 
-1. Corregir o diagnosticar el vínculo servidor entre pedido abierto, líneas
-   comerciales y asignación de mesa.
-2. Repetir la asignación de mesa y el panel A09 con una cuenta cuya línea esté
-   confirmada por el servidor.
-3. Validar el envío a Cocina del fixture `Artículo varios (QA)` sin cobrar.
+1. Repetir la asignación de mesa con la línea confirmada y el pedido enviado a
+   Cocina; el intento actual queda bloqueado porque la línea sigue en
+   `BORRADOR` y el botón no muestra resultado.
+2. Validar el envío a Cocina del fixture `Artículo varios (QA)` sin cobrar.
+3. Si el plan exige probar el efecto económico, ejecutar una solicitud A09 de
+   cortesía solo con el motivo y la autorización QA requeridos; no cobrar.
 4. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
    (impresora, puente y cajón) hasta disponer de sus entornos/equipos de QA.
