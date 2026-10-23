@@ -104708,7 +104708,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -105740,7 +105740,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -111737,6 +111737,44 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  function aparcarCuentaA06() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de aparcar la cuenta." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa para aparcar la cuenta." };
+
+    let contexto = null;
+    try {
+      contexto = leerContextoCuentaA02(empresaId, localActivoId);
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+    if (!contexto?.cuentaId || !contexto?.pedidoId) {
+      return { ok: false, error: "No hay una cuenta operativa para aparcar." };
+    }
+
+    const claveContexto = claveUltimaCuentaA02(empresaId, localActivoId);
+    try {
+      localStorage.removeItem(claveContexto);
+      if (localStorage.getItem(claveContexto) !== null) {
+        throw new Error("persistencia_contexto_cuenta_no_disponible");
+      }
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+
+    return {
+      ok: true,
+      cuentaId: contexto.cuentaId,
+      pedidoId: contexto.pedidoId,
+      cuentaVersion: contexto.cuentaVersion,
+      pedidoVersion: contexto.pedidoVersion,
+      pedidoEstado: contexto.pedidoEstado,
+      currencyCode: contexto.currencyCode,
+      modalidad: contexto.modalidad,
+      operatingDay: contexto.operatingDay
+    };
+  }
+
   async function recuperarCuentaA06(cuentaIdSolicitada = null, cuentaRecuperable = null) {
     if (!localActivoId) return { ok: false, recuperable: false, error: "Selecciona un local antes de recuperar la cuenta." };
     const empresaId = empresaDelLocalActivo?.id || null;
@@ -113332,7 +113370,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -123054,7 +123092,8 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+const ERROR_BORRADOR_RECUPERACION_A06 = "Tienes un borrador local activo. Guárdalo o vacíalo antes de recuperar o aparcar una cuenta. El borrador no se ha borrado ni mezclado con la cuenta del servidor.";
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -123493,7 +123532,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [cuentasRecuperablesA06, setCuentasRecuperablesA06] = (0, import_react4.useState)([]);
   const [cargandoCuentasA06, setCargandoCuentasA06] = (0, import_react4.useState)(false);
   const [errorCuentasA06, setErrorCuentasA06] = (0, import_react4.useState)("");
+  const [mensajeCuentasA06, setMensajeCuentasA06] = (0, import_react4.useState)("");
   const [recuperandoCuentaA06, setRecuperandoCuentaA06] = (0, import_react4.useState)("");
+  const [aparcandoCuentaA06, setAparcandoCuentaA06] = (0, import_react4.useState)(false);
   const [borradorCargadoA06, setBorradorCargadoA06] = (0, import_react4.useState)(false);
   const [estadoBorradorA06, setEstadoBorradorA06] = (0, import_react4.useState)({ estado: "VACIO", lineas: [] });
   const [conflictoA06, setConflictoA06] = (0, import_react4.useState)(null);
@@ -123569,6 +123610,11 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   }, [carrito, borradorCargadoA06, local?.id, configEmpresa?.id]);
 
   (0, import_react4.useEffect)(() => {
+    if (carrito.length !== 0) return;
+    setErrorCuentasA06((actual) => actual === ERROR_BORRADOR_RECUPERACION_A06 ? "" : actual);
+  }, [carrito.length]);
+
+  (0, import_react4.useEffect)(() => {
     let activo = true;
     const localPersistido = typeof leerPedidoOperativoA05 === "function" ? leerPedidoOperativoA05() : null;
     Promise.resolve(localPersistido).then((pedido) => {
@@ -123609,11 +123655,12 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     const cuentaId = String(cuenta?.cuenta_id || "").trim();
     if (!cuentaId || typeof recuperarCuentaA06 !== "function") return;
     if (estadoBorradorA06?.estado === "ACTIVO" && carrito.length > 0) {
-      setErrorCuentasA06("Tienes un borrador local activo. Guárdalo o vacíalo antes de recuperar otra cuenta. El borrador no se ha borrado ni mezclado con la cuenta del servidor.");
+      setErrorCuentasA06(ERROR_BORRADOR_RECUPERACION_A06);
       return;
     }
     setRecuperandoCuentaA06(cuentaId);
     setErrorCuentasA06("");
+    setMensajeCuentasA06("");
     const resultado = await recuperarCuentaA06(cuentaId, cuenta);
     setRecuperandoCuentaA06("");
     if (!resultado?.ok || !resultado.pedidoId) {
@@ -123623,6 +123670,40 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setPedidoOperativoA05(resultado);
     setErrorA05("");
     setCuentasRecuperablesA06((actual) => actual.filter((item) => String(item.cuenta_id) !== cuentaId));
+    setMensajeCuentasA06("Cuenta recuperada correctamente en este terminal.");
+  }
+
+  async function aparcarCuentaActualA06() {
+    if (!pedidoOperativoA05?.cuentaId || typeof aparcarCuentaA06 !== "function" || aparcandoCuentaA06) return;
+    if (estadoBorradorA06?.estado === "ACTIVO" && carrito.length > 0) {
+      setErrorCuentasA06(ERROR_BORRADOR_RECUPERACION_A06);
+      return;
+    }
+    setAparcandoCuentaA06(true);
+    setErrorCuentasA06("");
+    setMensajeCuentasA06("");
+    try {
+      const resultado = await Promise.resolve(aparcarCuentaA06());
+      if (!resultado?.ok) {
+        setErrorCuentasA06(resultado?.error || "No se pudo aparcar la cuenta.");
+        return;
+      }
+      setPedidoOperativoA05(null);
+      setConfirmacion(null);
+      setEstadoCobroF4(null);
+      setErrorCobroF4("");
+      setMensajeCobroF4("");
+      setShowCobro(false);
+      setMapaSalaA07(null);
+      setEstadoRepartoA08(null);
+      setRepartoAbiertoA08(false);
+      setConflictoA06(null);
+      setErrorA05("");
+      await refrescarCuentasRecuperablesA06();
+      setMensajeCuentasA06("Cuenta aparcada correctamente. El pedido, sus líneas, cocina y cobros siguen guardados en el servidor.");
+    } finally {
+      setAparcandoCuentaA06(false);
+    }
   }
 
   (0, import_react4.useEffect)(() => {
@@ -125039,9 +125120,14 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cuentas aparcadas / recuperables"),
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Solo aparecen cuentas abiertas del mismo día operativo con un pedido y líneas activos. La recuperación se valida en el servidor.")
         ),
-        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarCuentasRecuperablesA06, disabled: cargandoCuentasA06 || !!recuperandoCuentaA06 }, cargandoCuentasA06 ? "Actualizando…" : "Actualizar")
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap justify-end" },
+          pedidoOperativoA05?.cuentaId ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: aparcarCuentaActualA06, disabled: aparcandoCuentaA06 || cargandoCuentasA06 || !!recuperandoCuentaA06 || carrito.length > 0 }, aparcandoCuentaA06 ? "Aparcando…" : "Aparcar cuenta") : null,
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarCuentasRecuperablesA06, disabled: cargandoCuentasA06 || aparcandoCuentaA06 || !!recuperandoCuentaA06 }, cargandoCuentasA06 ? "Actualizando…" : "Actualizar")
+        )
       ),
+      pedidoOperativoA05?.cuentaId ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Aparcar solo desvincula esta cuenta del terminal. No cancela ni modifica el pedido, cocina o los cobros.") : null,
       errorCuentasA06 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorCuentasA06) : null,
+      mensajeCuentasA06 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCuentasA06) : null,
       !cargandoCuentasA06 && !errorCuentasA06 && cuentasRecuperablesA06.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay cuentas recuperables en este momento.") : null,
       cuentasRecuperablesA06.map((cuenta) => {
         const cuentaId = String(cuenta.cuenta_id || "");
@@ -125052,7 +125138,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
             /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, "Cuenta …", cuentaId.slice(-8), " · última actividad ", actividad),
             /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, Number(cuenta.lineas_activas_count) || 0, " línea(s) activa(s) · día ", cuenta.opened_operating_day || "—")
           ),
-          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => recuperarCuentaSeleccionadaA06(cuenta), disabled: !!recuperandoCuentaA06 }, recuperandoCuentaA06 === cuentaId ? "Recuperando…" : "Recuperar cuenta")
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => recuperarCuentaSeleccionadaA06(cuenta), disabled: !!recuperandoCuentaA06 || aparcandoCuentaA06 }, recuperandoCuentaA06 === cuentaId ? "Recuperando…" : "Recuperar cuenta")
         );
       })
     );

@@ -14,8 +14,9 @@ const llamada = bloque.indexOf("await recuperarCuentaA06(cuentaId, cuenta)");
 
 assert.ok(guardia >= 0, "La recuperación debe detectar un borrador local activo");
 assert.ok(llamada > guardia, "La protección del borrador debe ejecutarse antes de la RPC de recuperación");
-assert.match(bloque, /Guárdalo o vacíalo antes de recuperar otra cuenta/);
-assert.match(bloque, /no se ha borrado ni mezclado con la cuenta del servidor/);
+assert.match(bloque, /ERROR_BORRADOR_RECUPERACION_A06/);
+assert.match(fuente, /Guárdalo o vacíalo antes de recuperar o aparcar una cuenta/);
+assert.match(fuente, /no se ha borrado ni mezclado con la cuenta del servidor/);
 assert.ok(bloque.slice(guardia, llamada).includes("return;"), "Un borrador activo debe bloquear la recuperación");
 
 console.log("PLAN_MAESTRO_ETAPA5_RECUPERACION_BORRADOR_SEGURO_OK=1");

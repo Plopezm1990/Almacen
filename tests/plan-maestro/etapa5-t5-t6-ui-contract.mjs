@@ -18,6 +18,8 @@ const baseT5T6 = [
   ["recuperación server-side de cuenta", /abc_recuperar_cuenta/],
   ["listado server-side de cuentas recuperables", /abc_listar_cuentas_recuperables/],
   ["sección visible de cuentas recuperables", /Cuentas aparcadas \/ recuperables/],
+  ["acción visible para aparcar", /Aparcar cuenta/],
+  ["desvinculación local segura al aparcar", /function aparcarCuentaA06\(\)/],
   ["acción visible de recuperación", /Recuperar cuenta/],
   ["mapa server-side de sala", /cargarMapaSalaA07/],
   ["asignación de mesa", /Asignar esta cuenta/],

@@ -118,8 +118,9 @@ En la pantalla TPV y en el código actual no se han localizado aún:
 - billetes rápidos;
 - factura a empresa con NIF y numeración propia desde el cobro;
 - envío de factura/ticket por email;
-- aparcar expresamente una cuenta nueva y comprobar su retorno. El tramo
-  listar → recuperar → ausencia de duplicado sí pasó en QA con una cuenta
+- validar en el preview actualizado el nuevo botón `Aparcar cuenta` y el
+  retorno de esa misma cuenta mediante `Recuperar cuenta`. El tramo
+  listar → recuperar → ausencia de duplicado ya pasó en QA con una cuenta
   abierta preexistente, según la evidencia posterior;
 - artículo varios e invitación;
 - cambio y unión de mesas como operaciones completas del TPV.
@@ -238,3 +239,24 @@ cuenta `…7f02d9e7` ya recuperada se creó un borrador local de una unidad de
 aviso de borrador activo, conservó la línea local y mantuvo `…fa3d6151` en el
 listado; no se guardó, envió ni cobró el borrador y la recuperación quedó
 bloqueada antes de la RPC. **Protección de borrador al recuperar: PASS QA.**
+
+## Implementación de aparcado explícito — pendiente de repetición QA
+
+Se añadió al bloque `Cuentas aparcadas / recuperables` la acción visible
+`Aparcar cuenta`. La operación elimina exclusivamente el enlace local entre
+el terminal actual y la cuenta activa. No llama a una RPC de escritura, no
+cancela el pedido, no altera sus líneas, no cambia cocina y no registra ni
+revierte cobros. A continuación refresca el listado server-side para que la
+misma cuenta pueda recuperarse de inmediato y sin duplicarla.
+
+La acción queda bloqueada cuando existe un borrador local activo, con la misma
+protección aplicada a la recuperación. Además, el aviso de esa protección se
+limpia cuando el carrito queda realmente vacío, evitando que permanezca un
+mensaje rojo obsoleto después de usar `Vaciar carrito` o guardar el pedido.
+
+Los contratos automatizados fijan que el aparcado solo borra la clave local de
+la cuenta, conserva otras claves del navegador, es inocuo al repetirse y no
+contiene operaciones de servidor, cancelación o cobro. Esta implementación no
+se declara todavía `PASS QA`: falta repetir en el nuevo preview la secuencia
+aparcar → comprobar listado → recuperar → verificar cuenta/pedido/líneas/cocina
+y saldo sin duplicados.
