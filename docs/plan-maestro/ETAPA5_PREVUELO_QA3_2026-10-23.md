@@ -307,3 +307,29 @@ La suma neta de las cuatro líneas es `0,00 €`, por lo que el saldo vuelve al
 valor inicial. La prueba no accedió a PROD, no registró cobros, no envió
 pedidos, no ejecutó SQL directo y no usó RPC manual fuera del flujo visible.
 **Entradas, retirada y reversión trazable: PASS QA.**
+
+## Seguimiento T5 — artículo varios, invitación y sala — 23/10/2026
+
+En el mismo preview 175 se repitió la comprobación sin guardar una venta
+nueva ni tocar cobros:
+
+- La búsqueda `varios` no devolvió ninguna tarjeta de producto.
+- La búsqueda `invit` tampoco devolvió ninguna tarjeta de producto.
+- Por tanto, `artículo varios e invitación` queda **BLOQUEADO por falta de
+  fixture visible en el catálogo QA**; no se puede declarar PASS ni crear un
+  producto de prueba desde el TPV.
+- `Sala y mesas` mostró una única mesa visible, `Mesa QA-A1-01`, en estado
+  `LIBRE · 0/4 personas`.
+- Se abrió el formulario de asignación con dos comensales para la cuenta QA
+  existente. Tras el intento, la interfaz no mostró confirmación ni error y
+  la mesa permaneció `LIBRE`; se conserva como **BLOQUEADO / no concluyente**
+  hasta repetirlo con una cuenta y fixture de sala preparados para esta
+  prueba.
+- `Repartir productos` cargó correctamente desde el servidor, pero devolvió
+  `No hay productos repartibles en esta cuenta`; no se movió ninguna línea.
+- No se pudo probar cambio o unión de mesas porque el mapa QA expuesto solo
+  contiene una mesa y no hay una segunda cuenta/línea repartible preparada.
+
+Este seguimiento no creó pedidos, no envió comandas, no registró cobros, no
+ejecutó SQL directo y no accedió a PROD. **T5 sigue PARCIAL y la Etapa 5
+permanece ABIERTA.**
