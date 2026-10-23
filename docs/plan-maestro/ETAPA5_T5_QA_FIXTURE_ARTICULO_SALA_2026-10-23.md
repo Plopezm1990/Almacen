@@ -136,19 +136,39 @@ En este preview ya están visibles los fixtures siguientes:
 Estos puntos dejan de estar bloqueados por ausencia de datos. Falta repetir la
 validación completa dentro de una venta enviada a Cocina si el caso lo exige.
 
-## 6. Estado de Etapa 5
+## 6. Cocina y ruta del fixture
+
+La primera comanda del fixture se envió correctamente a pesar de no tener ruta
+de producto y quedó visible como `NUEVA · Sin estación · BLOQUEADA`.
+
+Se guardó en QA la ruta `Artículo varios (QA)` → `COCINA-QA · Cocina QA-A1`
+con el flujo visible de Estaciones y rutas. El servidor confirmó:
+`Ruta de producto actualizada correctamente` y la estación pasó a mostrar
+`4 ruta(s)`.
+
+Se añadió y envió una segunda línea del mismo fixture, sin iniciar preparación
+ni cobrar. La nueva comanda apareció en Cocina como:
+
+- `Artículo varios (QA) · 1`;
+- `NUEVA · Cocina QA-A1`;
+- `PENDIENTE`.
+
+Resultado: **PASS** para el envío y enrutamiento de una nueva comanda del
+fixture. El evento antiguo bloqueado no se reescribe retroactivamente, que es
+el comportamiento esperado al guardar una ruta después de haber creado la
+comanda.
+
+## 7. Estado de Etapa 5
 
 La ronda se mantuvo en QA, no accedió a PROD, no ejecutó SQL directo y no
 registró cobros.
 
-**La asignación de mesa de T5 queda PASS. T5 continúa PARCIAL y la Etapa 5
-permanece ABIERTA.**
+**La asignación de mesa y el enrutamiento de la nueva comanda quedan PASS. T5
+continúa PARCIAL y la Etapa 5 permanece ABIERTA.**
 
 ### Siguiente paso
 
-1. Validar en Cocina el envío del fixture `Artículo varios (QA)` sin cobrar;
-   los dos envíos usados en la repetición fueron de `Agua 50 cl (QA)`.
-2. Si el plan exige probar el efecto económico, ejecutar una solicitud A09 de
+1. Si el plan exige probar el efecto económico, ejecutar una solicitud A09 de
    cortesía solo con el motivo y la autorización QA requeridos; no cobrar.
-3. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
+2. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
    (impresora, puente y cajón) hasta disponer de sus entornos/equipos de QA.
