@@ -196,23 +196,25 @@ aplicación antes de intentar crear datos adicionales:
 - El proyecto contiene la RPC autorizada `abc_crear_mesa`, pero una llamada
   desde el conector sin la sesión autenticada del propietario fue rechazada por
   `mesa_configurar_no_autorizada`. No se insertó ninguna fila ni se alteró QA.
-- El backend también expone `abc_unir_cuentas` y el permiso
-  `ABC_CUENTA_UNIR`, pero el TPV visible no recibe esa operación ni renderiza un
-  control de unión. El componente actual expone traslado de mesa y reparto de
-  líneas, no una acción de unión de cuentas/mesas.
+- El backend expone `abc_unir_cuentas` y el permiso `ABC_CUENTA_UNIR`. En la
+  rama de esta PR se ha conectado esa operación al TPV: el panel de reparto
+  muestra un control separado de “Unir cuentas”, exige destino y motivo, envía
+  versiones esperadas y usa una operación idempotente; el servidor mantiene los
+  bloqueos de cobro incierto, fiscalización, pedido editable, moneda/día y
+  mesas incompatibles. La acción no registra cobros.
 
 Por tanto, no es válido marcar como PASS “cambiar mesa” ni “unir mesas”. El
 cambio de mesa está **BLOQUEADO por falta de fixture/configuración accesible**;
-la unión está además **BLOQUEADA por falta de integración de UI**, aunque su
-RPC exista en el backend. El próximo trabajo debe habilitar la segunda mesa
-mediante un flujo autenticado del propietario o un fixture QA autorizado y
-conectar la unión al TPV antes de repetir la prueba. No se debe usar una
-escritura SQL directa ni cambiar de local para simular una segunda mesa.
+la unión queda **IMPLEMENTADA EN LA RAMA, PENDIENTE DE VALIDACIÓN EN PREVIEW**.
+El próximo trabajo debe habilitar la segunda mesa mediante un flujo autenticado
+del propietario o un fixture QA autorizado y repetir la prueba desde el TPV.
+No se debe usar una escritura SQL directa ni cambiar de local para simular una
+segunda mesa.
 
 ### Siguiente paso
 
-1. Conectar al TPV el flujo de unión de cuentas respaldado por
-   `abc_unir_cuentas`, con motivo, control de versiones y sin cobro.
+1. Esperar el rebuild del preview de esta rama y verificar visualmente el
+   control “Unir cuentas” con sesión autenticada de QA.
 2. Habilitar en QA una segunda mesa en `SALA-QA` mediante el flujo autenticado
    soportado y crear una segunda cuenta operativa sin cobro.
 3. Repetir “cambiar mesa” y “unir mesas” y verificar que las líneas, cocina,
