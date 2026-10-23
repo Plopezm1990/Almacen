@@ -196,19 +196,26 @@ aplicación antes de intentar crear datos adicionales:
 - El proyecto contiene la RPC autorizada `abc_crear_mesa`, pero una llamada
   desde el conector sin la sesión autenticada del propietario fue rechazada por
   `mesa_configurar_no_autorizada`. No se insertó ninguna fila ni se alteró QA.
+- El backend también expone `abc_unir_cuentas` y el permiso
+  `ABC_CUENTA_UNIR`, pero el TPV visible no recibe esa operación ni renderiza un
+  control de unión. El componente actual expone traslado de mesa y reparto de
+  líneas, no una acción de unión de cuentas/mesas.
 
-Por tanto, no es válido marcar como PASS “cambiar mesa” ni “unir mesas”: ambos
-casos siguen **BLOQUEADOS por falta de fixture/configuración accesible**. El
-próximo intento debe hacerse desde un flujo autenticado del propietario que
-exponga `abc_crear_mesa`, o incorporando la segunda mesa mediante el mecanismo
-de fixture QA autorizado. No se debe usar una escritura SQL directa ni cambiar
-de local para simular una segunda mesa.
+Por tanto, no es válido marcar como PASS “cambiar mesa” ni “unir mesas”. El
+cambio de mesa está **BLOQUEADO por falta de fixture/configuración accesible**;
+la unión está además **BLOQUEADA por falta de integración de UI**, aunque su
+RPC exista en el backend. El próximo trabajo debe habilitar la segunda mesa
+mediante un flujo autenticado del propietario o un fixture QA autorizado y
+conectar la unión al TPV antes de repetir la prueba. No se debe usar una
+escritura SQL directa ni cambiar de local para simular una segunda mesa.
 
 ### Siguiente paso
 
-1. Habilitar en QA una segunda mesa en `SALA-QA` mediante el flujo autenticado
+1. Conectar al TPV el flujo de unión de cuentas respaldado por
+   `abc_unir_cuentas`, con motivo, control de versiones y sin cobro.
+2. Habilitar en QA una segunda mesa en `SALA-QA` mediante el flujo autenticado
    soportado y crear una segunda cuenta operativa sin cobro.
-2. Repetir “cambiar mesa” y “unir mesas” y verificar que las líneas, cocina,
+3. Repetir “cambiar mesa” y “unir mesas” y verificar que las líneas, cocina,
    cortesías y cobros pendientes se conservan.
-3. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
+4. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
    (impresora, puente y cajón) hasta disponer de sus entornos/equipos de QA.
