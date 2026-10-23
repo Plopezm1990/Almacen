@@ -181,7 +181,34 @@ registró cobros.
 **La asignación de mesa, el enrutamiento de la nueva comanda y la cortesía QA
 sin cobro quedan PASS. T5 continúa PARCIAL y la Etapa 5 permanece ABIERTA.**
 
+### Revalidación de cambio y unión de mesas
+
+Se revisó el flujo soportado en el preview autenticado y en el código de la
+aplicación antes de intentar crear datos adicionales:
+
+- `Locales` solo permite editar la ficha del local; no ofrece configuración de
+  zonas ni mesas.
+- `Configuración` muestra permisos, y el Propietario conserva todos los
+  permisos; aparece `ABC_SALA_CONFIGURAR`, pero no hay formulario visible para
+  ejecutar la creación de una mesa.
+- La lectura de QA confirma una única zona activa (`SALA-QA`) y una única mesa
+  activa: `Mesa QA-A1-01`. No existe una segunda mesa de destino en `QA-A1`.
+- El proyecto contiene la RPC autorizada `abc_crear_mesa`, pero una llamada
+  desde el conector sin la sesión autenticada del propietario fue rechazada por
+  `mesa_configurar_no_autorizada`. No se insertó ninguna fila ni se alteró QA.
+
+Por tanto, no es válido marcar como PASS “cambiar mesa” ni “unir mesas”: ambos
+casos siguen **BLOQUEADOS por falta de fixture/configuración accesible**. El
+próximo intento debe hacerse desde un flujo autenticado del propietario que
+exponga `abc_crear_mesa`, o incorporando la segunda mesa mediante el mecanismo
+de fixture QA autorizado. No se debe usar una escritura SQL directa ni cambiar
+de local para simular una segunda mesa.
+
 ### Siguiente paso
 
-1. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
+1. Habilitar en QA una segunda mesa en `SALA-QA` mediante el flujo autenticado
+   soportado y crear una segunda cuenta operativa sin cobro.
+2. Repetir “cambiar mesa” y “unir mesas” y verificar que las líneas, cocina,
+   cortesías y cobros pendientes se conservan.
+3. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
    (impresora, puente y cajón) hasta disponer de sus entornos/equipos de QA.
