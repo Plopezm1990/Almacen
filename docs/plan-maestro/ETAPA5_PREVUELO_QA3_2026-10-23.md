@@ -80,8 +80,10 @@ Debe cubrir, como mínimo:
   cuenta duplicada ni modifica datos hasta que el usuario la selecciona.
 - El TPV conserva un borrador local con caducidad de 24 horas; esto permite
   recuperar una comanda local, pero no sustituye al estado server-side de una
-  cuenta abierta. La lista visible server-side queda implementada; falta
-  validarla en QA con una cuenta recuperable preparada expresamente.
+  cuenta abierta. La lista visible y la recuperación server-side se validaron
+  después en el preview 175 con una cuenta de prueba; véase la evidencia al
+  final de esta hoja. La conservación del borrador local en esa secuencia no
+  quedó demostrada por las capturas.
 - El TPV expone el cobro con `Cobrar efectivo` e `Iniciar tarjeta simulada`.
 - El servidor mantiene la separación entre preparar/enviar/cancelar un
   pedido y cobrarlo; no se ha confirmado ningún cobro en este prevuelo.
@@ -116,9 +118,9 @@ En la pantalla TPV y en el código actual no se han localizado aún:
 - billetes rápidos;
 - factura a empresa con NIF y numeración propia desde el cobro;
 - envío de factura/ticket por email;
-- aparcar y recuperar cuenta como prueba QA completa: la sección visible de
-  recuperación ya está implementada, pero falta preparar una cuenta
-  recuperable y comprobar listar → recuperar → ausencia de duplicado;
+- aparcar expresamente una cuenta nueva y comprobar su retorno. El tramo
+  listar → recuperar → ausencia de duplicado sí pasó en QA con una cuenta
+  abierta preexistente, según la evidencia posterior;
 - artículo varios e invitación;
 - cambio y unión de mesas como operaciones completas del TPV.
 
@@ -160,10 +162,9 @@ T7 queda **BLOQUEADA** hasta disponer de:
 ## Decisión y siguiente paso
 
 La Etapa 5 queda **abierta** con prevuelo documentado. La primera corrección
-del bloque T5 ya está implementada en código y su contrato está cubierto; el
-siguiente trabajo es desplegarla a un preview QA y comprobar con datos de QA
-el flujo listar → recuperar → comprobar que no duplica la cuenta. Después
-habrá que completar las operaciones de mesa y los métodos de cobro sin
+del bloque T5 está desplegada y el flujo listar → recuperar → comprobar que
+no duplica la cuenta pasó en QA con el propietario de prueba. Aún faltan el
+aparcar explícito, otras operaciones de T5 y los métodos de cobro de T6, sin
 ejecutar cargos reales.
 Después habrá que elegir el proveedor/destino de email y aportar una
 impresora de prueba para desbloquear T7. Solo tras implementar y repetir
@@ -197,3 +198,28 @@ Límite de permisos: la RPC existente que devuelve el día exige
 opere cuentas recibirá un aviso explícito y necesitará una adaptación de
 permisos del servidor antes de aceptar este flujo para todos los perfiles.
 No se ha aplicado ninguna migración en esta corrección.
+
+## Validación móvil cruzada — preview 175
+
+El 23/10/2026 se probó el preview 175 en `QA Empresa A, S.L.` / `Local A1`.
+En el móvil, `Actualizar` mostró dos cuentas recuperables del día operativo
+`2026-10-23`, incluida la cuenta de prueba terminada en `7f02d9e7` (una línea),
+sin el error previo de contexto local. Al pulsar `Recuperar cuenta` en esa
+primera cuenta, dejó de figurar en el listado y la otra, terminada en
+`fa3d6151`, permaneció visible. El móvil mostró `Pedido operativo ABIERTO`
+con `Agua 50 cl (QA)` en `BORRADOR`; el cobro mostró total `1,00 €`, confirmado
+`0,00 €` y pendiente `1,00 €`. La cuenta de prueba ya estaba activa en otro
+navegador antes de esta recuperación.
+
+Una consulta **solo de lectura** al proyecto Supabase `L&A Suite QA` después
+de la prueba confirmó para `589e2885-f54c-4076-812a-71f57f02d9e7`:
+cuenta `ABIERTA`, un pedido activo, una línea activa y una unidad. No se
+detectó duplicación de esa cuenta ni de su pedido. No se envió el pedido, no
+se cobró, no se modificó PROD y no se hicieron escrituras SQL directas.
+
+**Resultado:** recuperación cruzada del propietario QA: **PASS**. La captura
+anterior mostraba un borrador local de una línea, pero el aviso de ese borrador
+no aparece en las capturas posteriores. Estas pruebas no permiten concluir
+si se conservó o se descartó; debe verificarse por separado antes de aceptar
+la política de borrador local como parte de T5. Tampoco se extrapola este
+PASS a roles sin `ABC_CAJA_OPERAR`.
