@@ -89,11 +89,15 @@ confirmar el evento. El resultado fue idéntico en ambas comprobaciones:
 - No apareció `role=alert`, confirmación ni cambio de ubicación.
 - La cuenta siguió mostrando el pedido `ENVIADO` y la línea `ENVIADA`.
 
-Resultado de la repetición: **FAIL / BLOQUEADO reproducible**. El bloqueo ya
-no puede atribuirse a que la comanda estuviera en `BORRADOR`; queda pendiente
-diagnosticar la RPC `abc_asignar_cuenta_mesa`, sus versiones de cuenta/mesa o
-la propagación del error al estado de la UI. No se hicieron más intentos para
-evitar escrituras duplicadas.
+Resultado de la repetición: **FAIL / BLOQUEADO reproducible**. El bloqueo no
+venía de la RPC ni de las versiones de cuenta/mesa: la función sí estaba
+implementada, pero `crearLogicaVenta` no la incluía en el objeto que devuelve.
+Por eso `VentaRapida` recibía `asignarMesaCuentaA07` como `undefined` y el
+guard del formulario salía silenciosamente antes de iniciar la RPC. Se corrigió
+la exportación en `fuente.js` y en `source-recovery/fuente-recuperado.js` para
+mantener ambos artefactos alineados. La asignación aún queda pendiente de
+repetición sobre el preview reconstruido; no se generó ninguna escritura nueva
+durante el diagnóstico.
 
 ## 4. Descuento/cortesía A09
 
@@ -134,8 +138,9 @@ registró cobros.
 
 ### Siguiente paso
 
-1. Diagnosticar y corregir el bloqueo reproducible de la asignación de mesa;
-   no repetir la RPC desde la UI hasta tener trazabilidad del error.
+1. Esperar el preview reconstruido y repetir la asignación de mesa una sola
+   vez con la cuenta QA recuperada; comprobar mesa ocupada, comensales y
+   ubicación persistida sin cobrar.
 2. Validar en Cocina el envío del fixture `Artículo varios (QA)` sin cobrar;
    los dos envíos usados en la repetición fueron de `Agua 50 cl (QA)`.
 3. Si el plan exige probar el efecto económico, ejecutar una solicitud A09 de
