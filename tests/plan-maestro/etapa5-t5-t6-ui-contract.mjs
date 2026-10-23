@@ -14,7 +14,15 @@ const baseT5T6 = [
   ["vista imprimible del ticket", /Imprimir \/ Guardar PDF/],
   ["cobro en efectivo", /Cobrar efectivo/],
   ["tarjeta simulada QA", /Iniciar tarjeta simulada/],
-  ["cobro server-side", /iniciarCobroCuentaF4\(medioSolicitado = "EFECTIVO"/]
+  ["cobro server-side", /iniciarCobroCuentaF4\(medioSolicitado = "EFECTIVO"/],
+  ["recuperación server-side de cuenta", /abc_recuperar_cuenta/],
+  ["listado server-side de cuentas recuperables", /abc_listar_cuentas_recuperables/],
+  ["sección visible de cuentas recuperables", /Cuentas aparcadas \/ recuperables/],
+  ["acción visible de recuperación", /Recuperar cuenta/],
+  ["mapa server-side de sala", /cargarMapaSalaA07/],
+  ["asignación de mesa", /Asignar esta cuenta/],
+  ["traslado de cuenta", /Trasladar cuenta/],
+  ["borrador local con TTL", /A06_BORRADOR_TTL_MS/]
 ];
 
 for (const [nombre, patron] of baseT5T6) {
@@ -38,5 +46,7 @@ const pendientes = ausenciasConocidas
 
 console.log("PLAN_MAESTRO_ETAPA5_T5_T6_BASE_OK=1");
 console.log("PLAN_MAESTRO_ETAPA5_T5_TICKET_REIMPRESION=PASS");
+console.log("PLAN_MAESTRO_ETAPA5_T5_CUENTA_SALA_BASE=PASS");
+console.log("PLAN_MAESTRO_ETAPA5_T5_RECUPERACION_VISIBLE=IMPLEMENTADO_QA_PENDIENTE");
 console.log("PLAN_MAESTRO_ETAPA5_T6_COBRO_BASE=PASS");
 console.log(`PLAN_MAESTRO_ETAPA5_PENDIENTES=${pendientes.join(",") || "ninguno"}`);

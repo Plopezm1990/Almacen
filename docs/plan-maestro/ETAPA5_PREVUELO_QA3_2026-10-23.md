@@ -68,6 +68,20 @@ Debe cubrir, como mínimo:
 - El historial abre una venta y permite entrar en `Ver ticket / reimprimir`;
   la vista del ticket ofrece `Imprimir / Guardar PDF`. Validado en QA con
   `V-20261023-152967`.
+- La base de cuenta/sala ya está enlazada al servidor: recuperación de cuenta,
+  mapa de sala, asignación a mesa y traslado con motivo/versionado. En QA se
+  ha comprobado la presencia de `Sala y mesas`, una mesa libre y el flujo de
+  traslado; no se ha ejecutado una nueva asignación sobre datos operativos
+  existentes durante este arranque.
+- Se ha añadido al TPV la sección visible `Cuentas aparcadas / recuperables`.
+  Consulta `abc_listar_cuentas_recuperables` y solo muestra cuentas abiertas
+  del mismo día operativo que tienen exactamente un pedido y líneas activas.
+  La acción `Recuperar cuenta` reutiliza `abc_recuperar_cuenta`; no crea una
+  cuenta duplicada ni modifica datos hasta que el usuario la selecciona.
+- El TPV conserva un borrador local con caducidad de 24 horas; esto permite
+  recuperar una comanda local, pero no sustituye al estado server-side de una
+  cuenta abierta. La lista visible server-side queda implementada; falta
+  validarla en QA con una cuenta recuperable preparada expresamente.
 - El TPV expone el cobro con `Cobrar efectivo` e `Iniciar tarjeta simulada`.
 - El servidor mantiene la separación entre preparar/enviar/cancelar un
   pedido y cobrarlo; no se ha confirmado ningún cobro en este prevuelo.
@@ -82,7 +96,8 @@ Debe cubrir, como mínimo:
 - `tests/pm09/p10-caja-contract.mjs`: PASS.
 - `tests/cfg/cobro-lectura-static-contract.mjs`: PASS.
 - `tests/plan-maestro/etapa5-t5-t6-ui-contract.mjs`: PASS (contrato base
-  exclusivo del Plan Maestro; ticket/reimpresión y cobro base).
+  exclusivo del Plan Maestro; ticket/reimpresión, cuenta/sala, recuperación
+  visible y cobro base).
 - `node --check fuente.js`: PASS.
 
 El runtime de lectura de cobro no se declara verde en este arranque porque el
@@ -101,8 +116,9 @@ En la pantalla TPV y en el código actual no se han localizado aún:
 - billetes rápidos;
 - factura a empresa con NIF y numeración propia desde el cobro;
 - envío de factura/ticket por email;
-- aparcar y recuperar cuenta como flujo visible del TPV (existe una rutina
-  interna de recuperación, pero no una operación de usuario completa);
+- aparcar y recuperar cuenta como prueba QA completa: la sección visible de
+  recuperación ya está implementada, pero falta preparar una cuenta
+  recuperable y comprobar listar → recuperar → ausencia de duplicado;
 - artículo varios e invitación;
 - cambio y unión de mesas como operaciones completas del TPV.
 
@@ -143,9 +159,12 @@ T7 queda **BLOQUEADA** hasta disponer de:
 
 ## Decisión y siguiente paso
 
-La Etapa 5 queda **abierta** con prevuelo documentado. El siguiente trabajo
-es preparar la especificación y el contrato QA-3 de T5/T6, empezando por las
-operaciones de cuenta/mesa y los métodos de cobro sin ejecutar cargos reales.
+La Etapa 5 queda **abierta** con prevuelo documentado. La primera corrección
+del bloque T5 ya está implementada en código y su contrato está cubierto; el
+siguiente trabajo es desplegarla a un preview QA y comprobar con datos de QA
+el flujo listar → recuperar → comprobar que no duplica la cuenta. Después
+habrá que completar las operaciones de mesa y los métodos de cobro sin
+ejecutar cargos reales.
 Después habrá que elegir el proveedor/destino de email y aportar una
 impresora de prueba para desbloquear T7. Solo tras implementar y repetir
 T5–T7 en QA se podrá declarar «ETAPA 5 CERRADA».
