@@ -38,6 +38,13 @@ for (const [nombre, bundle] of fuentes) {
   // AUD-005: los roles retirados no se ofrecen al crear una ficha nueva.
   assert.match(bundle, /var NOMBRES_ROLES_ALTA = NOMBRES_ROLES\.filter/);
   assert.match(bundle, /NOMBRES_ROLES_ALTA\.concat\(ROLES_RETIRADOS\.includes\(form\.rol\)/);
+  const cuentaIni = bundle.indexOf("function ModalCrearCuenta(");
+  const cuentaFin = bundle.indexOf("function etiquetaContextoPM15", cuentaIni);
+  const cuenta = bundle.slice(cuentaIni, cuentaFin);
+  assert.match(cuenta, /NOMBRES_ROLES_ALTA\.map/,
+    `${nombre}: Crear cuenta usa solo roles activos`);
+  assert.doesNotMatch(cuenta, /value: "Churrero\/a"/,
+    `${nombre}: Crear cuenta no ofrece Churrero\/a`);
 
   // AUD-007: el contenido principal puede encogerse y el móvil no arrastra el
   // ancho mínimo de tablas, controles o tarjetas.
