@@ -123608,6 +123608,10 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   async function recuperarCuentaSeleccionadaA06(cuenta) {
     const cuentaId = String(cuenta?.cuenta_id || "").trim();
     if (!cuentaId || typeof recuperarCuentaA06 !== "function") return;
+    if (estadoBorradorA06?.estado === "ACTIVO" && carrito.length > 0) {
+      setErrorCuentasA06("Tienes un borrador local activo. Guárdalo o vacíalo antes de recuperar otra cuenta. El borrador no se ha borrado ni mezclado con la cuenta del servidor.");
+      return;
+    }
     setRecuperandoCuentaA06(cuentaId);
     setErrorCuentasA06("");
     const resultado = await recuperarCuentaA06(cuentaId, cuenta);

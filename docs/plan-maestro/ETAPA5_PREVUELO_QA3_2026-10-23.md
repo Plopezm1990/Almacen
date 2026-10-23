@@ -223,3 +223,11 @@ no aparece en las capturas posteriores. Estas pruebas no permiten concluir
 si se conservó o se descartó; debe verificarse por separado antes de aceptar
 la política de borrador local como parte de T5. Tampoco se extrapola este
 PASS a roles sin `ABC_CAJA_OPERAR`.
+
+Como cierre preventivo de esa ambigüedad, la interfaz bloquea ahora la acción
+`Recuperar cuenta` cuando existe un borrador local activo. El aviso indica que
+hay que guardarlo o vaciarlo primero y confirma que no se ha borrado ni mezclado
+con la cuenta del servidor. La guarda se ejecuta antes de llamar a la RPC, por
+lo que una recuperación nunca puede sustituir silenciosamente un carrito local.
+El contrato
+`tests/plan-maestro/etapa5-recuperacion-borrador-contract.mjs` fija este orden.
