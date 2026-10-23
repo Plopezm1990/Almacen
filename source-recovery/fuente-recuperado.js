@@ -11758,6 +11758,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (!hayConexion) return { ok: false, error: "El traslado de mesa necesita conexión con el servidor." };
       const supabase = await window.getSupabaseClient();
       const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const motivoOperacion = motivoLimpio.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "motivo";
       const operationId = [
         "a07.2.move",
         contexto.cuentaId,
@@ -11767,7 +11768,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         mesaOrigenVersion,
         mesaDestinoVersion,
         nComensales,
-        motivoLimpio.slice(0, 48)
+        motivoOperacion
       ].join(".");
 
       const movimiento = await rpcA02ConRecuperacion(supabase, "abc_mover_cuenta_mesa", {
@@ -11817,12 +11818,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (!hayConexion) return { ok: false, error: "El relevo de responsable necesita conexión con el servidor." };
       const supabase = await window.getSupabaseClient();
       const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const motivoOperacion = motivoLimpio.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "motivo";
       const operationId = [
         "a07.2.responsable",
         contexto.cuentaId,
         responsableId,
         cuentaVersion,
-        motivoLimpio.slice(0, 48)
+        motivoOperacion
       ].join(".");
 
       const cambio = await rpcA02ConRecuperacion(supabase, "abc_cambiar_responsable_cuenta", {
