@@ -6,6 +6,7 @@ import {
 } from "../_shared/tenant-scope.js";
 
 const SITE_HOST = "chic-entremet-9107cf.netlify.app";
+const QA_PROJECT_ID = "qjqorixtkilwsndqayyx";
 
 const TITULOS_CLIENTE = new Set([
   "Lote caducado",
@@ -41,6 +42,34 @@ const ROLES_DESTINO: Record<string, string[]> = {
   "Lote a punto de caducar": ["Propietario", "Encargado", "Churrero/a"],
   "Error en el programa": ["Propietario", "Encargado"],
 };
+
+// A push provider that stops responding must not keep the Edge Function open
+// until the platform runtime kills it. Recipients are sent in parallel, but
+// each individual delivery has a bounded wait and is reported to the caller.
+const PUSH_SEND_TIMEOUT_MS = 12000;
+
+function pushTimeoutError() {
+  const error = new Error("push_send_timeout");
+  (error as Error & { code?: string }).code = "PUSH_SEND_TIMEOUT";
+  return error;
+}
+
+async function sendPushWithTimeout(subscription: any, payload: string) {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      webpush.sendNotification(
+        { endpoint: subscription.endpoint, keys: { p256dh: subscription.p256dh, auth: subscription.auth } },
+        payload,
+      ),
+      new Promise((_, reject) => {
+        timer = setTimeout(() => reject(pushTimeoutError()), PUSH_SEND_TIMEOUT_MS);
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
+}
 
 function origenPermitido(origen: string) {
   if (!origen) return true;
@@ -148,9 +177,19 @@ Deno.serve(async (req: Request) => {
     const url = clean(body?.url, 200) || "/";
     let empresaId = clean(body?.empresaId, 120);
     const localId = clean(body?.localId, 120);
+    const aud010QaTest = body?.aud010Prueba === true;
 
     if (!titulo || !cuerpo) return json(req, 400, { ok: false, error: "Falta título o cuerpo." });
     if (url !== "/") return json(req, 400, { ok: false, error: "Destino no permitido." });
+
+    if (aud010QaTest) {
+      if (auth.mode !== "user" || !supabaseUrl.includes(QA_PROJECT_ID)) {
+        return json(req, 403, { ok: false, error: "La prueba AUD-010 solo está disponible para una sesión de usuario en QA." });
+      }
+      if (titulo !== "Error en el programa") {
+        return json(req, 400, { ok: false, error: "La prueba AUD-010 usa únicamente el tipo de aviso permitido de error." });
+      }
+    }
 
     const permitidos = auth.mode === "internal" ? TITULOS_INTERNOS : TITULOS_CLIENTE;
     if (!permitidos.has(titulo)) return json(req, 403, { ok: false, error: "Tipo de notificación no permitido." });
@@ -244,17 +283,18 @@ Deno.serve(async (req: Request) => {
     webpush.setVapidDetails("mailto:admin@chocoloyos.local", vapidPublic, vapidPrivate);
     const payload = JSON.stringify({ titulo, cuerpo, url: "/" });
     let enviados = 0;
+    let errores = 0;
+    let timeouts = 0;
     const expired: string[] = [];
 
     await Promise.all(recipients.map(async (s: any) => {
       try {
-        await webpush.sendNotification(
-          { endpoint: s.endpoint, keys: { p256dh: s.p256dh, auth: s.auth } },
-          payload,
-        );
+        await sendPushWithTimeout(s, payload);
         enviados++;
       } catch (e: any) {
         if (e?.statusCode === 404 || e?.statusCode === 410) expired.push(s.endpoint);
+        else if (e?.code === "PUSH_SEND_TIMEOUT") timeouts++;
+        else errores++;
       }
     }));
 
@@ -262,13 +302,17 @@ Deno.serve(async (req: Request) => {
       await admin.from("suscripciones_push").delete().in("endpoint", expired);
     }
 
-    return json(req, 200, {
-      ok: true,
+    const ok = errores === 0 && timeouts === 0;
+    return json(req, ok ? 200 : 502, {
+      ok,
       empresaId,
       localId: localId || null,
       enviados,
       caducados: expired.length,
       destinatarios: recipients.length,
+      errores,
+      timeouts,
+      qaTest: aud010QaTest,
     });
   } catch {
     return json(req, 500, { ok: false, error: "Error inesperado enviando la notificación." });

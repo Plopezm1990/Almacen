@@ -540,6 +540,16 @@
       "environment": "node"
     },
     {
+      "path": "tests/f5/f5-etapa3-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/f5-etapa4-t1-t4-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/g1/p02-evidence-map-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
