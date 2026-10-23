@@ -23,6 +23,24 @@ Se preparó un fixture controlado mediante la interfaz visible de QA:
   `8175b6d3-cefe-4f33-9b2d-578c9e67b351`.
 - No se cobró ni se envió la comanda.
 
+### Repetición A05 con cuenta recuperada
+
+Para separar el bloqueo de sala del estado `BORRADOR`, se repitió el flujo en
+QA con cuentas recuperables y sin abrir ningún control de cobro:
+
+- Primera repetición: `Pedido guardado` y después `Pedido enviado`, total
+  `2,00 €`, 1 línea de `Agua 50 cl (QA)`, cuenta
+  `e3724c02-bfd2-4a7d-aac3-70d97f8d00f4`, pedido
+  `ecc2efc6-0fbb-4ba7-bc7d-b40b8a35fdd6`.
+- Segunda repetición: `Pedido guardado` y después `Pedido enviado`, total
+  `2,00 €`, 1 línea de `Agua 50 cl (QA)`, cuenta
+  `b4a7c8ec-7213-4c88-8396-38faec9b4f9c`, pedido
+  `5926d1f4-ca45-452a-a2b6-d194664a96d0`.
+- En ambos casos el estado final visible fue `ENVIADO` y la línea quedó
+  `ENVIADA`; el cobro permaneció en `0,00 €` confirmado, con el importe
+  pendiente.
+- No se inició preparación, no se canceló ninguna línea y no se cobró.
+
 Resultado: **PASS parcial** para el caso de un producto catalogado usado como
 fixture de artículo QA.
 
@@ -56,9 +74,26 @@ visible.
 - No apareció confirmación ni error visible.
 - El formulario permaneció abierto después de varios intentos.
 
-Resultado: **BLOQUEADO / no concluyente**; no es PASS. El pedido sigue en
-`BORRADOR`, por lo que falta repetir esta prueba con la comanda confirmada y
-enviada a Cocina, sin cobrar.
+Resultado de la primera ronda: **BLOQUEADO / no concluyente**; no es PASS. El
+pedido de esa cuenta seguía en `BORRADOR`.
+
+### Repetición con pedido enviado
+
+Después de enviar dos pedidos QA sin cobro, se recuperó de nuevo una cuenta
+con una línea `ENVIADA`, se abrió `Mesa QA-A1-01`, se mantuvieron 2 comensales
+y se pulsó `Asignar esta cuenta` una vez, con una repetición controlada para
+confirmar el evento. El resultado fue idéntico en ambas comprobaciones:
+
+- La mesa continuó en `LIBRE · 0/4 personas`.
+- El formulario `Asignar Mesa QA-A1-01` permaneció abierto.
+- No apareció `role=alert`, confirmación ni cambio de ubicación.
+- La cuenta siguió mostrando el pedido `ENVIADO` y la línea `ENVIADA`.
+
+Resultado de la repetición: **FAIL / BLOQUEADO reproducible**. El bloqueo ya
+no puede atribuirse a que la comanda estuviera en `BORRADOR`; queda pendiente
+diagnosticar la RPC `abc_asignar_cuenta_mesa`, sus versiones de cuenta/mesa o
+la propagación del error al estado de la UI. No se hicieron más intentos para
+evitar escrituras duplicadas.
 
 ## 4. Descuento/cortesía A09
 
@@ -99,10 +134,10 @@ registró cobros.
 
 ### Siguiente paso
 
-1. Repetir la asignación de mesa con la línea confirmada y el pedido enviado a
-   Cocina; el intento actual queda bloqueado porque la línea sigue en
-   `BORRADOR` y el botón no muestra resultado.
-2. Validar el envío a Cocina del fixture `Artículo varios (QA)` sin cobrar.
+1. Diagnosticar y corregir el bloqueo reproducible de la asignación de mesa;
+   no repetir la RPC desde la UI hasta tener trazabilidad del error.
+2. Validar en Cocina el envío del fixture `Artículo varios (QA)` sin cobrar;
+   los dos envíos usados en la repetición fueron de `Agua 50 cl (QA)`.
 3. Si el plan exige probar el efecto económico, ejecutar una solicitud A09 de
    cortesía solo con el motivo y la autorización QA requeridos; no cobrar.
 4. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
