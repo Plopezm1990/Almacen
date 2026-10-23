@@ -123,6 +123,21 @@ Resultado: **PASS** para lectura de líneas y controles de seguridad A09;
 queda pendiente probar una solicitud de cortesía autorizada en un caso de QA
 aislado, si el plan lo exige.
 
+### Prueba A09 de cortesía
+
+Se seleccionó `Cortesía`, se indicó el motivo `Prueba QA Etapa 5: cortesía sin
+cobro` y se usó `Aplicar / solicitar` sobre la cuenta QA. El servidor confirmó
+la operación y recargó la cuenta:
+
+- `COURTESY · €1,82 · 1 reparto`;
+- evento `CUENTA_DESCUENTO_APLICADO`;
+- `Aplicaciones registradas · 1`;
+- sin autorizaciones pendientes;
+- sin movimientos de caja asociados.
+
+El panel de cobro quedó en `Total €0,00`, `Confirmado €0,00` y `Pendiente
+€0,00`. Resultado: **PASS** para la cortesía QA sin cobro.
+
 ## 5. Catálogo visible
 
 En este preview ya están visibles los fixtures siguientes:
@@ -163,12 +178,10 @@ comanda.
 La ronda se mantuvo en QA, no accedió a PROD, no ejecutó SQL directo y no
 registró cobros.
 
-**La asignación de mesa y el enrutamiento de la nueva comanda quedan PASS. T5
-continúa PARCIAL y la Etapa 5 permanece ABIERTA.**
+**La asignación de mesa, el enrutamiento de la nueva comanda y la cortesía QA
+sin cobro quedan PASS. T5 continúa PARCIAL y la Etapa 5 permanece ABIERTA.**
 
 ### Siguiente paso
 
-1. Si el plan exige probar el efecto económico, ejecutar una solicitud A09 de
-   cortesía solo con el motivo y la autorización QA requeridos; no cobrar.
-2. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
+1. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
    (impresora, puente y cajón) hasta disponer de sus entornos/equipos de QA.
