@@ -69,6 +69,20 @@ idempotente, capacidad QA separada y un adaptador simulado que no contacte con
 un proveedor ni genere un movimiento de caja real. Hasta entonces, cualquier
 intento de cobro Bizum debe seguir rechazándose.
 
+### Handshake server-side preparado
+
+Se añadió la migración
+`20261023190144_t6_bizum_qa_simulated_adapter.sql` con la RPC
+`abc_preparar_bizum_qa`. Es un handshake `SECURITY INVOKER` para validar los
+parámetros mínimos y devolver un plan `PREPARADO_QA`. Declara explícitamente
+`provider_started=false`, `cash_movement=false` y `write_performed=false`.
+
+La RPC no crea pagos, no reserva saldo, no cambia el checkout y no añade
+`BIZUM` a `abc_iniciar_cobro`. Solo se concede `EXECUTE` al rol
+`authenticated`; la migración no se ha aplicado todavía a QA en esta ronda.
+La aplicación seguirá usando el botón local hasta que el adaptador operativo
+se diseñe y se pruebe con una capacidad QA separada.
+
 ## 6. Verificación QA del primer subpunto
 
 En el preview 175 se abrió `Cobro · F4` sobre el pedido QA existente de 2,00
@@ -90,8 +104,10 @@ visible; Bizum operativo pendiente; T6 no cerrada.
 
 ### Lo siguiente
 
-El contrato de seguridad de Bizum queda cubierto en código y pruebas, pero el
-flujo operativo sigue pendiente. El siguiente trabajo es implementar en QA el
-medio explícito, el estado pendiente, la idempotencia y la resolución del
-adaptador simulado, sin conectar un proveedor ni registrar un cobro. Después
-se documentarán los bloqueos de propina, vale, factura y email.
+El contrato de seguridad y el handshake server-side de Bizum quedan preparados
+en código y pruebas, pero el flujo operativo sigue pendiente. El siguiente
+trabajo es aplicar el handshake únicamente en QA, verificar su respuesta sin
+escrituras y después implementar el medio explícito, el estado pendiente, la
+idempotencia y la resolución del adaptador simulado. No se conectará un
+proveedor ni se registrará un cobro. Después se documentarán los bloqueos de
+propina, vale, factura y email.
