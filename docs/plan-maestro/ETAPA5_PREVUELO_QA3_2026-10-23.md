@@ -2,7 +2,7 @@
 
 Fecha: 23/10/2026  
 Ámbito: exclusivamente Plan Maestro L&A Suite  
-Preview QA inspeccionado: `deploy-preview-172--chic-entremet-9107cf.netlify.app`  
+Preview QA inspeccionado: `deploy-preview-175--chic-entremet-9107cf.netlify.app`
 Entorno: QA · `QA Empresa A, S.L.` · `Local A1`  
 Producción: no tocada
 
@@ -121,9 +121,6 @@ En la pantalla TPV y en el código actual no se han localizado aún:
 - billetes rápidos;
 - factura a empresa con NIF y numeración propia desde el cobro;
 - envío de factura/ticket por email;
-- completar la validación de movimientos de caja desde el TPV: el acceso y
-  sus contratos ya están implementados, pero falta registrar y revertir una
-  entrada y una retirada controladas en el preview actualizado;
 - artículo varios e invitación;
 - cambio y unión de mesas como operaciones completas del TPV.
 
@@ -167,8 +164,8 @@ T7 queda **BLOQUEADA** hasta disponer de:
 La Etapa 5 queda **abierta** con prevuelo documentado. Los flujos
 aparcar → listar → recuperar → comprobar que no se duplica la cuenta ya
 pasaron en QA con el propietario de prueba. El acceso TPV a entradas y
-retiradas está implementado y pendiente de su prueba manual controlada. Aún
-faltan otras operaciones de T5 y los métodos de cobro de T6, sin ejecutar
+retiradas está implementado y validado mediante una prueba manual controlada.
+Aún faltan otras operaciones de T5 y los métodos de cobro de T6, sin ejecutar
 cargos reales.
 Después habrá que elegir el proveedor/destino de email y aportar una
 impresora de prueba para desbloquear T7. Solo tras implementar y repetir
@@ -270,7 +267,7 @@ figurar en el listado, `fa3d6151` permaneció visible y el pedido volvió con un
 un solo pedido activo, una sola línea activa y una unidad, sin duplicación. No
 se envió ni cobró el pedido. **Aparcar y recuperar cuenta: PASS QA.**
 
-## Entradas y retiradas de caja desde el TPV — implementado, pendiente QA
+## Entradas y retiradas de caja desde el TPV — PASS QA controlado
 
 Se añadió al TPV una sección visible `Caja · entradas y retiradas` con la
 acción `Abrir caja`. Al abrirla, el TPV resuelve primero el día operativo del
@@ -288,7 +285,25 @@ migración, escritura SQL directa ni operación sobre ventas o cobros.
 
 Los contratos `etapa5-tpv-movimientos-caja-contract.mjs`,
 `etapa5-t5-t6-ui-contract.mjs`, `pm08-caja-ui-runtime.mjs` y
-`p10-caja-contract.mjs` pasan. Este punto aún no es `PASS QA`: falta desplegar
-esta revisión y comprobar en el preview una entrada y una retirada pequeñas y
-controladas, además de su reversión trazable. Hasta entonces T5 y la Etapa 5
-permanecen abiertos.
+`p10-caja-contract.mjs` pasan.
+
+### Evidencia manual — preview 175
+
+El 23/10/2026 se abrió `Caja · entradas y retiradas` en QA, empresa
+`QA Empresa A, S.L.`, `Local A1`, con día operativo del servidor `2026-10-23`.
+Se registraron desde el TPV, sin cobro ni pedido nuevo:
+
+- una `ENTRADA` de `+0,01 €`, categoría `REPOSICION_CAJA`, concepto de prueba
+  de Etapa 5 y motivo de validación QA;
+- una `RETIRADA` de `-0,01 €`, categoría `RETIRADA_CAJA`, concepto de prueba
+  de Etapa 5 y motivo de validación QA.
+
+Después se ejecutó `Revertir con motivo` sobre ambas operaciones. La pantalla
+mostró las dos líneas originales y sus correcciones auditables:
+`REVERSO_ENTRADA` de `-0,01 €` y `REVERSO_RETIRADA` de `+0,01 €`, ambas con
+el motivo `Reversión de prueba QA Etapa 5` y el mensaje `El movimiento
+original se conserva` / `Movimiento revertido; se conserva para auditoría`.
+La suma neta de las cuatro líneas es `0,00 €`, por lo que el saldo vuelve al
+valor inicial. La prueba no accedió a PROD, no registró cobros, no envió
+pedidos, no ejecutó SQL directo y no usó RPC manual fuera del flujo visible.
+**Entradas, retirada y reversión trazable: PASS QA.**
