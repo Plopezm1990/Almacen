@@ -204,26 +204,33 @@ aplicación antes de intentar crear datos adicionales:
   mesas incompatibles. La acción no registra cobros.
 
 En el deploy exacto de la rama (`Deploy Preview #175`, commit `8bf6fca`), se
-inició sesión en el preview de QA, se recuperó la cuenta autorizada terminada
-en `7f02d9e7` y se abrió `Repartir productos`. El TPV mostró el selector de
-cuenta destino, el campo de motivo obligatorio y el botón `Unir cuenta origen
-con destino`. La unión no se ejecutó y no se registró ningún cobro. Resultado:
-**PASS de presencia/guardas de interfaz** para la unión; la prueba funcional
-debe seguir pendiente hasta disponer de una segunda cuenta/mesa aislada.
+inició sesión en el preview de QA, se recuperó una cuenta autorizada y se
+abrió `Repartir productos`. El TPV mostró el selector de cuenta destino, el
+campo de motivo obligatorio y el botón `Unir cuenta origen con destino`.
 
-Por tanto, no es válido marcar como PASS “cambiar mesa” ni “unir mesas”. El
-cambio de mesa y la unión funcional siguen **BLOQUEADOS por falta de
-fixture/configuración accesible**. El próximo trabajo debe habilitar la
-segunda mesa mediante un flujo autenticado del propietario o un fixture QA
-autorizado y repetir la prueba desde el TPV.
-No se debe usar una escritura SQL directa ni cambiar de local para simular una
-segunda mesa.
+La primera tentativa quedó correctamente bloqueada porque el pedido origen
+seguía editable. Sin modificar datos por fuera de la aplicación, se avanzó la
+línea QA por el flujo operativo visible: `EN_PREPARACION` → `PREPARADO` →
+`SERVIDO`, sin cobro. La segunda tentativa fue aceptada por el servidor y
+mostró: `Cuentas unidas correctamente. La cuenta origen se ha cerrado; no se
+ha creado ningún cobro.` La comprobación inmediata mantuvo el pedido servido,
+`Confirmado €0,00` y `Pendiente €2,00`.
+
+Resultado: **PASS funcional** para “unir cuentas” sin cobro, con guardas de
+pedido editable y estado terminal verificadas. No se debe confundir esta
+operación con “cambiar mesa”: el cambio de mesa sigue **BLOQUEADO** porque QA
+solo expone una mesa activa (`Mesa QA-A1-01`).
+
+El próximo trabajo debe habilitar una segunda mesa mediante un flujo
+autenticado del propietario o un fixture QA autorizado y repetir la prueba de
+“cambiar mesa” desde el TPV. No se debe usar una escritura SQL directa ni
+cambiar de local para simular una segunda mesa.
 
 ### Siguiente paso
 
 1. Habilitar en QA una segunda mesa en `SALA-QA` mediante el flujo autenticado
    soportado y crear una segunda cuenta operativa sin cobro.
-2. Repetir “cambiar mesa” y “unir mesas” y verificar que las líneas, cocina,
-   cortesías y cobros pendientes se conservan.
+2. Repetir “cambiar mesa” y verificar que las líneas, cocina, cortesías y
+   cobros pendientes se conservan.
 3. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
    (impresora, puente y cajón) hasta disponer de sus entornos/equipos de QA.
