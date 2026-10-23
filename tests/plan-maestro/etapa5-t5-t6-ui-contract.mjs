@@ -15,6 +15,7 @@ const baseT5T6 = [
   ["cobro en efectivo", /Cobrar efectivo/],
   ["tarjeta simulada QA", /Iniciar tarjeta simulada/],
   ["billetes rápidos", /Billetes rápidos/],
+  ["preparación Bizum QA", /Preparar Bizum QA/],
   ["cobro server-side", /iniciarCobroCuentaF4\(medioSolicitado = "EFECTIVO"/],
   ["recuperación server-side de cuenta", /abc_recuperar_cuenta/],
   ["listado server-side de cuentas recuperables", /abc_listar_cuentas_recuperables/],
@@ -36,7 +37,7 @@ for (const [nombre, patron] of baseT5T6) {
 }
 
 const ausenciasConocidas = [
-  ["Bizum", /Bizum/],
+  ["Bizum operativo", /iniciarCobroCuentaF4\(["']BIZUM/],
   ["propina", /propina/i],
   ["vale regalo", /vale regalo/i],
   ["billetes rápidos", /billetes rápidos/i],

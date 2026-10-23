@@ -37,7 +37,20 @@ caja. El cobro sigue necesitando la acción explícita «Cobrar efectivo».
   destinatario/proveedor definidos; no se inventaron esos datos.
 - No se tocó PROD ni se hicieron escrituras SQL directas.
 
-## 4. Verificación QA del primer subpunto
+## 4. Preparación segura de Bizum
+
+Se añadió el botón `Preparar Bizum QA` junto al efectivo y la tarjeta. Esta
+acción solo deja constancia local de que el método está seleccionado para la
+prueba y muestra el aviso de que no se ha iniciado ningún cobro ni se ha
+contactado con un proveedor.
+
+No se ha añadido todavía `BIZUM` como medio aceptado por
+`abc_iniciar_cobro`. El servidor actual trabaja con medios genéricos
+(`TRANSFERENCIA`/`OTRO`) y mapear Bizum silenciosamente a uno de ellos podría
+producir un pago mal clasificado. Por eso la parte operativa queda pendiente
+de un contrato explícito de servidor y de un adaptador QA sin dinero real.
+
+## 5. Verificación QA del primer subpunto
 
 En el preview 175 se abrió `Cobro · F4` sobre el pedido QA existente de 2,00
 euros y se pulsó `€10`. El resultado visible fue:
@@ -53,10 +66,12 @@ se cobró ni se cambió; no se abrió un intento de pago nuevo.
 Después se repetirá el contrato T6 y se decidirá el diseño seguro de Bizum
 antes de cualquier intento de cobro.
 
-**Estado:** T6 iniciada; billetes rápidos **PASS QA**; T6 no cerrada.
+**Estado:** T6 iniciada; billetes rápidos **PASS QA**; preparación Bizum QA
+visible; Bizum operativo pendiente; T6 no cerrada.
 
 ### Lo siguiente
 
-Verificar en QA los billetes rápidos sin pulsar «Cobrar efectivo». Después,
-preparar el contrato de Bizum como método pendiente/simulado, sin proveedor ni
-cobro real, y documentar los bloqueos de propina, vale, factura y email.
+El siguiente trabajo es definir el contrato explícito de Bizum para QA —medio,
+estado pendiente, idempotencia y resolución del adaptador— sin conectar un
+proveedor ni registrar un cobro. Después se documentarán los bloqueos de
+propina, vale, factura y email.
