@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 308,
+  "total_inventory": 310,
   "expected_counts": {
-    "active_contract": 291,
+    "active_contract": 293,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 261,
+      "active_contract": 263,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -1572,6 +1572,16 @@
     },
     {
       "path": "tests/pm17/p05-edge-push-timeout-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/etapa5-t6-bizum-qa-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/etapa5-t6-tarjeta-qa-resolver-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     }
