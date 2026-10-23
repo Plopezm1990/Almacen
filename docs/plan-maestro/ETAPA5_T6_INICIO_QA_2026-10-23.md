@@ -50,7 +50,26 @@ No se ha añadido todavía `BIZUM` como medio aceptado por
 producir un pago mal clasificado. Por eso la parte operativa queda pendiente
 de un contrato explícito de servidor y de un adaptador QA sin dinero real.
 
-## 5. Verificación QA del primer subpunto
+## 5. Contrato de seguridad de Bizum QA
+
+Se dejó una prueba de contrato en
+`tests/plan-maestro/etapa5-t6-bizum-qa-contract.mjs`. La prueba fija tres
+límites antes de ampliar el cobro:
+
+1. `Preparar Bizum QA` solo cambia el estado local de la interfaz y no llama a
+   `iniciarCobroCuentaF4`.
+2. La lista de medios del cliente sigue limitada a efectivo y tarjeta
+   simulada.
+3. La RPC `abc_iniciar_cobro` no acepta `BIZUM` y no puede convertirlo
+   silenciosamente en `TRANSFERENCIA` u `OTRO`.
+
+El contrato operativo que falta para cerrar Bizum debe aportar, como mínimo,
+un medio `BIZUM` explícito, estado pendiente inequívoco, `operation_id`
+idempotente, capacidad QA separada y un adaptador simulado que no contacte con
+un proveedor ni genere un movimiento de caja real. Hasta entonces, cualquier
+intento de cobro Bizum debe seguir rechazándose.
+
+## 6. Verificación QA del primer subpunto
 
 En el preview 175 se abrió `Cobro · F4` sobre el pedido QA existente de 2,00
 euros y se pulsó `€10`. El resultado visible fue:
@@ -71,7 +90,8 @@ visible; Bizum operativo pendiente; T6 no cerrada.
 
 ### Lo siguiente
 
-El siguiente trabajo es definir el contrato explícito de Bizum para QA —medio,
-estado pendiente, idempotencia y resolución del adaptador— sin conectar un
-proveedor ni registrar un cobro. Después se documentarán los bloqueos de
-propina, vale, factura y email.
+El contrato de seguridad de Bizum queda cubierto en código y pruebas, pero el
+flujo operativo sigue pendiente. El siguiente trabajo es implementar en QA el
+medio explícito, el estado pendiente, la idempotencia y la resolución del
+adaptador simulado, sin conectar un proveedor ni registrar un cobro. Después
+se documentarán los bloqueos de propina, vale, factura y email.
