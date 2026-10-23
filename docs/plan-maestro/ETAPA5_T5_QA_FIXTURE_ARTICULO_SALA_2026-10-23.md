@@ -178,8 +178,10 @@ comanda.
 La ronda se mantuvo en QA, no accedió a PROD, no ejecutó SQL directo y no
 registró cobros.
 
-**La asignación de mesa, el enrutamiento de la nueva comanda y la cortesía QA
-sin cobro quedan PASS. T5 continúa PARCIAL y la Etapa 5 permanece ABIERTA.**
+En ese punto intermedio, la asignación de mesa, el enrutamiento de la nueva
+comanda y la cortesía QA sin cobro quedaban PASS; el cambio de mesa aún estaba
+pendiente de la fixture de segunda mesa. La revalidación final y el cierre se
+documentan en la revalidación final y en el cierre T5.
 
 ### Revalidación de cambio y unión de mesas
 
@@ -218,13 +220,7 @@ ha creado ningún cobro.` La comprobación inmediata mantuvo el pedido servido,
 
 Resultado: **PASS funcional** para “unir cuentas” sin cobro, con guardas de
 pedido editable y estado terminal verificadas. No se debe confundir esta
-operación con “cambiar mesa”: el cambio de mesa sigue **BLOQUEADO** porque QA
-solo expone una mesa activa (`Mesa QA-A1-01`).
-
-El próximo trabajo debe habilitar una segunda mesa mediante un flujo
-autenticado del propietario o un fixture QA autorizado y repetir la prueba de
-“cambiar mesa” desde el TPV. No se debe usar una escritura SQL directa ni
-cambiar de local para simular una segunda mesa.
+operación con “cambiar mesa”.
 
 ### Preparación del flujo autenticado de fixture
 
@@ -240,15 +236,58 @@ pantalla:
   `abc_crear_mesa`;
 - no expone inserciones, actualizaciones ni borrados directos de tablas.
 
-La pantalla está preparada en la rama, pero T5 no se marca como cerrado hasta
-que el preview autenticado confirme la creación de la segunda mesa y pase el
-traslado de una cuenta real sin cobro.
+En el preview autenticado se ejecutó la pantalla con la sesión del Propietario
+en QA. Se creó mediante `abc_crear_mesa` la fixture:
 
-### Siguiente paso
+- código: `M-QA-02`;
+- nombre: `Mesa QA-A1-02`;
+- capacidad: `4`;
+- orden: `1`;
+- zona: `SALA-QA` / sala `Sala QA-A1`.
 
-1. Habilitar en QA una segunda mesa en `SALA-QA` mediante el flujo autenticado
-   soportado y crear una segunda cuenta operativa sin cobro.
-2. Repetir “cambiar mesa” y verificar que las líneas, cocina, cortesías y
-   cobros pendientes se conservan.
-3. Mantener pendientes T6 (Bizum, propina, vale regalo, factura y email) y T7
-   (impresora, puente y cajón) hasta disponer de sus entornos/equipos de QA.
+La confirmación visible fue `Mesa Mesa QA-A1-02 creada mediante la RPC
+autorizada`. El motivo se indicó en pantalla para el caso de QA; la RPC no
+recibe ese texto como columna de auditoría. No se ejecutó escritura SQL directa.
+
+La creación dejó dos mesas activas en el mapa: `Mesa QA-A1-01` y
+`Mesa QA-A1-02`.
+
+### Revalidación final del cambio de mesa
+
+La primera repetición descubrió un defecto adicional: el `operation_id` del
+traslado incorporaba el motivo con espacios, y el servidor devolvía
+`operation_id_invalido`. Se corrigió la normalización del identificador en
+`fuente.js` y `source-recovery/fuente-recuperado.js`, se ejecutaron las pruebas
+locales de sintaxis y contratos y se publicó el commit `3b93e51` en el Deploy
+Preview #175.
+
+Con el arreglo publicado se recuperó una cuenta QA del mismo día con una línea
+`Agua 50 cl (QA)`, se abrió el traslado a `Mesa QA-A1-02` y se confirmó con el
+motivo `Prueba T5 de traslado de mesa en QA, sin cobro`. El servidor aceptó la
+operación. La comprobación visible posterior mostró:
+
+- `Mesa QA-A1-01 LIBRE · 0/4 personas`;
+- `Mesa QA-A1-02 OCUPADA · 2/4 personas · 1 cuenta(s) activa(s)`;
+- la misma cuenta, con el pedido `ENVIADO` y la línea `Agua 50 cl (QA)` en
+  `ENVIADA`;
+- cobro intacto: `Total €2,00`, `Confirmado €0,00`, `Pendiente €2,00`.
+
+Se abrió también `Cocina` después del traslado. La estación
+`COCINA-QA · Cocina QA-A1` continuó configurada y la lista de comandas siguió
+mostrando las líneas existentes sin crear ningún cobro ni mover datos a PROD.
+
+Resultado: **PASS** para el cambio de mesa con conservación de cuenta,
+comensales, línea enviada y saldo pendiente.
+
+## 8. Cierre T5
+
+T5 queda **CERRADA** en QA para el alcance probado: fixture de artículo,
+recuperación, asignación y cambio de mesa, unión de cuentas, cortesía sin
+cobro, enrutamiento de cocina y conservación del pendiente de pago. No se
+registró ningún cobro, no se accedió a PROD y no se usó SQL directo.
+
+### Siguiente etapa
+
+La siguiente etapa del Plan Maestro L&A Suite es **T6**: completar la matriz de
+cobros y documentos pendientes —Bizum, propina, vale regalo, factura y email—
+en QA, manteniendo T7 (impresora, puente y cajón) como etapa posterior.

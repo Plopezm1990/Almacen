@@ -1304,7 +1304,7 @@ function ConfigSala({ empresaId, localId }) {
         p_operating_day: contexto.operatingDay
       });
       if (rpcError) throw rpcError;
-      setConfirmacion(`Mesa ${nombreLimpio} creada mediante la RPC autorizada. Motivo registrado en esta operación: ${motivo.trim()}`);
+      setConfirmacion(`Mesa ${nombreLimpio} creada mediante la RPC autorizada. Motivo indicado para la fixture QA: ${motivo.trim()}`);
       setCodigo("");
       setNombre("");
       setMotivo("");
