@@ -102824,24 +102824,18 @@ function ConfigOpciones({ empresaId, localId }) {
   const [formGrupo, setFormGrupo] = (0, import_react4.useState)(null);
   const [formOpcion, setFormOpcion] = (0, import_react4.useState)(null);
   const [formVinculo, setFormVinculo] = (0, import_react4.useState)(null);
-  const cargar = async (inactivos = verInactivos) => {
+  const cargar = async () => {
     setCargando(true);
     setError("");
     try {
       const supabase = await configCliente();
-      let qG = supabase.from("catalogo_tpv_grupos_opciones").select("id,nombre,tipo_grupo,orden,activo,version").eq("empresa_id", empresaId).eq("local_id", localId);
-      if (!inactivos) qG = qG.eq("activo", true);
-      const { data: g2, error: errG } = await qG.order("orden", { ascending: true });
+      const { data: g2, error: errG } = await supabase.from("catalogo_tpv_grupos_opciones").select("id,nombre,tipo_grupo,orden,activo,version").eq("empresa_id", empresaId).eq("local_id", localId).order("orden", { ascending: true });
       if (errG) throw errG;
       setGrupos(Array.isArray(g2) ? g2 : []);
-      let qO = supabase.from("catalogo_tpv_opciones").select("id,grupo_id,currency_code,nombre,tipo_opcion,delta_precio,hereda_impuesto,impuesto_pct,max_cantidad,orden,activo,version").eq("empresa_id", empresaId).eq("local_id", localId);
-      if (!inactivos) qO = qO.eq("activo", true);
-      const { data: o2, error: errO } = await qO.order("orden", { ascending: true });
+      const { data: o2, error: errO } = await supabase.from("catalogo_tpv_opciones").select("id,grupo_id,currency_code,nombre,tipo_opcion,delta_precio,hereda_impuesto,impuesto_pct,max_cantidad,orden,activo,version").eq("empresa_id", empresaId).eq("local_id", localId).order("orden", { ascending: true });
       if (errO) throw errO;
       setOpciones(Array.isArray(o2) ? o2 : []);
-      let qV = supabase.from("catalogo_tpv_producto_grupos").select("producto_id,currency_code,grupo_id,min_selecciones,max_selecciones,orden,activo,version").eq("empresa_id", empresaId).eq("local_id", localId);
-      if (!inactivos) qV = qV.eq("activo", true);
-      const { data: v2, error: errV } = await qV.order("orden", { ascending: true });
+      const { data: v2, error: errV } = await supabase.from("catalogo_tpv_producto_grupos").select("producto_id,currency_code,grupo_id,min_selecciones,max_selecciones,orden,activo,version").eq("empresa_id", empresaId).eq("local_id", localId).order("orden", { ascending: true });
       if (errV) throw errV;
       setVinculos(Array.isArray(v2) ? v2 : []);
       const { data: p2, error: errP } = await supabase.from("catalogo_tpv_productos").select("producto_id,currency_code,nombre,activo").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true).order("nombre", { ascending: true });
@@ -103011,22 +103005,21 @@ function ConfigOpciones({ empresaId, localId }) {
     listaOpciones.map(([v2, t3]) => h("option", { key: v2, value: v2 }, t3))
   );
   const gruposActivos = grupos.filter((g2) => g2.activo);
+  const gruposVisibles = grupos.filter((g2) => verInactivos || g2.activo);
+  const opcionesVisibles = opciones.filter((o2) => verInactivos || o2.activo);
   return h(
     "div",
     null,
     h(ConfigAviso, { error, confirmacion }),
     h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
-    h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: verInactivos, onChange: (e2) => {
-      setVerInactivos(e2.target.checked);
-      cargar(e2.target.checked);
-    } }), "Ver también los desactivados"),
+    h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: verInactivos, onChange: (e2) => setVerInactivos(e2.target.checked) }), "Ver también los desactivados"),
     h(
       Card,
       { className: "mb-3" },
       h("div", { className: "font-semibold mb-1" }, "Biblioteca: grupos de opciones"),
       h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Un grupo (p. ej. «Tamaño» o «Extras») se crea una sola vez y se puede enlazar a varios productos, sin duplicarlo. El tipo no se puede cambiar una vez creado."),
-      grupos.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún grupo en la biblioteca.") : null,
-      grupos.map((g2) => h(
+      gruposVisibles.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún grupo en la biblioteca.") : null,
+      gruposVisibles.map((g2) => h(
         "div",
         { key: g2.id, className: "flex items-start justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: g2.activo ? 1 : 0.6 } },
         h("div", { className: "text-[13px]" },
@@ -103067,8 +103060,8 @@ function ConfigOpciones({ empresaId, localId }) {
       { className: "mb-3" },
       h("div", { className: "font-semibold mb-1" }, "Biblioteca: opciones dentro de cada grupo"),
       h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Un grupo «Variante» solo admite opciones de tipo Variante; un grupo «Modificador» admite Extra, Retirada, Sustitución o Complemento."),
-      opciones.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ninguna opción.") : null,
-      opciones.map((o2) => h(
+      opcionesVisibles.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ninguna opción.") : null,
+      opcionesVisibles.map((o2) => h(
         "div",
         { key: o2.id, className: "flex items-start justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: o2.activo ? 1 : 0.6 } },
         h("div", { className: "text-[13px]" },
@@ -103081,11 +103074,11 @@ function ConfigOpciones({ empresaId, localId }) {
         )
       )),
       formOpcion ? null : h(Btn, { small: true, onClick: () => {
-        const grupoInicial = (grupos[0] || {}).id || "";
+        const grupoInicial = (gruposActivos[0] || {}).id || "";
         setFormOpcion({ ...vacioOpcion, grupoId: grupoInicial, tipoOpcion: tiposOpcionPara(grupoInicial)[0].id });
         setError("");
         setConfirmacion("");
-      }, disabled: ocupado || grupos.length === 0 }, grupos.length === 0 ? "Crea primero un grupo" : "Añadir una opción")
+      }, disabled: ocupado || gruposActivos.length === 0 }, gruposActivos.length === 0 ? "Crea primero un grupo activo" : "Añadir una opción")
     ),
     formOpcion ? h(
       Card,
@@ -103098,7 +103091,7 @@ function ConfigOpciones({ empresaId, localId }) {
           const tiposValidos = tiposOpcionPara(v2);
           const tipoCoherente = tiposValidos.some((x3) => x3.id === formOpcion.tipoOpcion) ? formOpcion.tipoOpcion : tiposValidos[0].id;
           setFormOpcion({ ...formOpcion, grupoId: v2, tipoOpcion: tipoCoherente });
-        }, grupos.map((g2) => [g2.id, g2.nombre]), ocupado || !!formOpcion.id)),
+        }, (formOpcion.id ? grupos : gruposActivos).map((g2) => [g2.id, g2.nombre]), ocupado || !!formOpcion.id)),
         h(Field, { label: "Moneda (3 letras)" }, h(Input, { value: formOpcion.currencyCode, onChange: (e2) => setFormOpcion({ ...formOpcion, currencyCode: e2.target.value.toUpperCase() }), maxLength: 3, disabled: ocupado || !!formOpcion.id })),
         h(Field, { label: "Nombre (hasta 80 caracteres)" }, h(Input, { value: formOpcion.nombre, onChange: (e2) => setFormOpcion({ ...formOpcion, nombre: e2.target.value }), maxLength: 80, disabled: ocupado })),
         h(Field, { label: "Tipo" }, campoSelect(formOpcion.tipoOpcion, (v2) => setFormOpcion({ ...formOpcion, tipoOpcion: v2 }), tiposOpcionPara(formOpcion.grupoId).map((x3) => [x3.id, x3.etiqueta]), ocupado)),

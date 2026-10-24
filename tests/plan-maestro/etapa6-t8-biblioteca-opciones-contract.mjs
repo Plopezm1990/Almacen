@@ -98,6 +98,27 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
     );
   }
 
+  // Hallazgo Cowork (prueba en vivo de T8 pieza 2, 24/10/2026): nombreGrupo solo podía
+  // resolver el nombre de un grupo que estuviera cargado en `grupos`; al filtrar esa lista en
+  // el propio servidor según "Ver también los desactivados", una opción de un grupo ya
+  // desactivado mostraba el id en crudo en vez del nombre, en cuanto se desactivaba el grupo.
+  // Corregido: ahora siempre se cargan todos los grupos y opciones, y el filtro de "ver
+  // desactivados" se aplica solo al mostrarlos, nunca a la carga.
+  assert.doesNotMatch(contenido, /if \(!inactivos\) qG/, `${nombre}: la carga de grupos ya no debe filtrar por activo en el propio servidor`);
+  assert.doesNotMatch(contenido, /if \(!inactivos\) qO/, `${nombre}: la carga de opciones ya no debe filtrar por activo en el propio servidor`);
+  assert.match(
+    contenido,
+    /const gruposVisibles = grupos\.filter\(\(g2\) => verInactivos \|\| g2\.activo\);/,
+    `${nombre}: falta gruposVisibles para filtrar solo al mostrar`
+  );
+  assert.match(
+    contenido,
+    /const opcionesVisibles = opciones\.filter\(\(o2\) => verInactivos \|\| o2\.activo\);/,
+    `${nombre}: falta opcionesVisibles para filtrar solo al mostrar`
+  );
+  assert.match(contenido, /gruposVisibles\.map\(\(g2\) => h\(/, `${nombre}: la lista de grupos debe recorrer gruposVisibles`);
+  assert.match(contenido, /opcionesVisibles\.map\(\(o2\) => h\(/, `${nombre}: la lista de opciones debe recorrer opcionesVisibles`);
+
   // T8, pieza 2 (24/10/2026, autorizada por Pedro con alcance "solo enlazar opciones"):
   // en vez de un panel de enlace suelto, una ficha por producto del catálogo TPV con sus
   // grupos enlazados y un botón para enlazar uno más, ahí mismo.
