@@ -10,6 +10,10 @@ const migracion = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20261024160000_t7_impresion_cajon_simulador.sql"),
   "utf8"
 );
+const migracionFix = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20261024170000_t7_fix_impresion_checkout_completado.sql"),
+  "utf8"
+);
 
 // Hoja QA-9 (Etapa 5, T7): impresión y cajón en modo simulador. Pedro
 // confirmó (24/10/2026) que no tiene impresora todavía, así que esta
@@ -122,7 +126,6 @@ assert.match(
   /not private\.abc_tiene_capacidad\(p_empresa_id,p_local_id,'ABC_CAJA_OPERAR'\)/,
   "Abrir el cajón debe exigir el mismo permiso que operar la caja"
 );
-assert.match(migracion, /if v_checkout\.estado <> 'PAGADO' then raise exception 'impresion_cuenta_no_pagada'; end if;/, "Solo se puede imprimir con la cuenta pagada");
 assert.match(migracion, /if v_equipo\.tipo <> 'IMPRESORA_TICKET' then raise exception 'impresion_equipo_tipo_incorrecto'; end if;/, "El equipo de impresión debe ser del tipo correcto");
 assert.match(migracion, /if v_equipo\.tipo <> 'CAJON_MONEDERO' then raise exception 'cajon_equipo_tipo_incorrecto'; end if;/, "El equipo de cajón debe ser del tipo correcto");
 assert.match(
@@ -138,6 +141,21 @@ assert.match(
 assert.match(migracion, /modo simulador: no hay conexión real con el aparato/, "El mensaje del servidor también debe dejar claro que es un simulador");
 assert.match(migracion, /grant execute on function public\.abc_simular_impresion_ticket[\s\S]*to authenticated;/, "abc_simular_impresion_ticket debe limitarse a usuarios autenticados");
 assert.match(migracion, /grant execute on function public\.abc_simular_apertura_cajon[\s\S]*to authenticated;/, "abc_simular_apertura_cajon debe limitarse a usuarios autenticados");
+
+// Hallazgo en prueba Cowork (24/10/2026): abc_simular_impresion_ticket
+// comprobaba v_checkout.estado <> 'PAGADO'. Pero "PAGADO" no es un valor
+// posible de checkouts.estado (solo admite ABIERTO/EN_COBRO/COMPLETADO/
+// CANCELADO) — es el estado AGREGADO que calcula abc_estado_cobro_cuenta
+// para la pantalla, no el valor real de la columna. "Imprimir ticket"
+// rechazaba siempre, incluso con una cuenta genuinamente pagada por
+// completo. La migración original (ya aplicada) se deja tal cual; la
+// corrección va en un archivo nuevo.
+assert.match(
+  migracionFix,
+  /if v_checkout\.estado <> 'COMPLETADO' then raise exception 'impresion_cuenta_no_pagada'; end if;/,
+  "La corrección debe comparar contra el valor real de checkouts.estado (COMPLETADO), no contra 'PAGADO'"
+);
+console.log("PLAN_MAESTRO_ETAPA5_T7_SIMULADOR_FIX_CHECKOUT_COMPLETADO=PASS");
 
 console.log("PLAN_MAESTRO_ETAPA5_T7_SIMULADOR_UI=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T7_SIMULADOR_SIEMPRE_VISIBLE_CAJON=PASS");
