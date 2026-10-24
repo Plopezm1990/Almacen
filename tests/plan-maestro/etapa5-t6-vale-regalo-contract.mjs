@@ -10,6 +10,10 @@ const migracion = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20261024120000_t6_vale_regalo.sql"),
   "utf8"
 );
+const migracionFix = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20261024130000_t6_vale_regalo_fix_gen_random_bytes.sql"),
+  "utf8"
+);
 
 // Hoja QA-7 (Etapa 5, T6, punto 5): «vale regalo». Importe libre, sin
 // caducidad (decisión de Pedro, 24/10/2026). Dos flujos separados: vender
@@ -166,8 +170,31 @@ assert.match(migracion, /grant execute on function public\.abc_emitir_vale_regal
 assert.match(migracion, /grant execute on function public\.abc_consultar_vale_regalo[\s\S]*to authenticated;/, "abc_consultar_vale_regalo debe limitarse a usuarios autenticados");
 assert.match(migracion, /grant execute on function public\.abc_confirmar_pago_vale_regalo[\s\S]*to authenticated;/, "abc_confirmar_pago_vale_regalo debe limitarse a usuarios autenticados");
 
+// Hallazgo en prueba Cowork (24/10/2026): abc_emitir_vale_regalo llamaba a
+// gen_random_bytes(4) sin especificar esquema. La función es security
+// definer con search_path='' y, en este entorno, pgcrypto está instalado
+// en el esquema "extensions" (no en "public" ni en pg_catalog, que sí se
+// busca siempre). La llamada fallaba siempre con
+// "function gen_random_bytes(integer) does not exist" — "Vender vale
+// regalo" nunca llegaba a crear ningún vale. La migración original
+// (ya aplicada en QA antes del hallazgo) se deja tal cual, como con
+// cualquier otro fallo de este proyecto — la corrección va en un archivo
+// nuevo, igual que ya hace pm11_crear_prefiltro_candidato en este mismo
+// proyecto.
+assert.match(
+  migracionFix,
+  /encode\(extensions\.gen_random_bytes\(4\),'hex'\)/,
+  "La corrección debe generar el código del vale con extensions.gen_random_bytes, igual que pm11_crear_prefiltro_candidato"
+);
+assert.match(
+  migracionFix,
+  /create or replace function public\.abc_emitir_vale_regalo/,
+  "La corrección debe reemplazar abc_emitir_vale_regalo manteniendo su firma"
+);
+
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_SECCION_UI=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_SIEMPRE_VISIBLE=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_CONEXION_COMPONENTE=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_PARIDAD_DUAL=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_MIGRACION=PASS");
+console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_FIX_GEN_RANDOM_BYTES=PASS");
