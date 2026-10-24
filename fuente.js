@@ -104853,7 +104853,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -105885,7 +105885,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -111240,6 +111240,16 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("ticket_correo_email_invalido")) return "Escribe un correo válido.";
     if (msg.includes("ticket_correo_checkout_no_encontrado")) return "No se encontró el cobro de esta cuenta.";
     if (msg.includes("ticket_correo_registro_parametros_invalidos")) return "No se pudo dejar constancia del envío del ticket.";
+    if (msg.includes("abc_vale_regalo_no_autorizado")) return "Tu usuario no tiene permiso para vender o canjear vales regalo.";
+    if (msg.includes("vale_regalo_importe_invalido")) return "Indica un importe válido para el vale.";
+    if (msg.includes("vale_regalo_parametros_requeridos") || msg.includes("vale_regalo_pago_parametros_invalidos")) return "Faltan datos para completar la operación del vale regalo.";
+    if (msg.includes("vale_regalo_codigo_no_generado")) return "No se pudo generar un código único para el vale. Inténtalo de nuevo.";
+    if (msg.includes("vale_regalo_codigo_requerido")) return "Escribe el código del vale regalo.";
+    if (msg.includes("vale_regalo_no_encontrado")) return "No se encontró ningún vale regalo con ese código.";
+    if (msg.includes("vale_regalo_intento_no_encontrado") || msg.includes("vale_regalo_pago_no_encontrado")) return "No se encontró el pago asociado a ese vale regalo.";
+    if (msg.includes("vale_regalo_medio_incorrecto") || msg.includes("vale_regalo_intento_ya_resuelto")) return "Este cobro no se puede resolver como vale regalo.";
+    if (msg.includes("vale_regalo_no_activo")) return "Ese vale no está activo (ya se agotó o fue anulado).";
+    if (msg.includes("vale_regalo_saldo_insuficiente")) return "El vale no tiene saldo suficiente para este importe.";
     return errorRpcA02(error);
   }
   async function leerEstadoCobroF4() {
@@ -111717,6 +111727,121 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const respuesta = invocacion.data || {};
       if (!respuesta.ok) return { ok: false, error: respuesta.error || "No se pudo enviar el ticket por correo." };
       return { ok: true, mensaje: respuesta.mensaje || `Ticket enviado a ${correo}.` };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+
+  // Hoja QA-7 (Etapa 5, T6): vale regalo. Venta (emitir) y canje, los dos
+  // sin tocar abc_iniciar_cobro ni abc_confirmar_efectivo: el canje usa el
+  // medio genérico "OTRO" que el servidor ya admitía, resuelto con la misma
+  // pieza interna (abc_resolver_intento) que ya usa el resolvedor de
+  // tarjeta simulado de QA-3. No entra dinero nuevo en caja al canjear: ya
+  // entró cuando se vendió el vale.
+  async function emitirValeRegaloF4({ importe } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para vender un vale regalo." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const importeNum = Number(importe);
+    if (!Number.isFinite(importeNum) || importeNum <= 0) return { ok: false, error: "Indica un importe válido para el vale." };
+    try {
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Vender un vale regalo necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data: cajaSesion, error: cajaError } = await supabase
+        .from("caja_sesiones").select("caja_id")
+        .eq("empresa_id", empresaId).eq("local_id", localActivoId)
+        .eq("id", terminal.sessionId).eq("estado", "ABIERTA").maybeSingle();
+      if (cajaError) throw cajaError;
+      if (!cajaSesion?.caja_id) throw new Error("sesion_caja_no_abierta");
+      const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localActivoId });
+      if (diaError) throw diaError;
+      const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+      if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+      const operationId = "t6.vale.emitir." + uuidA02();
+      const resultado = await rpcA02ConRecuperacion(supabase, "abc_emitir_vale_regalo", {
+        p_operation_id: operationId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_importe: importeNum, p_caja_id: cajaSesion.caja_id, p_session_id: terminal.sessionId,
+        p_terminal_id: terminal.terminalId, p_operating_day: operatingDay
+      }, empresaId, localActivoId, operationId);
+      return {
+        ok: true, codigo: resultado?.codigo, importe: resultado?.importe,
+        mensaje: `Vale regalo creado: ${resultado?.codigo} por €${Number(resultado?.importe).toFixed(2)}.`
+      };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function consultarValeRegaloF4(codigo) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para consultar el vale." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Consultar un vale regalo necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_consultar_vale_regalo", {
+        p_empresa_id: empresaId, p_local_id: localActivoId, p_codigo: codigo
+      });
+      if (error) throw error;
+      return { ok: true, ...data };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function pagarConValeRegaloF4({ codigo } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para cobrar con un vale regalo." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const codigoLimpio = String(codigo || "").trim().toUpperCase();
+    if (!codigoLimpio) return { ok: false, error: "Escribe el código del vale regalo." };
+    try {
+      const estado = await leerEstadoCobroF4();
+      if (!estado?.ok) return estado;
+      if (estado.cobroIncierto) return { ok: false, error: "Hay un cobro pendiente o incierto. Resuélvelo antes de aplicar un vale." };
+      const saldoPendiente = Number(estado.saldo);
+      if (!Number.isFinite(saldoPendiente) || saldoPendiente <= 0) return { ok: false, error: "No hay saldo pendiente que cobrar con un vale." };
+      const consulta = await consultarValeRegaloF4(codigoLimpio);
+      if (!consulta?.ok) return consulta;
+      if (consulta.estado !== "ACTIVO") return { ok: false, error: "Ese vale no está activo (ya se agotó o fue anulado)." };
+      const importeAplicar = Math.min(Number(consulta.saldo), saldoPendiente);
+      if (!Number.isFinite(importeAplicar) || importeAplicar <= 0) return { ok: false, error: "No se pudo calcular el importe a aplicar del vale." };
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Cobrar con un vale regalo necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const recuperada = await recuperarCuentaA06();
+      if (!recuperada?.ok || !recuperada.cuentaId) throw new Error(recuperada?.error || "cuenta_no_encontrada");
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const checkoutId = uuidA02(), pagoId = uuidA02(), intentoId = uuidA02();
+      const prepareOperationId = "t6.vale.prepare." + checkoutId;
+      const preparado = await rpcA02ConRecuperacion(supabase, "abc_preparar_checkout_cuenta", {
+        p_operation_id: prepareOperationId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_checkout_id: checkoutId, p_cuenta_id: recuperada.cuentaId,
+        p_expected_cuenta_version: versionServidorA02(recuperada.cuentaVersion, "t6.vale.cuenta.version"),
+        p_terminal_id: terminal.terminalId, p_session_id: terminal.sessionId,
+        p_operating_day: recuperada.operatingDay
+      }, empresaId, localActivoId, prepareOperationId);
+      const checkoutIdReal = preparado?.checkout_id || checkoutId;
+      const payOperationId = "t6.vale.pay." + intentoId;
+      await rpcA02ConRecuperacion(supabase, "abc_iniciar_cobro", {
+        p_operation_id: payOperationId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_checkout_id: checkoutIdReal, p_pago_id: pagoId, p_intento_id: intentoId,
+        p_medio: "OTRO", p_importe_objetivo: importeAplicar, p_payment_currency_code: "EUR",
+        p_terminal_id: terminal.terminalId
+      }, empresaId, localActivoId, payOperationId);
+      const confirmOperationId = "t6.vale.confirmar." + intentoId;
+      const confirmado = await rpcA02ConRecuperacion(supabase, "abc_confirmar_pago_vale_regalo", {
+        p_operation_id: confirmOperationId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_intento_id: intentoId, p_codigo: codigoLimpio
+      }, empresaId, localActivoId, confirmOperationId);
+      const estadoFinal = await leerEstadoCobroF4();
+      return {
+        ok: true, resultado: confirmado, estado: estadoFinal,
+        mensaje: `Vale ${confirmado?.codigo || codigoLimpio} aplicado: €${Number(confirmado?.importe_aplicado ?? importeAplicar).toFixed(2)}. Saldo restante del vale: €${Number(confirmado?.saldo_restante ?? 0).toFixed(2)}.`
+      };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -113826,7 +113951,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -123549,7 +123674,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
   }
 }
 const ERROR_BORRADOR_RECUPERACION_A06 = "Tienes un borrador local activo. Guárdalo o vacíalo antes de recuperar o aparcar una cuenta. El borrador no se ha borrado ni mezclado con la cuenta del servidor.";
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   const unirCuentasA08 = arguments[0]?.unirCuentasA08;
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
@@ -123959,6 +124084,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [procesandoFacturaF4, setProcesandoFacturaF4] = (0, import_react4.useState)(false);
   const [ticketCorreoF4, setTicketCorreoF4] = (0, import_react4.useState)("");
   const [procesandoTicketCorreoF4, setProcesandoTicketCorreoF4] = (0, import_react4.useState)(false);
+  const [valeRegaloImporteF4, setValeRegaloImporteF4] = (0, import_react4.useState)("");
+  const [procesandoValeRegaloF4, setProcesandoValeRegaloF4] = (0, import_react4.useState)(false);
+  const [valeRegaloCreadoF4, setValeRegaloCreadoF4] = (0, import_react4.useState)(null);
+  const [errorValeRegaloF4, setErrorValeRegaloF4] = (0, import_react4.useState)("");
+  const [valeRegaloCodigoCanjeF4, setValeRegaloCodigoCanjeF4] = (0, import_react4.useState)("");
+  const [procesandoCanjeValeRegaloF4, setProcesandoCanjeValeRegaloF4] = (0, import_react4.useState)(false);
   const billetesRapidosF4 = [5, 10, 20, 50, 100];
   const [bizumPreparadoF4, setBizumPreparadoF4] = (0, import_react4.useState)(false);
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
@@ -125391,6 +125522,35 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setMensajeCobroF4(resultado.mensaje || "Ticket enviado por correo.");
     setTicketCorreoF4("");
   }
+  async function emitirValeRegaloF4UI() {
+    if (procesandoValeRegaloF4 || typeof emitirValeRegaloF4 !== "function") return;
+    setProcesandoValeRegaloF4(true);
+    setErrorValeRegaloF4("");
+    setValeRegaloCreadoF4(null);
+    const resultado = await emitirValeRegaloF4({ importe: valeRegaloImporteF4 });
+    setProcesandoValeRegaloF4(false);
+    if (!resultado?.ok) {
+      setErrorValeRegaloF4(resultado?.error || "No se pudo vender el vale regalo.");
+      return;
+    }
+    setValeRegaloCreadoF4({ codigo: resultado.codigo, importe: resultado.importe });
+    setValeRegaloImporteF4("");
+  }
+  async function pagarConValeRegaloF4UI() {
+    if (procesandoCanjeValeRegaloF4 || typeof pagarConValeRegaloF4 !== "function") return;
+    setProcesandoCanjeValeRegaloF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await pagarConValeRegaloF4({ codigo: valeRegaloCodigoCanjeF4 });
+    setProcesandoCanjeValeRegaloF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo aplicar el vale regalo.");
+      return;
+    }
+    if (resultado.estado) setEstadoCobroF4(resultado.estado);
+    setMensajeCobroF4(resultado.mensaje || "Vale regalo aplicado.");
+    setValeRegaloCodigoCanjeF4("");
+  }
   function cambiarFormularioIncidenciaB04(campo, valor) {
     setFormularioIncidenciaB04((actual) => ({ ...actual, [campo]: valor }));
   }
@@ -125552,6 +125712,10 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: prepararBizumF4, disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, bizumPreparadoF4 ? "Bizum QA preparado" : "Preparar Bizum QA"),
           confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible }), disabled: procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
+        ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mt-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Vale regalo (código)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: valeRegaloCodigoCanjeF4, onChange: (e2) => setValeRegaloCodigoCanjeF4(e2.target.value), placeholder: "VALE-A3F91" })),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: pagarConValeRegaloF4UI, disabled: procesandoCanjeValeRegaloF4 || !valeRegaloCodigoCanjeF4.trim() }, procesandoCanjeValeRegaloF4 ? "Aplicando…" : "Aplicar vale")
         ),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "Billetes rápidos: prepara el efectivo recibido sin iniciar todavía el cobro."),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-1" }, billetesRapidosF4.map((valor) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: valor, small: true, variant: "ghost", onClick: () => setEfectivoRecibidoCobroF4(String(valor)), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, `€${valor}`))),
@@ -125755,6 +125919,18 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
         /* @__PURE__ */ import_react4.default.createElement(BloqueEntradasSalidas, { fecha: diaOperativoCajaTpv, movimientosCajaDelDia: movimientosDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja }),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarMovimientosCajaTpv(false) }, "Cerrar"))
       ) : null
+    );
+  }
+  function renderValeRegaloF4() {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Vale regalo"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-7: vende un vale regalo por el importe que quieras (solo efectivo en esta primera versión). El cliente lo canjea después en Cobro, dentro de una cuenta."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mb-2" },
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", value: valeRegaloImporteF4, onChange: (e2) => setValeRegaloImporteF4(e2.target.value), placeholder: "25.00" })),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: emitirValeRegaloF4UI, disabled: procesandoValeRegaloF4 || !valeRegaloImporteF4 || Number(valeRegaloImporteF4) <= 0 }, procesandoValeRegaloF4 ? "Vendiendo…" : "Vender vale regalo")
+      ),
+      errorValeRegaloF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorValeRegaloF4) : null,
+      valeRegaloCreadoF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, "Vale creado: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, valeRegaloCreadoF4.codigo), ` por €${Number(valeRegaloCreadoF4.importe).toFixed(2)}. Apúntalo para el cliente.`) : null
     );
   }
 
@@ -126124,6 +126300,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConflictoA06(null) }, "Entendido")
   ) : null,
   renderMovimientosCajaTpv(),
+  renderValeRegaloF4(),
   renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-layout" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-product-zone" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
