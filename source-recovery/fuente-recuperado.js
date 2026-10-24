@@ -10201,6 +10201,16 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("efectivo_recibido_cambio_inconsistente")) return "El efectivo recibido y el cambio no cuadran con el importe del pago.";
     if (msg.includes("sesion_caja_no_abierta") || msg.includes("terminal_no_vinculado_sesion") || msg.includes("terminal_sesion_no_operativa")) return "Este terminal no tiene una sesión de caja válida para cobrar.";
     if (msg.includes("persistencia_pago_no_disponible")) return "Este navegador no puede conservar de forma segura la identidad del cobro.";
+    if (msg.includes("abc_serie_no_autorizada") || msg.includes("abc_documento_no_autorizado") || msg.includes("abc_fiscal_no_autorizado")) return "Tu usuario no tiene permiso para emitir documentos fiscales (solo Propietario o Encargado).";
+    if (msg.includes("serie_documental_parametros_invalidos") || msg.includes("reserva_documental_parametros_invalidos") || msg.includes("clasificacion_documental_parametros_invalidos") || msg.includes("evaluacion_fiscal_parametros_invalidos") || msg.includes("resolucion_documental_parametros_invalidos")) return "No se pudo preparar la factura: faltan datos o no son válidos.";
+    if (msg.includes("serie_documental_no_activa")) return "La serie de facturas no está activa en este local.";
+    if (msg.includes("serie_documental_agotada")) return "La serie de facturas ha agotado su numeración.";
+    if (msg.includes("tipo_documental_invalido") || msg.includes("datos_receptor_invalidos")) return "Los datos de la factura no son válidos.";
+    if (msg.includes("factura_completa_datos_receptor_requeridos")) return "Indica el nombre y el NIF de la empresa cliente.";
+    if (msg.includes("documento_tipo_ya_definido") || msg.includes("tipo_documental_no_coincide_con_serie")) return "Este documento ya estaba clasificado de otra forma.";
+    if (msg.includes("documento_emitido_inmutable")) return "Esta factura ya estaba emitida y no se puede modificar.";
+    if (msg.includes("documento_anulado")) return "Esta factura fue anulada.";
+    if (msg.includes("documento_no_encontrado") || msg.includes("factura_sin_documento_reservado")) return "No se pudo reservar el número de factura.";
     return errorRpcA02(error);
   }
   async function leerEstadoCobroF4() {
@@ -10559,6 +10569,91 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (error) throw error;
       const estadoFinal = await leerEstadoCobroF4();
       return { ok: true, resultado: data, estado: estadoFinal, mensaje: "Pago simulado aprobado en QA." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+
+  // Hoja QA-5 (Etapa 5, T6): factura a empresa (NIF), en modo simulador.
+  // Usa el sistema de documentos fiscales que ya existía (C05 numeración,
+  // C06 clasificación, C07 puerta fiscal) más la única pieza que faltaba
+  // (abc_configurar_serie_documental, para crear la serie "FACTURA/FA" la
+  // primera vez). No activa nada fiscal real: la modalidad se configura en
+  // SIMULADOR y el propio servidor bloquea por código pasar a ACTIVO sin
+  // validación de asesoría (abc_c07_modalidades_fiscales).
+  async function emitirFacturaEmpresaF4({ nombre, nif } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para emitir la factura." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const nombreReceptor = String(nombre || "").trim();
+    const nifReceptor = String(nif || "").trim().toUpperCase();
+    if (!nombreReceptor || !nifReceptor) return { ok: false, error: "Indica el nombre o razón social y el NIF de la empresa cliente." };
+    try {
+      const estado = await leerEstadoCobroF4();
+      if (!estado?.ok) return estado;
+      if (String(estado.estado) !== "PAGADO") return { ok: false, error: "Solo se puede emitir factura cuando la cuenta está pagada por completo." };
+      const checkout = Array.isArray(estado.checkouts) ? estado.checkouts[0] : null;
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "La factura necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const setupSerieId = "t6.factura.serie." + empresaId + "." + localActivoId;
+      const setupModalidadId = "t6.factura.modalidad." + empresaId + "." + localActivoId;
+      // Alta/activación únicas por empresa/local: operation_id estable, para
+      // que una segunda factura (u otro reintento) no las repita ni las
+      // reconfigure — solo se ejecutan de verdad la primera vez.
+      await rpcA02ConRecuperacion(supabase, "abc_configurar_serie_documental", {
+        p_operation_id: setupSerieId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_tipo_documento: "FACTURA", p_codigo_serie: "FA", p_nombre: "Facturas a empresa (simulador)"
+      }, empresaId, localActivoId, setupSerieId);
+      await rpcA02ConRecuperacion(supabase, "abc_configurar_modalidad_fiscal", {
+        p_operation_id: setupModalidadId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_territorio: "ES", p_emisor_tipo: "INTERNO", p_modalidad: "B2B_SIMULADOR",
+        p_proveedor_codigo: null, p_estado: "SIMULADOR",
+        p_declaracion_responsable: false, p_configuracion: {}
+      }, empresaId, localActivoId, setupModalidadId);
+      const intentoId = uuidA02();
+      const reservado = await rpcA02ConRecuperacion(supabase, "abc_reservar_numero_documental", {
+        p_operation_id: "t6.factura.reservar." + intentoId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_tipo_documento: "FACTURA", p_codigo_serie: "FA",
+        p_documento_origen_id: checkout?.id ? String(checkout.id) : (estado.cuentaId ? String(estado.cuentaId) : null),
+        p_metadata: { cuenta_id: estado.cuentaId || null }
+      }, empresaId, localActivoId, "t6.factura.reservar." + intentoId);
+      const documentoId = reservado?.documento_id;
+      if (!documentoId) throw new Error("factura_sin_documento_reservado");
+      const datosReceptor = { nombre: nombreReceptor, identificador_fiscal: nifReceptor };
+      await rpcA02ConRecuperacion(supabase, "abc_clasificar_documento", {
+        p_operation_id: "t6.factura.clasificar." + intentoId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_documento_id: documentoId, p_tipo_documental: "FACTURA_COMPLETA",
+        p_documento_referencia_id: null, p_datos_receptor: datosReceptor
+      }, empresaId, localActivoId, "t6.factura.clasificar." + intentoId);
+      const evaluado = await rpcA02ConRecuperacion(supabase, "abc_evaluar_documento_fiscal", {
+        p_operation_id: "t6.factura.evaluar." + intentoId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_documento_id: documentoId, p_simular: true
+      }, empresaId, localActivoId, "t6.factura.evaluar." + intentoId);
+      if (!evaluado?.ok) {
+        await rpcA02ConRecuperacion(supabase, "abc_resolver_emision_documental", {
+          p_operation_id: "t6.factura.emitir." + intentoId,
+          p_empresa_id: empresaId, p_local_id: localActivoId,
+          p_documento_id: documentoId, p_estado: "ERROR",
+          p_resultado: { datos_receptor: datosReceptor, evaluacion: evaluado || null }
+        }, empresaId, localActivoId, "t6.factura.emitir." + intentoId);
+        return { ok: false, error: "La evaluación fiscal (modo simulador) no quedó preparada: " + (Array.isArray(evaluado?.bloqueos) ? evaluado.bloqueos.join(", ") : "motivo desconocido") + "." };
+      }
+      const emitido = await rpcA02ConRecuperacion(supabase, "abc_resolver_emision_documental", {
+        p_operation_id: "t6.factura.emitir." + intentoId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_documento_id: documentoId, p_estado: "EMITIDO",
+        p_resultado: { datos_receptor: datosReceptor, evaluacion: evaluado }
+      }, empresaId, localActivoId, "t6.factura.emitir." + intentoId);
+      const numero = emitido?.numero ?? reservado?.numero;
+      const codigoSerie = emitido?.codigo_serie ?? reservado?.codigo_serie ?? "FA";
+      return {
+        ok: true, resultado: emitido,
+        mensaje: `Factura ${codigoSerie}-${String(numero).padStart(6, "0")} emitida (modo simulador) a ${nombreReceptor} (NIF ${nifReceptor}).`
+      };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -22642,6 +22737,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [importeCobroF4, setImporteCobroF4] = (0, import_react4.useState)("");
   const [efectivoRecibidoCobroF4, setEfectivoRecibidoCobroF4] = (0, import_react4.useState)("");
   const [propinaCambioF4, setPropinaCambioF4] = (0, import_react4.useState)(false);
+  const [facturaNombreF4, setFacturaNombreF4] = (0, import_react4.useState)("");
+  const [facturaNifF4, setFacturaNifF4] = (0, import_react4.useState)("");
+  const [procesandoFacturaF4, setProcesandoFacturaF4] = (0, import_react4.useState)(false);
   const billetesRapidosF4 = [5, 10, 20, 50, 100];
   const [bizumPreparadoF4, setBizumPreparadoF4] = (0, import_react4.useState)(false);
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
@@ -23929,6 +24027,21 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setEstadoCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || "Estado de cobro recuperado sin crear otro intento.");
   }
+  async function emitirFacturaEmpresaF4UI() {
+    if (procesandoFacturaF4 || typeof emitirFacturaEmpresaF4 !== "function") return;
+    setProcesandoFacturaF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await emitirFacturaEmpresaF4({ nombre: facturaNombreF4, nif: facturaNifF4 });
+    setProcesandoFacturaF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo emitir la factura.");
+      return;
+    }
+    setMensajeCobroF4(resultado.mensaje || "Factura emitida (modo simulador).");
+    setFacturaNombreF4("");
+    setFacturaNifF4("");
+  }
   function cambiarFormularioIncidenciaB04(campo, valor) {
     setFormularioIncidenciaB04((actual) => ({ ...actual, [campo]: valor }));
   }
@@ -24094,6 +24207,15 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "Billetes rápidos: prepara el efectivo recibido sin iniciar todavía el cobro."),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-1" }, billetesRapidosF4.map((valor) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: valor, small: true, variant: "ghost", onClick: () => setEfectivoRecibidoCobroF4(String(valor)), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, `€${valor}`))),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "El botón de completar mixto usa el saldo que devuelve el servidor, no el cálculo local del navegador.")
+      ) : null,
+      tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Factura a empresa"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-5 · modo simulador: no sustituye una verificación fiscal real con la asesoría."),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre o razón social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: facturaNombreF4, onChange: (e2) => setFacturaNombreF4(e2.target.value), placeholder: "Empresa Cliente S.L." })),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF/CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: facturaNifF4, onChange: (e2) => setFacturaNifF4(e2.target.value), placeholder: "B12345678" }))
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: emitirFacturaEmpresaF4UI, disabled: procesandoFacturaF4 || !facturaNombreF4.trim() || !facturaNifF4.trim() }, procesandoFacturaF4 ? "Emitiendo…" : "Emitir factura (modo simulador)")
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
