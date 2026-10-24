@@ -24215,7 +24215,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre o razón social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: facturaNombreF4, onChange: (e2) => setFacturaNombreF4(e2.target.value), placeholder: "Empresa Cliente S.L." })),
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF/CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: facturaNifF4, onChange: (e2) => setFacturaNifF4(e2.target.value), placeholder: "B12345678" }))
         ),
-        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: emitirFacturaEmpresaF4UI, disabled: procesandoFacturaF4 || !facturaNombreF4.trim() || !facturaNifF4.trim() }, procesandoFacturaF4 ? "Emitiendo…" : "Emitir factura (modo simulador)")
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: emitirFacturaEmpresaF4UI, disabled: procesandoFacturaF4 }, procesandoFacturaF4 ? "Emitiendo…" : "Emitir factura (modo simulador)")
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")

@@ -26,6 +26,18 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
   );
   assert.match(contenido, /async function emitirFacturaEmpresaF4\(/, `${nombre}: falta la función de orquestación`);
   assert.match(contenido, /async function emitirFacturaEmpresaF4UI\(/, `${nombre}: falta el envoltorio de UI`);
+  // Hallazgo en prueba Cowork (24/10/2026): el botón quedaba deshabilitado si
+  // el estado de React de los campos no coincidía con lo escrito en pantalla
+  // (p. ej. por cómo el navegador/automatización rellena el campo), y un
+  // botón deshabilitado no dispara ningún evento: sin red, sin error, sin
+  // "procesando". La validación de campos vacíos ya la hace la propia
+  // función con un mensaje claro, así que el botón solo debe depender de
+  // que no haya otra emisión en curso.
+  assert.match(
+    contenido,
+    /onClick: emitirFacturaEmpresaF4UI, disabled: procesandoFacturaF4 \}/,
+    `${nombre}: el botón no debe deshabilitarse por el contenido de los campos (ver hallazgo Cowork 24/10/2026)`
+  );
   assert.match(
     contenido,
     /if \(String\(estado\.estado\) !== "PAGADO"\) return \{ ok: false, error: "Solo se puede emitir factura cuando la cuenta está pagada por completo\." \};/,
