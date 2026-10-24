@@ -14,6 +14,10 @@ const migracionFix = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20261024130000_t6_vale_regalo_fix_gen_random_bytes.sql"),
   "utf8"
 );
+const migracionFixReferencia = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20261024140000_t6_vale_regalo_fix_provider_reference.sql"),
+  "utf8"
+);
 
 // Hoja QA-7 (Etapa 5, T6, punto 5): «vale regalo». Importe libre, sin
 // caducidad (decisión de Pedro, 24/10/2026). Dos flujos separados: vender
@@ -227,3 +231,31 @@ console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_PARIDAD_DUAL=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_MIGRACION=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_FIX_GEN_RANDOM_BYTES=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_FIX_SALDO_SIN_CHECKOUT=PASS");
+
+// Hallazgo en prueba Cowork (24/10/2026): abc_confirmar_pago_vale_regalo
+// llamaba a abc_resolver_intento con p_provider_reference := v_vale.codigo
+// — el código del propio vale. pago_intentos tiene un índice único sobre
+// (empresa_id, provider_code, provider_reference), así que aplicar el
+// MISMO vale una segunda vez (algo legítimo: un vale puede dejar saldo
+// tras un pago parcial, para usarse en una compra futura) chocaba
+// siempre con el registro de la primera aplicación, reventando con un
+// error crudo de restricción única en vez de un mensaje de negocio. La
+// referencia debe identificar el INTENTO, no el vale — mismo patrón que
+// ya usa el resolutor de tarjeta simulada de QA-3
+// (abc_qa_confirmar_pago_simulado: 'QA-SIM-' || replace(intento_id,...)).
+assert.match(
+  migracionFixReferencia,
+  /v_reference := 'VALE-REGALO-' \|\| replace\(p_intento_id::text,'-',''\);/,
+  "La corrección debe derivar la referencia del intento de pago, no del código del vale"
+);
+assert.match(
+  migracionFixReferencia,
+  /'VALE_REGALO', v_reference,/,
+  "La corrección debe pasar la referencia derivada del intento a abc_resolver_intento"
+);
+assert.match(
+  migracionFixReferencia,
+  /jsonb_build_object\('vale_id', v_vale\.id, 'codigo', v_vale\.codigo, 'modo', 'VALE_REGALO'\)/,
+  "El código del vale debe seguir quedando trazado en el snapshot, aunque ya no sea la referencia única"
+);
+console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_FIX_PROVIDER_REFERENCE=PASS");
