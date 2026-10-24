@@ -38,6 +38,23 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
     /onClick: emitirFacturaEmpresaF4UI, disabled: procesandoFacturaF4 \}/,
     `${nombre}: el botón no debe deshabilitarse por el contenido de los campos (ver hallazgo Cowork 24/10/2026)`
   );
+  // Segundo hallazgo Cowork (24/10/2026), más grave: emitirFacturaEmpresaF4
+  // existía en crearLogicaVenta() pero nunca se conectó con VentaRapida (el
+  // componente real que renderiza el botón) — faltaba en su `return`, en las
+  // props pasadas a <VentaRapida .../> y en los parámetros de VentaRapida.
+  // Sin los tres eslabones, typeof emitirFacturaEmpresaF4 es "undefined" en
+  // tiempo de ejecución y el botón no hace nada, sin red ni error visible.
+  assert.match(
+    contenido,
+    /resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, reintentarCobroF4, leerEstadoCobroF4/g,
+    `${nombre}: emitirFacturaEmpresaF4 debe viajar junto a resolverPagoSimuladoQAF4 en el return de crearLogicaVenta, en las props de <VentaRapida> y en los parámetros de VentaRapida (ver hallazgo Cowork 24/10/2026)`
+  );
+  const ocurrenciasConexion = contenido.match(/resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, reintentarCobroF4, leerEstadoCobroF4/g) || [];
+  assert.equal(
+    ocurrenciasConexion.length,
+    4,
+    `${nombre}: deben existir exactamente 4 puntos de conexión (destructuring de crearLogicaVenta, su return, las props de <VentaRapida>, y los parámetros de VentaRapida); encontrados: ${ocurrenciasConexion.length}`
+  );
   assert.match(
     contenido,
     /if \(String\(estado\.estado\) !== "PAGADO"\) return \{ ok: false, error: "Solo se puede emitir factura cuando la cuenta está pagada por completo\." \};/,
