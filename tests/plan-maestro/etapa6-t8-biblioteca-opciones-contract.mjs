@@ -98,6 +98,20 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
     );
   }
 
+  // T8, pieza 2 (24/10/2026, autorizada por Pedro con alcance "solo enlazar opciones"):
+  // en vez de un panel de enlace suelto, una ficha por producto del catálogo TPV con sus
+  // grupos enlazados y un botón para enlazar uno más, ahí mismo.
+  assert.match(contenido, /"Opciones por producto \(T8, pieza 2\)"/, `${nombre}: falta la sección de opciones por producto`);
+  assert.match(
+    contenido,
+    /const vinculosProducto = vinculos\.filter\(\(v2\) => v2\.producto_id === p2\.producto_id && v2\.currency_code === p2\.currency_code\);/,
+    `${nombre}: debe agrupar los enlaces por producto`
+  );
+  assert.match(
+    contenido,
+    /catalogo_tpv_productos"\)\.select\("producto_id,currency_code,nombre,activo"\)/,
+    `${nombre}: debe leer también el nombre del producto para la ficha`
+  );
   // Pestaña registrada en el panel de Configuración.
   assert.match(contenido, /\["opciones", "Opciones y variantes"\]/, `${nombre}: falta la pestaña "Opciones y variantes"`);
   assert.match(contenido, /seccion === "opciones" \? h\(ConfigOpciones, \{ empresaId, localId \}\) : null/, `${nombre}: falta montar ConfigOpciones en su pestaña`);
@@ -115,6 +129,15 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
     fuente.slice(inicioFuente, finFuente),
     espejo.slice(inicioEspejo, finEspejo),
     "ConfigOpciones debe ser idéntico entre fuente.js y el espejo de recuperación"
+  );
+
+  // T8, pieza 2: el selector de producto suelto de la Hoja QA-10 ya no debe existir dentro de
+  // ConfigOpciones — el producto queda fijado por la ficha, no por un desplegable aparte.
+  const bloqueConfigOpciones = fuente.slice(inicioFuente, finFuente);
+  assert.doesNotMatch(
+    bloqueConfigOpciones,
+    /setFormVinculo\(\{ \.\.\.formVinculo, productoId: v2,/,
+    "el selector de producto suelto dentro de ConfigOpciones debe haberse retirado"
   );
 }
 

@@ -102844,7 +102844,7 @@ function ConfigOpciones({ empresaId, localId }) {
       const { data: v2, error: errV } = await qV.order("orden", { ascending: true });
       if (errV) throw errV;
       setVinculos(Array.isArray(v2) ? v2 : []);
-      const { data: p2, error: errP } = await supabase.from("catalogo_tpv_productos").select("producto_id,currency_code,activo").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true);
+      const { data: p2, error: errP } = await supabase.from("catalogo_tpv_productos").select("producto_id,currency_code,nombre,activo").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true).order("nombre", { ascending: true });
       if (errP) throw errP;
       setProductos(Array.isArray(p2) ? p2 : []);
     } catch (e2) {
@@ -103118,48 +103118,47 @@ function ConfigOpciones({ empresaId, localId }) {
     h(
       Card,
       { className: "mb-3" },
-      h("div", { className: "font-semibold mb-1" }, "Enlazar un grupo con un producto"),
-      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no existe la ficha completa de un producto en la pantalla (pieza 2 de esta etapa, sin empezar); mientras tanto, enlaza aquí un producto ya existente con un grupo de la biblioteca."),
-      vinculos.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún enlace.") : null,
-      vinculos.map((v2) => h(
-        "div",
-        { key: `${v2.producto_id}:${v2.currency_code}:${v2.grupo_id}`, className: "flex items-start justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: v2.activo ? 1 : 0.6 } },
-        h("div", { className: "text-[13px]" },
-          h("div", { className: "font-semibold" }, v2.producto_id, v2.activo ? "" : " (desactivado)"),
-          h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, nombreGrupo(v2.grupo_id), " · ", v2.currency_code, " · mínimo ", v2.min_selecciones, " / máximo ", v2.max_selecciones)
-        ),
-        h("div", { className: "flex gap-2 flex-wrap" },
-          h(Btn, { small: true, variant: v2.activo ? "danger" : "ghost", onClick: () => alternarVinculo(v2), disabled: ocupado }, v2.activo ? "Desenlazar" : "Enlazar de nuevo")
-        )
-      )),
-      formVinculo ? null : h(Btn, { small: true, onClick: () => {
-        setFormVinculo({ ...vacioVinculo, grupoId: (gruposActivos[0] || {}).id || "" });
-        setError("");
-        setConfirmacion("");
-      }, disabled: ocupado || gruposActivos.length === 0 || productos.length === 0 }, (gruposActivos.length === 0 || productos.length === 0) ? "Hace falta un grupo activo y un producto" : "Enlazar un producto")
+      h("div", { className: "font-semibold mb-1" }, "Opciones por producto (T8, pieza 2)"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no existe una ficha completa de producto (precio, impuesto…) en la pantalla; esta lista muestra los productos ya activos en el catálogo TPV de este local (los refleja el Almacén) y permite enlazarles grupos de la biblioteca."),
+      productos.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún producto activo en el catálogo TPV de este local.") : null,
+      productos.map((p2) => {
+        const vinculosProducto = vinculos.filter((v2) => v2.producto_id === p2.producto_id && v2.currency_code === p2.currency_code);
+        const abriendoAqui = !!formVinculo && formVinculo.productoId === p2.producto_id && formVinculo.currencyCode === p2.currency_code;
+        return h(
+          "div",
+          { key: `${p2.producto_id}:${p2.currency_code}`, className: "mb-3 pb-3", style: { borderBottom: `1px solid ${C2.divider}` } },
+          h("div", { className: "font-semibold text-[13px] mb-1" }, p2.nombre || p2.producto_id, " ", h("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, `(${p2.currency_code})`)),
+          vinculosProducto.length === 0 ? h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Sin ningún grupo de opciones enlazado todavía.") : vinculosProducto.map((v2) => h(
+            "div",
+            { key: v2.grupo_id, className: "flex items-center justify-between gap-2 mb-1", style: { opacity: v2.activo ? 1 : 0.6 } },
+            h("div", { className: "text-[12px]" }, nombreGrupo(v2.grupo_id), v2.activo ? "" : " (desactivado)", " · mínimo ", v2.min_selecciones, " / máximo ", v2.max_selecciones),
+            h(Btn, { small: true, variant: v2.activo ? "danger" : "ghost", onClick: () => alternarVinculo(v2), disabled: ocupado }, v2.activo ? "Desenlazar" : "Enlazar de nuevo")
+          )),
+          abriendoAqui ? null : h(Btn, { small: true, variant: "ghost", onClick: () => {
+            setFormVinculo({ ...vacioVinculo, productoId: p2.producto_id, currencyCode: p2.currency_code, grupoId: (gruposActivos[0] || {}).id || "" });
+            setError("");
+            setConfirmacion("");
+          }, disabled: ocupado || gruposActivos.length === 0 }, gruposActivos.length === 0 ? "Crea primero un grupo activo" : "Enlazar un grupo"),
+          abriendoAqui ? h(
+            "div",
+            { className: "mt-2" },
+            h(
+              "div",
+              { className: "grid grid-cols-1 md:grid-cols-3 gap-2" },
+              h(Field, { label: "Grupo" }, campoSelect(formVinculo.grupoId, (v2) => setFormVinculo({ ...formVinculo, grupoId: v2 }), gruposActivos.map((g2) => [g2.id, g2.nombre]), ocupado)),
+              h(Field, { label: "Mínimo de selección" }, h(Input, { value: formVinculo.minSelecciones, onChange: (e2) => setFormVinculo({ ...formVinculo, minSelecciones: e2.target.value }), disabled: ocupado })),
+              h(Field, { label: "Máximo de selección" }, h(Input, { value: formVinculo.maxSelecciones, onChange: (e2) => setFormVinculo({ ...formVinculo, maxSelecciones: e2.target.value }), disabled: ocupado }))
+            ),
+            h(
+              "div",
+              { className: "flex gap-2 flex-wrap mt-2" },
+              h(Btn, { small: true, onClick: () => enviarVinculo(formVinculo, "Enlace creado."), disabled: ocupado }, guardando ? "Guardando…" : "Guardar enlace"),
+              h(Btn, { small: true, variant: "ghost", onClick: () => setFormVinculo(null), disabled: ocupado }, "Cancelar")
+            )
+          ) : null
+        );
+      })
     ),
-    formVinculo ? h(
-      Card,
-      { className: "mb-3" },
-      h("div", { className: "font-semibold mb-2" }, "Nuevo enlace"),
-      h(
-        "div",
-        { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
-        h(Field, { label: "Producto" }, campoSelect(formVinculo.productoId, (v2) => {
-          const p2 = productos.find((x3) => x3.producto_id === v2);
-          setFormVinculo({ ...formVinculo, productoId: v2, currencyCode: p2 ? p2.currency_code : formVinculo.currencyCode });
-        }, [["", "Elige un producto"], ...productos.map((p2) => [p2.producto_id, `${p2.producto_id} (${p2.currency_code})`])], ocupado)),
-        h(Field, { label: "Grupo" }, campoSelect(formVinculo.grupoId, (v2) => setFormVinculo({ ...formVinculo, grupoId: v2 }), gruposActivos.map((g2) => [g2.id, g2.nombre]), ocupado)),
-        h(Field, { label: "Mínimo de selección" }, h(Input, { value: formVinculo.minSelecciones, onChange: (e2) => setFormVinculo({ ...formVinculo, minSelecciones: e2.target.value }), disabled: ocupado })),
-        h(Field, { label: "Máximo de selección" }, h(Input, { value: formVinculo.maxSelecciones, onChange: (e2) => setFormVinculo({ ...formVinculo, maxSelecciones: e2.target.value }), disabled: ocupado }))
-      ),
-      h(
-        "div",
-        { className: "flex gap-2 flex-wrap" },
-        h(Btn, { small: true, onClick: () => enviarVinculo(formVinculo, "Enlace creado."), disabled: ocupado || !formVinculo.productoId }, guardando ? "Guardando…" : "Guardar enlace"),
-        h(Btn, { small: true, variant: "ghost", onClick: () => setFormVinculo(null), disabled: ocupado }, "Cancelar")
-      )
-    ) : null,
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
