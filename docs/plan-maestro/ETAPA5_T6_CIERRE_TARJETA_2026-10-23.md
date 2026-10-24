@@ -96,6 +96,26 @@ condición de visibilidad del botón (nunca en la RPC ni en la migración):
 Se añadió también el mensaje de error que faltaba
 (`abc_qa_simulador_solo_tarjeta`).
 
+## 5ter. Cierre confirmado (24/10/2026)
+
+Pedro (vía Cowork, su propia sesión de Propietario QA-EMP-A/QA-A1) pulsó el
+botón sobre la cuenta real. Resultado en pantalla: "Pago simulado aprobado
+en QA", cuenta pasó a Total €2,00 / Confirmado €2,00 / Pendiente €0,00,
+estado PAGADO.
+
+Comprobado en QA, solo lectura, el 24/10/2026:
+
+- `pago_intentos.id = b690165e-4236-4819-b604-eac593f8224d` → estado
+  `CONFIRMADO`, `authorization_status=AUTORIZADO`,
+  `capture_status=CONFIRMADO`, `settlement_status=LIQUIDADO`,
+  `provider_code=QA_SIMULADO`, `resolved_at=2026-10-23 20:59:07 UTC`.
+- `pagos.id = 99e887c3-...` → `estado=CONFIRMADO`.
+- `checkouts.id = a56fbd22-...` → `estado=COMPLETADO`.
+- `abc_eventos`: `PAGO_INTENTO_RESUELTO` y `PAGO_CONFIRMADO`,
+  `executor_kind=SYSTEM_PROVIDER`, `executor_ref=QA_SIMULADO`.
+
+**T6, punto 1 (cerrar el intento de tarjeta pendiente): cerrado.**
+
 ## 6. Pendiente
 
 - **El intento real del §1 sigue abierto.** Resolverlo con el botón nuevo
