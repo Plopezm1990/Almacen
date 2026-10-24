@@ -125,11 +125,62 @@ ticket):
   sin usuario autenticado. La prueba con la cuenta real de QA-EMP-A queda
   para Cowork.
 
-## 6. Pendiente
+## 6. Bug encontrado y corregido en la primera prueba en vivo (24/10/2026)
 
-- Prueba en vivo con Cowork (Pedro, su propia sesión): crear una cuenta,
-  pagarla por completo y emitir una factura de prueba con un NIF
-  cualquiera de ejemplo.
+La primera prueba de Cowork (cuenta PAGADO, campos rellenos, botón
+pulsado) no hizo nada: ni mensaje, ni red, ni "Emitiendo…". Dos rondas de
+investigación:
+
+1. **Primer sospechoso (descartado): el botón deshabilitado.** El botón
+   se deshabilitaba si el texto de los campos no coincidía con el estado
+   de React. Se corrigió (el botón ya solo depende de que no haya otra
+   emisión en curso), pero el fallo seguía igual tras repetir la prueba.
+2. **Causa real: `emitirFacturaEmpresaF4` nunca llegaba al componente
+   que dibuja el botón.** La función se definió dentro de
+   `crearLogicaVenta()`, pero esa función nunca la devolvía en su
+   `return`, el componente padre (`GestionAlmacen`) nunca la recogía de
+   ahí, el componente `<VentaRapida>` (el que de verdad renderiza
+   Cobro·F4) nunca la recibía como prop, y `VentaRapida` nunca la tenía
+   como parámetro. Resultado: `typeof emitirFacturaEmpresaF4` daba
+   `"undefined"` en tiempo de ejecución — confirmado en vivo con una
+   traza de depuración temporal — y el botón cortaba la ejecución justo
+   ahí, sin ninguna señal visible. Se corrigieron los cuatro puntos de
+   conexión, siguiendo el mismo patrón que `resolverPagoSimuladoQAF4`
+   (que sí funcionaba). Se añadió una comprobación al test de contrato
+   para que esta clase de fallo — una función bien escrita pero nunca
+   enlazada al componente — no pueda volver a pasar en silencio.
+
+## 7. Cierre confirmado (24/10/2026)
+
+Cowork repitió la prueba dos veces tras la corrección (recarga completa
+entre medias): cuenta PAGADO, "Cliente Prueba S.L." / "B12345678",
+"Emitir factura (modo simulador)". Mensajes en pantalla: `Factura
+FA-000001 emitida...` y, en la segunda repetición, `Factura FA-000002
+emitida...`.
+
+Cowork reportó además, en ese mismo intento, que no veía tráfico de red
+nuevo ni cambio de la consola — una lectura que resultó ser un resto de
+una captura anterior (el aviso de depuración ya no existe en este
+build). Para no depender de esa lectura, se comprobó directamente en la
+base de datos de QA, solo lectura:
+
+- `abc_c05_series_documentales`: serie `FACTURA/FA` creada a las 09:31,
+  `siguiente_numero=3` (consistente con dos facturas ya emitidas).
+- `abc_c05_documentos_emitidos` + `abc_c06_documentos_clasificados`:
+  **dos filas**, números 1 y 2, ambas `estado=EMITIDO`,
+  `tipo_documental=FACTURA_COMPLETA`, `datos_receptor={"nombre":"Cliente
+  Prueba S.L.","identificador_fiscal":"B12345678"}`, evaluación
+  `resultado=PREPARADO_SIMULADOR` / `modo=SIMULADOR` (nunca `ACTIVO`).
+
+Los datos de la base de datos no dejan duda: el recorrido completo
+(reservar → clasificar → evaluar → resolver) ocurrió de verdad, por
+servidor, en modo simulador, con los datos exactos introducidos en
+pantalla.
+
+**T6, punto 3 (factura a empresa): cerrado.**
+
+## 8. Pendiente
+
 - Antes de usar esto con una factura real: NIF/razón social del propio
   negocio (emisor) necesita un sitio permanente donde guardarse (no
   existe hoy en la tabla `empresas`), y la validación de asesoría sigue
