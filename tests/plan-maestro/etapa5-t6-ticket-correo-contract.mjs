@@ -14,6 +14,10 @@ const edgeFunction = fs.readFileSync(
   path.join(root, "supabase", "functions", "enviar-ticket-correo", "index.ts"),
   "utf8"
 );
+const migracionFix = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20261024110000_t6_ticket_correo_fix_fk_eventos.sql"),
+  "utf8"
+);
 
 // Hoja QA-6 (Etapa 5, T6, punto 4): «ticket por correo». No es un documento
 // fiscal (eso es la Hoja QA-5, aparte) ni sustituye el ticket impreso — es
@@ -101,8 +105,32 @@ assert.match(edgeFunction, /supabase\.rpc\("abc_datos_ticket_correo"/, "Debe ped
 assert.match(edgeFunction, /escapeHtml/, "Debe escapar el contenido antes de insertarlo en el HTML del correo");
 assert.match(edgeFunction, /global: \{ headers: \{ Authorization: authorization \} \}/, "Debe usar la sesión del propio usuario (no service role) para que auth.uid() se resuelva en las RPC");
 
+// Hallazgo en prueba Cowork (24/10/2026): abc_eventos.operation_id tiene una
+// clave foránea obligatoria hacia abc_operaciones. La primera versión de
+// abc_registrar_ticket_correo_enviado insertaba directamente en abc_eventos
+// sin pasar antes por private.abc_operacion_iniciar, así que el insert
+// fallaba siempre con 409 — el correo salía bien por Resend, pero nunca
+// quedaba constancia. La migración de corrección debe usar el mismo patrón
+// idempotente que el resto del proyecto.
+assert.match(
+  migracionFix,
+  /private\.abc_operacion_iniciar\(p_operation_id,p_empresa_id,p_local_id,'ABC_TICKET_CORREO_ENVIADO',v_request,null\)/,
+  "La corrección debe registrar la operación antes de insertar en abc_eventos (abc_eventos.operation_id exige una fila en abc_operaciones)"
+);
+assert.match(
+  migracionFix,
+  /perform private\.abc_operacion_completar\(p_operation_id,v_result\)/,
+  "La corrección debe completar la operación tras insertar el evento"
+);
+assert.match(
+  migracionFix,
+  /insert into public\.abc_eventos/,
+  "La corrección debe seguir dejando constancia en abc_eventos"
+);
+
 console.log("PLAN_MAESTRO_ETAPA5_T6_TICKET_CORREO_SECCION_UI=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_TICKET_CORREO_SOLO_PAGADO=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_TICKET_CORREO_CONEXION_COMPONENTE=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_TICKET_CORREO_MIGRACION=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_TICKET_CORREO_EDGE_FUNCTION=PASS");
+console.log("PLAN_MAESTRO_ETAPA5_T6_TICKET_CORREO_FIX_FK_EVENTOS=PASS");
