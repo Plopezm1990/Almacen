@@ -102091,6 +102091,17 @@ var CONFIG_TIPOS_EQUIPO = [
   { id: "DATAFONO", etiqueta: "Datáfono" },
   { id: "OTRO", etiqueta: "Otro" }
 ];
+var CONFIG_TIPOS_GRUPO_OPCIONES = [
+  { id: "VARIANTE", etiqueta: "Variante (elegir una, p. ej. Tamaño)" },
+  { id: "MODIFICADOR", etiqueta: "Modificador (añadir extras o quitar algo)" }
+];
+var CONFIG_TIPOS_OPCION = [
+  { id: "VARIANTE", etiqueta: "Variante" },
+  { id: "EXTRA", etiqueta: "Extra (añade)" },
+  { id: "RETIRADA", etiqueta: "Retirada (quita)" },
+  { id: "SUSTITUCION", etiqueta: "Sustitución" },
+  { id: "COMPLEMENTO", etiqueta: "Complemento" }
+];
 var CONFIG_ROLES_MATRIZ = ["Encargado", "Cajero/a", "Camarero/a"];
 var CONFIG_CAPACIDADES = [
   { grupo: "Cuentas y pedidos", items: [
@@ -102186,7 +102197,48 @@ var CONFIG_ERRORES = {
   cargo_operation_id_requerido: "No se pudo identificar la operación. Recarga e inténtalo de nuevo.",
   cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
   cargo_nombre_reservado: "Ese nombre está reservado para un rol protegido del sistema.",
-  cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado."
+  cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado.",
+  abc_catalogo_no_autorizado: "Solo el Propietario o el Encargado pueden cambiar el catálogo de este local.",
+  grupo_id_requerido: "Falta el identificador del grupo.",
+  grupo_tipo_invalido: "Tipo de grupo no válido.",
+  grupo_nombre_invalido: "Escribe un nombre de hasta 80 caracteres.",
+  grupo_estado_requerido: "Indica si el grupo está activo.",
+  grupo_motivo_requerido: "Escribe el motivo del cambio.",
+  grupo_id_en_uso: "Ese grupo pertenece a otro local.",
+  grupo_nombre_duplicado: "Ya hay un grupo con ese nombre en este local.",
+  grupo_tipo_inmutable: "El tipo de un grupo no se puede cambiar; desactívalo y crea otro.",
+  opcion_id_requerido: "Falta el identificador de la opción.",
+  opcion_grupo_requerido: "Elige a qué grupo pertenece la opción.",
+  opcion_moneda_invalida: "La moneda debe ser un código de 3 letras (por ejemplo, EUR).",
+  opcion_nombre_invalido: "Escribe un nombre de hasta 80 caracteres.",
+  opcion_tipo_invalido: "Tipo de opción no válido.",
+  opcion_impuesto_requerido: "Indica si la opción hereda el impuesto del producto.",
+  opcion_impuesto_incoherente: "Si hereda el impuesto del producto, no indiques un % aparte.",
+  opcion_impuesto_invalido: "Escribe un % de impuesto entre 0 y 100, o marca que hereda el del producto.",
+  opcion_max_cantidad_invalida: "La cantidad máxima tiene que ser al menos 1.",
+  opcion_estado_requerido: "Indica si la opción está activa.",
+  opcion_motivo_requerido: "Escribe el motivo del cambio.",
+  opcion_grupo_no_encontrado: "No se encontró el grupo de esa opción.",
+  opcion_grupo_inactivo: "Ese grupo está desactivado: actívalo antes de añadir opciones activas.",
+  opcion_tipo_incoherente_variante: "Un grupo de tipo Variante solo admite opciones de tipo Variante.",
+  opcion_tipo_incoherente_modificador: "Un grupo de tipo Modificador no admite opciones de tipo Variante.",
+  opcion_id_en_uso: "Esa opción pertenece a otro local.",
+  opcion_nombre_duplicado: "Ya hay una opción con ese nombre en este grupo.",
+  opcion_grupo_inmutable: "El grupo de una opción no se puede cambiar; desactívala y crea otra.",
+  opcion_moneda_inmutable: "La moneda de una opción no se puede cambiar; desactívala y crea otra.",
+  vinculo_producto_requerido: "Elige el producto.",
+  vinculo_moneda_invalida: "La moneda debe ser un código de 3 letras (por ejemplo, EUR).",
+  vinculo_grupo_requerido: "Elige el grupo de opciones.",
+  vinculo_min_invalido: "El mínimo de selección no puede ser negativo.",
+  vinculo_max_invalido: "El máximo de selección tiene que ser al menos 1.",
+  vinculo_rango_invalido: "El máximo no puede ser menor que el mínimo.",
+  vinculo_estado_requerido: "Indica si el enlace está activo.",
+  vinculo_motivo_requerido: "Escribe el motivo del cambio.",
+  vinculo_producto_no_disponible: "Ese producto no está disponible en el catálogo TPV de este local.",
+  vinculo_grupo_no_disponible: "Ese grupo está desactivado.",
+  vinculo_grupo_sin_opciones: "Ese grupo no tiene ninguna opción activa: añade al menos una antes de exigir una selección mínima.",
+  vinculo_producto_no_encontrado: "No se encontró ese producto.",
+  vinculo_grupo_no_encontrado: "No se encontró ese grupo."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -102749,6 +102801,352 @@ function ConfigEquipos({ empresaId, localId }) {
         { className: "flex gap-2 flex-wrap" },
         h(Btn, { small: true, onClick: () => enviar(form, form.id ? "Equipo guardado." : "Equipo añadido."), disabled: ocupado }, guardando ? "Guardando…" : "Guardar equipo"),
         h(Btn, { small: true, variant: "ghost", onClick: () => setForm(null), disabled: ocupado }, "Cancelar")
+      )
+    ) : null,
+    cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
+  );
+}
+function ConfigOpciones({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const vacioGrupo = { id: "", nombre: "", tipoGrupo: "MODIFICADOR", orden: 0, activo: true };
+  const vacioOpcion = { id: "", grupoId: "", currencyCode: "EUR", nombre: "", tipoOpcion: "EXTRA", deltaPrecio: "0", heredaImpuesto: true, impuestoPct: "", maxCantidad: "1", orden: 0, activo: true };
+  const vacioVinculo = { productoId: "", currencyCode: "EUR", grupoId: "", minSelecciones: "0", maxSelecciones: "1", orden: 0, activo: true };
+  const [grupos, setGrupos] = (0, import_react4.useState)([]);
+  const [opciones, setOpciones] = (0, import_react4.useState)([]);
+  const [vinculos, setVinculos] = (0, import_react4.useState)([]);
+  const [productos, setProductos] = (0, import_react4.useState)([]);
+  const [verInactivos, setVerInactivos] = (0, import_react4.useState)(false);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [formGrupo, setFormGrupo] = (0, import_react4.useState)(null);
+  const [formOpcion, setFormOpcion] = (0, import_react4.useState)(null);
+  const [formVinculo, setFormVinculo] = (0, import_react4.useState)(null);
+  const cargar = async (inactivos = verInactivos) => {
+    setCargando(true);
+    setError("");
+    try {
+      const supabase = await configCliente();
+      let qG = supabase.from("catalogo_tpv_grupos_opciones").select("id,nombre,tipo_grupo,orden,activo,version").eq("empresa_id", empresaId).eq("local_id", localId);
+      if (!inactivos) qG = qG.eq("activo", true);
+      const { data: g2, error: errG } = await qG.order("orden", { ascending: true });
+      if (errG) throw errG;
+      setGrupos(Array.isArray(g2) ? g2 : []);
+      let qO = supabase.from("catalogo_tpv_opciones").select("id,grupo_id,currency_code,nombre,tipo_opcion,delta_precio,hereda_impuesto,impuesto_pct,max_cantidad,orden,activo,version").eq("empresa_id", empresaId).eq("local_id", localId);
+      if (!inactivos) qO = qO.eq("activo", true);
+      const { data: o2, error: errO } = await qO.order("orden", { ascending: true });
+      if (errO) throw errO;
+      setOpciones(Array.isArray(o2) ? o2 : []);
+      let qV = supabase.from("catalogo_tpv_producto_grupos").select("producto_id,currency_code,grupo_id,min_selecciones,max_selecciones,orden,activo,version").eq("empresa_id", empresaId).eq("local_id", localId);
+      if (!inactivos) qV = qV.eq("activo", true);
+      const { data: v2, error: errV } = await qV.order("orden", { ascending: true });
+      if (errV) throw errV;
+      setVinculos(Array.isArray(v2) ? v2 : []);
+      const { data: p2, error: errP } = await supabase.from("catalogo_tpv_productos").select("producto_id,currency_code,activo").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true);
+      if (errP) throw errP;
+      setProductos(Array.isArray(p2) ? p2 : []);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    setFormGrupo(null);
+    setFormOpcion(null);
+    setFormVinculo(null);
+    cargar();
+  }, [empresaId, localId]);
+  const nombreTipoGrupo = (id) => (CONFIG_TIPOS_GRUPO_OPCIONES.find((x3) => x3.id === id) || { etiqueta: id }).etiqueta;
+  const nombreTipoOpcion = (id) => (CONFIG_TIPOS_OPCION.find((x3) => x3.id === id) || { etiqueta: id }).etiqueta;
+  const nombreGrupo = (id) => (grupos.find((g2) => g2.id === id) || {}).nombre || id;
+  const requiereMotivo = () => {
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return true;
+    }
+    return false;
+  };
+  const enviarGrupo = async (datos, mensaje) => {
+    setError("");
+    setConfirmacion("");
+    if (requiereMotivo()) return false;
+    if (!String(datos.nombre || "").trim()) {
+      setError("Escribe el nombre del grupo.");
+      return false;
+    }
+    setGuardando(true);
+    try {
+      await configRpc("abc_guardar_grupo_opciones", {
+        p_operation_id: configOperacion("grupo-opciones"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_grupo_id: datos.id || configUuid(),
+        p_nombre: String(datos.nombre).trim(),
+        p_tipo_grupo: datos.tipoGrupo,
+        p_orden: Number(datos.orden) || 0,
+        p_activo: datos.activo === true,
+        p_motivo: motivo.trim()
+      });
+      setConfirmacion(mensaje);
+      setFormGrupo(null);
+      await cargar();
+      return true;
+    } catch (e2) {
+      setError(configMensajeError(e2));
+      return false;
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const editarGrupo = (g2) => {
+    setFormGrupo({ id: g2.id, nombre: g2.nombre || "", tipoGrupo: g2.tipo_grupo, orden: g2.orden || 0, activo: g2.activo === true });
+    setError("");
+    setConfirmacion("");
+  };
+  const alternarGrupo = (g2) => enviarGrupo({ id: g2.id, nombre: g2.nombre, tipoGrupo: g2.tipo_grupo, orden: g2.orden, activo: g2.activo !== true }, g2.activo === true ? "Grupo desactivado." : "Grupo activado.");
+  const enviarOpcion = async (datos, mensaje) => {
+    setError("");
+    setConfirmacion("");
+    if (requiereMotivo()) return false;
+    if (!datos.grupoId) {
+      setError("Elige a qué grupo pertenece la opción.");
+      return false;
+    }
+    if (!String(datos.nombre || "").trim()) {
+      setError("Escribe el nombre de la opción.");
+      return false;
+    }
+    if (!datos.heredaImpuesto && String(datos.impuestoPct || "").trim() === "") {
+      setError("Escribe el % de impuesto de esta opción, o marca que hereda el del producto.");
+      return false;
+    }
+    setGuardando(true);
+    try {
+      await configRpc("abc_guardar_opcion", {
+        p_operation_id: configOperacion("opcion"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_opcion_id: datos.id || configUuid(),
+        p_grupo_id: datos.grupoId,
+        p_currency_code: String(datos.currencyCode || "EUR").trim().toUpperCase(),
+        p_nombre: String(datos.nombre).trim(),
+        p_tipo_opcion: datos.tipoOpcion,
+        p_delta_precio: Number(datos.deltaPrecio) || 0,
+        p_hereda_impuesto: datos.heredaImpuesto === true,
+        p_impuesto_pct: datos.heredaImpuesto ? null : Number(datos.impuestoPct) || 0,
+        p_max_cantidad: Math.max(1, Number(datos.maxCantidad) || 1),
+        p_orden: Number(datos.orden) || 0,
+        p_activo: datos.activo === true,
+        p_motivo: motivo.trim()
+      });
+      setConfirmacion(mensaje);
+      setFormOpcion(null);
+      await cargar();
+      return true;
+    } catch (e2) {
+      setError(configMensajeError(e2));
+      return false;
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const editarOpcion = (o2) => {
+    setFormOpcion({ id: o2.id, grupoId: o2.grupo_id, currencyCode: o2.currency_code, nombre: o2.nombre || "", tipoOpcion: o2.tipo_opcion, deltaPrecio: String(o2.delta_precio ?? "0"), heredaImpuesto: o2.hereda_impuesto === true, impuestoPct: o2.impuesto_pct == null ? "" : String(o2.impuesto_pct), maxCantidad: String(o2.max_cantidad ?? "1"), orden: o2.orden || 0, activo: o2.activo === true });
+    setError("");
+    setConfirmacion("");
+  };
+  const alternarOpcion = (o2) => enviarOpcion({ id: o2.id, grupoId: o2.grupo_id, currencyCode: o2.currency_code, nombre: o2.nombre, tipoOpcion: o2.tipo_opcion, deltaPrecio: String(o2.delta_precio ?? "0"), heredaImpuesto: o2.hereda_impuesto === true, impuestoPct: o2.impuesto_pct == null ? "" : String(o2.impuesto_pct), maxCantidad: String(o2.max_cantidad ?? "1"), orden: o2.orden, activo: o2.activo !== true }, o2.activo === true ? "Opción desactivada." : "Opción activada.");
+  const enviarVinculo = async (datos, mensaje) => {
+    setError("");
+    setConfirmacion("");
+    if (requiereMotivo()) return false;
+    if (!datos.productoId) {
+      setError("Elige el producto.");
+      return false;
+    }
+    if (!datos.grupoId) {
+      setError("Elige el grupo de opciones.");
+      return false;
+    }
+    setGuardando(true);
+    try {
+      await configRpc("abc_vincular_grupo_producto", {
+        p_operation_id: configOperacion("vinculo-grupo"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_producto_id: datos.productoId,
+        p_currency_code: String(datos.currencyCode || "EUR").trim().toUpperCase(),
+        p_grupo_id: datos.grupoId,
+        p_min_selecciones: Math.max(0, Number(datos.minSelecciones) || 0),
+        p_max_selecciones: Math.max(1, Number(datos.maxSelecciones) || 1),
+        p_orden: Number(datos.orden) || 0,
+        p_activo: datos.activo === true,
+        p_motivo: motivo.trim()
+      });
+      setConfirmacion(mensaje);
+      setFormVinculo(null);
+      await cargar();
+      return true;
+    } catch (e2) {
+      setError(configMensajeError(e2));
+      return false;
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const alternarVinculo = (v2) => enviarVinculo({ productoId: v2.producto_id, currencyCode: v2.currency_code, grupoId: v2.grupo_id, minSelecciones: String(v2.min_selecciones ?? "0"), maxSelecciones: String(v2.max_selecciones ?? "1"), orden: v2.orden, activo: v2.activo !== true }, v2.activo === true ? "Enlace desactivado." : "Enlace activado.");
+  const ocupado = cargando || guardando;
+  const campoSelect = (valor, onChange, listaOpciones, deshabilitado) => h(
+    "select",
+    { value: valor, onChange: (e2) => onChange(e2.target.value), disabled: deshabilitado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } },
+    listaOpciones.map(([v2, t3]) => h("option", { key: v2, value: v2 }, t3))
+  );
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: verInactivos, onChange: (e2) => {
+      setVerInactivos(e2.target.checked);
+      cargar(e2.target.checked);
+    } }), "Ver también los desactivados"),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Biblioteca: grupos de opciones"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Un grupo (p. ej. «Tamaño» o «Extras») se crea una sola vez y se puede enlazar a varios productos, sin duplicarlo. El tipo no se puede cambiar una vez creado."),
+      grupos.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún grupo en la biblioteca.") : null,
+      grupos.map((g2) => h(
+        "div",
+        { key: g2.id, className: "flex items-start justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: g2.activo ? 1 : 0.6 } },
+        h("div", { className: "text-[13px]" },
+          h("div", { className: "font-semibold" }, g2.nombre, g2.activo ? "" : " (desactivado)"),
+          h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, nombreTipoGrupo(g2.tipo_grupo))
+        ),
+        h("div", { className: "flex gap-2 flex-wrap" },
+          h(Btn, { small: true, variant: "ghost", onClick: () => editarGrupo(g2), disabled: ocupado }, "Editar"),
+          h(Btn, { small: true, variant: g2.activo ? "danger" : "ghost", onClick: () => alternarGrupo(g2), disabled: ocupado }, g2.activo ? "Desactivar" : "Activar")
+        )
+      )),
+      formGrupo ? null : h(Btn, { small: true, onClick: () => {
+        setFormGrupo({ ...vacioGrupo });
+        setError("");
+        setConfirmacion("");
+      }, disabled: ocupado }, "Añadir un grupo")
+    ),
+    formGrupo ? h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, formGrupo.id ? "Editar grupo" : "Nuevo grupo"),
+      h(
+        "div",
+        { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+        h(Field, { label: "Nombre (hasta 80 caracteres)" }, h(Input, { value: formGrupo.nombre, onChange: (e2) => setFormGrupo({ ...formGrupo, nombre: e2.target.value }), maxLength: 80, disabled: ocupado })),
+        h(Field, { label: "Tipo" }, campoSelect(formGrupo.tipoGrupo, (v2) => setFormGrupo({ ...formGrupo, tipoGrupo: v2 }), CONFIG_TIPOS_GRUPO_OPCIONES.map((x3) => [x3.id, x3.etiqueta]), ocupado || !!formGrupo.id))
+      ),
+      formGrupo.id ? h("label", { className: "flex items-center gap-2 text-[12px] mb-3 mt-2" }, h("input", { type: "checkbox", checked: formGrupo.activo, onChange: (e2) => setFormGrupo({ ...formGrupo, activo: e2.target.checked }), disabled: ocupado }), "Activo") : null,
+      h(
+        "div",
+        { className: "flex gap-2 flex-wrap" },
+        h(Btn, { small: true, onClick: () => enviarGrupo(formGrupo, formGrupo.id ? "Grupo guardado." : "Grupo añadido."), disabled: ocupado }, guardando ? "Guardando…" : "Guardar grupo"),
+        h(Btn, { small: true, variant: "ghost", onClick: () => setFormGrupo(null), disabled: ocupado }, "Cancelar")
+      )
+    ) : null,
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Biblioteca: opciones dentro de cada grupo"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Un grupo «Variante» solo admite opciones de tipo Variante; un grupo «Modificador» admite Extra, Retirada, Sustitución o Complemento."),
+      opciones.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ninguna opción.") : null,
+      opciones.map((o2) => h(
+        "div",
+        { key: o2.id, className: "flex items-start justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: o2.activo ? 1 : 0.6 } },
+        h("div", { className: "text-[13px]" },
+          h("div", { className: "font-semibold" }, o2.nombre, o2.activo ? "" : " (desactivada)"),
+          h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, nombreGrupo(o2.grupo_id), " · ", nombreTipoOpcion(o2.tipo_opcion), " · ", o2.currency_code, " ", Number(o2.delta_precio) >= 0 ? "+" : "", Number(o2.delta_precio).toFixed(2), " · impuesto: ", o2.hereda_impuesto ? "el del producto" : `${o2.impuesto_pct}%`, " · máx. ", o2.max_cantidad)
+        ),
+        h("div", { className: "flex gap-2 flex-wrap" },
+          h(Btn, { small: true, variant: "ghost", onClick: () => editarOpcion(o2), disabled: ocupado }, "Editar"),
+          h(Btn, { small: true, variant: o2.activo ? "danger" : "ghost", onClick: () => alternarOpcion(o2), disabled: ocupado }, o2.activo ? "Desactivar" : "Activar")
+        )
+      )),
+      formOpcion ? null : h(Btn, { small: true, onClick: () => {
+        setFormOpcion({ ...vacioOpcion, grupoId: (grupos[0] || {}).id || "" });
+        setError("");
+        setConfirmacion("");
+      }, disabled: ocupado || grupos.length === 0 }, grupos.length === 0 ? "Crea primero un grupo" : "Añadir una opción")
+    ),
+    formOpcion ? h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, formOpcion.id ? "Editar opción" : "Nueva opción"),
+      h(
+        "div",
+        { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+        h(Field, { label: "Grupo" }, campoSelect(formOpcion.grupoId, (v2) => setFormOpcion({ ...formOpcion, grupoId: v2 }), grupos.map((g2) => [g2.id, g2.nombre]), ocupado || !!formOpcion.id)),
+        h(Field, { label: "Moneda (3 letras)" }, h(Input, { value: formOpcion.currencyCode, onChange: (e2) => setFormOpcion({ ...formOpcion, currencyCode: e2.target.value.toUpperCase() }), maxLength: 3, disabled: ocupado || !!formOpcion.id })),
+        h(Field, { label: "Nombre (hasta 80 caracteres)" }, h(Input, { value: formOpcion.nombre, onChange: (e2) => setFormOpcion({ ...formOpcion, nombre: e2.target.value }), maxLength: 80, disabled: ocupado })),
+        h(Field, { label: "Tipo" }, campoSelect(formOpcion.tipoOpcion, (v2) => setFormOpcion({ ...formOpcion, tipoOpcion: v2 }), CONFIG_TIPOS_OPCION.map((x3) => [x3.id, x3.etiqueta]), ocupado)),
+        h(Field, { label: "Precio que añade (puede ser negativo)" }, h(Input, { value: formOpcion.deltaPrecio, onChange: (e2) => setFormOpcion({ ...formOpcion, deltaPrecio: e2.target.value }), disabled: ocupado })),
+        h(Field, { label: "Cantidad máxima" }, h(Input, { value: formOpcion.maxCantidad, onChange: (e2) => setFormOpcion({ ...formOpcion, maxCantidad: e2.target.value }), disabled: ocupado }))
+      ),
+      h("label", { className: "flex items-center gap-2 text-[12px] mb-2 mt-2" }, h("input", { type: "checkbox", checked: formOpcion.heredaImpuesto, onChange: (e2) => setFormOpcion({ ...formOpcion, heredaImpuesto: e2.target.checked }), disabled: ocupado }), "Hereda el impuesto del producto"),
+      formOpcion.heredaImpuesto ? null : h(Field, { label: "% de impuesto de esta opción" }, h(Input, { value: formOpcion.impuestoPct, onChange: (e2) => setFormOpcion({ ...formOpcion, impuestoPct: e2.target.value }), disabled: ocupado })),
+      formOpcion.id ? h("label", { className: "flex items-center gap-2 text-[12px] mb-3 mt-2" }, h("input", { type: "checkbox", checked: formOpcion.activo, onChange: (e2) => setFormOpcion({ ...formOpcion, activo: e2.target.checked }), disabled: ocupado }), "Activa") : null,
+      h(
+        "div",
+        { className: "flex gap-2 flex-wrap" },
+        h(Btn, { small: true, onClick: () => enviarOpcion(formOpcion, formOpcion.id ? "Opción guardada." : "Opción añadida."), disabled: ocupado }, guardando ? "Guardando…" : "Guardar opción"),
+        h(Btn, { small: true, variant: "ghost", onClick: () => setFormOpcion(null), disabled: ocupado }, "Cancelar")
+      )
+    ) : null,
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Enlazar un grupo con un producto"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no existe la ficha completa de un producto en la pantalla (pieza 2 de esta etapa, sin empezar); mientras tanto, enlaza aquí un producto ya existente con un grupo de la biblioteca."),
+      vinculos.length === 0 && !cargando ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún enlace.") : null,
+      vinculos.map((v2) => h(
+        "div",
+        { key: `${v2.producto_id}:${v2.currency_code}:${v2.grupo_id}`, className: "flex items-start justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: v2.activo ? 1 : 0.6 } },
+        h("div", { className: "text-[13px]" },
+          h("div", { className: "font-semibold" }, v2.producto_id, v2.activo ? "" : " (desactivado)"),
+          h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, nombreGrupo(v2.grupo_id), " · ", v2.currency_code, " · mínimo ", v2.min_selecciones, " / máximo ", v2.max_selecciones)
+        ),
+        h("div", { className: "flex gap-2 flex-wrap" },
+          h(Btn, { small: true, variant: v2.activo ? "danger" : "ghost", onClick: () => alternarVinculo(v2), disabled: ocupado }, v2.activo ? "Desenlazar" : "Enlazar de nuevo")
+        )
+      )),
+      formVinculo ? null : h(Btn, { small: true, onClick: () => {
+        setFormVinculo({ ...vacioVinculo, grupoId: (grupos[0] || {}).id || "" });
+        setError("");
+        setConfirmacion("");
+      }, disabled: ocupado || grupos.length === 0 || productos.length === 0 }, (grupos.length === 0 || productos.length === 0) ? "Hace falta un grupo y un producto" : "Enlazar un producto")
+    ),
+    formVinculo ? h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Nuevo enlace"),
+      h(
+        "div",
+        { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+        h(Field, { label: "Producto" }, campoSelect(formVinculo.productoId, (v2) => {
+          const p2 = productos.find((x3) => x3.producto_id === v2);
+          setFormVinculo({ ...formVinculo, productoId: v2, currencyCode: p2 ? p2.currency_code : formVinculo.currencyCode });
+        }, [["", "Elige un producto"], ...productos.map((p2) => [p2.producto_id, `${p2.producto_id} (${p2.currency_code})`])], ocupado)),
+        h(Field, { label: "Grupo" }, campoSelect(formVinculo.grupoId, (v2) => setFormVinculo({ ...formVinculo, grupoId: v2 }), grupos.map((g2) => [g2.id, g2.nombre]), ocupado)),
+        h(Field, { label: "Mínimo de selección" }, h(Input, { value: formVinculo.minSelecciones, onChange: (e2) => setFormVinculo({ ...formVinculo, minSelecciones: e2.target.value }), disabled: ocupado })),
+        h(Field, { label: "Máximo de selección" }, h(Input, { value: formVinculo.maxSelecciones, onChange: (e2) => setFormVinculo({ ...formVinculo, maxSelecciones: e2.target.value }), disabled: ocupado }))
+      ),
+      h(
+        "div",
+        { className: "flex gap-2 flex-wrap" },
+        h(Btn, { small: true, onClick: () => enviarVinculo(formVinculo, "Enlace creado."), disabled: ocupado || !formVinculo.productoId }, guardando ? "Guardando…" : "Guardar enlace"),
+        h(Btn, { small: true, variant: "ghost", onClick: () => setFormVinculo(null), disabled: ocupado }, "Cancelar")
       )
     ) : null,
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
@@ -103543,7 +103941,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["sala", "Sala y mesas"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["opciones", "Opciones y variantes"], ["sala", "Sala y mesas"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -103554,6 +103952,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
+    seccion === "opciones" ? h(ConfigOpciones, { empresaId, localId }) : null,
     seccion === "sala" ? h(ConfigSala, { empresaId, localId }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
