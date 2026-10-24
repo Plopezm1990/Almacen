@@ -125319,6 +125319,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setMensajeCobroF4(resultado.mensaje || "Estado de cobro recuperado sin crear otro intento.");
   }
   async function emitirFacturaEmpresaF4UI() {
+    console.log("[QA5] emitirFacturaEmpresaF4UI click", { procesandoFacturaF4, tipoEmitir: typeof emitirFacturaEmpresaF4, facturaNombreF4, facturaNifF4 });
     if (procesandoFacturaF4 || typeof emitirFacturaEmpresaF4 !== "function") return;
     setProcesandoFacturaF4(true);
     setErrorCobroF4("");
