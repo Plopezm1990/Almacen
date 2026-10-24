@@ -49,6 +49,31 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
     `${nombre}: la clave de Resend no debe aparecer nunca en el código de cliente`
   );
   assert.match(contenido, /onClick: enviarTicketCorreoF4UI, disabled: procesandoTicketCorreoF4 \}/, `${nombre}: el botón solo debe depender de que no haya otro envío en curso`);
+  // Hallazgo en prueba Cowork (24/10/2026): enviarTicketCorreoF4 vive dentro
+  // de crearLogicaVenta() y usaba pedidoOperativoA05, que es estado local de
+  // VentaRapida — no existe en ese ámbito. Causaba un ReferenceError crudo
+  // visible en pantalla. Las líneas deben llegar como parámetro desde quien
+  // sí tiene pedidoOperativoA05 en su ámbito (el envoltorio de UI).
+  const inicioOrquestacion = contenido.indexOf("async function enviarTicketCorreoF4(");
+  assert.ok(inicioOrquestacion > 0, `${nombre}: no se encontró enviarTicketCorreoF4`);
+  // La función real mide ~1950 caracteres; una ventana de 2200 cubre su
+  // cuerpo entero sin alcanzar la siguiente función del archivo.
+  const cuerpoOrquestacion = contenido.slice(inicioOrquestacion, inicioOrquestacion + 2200);
+  assert.doesNotMatch(
+    cuerpoOrquestacion,
+    /pedidoOperativoA05/,
+    `${nombre}: enviarTicketCorreoF4 no debe referenciar pedidoOperativoA05 (es estado local de VentaRapida, no existe dentro de crearLogicaVenta) — ver hallazgo Cowork 24/10/2026`
+  );
+  assert.match(
+    contenido,
+    /async function enviarTicketCorreoF4\(\{ email, lineas \} = \{\}\)/,
+    `${nombre}: enviarTicketCorreoF4 debe recibir las líneas como parámetro, no calcularlas internamente`
+  );
+  assert.match(
+    cuerpoOrquestacion,
+    /lineas: Array\.isArray\(lineas\) \? lineas : \[\]/,
+    `${nombre}: debe enviar las líneas recibidas por parámetro a la Edge Function`
+  );
   // Los 4 puntos de conexión: destructuring de crearLogicaVenta, su return,
   // las props de <VentaRapida>, y los parámetros de VentaRapida.
   const ocurrenciasConexion = contenido.match(/emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4/g) || [];

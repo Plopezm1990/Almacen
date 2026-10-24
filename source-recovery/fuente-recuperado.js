@@ -10669,7 +10669,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   // está pagada. El envío real lo hace la Edge Function "enviar-ticket-
   // correo" (única pieza que toca la clave de Resend); aquí solo se reúnen
   // los datos y se la invoca con la sesión del propio usuario.
-  async function enviarTicketCorreoF4({ email } = {}) {
+  async function enviarTicketCorreoF4({ email, lineas } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para enviar el ticket." };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
@@ -10684,13 +10684,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
       if (!hayConexion) return { ok: false, error: "El ticket por correo necesita conexión con el servidor." };
       const supabase = await window.getSupabaseClient();
-      const lineas = (pedidoOperativoA05?.lineas || []).map((l22) => {
-        const producto = productos.find((p22) => p22.id === l22.productoId);
-        return { nombre: producto?.nombre || "Producto", cantidad: l22.cantidad, total: Number(l22.total) || 0 };
-      });
       const operationId = "t6.ticket.correo." + checkout.id + "." + uuidA02();
       const invocacion = await supabase.functions.invoke("enviar-ticket-correo", {
-        body: { operationId, empresaId, localId: localActivoId, checkoutId: checkout.id, email: correo, lineas }
+        body: { operationId, empresaId, localId: localActivoId, checkoutId: checkout.id, email: correo, lineas: Array.isArray(lineas) ? lineas : [] }
       });
       if (invocacion.error) throw invocacion.error;
       const respuesta = invocacion.data || {};
@@ -24091,7 +24087,11 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setProcesandoTicketCorreoF4(true);
     setErrorCobroF4("");
     setMensajeCobroF4("");
-    const resultado = await enviarTicketCorreoF4({ email: ticketCorreoF4 });
+    const lineasTicketCorreo = (pedidoOperativoA05?.lineas || []).map((l22) => {
+      const producto = productos.find((p22) => p22.id === l22.productoId);
+      return { nombre: producto?.nombre || "Producto", cantidad: l22.cantidad, total: Number(l22.total) || 0 };
+    });
+    const resultado = await enviarTicketCorreoF4({ email: ticketCorreoF4, lineas: lineasTicketCorreo });
     setProcesandoTicketCorreoF4(false);
     if (!resultado?.ok) {
       setErrorCobroF4(resultado?.error || "No se pudo enviar el ticket por correo.");
