@@ -46,6 +46,33 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
     `${nombre}: falta la explicación de coherencia variante/modificador`
   );
 
+  // Hallazgo Cowork (24/10/2026, prueba en vivo Hoja QA-10): el desplegable "Tipo" del
+  // formulario de opción debe filtrar según el tipo del grupo elegido, no dejar escoger una
+  // combinación que el servidor va a rechazar.
+  assert.match(
+    contenido,
+    /const tiposOpcionPara = \(grupoId\) => \{/,
+    `${nombre}: falta el filtro tiposOpcionPara`
+  );
+  assert.match(
+    contenido,
+    /campoSelect\(formOpcion\.tipoOpcion, \(v2\) => setFormOpcion\(\{ \.\.\.formOpcion, tipoOpcion: v2 \}\), tiposOpcionPara\(formOpcion\.grupoId\)\.map\(\(x3\) => \[x3\.id, x3\.etiqueta\]\), ocupado\)\)/,
+    `${nombre}: el desplegable Tipo debe filtrar con tiposOpcionPara`
+  );
+
+  // Hallazgo Cowork: el desplegable "Grupo" del panel de enlace no debe ofrecer grupos
+  // desactivados (el servidor los rechaza con vinculo_grupo_no_disponible).
+  assert.match(
+    contenido,
+    /const gruposActivos = grupos\.filter\(\(g2\) => g2\.activo\);/,
+    `${nombre}: falta filtrar los grupos activos para el panel de enlace`
+  );
+  assert.match(
+    contenido,
+    /campoSelect\(formVinculo\.grupoId, \(v2\) => setFormVinculo\(\{ \.\.\.formVinculo, grupoId: v2 \}\), gruposActivos\.map\(\(g2\) => \[g2\.id, g2\.nombre\]\), ocupado\)\)/,
+    `${nombre}: el desplegable Grupo del enlace debe listar solo gruposActivos`
+  );
+
   // Inmutabilidad reflejada en el formulario: tipo de grupo y grupo/moneda de una opción no
   // se pueden tocar una vez creados.
   assert.match(

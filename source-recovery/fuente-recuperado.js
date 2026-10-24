@@ -1841,6 +1841,11 @@ function ConfigOpciones({ empresaId, localId }) {
   const nombreTipoGrupo = (id) => (CONFIG_TIPOS_GRUPO_OPCIONES.find((x3) => x3.id === id) || { etiqueta: id }).etiqueta;
   const nombreTipoOpcion = (id) => (CONFIG_TIPOS_OPCION.find((x3) => x3.id === id) || { etiqueta: id }).etiqueta;
   const nombreGrupo = (id) => (grupos.find((g2) => g2.id === id) || {}).nombre || id;
+  const tiposOpcionPara = (grupoId) => {
+    const g2 = grupos.find((x3) => x3.id === grupoId);
+    if (g2 && g2.tipo_grupo === "VARIANTE") return CONFIG_TIPOS_OPCION.filter((x3) => x3.id === "VARIANTE");
+    return CONFIG_TIPOS_OPCION.filter((x3) => x3.id !== "VARIANTE");
+  };
   const requiereMotivo = () => {
     if (!motivo.trim()) {
       setError("Escribe el motivo del cambio.");
@@ -1983,6 +1988,7 @@ function ConfigOpciones({ empresaId, localId }) {
     { value: valor, onChange: (e2) => onChange(e2.target.value), disabled: deshabilitado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } },
     listaOpciones.map(([v2, t3]) => h("option", { key: v2, value: v2 }, t3))
   );
+  const gruposActivos = grupos.filter((g2) => g2.activo);
   return h(
     "div",
     null,
@@ -2053,7 +2059,8 @@ function ConfigOpciones({ empresaId, localId }) {
         )
       )),
       formOpcion ? null : h(Btn, { small: true, onClick: () => {
-        setFormOpcion({ ...vacioOpcion, grupoId: (grupos[0] || {}).id || "" });
+        const grupoInicial = (grupos[0] || {}).id || "";
+        setFormOpcion({ ...vacioOpcion, grupoId: grupoInicial, tipoOpcion: tiposOpcionPara(grupoInicial)[0].id });
         setError("");
         setConfirmacion("");
       }, disabled: ocupado || grupos.length === 0 }, grupos.length === 0 ? "Crea primero un grupo" : "Añadir una opción")
@@ -2065,10 +2072,14 @@ function ConfigOpciones({ empresaId, localId }) {
       h(
         "div",
         { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
-        h(Field, { label: "Grupo" }, campoSelect(formOpcion.grupoId, (v2) => setFormOpcion({ ...formOpcion, grupoId: v2 }), grupos.map((g2) => [g2.id, g2.nombre]), ocupado || !!formOpcion.id)),
+        h(Field, { label: "Grupo" }, campoSelect(formOpcion.grupoId, (v2) => {
+          const tiposValidos = tiposOpcionPara(v2);
+          const tipoCoherente = tiposValidos.some((x3) => x3.id === formOpcion.tipoOpcion) ? formOpcion.tipoOpcion : tiposValidos[0].id;
+          setFormOpcion({ ...formOpcion, grupoId: v2, tipoOpcion: tipoCoherente });
+        }, grupos.map((g2) => [g2.id, g2.nombre]), ocupado || !!formOpcion.id)),
         h(Field, { label: "Moneda (3 letras)" }, h(Input, { value: formOpcion.currencyCode, onChange: (e2) => setFormOpcion({ ...formOpcion, currencyCode: e2.target.value.toUpperCase() }), maxLength: 3, disabled: ocupado || !!formOpcion.id })),
         h(Field, { label: "Nombre (hasta 80 caracteres)" }, h(Input, { value: formOpcion.nombre, onChange: (e2) => setFormOpcion({ ...formOpcion, nombre: e2.target.value }), maxLength: 80, disabled: ocupado })),
-        h(Field, { label: "Tipo" }, campoSelect(formOpcion.tipoOpcion, (v2) => setFormOpcion({ ...formOpcion, tipoOpcion: v2 }), CONFIG_TIPOS_OPCION.map((x3) => [x3.id, x3.etiqueta]), ocupado)),
+        h(Field, { label: "Tipo" }, campoSelect(formOpcion.tipoOpcion, (v2) => setFormOpcion({ ...formOpcion, tipoOpcion: v2 }), tiposOpcionPara(formOpcion.grupoId).map((x3) => [x3.id, x3.etiqueta]), ocupado)),
         h(Field, { label: "Precio que añade (puede ser negativo)" }, h(Input, { value: formOpcion.deltaPrecio, onChange: (e2) => setFormOpcion({ ...formOpcion, deltaPrecio: e2.target.value }), disabled: ocupado })),
         h(Field, { label: "Cantidad máxima" }, h(Input, { value: formOpcion.maxCantidad, onChange: (e2) => setFormOpcion({ ...formOpcion, maxCantidad: e2.target.value }), disabled: ocupado }))
       ),
@@ -2100,10 +2111,10 @@ function ConfigOpciones({ empresaId, localId }) {
         )
       )),
       formVinculo ? null : h(Btn, { small: true, onClick: () => {
-        setFormVinculo({ ...vacioVinculo, grupoId: (grupos[0] || {}).id || "" });
+        setFormVinculo({ ...vacioVinculo, grupoId: (gruposActivos[0] || {}).id || "" });
         setError("");
         setConfirmacion("");
-      }, disabled: ocupado || grupos.length === 0 || productos.length === 0 }, (grupos.length === 0 || productos.length === 0) ? "Hace falta un grupo y un producto" : "Enlazar un producto")
+      }, disabled: ocupado || gruposActivos.length === 0 || productos.length === 0 }, (gruposActivos.length === 0 || productos.length === 0) ? "Hace falta un grupo activo y un producto" : "Enlazar un producto")
     ),
     formVinculo ? h(
       Card,
@@ -2116,7 +2127,7 @@ function ConfigOpciones({ empresaId, localId }) {
           const p2 = productos.find((x3) => x3.producto_id === v2);
           setFormVinculo({ ...formVinculo, productoId: v2, currencyCode: p2 ? p2.currency_code : formVinculo.currencyCode });
         }, [["", "Elige un producto"], ...productos.map((p2) => [p2.producto_id, `${p2.producto_id} (${p2.currency_code})`])], ocupado)),
-        h(Field, { label: "Grupo" }, campoSelect(formVinculo.grupoId, (v2) => setFormVinculo({ ...formVinculo, grupoId: v2 }), grupos.map((g2) => [g2.id, g2.nombre]), ocupado)),
+        h(Field, { label: "Grupo" }, campoSelect(formVinculo.grupoId, (v2) => setFormVinculo({ ...formVinculo, grupoId: v2 }), gruposActivos.map((g2) => [g2.id, g2.nombre]), ocupado)),
         h(Field, { label: "Mínimo de selección" }, h(Input, { value: formVinculo.minSelecciones, onChange: (e2) => setFormVinculo({ ...formVinculo, minSelecciones: e2.target.value }), disabled: ocupado })),
         h(Field, { label: "Máximo de selección" }, h(Input, { value: formVinculo.maxSelecciones, onChange: (e2) => setFormVinculo({ ...formVinculo, maxSelecciones: e2.target.value }), disabled: ocupado }))
       ),
