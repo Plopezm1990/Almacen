@@ -46,10 +46,10 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
   // tiempo de ejecución y el botón no hace nada, sin red ni error visible.
   assert.match(
     contenido,
-    /resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, reintentarCobroF4, leerEstadoCobroF4/g,
+    /resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4/g,
     `${nombre}: emitirFacturaEmpresaF4 debe viajar junto a resolverPagoSimuladoQAF4 en el return de crearLogicaVenta, en las props de <VentaRapida> y en los parámetros de VentaRapida (ver hallazgo Cowork 24/10/2026)`
   );
-  const ocurrenciasConexion = contenido.match(/resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, reintentarCobroF4, leerEstadoCobroF4/g) || [];
+  const ocurrenciasConexion = contenido.match(/resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4/g) || [];
   assert.equal(
     ocurrenciasConexion.length,
     4,

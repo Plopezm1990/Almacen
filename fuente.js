@@ -104853,7 +104853,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -105885,7 +105885,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -111236,6 +111236,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("documento_emitido_inmutable")) return "Esta factura ya estaba emitida y no se puede modificar.";
     if (msg.includes("documento_anulado")) return "Esta factura fue anulada.";
     if (msg.includes("documento_no_encontrado") || msg.includes("factura_sin_documento_reservado")) return "No se pudo reservar el número de factura.";
+    if (msg.includes("abc_ticket_correo_no_autorizado")) return "Tu usuario no tiene permiso para enviar el ticket por correo.";
+    if (msg.includes("ticket_correo_email_invalido")) return "Escribe un correo válido.";
+    if (msg.includes("ticket_correo_checkout_no_encontrado")) return "No se encontró el cobro de esta cuenta.";
+    if (msg.includes("ticket_correo_registro_parametros_invalidos")) return "No se pudo dejar constancia del envío del ticket.";
     return errorRpcA02(error);
   }
   async function leerEstadoCobroF4() {
@@ -111679,6 +111683,44 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         ok: true, resultado: emitido,
         mensaje: `Factura ${codigoSerie}-${String(numero).padStart(6, "0")} emitida (modo simulador) a ${nombreReceptor} (NIF ${nifReceptor}).`
       };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+
+  // Hoja QA-6 (Etapa 5, T6): ticket por correo. No es un documento fiscal
+  // (eso es la Hoja QA-5, aparte) ni sustituye el ticket impreso — es una
+  // copia informativa de la venta, enviada a petición cuando la cuenta ya
+  // está pagada. El envío real lo hace la Edge Function "enviar-ticket-
+  // correo" (única pieza que toca la clave de Resend); aquí solo se reúnen
+  // los datos y se la invoca con la sesión del propio usuario.
+  async function enviarTicketCorreoF4({ email } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para enviar el ticket." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const correo = String(email || "").trim().toLowerCase();
+    if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return { ok: false, error: "Escribe un correo válido." };
+    try {
+      const estado = await leerEstadoCobroF4();
+      if (!estado?.ok) return estado;
+      if (String(estado.estado) !== "PAGADO") return { ok: false, error: "Solo se puede enviar el ticket cuando la cuenta está pagada por completo." };
+      const checkout = Array.isArray(estado.checkouts) ? estado.checkouts[0] : null;
+      if (!checkout?.id) return { ok: false, error: "No se encontró el cobro de esta cuenta." };
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El ticket por correo necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const lineas = (pedidoOperativoA05?.lineas || []).map((l22) => {
+        const producto = productos.find((p22) => p22.id === l22.productoId);
+        return { nombre: producto?.nombre || "Producto", cantidad: l22.cantidad, total: Number(l22.total) || 0 };
+      });
+      const operationId = "t6.ticket.correo." + checkout.id + "." + uuidA02();
+      const invocacion = await supabase.functions.invoke("enviar-ticket-correo", {
+        body: { operationId, empresaId, localId: localActivoId, checkoutId: checkout.id, email: correo, lineas }
+      });
+      if (invocacion.error) throw invocacion.error;
+      const respuesta = invocacion.data || {};
+      if (!respuesta.ok) return { ok: false, error: respuesta.error || "No se pudo enviar el ticket por correo." };
+      return { ok: true, mensaje: respuesta.mensaje || `Ticket enviado a ${correo}.` };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -113788,7 +113830,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -123511,7 +123553,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
   }
 }
 const ERROR_BORRADOR_RECUPERACION_A06 = "Tienes un borrador local activo. Guárdalo o vacíalo antes de recuperar o aparcar una cuenta. El borrador no se ha borrado ni mezclado con la cuenta del servidor.";
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   const unirCuentasA08 = arguments[0]?.unirCuentasA08;
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
@@ -123919,6 +123961,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [facturaNombreF4, setFacturaNombreF4] = (0, import_react4.useState)("");
   const [facturaNifF4, setFacturaNifF4] = (0, import_react4.useState)("");
   const [procesandoFacturaF4, setProcesandoFacturaF4] = (0, import_react4.useState)(false);
+  const [ticketCorreoF4, setTicketCorreoF4] = (0, import_react4.useState)("");
+  const [procesandoTicketCorreoF4, setProcesandoTicketCorreoF4] = (0, import_react4.useState)(false);
   const billetesRapidosF4 = [5, 10, 20, 50, 100];
   const [bizumPreparadoF4, setBizumPreparadoF4] = (0, import_react4.useState)(false);
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
@@ -125333,6 +125377,20 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setFacturaNombreF4("");
     setFacturaNifF4("");
   }
+  async function enviarTicketCorreoF4UI() {
+    if (procesandoTicketCorreoF4 || typeof enviarTicketCorreoF4 !== "function") return;
+    setProcesandoTicketCorreoF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await enviarTicketCorreoF4({ email: ticketCorreoF4 });
+    setProcesandoTicketCorreoF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo enviar el ticket por correo.");
+      return;
+    }
+    setMensajeCobroF4(resultado.mensaje || "Ticket enviado por correo.");
+    setTicketCorreoF4("");
+  }
   function cambiarFormularioIncidenciaB04(campo, valor) {
     setFormularioIncidenciaB04((actual) => ({ ...actual, [campo]: valor }));
   }
@@ -125507,6 +125565,14 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF/CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: facturaNifF4, onChange: (e2) => setFacturaNifF4(e2.target.value), placeholder: "B12345678" }))
         ),
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: emitirFacturaEmpresaF4UI, disabled: procesandoFacturaF4 }, procesandoFacturaF4 ? "Emitiendo…" : "Emitir factura (modo simulador)")
+      ) : null,
+      tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Ticket por correo"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-6: envía una copia informativa de esta venta. No es un ticket fiscal ni sustituye al impreso."),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo del cliente" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: ticketCorreoF4, onChange: (e2) => setTicketCorreoF4(e2.target.value), placeholder: "cliente@correo.com" }))
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: enviarTicketCorreoF4UI, disabled: procesandoTicketCorreoF4 }, procesandoTicketCorreoF4 ? "Enviando…" : "Enviar ticket por correo")
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
