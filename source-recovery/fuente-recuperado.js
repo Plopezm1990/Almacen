@@ -10184,7 +10184,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("abc_qa_simulador_propietario_requerido")) return "Solo el Propietario de QA puede aprobar este pago simulado.";
     if (msg.includes("abc_qa_simulador_importe_distinto") || msg.includes("abc_qa_simulador_importe_invalido")) return "El importe no coincide con el intento simulado.";
     if (msg.includes("abc_qa_simulador_intento_no_encontrado") || msg.includes("abc_qa_simulador_pago_no_encontrado") || msg.includes("abc_qa_simulador_checkout_no_encontrado")) return "No se encontró el intento de pago simulado.";
-    if (msg.includes("abc_qa_simulador_solo_tarjeta")) return "El resolvedor simulado solo aprueba intentos de tarjeta.";
+    if (msg.includes("abc_qa_simulador_medio_no_soportado")) return "El resolvedor simulado solo aprueba intentos de tarjeta o Bizum.";
     if (msg.includes("abc_propina_no_autorizada")) return "Tu usuario no tiene permiso para registrar propinas.";
     if (msg.includes("abc_propina_importe_invalido") || msg.includes("abc_propina_parametros_requeridos")) return "No se pudo calcular el importe de la propina.";
     if (msg.includes("abc_propina_pago_no_encontrado") || msg.includes("abc_propina_pago_no_confirmado")) return "No se encontró el pago en efectivo para registrar la propina.";
@@ -10394,7 +10394,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
     const medio = String(medioSolicitado || "").toUpperCase();
-    if (!["EFECTIVO", "TARJETA"].includes(medio)) return { ok: false, error: "Medio de pago no disponible en este punto." };
+    if (!["EFECTIVO", "TARJETA", "BIZUM"].includes(medio)) return { ok: false, error: "Medio de pago no disponible en este punto." };
     try {
       const recuperada = await recuperarCuentaA06();
       if (!recuperada?.ok || !recuperada.cuentaId) throw new Error(recuperada?.error || "cuenta_no_encontrada");
@@ -10534,6 +10534,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       }
       if (medio === "TARJETA" && estadoFinal.ok) {
         estadoFinal.mensaje = "Tarjeta iniciada en modo simulado: el intento queda pendiente hasta que el adaptador de proveedor lo resuelva.";
+      }
+      if (medio === "BIZUM" && estadoFinal.ok) {
+        estadoFinal.mensaje = "Bizum iniciado en modo simulado (solo QA): el intento queda pendiente hasta que el adaptador de proveedor lo resuelva.";
       }
       return estadoFinal;
     } catch (error) {
@@ -24387,7 +24390,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       ),
       estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
-      bloqueado && configEmpresa?.id === "QA-EMP-A" && local?.id === "QA-A1" && pagoDelUltimoIntento?.medio === "TARJETA" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: aprobarPagoSimuladoQAF4, disabled: procesandoCobroF4 }, "Aprobar pago simulado (solo QA)") : null,
+      bloqueado && configEmpresa?.id === "QA-EMP-A" && local?.id === "QA-A1" && ["TARJETA", "BIZUM"].includes(pagoDelUltimoIntento?.medio) ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: aprobarPagoSimuladoQAF4, disabled: procesandoCobroF4 }, "Aprobar pago simulado (solo QA)") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Abrir incidencia B04"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Registra el corte de respuesta y conserva la referencia del proveedor. La autorización se valida en el servidor."),
@@ -24427,6 +24430,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
           /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible, propina: propinaCambioF4 && cambioVisible > 0 }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("BIZUM", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar Bizum (QA)"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: prepararBizumF4, disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, bizumPreparadoF4 ? "Bizum QA preparado" : "Preparar Bizum QA"),
           confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible }), disabled: procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
         ),

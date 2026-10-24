@@ -15,19 +15,18 @@ const migracionBizum = fs.readFileSync(
   "utf8"
 );
 
-// T6 únicamente prepara Bizum en QA hasta que exista un adaptador de pago
-// explícito. Esta prueba evita que el botón local termine llamando a la RPC
-// de cobro o que BIZUM se clasifique silenciosamente como otro medio.
+// T6 preparó Bizum en QA (handshake sin cobro) hasta la Hoja QA-8, que lo
+// completó como medio operativo (ver etapa5-t6-bizum-operativo-contract.mjs).
+// Esta prueba conserva las comprobaciones del handshake original y de que
+// la migración histórica de abc_iniciar_cobro (ya aplicada, nunca editada)
+// seguía sin admitir BIZUM en su momento.
 for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación", espejo]]) {
   assert.match(contenido, /function prepararBizumF4\(\)/, `${nombre}: falta el preparador local de Bizum`);
   assert.match(contenido, /abc_preparar_bizum_qa/, `${nombre}: falta la llamada al handshake server-side`);
   assert.match(contenido, /Bizum QA preparado por el servidor/, `${nombre}: falta el mensaje de preparación server-side`);
-  assert.doesNotMatch(contenido, /iniciarCobroCuentaF4\(["']BIZUM/, `${nombre}: Bizum no debe iniciar cobro todavía`);
 }
 
-assert.match(fuente, /\["EFECTIVO", "TARJETA"\]\.includes\(medio\)/, "La UI no debe ampliar el cobro sin contrato de servidor");
-assert.match(migracionCobro, /v_medio not in \('EFECTIVO','TARJETA','TRANSFERENCIA','OTRO'\)/, "La RPC actual debe mantener su lista explícita");
-assert.doesNotMatch(migracionCobro, /v_medio not in \([^)]*'BIZUM'/, "La RPC no debe aceptar BIZUM sin adaptador QA");
+assert.match(migracionCobro, /v_medio not in \('EFECTIVO','TARJETA','TRANSFERENCIA','OTRO'\)/, "La migración histórica (nunca editada) debe conservar su lista original");
 assert.match(migracionCobro, /if v_medio<>'EFECTIVO' then[\s\S]*?PROVIDER_COBRO/, "Los medios no efectivos deben quedar en la cola de proveedor existente");
 assert.match(migracionBizum, /create or replace function public\.abc_preparar_bizum_qa/, "Falta el handshake server-side de Bizum QA");
 assert.match(migracionBizum, /security invoker/, "El handshake Bizum QA no debe elevar privilegios");
