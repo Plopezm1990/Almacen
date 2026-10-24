@@ -10178,6 +10178,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("abc_qa_simulador_importe_distinto") || msg.includes("abc_qa_simulador_importe_invalido")) return "El importe no coincide con el intento simulado.";
     if (msg.includes("abc_qa_simulador_intento_no_encontrado") || msg.includes("abc_qa_simulador_pago_no_encontrado") || msg.includes("abc_qa_simulador_checkout_no_encontrado")) return "No se encontró el intento de pago simulado.";
     if (msg.includes("abc_qa_simulador_solo_tarjeta")) return "El resolvedor simulado solo aprueba intentos de tarjeta.";
+    if (msg.includes("abc_propina_no_autorizada")) return "Tu usuario no tiene permiso para registrar propinas.";
+    if (msg.includes("abc_propina_importe_invalido") || msg.includes("abc_propina_parametros_requeridos")) return "No se pudo calcular el importe de la propina.";
+    if (msg.includes("abc_propina_pago_no_encontrado") || msg.includes("abc_propina_pago_no_confirmado")) return "No se encontró el pago en efectivo para registrar la propina.";
+    if (msg.includes("abc_propina_solo_efectivo")) return "La propina del cambio solo está disponible para pagos en efectivo.";
+    if (msg.includes("abc_propina_sin_cambio")) return "Este pago no tiene cambio que convertir en propina.";
+    if (msg.includes("abc_propina_importe_no_coincide")) return "El importe de la propina no coincide con el cambio de este pago.";
+    if (msg.includes("abc_propina_ya_registrada")) return "Ya se registró una propina para este pago.";
     if (msg.includes("evidencia_datos_tarjeta_prohibidos")) return "La evidencia no puede contener PAN, CVV ni datos completos de tarjeta.";
     if (msg.includes("abc_f4_b04") || msg.includes("abc_abrir_incidencia_cobro") || msg.includes("abc_resolver_incidencia_cobro")) return "La gestión B04 todavía no está disponible en este servidor.";
     if (msg.includes("cobro_incidencia_ya_abierta")) return "Este cobro ya tiene una incidencia abierta.";
@@ -10387,6 +10394,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           prepareOperationId: "f4.b02b03.prepare." + checkoutId,
           payOperationId: "f4.b02b03.pay." + intentoId,
           cashOperationId: "f4.b02b03.cash." + intentoId,
+          propinaOperationId: "f4.b02b03.propina." + intentoId,
           importeObjetivo: null, createdAt: new Date().toISOString()
         };
         guardarPendienteCobroF4(pendiente);
@@ -10457,7 +10465,35 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           p_session_id: terminal.sessionId, p_terminal_id: terminal.terminalId,
           p_operating_day: recuperada.operatingDay
         }, empresaId, localActivoId, pendiente.cashOperationId);
+        // Hoja QA-4 (T6): «el cambio es propina». No toca abc_iniciar_cobro ni
+        // abc_confirmar_efectivo, ya probados: el efectivo se cobra exactamente
+        // igual que siempre (con su cambio real, aunque no se vaya a entregar).
+        // Si se marcó la casilla, se registra ese mismo cambio como propina en
+        // una llamada aparte, después de que el cobro ya esté confirmado.
+        let propinaResultado = null;
+        if (opciones?.propina && Number(pendiente.cambioEntregado) > 0) {
+          try {
+            const { data: propina } = await rpcA02ConRecuperacion(supabase, "abc_registrar_propina_efectivo", {
+              p_operation_id: pendiente.propinaOperationId,
+              p_empresa_id: empresaId, p_local_id: localActivoId,
+              p_pago_id: pendiente.pagoId, p_caja_id: cajaSesion.caja_id,
+              p_session_id: terminal.sessionId, p_terminal_id: terminal.terminalId,
+              p_operating_day: recuperada.operatingDay,
+              p_importe: pendiente.cambioEntregado
+            }, empresaId, localActivoId, pendiente.propinaOperationId);
+            propinaResultado = { ok: true, importe: pendiente.cambioEntregado };
+          } catch (errorPropina) {
+            propinaResultado = { ok: false, error: mensajeErrorCobroF4(errorPropina) };
+          }
+        }
         limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
+        if (propinaResultado) {
+          const estadoConPropina = await leerEstadoCobroF4();
+          estadoConPropina.mensaje = propinaResultado.ok
+            ? `Efectivo confirmado y cuenta pagada. Propina de €${Number(propinaResultado.importe).toFixed(2)} registrada; no se devuelve cambio.`
+            : `Efectivo confirmado, pero la propina no se pudo registrar: ${propinaResultado.error} El cambio sigue pendiente de devolver.`;
+          return estadoConPropina;
+        }
       }
       const estadoFinal = await leerEstadoCobroF4();
       if (medio === "EFECTIVO" && estadoFinal.ok) {
@@ -22598,6 +22634,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [mensajeCobroF4, setMensajeCobroF4] = (0, import_react4.useState)("");
   const [importeCobroF4, setImporteCobroF4] = (0, import_react4.useState)("");
   const [efectivoRecibidoCobroF4, setEfectivoRecibidoCobroF4] = (0, import_react4.useState)("");
+  const [propinaCambioF4, setPropinaCambioF4] = (0, import_react4.useState)(false);
   const billetesRapidosF4 = [5, 10, 20, 50, 100];
   const [bizumPreparadoF4, setBizumPreparadoF4] = (0, import_react4.useState)(false);
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
@@ -23840,6 +23877,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     }
     setEstadoCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
+    if (medio === "EFECTIVO") setPropinaCambioF4(false);
   }
   async function prepararBizumF4() {
     if (procesandoCobroF4 || typeof prepararBizumQAF4 !== "function") return;
@@ -24038,9 +24076,10 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe de este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
         ),
-        cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, cambioVisible < 0 ? `Faltan €${fmt(Math.abs(cambioVisible))}` : `Cambio a devolver: €${fmt(cambioVisible)}`) : null,
+        cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, cambioVisible < 0 ? `Faltan €${fmt(Math.abs(cambioVisible))}` : propinaCambioF4 ? `Propina: €${fmt(cambioVisible)} (no se devuelve cambio)` : `Cambio a devolver: €${fmt(cambioVisible)}`) : null,
+        cambioVisible !== null && cambioVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[11.5px] mb-2 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: propinaCambioF4, onChange: (e2) => setPropinaCambioF4(e2.target.checked) }), "El cambio es propina") : null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
-          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible, propina: propinaCambioF4 && cambioVisible > 0 }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: prepararBizumF4, disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, bizumPreparadoF4 ? "Bizum QA preparado" : "Preparar Bizum QA"),
           confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible }), disabled: procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
