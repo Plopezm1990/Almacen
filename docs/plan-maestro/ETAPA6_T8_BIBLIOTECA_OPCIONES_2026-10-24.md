@@ -1,8 +1,9 @@
-# Plan Maestro L&A Suite — Etapa 6, T8 (pieza 1): biblioteca de opciones reutilizables
+# Plan Maestro L&A Suite — Etapa 6, T8 (piezas 1 y 2): biblioteca de opciones reutilizables y opciones por producto
 
 Fecha: 24/10/2026
 Entorno: QA `qjqorixtkilwsndqayyx`.
-Autorización: Hoja QA-10 (Pedro, 24/10/2026, chat).
+Autorización: Hoja QA-10 (Pedro, 24/10/2026, chat) + continuación de la
+pieza 2 ("VALE SEGUIMOS", Pedro, 24/10/2026, chat).
 
 ## 1. Lo pedido
 
@@ -59,10 +60,9 @@ paneles:
   desactivar.
 - **Biblioteca: opciones dentro de cada grupo** — igual, con precio,
   impuesto (propio o heredado del producto) y cantidad máxima.
-- **Enlazar un grupo con un producto** — un panel de enlace sencillo
-  (elegir producto y grupo, fijar mínimo/máximo), a falta de la ficha
-  completa de un producto en pantalla (pieza 2 de esta etapa, sin
-  empezar).
+- **Opciones por producto** (pieza 2, ver sección 8) — una ficha por
+  cada producto activo del catálogo TPV, con sus grupos enlazados y un
+  botón para enlazar uno más, ahí mismo.
 
 ## 4. Hallazgos en la prueba en vivo (Cowork)
 
@@ -112,13 +112,73 @@ formulario.
 - No se ha tocado ninguna función ni lógica existente (T3-A04, cobro,
   caja, vale regalo, Bizum, impresión/cajón).
 
-## 7. Pendiente
+## 7. Pendiente (tras la pieza 1)
 
-- **Pieza 2 de T8 (editor de producto):** no existe todavía ninguna
-  ficha completa de un producto en pantalla. El panel de enlace de esta
-  pieza es un sustituto provisional hasta que se construya.
+- **Pieza 2 de T8 (ver sección 8):** resuelta con el alcance que Pedro
+  eligió — enlazar opciones por producto, sin editor completo del
+  catálogo TPV.
 - **Piezas 3-5 de T8** (zonas y tarifas libres con horario, plantillas
   por tipo de negocio, teclas y permisos por cargo): sin empezar.
 
-**T8, pieza 1: construida, probada en QA y corregida. Piezas 2-5 de T8
-siguen pendientes.**
+## 8. Pieza 2: opciones por producto
+
+### Alcance elegido
+
+Pedro eligió, entre tres opciones planteadas, la más acotada: **"solo
+enlazar opciones"** — una pantalla donde ver los productos del catálogo
+TPV (los que ya refleja el Almacén) y enlazarles grupos de la
+biblioteca ahí mismo, sin construir un editor completo del catálogo TPV
+(precio, impuesto, alta/baja) ni tocar la pantalla "Productos" del
+Almacén.
+
+### Qué se construyó
+
+Se sustituyó el panel de enlace suelto de la pieza 1 (un formulario con
+un desplegable de producto) por una **ficha por producto**: la lista de
+productos activos de `catalogo_tpv_productos` (con su nombre, no solo
+el código), y bajo cada uno sus grupos ya enlazados (con mínimo/máximo
+y botón para desenlazar) y un botón "Enlazar un grupo" que abre el
+formulario dentro de la misma ficha, sin pedir elegir el producto de
+nuevo. No se añadió ninguna función ni tabla nueva: sigue usando
+`abc_vincular_grupo_producto`.
+
+### Hallazgos en la prueba en vivo (Cowork)
+
+Los 7 pasos relevantes de la ficha nueva salieron bien (lista de
+productos con nombre real, enlace visible directamente en la ficha de
+"Porción de tarta", mensaje claro sin enlaces, formulario que abre sin
+pedir el producto otra vez, guardar, desenlazar). El paso 8 (grupo sin
+ningún grupo activo disponible) no se pudo observar porque en ese
+momento había 4 grupos activos en QA; no bloqueante.
+
+**Hallazgo real, de paso, no de esta pieza:** en la sección "Biblioteca:
+opciones dentro de cada grupo", las opciones de un grupo ya desactivado
+mostraban el id en crudo del grupo en vez de su nombre (p. ej.
+`102f75e2-93ce-487a-9bd0-c7a6f1e846e8` en vez de `Extras`). Causa: la
+carga de grupos y opciones filtraba por `activo` en el propio servidor
+según "Ver también los desactivados"; con la casilla desmarcada, el
+grupo desactivado ni siquiera se cargaba, y `nombreGrupo` no tenía de
+dónde resolver el nombre.
+
+**Corregido:** ahora siempre se cargan todos los grupos y todas las
+opciones; el filtro de "ver desactivados" se aplica solo al mostrarlos
+(`gruposVisibles` / `opcionesVisibles`), nunca a la carga. De paso, el
+botón "Añadir una opción" y el desplegable "Grupo" de su formulario
+pasan a usar `gruposActivos` al crear una opción nueva (evita ofrecer
+un grupo desactivado, que el servidor rechazaría igualmente), y siguen
+mostrando todos los grupos al editar una opción ya existente, para no
+perder el nombre de un grupo que se haya desactivado después.
+
+### Verificación de la pieza 2
+
+- `node --check` en ambos archivos: OK.
+- Prueba de contrato ampliada: comprueba la ficha por producto, que el
+  selector de producto suelto se retiró, y que la carga de grupos y
+  opciones ya no filtra por `activo` en el servidor. Todo en verde.
+- Todos los contratos existentes: sin cambios de resultado.
+- Probado en vivo en QA (Cowork, 24/10/2026): los 7 pasos relevantes de
+  la ficha por producto, y el hallazgo del nombre de grupo corregido
+  después.
+
+**T8, piezas 1 y 2: construidas, probadas en QA y corregidas. Piezas
+3-5 de T8 siguen pendientes.**
