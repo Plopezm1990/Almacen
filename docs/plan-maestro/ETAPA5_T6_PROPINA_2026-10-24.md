@@ -89,11 +89,27 @@ como un segundo paso, por el mismo importe.
 - No se decide tratamiento fiscal, documental ni contable de la propina.
 - No se ha tocado `abc_iniciar_cobro` ni `abc_confirmar_efectivo`.
 
-## 5. Pendiente
+## 5. Cierre confirmado (24/10/2026)
 
-- Probar en vivo en el preview de QA (pendiente de publicar y de que Pedro,
-  o Cowork con la sesión de Pedro, lo pruebe).
-- Comprobar que el arqueo del día incluye el importe de la propina sin
-  mostrar diferencia.
+Pedro (vía Cowork, su propia sesión) hizo la prueba completa: pedido de
+8,00 €, pagó con 20,00 € marcando "El cambio es propina". Resultado en
+pantalla: "Efectivo confirmado y cuenta pagada. Propina de €12.00
+registrada; no se devuelve cambio." Cuenta: Total €8,00 / Confirmado €8,00 /
+Pendiente €0,00 / PAGADO.
+
+Comprobado en QA, solo lectura, el 24/10/2026:
+
+- `abc_cobros_no_venta`: fila `3bb51de1-7928-406a-b784-453f3111953a`,
+  concepto `PROPINA`, importe `12.00000000`, medio `EFECTIVO`,
+  `datos.origen='cambio_no_devuelto'`, enlazada al `pago_id` real.
+- `caja_operaciones`: `efecto_efectivo=12.00`, `origen_tipo=ABC_COBRO_NO_VENTA`,
+  `categoria=PROPINA` — el dinero de más en caja queda explicado.
+
+**T6, punto 2 (tecla de propina): cerrado.**
+
+## 6. Pendiente
+
 - Antes de usar esto con dinero real en un negocio de verdad: confirmar con
   la asesoría de Pedro el tratamiento fiscal/contable de las propinas.
+- Dos hallazgos de la prueba en vivo, fuera del alcance de esta pieza — ver
+  `docs/plan-maestro/ETAPA5_HALLAZGOS_PRUEBA_PROPINA_2026-10-24.md`.
