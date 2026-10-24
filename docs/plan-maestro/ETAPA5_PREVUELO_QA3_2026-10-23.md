@@ -1,0 +1,335 @@
+# Plan Maestro L&A Suite — Arranque de la Etapa 5 / QA-3
+
+Fecha: 23/10/2026  
+Ámbito: exclusivamente Plan Maestro L&A Suite  
+Preview QA inspeccionado: `deploy-preview-175--chic-entremet-9107cf.netlify.app`
+Entorno: QA · `QA Empresa A, S.L.` · `Local A1`  
+Producción: no tocada
+
+## Estado
+
+**ETAPA 5 ABIERTA — PREVUELO QA-3 COMPLETADO; NO CERRADA.**
+
+La Etapa 5 del Plan Maestro es «TPV: caja, cobro e impresoras» y comprende
+T5 Caja y mesa, T6 Cobro completo y T7 Impresoras y cajón. Esta hoja fija el
+punto de partida antes de modificar el programa o preparar una nueva
+validación. No se mezclan aquí tareas ni contratos del Plan ABC.
+
+## Criterios de la etapa según el plan
+
+### T5 — Caja y mesa
+
+Debe cubrir, como mínimo:
+
+- último ticket y reimpresión;
+- entradas y salidas de caja desde el TPV;
+- aparcar y recuperar una cuenta;
+- artículo varios e invitación;
+- cambiar y unir mesas.
+
+### T6 — Cobro completo
+
+Debe cubrir, como mínimo:
+
+- Bizum;
+- propina;
+- vale regalo;
+- billetes rápidos;
+- factura a empresa con NIF y numeración propia;
+- envío por email.
+
+### T7 — Impresoras y cajón
+
+Debe cubrir, como mínimo:
+
+- impresoras Epson/Star directas desde navegador;
+- puente L&A para el resto de impresoras;
+- pantalla de impresoras/aparatos;
+- cajón monedero con sus reglas de apertura.
+
+## Lo que ya existe y se ha comprobado
+
+### Caja y arqueo
+
+- La navegación `Arqueo de caja` está disponible en QA.
+- Se muestran fecha, efectivo esperado, otras ventas, base de efectivo,
+  anulaciones, ajustes/reembolsos, entradas/retiradas y efectivo contado.
+- Existe `Guardar arqueo` y el modelo conserva el historial; no se ha creado
+  ningún arqueo nuevo durante este prevuelo.
+- El contrato local PM09 de caja pasa completo (`PM09_P10_CAJA_CONTRACT_OK=1`).
+- El contrato de UI PM08 se ejecuta con cero fallos cuando se le proporciona
+  el directorio de dependencias de UI.
+
+### TPV y pedido operativo
+
+- QA muestra `Local A1` y tarifa `General`.
+- El TPV conserva el ticket visible, historial de ventas, responsables,
+  reparto y pedido operativo.
+- El historial abre una venta y permite entrar en `Ver ticket / reimprimir`;
+  la vista del ticket ofrece `Imprimir / Guardar PDF`. Validado en QA con
+  `V-20261023-152967`.
+- La base de cuenta/sala ya está enlazada al servidor: recuperación de cuenta,
+  mapa de sala, asignación a mesa y traslado con motivo/versionado. En QA se
+  ha comprobado la presencia de `Sala y mesas`, una mesa libre y el flujo de
+  traslado; no se ha ejecutado una nueva asignación sobre datos operativos
+  existentes durante este arranque.
+- Se ha añadido al TPV la sección visible `Cuentas aparcadas / recuperables`.
+  Consulta `abc_listar_cuentas_recuperables` y solo muestra cuentas abiertas
+  del mismo día operativo que tienen exactamente un pedido y líneas activas.
+  La acción `Recuperar cuenta` reutiliza `abc_recuperar_cuenta`; no crea una
+  cuenta duplicada ni modifica datos hasta que el usuario la selecciona.
+- El TPV conserva un borrador local con caducidad de 24 horas; esto permite
+  recuperar una comanda local, pero no sustituye al estado server-side de una
+  cuenta abierta. La lista visible y la recuperación server-side se validaron
+  después en el preview 175 con una cuenta de prueba; véase la evidencia al
+  final de esta hoja. La conservación del borrador local en esa secuencia no
+  quedó demostrada por las capturas.
+- El TPV expone el cobro con `Cobrar efectivo` e `Iniciar tarjeta simulada`.
+- El servidor mantiene la separación entre preparar/enviar/cancelar un
+  pedido y cobrarlo; no se ha confirmado ningún cobro en este prevuelo.
+- La Cocina conserva rutas, comandas y `Reimprimir`.
+
+### Contratos de L&A Suite ejecutados
+
+- `tests/f5/f5-etapa3-ui-contract.mjs`: PASS.
+- `tests/f5/f5-etapa4-t1-t4-ui-contract.mjs`: PASS.
+- `tests/f5/f5-tpv-line-notes-contract.mjs`: PASS.
+- `tests/cfg/pm08-caja-ui-runtime.mjs`: PASS (14/14).
+- `tests/pm09/p10-caja-contract.mjs`: PASS.
+- `tests/cfg/cobro-lectura-static-contract.mjs`: PASS.
+- `tests/plan-maestro/etapa5-t5-t6-ui-contract.mjs`: PASS (contrato base
+  exclusivo del Plan Maestro; ticket/reimpresión, cuenta/sala, recuperación
+  visible y cobro base).
+- `tests/plan-maestro/etapa5-tpv-movimientos-caja-contract.mjs`: PASS
+  (acceso desde TPV, resolución del día operativo en servidor y reutilización
+  del flujo seguro de entradas/retiradas).
+- `node --check fuente.js`: PASS.
+
+El runtime de lectura de cobro no se declara verde en este arranque porque el
+script histórico apunta a una instantánea `source-recovery` que no está
+alineada con el `fuente.js` actual; al forzar el bundle actual, el adaptador
+de imports del test no es compatible. Esto es una limitación del test, no una
+prueba de que el cobro real esté aceptado.
+
+## Ausencias verificadas que impiden cerrar QA-3
+
+En la pantalla TPV y en el código actual no se han localizado aún:
+
+- botones o flujo de Bizum;
+- propina;
+- vale regalo;
+- billetes rápidos;
+- factura a empresa con NIF y numeración propia desde el cobro;
+- envío de factura/ticket por email;
+- artículo varios e invitación;
+- cambio y unión de mesas como operaciones completas del TPV.
+
+El punto «último ticket y reimpresión» deja de estar pendiente: queda
+**PASS parcial** en QA para abrir el ticket e imprimir/guardar PDF. La salida
+física por impresora sigue dentro de T7 y no se considera validada por esta
+vista del navegador.
+
+Por tanto, T5 y T6 están **PARCIALES**, no aceptados. La existencia de cobro
+en efectivo/tarjeta y de funciones históricas de caja no equivale a cumplir
+T6 completo.
+
+## T7 y decisiones necesarias
+
+La pantalla de equipos indica expresamente que el registro de aparatos «no los
+conecta ni los configura». Solo aparecen identificadores de aparatos como
+impresora de ticket, impresora de cocina y cajón monedero. No se ha hecho una
+prueba física porque todavía no hay una impresora de prueba identificada.
+
+Además, antes de ejecutar el apartado de email hay que fijar el proveedor y
+la dirección de prueba. No se elegirá proveedor, no se enviará ningún correo
+y no se comprará hardware automáticamente.
+
+T7 queda **BLOQUEADA** hasta disponer de:
+
+1. una impresora de prueba Epson/Star o un puente L&A de prueba;
+2. el proveedor/dirección de email QA que se autorice para las pruebas.
+
+## Datos y seguridad del prevuelo
+
+- No se cobraron pedidos.
+- No se enviaron correos.
+- No se tocaron migraciones ni PROD.
+- No se hicieron escrituras SQL directas.
+- No se borraron los datos QA existentes.
+- Los contratos `ABC_F5_*` no se usan como evidencia de esta etapa: son del
+  Plan ABC y quedan fuera del ámbito.
+
+## Decisión y siguiente paso
+
+La Etapa 5 queda **abierta** con prevuelo documentado. Los flujos
+aparcar → listar → recuperar → comprobar que no se duplica la cuenta ya
+pasaron en QA con el propietario de prueba. El acceso TPV a entradas y
+retiradas está implementado y validado mediante una prueba manual controlada.
+Aún faltan otras operaciones de T5 y los métodos de cobro de T6, sin ejecutar
+cargos reales.
+Después habrá que elegir el proveedor/destino de email y aportar una
+impresora de prueba para desbloquear T7. Solo tras implementar y repetir
+T5–T7 en QA se podrá declarar «ETAPA 5 CERRADA».
+
+## Incidencia de recuperación en navegador limpio (preview 175)
+
+La prueba móvil en sesión normal e incógnito mostró al entrar en TPV el aviso
+«Abre o recupera primero un pedido real para resolver el día operativo del
+servidor». El botón `Actualizar` repetía el aviso sin consultar el listado:
+`listarCuentasRecuperablesA06` exigía un día guardado en el navegador antes de
+llamar a `abc_listar_cuentas_recuperables`. El borrador local no era la causa.
+
+La corrección en esta rama consulta el día operativo mediante la RPC de solo
+lectura `abc_obtener_dia_operativo_local`, ya disponible en QA, y usa su valor
+para el listado aunque el navegador no tenga pedido local o conserve un día
+antiguo. La selección posterior sigue validándose con `abc_recuperar_cuenta`;
+no se abre ni se duplica un pedido para obtener el día.
+
+Preflight de solo lectura en QA: `QA-EMP-A` / `QA-A1` tiene una terminal activa
+con sesión `ABIERTA`; la cuenta de prueba está `ABIERTA`, con un pedido y una
+línea activa del 23/10/2026. Ambas RPC de lectura existen y tienen `EXECUTE`
+para el rol autenticado. El test de ejecución
+`tests/plan-maestro/etapa5-recuperacion-dia-runtime.mjs` cubre sesión limpia,
+contexto local de otro día, cuenta actual, contexto local dañado y fallo de
+autorización.
+
+Límite de permisos: la RPC existente que devuelve el día exige
+`ABC_CAJA_OPERAR`, mientras que el listado y la recuperación requieren
+`ABC_CUENTA_OPERAR`. El propietario QA puede ejecutar ambas; un rol que solo
+opere cuentas recibirá un aviso explícito y necesitará una adaptación de
+permisos del servidor antes de aceptar este flujo para todos los perfiles.
+No se ha aplicado ninguna migración en esta corrección.
+
+## Validación móvil cruzada — preview 175
+
+El 23/10/2026 se probó el preview 175 en `QA Empresa A, S.L.` / `Local A1`.
+En el móvil, `Actualizar` mostró dos cuentas recuperables del día operativo
+`2026-10-23`, incluida la cuenta de prueba terminada en `7f02d9e7` (una línea),
+sin el error previo de contexto local. Al pulsar `Recuperar cuenta` en esa
+primera cuenta, dejó de figurar en el listado y la otra, terminada en
+`fa3d6151`, permaneció visible. El móvil mostró `Pedido operativo ABIERTO`
+con `Agua 50 cl (QA)` en `BORRADOR`; el cobro mostró total `1,00 €`, confirmado
+`0,00 €` y pendiente `1,00 €`. La cuenta de prueba ya estaba activa en otro
+navegador antes de esta recuperación.
+
+Una consulta **solo de lectura** al proyecto Supabase `L&A Suite QA` después
+de la prueba confirmó para `589e2885-f54c-4076-812a-71f57f02d9e7`:
+cuenta `ABIERTA`, un pedido activo, una línea activa y una unidad. No se
+detectó duplicación de esa cuenta ni de su pedido. No se envió el pedido, no
+se cobró, no se modificó PROD y no se hicieron escrituras SQL directas.
+
+**Resultado:** recuperación cruzada del propietario QA: **PASS**. La captura
+anterior mostraba un borrador local de una línea, pero el aviso de ese borrador
+no aparece en las capturas posteriores. Estas pruebas no permiten concluir
+si se conservó o se descartó; debe verificarse por separado antes de aceptar
+la política de borrador local como parte de T5. Tampoco se extrapola este
+PASS a roles sin `ABC_CAJA_OPERAR`.
+
+Como cierre preventivo de esa ambigüedad, la interfaz bloquea ahora la acción
+`Recuperar cuenta` cuando existe un borrador local activo. El aviso indica que
+hay que guardarlo o vaciarlo primero y confirma que no se ha borrado ni mezclado
+con la cuenta del servidor. La guarda se ejecuta antes de llamar a la RPC, por
+lo que una recuperación nunca puede sustituir silenciosamente un carrito local.
+El contrato
+`tests/plan-maestro/etapa5-recuperacion-borrador-contract.mjs` fija este orden.
+
+La protección quedó validada en el preview 175, compilación `e1c55f3`: con la
+cuenta `…7f02d9e7` ya recuperada se creó un borrador local de una unidad de
+`Agua 50 cl (QA)` y se intentó recuperar `…fa3d6151`. La interfaz mostró el
+aviso de borrador activo, conservó la línea local y mantuvo `…fa3d6151` en el
+listado; no se guardó, envió ni cobró el borrador y la recuperación quedó
+bloqueada antes de la RPC. **Protección de borrador al recuperar: PASS QA.**
+
+## Aparcado explícito y recuperación — PASS QA
+
+Se añadió al bloque `Cuentas aparcadas / recuperables` la acción visible
+`Aparcar cuenta`. La operación elimina exclusivamente el enlace local entre
+el terminal actual y la cuenta activa. No llama a una RPC de escritura, no
+cancela el pedido, no altera sus líneas, no cambia cocina y no registra ni
+revierte cobros. A continuación refresca el listado server-side para que la
+misma cuenta pueda recuperarse de inmediato y sin duplicarla.
+
+La acción queda bloqueada cuando existe un borrador local activo, con la misma
+protección aplicada a la recuperación. Además, el aviso de esa protección se
+limpia cuando el carrito queda realmente vacío, evitando que permanezca un
+mensaje rojo obsoleto después de usar `Vaciar carrito` o guardar el pedido.
+
+Los contratos automatizados fijan que el aparcado solo borra la clave local de
+la cuenta, conserva otras claves del navegador, es inocuo al repetirse y no
+contiene operaciones de servidor, cancelación o cobro.
+
+En el preview 175 se aparcó la cuenta terminada en `7f02d9e7`; la interfaz
+confirmó `Cuenta aparcada correctamente` y la cuenta volvió a aparecer entre
+las recuperables junto a `fa3d6151`. Después se recuperó `7f02d9e7`: dejó de
+figurar en el listado, `fa3d6151` permaneció visible y el pedido volvió con una
+única línea `Agua 50 cl (QA)`, total `1,00 €`, confirmado `0,00 €` y pendiente
+`1,00 €`. La comprobación posterior de solo lectura confirmó una sola cuenta,
+un solo pedido activo, una sola línea activa y una unidad, sin duplicación. No
+se envió ni cobró el pedido. **Aparcar y recuperar cuenta: PASS QA.**
+
+## Entradas y retiradas de caja desde el TPV — PASS QA controlado
+
+Se añadió al TPV una sección visible `Caja · entradas y retiradas` con la
+acción `Abrir caja`. Al abrirla, el TPV resuelve primero el día operativo del
+servidor mediante el contexto de la cuenta o la RPC de solo lectura existente
+`abc_obtener_dia_operativo_local`. La ventana muestra ese día antes de admitir
+un movimiento.
+
+El formulario reutiliza sin duplicar reglas el componente
+`BloqueEntradasSalidas` y la lógica de caja ya validados en Arqueo. Las
+categorías siguen siendo `REPOSICION_CAJA`, `INGRESO_MANUAL`,
+`RETIRADA_CAJA` y `GASTO_CAJA`; el alta continúa pasando por la RPC existente
+`abc_registrar_movimiento_caja`, con sesión, terminal, permisos, día operativo,
+idempotencia y auditoría comprobados en el servidor. No se añadió ninguna
+migración, escritura SQL directa ni operación sobre ventas o cobros.
+
+Los contratos `etapa5-tpv-movimientos-caja-contract.mjs`,
+`etapa5-t5-t6-ui-contract.mjs`, `pm08-caja-ui-runtime.mjs` y
+`p10-caja-contract.mjs` pasan.
+
+### Evidencia manual — preview 175
+
+El 23/10/2026 se abrió `Caja · entradas y retiradas` en QA, empresa
+`QA Empresa A, S.L.`, `Local A1`, con día operativo del servidor `2026-10-23`.
+Se registraron desde el TPV, sin cobro ni pedido nuevo:
+
+- una `ENTRADA` de `+0,01 €`, categoría `REPOSICION_CAJA`, concepto de prueba
+  de Etapa 5 y motivo de validación QA;
+- una `RETIRADA` de `-0,01 €`, categoría `RETIRADA_CAJA`, concepto de prueba
+  de Etapa 5 y motivo de validación QA.
+
+Después se ejecutó `Revertir con motivo` sobre ambas operaciones. La pantalla
+mostró las dos líneas originales y sus correcciones auditables:
+`REVERSO_ENTRADA` de `-0,01 €` y `REVERSO_RETIRADA` de `+0,01 €`, ambas con
+el motivo `Reversión de prueba QA Etapa 5` y el mensaje `El movimiento
+original se conserva` / `Movimiento revertido; se conserva para auditoría`.
+La suma neta de las cuatro líneas es `0,00 €`, por lo que el saldo vuelve al
+valor inicial. La prueba no accedió a PROD, no registró cobros, no envió
+pedidos, no ejecutó SQL directo y no usó RPC manual fuera del flujo visible.
+**Entradas, retirada y reversión trazable: PASS QA.**
+
+## Seguimiento T5 — artículo varios, invitación y sala — 23/10/2026
+
+En el mismo preview 175 se repitió la comprobación sin guardar una venta
+nueva ni tocar cobros:
+
+- La búsqueda `varios` no devolvió ninguna tarjeta de producto.
+- La búsqueda `invit` tampoco devolvió ninguna tarjeta de producto.
+- Por tanto, `artículo varios e invitación` queda **BLOQUEADO por falta de
+  fixture visible en el catálogo QA**; no se puede declarar PASS ni crear un
+  producto de prueba desde el TPV.
+- `Sala y mesas` mostró una única mesa visible, `Mesa QA-A1-01`, en estado
+  `LIBRE · 0/4 personas`.
+- Se abrió el formulario de asignación con dos comensales para la cuenta QA
+  existente. Tras el intento, la interfaz no mostró confirmación ni error y
+  la mesa permaneció `LIBRE`; se conserva como **BLOQUEADO / no concluyente**
+  hasta repetirlo con una cuenta y fixture de sala preparados para esta
+  prueba.
+- `Repartir productos` cargó correctamente desde el servidor, pero devolvió
+  `No hay productos repartibles en esta cuenta`; no se movió ninguna línea.
+- No se pudo probar cambio o unión de mesas porque el mapa QA expuesto solo
+  contiene una mesa y no hay una segunda cuenta/línea repartible preparada.
+
+Este seguimiento no creó pedidos, no envió comandas, no registró cobros, no
+ejecutó SQL directo y no accedió a PROD. **T5 sigue PARCIAL y la Etapa 5
+permanece ABIERTA.**

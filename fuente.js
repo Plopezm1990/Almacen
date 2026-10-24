@@ -101376,6 +101376,13 @@ function valorCF(item) {
   return null;
 }
 var fmt = (n2) => (Number(n2) || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function fmtPrecio(n2) {
+  const valor = Number(n2);
+  if (!Number.isFinite(valor)) return "0,00";
+  const mil = Math.round((Math.abs(valor) + Number.EPSILON) * 1e3);
+  const tieneTres = !String(mil).endsWith("0");
+  return valor.toLocaleString("es-ES", { minimumFractionDigits: tieneTres ? 3 : 2, maximumFractionDigits: 3 });
+}
 async function hashPin(pin) {
   if (!pin) return "";
   const datos = new TextEncoder().encode("chocoloyos-pin-v1-" + pin);
@@ -101658,6 +101665,16 @@ function notificarFalloCargaPM16(key, motivo, error) {
   if (typeof window === "undefined" || typeof window.dispatchEvent !== "function") return;
   window.dispatchEvent(new CustomEvent("fallo-carga", { detail: { key, motivo, mensaje: error && error.message } }));
 }
+function esRespaldoSoloLocalPM16(key, error) {
+  if (key !== "historialRespaldos") return false;
+  const mensaje = String(error?.message || error || "").toLowerCase();
+  return error?.name === "QuotaExceededError" || error?.code === 22 || mensaje.includes("quota") || mensaje.includes("exceeds") || mensaje.includes("no permite guardarla");
+}
+function esAvisoRespaldoSoloLocalPM16(fallo) {
+  if (!fallo) return false;
+  if (fallo.soloLocal) return true;
+  return fallo.key === "historialRespaldos" && typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""));
+}
 async function loadKey(key, fallback, retries = 2) {
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
@@ -101698,14 +101715,16 @@ async function saveKey(key, value) {
   try {
     const resultado = await window.storage.set(key, JSON.stringify(value), false);
     if (resultado?.pendienteSincronizacion && typeof window !== "undefined" && window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, pendiente: true, mensaje: "Guardado en este equipo; pendiente de confirmación del servidor." } }));
+      const soloLocal = key === "historialRespaldos" || resultado?.soloLocal === true;
+      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, pendiente: true, soloLocal, motivo: soloLocal ? "cuota-o-politica-qa" : "pendiente-servidor", mensaje: soloLocal ? "Copia automática conservada solo en este equipo en QA." : "Guardado en este equipo; pendiente de confirmación del servidor." } }));
     } else if (resultado?.confirmadoServidor && typeof window !== "undefined" && window.dispatchEvent) {
       window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key } }));
     }
   } catch (e2) {
     console.error("Error guardando", key, e2);
     if (typeof window !== "undefined" && window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, mensaje: e2 && e2.message } }));
+      const soloLocal = esRespaldoSoloLocalPM16(key, e2);
+      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, soloLocal, motivo: soloLocal ? "cuota-o-politica-qa" : "error", mensaje: e2 && e2.message } }));
     }
   }
 }
@@ -102196,6 +102215,150 @@ async function configRpc(nombre, parametros) {
   const { data, error } = await supabase.rpc(nombre, parametros);
   if (error) throw error;
   return data;
+}
+async function configSalaContexto(empresaId, localId) {
+  const supabase = await configCliente();
+  const { data: authData, error: authError } = await supabase.auth.getSession();
+  if (authError) throw authError;
+  if (!authData?.session?.user?.id) throw new Error("sesion_usuario_requerida");
+  const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localId}`;
+  let terminalId = null;
+  try {
+    terminalId = localStorage.getItem(storageKey) || null;
+  } catch (e2) {
+    throw new Error("persistencia_terminal_no_disponible");
+  }
+  let qTerminales = supabase.from("terminales_tpv").select("id,nombre").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true);
+  if (terminalId) qTerminales = qTerminales.eq("id", terminalId);
+  const { data: terminales, error: terminalesError } = await qTerminales;
+  if (terminalesError) throw terminalesError;
+  if (terminalId && (!Array.isArray(terminales) || terminales.length !== 1)) throw new Error("terminal_configurado_no_disponible");
+  if (!terminalId) {
+    if (!Array.isArray(terminales) || terminales.length === 0) throw new Error("terminal_no_configurado");
+    if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
+    terminalId = terminales[0].id;
+    try {
+      localStorage.setItem(storageKey, terminalId);
+    } catch (e2) {
+      throw new Error("persistencia_terminal_no_disponible");
+    }
+  }
+  const { data: vinculos, error: vinculosError } = await supabase.from("caja_sesion_terminales").select("session_id,terminal_id,desde").eq("empresa_id", empresaId).eq("local_id", localId).eq("terminal_id", terminalId).is("hasta", null).order("desde", { ascending: false }).limit(2);
+  if (vinculosError) throw vinculosError;
+  if (!Array.isArray(vinculos) || vinculos.length !== 1) throw new Error(vinculos && vinculos.length > 1 ? "terminal_sesion_ambigua" : "terminal_sin_sesion_abierta");
+  const sessionId = vinculos[0].session_id;
+  const { data: sesion, error: sesionError } = await supabase.from("caja_sesiones").select("id,estado").eq("empresa_id", empresaId).eq("local_id", localId).eq("id", sessionId).eq("estado", "ABIERTA").maybeSingle();
+  if (sesionError) throw sesionError;
+  if (!sesion) throw new Error("terminal_sin_sesion_abierta");
+  const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localId });
+  if (diaError) throw diaError;
+  const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+  if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+  return { supabase, empresaId, localId, terminalId, sessionId, operatingDay };
+}
+function ConfigSala({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const [zonas, setZonas] = (0, import_react4.useState)([]);
+  const [zonaId, setZonaId] = (0, import_react4.useState)("");
+  const [codigo, setCodigo] = (0, import_react4.useState)("");
+  const [nombre, setNombre] = (0, import_react4.useState)("");
+  const [capacidad, setCapacidad] = (0, import_react4.useState)("4");
+  const [orden, setOrden] = (0, import_react4.useState)("1");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const cargar = async () => {
+    setCargando(true);
+    setError("");
+    try {
+      const contexto = await configSalaContexto(empresaId, localId);
+      const { data, error: rpcError } = await contexto.supabase.rpc("abc_listar_mapa_sala", {
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_terminal_id: contexto.terminalId,
+        p_session_id: contexto.sessionId,
+        p_operating_day: contexto.operatingDay
+      });
+      if (rpcError) throw rpcError;
+      const lista = Array.isArray(data?.zonas) ? data.zonas : [];
+      setZonas(lista);
+      setZonaId((actual) => actual || lista[0]?.zona_id || "");
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    cargar();
+  }, [empresaId, localId]);
+  const crear = async () => {
+    setError("");
+    setConfirmacion("");
+    const codigoLimpio = codigo.trim().toUpperCase();
+    const nombreLimpio = nombre.trim();
+    const capacidadNumero = Number(capacidad);
+    const ordenNumero = Number(orden);
+    if (!motivo.trim()) return setError("Escribe el motivo del cambio.");
+    if (!zonaId) return setError("Selecciona una zona activa.");
+    if (!/^[A-Z0-9][A-Z0-9_-]{0,39}$/.test(codigoLimpio)) return setError("El código debe tener entre 1 y 40 caracteres alfanuméricos.");
+    if (!nombreLimpio || nombreLimpio.length > 80) return setError("Escribe un nombre de hasta 80 caracteres.");
+    if (!Number.isInteger(capacidadNumero) || capacidadNumero < 1 || capacidadNumero > 999) return setError("La capacidad debe ser un entero entre 1 y 999.");
+    if (!Number.isInteger(ordenNumero) || ordenNumero < 0) return setError("El orden debe ser un entero igual o mayor que 0.");
+    setGuardando(true);
+    try {
+      const contexto = await configSalaContexto(empresaId, localId);
+      const { error: rpcError } = await contexto.supabase.rpc("abc_crear_mesa", {
+        p_operation_id: configOperacion("sala.mesa.crear"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_mesa_id: configUuid(),
+        p_zona_id: zonaId,
+        p_codigo: codigoLimpio,
+        p_nombre: nombreLimpio,
+        p_capacidad: capacidadNumero,
+        p_orden: ordenNumero,
+        p_terminal_id: contexto.terminalId,
+        p_session_id: contexto.sessionId,
+        p_operating_day: contexto.operatingDay
+      });
+      if (rpcError) throw rpcError;
+      setConfirmacion(`Mesa ${nombreLimpio} creada mediante la RPC autorizada. Motivo indicado para la fixture QA: ${motivo.trim()}`);
+      setCodigo("");
+      setNombre("");
+      setMotivo("");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  return h(
+    Card,
+    { className: "mb-4" },
+    h("div", { className: "font-semibold mb-1" }, "Sala y mesas"),
+    h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Consulta las mesas del local y crea una mesa de QA con la RPC autorizada. Solo el Propietario puede hacerlo y la operación exige una sesión de caja abierta."),
+    h(ConfigAviso, { error, confirmacion }),
+    h("div", { className: "flex gap-2 flex-wrap mb-3" }, h(Btn, { small: true, variant: "ghost", onClick: cargar, disabled: cargando || guardando }, cargando ? "Cargando…" : "Actualizar mapa")),
+    zonas.map((zona) => h("div", { key: zona.zona_id, className: "rounded-lg p-3 mb-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+      h("div", { className: "font-medium" }, `${zona.nombre || zona.codigo} · ${zona.tipo || "zona"}`),
+      h("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, `${Array.isArray(zona.mesas) ? zona.mesas.length : 0} mesa(s) activa(s)`),
+      (Array.isArray(zona.mesas) ? zona.mesas : []).map((mesa) => h("div", { key: mesa.mesa_id, className: "text-[12px] mb-1" }, `${mesa.nombre || mesa.codigo} · capacidad ${mesa.capacidad} · ${mesa.estado_efectivo || "NORMAL"}`))
+    )),
+    h("div", { className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+      h("div", { className: "font-medium mb-2" }, "Crear mesa QA"),
+      h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: guardando }),
+      h(Field, { label: "Zona" }, h("select", { value: zonaId, onChange: (e2) => setZonaId(e2.target.value), disabled: guardando || !zonas.length, className: "rounded-lg px-3 py-2 w-full", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, zonas.map((zona) => h("option", { key: zona.zona_id, value: zona.zona_id }, `${zona.nombre || zona.codigo} · ${zona.tipo || "zona"}`)))),
+      h(Field, { label: "Código" }, h(Input, { value: codigo, onChange: (e2) => setCodigo(e2.target.value), placeholder: "M-QA-02", maxLength: 40, disabled: guardando })),
+      h(Field, { label: "Nombre" }, h(Input, { value: nombre, onChange: (e2) => setNombre(e2.target.value), placeholder: "Mesa QA-A1-02", maxLength: 80, disabled: guardando })),
+      h("div", { className: "flex gap-2" }, h(Field, { label: "Capacidad" }, h(Input, { type: "number", min: 1, max: 999, value: capacidad, onChange: (e2) => setCapacidad(e2.target.value), disabled: guardando })), h(Field, { label: "Orden" }, h(Input, { type: "number", min: 0, value: orden, onChange: (e2) => setOrden(e2.target.value), disabled: guardando }))),
+      h(Btn, { onClick: crear, disabled: guardando || cargando || !zonas.length }, guardando ? "Creando…" : "Crear mesa mediante RPC autorizada")
+    )
+  );
 }
 function ConfigAviso({ error = "", confirmacion = "" }) {
   const h = import_react4.default.createElement;
@@ -103380,7 +103543,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["sala", "Sala y mesas"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -103391,6 +103554,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
+    seccion === "sala" ? h(ConfigSala, { empresaId, localId }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );
@@ -103672,7 +103836,7 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     function onFalloGuardado(e2) {
       setFallosGuardado((s22) => [
-        { id: uid(), key: e2.detail.key, mensaje: e2.detail.mensaje || "", fecha: (/* @__PURE__ */ new Date()).toISOString() },
+        { id: uid(), key: e2.detail.key, mensaje: e2.detail.mensaje || "", soloLocal: !!e2.detail.soloLocal, motivo: e2.detail.motivo || "", fecha: (/* @__PURE__ */ new Date()).toISOString() },
         ...s22
       ].slice(0, 20));
     }
@@ -104097,7 +104261,25 @@ function GestionAlmacen() {
       return ids.length === 1 && ids[0] === localActivoId;
     });
   }, [encargos, productos, localActivoId]);
-  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => encargosDelLocalActivo.filter((e2) => e2.estado !== "Entregado"), [encargosDelLocalActivo]);
+  const esEncargoPendientePM14 = (e2) => {
+    const estado = String(e2?.estado || "").trim();
+    return estado !== "Entregado" && estado !== "Cancelado" && estado !== "Devuelto";
+  };
+  const ordenarEncargosPendientesPM14 = (a22, b2) => {
+    const fechaA = /^\d{4}-\d{2}-\d{2}$/.test(String(a22?.fechaEntrega || "")) ? String(a22.fechaEntrega) : "9999-12-31";
+    const fechaB = /^\d{4}-\d{2}-\d{2}$/.test(String(b2?.fechaEntrega || "")) ? String(b2.fechaEntrega) : "9999-12-31";
+    return fechaA.localeCompare(fechaB) || String(a22?.horaEntrega || "99:99").localeCompare(String(b2?.horaEntrega || "99:99")) || String(a22?.id || "").localeCompare(String(b2?.id || ""));
+  };
+  const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => {
+    const hoy = /* @__PURE__ */ new Date();
+    hoy.setHours(0, 0, 0, 0);
+    return encargosDelLocalActivo.filter(esEncargoPendientePM14).map((e2) => {
+      const f22 = new Date(e2.fechaEntrega);
+      const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
+      const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
+      return { ...e2, dias, total, cliente: clientes.find((c22) => c22.id === e2.clienteId) };
+    }).sort(ordenarEncargosPendientesPM14);
+  }, [encargosDelLocalActivo, clientes]);
   const encargosUrgentesDelLocalActivo = (0, import_react4.useMemo)(() => {
     const hoy = todayISO();
     const manana = /* @__PURE__ */ new Date();
@@ -104671,7 +104853,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -105212,12 +105394,12 @@ function GestionAlmacen() {
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
-    return encargos.filter((e2) => e2.estado !== "Entregado" && e2.estado !== "Cancelado" && e2.estado !== "Devuelto").map((e2) => {
+    return encargos.filter(esEncargoPendientePM14).map((e2) => {
       const f22 = new Date(e2.fechaEntrega);
       const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
       const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
       return { ...e2, dias, total, cliente: clientes.find((c22) => c22.id === e2.clienteId) };
-    }).sort((a22, b2) => (a22.dias ?? 9999) - (b2.dias ?? 9999));
+    }).sort(ordenarEncargosPendientesPM14);
   }, [encargos, clientes]);
   const encargosUrgentes = (0, import_react4.useMemo)(() => encargosPendientes.filter((e2) => e2.dias !== null && e2.dias <= 2), [encargosPendientes]);
   const analisisClientes = (0, import_react4.useMemo)(() => {
@@ -105703,7 +105885,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -105928,16 +106110,18 @@ function GestionAlmacen() {
     cambiarTabPM15("devoluciones");
   };
   const pestanasFijasMovil = pick(TAB_PRIORITIES_MOVIL[rolNavegacionMovil] || ["dashboard"]);
-  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
+  const falloGuardadoVisible = fallosGuardado[0] || null;
+  const falloGuardadoSoloLocal = esAvisoRespaldoSoloLocalPM16(falloGuardadoVisible);
+  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, falloGuardadoVisible && /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
-      style: { background: C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
+      style: { background: falloGuardadoSoloLocal ? C2.amber : C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
     },
-    /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 Un cambio no se ha podido guardar (", fallosGuardado[0].key, "). Comprueba tu conexi\xF3n o reintenta ahora; mientras tanto queda guardado en este equipo."),
+    /* @__PURE__ */ import_react4.default.createElement("span", null, falloGuardadoSoloLocal ? "Guardado solo en este equipo (" + falloGuardadoVisible.key + "). En QA no se sube esta copia y los datos operativos siguen disponibles." : "\u26A0 Un cambio no se ha podido guardar (" + falloGuardadoVisible.key + "). Comprueba tu conexi\xF3n o reintenta ahora; mientras tanto queda guardado en este equipo."),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-center" },
-      /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => {
-        const key = fallosGuardado[0] && fallosGuardado[0].key;
+      !falloGuardadoSoloLocal && /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => {
+        const key = falloGuardadoVisible && falloGuardadoVisible.key;
         if (typeof window.reintentarSincronizacion === "function") await window.reintentarSincronizacion(key);
       }, style: { color: "#fff", fontWeight: 600 } }, "Reintentar"),
       /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosGuardado([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
@@ -106003,6 +106187,27 @@ function GestionAlmacen() {
         .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
         input, select { font-family: inherit; }
         ::placeholder { color: #9AA5A0; }
+        .app-main-content { min-width: 0; }
+        .app-main-content > * { min-width: 0; max-width: 100%; }
+        .tpv-shell { min-width: 0; }
+        .tpv-toolbar, .tpv-keybar { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
+        .tpv-toolbar { padding: .65rem .8rem; margin-bottom: .6rem; border: 1px solid var(--c-line); border-radius: .75rem; background: var(--c-surface); }
+        .tpv-keybar { justify-content: flex-start; margin-bottom: .75rem; }
+        .tpv-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 1rem; align-items: start; }
+        .tpv-product-zone, .tpv-ticket-zone { min-width: 0; }
+        .tpv-ticket-zone { position: sticky; top: .5rem; }
+        .tpv-product-photo { width: 100%; height: 72px; object-fit: cover; border-radius: .65rem; margin-bottom: .5rem; }
+        .tpv-quick-quantity { min-height: 32px; padding: .25rem .5rem; border: 1px solid var(--c-line); border-radius: .45rem; background: var(--c-surface); color: var(--c-ink-soft); }
+        @media (max-width: 640px) {
+          .app-main-content { overflow-x: hidden; }
+          .app-main-content table { display: block; max-width: 100%; overflow-x: auto; }
+          .app-main-content input, .app-main-content select, .app-main-content textarea { min-width: 0; max-width: 100%; }
+          .app-main-content .flex.items-center.justify-between { flex-wrap: wrap; }
+        }
+        @media (max-width: 640px) {
+          .tpv-layout { grid-template-columns: minmax(0, 1fr); }
+          .tpv-ticket-zone { position: static; }
+        }
 
         @media print {
           @page { size: A4; margin: 12mm; }
@@ -106051,7 +106256,7 @@ function GestionAlmacen() {
       mostrarEnlaceDevolucionProveedor,
       irADevolucionProveedor
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "app-main-content flex-1 min-w-0 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
     "textarea",
     {
       readOnly: true,
@@ -108447,6 +108652,7 @@ avisosStockBajo.push({ producto: productoBase, teoricoDespues });
         ...operacion.camposExtra || {},
         id: operacion.movimientoId,
         operationId: operacion.operationId || operacion.movimientoId,
+        empresaId: operacion.empresaId || productoBase.empresaId || null,
         productoId: operacion.productoId,
         localId: productoBase.localId || null,
         cantidad: cantidadNum,
@@ -108634,6 +108840,13 @@ function validarProductoPM10(data, { parcial = false } = {}) {
     if (r.vacio) delete salida[campo];
     else salida[campo] = r.valor;
   }
+  if (Object.prototype.hasOwnProperty.call(entrada, "fotoUrl")) {
+    const fotoUrl = String(entrada.fotoUrl ?? "").trim();
+    if (fotoUrl && !/^https:\/\//i.test(fotoUrl)) return errorValidacionPM10("formato_invalido", "fotoUrl", "La foto debe usar una URL HTTPS.");
+    if (fotoUrl) salida.fotoUrl = fotoUrl;
+    else delete salida.fotoUrl;
+  }
+  if (Object.prototype.hasOwnProperty.call(entrada, "masVendido")) salida.masVendido = entrada.masVendido === true;
   return { ok: true, datos: salida };
 }
 function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales = [], empresaId = null }) {
@@ -110511,6 +110724,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return JSON.stringify((lineas || []).map((l22) => ({
       productoId: String(l22.productoId || ""),
       cantidad: Number(l22.cantidad),
+      nota: String(l22.nota || "").trim().slice(0, 500),
       configuracionA04: l22.configuracionA04 ? {
         expectedProductVersion: Number(l22.configuracionA04.expectedProductVersion),
         selecciones: (l22.configuracionA04.selecciones || []).map((s22) => ({
@@ -110539,7 +110753,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return importe;
   }
   function uuidPersistidoA02(valor) {
-    return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(valor);
+    return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
   }
   function validarContextoCuentaA02(contexto, empresaId, localId) {
     if (!contexto || contexto.schemaVersion !== 1) throw new Error("contexto_cuenta_persistido_invalido");
@@ -110732,6 +110946,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("motivo_reasignacion_requerido")) return "Indica el motivo del cambio de responsable.";
     if (msg.includes("reparto_cuenta_no_autorizado") || msg.includes("reparto_consultar_no_autorizado")) return "Tu perfil no tiene permiso para repartir productos entre cuentas.";
     if (msg.includes("cuentas_recuperables_no_autorizadas")) return "Tu perfil no puede consultar las cuentas abiertas de este local.";
+    if (msg.includes("cuentas_recuperables_parametros_requeridos")) return "Falta el terminal, la sesión de caja o el día operativo para consultar las cuentas recuperables.";
+    if (msg.includes("cuentas_recuperables_respuesta_invalida")) return "El servidor devolvió una lista de cuentas recuperables no válida.";
+    if (msg.includes("abandono_minutos_invalido")) return "El umbral de abandono solicitado no es válido.";
     if (msg.includes("cuenta_origen_version_conflict") || msg.includes("cuenta_destino_version_conflict")) return "Una de las cuentas cambió en otro terminal. Recarga el reparto antes de repetir la operación.";
     if (msg.includes("reparto_cuenta_no_encontrada")) return "La cuenta origen o destino ya no está disponible.";
     if (msg.includes("reparto_cuenta_no_abierta")) return "El reparto solo puede hacerse entre cuentas abiertas.";
@@ -110745,6 +110962,16 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("reparto_parte_fiscalizada_inmovil")) return "Esa cantidad incluye una parte ya fiscalizada y no se puede mover.";
     if (msg.includes("reparto_comensal_conflict")) return "La parte existente en la cuenta destino pertenece a otro comensal.";
     if (msg.includes("cuenta_con_cobro_incierto")) return "Esta cuenta tiene un cobro pendiente o incierto. Resuelve el cobro antes de repartir productos.";
+    if (msg.includes("cuentas_unir_no_autorizado")) return "Tu perfil no tiene permiso para unir cuentas.";
+    if (msg.includes("cuentas_unir_parametros_invalidos")) return "Selecciona una cuenta destino e indica el motivo de la unión.";
+    if (msg.includes("cuentas_unir_no_encontradas")) return "La cuenta origen o destino ya no está disponible.";
+    if (msg.includes("cuentas_unir_no_abiertas")) return "La unión solo puede hacerse entre cuentas abiertas.";
+    if (msg.includes("cuentas_unir_moneda_incompatible")) return "Las cuentas usan monedas distintas y no pueden unirse.";
+    if (msg.includes("cuentas_unir_operating_day_incompatible")) return "Las cuentas pertenecen a días operativos distintos.";
+    if (msg.includes("cuentas_unir_con_fiscalizacion")) return "No se pueden unir cuentas con una venta ya fiscalizada.";
+    if (msg.includes("cuentas_unir_con_cuotas_activas")) return "No se pueden unir cuentas con cuotas activas.";
+    if (msg.includes("cuenta_origen_con_pedido_editable") || msg.includes("cuenta_origen_con_lineas_no_terminales")) return "La cuenta origen todavía tiene un pedido editable o líneas no terminales; envíalo o ciérralo antes de unir.";
+    if (msg.includes("cuentas_unir_mesas_distintas")) return "Las cuentas tienen mesas distintas. Traslada una cuenta a la misma mesa antes de unirlas.";
     if (msg.includes("descuento_eventos_no_autorizado")) return "Tu perfil no tiene permiso para ver el historial de descuentos de esta cuenta.";
     if (msg.includes("descuento_eventos_parametros_invalidos")) return "No se pudo identificar la cuenta para mostrar su historial de descuentos.";
     if (msg.includes("descuento_no_autorizado") || msg.includes("descuento_solicitar_no_autorizado") || msg.includes("descuento_aplicar_no_autorizado")) return "Tu perfil no tiene permiso para solicitar o aplicar este descuento.";
@@ -110832,6 +111059,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("cierre_provisional_no_encontrado") || msg.includes("sesion_no_provisional")) return "El cierre ya no está en estado provisional. Actualiza la pantalla.";
     if (msg.includes("dia_operativo_local_no_disponible")) return "El local no está disponible para consultar el día operativo.";
     if (msg.includes("contexto_no_autorizado") || msg.includes("no_autorizad")) return "No tienes permiso para operar este TPV en el local seleccionado.";
+    // Errores técnicos crudos del servidor: nunca se muestran tal cual en
+    // pantalla. Hallazgo del 24/10/2026 durante la prueba de la Hoja QA-4
+    // (no relacionado con la propina): "canceling statement due to
+    // statement timeout" llegaba sin traducir a la pantalla de cancelar línea.
+    if (msg.includes("statement timeout")) return "La operación ha tardado demasiado y se ha cancelado. Inténtalo de nuevo.";
+    if (msg.includes("deadlock detected")) return "Dos operaciones han chocado al mismo tiempo. Inténtalo de nuevo.";
+    if (/^\s*[0-9A-Z]{5}:/.test(msg) || /^(FATAL|ERROR):/.test(msg)) return "No se pudo completar la operación por un error del servidor. Inténtalo de nuevo.";
     return msg || "No se pudo guardar el pedido en el servidor.";
   }
   async function rpcA02ConRecuperacion(supabase, nombre, params, empresaId, localId, operationId) {
@@ -110971,6 +111205,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("cuenta_version_conflict")) return "La cuenta cambió en otro terminal. Recarga antes de cobrar.";
     if (msg.includes("abc_cobro_no_autorizado") || msg.includes("abc_efectivo_no_autorizado") || msg.includes("abc_checkout_no_autorizado")) return "Tu usuario no tiene permiso para realizar este cobro.";
     if (msg.includes("abc_cobro_resolver_no_autorizado")) return "Solo un Propietario o Encargado puede resolver esta incidencia.";
+    if (msg.includes("abc_qa_simulador_solo_qa") || msg.includes("abc_qa_simulador_local_no_disponible")) return "El resolvedor simulado solo está disponible en QA.";
+    if (msg.includes("abc_qa_simulador_propietario_requerido")) return "Solo el Propietario de QA puede aprobar este pago simulado.";
+    if (msg.includes("abc_qa_simulador_importe_distinto") || msg.includes("abc_qa_simulador_importe_invalido")) return "El importe no coincide con el intento simulado.";
+    if (msg.includes("abc_qa_simulador_intento_no_encontrado") || msg.includes("abc_qa_simulador_pago_no_encontrado") || msg.includes("abc_qa_simulador_checkout_no_encontrado")) return "No se encontró el intento de pago simulado.";
+    if (msg.includes("abc_qa_simulador_solo_tarjeta")) return "El resolvedor simulado solo aprueba intentos de tarjeta.";
+    if (msg.includes("abc_propina_no_autorizada")) return "Tu usuario no tiene permiso para registrar propinas.";
+    if (msg.includes("abc_propina_importe_invalido") || msg.includes("abc_propina_parametros_requeridos")) return "No se pudo calcular el importe de la propina.";
+    if (msg.includes("abc_propina_pago_no_encontrado") || msg.includes("abc_propina_pago_no_confirmado")) return "No se encontró el pago en efectivo para registrar la propina.";
+    if (msg.includes("abc_propina_solo_efectivo")) return "La propina del cambio solo está disponible para pagos en efectivo.";
+    if (msg.includes("abc_propina_sin_cambio")) return "Este pago no tiene cambio que convertir en propina.";
+    if (msg.includes("abc_propina_importe_no_coincide")) return "El importe de la propina no coincide con el cambio de este pago.";
+    if (msg.includes("abc_propina_ya_registrada")) return "Ya se registró una propina para este pago.";
     if (msg.includes("evidencia_datos_tarjeta_prohibidos")) return "La evidencia no puede contener PAN, CVV ni datos completos de tarjeta.";
     if (msg.includes("abc_f4_b04") || msg.includes("abc_abrir_incidencia_cobro") || msg.includes("abc_resolver_incidencia_cobro")) return "La gestión B04 todavía no está disponible en este servidor.";
     if (msg.includes("cobro_incidencia_ya_abierta")) return "Este cobro ya tiene una incidencia abierta.";
@@ -110980,6 +111226,30 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("efectivo_recibido_cambio_inconsistente")) return "El efectivo recibido y el cambio no cuadran con el importe del pago.";
     if (msg.includes("sesion_caja_no_abierta") || msg.includes("terminal_no_vinculado_sesion") || msg.includes("terminal_sesion_no_operativa")) return "Este terminal no tiene una sesión de caja válida para cobrar.";
     if (msg.includes("persistencia_pago_no_disponible")) return "Este navegador no puede conservar de forma segura la identidad del cobro.";
+    if (msg.includes("abc_serie_no_autorizada") || msg.includes("abc_documento_no_autorizado") || msg.includes("abc_fiscal_no_autorizado")) return "Tu usuario no tiene permiso para emitir documentos fiscales (solo Propietario o Encargado).";
+    if (msg.includes("serie_documental_parametros_invalidos") || msg.includes("reserva_documental_parametros_invalidos") || msg.includes("clasificacion_documental_parametros_invalidos") || msg.includes("evaluacion_fiscal_parametros_invalidos") || msg.includes("resolucion_documental_parametros_invalidos")) return "No se pudo preparar la factura: faltan datos o no son válidos.";
+    if (msg.includes("serie_documental_no_activa")) return "La serie de facturas no está activa en este local.";
+    if (msg.includes("serie_documental_agotada")) return "La serie de facturas ha agotado su numeración.";
+    if (msg.includes("tipo_documental_invalido") || msg.includes("datos_receptor_invalidos")) return "Los datos de la factura no son válidos.";
+    if (msg.includes("factura_completa_datos_receptor_requeridos")) return "Indica el nombre y el NIF de la empresa cliente.";
+    if (msg.includes("documento_tipo_ya_definido") || msg.includes("tipo_documental_no_coincide_con_serie")) return "Este documento ya estaba clasificado de otra forma.";
+    if (msg.includes("documento_emitido_inmutable")) return "Esta factura ya estaba emitida y no se puede modificar.";
+    if (msg.includes("documento_anulado")) return "Esta factura fue anulada.";
+    if (msg.includes("documento_no_encontrado") || msg.includes("factura_sin_documento_reservado")) return "No se pudo reservar el número de factura.";
+    if (msg.includes("abc_ticket_correo_no_autorizado")) return "Tu usuario no tiene permiso para enviar el ticket por correo.";
+    if (msg.includes("ticket_correo_email_invalido")) return "Escribe un correo válido.";
+    if (msg.includes("ticket_correo_checkout_no_encontrado")) return "No se encontró el cobro de esta cuenta.";
+    if (msg.includes("ticket_correo_registro_parametros_invalidos")) return "No se pudo dejar constancia del envío del ticket.";
+    if (msg.includes("abc_vale_regalo_no_autorizado")) return "Tu usuario no tiene permiso para vender o canjear vales regalo.";
+    if (msg.includes("vale_regalo_importe_invalido")) return "Indica un importe válido para el vale.";
+    if (msg.includes("vale_regalo_parametros_requeridos") || msg.includes("vale_regalo_pago_parametros_invalidos")) return "Faltan datos para completar la operación del vale regalo.";
+    if (msg.includes("vale_regalo_codigo_no_generado")) return "No se pudo generar un código único para el vale. Inténtalo de nuevo.";
+    if (msg.includes("vale_regalo_codigo_requerido")) return "Escribe el código del vale regalo.";
+    if (msg.includes("vale_regalo_no_encontrado")) return "No se encontró ningún vale regalo con ese código.";
+    if (msg.includes("vale_regalo_intento_no_encontrado") || msg.includes("vale_regalo_pago_no_encontrado")) return "No se encontró el pago asociado a ese vale regalo.";
+    if (msg.includes("vale_regalo_medio_incorrecto") || msg.includes("vale_regalo_intento_ya_resuelto")) return "Este cobro no se puede resolver como vale regalo.";
+    if (msg.includes("vale_regalo_no_activo")) return "Ese vale no está activo (ya se agotó o fue anulado).";
+    if (msg.includes("vale_regalo_saldo_insuficiente")) return "El vale no tiene saldo suficiente para este importe.";
     return errorRpcA02(error);
   }
   async function leerEstadoCobroF4() {
@@ -111058,6 +111328,39 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         checkouts: checkouts || [], pagos, intentos, incidencias, pendienteLocal,
         cobroIncierto: intentos.some((x3) => ["PENDIENTE", "AUTORIZADO", "DESCONOCIDO"].includes(String(x3.estado || "")))
       };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function prepararBizumQAF4() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para preparar Bizum QA." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const contextoCuenta = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contextoCuenta?.cuentaId) return { ok: false, error: "No hay una cuenta operativa para preparar Bizum QA." };
+      const estado = await leerEstadoCobroF4();
+      if (!estado?.ok) return estado;
+      const checkout = Array.isArray(estado.checkouts) ? estado.checkouts[0] : null;
+      const importe = Number(estado.saldo);
+      if (!checkout?.id) return { ok: false, error: "Prepara primero el checkout del pedido antes de Bizum QA." };
+      if (!Number.isFinite(importe) || importe <= 0) return { ok: false, error: "No hay saldo pendiente para preparar Bizum QA." };
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Bizum QA necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationId = "t6.bizum.qa.prepare." + uuidA02();
+      const { data, error } = await supabase.rpc("abc_preparar_bizum_qa", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_checkout_id: checkout.id,
+        p_importe_objetivo: importe,
+        p_payment_currency_code: String(checkout.currency_code || estado.currencyCode || "EUR"),
+        p_terminal_id: terminal.terminalId
+      });
+      if (error) throw error;
+      return { ok: true, resultado: data, estado, mensaje: "Bizum QA preparado por el servidor. No se ha iniciado ningún cobro ni se ha contactado con un proveedor." };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -111147,6 +111450,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           prepareOperationId: "f4.b02b03.prepare." + checkoutId,
           payOperationId: "f4.b02b03.pay." + intentoId,
           cashOperationId: "f4.b02b03.cash." + intentoId,
+          propinaOperationId: "f4.b02b03.propina." + intentoId,
           importeObjetivo: null, createdAt: new Date().toISOString()
         };
         guardarPendienteCobroF4(pendiente);
@@ -111217,7 +111521,35 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           p_session_id: terminal.sessionId, p_terminal_id: terminal.terminalId,
           p_operating_day: recuperada.operatingDay
         }, empresaId, localActivoId, pendiente.cashOperationId);
+        // Hoja QA-4 (T6): «el cambio es propina». No toca abc_iniciar_cobro ni
+        // abc_confirmar_efectivo, ya probados: el efectivo se cobra exactamente
+        // igual que siempre (con su cambio real, aunque no se vaya a entregar).
+        // Si se marcó la casilla, se registra ese mismo cambio como propina en
+        // una llamada aparte, después de que el cobro ya esté confirmado.
+        let propinaResultado = null;
+        if (opciones?.propina && Number(pendiente.cambioEntregado) > 0) {
+          try {
+            const { data: propina } = await rpcA02ConRecuperacion(supabase, "abc_registrar_propina_efectivo", {
+              p_operation_id: pendiente.propinaOperationId,
+              p_empresa_id: empresaId, p_local_id: localActivoId,
+              p_pago_id: pendiente.pagoId, p_caja_id: cajaSesion.caja_id,
+              p_session_id: terminal.sessionId, p_terminal_id: terminal.terminalId,
+              p_operating_day: recuperada.operatingDay,
+              p_importe: pendiente.cambioEntregado
+            }, empresaId, localActivoId, pendiente.propinaOperationId);
+            propinaResultado = { ok: true, importe: pendiente.cambioEntregado };
+          } catch (errorPropina) {
+            propinaResultado = { ok: false, error: mensajeErrorCobroF4(errorPropina) };
+          }
+        }
         limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
+        if (propinaResultado) {
+          const estadoConPropina = await leerEstadoCobroF4();
+          estadoConPropina.mensaje = propinaResultado.ok
+            ? `Efectivo confirmado y cuenta pagada. Propina de €${Number(propinaResultado.importe).toFixed(2)} registrada; no se devuelve cambio.`
+            : `Efectivo confirmado, pero la propina no se pudo registrar: ${propinaResultado.error} El cambio sigue pendiente de devolver.`;
+          return estadoConPropina;
+        }
       }
       const estadoFinal = await leerEstadoCobroF4();
       if (medio === "EFECTIVO" && estadoFinal.ok) {
@@ -111243,6 +111575,280 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const pendiente = leerPendienteCobroF4(empresaId, localActivoId, contexto.cuentaId);
       if (!pendiente?.medio) return await leerEstadoCobroF4();
       return await iniciarCobroCuentaF4(pendiente.medio);
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+
+  // Hoja QA-3 (Etapa 5, T6): resolvedor de tarjeta simulado, exclusivo de
+  // QA-EMP-A / QA-A1. Delega en abc_qa_confirmar_pago_simulado, que ya existe
+  // y está aplicada en QA (migración 20261011140000_abc_f4_b02b_qa_simulated_resolver.sql).
+  // No crea ningún cobro real, no contacta con ningún proveedor y el propio
+  // servidor rechaza esta llamada si la empresa/local activos no son QA.
+  async function resolverPagoSimuladoQAF4() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para resolver el pago simulado." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (empresaId !== "QA-EMP-A" || localActivoId !== "QA-A1") return { ok: false, error: "El resolvedor simulado solo está disponible en QA." };
+    try {
+      if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+        return { ok: false, error: "El resolvedor simulado necesita conexión con Supabase QA." };
+      }
+      const estado = await leerEstadoCobroF4();
+      const intento = Array.isArray(estado?.intentos) ? estado.intentos[0] : null;
+      if (!intento?.id) return { ok: false, error: "No se encontró un intento de tarjeta pendiente." };
+      const importe = Number(intento.requested_amount);
+      if (!Number.isFinite(importe) || importe <= 0) return { ok: false, error: "El importe del intento simulado no es válido." };
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_qa_confirmar_pago_simulado", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_intento_id: intento.id,
+        p_importe: importe
+      });
+      if (error) throw error;
+      const estadoFinal = await leerEstadoCobroF4();
+      return { ok: true, resultado: data, estado: estadoFinal, mensaje: "Pago simulado aprobado en QA." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+
+  // Hoja QA-5 (Etapa 5, T6): factura a empresa (NIF), en modo simulador.
+  // Usa el sistema de documentos fiscales que ya existía (C05 numeración,
+  // C06 clasificación, C07 puerta fiscal) más la única pieza que faltaba
+  // (abc_configurar_serie_documental, para crear la serie "FACTURA/FA" la
+  // primera vez). No activa nada fiscal real: la modalidad se configura en
+  // SIMULADOR y el propio servidor bloquea por código pasar a ACTIVO sin
+  // validación de asesoría (abc_c07_modalidades_fiscales).
+  async function emitirFacturaEmpresaF4({ nombre, nif } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para emitir la factura." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const nombreReceptor = String(nombre || "").trim();
+    const nifReceptor = String(nif || "").trim().toUpperCase();
+    if (!nombreReceptor || !nifReceptor) return { ok: false, error: "Indica el nombre o razón social y el NIF de la empresa cliente." };
+    try {
+      const estado = await leerEstadoCobroF4();
+      if (!estado?.ok) return estado;
+      if (String(estado.estado) !== "PAGADO") return { ok: false, error: "Solo se puede emitir factura cuando la cuenta está pagada por completo." };
+      const checkout = Array.isArray(estado.checkouts) ? estado.checkouts[0] : null;
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "La factura necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const setupSerieId = "t6.factura.serie." + empresaId + "." + localActivoId;
+      const setupModalidadId = "t6.factura.modalidad." + empresaId + "." + localActivoId;
+      // Alta/activación únicas por empresa/local: operation_id estable, para
+      // que una segunda factura (u otro reintento) no las repita ni las
+      // reconfigure — solo se ejecutan de verdad la primera vez.
+      await rpcA02ConRecuperacion(supabase, "abc_configurar_serie_documental", {
+        p_operation_id: setupSerieId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_tipo_documento: "FACTURA", p_codigo_serie: "FA", p_nombre: "Facturas a empresa (simulador)"
+      }, empresaId, localActivoId, setupSerieId);
+      await rpcA02ConRecuperacion(supabase, "abc_configurar_modalidad_fiscal", {
+        p_operation_id: setupModalidadId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_territorio: "ES", p_emisor_tipo: "INTERNO", p_modalidad: "B2B_SIMULADOR",
+        p_proveedor_codigo: null, p_estado: "SIMULADOR",
+        p_declaracion_responsable: false, p_configuracion: {}
+      }, empresaId, localActivoId, setupModalidadId);
+      const intentoId = uuidA02();
+      const reservado = await rpcA02ConRecuperacion(supabase, "abc_reservar_numero_documental", {
+        p_operation_id: "t6.factura.reservar." + intentoId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_tipo_documento: "FACTURA", p_codigo_serie: "FA",
+        p_documento_origen_id: checkout?.id ? String(checkout.id) : (estado.cuentaId ? String(estado.cuentaId) : null),
+        p_metadata: { cuenta_id: estado.cuentaId || null }
+      }, empresaId, localActivoId, "t6.factura.reservar." + intentoId);
+      const documentoId = reservado?.documento_id;
+      if (!documentoId) throw new Error("factura_sin_documento_reservado");
+      const datosReceptor = { nombre: nombreReceptor, identificador_fiscal: nifReceptor };
+      await rpcA02ConRecuperacion(supabase, "abc_clasificar_documento", {
+        p_operation_id: "t6.factura.clasificar." + intentoId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_documento_id: documentoId, p_tipo_documental: "FACTURA_COMPLETA",
+        p_documento_referencia_id: null, p_datos_receptor: datosReceptor
+      }, empresaId, localActivoId, "t6.factura.clasificar." + intentoId);
+      const evaluado = await rpcA02ConRecuperacion(supabase, "abc_evaluar_documento_fiscal", {
+        p_operation_id: "t6.factura.evaluar." + intentoId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_documento_id: documentoId, p_simular: true
+      }, empresaId, localActivoId, "t6.factura.evaluar." + intentoId);
+      if (!evaluado?.ok) {
+        await rpcA02ConRecuperacion(supabase, "abc_resolver_emision_documental", {
+          p_operation_id: "t6.factura.emitir." + intentoId,
+          p_empresa_id: empresaId, p_local_id: localActivoId,
+          p_documento_id: documentoId, p_estado: "ERROR",
+          p_resultado: { datos_receptor: datosReceptor, evaluacion: evaluado || null }
+        }, empresaId, localActivoId, "t6.factura.emitir." + intentoId);
+        return { ok: false, error: "La evaluación fiscal (modo simulador) no quedó preparada: " + (Array.isArray(evaluado?.bloqueos) ? evaluado.bloqueos.join(", ") : "motivo desconocido") + "." };
+      }
+      const emitido = await rpcA02ConRecuperacion(supabase, "abc_resolver_emision_documental", {
+        p_operation_id: "t6.factura.emitir." + intentoId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_documento_id: documentoId, p_estado: "EMITIDO",
+        p_resultado: { datos_receptor: datosReceptor, evaluacion: evaluado }
+      }, empresaId, localActivoId, "t6.factura.emitir." + intentoId);
+      const numero = emitido?.numero ?? reservado?.numero;
+      const codigoSerie = emitido?.codigo_serie ?? reservado?.codigo_serie ?? "FA";
+      return {
+        ok: true, resultado: emitido,
+        mensaje: `Factura ${codigoSerie}-${String(numero).padStart(6, "0")} emitida (modo simulador) a ${nombreReceptor} (NIF ${nifReceptor}).`
+      };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+
+  // Hoja QA-6 (Etapa 5, T6): ticket por correo. No es un documento fiscal
+  // (eso es la Hoja QA-5, aparte) ni sustituye el ticket impreso — es una
+  // copia informativa de la venta, enviada a petición cuando la cuenta ya
+  // está pagada. El envío real lo hace la Edge Function "enviar-ticket-
+  // correo" (única pieza que toca la clave de Resend); aquí solo se reúnen
+  // los datos y se la invoca con la sesión del propio usuario.
+  async function enviarTicketCorreoF4({ email, lineas } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para enviar el ticket." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const correo = String(email || "").trim().toLowerCase();
+    if (!correo || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(correo)) return { ok: false, error: "Escribe un correo válido." };
+    try {
+      const estado = await leerEstadoCobroF4();
+      if (!estado?.ok) return estado;
+      if (String(estado.estado) !== "PAGADO") return { ok: false, error: "Solo se puede enviar el ticket cuando la cuenta está pagada por completo." };
+      const checkout = Array.isArray(estado.checkouts) ? estado.checkouts[0] : null;
+      if (!checkout?.id) return { ok: false, error: "No se encontró el cobro de esta cuenta." };
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "El ticket por correo necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const operationId = "t6.ticket.correo." + checkout.id + "." + uuidA02();
+      const invocacion = await supabase.functions.invoke("enviar-ticket-correo", {
+        body: { operationId, empresaId, localId: localActivoId, checkoutId: checkout.id, email: correo, lineas: Array.isArray(lineas) ? lineas : [] }
+      });
+      if (invocacion.error) throw invocacion.error;
+      const respuesta = invocacion.data || {};
+      if (!respuesta.ok) return { ok: false, error: respuesta.error || "No se pudo enviar el ticket por correo." };
+      return { ok: true, mensaje: respuesta.mensaje || `Ticket enviado a ${correo}.` };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+
+  // Hoja QA-7 (Etapa 5, T6): vale regalo. Venta (emitir) y canje, los dos
+  // sin tocar abc_iniciar_cobro ni abc_confirmar_efectivo: el canje usa el
+  // medio genérico "OTRO" que el servidor ya admitía, resuelto con la misma
+  // pieza interna (abc_resolver_intento) que ya usa el resolvedor de
+  // tarjeta simulado de QA-3. No entra dinero nuevo en caja al canjear: ya
+  // entró cuando se vendió el vale.
+  async function emitirValeRegaloF4({ importe } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para vender un vale regalo." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const importeNum = Number(importe);
+    if (!Number.isFinite(importeNum) || importeNum <= 0) return { ok: false, error: "Indica un importe válido para el vale." };
+    try {
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Vender un vale regalo necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data: cajaSesion, error: cajaError } = await supabase
+        .from("caja_sesiones").select("caja_id")
+        .eq("empresa_id", empresaId).eq("local_id", localActivoId)
+        .eq("id", terminal.sessionId).eq("estado", "ABIERTA").maybeSingle();
+      if (cajaError) throw cajaError;
+      if (!cajaSesion?.caja_id) throw new Error("sesion_caja_no_abierta");
+      const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localActivoId });
+      if (diaError) throw diaError;
+      const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+      if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+      const operationId = "t6.vale.emitir." + uuidA02();
+      const resultado = await rpcA02ConRecuperacion(supabase, "abc_emitir_vale_regalo", {
+        p_operation_id: operationId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_importe: importeNum, p_caja_id: cajaSesion.caja_id, p_session_id: terminal.sessionId,
+        p_terminal_id: terminal.terminalId, p_operating_day: operatingDay
+      }, empresaId, localActivoId, operationId);
+      return {
+        ok: true, codigo: resultado?.codigo, importe: resultado?.importe,
+        mensaje: `Vale regalo creado: ${resultado?.codigo} por €${Number(resultado?.importe).toFixed(2)}.`
+      };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function consultarValeRegaloF4(codigo) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para consultar el vale." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Consultar un vale regalo necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_consultar_vale_regalo", {
+        p_empresa_id: empresaId, p_local_id: localActivoId, p_codigo: codigo
+      });
+      if (error) throw error;
+      return { ok: true, ...data };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function pagarConValeRegaloF4({ codigo, totalPedido } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para cobrar con un vale regalo." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const codigoLimpio = String(codigo || "").trim().toUpperCase();
+    if (!codigoLimpio) return { ok: false, error: "Escribe el código del vale regalo." };
+    try {
+      const estado = await leerEstadoCobroF4();
+      if (!estado?.ok) return estado;
+      if (estado.cobroIncierto) return { ok: false, error: "Hay un cobro pendiente o incierto. Resuélvelo antes de aplicar un vale." };
+      // Antes de que exista un checkout, el servidor todavía no tiene un
+      // "saldo" de cobro que devolver (igual que ya hace saldoVisible en la
+      // pantalla): se calcula del total del pedido menos lo ya confirmado.
+      const tieneCheckoutPrevio = Array.isArray(estado.checkouts) && estado.checkouts.length > 0;
+      const confirmadoServidor = Number(estado.confirmado) || 0;
+      const saldoPendiente = tieneCheckoutPrevio
+        ? Number(estado.saldo)
+        : Math.max(0, Number(totalPedido) - confirmadoServidor);
+      if (!Number.isFinite(saldoPendiente) || saldoPendiente <= 0) return { ok: false, error: "No hay saldo pendiente que cobrar con un vale." };
+      const consulta = await consultarValeRegaloF4(codigoLimpio);
+      if (!consulta?.ok) return consulta;
+      if (consulta.estado !== "ACTIVO") return { ok: false, error: "Ese vale no está activo (ya se agotó o fue anulado)." };
+      const importeAplicar = Math.min(Number(consulta.saldo), saldoPendiente);
+      if (!Number.isFinite(importeAplicar) || importeAplicar <= 0) return { ok: false, error: "No se pudo calcular el importe a aplicar del vale." };
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Cobrar con un vale regalo necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const recuperada = await recuperarCuentaA06();
+      if (!recuperada?.ok || !recuperada.cuentaId) throw new Error(recuperada?.error || "cuenta_no_encontrada");
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const checkoutId = uuidA02(), pagoId = uuidA02(), intentoId = uuidA02();
+      const prepareOperationId = "t6.vale.prepare." + checkoutId;
+      const preparado = await rpcA02ConRecuperacion(supabase, "abc_preparar_checkout_cuenta", {
+        p_operation_id: prepareOperationId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_checkout_id: checkoutId, p_cuenta_id: recuperada.cuentaId,
+        p_expected_cuenta_version: versionServidorA02(recuperada.cuentaVersion, "t6.vale.cuenta.version"),
+        p_terminal_id: terminal.terminalId, p_session_id: terminal.sessionId,
+        p_operating_day: recuperada.operatingDay
+      }, empresaId, localActivoId, prepareOperationId);
+      const checkoutIdReal = preparado?.checkout_id || checkoutId;
+      const payOperationId = "t6.vale.pay." + intentoId;
+      await rpcA02ConRecuperacion(supabase, "abc_iniciar_cobro", {
+        p_operation_id: payOperationId,
+        p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_checkout_id: checkoutIdReal, p_pago_id: pagoId, p_intento_id: intentoId,
+        p_medio: "OTRO", p_importe_objetivo: importeAplicar, p_payment_currency_code: "EUR",
+        p_terminal_id: terminal.terminalId
+      }, empresaId, localActivoId, payOperationId);
+      const confirmOperationId = "t6.vale.confirmar." + intentoId;
+      const confirmado = await rpcA02ConRecuperacion(supabase, "abc_confirmar_pago_vale_regalo", {
+        p_operation_id: confirmOperationId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_intento_id: intentoId, p_codigo: codigoLimpio
+      }, empresaId, localActivoId, confirmOperationId);
+      const estadoFinal = await leerEstadoCobroF4();
+      return {
+        ok: true, resultado: confirmado, estado: estadoFinal,
+        mensaje: `Vale ${confirmado?.codigo || codigoLimpio} aplicado: €${Number(confirmado?.importe_aplicado ?? importeAplicar).toFixed(2)}. Saldo restante del vale: €${Number(confirmado?.saldo_restante ?? 0).toFixed(2)}.`
+      };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -111291,6 +111897,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       normalizadas = (lineas || []).filter((l22) => l22.productoId && Number(l22.cantidad) > 0).map((l22) => ({
         productoId: String(l22.productoId),
         cantidad: Number(l22.cantidad),
+        nota: String(l22.nota || "").trim().slice(0, 500),
         configuracionA04: normalizarConfiguracionLineaA04(l22.configuracionA04)
       }));
     } catch (error) {
@@ -111350,6 +111957,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
             return {
               productoId: l22.productoId,
               cantidad: l22.cantidad,
+              nota: l22.nota,
               configuracionA04: l22.configuracionA04,
               lineaId,
               operationId: `a02.1.line.${lineaId}`,
@@ -111401,6 +112009,24 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       for (const linea of pending.lineas) {
         if (linea.resultado) {
           pedidoVersion = versionServidorA02(linea.resultado.pedido_version, "linea.pedido_version");
+          if (linea.nota && !linea.notaGuardada) {
+            const notaResultado = await rpcA02ConRecuperacion(supabase, "abc_actualizar_nota_linea", {
+              p_operation_id: `${linea.operationId}.nota`,
+              p_empresa_id: empresaId,
+              p_local_id: localActivoId,
+              p_linea_id: linea.lineaId,
+              p_nota: linea.nota,
+              p_expected_linea_version: versionServidorA02(linea.resultado.linea_version, "linea.linea_version"),
+              p_expected_pedido_version: pedidoVersion,
+              p_terminal_id: contexto.terminalId,
+              p_session_id: contexto.sessionId,
+              p_operating_day: pending.operatingDay
+            }, empresaId, localActivoId, `${linea.operationId}.nota`);
+            linea.resultado = { ...linea.resultado, ...notaResultado, nota: linea.nota };
+            linea.notaGuardada = true;
+            pedidoVersion = versionServidorA02(notaResultado?.pedido_version, "nota.pedido_version");
+            if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error("persistencia_idempotencia_no_disponible");
+          }
           continue;
         }
         if (!linea.configuracionA04) {
@@ -111435,6 +112061,23 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           }, empresaId, localActivoId, linea.operationId);
         }
         pedidoVersion = versionServidorA02(linea.resultado?.pedido_version, "linea.pedido_version");
+        if (linea.nota) {
+          const notaResultado = await rpcA02ConRecuperacion(supabase, "abc_actualizar_nota_linea", {
+            p_operation_id: `${linea.operationId}.nota`,
+            p_empresa_id: empresaId,
+            p_local_id: localActivoId,
+            p_linea_id: linea.lineaId,
+            p_nota: linea.nota,
+            p_expected_linea_version: versionServidorA02(linea.resultado?.linea_version, "linea.linea_version"),
+            p_expected_pedido_version: pedidoVersion,
+            p_terminal_id: contexto.terminalId,
+            p_session_id: contexto.sessionId,
+            p_operating_day: pending.operatingDay
+          }, empresaId, localActivoId, `${linea.operationId}.nota`);
+          linea.resultado = { ...linea.resultado, ...notaResultado, nota: linea.nota };
+          linea.notaGuardada = true;
+          pedidoVersion = versionServidorA02(notaResultado?.pedido_version, "nota.pedido_version");
+        }
         if (!guardarJsonLocalA02(pendingKey, pending)) throw new Error("persistencia_idempotencia_no_disponible");
       }
 
@@ -111454,6 +112097,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           estado: String(l22.resultado?.estado || "BORRADOR"),
           productoId: l22.productoId,
           cantidad: l22.cantidad,
+          nota: String(l22.nota || ""),
           configuradaA04: !!l22.configuracionA04,
           configuracionA04: l22.configuracionA04 ? {
             expectedProductVersion: Number(l22.configuracionA04.expectedProductVersion),
@@ -111627,7 +112271,45 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
-  async function recuperarCuentaA06() {
+  function aparcarCuentaA06() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de aparcar la cuenta." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa para aparcar la cuenta." };
+
+    let contexto = null;
+    try {
+      contexto = leerContextoCuentaA02(empresaId, localActivoId);
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+    if (!contexto?.cuentaId || !contexto?.pedidoId) {
+      return { ok: false, error: "No hay una cuenta operativa para aparcar." };
+    }
+
+    const claveContexto = claveUltimaCuentaA02(empresaId, localActivoId);
+    try {
+      localStorage.removeItem(claveContexto);
+      if (localStorage.getItem(claveContexto) !== null) {
+        throw new Error("persistencia_contexto_cuenta_no_disponible");
+      }
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+
+    return {
+      ok: true,
+      cuentaId: contexto.cuentaId,
+      pedidoId: contexto.pedidoId,
+      cuentaVersion: contexto.cuentaVersion,
+      pedidoVersion: contexto.pedidoVersion,
+      pedidoEstado: contexto.pedidoEstado,
+      currencyCode: contexto.currencyCode,
+      modalidad: contexto.modalidad,
+      operatingDay: contexto.operatingDay
+    };
+  }
+
+  async function recuperarCuentaA06(cuentaIdSolicitada = null, cuentaRecuperable = null) {
     if (!localActivoId) return { ok: false, recuperable: false, error: "Selecciona un local antes de recuperar la cuenta." };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: false, recuperable: false, error: "No se pudo determinar la empresa activa para recuperar la cuenta." };
@@ -111636,9 +112318,27 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       contextoLocal = leerContextoCuentaA02(empresaId, localActivoId);
     } catch (error) {
-      return { ok: false, recuperable: false, error: errorRpcA02(error) };
+      if (!cuentaIdSolicitada) return { ok: false, recuperable: false, error: errorRpcA02(error) };
+    }
+    if (cuentaIdSolicitada) {
+      const cuentaId = String(cuentaIdSolicitada || "").trim();
+      if (!uuidPersistidoA02(cuentaId)) return { ok: false, recuperable: false, error: "La cuenta seleccionada no tiene un identificador válido." };
+      contextoLocal = {
+        ...(contextoLocal || {}),
+        schemaVersion: 1,
+        empresaId,
+        localId: localActivoId,
+        cuentaId,
+        operatingDay: cuentaRecuperable?.opened_operating_day || contextoLocal?.operatingDay || null,
+        currencyCode: cuentaRecuperable?.currency_code || contextoLocal?.currencyCode || "EUR",
+        modalidad: cuentaRecuperable?.modalidad || contextoLocal?.modalidad || "BARRA",
+        responsableActual: cuentaRecuperable?.responsable_actual || contextoLocal?.responsableActual || null
+      };
     }
     if (!contextoLocal) return { ok: false, recuperable: false, error: null };
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(String(contextoLocal.operatingDay || ""))) {
+      return { ok: false, recuperable: true, error: errorRpcA02(new Error("operating_day_context_required")) };
+    }
 
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
     if (!hayConexion) {
@@ -111727,7 +112427,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         lineas,
         terminalId: terminal.terminalId,
         sessionId: terminal.sessionId,
-        operatingDay: contextoLocal.operatingDay,
+        operatingDay: data.cuenta.opened_operating_day || contextoLocal.operatingDay,
         currencyCode: String(data.cuenta.currency_code || contextoLocal.currencyCode || "EUR"),
         modalidad: String(data.cuenta.modalidad || contextoLocal.modalidad || "BARRA"),
         responsableActual: data.cuenta.responsable_actual || contextoLocal.responsableActual || null,
@@ -111745,6 +112445,80 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       };
     } catch (error) {
       return { ok: false, recuperable: true, error: errorRpcA02(error) };
+    }
+  }
+
+  async function listarCuentasRecuperablesA06(abandonoMinutos = 30) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de consultar las cuentas recuperables." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+
+    let contexto = null;
+    try {
+      contexto = leerContextoCuentaA02(empresaId, localActivoId);
+    } catch (error) {
+      // Una cuenta local dañada no debe impedir consultar las cuentas del servidor.
+    }
+
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "Las cuentas recuperables necesitan conexión con el servidor." };
+
+    const minutos = Math.min(10080, Math.max(0, Math.trunc(Number(abandonoMinutos) || 30)));
+    try {
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId
+      });
+      if (diaError) throw diaError;
+      const operatingDay = String(dia?.operating_day || "");
+      if (!dia?.ok || !/^\d{4}-\d{2}-\d{2}$/.test(operatingDay)) {
+        throw new Error("operating_day_servidor_ausente");
+      }
+      const { data, error } = await supabase.rpc("abc_listar_cuentas_recuperables", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: operatingDay,
+        p_abandono_minutos: minutos
+      });
+      if (error) throw error;
+      if (!data?.ok || !Array.isArray(data.cuentas)) throw new Error("cuentas_recuperables_respuesta_invalida");
+
+      const cuentas = data.cuentas
+        .map((cuenta) => ({
+          ...cuenta,
+          cuenta_id: String(cuenta.cuenta_id || ""),
+          version: versionServidorA02(cuenta.version, "a06.lista.cuenta_version")
+        }))
+        .filter((cuenta) =>
+          uuidPersistidoA02(cuenta.cuenta_id)
+          && !(contexto?.operatingDay === operatingDay && String(cuenta.cuenta_id) === String(contexto.cuentaId))
+          && String(cuenta.estado || "") === "ABIERTA"
+          && cuenta.reanudable_mismo_dia !== false
+          && String(cuenta.opened_operating_day || "") === operatingDay
+          && Number(cuenta.pedidos_count) === 1
+          && Number(cuenta.lineas_activas_count) > 0
+        );
+
+      return {
+        ok: true,
+        cuentas,
+        terminalId: terminal.terminalId,
+        sessionId: terminal.sessionId,
+        operatingDay,
+        abandonoMinutos: minutos
+      };
+    } catch (error) {
+      if (String(error?.message || error || "").includes("abc_caja_no_autorizado")) {
+        return { ok: false, error: "Tu perfil no tiene permiso para consultar el día operativo requerido para recuperar cuentas." };
+      }
+      if (String(error?.message || error || "").includes("operating_day_servidor_ausente")) {
+        return { ok: false, error: "El servidor no devolvió un día operativo válido para consultar las cuentas recuperables." };
+      }
+      return respuestaErrorA06(error);
     }
   }
 
@@ -112518,6 +113292,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (!hayConexion) return { ok: false, error: "El traslado de mesa necesita conexión con el servidor." };
       const supabase = await window.getSupabaseClient();
       const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const motivoOperacion = motivoLimpio.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "motivo";
       const operationId = [
         "a07.2.move",
         contexto.cuentaId,
@@ -112527,7 +113302,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         mesaOrigenVersion,
         mesaDestinoVersion,
         nComensales,
-        motivoLimpio.slice(0, 48)
+        motivoOperacion
       ].join(".");
 
       const movimiento = await rpcA02ConRecuperacion(supabase, "abc_mover_cuenta_mesa", {
@@ -112577,12 +113352,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (!hayConexion) return { ok: false, error: "El relevo de responsable necesita conexión con el servidor." };
       const supabase = await window.getSupabaseClient();
       const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const motivoOperacion = motivoLimpio.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9_-]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 48) || "motivo";
       const operationId = [
         "a07.2.responsable",
         contexto.cuentaId,
         responsableId,
         cuentaVersion,
-        motivoLimpio.slice(0, 48)
+        motivoOperacion
       ].join(".");
 
       const cambio = await rpcA02ConRecuperacion(supabase, "abc_cambiar_responsable_cuenta", {
@@ -112780,6 +113556,58 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         cuenta: recuperada?.ok ? recuperada : null,
         estado: estado?.ok ? estado : null
       };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  async function unirCuentasA08(cuentaDestinoId, motivo, expectedOrigenVersion, expectedDestinoVersion) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de unir cuentas." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const destinoId = String(cuentaDestinoId || "").trim();
+    const motivoNormalizado = String(motivo || "").trim();
+    if (!destinoId || !motivoNormalizado) return { ok: false, error: "Selecciona una cuenta destino e indica el motivo de la unión." };
+
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      if (String(contexto.cuentaId) === destinoId) throw new Error("cuentas_unir_parametros_invalidos");
+      const origenVersion = versionServidorA02(expectedOrigenVersion, "a08.union.cuenta_origen_version");
+      const destinoVersion = versionServidorA02(expectedDestinoVersion, "a08.union.cuenta_destino_version");
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Unir cuentas necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationSeed = JSON.stringify({
+        empresaId,
+        localId: localActivoId,
+        cuentaOrigenId: contexto.cuentaId,
+        cuentaDestinoId: destinoId,
+        motivo: motivoNormalizado,
+        expectedOrigenVersion: origenVersion,
+        expectedDestinoVersion: destinoVersion,
+        terminalId: terminal.terminalId,
+        sessionId: terminal.sessionId,
+        operatingDay: contexto.operatingDay
+      });
+      const operationDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(operationSeed));
+      const operationHash = Array.from(new Uint8Array(operationDigest)).map((byte) => byte.toString(16).padStart(2, "0")).join("");
+      const operationId = "a08.2.unir:" + operationHash;
+      const fusion = await rpcA02ConRecuperacion(supabase, "abc_unir_cuentas", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_origen_id: contexto.cuentaId,
+        p_cuenta_destino_id: destinoId,
+        p_motivo: motivoNormalizado,
+        p_expected_origen_version: origenVersion,
+        p_expected_destino_version: destinoVersion,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      }, empresaId, localActivoId, operationId);
+      return { ok: true, fusion, operationId };
     } catch (error) {
       return respuestaErrorA06(error);
     }
@@ -113130,7 +113958,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -115102,7 +115930,11 @@ async function convertirPDFFacturaAImagenes(file) {
   return paginas;
 }
 function Field({ label, children }) {
-  return /* @__PURE__ */ import_react4.default.createElement("label", { className: "block mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, label), children);
+  const generatedId = (0, import_react4.useId)().replace(/:/g, "");
+  const fallbackId = `campo-${generatedId}`;
+  const control = import_react4.default.isValidElement(children) ? import_react4.default.cloneElement(children, { id: children.props.id || fallbackId }) : children;
+  const controlId = control?.props?.id || fallbackId;
+  return /* @__PURE__ */ import_react4.default.createElement("label", { htmlFor: controlId, className: "block mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, label), control);
 }
 var CATEGORIAS_GASTO = [
   "Alquiler",
@@ -115335,8 +116167,8 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
       id: "fallos_guardado",
       titulo: "Guardado: cambios sin confirmar",
       valor: fallosGuardado.length,
-      color: fallosGuardado.length ? C2.red : C2.ink,
-      nota: fallosGuardado.length > 0 ? "algo no se ha podido guardar \u2014 revisa la conexi\xF3n antes de seguir" : null,
+      color: fallosGuardado.length ? (fallosGuardado.every(esAvisoRespaldoSoloLocalPM16) ? C2.amber : C2.red) : C2.ink,
+      nota: fallosGuardado.length > 0 ? (fallosGuardado.every(esAvisoRespaldoSoloLocalPM16) ? "copias conservadas solo en este equipo en QA" : "algo no se ha podido guardar \u2014 revisa la conexi\xF3n antes de seguir") : null,
       tab: "respaldos",
       tabNombre: "Respaldos",
       items: fallosGuardado.slice(0, 10).map((f22) => ({
@@ -115344,7 +116176,7 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
         principal: f22.key,
         secundario: f22.mensaje || "Error al guardar",
         derecha: new Date(f22.fecha).toLocaleTimeString("es-ES", { hour: "2-digit", minute: "2-digit" }),
-        derechaColor: C2.red
+        derechaColor: esAvisoRespaldoSoloLocalPM16(f22) ? C2.amber : C2.red
       }))
     },
     {
@@ -115660,7 +116492,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     setCruce({ origenId: "", destinoId: "", cantOrigen: "", cantDestino: "", motivo: "" });
     setErrorCruce("");
   }
-  const blank = { codigo: "", codigoBarras: "", nombre: "", categoria: "", unidad: "unidad", tipo: "materia_prima", alergenos: [], costo: "", ivaCompra: 10, udsPorCaja: 1, nombreEmpaque: "caja", precioVenta: "", ivaVenta: 10, stock: "", stockMinimo: "", stockPisoVenta: 0, stockMinimoPisoVenta: "", zona: "", ubicacion: "", proveedorId: "", contenido: "", unidadContenido: "", departamento: "Obrador" };
+  const blank = { codigo: "", codigoBarras: "", nombre: "", categoria: "", unidad: "unidad", tipo: "materia_prima", alergenos: [], fotoUrl: "", masVendido: false, costo: "", ivaCompra: 10, udsPorCaja: 1, nombreEmpaque: "caja", precioVenta: "", ivaVenta: 10, stock: "", stockMinimo: "", stockPisoVenta: 0, stockMinimoPisoVenta: "", zona: "", ubicacion: "", proveedorId: "", contenido: "", unidadContenido: "", departamento: "Obrador" };
   const [form, setForm] = (0, import_react4.useState)(blank);
   const [salidaFor, setSalidaFor] = (0, import_react4.useState)(null);
   const [salidaCant, setSalidaCant] = (0, import_react4.useState)("");
@@ -115719,6 +116551,8 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
       categoria: p22.categoria || "",
       tipo: p22.tipo || "materia_prima",
       alergenos: p22.alergenos || [],
+       fotoUrl: p22.fotoUrl || p22.foto || p22.imagen || "",
+       masVendido: p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true,
       unidad: p22.unidad || "unidad",
       costo: p22.costo ?? "",
       ivaCompra: p22.ivaCompra ?? 10,
@@ -115799,14 +116633,14 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "utillaje" }, "Utillaje / menaje (jarra, bandeja: no se consume)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "limpieza" }, "Limpieza / qu\xEDmicos (no es mercanc\xEDa, no entra en recetas)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "elaborado" }, "Elaborado (lo que vendes al cliente)")
-  ))), esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "No cuenta en el valor de mercanc\xEDa ni en el ABC, y no aparece como ingrediente en las fichas de costo. Su stock s\xED se sigue controlando, para poder reponerlo. Sigue teniendo stock y aviso de reposici\xF3n, para cuando se rompa algo.")), !esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "2 \xB7 Al\xE9rgenos" }, /* @__PURE__ */ import_react4.default.createElement(
+  ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-4 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Foto del producto (URL HTTPS opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.fotoUrl, onChange: (e2) => setForm({ ...form, fotoUrl: e2.target.value }), placeholder: "https://.../producto.jpg" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[12.5px] mt-6 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: !!form.masVendido, onChange: (e2) => setForm({ ...form, masVendido: e2.target.checked }) }), "Más vendido") ), esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "No cuenta en el valor de mercanc\xEDa ni en el ABC, y no aparece como ingrediente en las fichas de costo. Su stock s\xED se sigue controlando, para poder reponerlo. Sigue teniendo stock y aviso de reposici\xF3n, para cuando se rompa algo.")), !esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "2 \xB7 Al\xE9rgenos" }, /* @__PURE__ */ import_react4.default.createElement(
     SelectorAlergenos,
     {
       seleccionados: form.alergenos || [],
       onCambio: (lista) => setForm({ ...form, alergenos: lista }),
       nombreParaSugerir: form.nombre
     }
-  )), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "3 \xB7 Compra" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de compra de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.ivaCompra, onChange: (e2) => setForm({ ...form, ivaCompra: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%", t22 === 4 ? " \u2014 pan, harina, leche, huevos" : t22 === 10 ? " \u2014 resto de alimentos" : t22 === 21 ? " \u2014 general, limpieza" : "")))), /* @__PURE__ */ import_react4.default.createElement(CompraPorCaja, { form, setForm })), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "4 \xB7 Venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de venta de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.ivaVenta, onChange: (e2) => setForm({ ...form, ivaVenta: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta CON IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.precioVenta, onChange: (e2) => setForm({ ...form, precioVenta: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "D\xE9jalo vac\xEDo si es una materia prima que no vendes suelta.")), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "5 \xB7 Almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock inicial" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stock, onChange: (e2) => setForm({ ...form, stock: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo (reorden)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stockMinimo, onChange: (e2) => setForm({ ...form, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Zona del almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.zona, onChange: (e2) => setForm({ ...form, zona: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), ZONAS_ALMACEN.filter((z2) => z2 !== "Sin asignar").map((z2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: z2, value: z2 }, z2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n exacta (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.ubicacion, onChange: (e2) => setForm({ ...form, ubicacion: e2.target.value }), placeholder: "Estante 3, balda 2\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de barras (EAN, opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.codigoBarras, onChange: (e2) => setForm({ ...form, codigoBarras: e2.target.value }), placeholder: "Escanea o escribe el EAN" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.proveedorId, onChange: (e2) => setForm({ ...form, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), (form.tipo === "elaborado" || Number(form.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "M\xEDnimo en piso de venta (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stockMinimoPisoVenta, onChange: (e2) => setForm({ ...form, stockMinimoPisoVenta: e2.target.value }), placeholder: "Avisa cuando quede poco en el mostrador" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-1", style: { color: C2.inkSoft } }, "Si compras esto por bulto (bandeja, caja\u2026) pero lo usas por peso en las recetas, di aqu\xED cu\xE1nto trae cada bulto. As\xED en Fichas de costo podr\xE1s poner la cantidad directamente en gramos o kilos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contenido de cada bulto (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.contenido, onChange: (e2) => setForm({ ...form, contenido: e2.target.value }), placeholder: "Ej. 300" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad del contenido" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.unidadContenido, onChange: (e2) => setForm({ ...form, unidadContenido: e2.target.value }), placeholder: "Ej. g, kg, ml" }))))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, "Guardar producto"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  )), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "3 \xB7 Compra" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de compra de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.ivaCompra, onChange: (e2) => setForm({ ...form, ivaCompra: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%", t22 === 4 ? " \u2014 pan, harina, leche, huevos" : t22 === 10 ? " \u2014 resto de alimentos" : t22 === 21 ? " \u2014 general, limpieza" : "")))), /* @__PURE__ */ import_react4.default.createElement(CompraPorCaja, { form, setForm })), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "4 \xB7 Venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de venta de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.ivaVenta, onChange: (e2) => setForm({ ...form, ivaVenta: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta CON IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.001", value: form.precioVenta, onChange: (e2) => setForm({ ...form, precioVenta: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "D\xE9jalo vac\xEDo si es una materia prima que no vendes suelta.")), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "5 \xB7 Almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock inicial" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stock, onChange: (e2) => setForm({ ...form, stock: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo (reorden)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stockMinimo, onChange: (e2) => setForm({ ...form, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Zona del almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.zona, onChange: (e2) => setForm({ ...form, zona: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), ZONAS_ALMACEN.filter((z2) => z2 !== "Sin asignar").map((z2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: z2, value: z2 }, z2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n exacta (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.ubicacion, onChange: (e2) => setForm({ ...form, ubicacion: e2.target.value }), placeholder: "Estante 3, balda 2\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de barras (EAN, opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.codigoBarras, onChange: (e2) => setForm({ ...form, codigoBarras: e2.target.value }), placeholder: "Escanea o escribe el EAN" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.proveedorId, onChange: (e2) => setForm({ ...form, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), (form.tipo === "elaborado" || Number(form.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "M\xEDnimo en piso de venta (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stockMinimoPisoVenta, onChange: (e2) => setForm({ ...form, stockMinimoPisoVenta: e2.target.value }), placeholder: "Avisa cuando quede poco en el mostrador" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-1", style: { color: C2.inkSoft } }, "Si compras esto por bulto (bandeja, caja\u2026) pero lo usas por peso en las recetas, di aqu\xED cu\xE1nto trae cada bulto. As\xED en Fichas de costo podr\xE1s poner la cantidad directamente en gramos o kilos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contenido de cada bulto (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.contenido, onChange: (e2) => setForm({ ...form, contenido: e2.target.value }), placeholder: "Ej. 300" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad del contenido" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.unidadContenido, onChange: (e2) => setForm({ ...form, unidadContenido: e2.target.value }), placeholder: "Ej. g, kg, ml" }))))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, "Guardar producto"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setShowForm(false);
     setError("");
   } }, "Cancelar"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative flex-1" }, /* @__PURE__ */ import_react4.default.createElement(Search, { size: 15, color: C2.inkSoft, style: { position: "absolute", left: 10, top: 10 } }), /* @__PURE__ */ import_react4.default.createElement(
@@ -115869,7 +116703,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
   ), productosFiltrados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: `Ning\xFAn producto coincide con "${busqueda}".` }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Stock"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Costo s/IVA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "PVP c/IVA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Margen"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-center font-medium py-2.5 px-3" }, "ABC"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, productosFiltrados.map((p22) => {
     const margen = margenDe(p22);
     const bajo = p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0);
-    return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { borderBottom: `1px solid ${C2.line}`, opacity: p22.activo === false ? 0.55 : 1 } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium flex items-center gap-1.5" }, p22.nombre, p22.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "Eliminado"), esNoMercancia(p22) && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, p22.tipo), p22.tipo === "consumible" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "consumible"), p22.tipo === "elaborado" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "elaborado")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, [p22.codigo, p22.categoria, p22.ubicacion].filter(Boolean).join(" \xB7 "), p22.proveedorId && proveedorPorId(p22.proveedorId) ? ` \xB7 ${proveedorPorId(p22.proveedorId).nombre}` : "")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, p22.stock, " ", p22.unidad, bajo && /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "bajo m\xEDnimo")), (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, fmt(p22.stockPisoVenta || 0), " en piso \xB7 ", fmt((Number(p22.stock) || 0) - (Number(p22.stockPisoVenta) || 0)), " en almac\xE9n")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p22.costo), Number(p22.costo) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "c/IVA \u20AC", fmt(costoConIva(p22)), " \xB7 ", ivaCompraDe(p22), "%", udsPorCaja(p22) > 1 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " \xB7 caja ", udsPorCaja(p22), " = \u20AC", fmt(costoCaja(p22))))), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p22.precioVenta), Number(p22.precioVenta) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "neto \u20AC", fmt(precioNeto(p22)), " \xB7 IVA ", ivaDe(p22), "%")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono", style: { color: margen == null ? C2.inkSoft : margen < 15 ? C2.red : C2.accent } }, margen == null ? "\u2014" : margen < 15 ? [/* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { key: "mg1", size: 12, style: { display: "inline", verticalAlign: "-2px", marginRight: 3 } }), `${fmt(margen)}%`] : `${fmt(margen)}%`), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 text-center" }, esNoMercancia(p22) ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "\u2014") : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (clasificacionABC[p22.id] || "C") === "A" ? C2.red : (clasificacionABC[p22.id] || "C") === "B" ? C2.amber : C2.inkSoft }, clasificacionABC[p22.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setKardexId(p22.id) }, "Kardex"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(p22) }, "Editar"), !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(
+    return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { borderBottom: `1px solid ${C2.line}`, opacity: p22.activo === false ? 0.55 : 1 } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium flex items-center gap-1.5" }, p22.nombre, p22.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "Eliminado"), esNoMercancia(p22) && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, p22.tipo), p22.tipo === "consumible" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "consumible"), p22.tipo === "elaborado" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "elaborado")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, [p22.codigo, p22.categoria, p22.ubicacion].filter(Boolean).join(" \xB7 "), p22.proveedorId && proveedorPorId(p22.proveedorId) ? ` \xB7 ${proveedorPorId(p22.proveedorId).nombre}` : "")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, p22.stock, " ", p22.unidad, bajo && /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "bajo m\xEDnimo")), (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, fmt(p22.stockPisoVenta || 0), " en piso \xB7 ", fmt((Number(p22.stock) || 0) - (Number(p22.stockPisoVenta) || 0)), " en almac\xE9n")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmtPrecio(p22.costo), Number(p22.costo) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "c/IVA \u20AC", fmtPrecio(costoConIva(p22)), " \xB7 ", ivaCompraDe(p22), "%", udsPorCaja(p22) > 1 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " \xB7 caja ", udsPorCaja(p22), " = \u20AC", fmt(costoCaja(p22))))), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmtPrecio(p22.precioVenta), Number(p22.precioVenta) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "neto \u20AC", fmtPrecio(precioNeto(p22)), " \xB7 IVA ", ivaDe(p22), "%")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono", style: { color: margen == null ? C2.inkSoft : margen < 15 ? C2.red : C2.accent } }, margen == null ? "\u2014" : margen < 15 ? [/* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { key: "mg1", size: 12, style: { display: "inline", verticalAlign: "-2px", marginRight: 3 } }), `${fmt(margen)}%`] : `${fmt(margen)}%`), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 text-center" }, esNoMercancia(p22) ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "\u2014") : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (clasificacionABC[p22.id] || "C") === "A" ? C2.red : (clasificacionABC[p22.id] || "C") === "B" ? C2.amber : C2.inkSoft }, clasificacionABC[p22.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setKardexId(p22.id) }, "Kardex"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(p22) }, "Editar"), !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(
       Btn,
       {
         small: true,
@@ -115877,7 +116711,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
         onClick: () => {
           setSalidaFor(p22.id);
           setSalidaMotivo("Venta");
-          setSalidaPrecio(Number(p22.precioVenta) > 0 ? String(precioNeto(p22).toFixed(2)) : "");
+          setSalidaPrecio(Number(p22.precioVenta) > 0 ? String(precioNeto(p22).toFixed(3)) : "");
         }
       },
       "Registrar salida"
@@ -115907,7 +116741,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "Degustaci\xF3n" }, "Degustaci\xF3n"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "Producto defectuoso" }, "Producto defectuoso"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otro" }, "Otro")
-  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad a retirar" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: salidaCant, onChange: (e2) => setSalidaCant(e2.target.value), autoFocus: true })), salidaMotivo === "Venta" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta unitario, sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: salidaPrecio, onChange: (e2) => setSalidaPrecio(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: salidaMedioPago, onChange: (e2) => setSalidaMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")))), salidaMotivo !== "Venta" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Esto se contar\xE1 como p\xE9rdida al coste, no como venta, cuando mires Resultados."), /* @__PURE__ */ import_react4.default.createElement(
+  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad a retirar" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: salidaCant, onChange: (e2) => setSalidaCant(e2.target.value), autoFocus: true })), salidaMotivo === "Venta" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta unitario, sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.001", value: salidaPrecio, onChange: (e2) => setSalidaPrecio(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: salidaMedioPago, onChange: (e2) => setSalidaMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")))), salidaMotivo !== "Venta" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Esto se contar\xE1 como p\xE9rdida al coste, no como venta, cuando mires Resultados."), /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       onClick: () => {
@@ -115930,14 +116764,14 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "utillaje" }, "Utillaje / menaje (no se consume)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "limpieza" }, "Limpieza / qu\xEDmicos (no es mercanc\xEDa)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "elaborado" }, "Elaborado (venta al cliente)")
-  )), !esNoMercancia(editForm) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement(
+  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Foto del producto (URL HTTPS opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.fotoUrl, onChange: (e2) => setEditForm({ ...editForm, fotoUrl: e2.target.value }), placeholder: "https://.../producto.jpg" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[12.5px] mt-6 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: !!editForm.masVendido, onChange: (e2) => setEditForm({ ...editForm, masVendido: e2.target.checked }) }), "Más vendido") ), !esNoMercancia(editForm) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement(
     SelectorAlergenos,
     {
       seleccionados: editForm.alergenos || [],
       onCambio: (lista) => setEditForm({ ...editForm, alergenos: lista }),
       nombreParaSugerir: editForm.nombre
     }
-  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de compra de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaCompra, onChange: (e2) => setEditForm({ ...editForm, ivaCompra: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%", t22 === 4 ? " \u2014 pan, harina, leche, huevos" : t22 === 10 ? " \u2014 resto de alimentos" : t22 === 21 ? " \u2014 general, limpieza" : "")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2" }, /* @__PURE__ */ import_react4.default.createElement(CompraPorCaja, { form: editForm, setForm: setEditForm })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de venta de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaVenta, onChange: (e2) => setEditForm({ ...editForm, ivaVenta: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta CON IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: editForm.precioVenta, onChange: (e2) => setEditForm({ ...editForm, precioVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock actual" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stock, onChange: (e2) => setEditForm({ ...editForm, stock: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimo, onChange: (e2) => setEditForm({ ...editForm, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Zona del almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.zona, onChange: (e2) => setEditForm({ ...editForm, zona: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), ZONAS_ALMACEN.filter((z2) => z2 !== "Sin asignar").map((z2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: z2, value: z2 }, z2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.ubicacion, onChange: (e2) => setEditForm({ ...editForm, ubicacion: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de barras (EAN)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.codigoBarras, onChange: (e2) => setEditForm({ ...editForm, codigoBarras: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.proveedorId, onChange: (e2) => setEditForm({ ...editForm, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((pv) => /* @__PURE__ */ import_react4.default.createElement("option", { key: pv.id, value: pv.id }, pv.nombre)))), (editForm.tipo === "elaborado" || Number(editForm.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "M\xEDnimo en piso de venta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimoPisoVenta, onChange: (e2) => setEditForm({ ...editForm, stockMinimoPisoVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contenido de cada bulto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: editForm.contenido, onChange: (e2) => setEditForm({ ...editForm, contenido: e2.target.value }), placeholder: "Ej. 300" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad del contenido" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.unidadContenido, onChange: (e2) => setEditForm({ ...editForm, unidadContenido: e2.target.value }), placeholder: "Ej. g, kg, ml" })))), editError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, editError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitEdit }, "Guardar cambios"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEditFor(null) }, "Cancelar"))), kardexId && (() => {
+  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de compra de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaCompra, onChange: (e2) => setEditForm({ ...editForm, ivaCompra: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%", t22 === 4 ? " \u2014 pan, harina, leche, huevos" : t22 === 10 ? " \u2014 resto de alimentos" : t22 === 21 ? " \u2014 general, limpieza" : "")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2" }, /* @__PURE__ */ import_react4.default.createElement(CompraPorCaja, { form: editForm, setForm: setEditForm })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de venta de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaVenta, onChange: (e2) => setEditForm({ ...editForm, ivaVenta: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta CON IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.001", value: editForm.precioVenta, onChange: (e2) => setEditForm({ ...editForm, precioVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock actual" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stock, onChange: (e2) => setEditForm({ ...editForm, stock: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimo, onChange: (e2) => setEditForm({ ...editForm, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Zona del almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.zona, onChange: (e2) => setEditForm({ ...editForm, zona: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), ZONAS_ALMACEN.filter((z2) => z2 !== "Sin asignar").map((z2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: z2, value: z2 }, z2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.ubicacion, onChange: (e2) => setEditForm({ ...editForm, ubicacion: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de barras (EAN)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.codigoBarras, onChange: (e2) => setEditForm({ ...editForm, codigoBarras: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.proveedorId, onChange: (e2) => setEditForm({ ...editForm, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((pv) => /* @__PURE__ */ import_react4.default.createElement("option", { key: pv.id, value: pv.id }, pv.nombre)))), (editForm.tipo === "elaborado" || Number(editForm.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "M\xEDnimo en piso de venta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimoPisoVenta, onChange: (e2) => setEditForm({ ...editForm, stockMinimoPisoVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contenido de cada bulto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: editForm.contenido, onChange: (e2) => setEditForm({ ...editForm, contenido: e2.target.value }), placeholder: "Ej. 300" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad del contenido" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.unidadContenido, onChange: (e2) => setEditForm({ ...editForm, unidadContenido: e2.target.value }), placeholder: "Ej. g, kg, ml" })))), editError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, editError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitEdit }, "Guardar cambios"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEditFor(null) }, "Cancelar"))), kardexId && (() => {
     const p22 = productos.find((x3) => x3.id === kardexId);
     if (!p22) return null;
     const suyos = [...movimientos.filter((m22) => m22.productoId === kardexId)].sort((a22, b2) => (a22.fecha + (a22.id || "")).localeCompare(b2.fecha + (b2.id || "")));
@@ -116026,7 +116860,7 @@ function CompraPorCaja({ form, setForm }) {
   const cajaNeta = costoUd > 0 ? costoUd * uds : "";
   const cajaBruta = costoUd > 0 ? costoUd * uds * (1 + iva / 100) : "";
   const unidadBruta = costoUd > 0 ? costoUd * (1 + iva / 100) : "";
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-lg p-3 mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "C\xF3mo te lo vende el proveedor"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Escribe en la casilla que traiga tu factura. Las dem\xE1s se calculan solas."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidades por caja (1 si lo compras suelto)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "1", value: form.udsPorCaja, onChange: (e2) => setForm({ ...form, udsPorCaja: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.01", valor: cajaNeta, decimales: 2, onEscribir: (v22) => desdeCaja(v22, false) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.01", valor: cajaBruta, decimales: 2, onEscribir: (v22) => desdeCaja(v22, true) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: form.costo, decimales: 4, onEscribir: (v22) => setForm({ ...form, costo: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: unidadBruta, decimales: 4, onEscribir: desdeUnidadBruta }))), uds > 1 && costoUd > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mono", style: { color: C2.accent } }, "Caja de ", uds, ": \u20AC", fmt(costoUd * uds), " sin IVA \xB7 \u20AC", fmt(costoUd * uds * (1 + iva / 100)), " con IVA \u2192 unidad \u20AC", fmt(costoUd)));
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-lg p-3 mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "C\xF3mo te lo vende el proveedor"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Escribe en la casilla que traiga tu factura. Las dem\xE1s se calculan solas."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidades por caja (1 si lo compras suelto)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "1", value: form.udsPorCaja, onChange: (e2) => setForm({ ...form, udsPorCaja: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.001", valor: cajaNeta, decimales: 3, onEscribir: (v22) => desdeCaja(v22, false) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.001", valor: cajaBruta, decimales: 3, onEscribir: (v22) => desdeCaja(v22, true) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: form.costo, decimales: 4, onEscribir: (v22) => setForm({ ...form, costo: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: unidadBruta, decimales: 4, onEscribir: desdeUnidadBruta }))), uds > 1 && costoUd > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mono", style: { color: C2.accent } }, "Caja de ", uds, ": \u20AC", fmt(costoUd * uds), " sin IVA \xB7 \u20AC", fmt(costoUd * uds * (1 + iva / 100)), " con IVA \u2192 unidad \u20AC", fmtPrecio(costoUd)));
 }
 function Modal({ children, onClose, title, ancho = "max-w-md" }) {
   const cajaRef = (0, import_react4.useRef)(null);
@@ -117250,7 +118084,7 @@ function FichasCosto({ fichasCosto, productos, addFichaCosto, updateFichaCosto, 
     })))));
   })());
 }
-var CLAVE_PUBLICA_VAPID = "BFR4zM8DYVXS72kivq6D1pq8kpGKmtueU257ti7KndBvWs8pFjlOOdPOS9fKV9CqkXXtJXKV6YRa6w3xJtNWiCU";
+var CLAVE_PUBLICA_VAPID = "BCRS48qhPLW_RsRA3X4e7DzgFgrbcK2ddFcunizOn-IjTv7iB2YzMgQVWLNEQIBdYMDEE2B8xuKllAiFhgVd6z0";
 function base64UrlABytes(base64Url) {
   const relleno = "=".repeat((4 - base64Url.length % 4) % 4);
   const base64 = (base64Url + relleno).replace(/-/g, "+").replace(/_/g, "/");
@@ -117258,6 +118092,9 @@ function base64UrlABytes(base64Url) {
   const bytes = new Uint8Array(cadena.length);
   for (let i33 = 0; i33 < cadena.length; i33++) bytes[i33] = cadena.charCodeAt(i33);
   return bytes;
+}
+function esPreviewQaAud010() {
+  return typeof window !== "undefined" && /--chic-entremet-9107cf\.netlify\.app$/.test(window.location.hostname);
 }
 async function activarSuscripcionPushPM17({ suscribir, guardarSuscripcion, deshacerSuscripcion }) {
   const suscripcion = await suscribir();
@@ -117278,6 +118115,7 @@ function Notificaciones({ localActivoId = null }) {
   const [suscrito, setSuscrito] = (0, import_react4.useState)(false);
   const [cargando, setCargando] = (0, import_react4.useState)(false);
   const [error, setError] = (0, import_react4.useState)("");
+  const [resultadoPruebaQA, setResultadoPruebaQA] = (0, import_react4.useState)("");
   const [esIOS, setEsIOS] = (0, import_react4.useState)(false);
   const [instaladaEnInicio, setEsInstalada] = (0, import_react4.useState)(true);
   (0, import_react4.useEffect)(() => {
@@ -117311,8 +118149,11 @@ function Notificaciones({ localActivoId = null }) {
         }),
         guardarSuscripcion: async (suscripcion) => {
           const supabase = await window.getSupabaseClient();
+          const { data: { user }, error: errUser } = await supabase.auth.getUser();
+          if (errUser || !user?.id) throw errUser || new Error("No hay una sesión autenticada para activar notificaciones.");
           const json = suscripcion.toJSON();
           const { error: errInsert } = await supabase.from("suscripciones_push").upsert({
+            user_id: user.id,
             endpoint: json.endpoint,
             p256dh: json.keys.p256dh,
             auth: json.keys.auth,
@@ -117348,7 +118189,35 @@ function Notificaciones({ localActivoId = null }) {
       setCargando(false);
     }
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Notificaciones"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Avisos en este dispositivo cuando: la caja cierra descuadrada, alg\xFAn producto baja del stock m\xEDnimo, un candidato completa el prefiltro, o una entrevista termina y requiere revisi\xF3n. Se activa por separado en cada dispositivo (m\xF3vil, ordenador...) donde quieras recibirlas.")), !soportado ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este navegador no admite notificaciones push.")) : esIOS && !instaladaEnInicio ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "En iPhone hace falta instalar la app primero"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, 'Las notificaciones en iPhone solo funcionan si la app est\xE1 a\xF1adida a la pantalla de inicio (no basta con tenerla abierta en Safari). Toca el bot\xF3n de compartir de Safari \u2192 "A\xF1adir a pantalla de inicio", abre la app desde ese icono nuevo, y vuelve aqu\xED.')) : permiso === "denied" ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Bloqueaste el permiso de notificaciones para esta web antes. Para activarlo, tienes que cambiarlo desde los ajustes del propio navegador (icono del candado junto a la direcci\xF3n web \u2192 Notificaciones).")) : /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, suscrito ? "Activadas en este dispositivo" : "Desactivadas en este dispositivo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-2.5 h-2.5 rounded-full", style: { background: suscrito ? C2.accent : C2.inkSoft } })), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: suscrito ? desactivar : activar, disabled: cargando, variant: suscrito ? "ghost" : "primary" }, cargando ? "Un momento\u2026" : suscrito ? "Desactivar en este dispositivo" : "Activar en este dispositivo"), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", role: "alert", style: { color: C2.red } }, error)));
+  async function probarAUD010() {
+    setCargando(true);
+    setError("");
+    setResultadoPruebaQA("");
+    try {
+      const empresaId = window.__empresaActivaIdParaContexto || "";
+      const r = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          titulo: "Error en el programa",
+          cuerpo: "AUD-010 prueba controlada QA",
+          empresaId,
+          localId: localActivoId || null,
+          aud010Prueba: true,
+          url: "/"
+        })
+      });
+      const data = await r.json().catch(() => ({}));
+      if (!r.ok || data?.ok !== true) throw new Error(data?.error || `HTTP ${r.status}`);
+      setResultadoPruebaQA(`Prueba AUD-010 enviada: ${data.enviados || 0}/${data.destinatarios || 0} destinatario(s), ${data.timeouts || 0} timeout(s).`);
+    } catch (e2) {
+      setError("No se ha podido ejecutar la prueba AUD-010: " + (e2?.message || "error de conexión"));
+    } finally {
+      setCargando(false);
+    }
+  }
+  const mostrarPruebaQA = esPreviewQaAud010() && typeof window !== "undefined" && window.__nubeActiva && suscrito;
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Notificaciones"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Avisos en este dispositivo cuando: la caja cierra descuadrada, alg\xFAn producto baja del stock m\xEDnimo, un candidato completa el prefiltro, o una entrevista termina y requiere revisi\xF3n. Se activa por separado en cada dispositivo (m\xF3vil, ordenador...) donde quieras recibirlas.")), !soportado ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este navegador no admite notificaciones push.")) : esIOS && !instaladaEnInicio ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "En iPhone hace falta instalar la app primero"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, 'Las notificaciones en iPhone solo funcionan si la app est\xE1 a\xF1adida a la pantalla de inicio (no basta con tenerla abierta en Safari). Toca el bot\xF3n de compartir de Safari \u2192 "A\xF1adir a pantalla de inicio", abre la app desde ese icono nuevo, y vuelve aqu\xED.')) : permiso === "denied" ? /* @__PURE__ */ import_react4.default.createElement(Card, { style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Bloqueaste el permiso de notificaciones para esta web antes. Para activarlo, tienes que cambiarlo desde los ajustes del propio navegador (icono del candado junto a la direcci\xF3n web \u2192 Notificaciones).")) : /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, suscrito ? "Activadas en este dispositivo" : "Desactivadas en este dispositivo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-2.5 h-2.5 rounded-full", style: { background: suscrito ? C2.accent : C2.inkSoft } })), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: suscrito ? desactivar : activar, disabled: cargando, variant: suscrito ? "ghost" : "primary" }, cargando ? "Un momento\u2026" : suscrito ? "Desactivar en este dispositivo" : "Activar en este dispositivo"), mostrarPruebaQA && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2" }, "Prueba controlada QA — AUD-010"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: probarAUD010, disabled: cargando, variant: "ghost" }, "Enviar aviso de prueba"), resultadoPruebaQA && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", role: "status", style: { color: C2.accent } }, resultadoPruebaQA)), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-2", role: "alert", style: { color: C2.red } }, error)));
 }
 function ErroresSistema({ diagnosticoLegadosPM10 = null } = {}) {
   const [errores, setErrores] = import_react4.default.useState([]);
@@ -118125,7 +118994,7 @@ TOTAL: \u20AC${fmt(valorVista)}`;
         const importe = (Number(p22.stock) || 0) * (Number(p22.costo) || 0);
         n2 += 1;
         const i33 = n2;
-        return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { background: i33 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, i33), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p22.nombre, p22.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p22.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p22.unidad), vista === "saldo" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, p22.stock), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, "\u20AC", fmt(p22.costo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono font-semibold", style: { border: `1px solid ${C2.line}` } }, "\u20AC", fmt(importe)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, analisisABC && analisisABC.detalle[p22.id] ? analisisABC.detalle[p22.id].unidades : 0), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center mono font-semibold", style: { border: `1px solid ${C2.line}` } }, esNoMercancia(p22) ? "\u2014" : clasificacionABC[p22.id] || "C")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, height: 32, background: "#F0F4F1" } })));
+        return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { background: i33 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, i33), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p22.nombre, p22.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p22.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p22.unidad), vista === "saldo" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, p22.stock), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, "\u20AC", fmtPrecio(p22.costo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono font-semibold", style: { border: `1px solid ${C2.line}` } }, "\u20AC", fmt(importe)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, analisisABC && analisisABC.detalle[p22.id] ? analisisABC.detalle[p22.id].unidades : 0), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center mono font-semibold", style: { border: `1px solid ${C2.line}` } }, esNoMercancia(p22) ? "\u2014" : clasificacionABC[p22.id] || "C")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, height: 32, background: "#F0F4F1" } })));
       }));
     });
   })(), vista === "saldo" && /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("td", { colSpan: 5, className: "py-2 px-2 text-right font-semibold", style: { border: `1px solid ${C2.line}`, background: C2.accentSoft } }, "TOTAL VALOR \u2014 ", tituloUbicacion.toUpperCase()), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono font-semibold", style: { border: `1px solid ${C2.line}`, background: C2.accentSoft } }, "\u20AC", fmt(valorVista)), /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, background: C2.accentSoft } }), /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, background: C2.accentSoft } })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6 text-[11px]", style: { color: C2.inkSoft } }, vista === "conteo" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-6" }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Contado por: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-6" }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Responsable de almac\xE9n: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")))));
@@ -119020,8 +119889,16 @@ function Resultados({ movimientos, productos, productoPorId, gastosGenerales, ad
     setHasta(ultimoDiaMes(/* @__PURE__ */ new Date()));
   }
   function irMesAnterior() {
-    const d2 = /* @__PURE__ */ new Date();
+    const d2 = /^\d{4}-\d{2}-\d{2}$/.test(desde) ? /* @__PURE__ */ new Date(`${desde}T12:00:00`) : /* @__PURE__ */ new Date();
+    d2.setDate(1);
     d2.setMonth(d2.getMonth() - 1);
+    setDesde(primerDiaMes(d2));
+    setHasta(ultimoDiaMes(d2));
+  }
+  function irMesSiguiente() {
+    const d2 = /^\d{4}-\d{2}-\d{2}$/.test(desde) ? /* @__PURE__ */ new Date(`${desde}T12:00:00`) : /* @__PURE__ */ new Date();
+    d2.setDate(1);
+    d2.setMonth(d2.getMonth() + 1);
     setDesde(primerDiaMes(d2));
     setHasta(ultimoDiaMes(d2));
   }
@@ -119170,7 +120047,7 @@ function Resultados({ movimientos, productos, productoPorId, gastosGenerales, ad
     setGastoForm({ concepto: "", importe: "", categoria: "" });
     setShowGasto(false);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Resultados"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => window.print(), className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Imprimir / Guardar PDF")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesActual }, "Este mes"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesAnterior }, "Mes anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-4 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Resultados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, "Del ", desde, " al ", hasta, " \xB7 generado el ", todayISO())), /* @__PURE__ */ import_react4.default.createElement("img", { src: (empresa && empresa.logo) || LOGO_PROYECTO, alt: "", style: { height: 56, width: "auto" } })), huboLegacy && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Algunas salidas registradas antes de esta actualizaci\xF3n no tienen motivo ni precio de venta, as\xED que no entran en este c\xE1lculo. A partir de ahora, cada salida que registres desde Productos s\xED alimentar\xE1 estos resultados.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Ingresos por ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(ingresos))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste de lo vendido"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(costeVentas)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Margen bruto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-bold mono" }, "\u20AC", fmt(margenBruto))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Sobre ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono", style: { color: margenPct == null ? C2.ink : margenPct < 15 ? C2.red : C2.accent } }, margenPct == null ? "\u2014" : margenPct < 15 ? [/* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { key: "mg3", size: 12, style: { display: "inline", verticalAlign: "-2px", marginRight: 3 } }), `${fmt(margenPct)}%`] : `${fmt(margenPct)}%`)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Lo que se ha perdido (a coste)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Mermas (caducidad, deterioro, roturas de proceso...)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorMermas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorMermas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Autoconsumo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1" }, "\u20AC", fmt(valorAutoconsumo))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Roturas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorRoturas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorRoturas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Aceite de freidoras"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorAceite > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorAceite)))), mermasPorProducto.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "D\xF3nde m\xE1s se pierde por mermas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, mermasPorProducto.map((x3, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, x3.producto.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: C2.red } }, "\u20AC", fmt(x3.valor)))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Gastos generales del negocio (mensuales)"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowGasto(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " A\xF1adir gasto")), gastosFijos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No has a\xF1adido gastos fijos (alquiler, luz, seguros\u2026)." })) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosFijos.map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe), "/mes"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => deleteGasto(g2.id), "aria-label": "Eliminar gasto", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 14, color: C2.inkSoft }))))))), gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2 no-imprimir", style: { color: C2.inkSoft } }, "Facturas pagadas y ajustes de este periodo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, g2.fecha)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe))))))), desgloseGastosPorCategoria.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Desglose de gastos por categor\xEDa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, desgloseGastosPorCategoria.map(({ categoria, importe }) => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Resultados"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => window.print(), className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Imprimir / Guardar PDF")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesActual }, "Este mes"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesAnterior }, "Mes anterior"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesSiguiente }, "Mes siguiente")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-4 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Resultados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, "Del ", desde, " al ", hasta, " \xB7 generado el ", todayISO())), /* @__PURE__ */ import_react4.default.createElement("img", { src: (empresa && empresa.logo) || LOGO_PROYECTO, alt: "", style: { height: 56, width: "auto" } })), huboLegacy && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Algunas salidas registradas antes de esta actualizaci\xF3n no tienen motivo ni precio de venta, as\xED que no entran en este c\xE1lculo. A partir de ahora, cada salida que registres desde Productos s\xED alimentar\xE1 estos resultados.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Ingresos por ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(ingresos))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste de lo vendido"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(costeVentas)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Margen bruto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-bold mono" }, "\u20AC", fmt(margenBruto))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Sobre ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono", style: { color: margenPct == null ? C2.ink : margenPct < 15 ? C2.red : C2.accent } }, margenPct == null ? "\u2014" : margenPct < 15 ? [/* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { key: "mg3", size: 12, style: { display: "inline", verticalAlign: "-2px", marginRight: 3 } }), `${fmt(margenPct)}%`] : `${fmt(margenPct)}%`)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Lo que se ha perdido (a coste)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Mermas (caducidad, deterioro, roturas de proceso...)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorMermas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorMermas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Autoconsumo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1" }, "\u20AC", fmt(valorAutoconsumo))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Roturas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorRoturas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorRoturas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Aceite de freidoras"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorAceite > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorAceite)))), mermasPorProducto.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "D\xF3nde m\xE1s se pierde por mermas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, mermasPorProducto.map((x3, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, x3.producto.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: C2.red } }, "\u20AC", fmt(x3.valor)))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Gastos generales del negocio (mensuales)"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowGasto(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " A\xF1adir gasto")), gastosFijos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No has a\xF1adido gastos fijos (alquiler, luz, seguros\u2026)." })) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosFijos.map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe), "/mes"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => deleteGasto(g2.id), "aria-label": "Eliminar gasto", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 14, color: C2.inkSoft }))))))), gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2 no-imprimir", style: { color: C2.inkSoft } }, "Facturas pagadas y ajustes de este periodo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, g2.fecha)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe))))))), desgloseGastosPorCategoria.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Desglose de gastos por categor\xEDa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, desgloseGastosPorCategoria.map(({ categoria, importe }) => {
     const totalDesglose = desgloseGastosPorCategoria.reduce((a22, x3) => a22 + x3.importe, 0);
     const pct = totalDesglose > 0 ? importe / totalDesglose * 100 : 0;
     return /* @__PURE__ */ import_react4.default.createElement("div", { key: categoria }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px] mb-0.5" }, /* @__PURE__ */ import_react4.default.createElement("span", null, categoria), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(importe), " ", /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "(", fmt(pct), "%)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-full rounded-full overflow-hidden", style: { height: 5, background: C2.line } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "h-full rounded-full", style: { width: `${Math.min(100, pct)}%`, background: C2.accent } })));
@@ -119462,7 +120339,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   } }, "Eliminar"))), verResumenPrefiltro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setVerResumenPrefiltro(null), title: `Prefiltro \xB7 ${verResumenPrefiltro.candidato_nombre}` }, import_react4.default.createElement(ResumenPrefiltroNeutralPM17, { resumen: verResumenPrefiltro.resumen }), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Respuestas completas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Nombre completo:"), " ", verResumenPrefiltro.respuestas?.nombreCompleto), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Experiencia laboral:"), " ", verResumenPrefiltro.respuestas?.experienciaLaboral), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Por qu\xE9 busca trabajo:"), " ", verResumenPrefiltro.respuestas?.motivoBusqueda), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Experiencia en hosteler\xEDa/cara al p\xFAblico:"), " ", verResumenPrefiltro.respuestas?.experienciaHosteleria), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Funciones en el \xFAltimo trabajo:"), " ", verResumenPrefiltro.respuestas?.funcionesUltimoTrabajo), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Horarios rotativos y partidos:"), " ", verResumenPrefiltro.respuestas?.horariosRotativos), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Disponibilidad inmediata:"), " ", verResumenPrefiltro.respuestas?.disponibilidadInmediata), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Zona / barrio / c\xF3digo postal:"), " ", verResumenPrefiltro.respuestas?.zona), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Motivo del inter\xE9s:"), " ", verResumenPrefiltro.respuestas?.motivoSanGines), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "DNI/NIE en regla:"), " ", verResumenPrefiltro.respuestas?.papeles), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Tel\xE9fono:"), " ", verResumenPrefiltro.respuestas?.telefono), verResumenPrefiltro.respuestas?.preguntas && /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Preguntas del candidato:"), " ", verResumenPrefiltro.respuestas.preguntas)))), confirmarEliminarPrefiltro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminarPrefiltro(null), title: "Eliminar prefiltro" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-4" }, "\xBFEliminar el prefiltro de ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminarPrefiltro.candidato_nombre), "?"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminarPrefiltro(null) }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: borrarPrefiltro }, "Eliminar"))));
 }
 function ModalCrearCuenta({ empleado, cuentaForm, setCuentaForm, onCancelar, onCrear, error, creando, creadaOk }) {
-  return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: onCancelar, title: "Crear cuenta de acceso" }, creadaOk ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Cuenta creada para ", /* @__PURE__ */ import_react4.default.createElement("b", null, cuentaForm.nombre), ". Comun\xEDcale el correo y la contrase\xF1a en persona o por WhatsApp \u2014 puede cambiarla luego."), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: onCancelar }, "Entendido")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Esto crea una cuenta de acceso real para ", empleado?.nombre, " \u2014 con correo y contrase\xF1a propios, no solo el PIN. T\xFA decides la contrase\xF1a inicial; el empleado podr\xE1 cambiarla despu\xE9s."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo del empleado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: cuentaForm.email, onChange: (e2) => setCuentaForm({ ...cuentaForm, email: e2.target.value }), placeholder: "nombre@ejemplo.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contrase\xF1a inicial (m\xEDnimo 6 caracteres)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "text", value: cuentaForm.password, onChange: (e2) => setCuentaForm({ ...cuentaForm, password: e2.target.value }), placeholder: "Se la comunicas t\xFA en persona" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Rol" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: cuentaForm.rol, onChange: (e2) => setCuentaForm({ ...cuentaForm, rol: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "Encargado" }, "Encargado"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Camarero/a" }, "Camarero/a"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Cajero/a" }, "Cajero/a"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Churrero/a" }, "Churrero/a"))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: onCrear, disabled: creando }, creando ? "Creando\u2026" : "Crear cuenta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCancelar, disabled: creando }, "Cancelar"))));
+  return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: onCancelar, title: "Crear cuenta de acceso" }, creadaOk ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Cuenta creada para ", /* @__PURE__ */ import_react4.default.createElement("b", null, cuentaForm.nombre), ". Comun\xEDcale el correo y la contrase\xF1a en persona o por WhatsApp \u2014 puede cambiarla luego."), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: onCancelar }, "Entendido")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Esto crea una cuenta de acceso real para ", empleado?.nombre, " \u2014 con correo y contrase\xF1a propios, no solo el PIN. T\xFA decides la contrase\xF1a inicial; el empleado podr\xE1 cambiarla despu\xE9s."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo del empleado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: cuentaForm.email, onChange: (e2) => setCuentaForm({ ...cuentaForm, email: e2.target.value }), placeholder: "nombre@ejemplo.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contrase\xF1a inicial (m\xEDnimo 6 caracteres)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "text", value: cuentaForm.password, onChange: (e2) => setCuentaForm({ ...cuentaForm, password: e2.target.value }), placeholder: "Se la comunicas t\xFA en persona" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Rol" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: cuentaForm.rol, onChange: (e2) => setCuentaForm({ ...cuentaForm, rol: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, NOMBRES_ROLES_ALTA.map((r2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: r2, value: r2 }, r2)))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: onCrear, disabled: creando }, creando ? "Creando\u2026" : "Crear cuenta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCancelar, disabled: creando }, "Cancelar"))));
 }
 function etiquetaContextoPM15(local, empresa) {
   const nombreLocal = local && local.nombre ? local.nombre : "";
@@ -120233,7 +121110,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
         if (i33 !== idx) return l22;
         if (campo === "productoId") {
           const p22 = productos.find((x3) => x3.id === valor);
-          return { ...l22, productoId: valor, descripcion: p22 ? p22.nombre : l22.descripcion, precioUnitario: p22 ? precioNeto(p22).toFixed(2) : l22.precioUnitario };
+          return { ...l22, productoId: valor, descripcion: p22 ? p22.nombre : l22.descripcion, precioUnitario: p22 ? precioNeto(p22).toFixed(3) : l22.precioUnitario };
         }
         return { ...l22, [campo]: valor };
       })
@@ -122742,6 +123619,7 @@ function lineasBorradorTpvA06(lineas) {
       claveCarrito: String(linea?.claveCarrito || productoId),
       productoId,
       cantidad,
+      nota: String(linea?.nota || "").trim().slice(0, 500),
       configuracionA04
     };
   });
@@ -122802,7 +123680,9 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+const ERROR_BORRADOR_RECUPERACION_A06 = "Tienes un borrador local activo. Guárdalo o vacíalo antes de recuperar o aparcar una cuenta. El borrador no se ha borrado ni mezclado con la cuenta del servidor.";
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+  const unirCuentasA08 = arguments[0]?.unirCuentasA08;
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -122818,6 +123698,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
   const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
   const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
+  const [mostrarMovimientosCajaTpv, setMostrarMovimientosCajaTpv] = (0, import_react4.useState)(false);
+  const [cargandoDiaCajaTpv, setCargandoDiaCajaTpv] = (0, import_react4.useState)(false);
+  const [diaOperativoCajaTpv, setDiaOperativoCajaTpv] = (0, import_react4.useState)("");
+  const [errorMovimientosCajaTpv, setErrorMovimientosCajaTpv] = (0, import_react4.useState)("");
   function datoCorreccionHistorialPM09(m22, clave) {
     if (!m22) return void 0;
     if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
@@ -123201,6 +124085,20 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [mensajeCobroF4, setMensajeCobroF4] = (0, import_react4.useState)("");
   const [importeCobroF4, setImporteCobroF4] = (0, import_react4.useState)("");
   const [efectivoRecibidoCobroF4, setEfectivoRecibidoCobroF4] = (0, import_react4.useState)("");
+  const [propinaCambioF4, setPropinaCambioF4] = (0, import_react4.useState)(false);
+  const [facturaNombreF4, setFacturaNombreF4] = (0, import_react4.useState)("");
+  const [facturaNifF4, setFacturaNifF4] = (0, import_react4.useState)("");
+  const [procesandoFacturaF4, setProcesandoFacturaF4] = (0, import_react4.useState)(false);
+  const [ticketCorreoF4, setTicketCorreoF4] = (0, import_react4.useState)("");
+  const [procesandoTicketCorreoF4, setProcesandoTicketCorreoF4] = (0, import_react4.useState)(false);
+  const [valeRegaloImporteF4, setValeRegaloImporteF4] = (0, import_react4.useState)("");
+  const [procesandoValeRegaloF4, setProcesandoValeRegaloF4] = (0, import_react4.useState)(false);
+  const [valeRegaloCreadoF4, setValeRegaloCreadoF4] = (0, import_react4.useState)(null);
+  const [errorValeRegaloF4, setErrorValeRegaloF4] = (0, import_react4.useState)("");
+  const [valeRegaloCodigoCanjeF4, setValeRegaloCodigoCanjeF4] = (0, import_react4.useState)("");
+  const [procesandoCanjeValeRegaloF4, setProcesandoCanjeValeRegaloF4] = (0, import_react4.useState)(false);
+  const billetesRapidosF4 = [5, 10, 20, 50, 100];
+  const [bizumPreparadoF4, setBizumPreparadoF4] = (0, import_react4.useState)(false);
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
   const [procesandoIncidenciaB04, setProcesandoIncidenciaB04] = (0, import_react4.useState)(false);
   const [showCobro, setShowCobro] = (0, import_react4.useState)(false);
@@ -123238,6 +124136,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [procesandoA05, setProcesandoA05] = (0, import_react4.useState)(false);
   const [errorA05, setErrorA05] = (0, import_react4.useState)("");
   const [pedidoOperativoA05, setPedidoOperativoA05] = (0, import_react4.useState)(null);
+  const [cuentasRecuperablesA06, setCuentasRecuperablesA06] = (0, import_react4.useState)([]);
+  const [cargandoCuentasA06, setCargandoCuentasA06] = (0, import_react4.useState)(false);
+  const [errorCuentasA06, setErrorCuentasA06] = (0, import_react4.useState)("");
+  const [mensajeCuentasA06, setMensajeCuentasA06] = (0, import_react4.useState)("");
+  const [recuperandoCuentaA06, setRecuperandoCuentaA06] = (0, import_react4.useState)("");
+  const [aparcandoCuentaA06, setAparcandoCuentaA06] = (0, import_react4.useState)(false);
   const [borradorCargadoA06, setBorradorCargadoA06] = (0, import_react4.useState)(false);
   const [estadoBorradorA06, setEstadoBorradorA06] = (0, import_react4.useState)({ estado: "VACIO", lineas: [] });
   const [conflictoA06, setConflictoA06] = (0, import_react4.useState)(null);
@@ -123266,6 +124170,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [moviendoLineaA08, setMoviendoLineaA08] = (0, import_react4.useState)(false);
   const [errorRepartoA08, setErrorRepartoA08] = (0, import_react4.useState)("");
   const [mensajeRepartoA08, setMensajeRepartoA08] = (0, import_react4.useState)("");
+  const [motivoUnionA08, setMotivoUnionA08] = (0, import_react4.useState)("");
+  const [uniendoCuentasA08, setUniendoCuentasA08] = (0, import_react4.useState)(false);
   const [descuentoAbiertoA09, setDescuentoAbiertoA09] = (0, import_react4.useState)(false);
   const [tipoDescuentoA09, setTipoDescuentoA09] = (0, import_react4.useState)("PERCENT");
   const [valorDescuentoA09, setValorDescuentoA09] = (0, import_react4.useState)("");
@@ -123284,8 +124190,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
+const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
+  const bloqueoAgregarA04 = (0, import_react4.useRef)(false);
+  const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
 
   (0, import_react4.useEffect)(() => {
     const empresaId = configEmpresa?.id || null;
@@ -123310,6 +124219,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }, [carrito, borradorCargadoA06, local?.id, configEmpresa?.id]);
 
   (0, import_react4.useEffect)(() => {
+    if (carrito.length !== 0) return;
+    setErrorCuentasA06((actual) => actual === ERROR_BORRADOR_RECUPERACION_A06 ? "" : actual);
+  }, [carrito.length]);
+
+  (0, import_react4.useEffect)(() => {
     let activo = true;
     const localPersistido = typeof leerPedidoOperativoA05 === "function" ? leerPedidoOperativoA05() : null;
     Promise.resolve(localPersistido).then((pedido) => {
@@ -123331,6 +124245,102 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       activo = false;
     };
   }, [local?.id, configEmpresa?.id, leerPedidoOperativoA05, recuperarCuentaA06]);
+
+  async function refrescarCuentasRecuperablesA06() {
+    if (typeof listarCuentasRecuperablesA06 !== "function") return;
+    setCargandoCuentasA06(true);
+    setErrorCuentasA06("");
+    const resultado = await listarCuentasRecuperablesA06(30);
+    setCargandoCuentasA06(false);
+    if (!resultado?.ok) {
+      setCuentasRecuperablesA06([]);
+      setErrorCuentasA06(resultado?.error || "No se pudieron consultar las cuentas recuperables.");
+      return;
+    }
+    setCuentasRecuperablesA06(Array.isArray(resultado.cuentas) ? resultado.cuentas : []);
+  }
+
+  async function recuperarCuentaSeleccionadaA06(cuenta) {
+    const cuentaId = String(cuenta?.cuenta_id || "").trim();
+    if (!cuentaId || typeof recuperarCuentaA06 !== "function") return;
+    if (estadoBorradorA06?.estado === "ACTIVO" && carrito.length > 0) {
+      setErrorCuentasA06(ERROR_BORRADOR_RECUPERACION_A06);
+      return;
+    }
+    setRecuperandoCuentaA06(cuentaId);
+    setErrorCuentasA06("");
+    setMensajeCuentasA06("");
+    const resultado = await recuperarCuentaA06(cuentaId, cuenta);
+    setRecuperandoCuentaA06("");
+    if (!resultado?.ok || !resultado.pedidoId) {
+      setErrorCuentasA06(resultado?.error || "No se pudo recuperar la cuenta seleccionada.");
+      return;
+    }
+    setPedidoOperativoA05(resultado);
+    setErrorA05("");
+    setCuentasRecuperablesA06((actual) => actual.filter((item) => String(item.cuenta_id) !== cuentaId));
+    setMensajeCuentasA06("Cuenta recuperada correctamente en este terminal.");
+  }
+
+  async function aparcarCuentaActualA06() {
+    if (!pedidoOperativoA05?.cuentaId || typeof aparcarCuentaA06 !== "function" || aparcandoCuentaA06) return;
+    if (estadoBorradorA06?.estado === "ACTIVO" && carrito.length > 0) {
+      setErrorCuentasA06(ERROR_BORRADOR_RECUPERACION_A06);
+      return;
+    }
+    setAparcandoCuentaA06(true);
+    setErrorCuentasA06("");
+    setMensajeCuentasA06("");
+    try {
+      const resultado = await Promise.resolve(aparcarCuentaA06());
+      if (!resultado?.ok) {
+        setErrorCuentasA06(resultado?.error || "No se pudo aparcar la cuenta.");
+        return;
+      }
+      setPedidoOperativoA05(null);
+      setConfirmacion(null);
+      setEstadoCobroF4(null);
+      setErrorCobroF4("");
+      setMensajeCobroF4("");
+      setShowCobro(false);
+      setMapaSalaA07(null);
+      setEstadoRepartoA08(null);
+      setRepartoAbiertoA08(false);
+      setConflictoA06(null);
+      setErrorA05("");
+      await refrescarCuentasRecuperablesA06();
+      setMensajeCuentasA06("Cuenta aparcada correctamente. El pedido, sus líneas, cocina y cobros siguen guardados en el servidor.");
+    } finally {
+      setAparcandoCuentaA06(false);
+    }
+  }
+
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (typeof listarCuentasRecuperablesA06 !== "function" || !local?.id || !configEmpresa?.id) return () => {
+      activo = false;
+    };
+    setCargandoCuentasA06(true);
+    setErrorCuentasA06("");
+    Promise.resolve(listarCuentasRecuperablesA06(30)).then((resultado) => {
+      if (!activo) return;
+      setCargandoCuentasA06(false);
+      if (!resultado?.ok) {
+        setCuentasRecuperablesA06([]);
+        setErrorCuentasA06(resultado?.error || "No se pudieron consultar las cuentas recuperables.");
+        return;
+      }
+      setCuentasRecuperablesA06(Array.isArray(resultado.cuentas) ? resultado.cuentas : []);
+    }).catch((error) => {
+      if (!activo) return;
+      setCargandoCuentasA06(false);
+      setCuentasRecuperablesA06([]);
+      setErrorCuentasA06(String(error?.message || error || "No se pudieron consultar las cuentas recuperables."));
+    });
+    return () => {
+      activo = false;
+    };
+  }, [local?.id, configEmpresa?.id]);
 
   async function refrescarSalaA07() {
     if (typeof cargarMapaSalaA07 !== "function") return;
@@ -123580,6 +124590,37 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     if (resultado.estado?.ok) aplicarEstadoRepartoA08(resultado.estado);
     setComensalRepartoA08("");
     setMensajeRepartoA08("Producto repartido correctamente. Ambas cuentas se han recargado desde el servidor.");
+  }
+
+  async function confirmarUnionCuentasA08() {
+    if (typeof unirCuentasA08 !== "function" || uniendoCuentasA08) return;
+    const destinos = Array.isArray(estadoRepartoA08?.destinos) ? estadoRepartoA08.destinos : [];
+    const destino = destinos.find((item) => String(item.cuenta_id || "") === String(cuentaDestinoA08 || ""));
+    const motivo = String(motivoUnionA08 || "").trim();
+    if (!destino || !motivo) {
+      setErrorRepartoA08("Selecciona una cuenta destino e indica el motivo de la unión.");
+      return;
+    }
+    setUniendoCuentasA08(true);
+    setErrorRepartoA08("");
+    setMensajeRepartoA08("");
+    const resultado = await unirCuentasA08(
+      destino.cuenta_id,
+      motivo,
+      estadoRepartoA08?.origen?.version,
+      destino.version
+    );
+    setUniendoCuentasA08(false);
+    if (!resultado?.ok) {
+      if (resultado?.conflict && typeof listarCuentasRepartoA08 === "function") {
+        const fresco = await listarCuentasRepartoA08();
+        if (fresco?.ok) aplicarEstadoRepartoA08(fresco);
+      }
+      setErrorRepartoA08(resultado?.error || "No se pudieron unir las cuentas.");
+      return;
+    }
+    setMensajeRepartoA08("Cuentas unidas correctamente. La cuenta origen se ha cerrado; no se ha creado ningún cobro. Recupera la cuenta destino para continuar.");
+    setMotivoUnionA08("");
   }
 
   function etiquetaCuentaDestinoA08(cuenta) {
@@ -123984,7 +125025,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   const vendibles = (0, import_react4.useMemo)(
-    () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && (p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0) > 0),
+    () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0)),
     [productos]
   );
   const categorias = (0, import_react4.useMemo)(() => {
@@ -124019,16 +125060,20 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const firma = (configuracionA04.selecciones || []).map((s22) => `${s22.grupo_id}:${s22.opcion_id}:${s22.cantidad}:${s22.expected_group_version}:${s22.expected_product_group_version}:${s22.expected_option_version}`).sort().join("|");
     return `${productoId}::a04::${configuracionA04.expectedProductVersion}::${firma}`;
   }
-  function agregarLineaCarritoA04(producto, configuracionA04 = null) {
+  function agregarLineaCarritoA04(producto, configuracionA04 = null, cantidad = 1, nota = "") {
+    const cantidadNormalizada = Math.max(1, Number(cantidad) || 1);
     const claveCarrito = claveCarritoA04(producto.id, configuracionA04);
     setCarrito((s22) => {
       const existe = s22.find((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito);
-      if (existe) return s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: (Number(l22.cantidad) || 0) + 1 } : l22);
-      return [...s22, { claveCarrito, productoId: producto.id, cantidad: 1, configuracionA04 }];
+      if (existe) return s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: (Number(l22.cantidad) || 0) + cantidadNormalizada } : l22);
+      return [...s22, { claveCarrito, productoId: producto.id, cantidad: cantidadNormalizada, nota: String(nota || "").slice(0, 500), configuracionA04 }];
     });
   }
-  async function agregar(producto) {
-    if (cargandoA04) return;
+  async function agregar(producto, cantidadSolicitada = 1) {
+    if (cargandoA04 || bloqueoAgregarA04.current || configurandoA04) return;
+    bloqueoAgregarA04.current = true;
+    const cantidadNormalizada = Math.max(1, Number(cantidadSolicitada) || 1);
+    setCantidadRapidaPendienteA04(cantidadNormalizada);
     setErrorVenta("");
     setErrorA04("");
     const empresaId = configEmpresa?.id || producto?.empresaId || null;
@@ -124067,7 +125112,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         .order("orden", { ascending: true });
       if (enlacesError) throw enlacesError;
       if (!Array.isArray(enlaces) || enlaces.length === 0) {
-        agregarLineaCarritoA04(producto, null);
+        agregarLineaCarritoA04(producto, null, cantidadNormalizada);
+        setCantidadRapidaPendienteA04(1);
         return;
       }
       const idsGrupos = [...new Set(enlaces.map((x3) => x3.grupo_id).filter(Boolean))];
@@ -124126,6 +125172,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setSeleccionesA04(inicial);
       setConfigurandoA04({
         producto,
+        cantidadRapida: Math.max(1, Number(cantidadSolicitada) || 1),
         catalogo: {
           currencyCode: catalogo.currency_code,
           precioUnitario: Number(catalogo.precio_unitario) || 0,
@@ -124141,6 +125188,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       else setErrorVenta("No se pudieron cargar las variantes y modificadores del producto.");
     } finally {
       setCargandoA04(false);
+      bloqueoAgregarA04.current = false;
     }
   }
   function cambiarSeleccionA04(grupo, opcion, delta) {
@@ -124201,10 +125249,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       precioUnitarioPreview,
       currencyCode: configurandoA04.catalogo.currencyCode
     };
-    agregarLineaCarritoA04(configurandoA04.producto, configuracionA04);
+    agregarLineaCarritoA04(configurandoA04.producto, configuracionA04, cantidadRapidaPendienteA04, notaA04);
+    setCantidadRapidaPendienteA04(1);
     setConfigurandoA04(null);
     setSeleccionesA04({});
+    setNotaA04("");
     setErrorA04("");
+  }
+  async function agregarCantidadRapidaA04(producto, cantidad) {
+    await agregar(producto, cantidad);
   }
   function cambiarCantidad(claveCarrito, delta) {
     setCarrito(
@@ -124226,6 +125279,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   function quitar(claveCarrito) {
     setCarrito((s22) => s22.filter((l22) => (l22.claveCarrito || l22.productoId) !== claveCarrito));
   }
+  function cambiarNotaLineaA04(claveCarrito, nota) {
+    const texto = String(nota || "").slice(0, 500);
+    setCarrito((s22) => s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, nota: texto } : l22));
+  }
   function vaciarCarrito() {
     setCarrito([]);
   }
@@ -124239,6 +125296,23 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return { ...l22, cantidadNum: cant, producto: p22, precioUnitario: precioConIva, subtotal: precioConIva * cant };
   }).filter(Boolean);
   const total = lineasCarrito.reduce((a22, l22) => a22 + l22.subtotal, 0);
+  (0, import_react4.useEffect)(() => {
+    function manejarAtajoTPV(e2) {
+      if (!["F2", "F4", "F9"].includes(e2.key)) return;
+      e2.preventDefault();
+      if (e2.key === "F2") {
+        inputEscaneoRef.current?.focus();
+        return;
+      }
+      if (e2.key === "F4") {
+        if (carrito.length > 0) vaciarCarrito();
+        return;
+      }
+      if (lineasCarrito.length > 0 && !enviandoVenta && !cargandoA04 && !configurandoA04) confirmarCobro();
+    }
+    window.addEventListener("keydown", manejarAtajoTPV);
+    return () => window.removeEventListener("keydown", manejarAtajoTPV);
+  }, [carrito.length, lineasCarrito.length, enviandoVenta, cargandoA04, configurandoA04]);
   const cantidadesProductoA04 = lineasCarrito.reduce((mapa, l22) => {
     mapa.set(l22.productoId, (mapa.get(l22.productoId) || 0) + l22.cantidadNum);
     return mapa;
@@ -124261,14 +125335,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   function renderConfiguradorA04() {
     if (!configurandoA04) return null;
     const h4 = import_react4.default.createElement;
+    const alergenosA04 = Array.isArray(configurandoA04.producto?.alergenos) ? configurandoA04.producto.alergenos : [];
     return h4(
       Modal,
       { onClose: () => {
         setConfigurandoA04(null);
+        setCantidadRapidaPendienteA04(1);
         setSeleccionesA04({});
+        setNotaA04("");
         setErrorA04("");
       }, title: `Configurar ${configurandoA04.producto.nombre}` },
       h4("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Elige variantes y modificadores. El precio e IVA definitivos se recalculan y validan en el servidor al guardar el pedido."),
+      h4("div", { className: "text-[11.5px] mb-3", "aria-label": "Alérgenos del producto", style: { color: C2.inkSoft } }, "Alérgenos: ", alergenosA04.length ? alergenosA04.join(" · ") : "sin declarar"),
+      h4("label", { className: "block text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Nota para cocina (opcional)", h4("textarea", { value: notaA04, onChange: (e2) => setNotaA04(e2.target.value.slice(0, 500)), maxLength: 500, rows: 2, placeholder: "Sin cebolla, servir aparte…", "aria-label": "Nota para cocina", className: "w-full rounded-md px-2 py-1 mt-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })),
       configurandoA04.grupos.map((grupo) => {
         const elegidas = seleccionesA04[grupo.id] || {};
         const totalGrupo = Object.values(elegidas).reduce((acc, cantidad) => acc + (Number(cantidad) || 0), 0);
@@ -124307,7 +125386,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h4(Btn, { onClick: confirmarConfiguracionA04 }, "Añadir al carrito"),
         h4(Btn, { variant: "ghost", onClick: () => {
           setConfigurandoA04(null);
+          setCantidadRapidaPendienteA04(1);
           setSeleccionesA04({});
+          setNotaA04("");
           setErrorA04("");
         } }, "Cancelar")
       )
@@ -124370,6 +125451,36 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
     setEstadoCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
+    if (medio === "EFECTIVO") setPropinaCambioF4(false);
+  }
+  async function prepararBizumF4() {
+    if (procesandoCobroF4 || typeof prepararBizumQAF4 !== "function") return;
+    setProcesandoCobroF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await prepararBizumQAF4();
+    setProcesandoCobroF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo preparar Bizum QA.");
+      return;
+    }
+    setBizumPreparadoF4(true);
+    setMensajeCobroF4(resultado.mensaje || "Bizum QA preparado por el servidor. No se ha iniciado ningún cobro ni se ha contactado con un proveedor.");
+  }
+  async function aprobarPagoSimuladoQAF4() {
+    if (procesandoCobroF4 || typeof resolverPagoSimuladoQAF4 !== "function") return;
+    setProcesandoCobroF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await resolverPagoSimuladoQAF4();
+    setProcesandoCobroF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo aprobar el pago simulado.");
+      await refrescarCobroF4();
+      return;
+    }
+    setEstadoCobroF4(resultado.estado || resultado);
+    setMensajeCobroF4(resultado.mensaje || "Pago simulado aprobado en QA.");
   }
   async function recuperarCobroF4UI() {
     if (procesandoCobroF4 || typeof reintentarCobroF4 !== "function") return;
@@ -124384,6 +125495,69 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
     setEstadoCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || "Estado de cobro recuperado sin crear otro intento.");
+  }
+  async function emitirFacturaEmpresaF4UI() {
+    if (procesandoFacturaF4 || typeof emitirFacturaEmpresaF4 !== "function") return;
+    setProcesandoFacturaF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await emitirFacturaEmpresaF4({ nombre: facturaNombreF4, nif: facturaNifF4 });
+    setProcesandoFacturaF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo emitir la factura.");
+      return;
+    }
+    setMensajeCobroF4(resultado.mensaje || "Factura emitida (modo simulador).");
+    setFacturaNombreF4("");
+    setFacturaNifF4("");
+  }
+  async function enviarTicketCorreoF4UI() {
+    if (procesandoTicketCorreoF4 || typeof enviarTicketCorreoF4 !== "function") return;
+    setProcesandoTicketCorreoF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const lineasTicketCorreo = (pedidoOperativoA05?.lineas || []).map((l22) => {
+      const producto = productos.find((p22) => p22.id === l22.productoId);
+      return { nombre: producto?.nombre || "Producto", cantidad: l22.cantidad, total: Number(l22.total) || 0 };
+    });
+    const resultado = await enviarTicketCorreoF4({ email: ticketCorreoF4, lineas: lineasTicketCorreo });
+    setProcesandoTicketCorreoF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo enviar el ticket por correo.");
+      return;
+    }
+    setMensajeCobroF4(resultado.mensaje || "Ticket enviado por correo.");
+    setTicketCorreoF4("");
+  }
+  async function emitirValeRegaloF4UI() {
+    if (procesandoValeRegaloF4 || typeof emitirValeRegaloF4 !== "function") return;
+    setProcesandoValeRegaloF4(true);
+    setErrorValeRegaloF4("");
+    setValeRegaloCreadoF4(null);
+    const resultado = await emitirValeRegaloF4({ importe: valeRegaloImporteF4 });
+    setProcesandoValeRegaloF4(false);
+    if (!resultado?.ok) {
+      setErrorValeRegaloF4(resultado?.error || "No se pudo vender el vale regalo.");
+      return;
+    }
+    setValeRegaloCreadoF4({ codigo: resultado.codigo, importe: resultado.importe });
+    setValeRegaloImporteF4("");
+  }
+  async function pagarConValeRegaloF4UI() {
+    if (procesandoCanjeValeRegaloF4 || typeof pagarConValeRegaloF4 !== "function") return;
+    setProcesandoCanjeValeRegaloF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const totalPedidoCanjeVale = (pedidoOperativoA05?.lineas || []).reduce((acc, l22) => acc + (Number(l22.total) || 0), 0);
+    const resultado = await pagarConValeRegaloF4({ codigo: valeRegaloCodigoCanjeF4, totalPedido: totalPedidoCanjeVale });
+    setProcesandoCanjeValeRegaloF4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo aplicar el vale regalo.");
+      return;
+    }
+    if (resultado.estado) setEstadoCobroF4(resultado.estado);
+    setMensajeCobroF4(resultado.mensaje || "Vale regalo aplicado.");
+    setValeRegaloCodigoCanjeF4("");
   }
   function cambiarFormularioIncidenciaB04(campo, valor) {
     setFormularioIncidenciaB04((actual) => ({ ...actual, [campo]: valor }));
@@ -124476,6 +125650,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const confirmadoVisible = Number(estado?.confirmado) || 0;
     const saldoVisible = tieneCheckout ? Number(estado?.saldo) || 0 : Math.max(0,totalPedido-confirmadoVisible);
     const ultimoIntento = Array.isArray(estado?.intentos) ? estado.intentos[0] : null;
+    // abc_estado_pago_mixto_cuenta no incluye "medio" en cada intento (vive
+    // en pagos, no en pago_intentos); se cruza con la lista de pagos ya
+    // leída para saber si el intento pendiente es de tarjeta.
+    const pagoDelUltimoIntento = ultimoIntento && Array.isArray(estado?.pagos)
+      ? estado.pagos.find((p22) => String(p22.id) === String(ultimoIntento.pago_id)) || null
+      : null;
     const bloqueado = !!estado?.cobroIncierto;
     const importeVisible = importeCobroF4 === "" ? saldoVisible : Number(importeCobroF4);
     const recibidoVisible = efectivoRecibidoCobroF4 === "" ? null : Number(efectivoRecibidoCobroF4);
@@ -124498,6 +125678,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ),
       estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
+      bloqueado && configEmpresa?.id === "QA-EMP-A" && local?.id === "QA-A1" && pagoDelUltimoIntento?.medio === "TARJETA" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: aprobarPagoSimuladoQAF4, disabled: procesandoCobroF4 }, "Aprobar pago simulado (solo QA)") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Abrir incidencia B04"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Registra el corte de respuesta y conserva la referencia del proveedor. La autorización se valida en el servidor."),
@@ -124532,13 +125713,38 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe de este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
         ),
-        cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, cambioVisible < 0 ? `Faltan €${fmt(Math.abs(cambioVisible))}` : `Cambio a devolver: €${fmt(cambioVisible)}`) : null,
+        cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, cambioVisible < 0 ? `Faltan €${fmt(Math.abs(cambioVisible))}` : propinaCambioF4 ? `Propina: €${fmt(cambioVisible)} (no se devuelve cambio)` : `Cambio a devolver: €${fmt(cambioVisible)}`) : null,
+        cambioVisible !== null && cambioVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[11.5px] mb-2 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: propinaCambioF4, onChange: (e2) => setPropinaCambioF4(e2.target.checked) }), "El cambio es propina") : null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
-          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible, propina: propinaCambioF4 && cambioVisible > 0 }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: prepararBizumF4, disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, bizumPreparadoF4 ? "Bizum QA preparado" : "Preparar Bizum QA"),
           confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible }), disabled: procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
         ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mt-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Vale regalo (código)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: valeRegaloCodigoCanjeF4, onChange: (e2) => setValeRegaloCodigoCanjeF4(e2.target.value), placeholder: "VALE-A3F91" })),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: pagarConValeRegaloF4UI, disabled: procesandoCanjeValeRegaloF4 || !valeRegaloCodigoCanjeF4.trim() }, procesandoCanjeValeRegaloF4 ? "Aplicando…" : "Aplicar vale")
+        ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "Billetes rápidos: prepara el efectivo recibido sin iniciar todavía el cobro."),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-1" }, billetesRapidosF4.map((valor) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: valor, small: true, variant: "ghost", onClick: () => setEfectivoRecibidoCobroF4(String(valor)), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, `€${valor}`))),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "El botón de completar mixto usa el saldo que devuelve el servidor, no el cálculo local del navegador.")
+      ) : null,
+      tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Factura a empresa"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-5 · modo simulador: no sustituye una verificación fiscal real con la asesoría."),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre o razón social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: facturaNombreF4, onChange: (e2) => setFacturaNombreF4(e2.target.value), placeholder: "Empresa Cliente S.L." })),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF/CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: facturaNifF4, onChange: (e2) => setFacturaNifF4(e2.target.value), placeholder: "B12345678" }))
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: emitirFacturaEmpresaF4UI, disabled: procesandoFacturaF4 }, procesandoFacturaF4 ? "Emitiendo…" : "Emitir factura (modo simulador)")
+      ) : null,
+      tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Ticket por correo"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-6: envía una copia informativa de esta venta. No es un ticket fiscal ni sustituye al impreso."),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo del cliente" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: ticketCorreoF4, onChange: (e2) => setTicketCorreoF4(e2.target.value), placeholder: "cliente@correo.com" }))
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: enviarTicketCorreoF4UI, disabled: procesandoTicketCorreoF4 }, procesandoTicketCorreoF4 ? "Enviando…" : "Enviar ticket por correo")
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
@@ -124575,7 +125781,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setErrorVenta("");
     setEnviandoVenta(true);
     const resultado = await venderCarrito(
-      carrito.map((l22) => ({ productoId: l22.productoId, cantidad: l22.cantidad, configuracionA04: l22.configuracionA04 || null })),
+      carrito.map((l22) => ({ productoId: l22.productoId, cantidad: l22.cantidad, nota: String(l22.nota || "").trim().slice(0, 500), configuracionA04: l22.configuracionA04 || null })),
       { modalidad: modalidadActualA02 || void 0 }
     );
     setEnviandoVenta(false);
@@ -124670,15 +125876,115 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
 
+  async function abrirMovimientosCajaDesdeTpv() {
+    if (cargandoDiaCajaTpv) return;
+    setCargandoDiaCajaTpv(true);
+    setErrorMovimientosCajaTpv("");
+    try {
+      let dia = "";
+      if (typeof leerContextoCuentaA02 === "function" && configEmpresa?.id && local?.id) {
+        try {
+          const contexto = leerContextoCuentaA02(configEmpresa.id, local.id);
+          dia = String(contexto?.operatingDay || "");
+        } catch {
+        }
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia) && typeof window !== "undefined" && window.__nubeActiva) {
+        if (!window.__nubeCliente || !configEmpresa?.id || !local?.id) throw new Error("contexto_caja_no_disponible");
+        const resultado = await window.__nubeCliente.rpc("abc_obtener_dia_operativo_local", {
+          p_empresa_id: configEmpresa.id,
+          p_local_id: local.id
+        });
+        if (resultado.error) throw resultado.error;
+        dia = String(resultado.data?.operating_day || "");
+      }
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) dia = todayISO();
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(dia)) throw new Error("operating_day_servidor_ausente");
+      setDiaOperativoCajaTpv(dia);
+      setMostrarMovimientosCajaTpv(true);
+    } catch (error) {
+      setErrorMovimientosCajaTpv(mensajeErrorPM08(error, "No se pudo obtener el día operativo de la caja."));
+    } finally {
+      setCargandoDiaCajaTpv(false);
+    }
+  }
+
+  function renderMovimientosCajaTpv() {
+    const movimientosDelDia = (movimientosCaja || []).filter((movimiento) => movimiento?.fecha === diaOperativoCajaTpv);
+    return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", null,
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Caja · entradas y retiradas"),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Registra movimientos manuales desde el TPV. Importe, sesión, terminal, permisos y día operativo se validan en el servidor.")
+          ),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirMovimientosCajaDesdeTpv, disabled: cargandoDiaCajaTpv || typeof registrarMovimientoCaja !== "function" }, cargandoDiaCajaTpv ? "Abriendo…" : "Abrir caja")
+        ),
+        errorMovimientosCajaTpv ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] mt-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorMovimientosCajaTpv) : null
+      ),
+      mostrarMovimientosCajaTpv ? /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setMostrarMovimientosCajaTpv(false), title: "Caja · entradas y retiradas" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Día operativo del servidor: ", /* @__PURE__ */ import_react4.default.createElement("b", null, diaOperativoCajaTpv), ". Los movimientos no son ventas ni cobros y conservan trazabilidad."),
+        /* @__PURE__ */ import_react4.default.createElement(BloqueEntradasSalidas, { fecha: diaOperativoCajaTpv, movimientosCajaDelDia: movimientosDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja }),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarMovimientosCajaTpv(false) }, "Cerrar"))
+      ) : null
+    );
+  }
+  function renderValeRegaloF4() {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Vale regalo"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-7: vende un vale regalo por el importe que quieras (solo efectivo en esta primera versión). El cliente lo canjea después en Cobro, dentro de una cuenta."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mb-2" },
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", value: valeRegaloImporteF4, onChange: (e2) => setValeRegaloImporteF4(e2.target.value), placeholder: "25.00" })),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: emitirValeRegaloF4UI, disabled: procesandoValeRegaloF4 || !valeRegaloImporteF4 || Number(valeRegaloImporteF4) <= 0 }, procesandoValeRegaloF4 ? "Vendiendo…" : "Vender vale regalo")
+      ),
+      errorValeRegaloF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorValeRegaloF4) : null,
+      valeRegaloCreadoF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, "Vale creado: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, valeRegaloCreadoF4.codigo), ` por €${Number(valeRegaloCreadoF4.importe).toFixed(2)}. Apúntalo para el cliente.`) : null
+    );
+  }
+
+  function renderCuentasRecuperablesA06() {
+    return /* @__PURE__ */ import_react4.default.createElement(
+      Card,
+      { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", null,
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cuentas aparcadas / recuperables"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Solo aparecen cuentas abiertas del mismo día operativo con un pedido y líneas activos. La recuperación se valida en el servidor.")
+        ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap justify-end" },
+          pedidoOperativoA05?.cuentaId ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: aparcarCuentaActualA06, disabled: aparcandoCuentaA06 || cargandoCuentasA06 || !!recuperandoCuentaA06 || carrito.length > 0 }, aparcandoCuentaA06 ? "Aparcando…" : "Aparcar cuenta") : null,
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarCuentasRecuperablesA06, disabled: cargandoCuentasA06 || aparcandoCuentaA06 || !!recuperandoCuentaA06 }, cargandoCuentasA06 ? "Actualizando…" : "Actualizar")
+        )
+      ),
+      pedidoOperativoA05?.cuentaId ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Aparcar solo desvincula esta cuenta del terminal. No cancela ni modifica el pedido, cocina o los cobros.") : null,
+      errorCuentasA06 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorCuentasA06) : null,
+      mensajeCuentasA06 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCuentasA06) : null,
+      !cargandoCuentasA06 && !errorCuentasA06 && cuentasRecuperablesA06.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay cuentas recuperables en este momento.") : null,
+      cuentasRecuperablesA06.map((cuenta) => {
+        const cuentaId = String(cuenta.cuenta_id || "");
+        const actividad = cuenta.last_activity_at ? new Date(cuenta.last_activity_at).toLocaleString("es-ES") : "sin fecha";
+        return /* @__PURE__ */ import_react4.default.createElement("div", { key: cuentaId, className: "flex items-center justify-between gap-2 p-2 mb-2 rounded-lg", style: { border: "1px solid " + C2.line, background: C2.surface } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "min-w-0" },
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold truncate" }, cuenta.modalidad || "Cuenta abierta", " · ", cuenta.currency_code || "EUR"),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, "Cuenta …", cuentaId.slice(-8), " · última actividad ", actividad),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, Number(cuenta.lineas_activas_count) || 0, " línea(s) activa(s) · día ", cuenta.opened_operating_day || "—")
+          ),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => recuperarCuentaSeleccionadaA06(cuenta), disabled: !!recuperandoCuentaA06 || aparcandoCuentaA06 }, recuperandoCuentaA06 === cuentaId ? "Recuperando…" : "Recuperar cuenta")
+        );
+      })
+    );
+  }
+
   function renderSalaA07() {
     const pedido = pedidoOperativoA05;
-    if (!pedido?.cuentaId) return null;
+    if (!pedido?.cuentaId) return renderCuentasRecuperablesA06();
     const ubicacion = pedido.ubicacion || mapaSalaA07?.ubicacion || null;
     const responsable = pedido.responsableActual || mapaSalaA07?.responsableActual || null;
     const zonas = Array.isArray(mapaSalaA07?.zonas) ? mapaSalaA07.zonas : [];
     return /* @__PURE__ */ import_react4.default.createElement(
       Card,
       { className: "mb-4" },
+      renderCuentasRecuperablesA06(),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Sala y mesas"),
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarSalaA07, disabled: cargandoSalaA07 }, cargandoSalaA07 ? "Actualizando…" : "Actualizar")
@@ -124935,6 +126241,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         )
       ),
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Comensal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: comensalRepartoA08, onChange: (e2) => setComensalRepartoA08(e2.target.value), placeholder: "Ej. Persona 2" })),
+      destinos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-4 pt-3", style: { borderTop: "1px solid " + C2.line } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, "Unir cuentas"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1 mb-2", style: { color: C2.inkSoft } }, "Cierra la cuenta origen y pasa sus líneas a la cuenta destino. El servidor bloquea la acción si hay cobros inciertos, fiscalización o un pedido todavía editable. No registra ningún cobro."),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo obligatorio" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoUnionA08, onChange: (e2) => setMotivoUnionA08(e2.target.value), placeholder: "Ej. Unificación solicitada por el cliente" })),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarUnionCuentasA08, disabled: uniendoCuentasA08 || moviendoLineaA08 || !cuentaDestinoA08 || !motivoUnionA08.trim() }, uniendoCuentasA08 ? "Uniendo…" : "Unir cuenta origen con destino")
+      ) : null,
       errorRepartoA08 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorRepartoA08) : null,
       mensajeRepartoA08 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, mensajeRepartoA08) : null,
       /* @__PURE__ */ import_react4.default.createElement(Btn, {
@@ -124982,7 +126294,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   }
 
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02/A04 guardan la cuenta y el pedido con autoridad del servidor; A05 permite enviarlo y F4 inicia el cobro solo cuando el pedido está listo. Los productos configurables usan variantes y modificadores A04. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". El total definitivo lo confirma el servidor.")),
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-shell" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-toolbar" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] uppercase tracking-wide", style: { color: C2.inkSoft } }, "Zona"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, local?.nombreComercial || local?.nombre || "Local")), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] uppercase tracking-wide", style: { color: C2.inkSoft } }, "Tarifa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, configEmpresa?.tarifa || configEmpresa?.tarifaActiva || "General"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-keybar" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => inputEscaneoRef.current?.focus() }, "F2 Buscar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito, disabled: carrito.length === 0 }, "F4 Vaciar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: confirmarCobro, disabled: lineasCarrito.length === 0 || enviandoVenta || cargandoA04 }, "F9 Guardar")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Prepara la comanda con el ticket siempre visible. El total definitivo lo confirma el servidor al guardar. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "Ticket pendiente de confirmación"), ". El total definitivo lo confirma el servidor.")),
   estadoBorradorA06?.estado === "ACTIVO" ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, "Borrador local activo"),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, carrito.length, " línea(s) · se conserva 24 h desde la última modificación · caduca ", estadoBorradorA06.expiresAtMs ? new Date(estadoBorradorA06.expiresAtMs).toLocaleString("es-ES") : "")
@@ -124995,7 +126307,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     conflictoA06.revisionServidor ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[9.5px] mt-1", style: { color: C2.inkSoft } }, "Revisión servidor: ", conflictoA06.revisionServidor) : null,
     /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConflictoA06(null) }, "Entendido")
   ) : null,
-  renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
+  renderMovimientosCajaTpv(),
+  renderValeRegaloF4(),
+  renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-layout" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-product-zone" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       ref: inputEscaneoRef,
@@ -125043,20 +126357,27 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4" }, visibles.map((p22) => {
     const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
     const cantidadEnCarrito = carrito.filter((l22) => l22.productoId === p22.id).reduce((acc, l22) => acc + (Number(l22.cantidad) || 0), 0);
-    const sinStock = (Number(p22.stockPisoVenta) || 0) <= 0;
+    const stockDisponible = p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0;
+    const sinStock = stockDisponible <= 0;
+    const fotoProducto = p22.foto || p22.imagen || p22.fotoUrl || "";
+    const masVendido = p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true;
+    const alergenosProducto = Array.isArray(p22.alergenos) ? p22.alergenos : [];
     return /* @__PURE__ */ import_react4.default.createElement(
-      "button",
+      "div",
       {
         key: p22.id,
-        onClick: () => agregar(p22),
-        disabled: cargandoA04,
+        role: "button",
+        tabIndex: 0,
+        "aria-disabled": sinStock || cargandoA04 ? "true" : "false",
+        onClick: () => { if (!sinStock && !cargandoA04) agregar(p22); },
+        onKeyDown: (e2) => { if ((e2.key === "Enter" || e2.key === " ") && !sinStock && !cargandoA04) { e2.preventDefault(); agregar(p22); } },
         className: "rounded-xl p-3 text-left relative",
-        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: cargandoA04 ? 0.7 : 1 }
+        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: sinStock || cargandoA04 ? 0.55 : 1 }
       },
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre),
+      fotoProducto ? /* @__PURE__ */ import_react4.default.createElement("img", { src: fotoProducto, alt: "", className: "tpv-product-photo" }) : null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre), masVendido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] font-semibold mb-1", style: { color: C2.amber } }, "Más vendido") : null, alergenosProducto.length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mb-1", "aria-label": "Alérgenos del producto", style: { color: C2.inkSoft } }, "Alérgenos: ", alergenosProducto.join(" · ")) : null,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva)),
       sinStock && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: C2.red } }, "sin stock"),
-      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1 mt-2" }, [2, 3].map((cantidad) => /* @__PURE__ */ import_react4.default.createElement("button", { key: "quick-" + p22.id + "-" + cantidad, type: "button", className: "tpv-quick-quantity", onClick: (e2) => { e2.stopPropagation(); if (!sinStock) agregarCantidadRapidaA04(p22, cantidad); }, disabled: sinStock || cargandoA04 }, "+" + cantidad))),      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
         "span",
         {
           className: "absolute -top-2 -right-2 rounded-full text-[11px] font-bold flex items-center justify-center",
@@ -125065,7 +126386,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         fmt(cantidadEnCarrito)
       )
     );
-  }))), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Carrito"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3" }, lineasCarrito.map((l22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: l22.claveCarrito || l22.productoId, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "flex-1" }, /* @__PURE__ */ import_react4.default.createElement("div", null, l22.producto.nombre), l22.configuracionA04?.etiquetas?.length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, l22.configuracionA04.etiquetas.join(" · ")) : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, -1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Minus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement(
+  }))), ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-ticket-zone" }, lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Carrito"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3" }, lineasCarrito.map((l22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: l22.claveCarrito || l22.productoId, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "flex-1" }, /* @__PURE__ */ import_react4.default.createElement("div", null, l22.producto.nombre), l22.configuracionA04?.etiquetas?.length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, l22.configuracionA04.etiquetas.join(" · ")) : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, -1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Minus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       type: "number",
@@ -125079,7 +126400,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "mono text-center rounded-md py-1",
       style: { width: 54, border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, fontSize: 13, minHeight: 44 }
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `Guardar pedido \u20AC${fmt(total)}`), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `Guardar pedido \u20AC${fmt(total)}`), ), ), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       onClick: confirmarCobro,

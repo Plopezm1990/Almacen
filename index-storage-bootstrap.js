@@ -177,10 +177,52 @@
     try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
     actualizarIndicador();
   }
+  function estadoHttpDelError(e) {
+    var candidatos = [e, e && e.cause, e && e.originalError, e && e.response];
+    for (var i = 0; i < candidatos.length; i++) {
+      var candidato = candidatos[i];
+      if (!candidato) continue;
+      var estado = Number(candidato.status || candidato.statusCode || candidato.httpStatus);
+      if (isFinite(estado) && estado > 0) return estado;
+    }
+    return 0;
+  }
   function esRechazoPorPermisos(e) {
     if (!e) return false;
-    if (e.code === "42501") return true;
-    return /row-level security|permission denied/i.test(String(e.message || ""));
+    var estado = estadoHttpDelError(e);
+    if (estado === 401 || estado === 403) return true;
+    var codigo = String(e.code || e.error_code || e.errorCode || "").toLowerCase();
+    if (codigo === "42501" || codigo === "401" || codigo === "403") return true;
+    var texto = [e.message, e.details, e.hint, e.error_description]
+      .filter(function (parte) { return parte != null; })
+      .join(" ");
+    return /row-level security|permission denied|unauthorized|not authorized|forbidden/i.test(texto);
+  }
+  function esRechazoPorCuota(e) {
+    if (!e) return false;
+    var texto = String((e && (e.message || e.details || e.hint)) || e);
+    return /(?:payload|upload|request|value).*(?:exceed|exceeds|too large|quota|limit)|(?:quota|limit|too large).*(?:exceed|payload|upload|value)/i.test(texto);
+  }
+  function esTiempoAgotadoNube(e) {
+    if (!e) return false;
+    return /(?:nube|servidor).*(?:tarda demasiado|timeout|timed out)|(?:timeout|timed out)/i.test(
+      String((e && (e.message || e.details || e.hint)) || e)
+    );
+  }
+  function esPreviewQa() {
+    return typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""));
+  }
+  function esRechazoSoloLocal(key, e) {
+    // Las copias automáticas no son un dato operativo ni tienen una ruta
+    // autoritativa propia. En QA, donde la autoridad puede devolver 401 o
+    // rechazar su payload por tamaño, se conservan localmente para no bloquear
+    // los datos operativos. Producción conserva el comportamiento normal.
+    var respaldoSoloLocalQa = key === "historialRespaldos" && esPreviewQa();
+    // Los movimientos operativos sí tienen una ruta autoritativa en QA. Solo
+    // se conservan localmente cuando el error aporta una causa verificable
+    // (permisos o cuota); un timeout/transporte debe quedar pendiente para
+    // poder reintentarse y mostrar el fallo real al usuario.
+    return esRechazoPorPermisos(e) || esRechazoPorCuota(e) || respaldoSoloLocalQa;
   }
   function marcarDenegado(key, error) {
     var yaVigente = denegadoVigente(key);
@@ -189,16 +231,25 @@
     try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
     quitarPendiente(key);
     if (!yaVigente) {
+      var porCuota = esRechazoPorCuota(error);
+      var porQa = key === "historialRespaldos" && esPreviewQa();
+      var mensaje = porCuota
+        ? "Guardado en este equipo; el respaldo supera el límite de carga del servidor. Puedes reintentarlo ahora después de reducirlo."
+        : porQa
+          ? "Guardado en este equipo; el respaldo automático de QA no se sube a la nube y no bloquea los datos operativos."
+        : "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora.";
+      var motivo = porCuota ? "cuota" : porQa ? "respaldo-qa-solo-local" : "permisos";
       try {
-        console.warn("[almacén] El servidor no permite guardar «" + key + "» en la nube; se conserva solo en este equipo.", error && error.message);
+        console.warn("[almacén] «" + key + "» se conserva solo en este equipo porque el servidor no pudo aceptarlo.", error && error.message);
       } catch (e) {}
       try {
         if (typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
-          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, mensaje: error && error.message } }));
+          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, motivo: motivo, mensaje: error && error.message } }));
           window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
             key: key,
             soloLocal: true,
-            mensaje: "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora."
+            motivo: motivo,
+            mensaje: mensaje
           } }));
         }
       } catch (e) {}
@@ -346,9 +397,10 @@
         quitarPendiente(key);
         quitarDenegado(key);
       } catch (e) {
-        // Rechazo por permisos: no se arregla reintentando (ver arriba).
-        // Cualquier otro fallo (red, tiempo) se reintenta la próxima vez.
-        if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+        // Rechazo por permisos o por tamaño: no se arregla reintentando
+        // automáticamente (ver arriba). Cualquier otro fallo (red, tiempo)
+        // se reintenta la próxima vez.
+        if (esRechazoSoloLocal(key, e)) marcarDenegado(key, e);
       }
     }
     actualizarIndicador();
@@ -371,6 +423,18 @@
       }
     }
     await window.subirPendientes();
+    // El reintento se ejecuta fuera de saveKey(), por lo que no pasa por el
+    // camino que emite `guardado-confirmado`. Si la sincronización terminó y
+    // la clave no quedó pendiente ni marcada como solo local, notificarlo es
+    // necesario para que la interfaz retire el aviso rojo persistente.
+    if (typeof window.dispatchEvent === "function") {
+      for (var j = 0; j < claves.length; j++) {
+        var claveConfirmada = claves[j];
+        if (pendientes().indexOf(claveConfirmada) === -1 && !denegadoVigente(claveConfirmada)) {
+          window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key: claveConfirmada, reintento: true } }));
+        }
+      }
+    }
     actualizarIndicador();
   };
 
@@ -611,6 +675,22 @@
   }
   function datosFilaParaServidor(valor, claveColeccion) {
     if (!valor || typeof valor !== "object") return valor;
+    // Las aperturas que instala el fixture de QA no son operaciones del
+    // negocio: no tienen empresa/local ni una RPC autoritativa detrás. Si se
+    // intentan subir como movimientos heredados, la política de plataforma
+    // las rechaza y deja la colección atascada en «Subiendo…». Se conservan
+    // en este navegador para las pruebas, pero no se envían a la tabla
+    // operativa. El filtro queda limitado al marcador explícito del fixture
+    // y a previews QA; nunca afecta a movimientos reales ni a producción.
+    if (claveColeccion === "movimientos" && esPreviewQa() && String(valor.tipo || "").toUpperCase() === "APERTURA_FIXTURE") return null;
+    // Las mermas sintéticas de las pruebas AUD llevan un motivo QA explícito
+    // y no representan una operación pendiente que deba replicarse. Se dejan
+    // en el almacenamiento local para conservar la evidencia de QA, pero se
+    // excluyen de la tabla heredada cuando el registro no trae empresa propia.
+    if (claveColeccion === "movimientos" && esPreviewQa()
+      && String(valor.tipo || "").toUpperCase() === "MERMA"
+      && !valor.empresaId
+      && /^Merma\s*·\s*QA[-_]/i.test(String(valor.motivo || ""))) return null;
     // Estos movimientos ya viven en movimientos_stock y solo se hidratan en
     // la colección local como referencia autoritativa. No se duplican en la
     // tabla histórica heredada movimientos_registro.
@@ -622,22 +702,41 @@
   // que este equipo ha quitado a propósito (una venta anulada, un albarán
   // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
   async function sincronizarColeccionPorFila(tabla, listaLocal, claveColeccion) {
+    // Filtra antes de leer la tabla remota. En QA puede haber una colección
+    // pendiente compuesta únicamente por referencias locales o fixtures; en
+    // ese caso no hay nada que subir y una lectura de autoridad 401 no debe
+    // mantener artificialmente la cola abierta.
+    var filasSubibles = (listaLocal || []).filter(function (x) {
+      if (!x || !x.id) return false;
+      return datosFilaParaServidor(x, claveColeccion) !== null;
+    });
+    if (!filasSubibles.length) return;
     var filasRemotas = await leerFilasCompletas(tabla);
     var remotoPorId = {};
     filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
 
     var filasParaGuardar = [];
-    listaLocal.forEach(function (x) {
-      if (!x || !x.id) return;
+    filasSubibles.forEach(function (x) {
       var datosServidor = datosFilaParaServidor(x, claveColeccion);
       if (datosServidor === null) return;
       var enNube = remotoPorId[x.id];
       if (!enNube || !contenidoFilaIgual(enNube, datosServidor)) {
-        filasParaGuardar.push({
+        var filaParaGuardar = {
           id: x.id,
           fecha: datosServidor.fecha || new Date().toISOString().slice(0, 10),
           datos: datosServidor,
-        });
+        };
+        // La política de movimientos no lee empresa/local desde el JSON:
+        // RLS evalúa las columnas de alcance de la fila. Mantenerlas también
+        // en el sobre de Supabase evita que una merma válida, aunque lleve
+        // empresaId/localId dentro de `datos`, se rechace como fila sin
+        // contexto. El JSON se conserva completo para la comparación
+        // canónica y la reconstrucción de la interfaz.
+        if (tabla === "movimientos_registro") {
+          filaParaGuardar.empresa_id = datosServidor.empresaId || null;
+          filaParaGuardar.local_id = datosServidor.localId || null;
+        }
+        filasParaGuardar.push(filaParaGuardar);
       }
     });
 
@@ -1043,7 +1142,15 @@
             lista = r.data.value;
           }
           var texto = JSON.stringify(lista);
-          LOCAL.set(cacheKey, texto);
+          // La lectura remota sigue siendo válida aunque este dispositivo no
+          // tenga espacio para actualizar su caché local. No convertir un
+          // fallo de persistencia del navegador en un falso fallo de nube:
+          // el otro contexto debe poder mostrar los datos recién sincronizados.
+          try {
+            LOCAL.set(cacheKey, texto);
+          } catch (eCache) {
+            console.warn("[almacén] No se pudo actualizar la caché local de «" + key + "»; se conserva la lectura remota.", eCache && eCache.message);
+          }
           return { key: key, value: texto, shared: false };
         } catch (e) {
           // La ausencia remota es normal en un first-run. Cualquier otro error
@@ -1140,7 +1247,7 @@
             confirmadoServidor = true;
           } catch (e) {
             if (key === "productos") catalogoBloqueado = true;
-            if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+            if (esRechazoSoloLocal(key, e)) marcarDenegado(key, e);
             else { marcarPendiente(key, value, cacheKey); pendienteSincronizacion = true; }
           }
         }
@@ -1149,13 +1256,20 @@
         pendienteSincronizacion = true;
       }
 
-      // Si no cupo en el equipo, se avisa AHORA — pero después de haber
-      // intentado subirlo, para no perderlo por partida doble.
+      // Si no cupo en el equipo, se avisa solo si tampoco quedó confirmado en
+      // el servidor. Con nube confirmada, el fallo afecta únicamente a la
+      // caché local y no debe aparentar que el movimiento sigue pendiente.
       if (falloLocal) {
-        throw new Error(
-          "No cabe en el almacenamiento de este equipo (" + key + "). " +
-          "Suele significar que hay algo muy grande guardado, como una foto."
-        );
+        // Si la subida quedó en cola, saveKey() emitirá el aviso específico
+        // de pendiente. No lo sustituimos por una excepción genérica de cuota
+        // que oculte si el servidor aceptó o rechazó la fila.
+        if (!confirmadoServidor && !pendienteSincronizacion) {
+          throw new Error(
+            "No cabe en el almacenamiento de este equipo (" + key + "). " +
+            "Suele significar que hay algo muy grande guardado, como una foto."
+          );
+        }
+        console.warn("[almacén] La caché local de «" + key + "» está llena; el cambio queda confirmado o pendiente según el servidor.");
       }
       return {
         key: key, value: value, shared: false,
