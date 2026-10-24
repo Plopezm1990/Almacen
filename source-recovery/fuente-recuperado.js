@@ -10034,6 +10034,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("cierre_provisional_no_encontrado") || msg.includes("sesion_no_provisional")) return "El cierre ya no está en estado provisional. Actualiza la pantalla.";
     if (msg.includes("dia_operativo_local_no_disponible")) return "El local no está disponible para consultar el día operativo.";
     if (msg.includes("contexto_no_autorizado") || msg.includes("no_autorizad")) return "No tienes permiso para operar este TPV en el local seleccionado.";
+    // Errores técnicos crudos del servidor: nunca se muestran tal cual en
+    // pantalla. Hallazgo del 24/10/2026 durante la prueba de la Hoja QA-4
+    // (no relacionado con la propina): "canceling statement due to
+    // statement timeout" llegaba sin traducir a la pantalla de cancelar línea.
+    if (msg.includes("statement timeout")) return "La operación ha tardado demasiado y se ha cancelado. Inténtalo de nuevo.";
+    if (msg.includes("deadlock detected")) return "Dos operaciones han chocado al mismo tiempo. Inténtalo de nuevo.";
+    if (/^\s*[0-9A-Z]{5}:/.test(msg) || /^(FATAL|ERROR):/.test(msg)) return "No se pudo completar la operación por un error del servidor. Inténtalo de nuevo.";
     return msg || "No se pudo guardar el pedido en el servidor.";
   }
   async function rpcA02ConRecuperacion(supabase, nombre, params, empresaId, localId, operationId) {
