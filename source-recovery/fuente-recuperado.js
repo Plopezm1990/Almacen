@@ -3831,7 +3831,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -4863,7 +4863,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -10225,6 +10225,19 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("vale_regalo_medio_incorrecto") || msg.includes("vale_regalo_intento_ya_resuelto")) return "Este cobro no se puede resolver como vale regalo.";
     if (msg.includes("vale_regalo_no_activo")) return "Ese vale no está activo (ya se agotó o fue anulado).";
     if (msg.includes("vale_regalo_saldo_insuficiente")) return "El vale no tiene saldo suficiente para este importe.";
+    if (msg.includes("abc_impresion_no_autorizada")) return "Tu usuario no tiene permiso para imprimir tickets.";
+    if (msg.includes("impresion_parametros_requeridos")) return "Elige la impresora para continuar.";
+    if (msg.includes("impresion_equipo_no_encontrado")) return "No se encontró ese equipo en este local.";
+    if (msg.includes("impresion_equipo_inactivo")) return "Ese equipo está desactivado.";
+    if (msg.includes("impresion_equipo_tipo_incorrecto")) return "Ese equipo no es una impresora de tickets.";
+    if (msg.includes("impresion_checkout_no_encontrado")) return "No se encontró el checkout de esta cuenta.";
+    if (msg.includes("impresion_cuenta_no_pagada")) return "Solo se puede imprimir el ticket cuando la cuenta está pagada por completo.";
+    if (msg.includes("abc_cajon_no_autorizado")) return "Tu usuario no tiene permiso para abrir el cajón.";
+    if (msg.includes("cajon_parametros_requeridos")) return "Elige el cajón para continuar.";
+    if (msg.includes("cajon_motivo_requerido")) return "Escribe el motivo para abrir el cajón sin una venta asociada.";
+    if (msg.includes("cajon_equipo_no_encontrado")) return "No se encontró ese equipo en este local.";
+    if (msg.includes("cajon_equipo_inactivo")) return "Ese equipo está desactivado.";
+    if (msg.includes("cajon_equipo_tipo_incorrecto")) return "Ese equipo no es un cajón monedero.";
     return errorRpcA02(error);
   }
   async function leerEstadoCobroF4() {
@@ -10827,6 +10840,71 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         ok: true, resultado: confirmado, estado: estadoFinal,
         mensaje: `Vale ${confirmado?.codigo || codigoLimpio} aplicado: €${Number(confirmado?.importe_aplicado ?? importeAplicar).toFixed(2)}. Saldo restante del vale: €${Number(confirmado?.saldo_restante ?? 0).toFixed(2)}.`
       };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+
+  // T7 Hoja QA-9: impresión y cajón en modo simulador. Nunca conecta con
+  // ningún aparato real; solo deja constancia de lo que se habría enviado
+  // a un equipo ya registrado en "Equipos del local".
+  async function listarEquiposT7F4(tipo) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para consultar los equipos." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    try {
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Consultar los equipos necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_listar_equipos_local", {
+        p_empresa_id: empresaId, p_local_id: localActivoId, p_incluir_inactivos: false
+      });
+      if (error) throw error;
+      const equipos = (Array.isArray(data?.equipos) ? data.equipos : []).filter((e22) => e22.tipo === tipo);
+      return { ok: true, equipos };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function imprimirTicketSimuladoF4({ equipoId, checkoutId } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para imprimir el ticket." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    if (!equipoId) return { ok: false, error: "Elige la impresora." };
+    if (!checkoutId) return { ok: false, error: "No se encontró el checkout de esta cuenta." };
+    try {
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Imprimir el ticket necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const operationId = "t7.impresion.simulada." + uuidA02();
+      const resultado = await rpcA02ConRecuperacion(supabase, "abc_simular_impresion_ticket", {
+        p_operation_id: operationId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_equipo_id: equipoId, p_checkout_id: checkoutId
+      }, empresaId, localActivoId, operationId);
+      return { ok: true, mensaje: resultado?.mensaje || "Impresión simulada registrada." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function abrirCajonSimuladoF4({ equipoId, motivo, checkoutId } = {}) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir el cajón." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    if (!equipoId) return { ok: false, error: "Elige el cajón." };
+    const motivoLimpio = String(motivo || "").trim();
+    if (!checkoutId && !motivoLimpio) return { ok: false, error: "Escribe el motivo para abrir el cajón sin una venta asociada." };
+    try {
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Abrir el cajón necesita conexión con el servidor." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationId = "t7.cajon.simulado." + uuidA02();
+      const resultado = await rpcA02ConRecuperacion(supabase, "abc_simular_apertura_cajon", {
+        p_operation_id: operationId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_equipo_id: equipoId, p_motivo: motivoLimpio || null, p_terminal_id: terminal.terminalId,
+        p_checkout_id: checkoutId || null
+      }, empresaId, localActivoId, operationId);
+      return { ok: true, mensaje: resultado?.mensaje || "Apertura de cajón simulada registrada." };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -12787,7 +12865,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -22509,7 +22587,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   const unirCuentasA08 = arguments[0]?.unirCuentasA08;
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
@@ -22921,6 +22999,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorValeRegaloF4, setErrorValeRegaloF4] = (0, import_react4.useState)("");
   const [valeRegaloCodigoCanjeF4, setValeRegaloCodigoCanjeF4] = (0, import_react4.useState)("");
   const [procesandoCanjeValeRegaloF4, setProcesandoCanjeValeRegaloF4] = (0, import_react4.useState)(false);
+  const [equiposImpresoraT7F4, setEquiposImpresoraT7F4] = (0, import_react4.useState)([]);
+  const [equipoImpresoraElegidoT7F4, setEquipoImpresoraElegidoT7F4] = (0, import_react4.useState)("");
+  const [procesandoImpresionT7F4, setProcesandoImpresionT7F4] = (0, import_react4.useState)(false);
+  const [equiposCajonT7F4, setEquiposCajonT7F4] = (0, import_react4.useState)([]);
+  const [equipoCajonElegidoT7F4, setEquipoCajonElegidoT7F4] = (0, import_react4.useState)("");
+  const [motivoCajonT7F4, setMotivoCajonT7F4] = (0, import_react4.useState)("");
+  const [procesandoCajonT7F4, setProcesandoCajonT7F4] = (0, import_react4.useState)(false);
+  const [mensajeCajonT7F4, setMensajeCajonT7F4] = (0, import_react4.useState)("");
+  const [errorCajonT7F4, setErrorCajonT7F4] = (0, import_react4.useState)("");
   const billetesRapidosF4 = [5, 10, 20, 50, 100];
   const [bizumPreparadoF4, setBizumPreparadoF4] = (0, import_react4.useState)(false);
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
@@ -22940,6 +23027,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setModalidadesA02([]);
     setModalidadElegidaA02("");
     cargarModalidadesA02();
+  }, [local?.id, configEmpresa?.id]);
+  (0, import_react4.useEffect)(() => {
+    setEquiposImpresoraT7F4([]);
+    setEquipoImpresoraElegidoT7F4("");
+    setEquiposCajonT7F4([]);
+    setEquipoCajonElegidoT7F4("");
+    if (typeof listarEquiposT7F4 !== "function") return;
+    listarEquiposT7F4("IMPRESORA_TICKET").then((resultado) => {
+      if (resultado?.ok) setEquiposImpresoraT7F4(resultado.equipos || []);
+    });
+    listarEquiposT7F4("CAJON_MONEDERO").then((resultado) => {
+      if (resultado?.ok) setEquiposCajonT7F4(resultado.equipos || []);
+    });
   }, [local?.id, configEmpresa?.id]);
   const modalidadActualA02 = modalidadesA02.includes(modalidadElegidaA02) ? modalidadElegidaA02 : modalidadesA02.includes("BARRA") ? "BARRA" : modalidadesA02[0] || "";
   const renderSelectorModalidadA02 = () => {
@@ -24271,6 +24371,35 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setMensajeCobroF4(resultado.mensaje || "Vale regalo aplicado.");
     setValeRegaloCodigoCanjeF4("");
   }
+  async function imprimirTicketSimuladoT7F4UI() {
+    if (procesandoImpresionT7F4 || typeof imprimirTicketSimuladoF4 !== "function") return;
+    const checkoutId = Array.isArray(estadoCobroF4?.checkouts) ? estadoCobroF4.checkouts[0]?.id : null;
+    setProcesandoImpresionT7F4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const resultado = await imprimirTicketSimuladoF4({ equipoId: equipoImpresoraElegidoT7F4, checkoutId });
+    setProcesandoImpresionT7F4(false);
+    if (!resultado?.ok) {
+      setErrorCobroF4(resultado?.error || "No se pudo simular la impresión del ticket.");
+      return;
+    }
+    setMensajeCobroF4(resultado.mensaje || "Impresión simulada registrada.");
+  }
+  async function abrirCajonSimuladoT7F4UI() {
+    if (procesandoCajonT7F4 || typeof abrirCajonSimuladoF4 !== "function") return;
+    setProcesandoCajonT7F4(true);
+    setErrorCajonT7F4("");
+    setMensajeCajonT7F4("");
+    const checkoutId = Array.isArray(estadoCobroF4?.checkouts) ? estadoCobroF4.checkouts[0]?.id : null;
+    const resultado = await abrirCajonSimuladoF4({ equipoId: equipoCajonElegidoT7F4, motivo: motivoCajonT7F4, checkoutId });
+    setProcesandoCajonT7F4(false);
+    if (!resultado?.ok) {
+      setErrorCajonT7F4(resultado?.error || "No se pudo simular la apertura del cajón.");
+      return;
+    }
+    setMensajeCajonT7F4(resultado.mensaje || "Apertura de cajón simulada registrada.");
+    setMotivoCajonT7F4("");
+  }
   function cambiarFormularioIncidenciaB04(campo, valor) {
     setFormularioIncidenciaB04((actual) => ({ ...actual, [campo]: valor }));
   }
@@ -24459,6 +24588,14 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
         ),
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: enviarTicketCorreoF4UI, disabled: procesandoTicketCorreoF4 }, procesandoTicketCorreoF4 ? "Enviando…" : "Enviar ticket por correo")
       ) : null,
+      tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Imprimir ticket"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T7 Hoja QA-9 · modo simulador: no hay conexión real con el aparato todavía."),
+        equiposImpresoraT7F4.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "No hay ninguna impresora de tickets registrada en Equipos del local.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Impresora" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: equipoImpresoraElegidoT7F4, onChange: (e2) => setEquipoImpresoraElegidoT7F4(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Elige una impresora…"), equiposImpresoraT7F4.map((eq) => /* @__PURE__ */ import_react4.default.createElement("option", { key: eq.id, value: eq.id }, eq.nombre)))),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: imprimirTicketSimuladoT7F4UI, disabled: procesandoImpresionT7F4 || !equipoImpresoraElegidoT7F4 }, procesandoImpresionT7F4 ? "Imprimiendo…" : "Imprimir ticket (simulado)")
+        )
+      ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
       ) : null
@@ -24599,6 +24736,21 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       ),
       errorValeRegaloF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorValeRegaloF4) : null,
       valeRegaloCreadoF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, "Vale creado: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, valeRegaloCreadoF4.codigo), ` por €${Number(valeRegaloCreadoF4.importe).toFixed(2)}. Apúntalo para el cliente.`) : null
+    );
+  }
+  function renderCajonT7F4() {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cajón monedero"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T7 Hoja QA-9 · modo simulador: no hay conexión real con el aparato todavía. Si abres el cajón sin una venta asociada, escribe el motivo (igual que las entradas/salidas de caja)."),
+      equiposCajonT7F4.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "No hay ningún cajón monedero registrado en Equipos del local.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cajón" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: equipoCajonElegidoT7F4, onChange: (e2) => setEquipoCajonElegidoT7F4(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Elige un cajón…"), equiposCajonT7F4.map((eq) => /* @__PURE__ */ import_react4.default.createElement("option", { key: eq.id, value: eq.id }, eq.nombre)))),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (si no hay venta)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoCajonT7F4, onChange: (e2) => setMotivoCajonT7F4(e2.target.value), placeholder: "Poner cambio, por ejemplo" }))
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirCajonSimuladoT7F4UI, disabled: procesandoCajonT7F4 || !equipoCajonElegidoT7F4 }, procesandoCajonT7F4 ? "Abriendo…" : "Abrir cajón (simulado)"),
+        errorCajonT7F4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mt-2", style: { background: "#FCE8E6", color: C2.red } }, errorCajonT7F4) : null,
+        mensajeCajonT7F4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg mt-2", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCajonT7F4) : null
+      )
     );
   }
   function renderSalaA07() {
@@ -24933,6 +25085,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConflictoA06(null) }, "Entendido")
   ) : null,
   renderValeRegaloF4(),
+  renderCajonT7F4(),
   renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-layout" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-product-zone" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {

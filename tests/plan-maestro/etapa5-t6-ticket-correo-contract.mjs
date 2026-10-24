@@ -80,7 +80,7 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
   );
   // Los 4 puntos de conexión: destructuring de crearLogicaVenta, su return,
   // las props de <VentaRapida>, y los parámetros de VentaRapida.
-  const ocurrenciasConexion = contenido.match(/emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, reintentarCobroF4, leerEstadoCobroF4/g) || [];
+  const ocurrenciasConexion = contenido.match(/emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4/g) || [];
   assert.equal(
     ocurrenciasConexion.length,
     4,
