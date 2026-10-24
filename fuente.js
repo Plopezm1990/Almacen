@@ -111790,7 +111790,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
   }
-  async function pagarConValeRegaloF4({ codigo } = {}) {
+  async function pagarConValeRegaloF4({ codigo, totalPedido } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para cobrar con un vale regalo." };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
@@ -111800,7 +111800,14 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const estado = await leerEstadoCobroF4();
       if (!estado?.ok) return estado;
       if (estado.cobroIncierto) return { ok: false, error: "Hay un cobro pendiente o incierto. Resuélvelo antes de aplicar un vale." };
-      const saldoPendiente = Number(estado.saldo);
+      // Antes de que exista un checkout, el servidor todavía no tiene un
+      // "saldo" de cobro que devolver (igual que ya hace saldoVisible en la
+      // pantalla): se calcula del total del pedido menos lo ya confirmado.
+      const tieneCheckoutPrevio = Array.isArray(estado.checkouts) && estado.checkouts.length > 0;
+      const confirmadoServidor = Number(estado.confirmado) || 0;
+      const saldoPendiente = tieneCheckoutPrevio
+        ? Number(estado.saldo)
+        : Math.max(0, Number(totalPedido) - confirmadoServidor);
       if (!Number.isFinite(saldoPendiente) || saldoPendiente <= 0) return { ok: false, error: "No hay saldo pendiente que cobrar con un vale." };
       const consulta = await consultarValeRegaloF4(codigoLimpio);
       if (!consulta?.ok) return consulta;
@@ -125541,7 +125548,8 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setProcesandoCanjeValeRegaloF4(true);
     setErrorCobroF4("");
     setMensajeCobroF4("");
-    const resultado = await pagarConValeRegaloF4({ codigo: valeRegaloCodigoCanjeF4 });
+    const totalPedidoCanjeVale = (pedidoOperativoA05?.lineas || []).reduce((acc, l22) => acc + (Number(l22.total) || 0), 0);
+    const resultado = await pagarConValeRegaloF4({ codigo: valeRegaloCodigoCanjeF4, totalPedido: totalPedidoCanjeVale });
     setProcesandoCanjeValeRegaloF4(false);
     if (!resultado?.ok) {
       setErrorCobroF4(resultado?.error || "No se pudo aplicar el vale regalo.");

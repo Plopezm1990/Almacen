@@ -37,7 +37,7 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
   // Las 3 funciones de orquestación.
   assert.match(contenido, /async function emitirValeRegaloF4\(\{ importe \} = \{\}\)/, `${nombre}: falta emitirValeRegaloF4`);
   assert.match(contenido, /async function consultarValeRegaloF4\(codigo\)/, `${nombre}: falta consultarValeRegaloF4`);
-  assert.match(contenido, /async function pagarConValeRegaloF4\(\{ codigo \} = \{\}\)/, `${nombre}: falta pagarConValeRegaloF4`);
+  assert.match(contenido, /async function pagarConValeRegaloF4\(\{ codigo, totalPedido \} = \{\}\)/, `${nombre}: falta pagarConValeRegaloF4`);
 
   // Venta: solo efectivo en esta primera versión, usa el patrón de caja de
   // la propina (QA-4) y el día operativo real del servidor.
@@ -74,6 +74,34 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
     contenido,
     /if \(estado\.cobroIncierto\) return \{ ok: false, error: "Hay un cobro pendiente o incierto\. Resuélvelo antes de aplicar un vale\." \};/,
     `${nombre}: el canje debe bloquearse si hay un cobro incierto, igual que el resto de medios de pago`
+  );
+
+  // Hallazgo en prueba Cowork (24/10/2026): para una cuenta que nunca pasó
+  // por ningún intento de cobro, el servidor todavía no tiene checkout, y
+  // su "saldo" de cobro no refleja el total del pedido — exactamente la
+  // misma situación que ya resuelve saldoVisible en la pantalla
+  // (tieneCheckout ? estado.saldo : totalPedido - confirmado). Sin este
+  // cálculo, "Aplicar vale" rechazaba siempre con "No hay saldo pendiente
+  // que cobrar con un vale" aunque la pantalla mostrara un pendiente real.
+  assert.match(
+    contenido,
+    /const tieneCheckoutPrevio = Array\.isArray\(estado\.checkouts\) && estado\.checkouts\.length > 0;/,
+    `${nombre}: el canje debe distinguir si la cuenta ya tiene un checkout antes de confiar en estado.saldo`
+  );
+  assert.match(
+    contenido,
+    /const saldoPendiente = tieneCheckoutPrevio\s*\n\s*\? Number\(estado\.saldo\)\s*\n\s*: Math\.max\(0, Number\(totalPedido\) - confirmadoServidor\);/,
+    `${nombre}: sin checkout previo, el saldo pendiente debe calcularse de totalPedido - confirmado, igual que saldoVisible en pantalla`
+  );
+  assert.match(
+    contenido,
+    /const totalPedidoCanjeVale = \(pedidoOperativoA05\?\.lineas \|\| \[\]\)\.reduce\(\(acc, l22\) => acc \+ \(Number\(l22\.total\) \|\| 0\), 0\);/,
+    `${nombre}: el envoltorio de UI debe calcular el total del pedido (pedidoOperativoA05 solo existe en VentaRapida, no dentro de crearLogicaVenta)`
+  );
+  assert.match(
+    contenido,
+    /pagarConValeRegaloF4\(\{ codigo: valeRegaloCodigoCanjeF4, totalPedido: totalPedidoCanjeVale \}\)/,
+    `${nombre}: el envoltorio de UI debe pasar el total del pedido como parámetro`
   );
 
   // UI de canje dentro de Cobro·F4.
@@ -198,3 +226,4 @@ console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_CONEXION_COMPONENTE=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_PARIDAD_DUAL=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_MIGRACION=PASS");
 console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_FIX_GEN_RANDOM_BYTES=PASS");
+console.log("PLAN_MAESTRO_ETAPA5_T6_VALE_REGALO_FIX_SALDO_SIN_CHECKOUT=PASS");
