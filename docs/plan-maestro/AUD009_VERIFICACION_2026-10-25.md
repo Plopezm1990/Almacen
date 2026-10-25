@@ -55,28 +55,44 @@ AUD-009 del todo hace falta la prueba que el propio Pedro propuso: crear una mer
 traspaso **de verdad** (motivo normal, sin el patrón `Merma · QA-...`, con empresa/local
 reales) en QA y comprobar que no aparece ningún aviso de sincronización para `movimientos`.
 
-## 4. Prueba en vivo pendiente (guion para Cowork)
+## 4. Prueba en vivo (Cowork, QA, 25/10/2026)
 
-1. Entrar en QA con un usuario normal (Propietario o Encargado) de una empresa real de
-   pruebas.
-2. Registrar una **merma** de un producto cualquiera, con un motivo normal (por ejemplo
-   "Rotura en almacén", sin el prefijo "QA-").
-3. Registrar un **traspaso** entre dos locales (si la empresa de pruebas tiene más de uno)
-   o, si no, otra merma de otro producto.
-4. Recargar la página (F5) y comprobar en la pantalla de movimientos / almacén si aparece
-   el aviso "Guardado solo en este equipo (movimientos)" o el botón "Reintentar" para esos
-   dos movimientos nuevos.
-5. Esperado si AUD-009 está resuelto: ningún aviso para estos dos movimientos nuevos — se
-   sincronizan con normalidad.
-6. Si aparece el aviso para alguno de los dos: AUD-009 sigue abierto de verdad y haría
-   falta investigar más (no sería explicable por los filtros de arriba).
+Guion ejecutado: una merma y un traspaso **de verdad** (motivo normal, sin el patrón
+`QA-`), en una empresa de pruebas con dos locales (Local A1 y Local A2).
+
+- **Merma**: Croissant (QA), 2 unidades, motivo "Rotura" con observación "Rotura en
+  almacén al reponer la vitrina". `operation_id` `mvnlx3ricu3i2f`.
+- **Traspaso**: Agua 50 cl (QA), 3 unidades, Local A1 → Local A2. `operation_id`
+  `mvnlyahy0ge5b0`.
+
+Tras recargar la página completa:
+
+- Ningún aviso de "Guardado solo en este equipo" ni botón "Reintentar" en ninguno de los
+  dos movimientos.
+- "Configuración → Locales → Diagnóstico de sincronización" confirmó explícitamente:
+  "Nada pendiente de subir en este dispositivo ahora mismo."
+- El único aviso de sincronización visible en toda la pantalla fue el ya conocido y
+  **no relacionado** `almacen:historialRespaldos` ("1 colección solo en este equipo"),
+  el mismo caso aparte documentado en la Etapa 3 — copias de seguridad automáticas, no
+  movimientos de stock.
+- Verificación independiente por SQL de solo lectura en el proyecto Supabase QA
+  (`qjqorixtkilwsndqayyx`, nunca en PROD): la merma está en `movimientos_registro` con
+  los mismos datos de pantalla; el traspaso está en `movimientos_stock` (sus dos líneas,
+  salida en A1 y entrada en A2) y en `stock_operaciones`. Confirma que ambos llegaron de
+  verdad al servidor, no solo a este equipo.
 
 ## 5. Límites respetados
 
-- No se ha tocado PROD.
-- No se ha hecho ninguna escritura SQL directa ni migración.
-- No se ha afirmado que AUD-009 está cerrado sin prueba en vivo — se deja explícitamente
-  pendiente el paso 4 hasta que Pedro (o Cowork) lo ejecute y lo confirme.
+- No se ha tocado PROD en ningún momento (ni en la prueba en vivo ni en la consulta SQL).
+- No se ha hecho ninguna escritura SQL directa ni migración — la consulta SQL fue de
+  solo lectura, para verificar, no para corregir nada.
 
-**Estado: análisis de código hecho, con una explicación consistente para lo que se vio el
-23/10. Falta la prueba en vivo (sección 4) para cerrar AUD-009 con evidencia real.**
+## 6. Conclusión final
+
+**AUD-009 queda cerrado.** El análisis de código (sección 1-3) y la prueba en vivo con
+evidencia real en servidor (sección 4) coinciden: un movimiento real (merma o traspaso,
+motivo normal) se sincroniza con normalidad, sin quedarse "solo en este equipo" y sin
+necesitar reintento. Los "dos pendientes" que se vieron el 23/10 al cerrar la Etapa 4 se
+explican por los filtros intencionados de datos de prueba de QA (sección 1), no por un
+fallo real de sincronización. El aviso de `historialRespaldos` que sigue viéndose es un
+asunto aparte, ya documentado, sin relación con AUD-009.
