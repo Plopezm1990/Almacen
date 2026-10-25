@@ -63,7 +63,7 @@ for (const forbidden of [
 }
 
 // A06 recovery now preserves A07 location and account responsibility.
-const recoverIni = src.indexOf("async function recuperarCuentaA06()");
+const recoverIni = src.indexOf("async function recuperarCuentaA06(cuentaIdSolicitada = null, cuentaRecuperable = null)");
 const recoverFin = src.indexOf("\n  function leerPedidoOperativoA05()", recoverIni);
 const recover = src.slice(recoverIni, recoverFin);
 assert.ok(recover.includes("responsableActual: data.cuenta.responsable_actual"), "A07.1 no conserva responsable real");
@@ -109,11 +109,11 @@ assert.ok(src.includes("if (resultado?.conflict) await refrescarSalaA07();"), "A
 
 // A07.1 is wired from factory to TPV.
 assert.ok(
-  src.includes("recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07"),
+  src.includes("recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07"),
   "A07.1 adapters not destructured"
 );
 assert.ok(
-  src.includes("recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07"),
+  src.includes("recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07"),
   "A07.1 TPV props not wired"
 );
 
