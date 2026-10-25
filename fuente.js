@@ -124874,11 +124874,44 @@ function formatearCalculadoraTpvFase4(valor) {
   return Number(valor).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 8 });
 }
 
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, salirTPV = () => { if (typeof window !== "undefined" && typeof window.__salirTPV === "function") window.__salirTPV(); }, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, salirTPV = () => { if (typeof window !== "undefined" && typeof window.__salirTPV === "function") window.__salirTPV(); }, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, rolPerfil = "" }) {
   const unirCuentasA08 = arguments[0]?.unirCuentasA08;
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [seccionTpv, setSeccionTpv] = (0, import_react4.useState)("venta");
+  const [rolPerfilRemotoTpv, setRolPerfilRemotoTpv] = (0, import_react4.useState)("");
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (rolPerfil) {
+      setRolPerfilRemotoTpv(rolPerfil);
+      return () => { activo = false; };
+    }
+    if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+      setRolPerfilRemotoTpv("Propietario");
+      return () => { activo = false; };
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data: sesion } = await supabase.auth.getSession();
+        const userId = sesion?.session?.user?.id;
+        if (!userId) {
+          if (activo) setRolPerfilRemotoTpv("");
+          return;
+        }
+        const { data: perfil } = await supabase.from("perfiles").select("rol").eq("user_id", userId).maybeSingle();
+        if (activo) setRolPerfilRemotoTpv(String(perfil?.rol || ""));
+      } catch {
+        if (activo) setRolPerfilRemotoTpv("");
+      }
+    })();
+    return () => { activo = false; };
+  }, [rolPerfil]);
+  const rolPerfilEfectivoTpv = rolPerfil || rolPerfilRemotoTpv;
+  const puedeOperarCajaTpv = ["Propietario", "Encargado", "Cajero/a"].includes(rolPerfilEfectivoTpv);
+  (0, import_react4.useEffect)(() => {
+    if (!puedeOperarCajaTpv && seccionTpv === "caja") setSeccionTpv("venta");
+  }, [puedeOperarCajaTpv, seccionTpv]);
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
   const [avisoEscaneo, setAvisoEscaneo] = (0, import_react4.useState)("");
   const [confirmAnular, setConfirmAnular] = (0, import_react4.useState)(null);
@@ -127300,6 +127333,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   async function abrirMovimientosCajaDesdeTpv() {
+    if (!puedeOperarCajaTpv) return;
     if (cargandoDiaCajaTpv) return;
     setCargandoDiaCajaTpv(true);
     setErrorMovimientosCajaTpv("");
@@ -127333,17 +127367,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderMovimientosCajaTpv() {
+    if (!puedeOperarCajaTpv) return null;
     const movimientosDelDia = (movimientosCaja || []).filter((movimiento) => movimiento?.fecha === diaOperativoCajaTpv);
+    const seccionesOperativasTpv = [
+      ["venta", "Venta"],
+      ["sala", "Sala"],
+      ["reparto", "Reparto"],
+      ["operativo", "Operativa"],
+      ["descuento", "Descuento"],
+      ["cobro", "Cobro"],
+      ["caja", "Caja"]
+    ];
     return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-section-nav", role: "tablist", "aria-label": "Secciones operativas TPV" }, [
-        ["venta", "Venta"],
-        ["sala", "Sala"],
-        ["reparto", "Reparto"],
-        ["operativo", "Operativa"],
-        ["descuento", "Descuento"],
-        ["cobro", "Cobro"],
-        ["caja", "Caja"]
-      ].map(([id, label]) => /* @__PURE__ */ import_react4.default.createElement("button", { key: id, type: "button", role: "tab", "aria-selected": seccionTpv === id, onClick: () => setSeccionTpv(id) }, label))),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-section-nav", role: "tablist", "aria-label": "Secciones operativas TPV" }, seccionesOperativasTpv.map(([id, label]) => /* @__PURE__ */ import_react4.default.createElement("button", { key: id, type: "button", role: "tab", "aria-selected": seccionTpv === id, onClick: () => setSeccionTpv(id) }, label))),
       panelTpv("caja", /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
       /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-tpv-fase5-caja": "true" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
