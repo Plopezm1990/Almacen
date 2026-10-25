@@ -423,3 +423,34 @@ mitigación y se pasa a estudiar el arranque frío por separado. Si el arranque
 sigue cerca del límite, el siguiente cambio debe resolver la hidratación por
 contexto o paginarla de forma diferida; no se debe relajar RLS ni añadir un
 índice a ciegas.
+
+## 15. Bloqueos de CI detectados y cierre técnico
+
+El commit de la mitigación activó tres fallos de workflows que no eran fallos
+de la lógica de movimientos:
+
+- `f4-b04`: el contrato SQL pasó; falló únicamente la comprobación de que
+  `fuente.js` y `source-recovery/fuente-recuperado.js` estuvieran materializados
+  desde el mismo cuerpo;
+- `Facturas y albaranes integrados`: sus contratos funcionales pasaron, pero
+  falló la misma comprobación de paridad del recuperador;
+- `f4-b02-b03`: el contrato SQL y el build pasaron, pero el validador rechazó
+  el manifiesto porque se había añadido el contrato de Etapa 7 sin actualizar
+  el inventario declarado de `331/314/284` a `332/315/285`.
+
+La resolución aplicada fue mecánica y quedó verificada localmente:
+
+1. el recuperador `source-recovery/recuperar_candidato.py` incorpora
+   `--sync-local` para checkouts donde el objeto Git del baseline histórico ya
+   no está disponible;
+2. se regeneraron `fuente-recuperado.js` y `PM01_EVIDENCIA.json` desde el
+   bundle actual, conservando la comprobación de sufijo exacto y SHA;
+3. se actualizaron el manifiesto, el validador y la puerta CI a 332 archivos,
+   315 contratos activos y 285 contratos Node activos;
+4. B04 UI, facturas multipágina, facturas/albaranes integrados, recuperación
+   de fuente, validador de manifiesto y el contrato de lectura por IDs pasan.
+
+Esta reparación no modifica cobros, facturas, RLS, Supabase remoto ni
+producción. La segunda ejecución remota debe confirmar los mismos resultados
+en el merge del PR; hasta recibirla, CI queda en estado **corrección aplicada,
+confirmación remota pendiente**.
