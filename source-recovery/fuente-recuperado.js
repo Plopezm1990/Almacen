@@ -1839,6 +1839,7 @@ function ConfigOpciones({ empresaId, localId }) {
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
   const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [clave, setClave] = (0, import_react4.useState)("");
   const [formGrupo, setFormGrupo] = (0, import_react4.useState)(null);
   const [formOpcion, setFormOpcion] = (0, import_react4.useState)(null);
   const [formVinculo, setFormVinculo] = (0, import_react4.useState)(null);
@@ -1887,6 +1888,32 @@ function ConfigOpciones({ empresaId, localId }) {
     }
     return false;
   };
+  const confirmarClave = async () => {
+    const claveActual = clave;
+    setClave("");
+    if (!claveActual.trim()) {
+      setError("Escribe tu contraseña para confirmar el cambio en la biblioteca de opciones.");
+      return false;
+    }
+    try {
+      const supabase = await configCliente();
+      const { data: datosUsuario, error: errUsuario } = await supabase.auth.getUser();
+      const correo = datosUsuario?.user?.email;
+      if (errUsuario || !correo) {
+        setError("No se pudo comprobar tu sesión. Vuelve a entrar e inténtalo de nuevo.");
+        return false;
+      }
+      const { error: errClave } = await supabase.auth.signInWithPassword({ email: correo, password: claveActual });
+      if (errClave) {
+        setError("Contraseña incorrecta.");
+        return false;
+      }
+      return true;
+    } catch (e2) {
+      setError(configMensajeError(e2));
+      return false;
+    }
+  };
   const enviarGrupo = async (datos, mensaje) => {
     setError("");
     setConfirmacion("");
@@ -1895,6 +1922,7 @@ function ConfigOpciones({ empresaId, localId }) {
       setError("Escribe el nombre del grupo.");
       return false;
     }
+    if (!(await confirmarClave())) return false;
     setGuardando(true);
     try {
       await configRpc("abc_guardar_grupo_opciones", {
@@ -1941,6 +1969,7 @@ function ConfigOpciones({ empresaId, localId }) {
       setError("Escribe el % de impuesto de esta opción, o marca que hereda el del producto.");
       return false;
     }
+    if (!(await confirmarClave())) return false;
     setGuardando(true);
     try {
       await configRpc("abc_guardar_opcion", {
@@ -1989,6 +2018,7 @@ function ConfigOpciones({ empresaId, localId }) {
       setError("Elige el grupo de opciones.");
       return false;
     }
+    if (!(await confirmarClave())) return false;
     setGuardando(true);
     try {
       await configRpc("abc_vincular_grupo_producto", {
@@ -2030,6 +2060,7 @@ function ConfigOpciones({ empresaId, localId }) {
     null,
     h(ConfigAviso, { error, confirmacion }),
     h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h(Field, { label: "Confirma tu contraseña (la tuya, para guardar cambios en esta biblioteca)" }, h("input", { type: "password", value: clave, onChange: (e2) => setClave(e2.target.value), disabled: ocupado, autoComplete: "current-password", className: "w-full rounded-lg px-3 py-2 text-[13px] mb-3", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } })),
     h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: verInactivos, onChange: (e2) => setVerInactivos(e2.target.checked) }), "Ver también los desactivados"),
     h(
       Card,
