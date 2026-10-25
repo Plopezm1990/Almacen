@@ -10,6 +10,10 @@ const migracion = fs.readFileSync(
   path.join(root, "supabase", "migrations", "20261025100000_t8_tipo_negocio_plantillas.sql"),
   "utf8"
 );
+const migracionFix = fs.readFileSync(
+  path.join(root, "supabase", "migrations", "20261025110000_t8_tipo_negocio_fix_omitidos.sql"),
+  "utf8"
+);
 
 // T8, pieza 4 (Etapa 6): tipo de negocio + biblioteca de opciones de ejemplo. Alcance elegido
 // por Pedro (24-25/10/2026, chat): guardar el tipo y, si se pide, sembrar unos grupos de
@@ -35,6 +39,27 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
 
   // Deja claro que no es un dato fiscal/operativo.
   assert.match(contenido, /no cambia ningún cálculo fiscal ni operativo/, `${nombre}: falta aclarar que el tipo de negocio no es un dato fiscal`);
+
+  // Hallazgo Cowork (prueba en vivo, 25/10/2026): el mensaje de confirmación debe explicar
+  // qué grupos de la plantilla se omitieron por nombre duplicado, no solo cuántos se crearon.
+  assert.match(
+    contenido,
+    /const omitidos = Array\.isArray\(r2\?\.grupos_ejemplo_omitidos\) \? r2\.grupos_ejemplo_omitidos : \[\];/,
+    `${nombre}: falta leer grupos_ejemplo_omitidos del resultado`
+  );
+  assert.match(
+    contenido,
+    /No se tocó \$\{omitidos\.length === 1 \? "el grupo" : "los grupos"\} "\$\{omitidos\.join\('", "'\)\}" porque ya/,
+    `${nombre}: falta explicar en el mensaje qué grupos se omitieron y por qué`
+  );
+
+  // Hallazgo Cowork: al elegir "Otro" la casilla de ejemplo debe desmarcarse de verdad, no
+  // solo deshabilitarse visualmente.
+  assert.match(
+    contenido,
+    /setTipoElegido\(v2\);\s*\n\s*if \(v2 === "OTRO"\) setCrearEjemplo\(false\);/,
+    `${nombre}: elegir "Otro" debe desmarcar la casilla de biblioteca de ejemplo`
+  );
 
   // Traducciones de error.
   for (const codigo of ["tipo_negocio_no_autorizado", "tipo_negocio_invalido", "tipo_negocio_motivo_requerido"]) {
@@ -120,6 +145,29 @@ assert.match(
   /grant execute on function public\.abc_guardar_tipo_negocio\([^)]*\) to authenticated;/,
   "abc_guardar_tipo_negocio debe limitarse a usuarios autenticados"
 );
+
+// Corrección de transparencia (migración aparte, no se edita la ya aplicada): la siembra
+// debe registrar y devolver qué grupos se omitieron por nombre duplicado.
+assert.match(
+  migracionFix,
+  /create or replace function public\.abc_guardar_tipo_negocio/,
+  "Falta el create or replace de abc_guardar_tipo_negocio con la corrección"
+);
+assert.match(migracionFix, /v_omitidos text\[\]:=array\[\]::text\[\];/, "Falta el acumulador de grupos omitidos");
+assert.match(
+  migracionFix,
+  /else\s*\n\s*v_omitidos:=array_append\(v_omitidos,v_grupo->>'nombre'\);\s*\n\s*end if;/,
+  "Debe registrar el nombre del grupo cuando ya existe y se omite"
+);
+assert.match(
+  migracionFix,
+  /'grupos_ejemplo_omitidos',to_jsonb\(v_omitidos\)/,
+  "El resultado debe incluir grupos_ejemplo_omitidos"
+);
+assert.match(migracionFix, /private\.abc_operacion_iniciar\(/, "La corrección debe seguir siendo idempotente");
+assert.match(migracionFix, /exception when others then/, "La corrección debe seguir limpiando con abc_operacion_fallar");
+
+console.log("PLAN_MAESTRO_ETAPA6_T8_TIPO_NEGOCIO_FIX_OMITIDOS=PASS");
 
 console.log("PLAN_MAESTRO_ETAPA6_T8_TIPO_NEGOCIO_UI=PASS");
 console.log("PLAN_MAESTRO_ETAPA6_T8_TIPO_NEGOCIO_PARIDAD_DUAL=PASS");

@@ -2461,11 +2461,11 @@ function ConfigTipoNegocio({ empresaId, localId }) {
         p_motivo: motivo.trim()
       });
       const creados = Number(r2?.grupos_ejemplo_creados) || 0;
-      setConfirmacion(
-        creados > 0
-          ? `Tipo de negocio guardado. Se añadieron ${creados} grupo(s) de ejemplo a la biblioteca de opciones de este local — revísalos en "Opciones y variantes".`
-          : "Tipo de negocio guardado."
-      );
+      const omitidos = Array.isArray(r2?.grupos_ejemplo_omitidos) ? r2.grupos_ejemplo_omitidos : [];
+      const partes = ["Tipo de negocio guardado."];
+      if (creados > 0) partes.push(`Se añadieron ${creados} grupo(s) de ejemplo a la biblioteca de opciones de este local — revísalos en "Opciones y variantes".`);
+      if (omitidos.length > 0) partes.push(`No se tocó ${omitidos.length === 1 ? "el grupo" : "los grupos"} "${omitidos.join('", "')}" porque ya ${omitidos.length === 1 ? "existía" : "existían"} con ese nombre en este local.`);
+      setConfirmacion(partes.join(" "));
       await cargar();
     } catch (e2) {
       setError(configMensajeError(e2));
@@ -2493,7 +2493,10 @@ function ConfigTipoNegocio({ empresaId, localId }) {
       h(
         "div",
         { className: "grid grid-cols-1 md:grid-cols-2 gap-2 mb-2" },
-        h(Field, { label: "Tipo de negocio" }, campoSelect(tipoElegido, setTipoElegido, CONFIG_TIPOS_NEGOCIO.map((x3) => [x3.id, x3.etiqueta]), ocupado))
+        h(Field, { label: "Tipo de negocio" }, campoSelect(tipoElegido, (v2) => {
+          setTipoElegido(v2);
+          if (v2 === "OTRO") setCrearEjemplo(false);
+        }, CONFIG_TIPOS_NEGOCIO.map((x3) => [x3.id, x3.etiqueta]), ocupado))
       ),
       h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: crearEjemplo, onChange: (e2) => setCrearEjemplo(e2.target.checked), disabled: ocupado || tipoElegido === "OTRO" }), "Crear también una biblioteca de opciones de ejemplo para este local", tipoElegido === "OTRO" ? " (Otro no tiene ejemplos)" : ""),
       h(Btn, { small: true, onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar tipo de negocio"),
