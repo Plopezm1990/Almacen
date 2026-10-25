@@ -5,8 +5,8 @@ const fuente = fs.readFileSync("fuente.js", "utf8");
 
 assert.match(
   fuente,
-  /function VentaRapida\([\s\S]*?rolPerfil = "" \}\) \{/,
-  "VentaRapida debe aceptar el rol efectivo para filtrar Caja"
+  /function VentaRapida\([\s\S]*?respuestaErrorA06 \}\) \{\s+const rolPerfil = arguments\[0\]\?\.rolPerfil \|\| "";/,
+  "VentaRapida debe leer el rol efectivo para filtrar Caja sin romper el contrato de props existente"
 );
 
 const inicioVenta = fuente.indexOf("function VentaRapida(");
@@ -28,8 +28,13 @@ assert.match(
 );
 assert.match(
   fuente.slice(inicioCaja, finCaja),
-  /if \(!puedeOperarCajaTpv\) return null;/,
-  "Camarero/a no debe recibir el panel interno de Caja"
+  /\.filter\(\(\[id\]\) => id !== "caja" \|\| puedeOperarCajaTpv\)/,
+  "Camarero/a no debe recibir la pestaña interna de Caja"
+);
+assert.match(
+  fuente.slice(inicioCaja, finCaja),
+  /puedeOperarCajaTpv \? panelTpv\("caja",[\s\S]*\) : null/,
+  "el panel interno de Caja solo se monta para perfiles autorizados"
 );
 
 console.log("ETAPA7_ROLE_MATRIX_CAJA_CONTRACT_PASS");
