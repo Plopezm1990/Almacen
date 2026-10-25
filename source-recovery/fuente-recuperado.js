@@ -997,6 +997,76 @@ function normalizarDevolucionPM08(fila, tipo) {
     _pm08Servidor: !!(fila.operation_id || fila.actor_user_id)
   };
 }
+async function leerEstadoCajaServerPM08({ supabase, empresaId = null, localActivoId = null }) {
+  if (!supabase || !empresaId || !localActivoId) return null;
+  const { data: sesiones, error: sesionesError } = await supabase.from("caja_sesiones").select("id,estado,caja_id,created_at,abierta_at,cerrada_at").eq("empresa_id", empresaId).eq("local_id", localActivoId).order("created_at", { ascending: false }).limit(1);
+  if (sesionesError) throw sesionesError;
+  const sesion = Array.isArray(sesiones) ? sesiones[0] : null;
+  if (!sesion) return null;
+  const { data: cierres, error: cierresError } = await supabase.from("caja_cierres").select("id,session_id,estado,expected_snapshot,started_at,completed_at,created_at").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("session_id", sesion.id).order("created_at", { ascending: false }).limit(1);
+  if (cierresError) throw cierresError;
+  const cierre = Array.isArray(cierres) ? cierres[0] : null;
+  const snapshot = cierre?.expected_snapshot && typeof cierre.expected_snapshot === "object" ? cierre.expected_snapshot : {};
+  const desdeSnapshot = (clave, alternativo = null) => {
+    const valor = snapshot[clave] ?? snapshot[alternativo];
+    return valor === null || valor === undefined || valor === "" ? null : Number(valor);
+  };
+  let operatingDay = typeof snapshot.operating_day === "string" ? snapshot.operating_day : null;
+  let preview = null;
+  if (["ABIERTA", "EN_CIERRE", "CIERRE_PROVISIONAL"].includes(sesion.estado)) {
+    const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localActivoId });
+    if (diaError) throw diaError;
+    operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+    const { data: vinculos, error: vinculosError } = await supabase.from("caja_sesion_terminales").select("terminal_id").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("session_id", sesion.id).is("hasta", null).order("desde", { ascending: false }).limit(1);
+    if (vinculosError) throw vinculosError;
+    const terminalId = Array.isArray(vinculos) ? vinculos[0]?.terminal_id : null;
+    if (terminalId) {
+      const resultado = await supabase.rpc("abc_previsualizar_arqueo_caja", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_session_id: sesion.id,
+        p_terminal_id: terminalId,
+        p_currency_code: "EUR"
+      });
+      if (!resultado.error && resultado.data?.ok !== false) preview = resultado.data || null;
+    }
+  }
+  let datos = preview || (cierre && ["PROVISIONAL", "FINAL"].includes(cierre.estado) ? {
+    expected_amount: desdeSnapshot("expected_amount"),
+    counted_amount: desdeSnapshot("counted_amount"),
+    difference: desdeSnapshot("difference"),
+    currency_code: snapshot.currency_code || "EUR",
+    fondo_inicial: desdeSnapshot("fondo_inicial"),
+    entradas_efectivo: desdeSnapshot("entradas_efectivo"),
+    salidas_efectivo: desdeSnapshot("salidas_efectivo"),
+    movimientos: desdeSnapshot("movimientos")
+  } : null);
+  if (!preview && cierre && ["PROVISIONAL", "FINAL"].includes(cierre.estado)) {
+    const { data: operaciones, error: operacionesError } = await supabase.from("caja_operaciones").select("efecto_efectivo,categoria,currency_code").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("session_id", sesion.id).order("occurred_at", { ascending: true });
+    if (operacionesError) throw operacionesError;
+    const filas = Array.isArray(operaciones) ? operaciones : [];
+    const fondoInicial = filas.reduce((total, fila) => total + (fila.categoria === "FONDO_INICIAL" ? Number(fila.efecto_efectivo) || 0 : 0), 0);
+    const entradasEfectivo = filas.reduce((total, fila) => total + (fila.categoria !== "FONDO_INICIAL" && Number(fila.efecto_efectivo) > 0 ? Number(fila.efecto_efectivo) : 0), 0);
+    const salidasEfectivo = filas.reduce((total, fila) => total + (fila.categoria !== "FONDO_INICIAL" && Number(fila.efecto_efectivo) < 0 ? -(Number(fila.efecto_efectivo) || 0) : 0), 0);
+    datos = { ...datos, fondo_inicial: fondoInicial, entradas_efectivo: entradasEfectivo, salidas_efectivo: salidasEfectivo, movimientos: filas.length };
+  }
+  if (!datos || !Number.isFinite(Number(datos.expected_amount))) return null;
+  return {
+    fuente: "SERVER",
+    sessionId: sesion.id,
+    sessionEstado: sesion.estado,
+    cierreEstado: cierre?.estado || null,
+    operatingDay,
+    currencyCode: datos.currency_code || "EUR",
+    expectedAmount: Number(datos.expected_amount),
+    countedAmount: Number.isFinite(Number(datos.counted_amount)) ? Number(datos.counted_amount) : null,
+    difference: Number.isFinite(Number(datos.difference)) ? Number(datos.difference) : null,
+    fondoInicial: Number.isFinite(Number(datos.fondo_inicial)) ? Number(datos.fondo_inicial) : null,
+    entradasEfectivo: Number.isFinite(Number(datos.entradas_efectivo)) ? Number(datos.entradas_efectivo) : null,
+    salidasEfectivo: Number.isFinite(Number(datos.salidas_efectivo)) ? Number(datos.salidas_efectivo) : null,
+    movimientos: Number.isFinite(Number(datos.movimientos)) ? Number(datos.movimientos) : null
+  };
+}
 async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
   if (!modoSincronizadoPM08() || !window.__nubeActiva || !window.__nubeCliente) return { ok: false, offline: true };
   const supabase = window.__nubeCliente;
@@ -1019,10 +1089,16 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   const arqueos = (rArqueos.data || []).map(normalizarArqueoPM08).filter(Boolean);
   const clientes = (rCliente.data || []).map((fila) => normalizarDevolucionPM08(fila, "cliente")).filter(Boolean);
   const proveedores = (rProveedor.data || []).map((fila) => normalizarDevolucionPM08(fila, "proveedor")).filter(Boolean);
+  let estadoCajaServer = null;
+  try {
+    estadoCajaServer = await leerEstadoCajaServerPM08({ supabase, empresaId, localActivoId });
+  } catch {
+    estadoCajaServer = null;
+  }
   if (typeof setMovimientosCaja === "function") setMovimientosCaja(caja);
   if (typeof setArqueos === "function") setArqueos(arqueos);
   if (typeof setDevoluciones === "function") setDevoluciones([...clientes, ...proveedores].sort((a22, b2) => String(b2.createdAt || b2.fecha).localeCompare(String(a22.createdAt || a22.fecha))));
-  return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
+  return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length, estadoCajaServer };
 }
 async function sincronizarContextoPm07(args) {
   const { setProductos, esContextoVigente = () => true } = args || {};
@@ -3741,6 +3817,7 @@ function GestionAlmacen() {
   const [encargos, setEncargos] = (0, import_react4.useState)([]);
   const [arqueos, setArqueos] = (0, import_react4.useState)([]);
   const [movimientosCaja, setMovimientosCaja] = (0, import_react4.useState)([]);
+  const [estadoCajaServerPM08, setEstadoCajaServerPM08] = (0, import_react4.useState)(null);
   const [devoluciones, setDevoluciones] = (0, import_react4.useState)([]);
   const [locales, setLocales] = (0, import_react4.useState)([]);
   const [configEmpresa, setConfigEmpresa] = (0, import_react4.useState)({
@@ -3802,7 +3879,8 @@ function GestionAlmacen() {
         if (!esContextoVigente()) return;
         await sincronizarConteosPm12({ setConteos, empresaId: empresaContexto, localActivoId, esContextoVigente });
         if (!esContextoVigente()) return;
-        await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones, empresaId: empresaContexto, localActivoId, esContextoVigente });
+        const cajaSincronizada = await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones, empresaId: empresaContexto, localActivoId, esContextoVigente });
+        if (esContextoVigente()) setEstadoCajaServerPM08(cajaSincronizada?.estadoCajaServer || null);
       } catch (e2) {
         if (sincronizarContextoCompleto) contextoPm07InicializadoRef.current = false;
         if (activo) console.error("PM-08: no se pudo sincronizar contexto, stock o caja autoritativos", e2);
@@ -5733,7 +5811,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, estadoCajaServer: estadoCajaServerPM08 }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -22662,7 +22740,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, estadoCajaServer = null }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -22700,7 +22778,9 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   // Los REVERSO se muestran/aplican aparte, igual que hará el servidor PM09.
   const efectivoBase = redondearDineroPM08((resumenVentasCaja.ventas.Efectivo || 0) + efectivoOtros);
   const ajustesVentaEfectivo = redondearDineroPM08(resumenVentasCaja.reversos.Efectivo || 0);
-  const efectivoEsperado = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
+  const efectivoEsperadoLocal = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
+  const servidorVigente = estadoCajaServer?.fuente === "SERVER" && estadoCajaServer.operatingDay === fecha && Number.isFinite(Number(estadoCajaServer.expectedAmount));
+  const efectivoEsperado = servidorVigente ? redondearDineroPM08(Number(estadoCajaServer.expectedAmount)) : efectivoEsperadoLocal;
   const denominacionesInvalidas = Object.values(denominaciones).some((cantidad) => cantidad !== "" && (!Number.isInteger(Number(cantidad)) || Number(cantidad) < 0));
   const denominacionesLimpias = Object.fromEntries(Object.entries(denominaciones).filter(([_22, cantidad]) => Number(cantidad) > 0).map(([valor, cantidad]) => [valor, Number(cantidad)]));
   const hayDesglose = Object.keys(denominacionesLimpias).length > 0;
@@ -22817,6 +22897,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     "div",
     null,
     h3(SectionTitle, null, "Arqueo de caja"),
+    servidorVigente && h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "Fuente autoritativa: caja server-side · sesión " + (estadoCajaServer.sessionEstado || "activa") + " · día operativo " + fecha + ". El efectivo esperado de esta pantalla procede del servidor.")),
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
       Card,
@@ -22829,6 +22910,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
       ),
       h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · anulaciones venta €${fmt(ajustesVentaEfectivo)} · ajustes/reembolsos caja €${fmt(netoCaja)}`),
+      servidorVigente && h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Desglose server-side: fondo €" + fmt(estadoCajaServer.fondoInicial || 0) + " · entradas €" + fmt(estadoCajaServer.entradasEfectivo || 0) + " · salidas €" + fmt(estadoCajaServer.salidasEfectivo || 0) + (estadoCajaServer.movimientos === null ? "" : " · " + estadoCajaServer.movimientos + " movimiento(s)")),
       h3(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado: !!yaArqueado }),
       yaArqueado ? h3(
         "div",
