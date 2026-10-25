@@ -1,0 +1,116 @@
+# Plan Maestro L&A Suite — Etapa 7.1 — auditoría QA no física
+
+Fecha: 25/10/2026  
+Entorno objetivo: QA `qjqorixtkilwsndqayyx` y Deploy Preview del PR #175  
+HEAD local auditado: `53269e7` (`docs(plan): confirm etapa 7 QA on current preview`)  
+Estado: `7.1_CONTRATOS_COMPLETADOS; ACEPTACION_VIVA_PENDIENTE; ETAPA_7_ABIERTA`
+
+## 1. Alcance ejecutado
+
+Esta acta continúa el preflight de la Etapa 7.1 definido en
+`ETAPA7_PREFLIGHT_QA_2026-10-25.md`. Se ejecutó la parte segura y no física de
+la campaña:
+
+- permisos y aislamiento por empresa/local;
+- arranque y barrera de Plataforma;
+- copias locales aisladas por cuenta y cuota/historial;
+- contexto de escritura y pantallas con roles fijos;
+- frontera de contingencia offline;
+- aislamiento del registro de errores;
+- validaciones de sintaxis y estado del worktree.
+
+No se crearon cuentas, ventas, cobros, fixtures, migraciones ni cambios de
+permisos durante esta campaña. No se tocaron datos de producción.
+
+## 2. Resultado de contratos
+
+### 2.1 Contratos estáticos y de aislamiento
+
+Los siguientes 13 contratos terminaron con resultado satisfactorio:
+
+| Bloque | Resultado |
+|---|---:|
+| Plataforma P02 — creación de propietario | PASS |
+| Plataforma P04 — panel | PASS |
+| G1 P05 — permisos y aislamiento | PASS, 12 comprobaciones |
+| PM10 P13 — contexto y aislamiento | PASS |
+| PM11 P07 — aislamiento de compra | PASS |
+| PM12 P07 — permisos y aislamiento de ajustes | PASS |
+| PM13 P08 — cargos y permisos de UI | PASS |
+| PM13 P13 — aislamiento de cargos | PASS de contrato; conserva una nota de pendiente para permisos distintos por empresa |
+| PM13 P21 — pantallas configurables para roles fijos | PASS |
+| PM14 P06 — clientes y anonimización por empresa | PASS |
+| F4 B11 — frontera offline | PASS |
+| PM20 P06 — errores del sistema aislados por empresa | PASS |
+| PM19 P05 — contexto único de escritura | PASS |
+
+La nota de PM13 P13 no se oculta: el contrato confirma el aislamiento y deja
+fuera de este bloque los puntos que requieren validar permisos diferentes por
+empresa. No se presenta como una certificación de la matriz viva completa.
+
+### 2.2 Runtimes de Plataforma
+
+Los cinco runtimes se repitieron declarando la carpeta local de dependencias
+UI (`react@18.3.1`, `react-dom@18.3.1` y `jsdom`). Resultado: **5/5 PASS**.
+
+- P05 panel de Plataforma: `95/95`;
+- P06 arranque de Plataforma: `44/44`;
+- P07 empresas sin alta: `8/8`;
+- P08 copia local por cuenta: `28/28`;
+- P08c historial y cuota: PASS.
+
+La ejecución inicial sin `CFG6_UI_DEPS` no se contabiliza como fallo de
+producto: se detuvo por dependencia de entorno y se repitió correctamente
+con la carpeta disponible.
+
+## 3. Comprobación del preview abierto
+
+El preview inspeccionado respondió correctamente y el deploy de Netlify estaba
+en estado `ready`, pero su registro identifica:
+
+- deploy: `6ade1e88f2cddc8fd71f0124`;
+- PR: `#175`;
+- commit servido: `c436d4ad8b81b06fac56be37ee1d3e2289bdd8e2`;
+- HEAD local auditado: `53269e7`.
+
+Por tanto, el preview abierto no es una prueba del HEAD actual. La pantalla de
+errores mostró únicamente entradas históricas de `leerConfigPuenteLA` y
+conflictos de sincronización, con última entrada visible el 25/10 a las
+12:31:57; no se observó una entrada nueva durante la navegación no destructiva.
+El histórico se conserva y no se borra.
+
+La comprobación viva confirmó además que la aplicación carga como Propietario
+en `QA Empresa A, S.L.`, `Local A1`, y que el selector permanece dentro de
+los locales de esa empresa. Esta observación queda limitada por el desfase del
+commit servido y no se usa para aceptar el HEAD `53269e7`.
+
+## 4. Qué queda fuera de esta acta
+
+La campaña 7.1 no queda cerrada como aceptación viva completa porque todavía
+no existe evidencia reproducible sobre el preview del HEAD actual para:
+
+1. cuentas QA reales de Propietario, Encargado, Cajero/a y Camarero/a;
+2. consultas y mutaciones controladas A/B y A1/A2 con esas cuentas;
+3. tiempos medidos de arranque, cambio de local, carga del TPV y recuperación;
+4. recarga y pérdida de red observables sobre el preview actualizado;
+5. comparación del mismo pedido TPV viejo/nuevo y conteo de toques;
+6. impresora de tickets y cajón físicos;
+7. entrega push real de AUD-010.
+
+Los contratos PASS demuestran invariantes del código y de las piezas aisladas,
+pero no sustituyen la campaña viva ni la prueba física exigida por T9.
+
+## 5. Decisión
+
+**Etapa 7.1 — bloque automatizado/no físico: ejecutado y documentado.**  
+**Etapa 7 completa: permanece ABIERTA.**  
+**T9: no se declara PASS.**  
+**No se autoriza fusión a `release` ni promoción a producción desde esta acta.**
+
+## 6. Siguiente paso
+
+Actualizar o regenerar el Deploy Preview del PR #175 desde el HEAD actual
+`53269e7` y repetir sobre ese deploy la matriz viva de cuentas, aislamiento y
+métricas. Después se abrirá la campaña 7.2/T9 únicamente cuando estén
+disponibles una impresora y un cajón reales. La aceptación final de la Etapa 7
+requiere ambas campañas y una decisión explícita sobre AUD-010.
