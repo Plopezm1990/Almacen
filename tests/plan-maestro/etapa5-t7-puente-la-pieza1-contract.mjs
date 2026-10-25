@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
-import { fileURLToPath } from "node:url";
+import { fileURLToPath, pathToFileURL } from "node:url";
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "../..");
 const puenteDir = path.join(root, "puente-la");
@@ -15,10 +15,10 @@ const puenteDir = path.join(root, "puente-la");
 // como el resto de piezas "modo simulador" de esta sesión.
 
 const { construirBytesTicket, construirBytesAbrirCajon } = await import(
-  path.join(puenteDir, "formato-ticket.js")
+  pathToFileURL(path.join(puenteDir, "formato-ticket.js")).href
 );
-const { crearServidor } = await import(path.join(puenteDir, "servidor.js"));
-const { cargarConfig } = await import(path.join(puenteDir, "config.js"));
+const { crearServidor } = await import(pathToFileURL(path.join(puenteDir, "servidor.js")).href);
+const { cargarConfig } = await import(pathToFileURL(path.join(puenteDir, "config.js")).href);
 
 // --- formato-ticket.js: construcción de bytes ESC/POS (pura, determinista) ---
 {
