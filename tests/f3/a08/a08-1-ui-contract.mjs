@@ -123,7 +123,13 @@ for (const required of [
 
 // La selección del destino usa etiquetas humanas; nunca solicita un UUID al operador.
 const labelIni = src.indexOf("function etiquetaCuentaDestinoA08(");
-const labelFin = src.indexOf("\n\n  const vendibles", labelIni);
+// El bloque de descuentos puede quedar entre esta etiqueta y el listado de
+// productos. El contrato debe delimitar la función por la siguiente
+// declaración de nivel de componente, no por una posición accidental.
+const nextAsync = src.indexOf("\n  async function ", labelIni + 1);
+const nextConst = src.indexOf("\n  const ", labelIni + 1);
+const labelFinCandidates = [nextAsync, nextConst].filter((index) => index > labelIni);
+const labelFin = labelFinCandidates.length ? Math.min(...labelFinCandidates) : -1;
 assert.ok(labelIni >= 0 && labelFin > labelIni, "A08.1 etiqueta destino no localizable");
 const labelBlock = src.slice(labelIni, labelFin);
 assert.ok(labelBlock.includes("ubicacion.mesa_nombre"));

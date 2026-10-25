@@ -288,3 +288,40 @@ Estado de salida de este bloqueo: **RESUELTO EN PREVIEW QA PARA EL CASO DE
 REGRESIÓN A1↔A2**. La aceptación global de la Etapa 7 sigue abierta porque
 faltan todavía el resto de la matriz viva, la prueba TPV completa, offline,
 roles y el hardware físico de T9.
+
+## 12. Comprobación TPV, contratos relacionados y bloqueo de CI
+
+En la sesión QA del preview se abrió el TPV en `Local A1` con la tarifa
+General. La interfaz mostró el catálogo de 18 productos, ticket vacío,
+categorías, búsqueda, vale regalo, simulador de cajón, historial y las vistas
+de Venta, Sala, Reparto, Operativa, Descuento, Cobro y Caja. Se añadió un
+producto al ticket y se vació inmediatamente mediante `Vaciar carrito` para
+comprobar la respuesta visual. La acción quedó en borrador local y no se
+guardó ninguna venta, cobro, caja, cajón ni operación de negocio.
+
+La batería de contratos ejecutada el 25-10-2026 terminó completa con PASS:
+
+- `f4/b11`: límites del modo offline.
+- `f5`: UI T1-T4 y notas TPV/alérgenos.
+- `f3/a07`: integración real de planta y reasignación de mesa/cuenta.
+- `f3/a08`: reparto de líneas, bloqueo de cobro incierto, bloqueo optimista y
+  prohibición de UUID manual.
+- `f3/a10`: recuperación de comandas bloqueadas y UI de cocina/estaciones.
+- `pm07`: cantidades rápidas del TPV sin botones anidados.
+- `plan-maestro`: TPV/movimientos de caja y cobro/caja de Documento 2.
+- `pm13/p21`: pantallas por roles fijos.
+- `pm09/p10`: conciliación de caja, ventas, reversos y devoluciones.
+
+Durante esta ejecución apareció un fallo de CI en el contrato A08.1. La
+implementación era correcta, pero el test buscaba `vendibles` en una posición
+fija que dejó de ser válida al existir funciones de descuentos entre la
+etiqueta de destino y el listado de productos. Se corrigió únicamente el
+delimitador del contrato para localizar la siguiente declaración válida,
+conservando las aserciones de seguridad. Tras la corrección, A08.1 y toda la
+batería anterior pasaron.
+
+Este resultado cierra el bloqueo de CI de esta matriz y confirma la carga y
+respuesta básica del TPV en QA. No constituye todavía la aceptación completa
+de Etapa 7: quedan pendientes la matriz viva por roles, la recuperación offline
+real, la prueba completa de cobro/caja sin datos de negocio y la validación
+física de impresora, cajón y periféricos T9.
