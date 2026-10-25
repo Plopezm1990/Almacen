@@ -1,0 +1,7 @@
+{
+  "puerto": 9123,
+  "token": "CAMBIA_ESTE_TEXTO_POR_UNO_PROPIO_Y_LARGO",
+  "modo": "red",
+  "red": { "ip": "192.168.1.50", "puerto": 9100 },
+  "windows": { "nombreImpresora": "ImpresoraBarra" }
+}
