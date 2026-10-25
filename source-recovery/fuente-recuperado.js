@@ -4593,7 +4593,7 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("facturasDirectas", facturasDirectas);
   }, [facturasDirectas, ready]);
   (0, import_react4.useEffect)(() => {
-    if (ready) saveKey("pagosFacturas", pagosFacturas);
+    if (ready && !skipSaveRef.current) saveKey("pagosFacturas", pagosFacturas);
   }, [pagosFacturas, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("entrevistas", entrevistas);
@@ -11339,6 +11339,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const tuvoCheckout = Array.isArray(estadoPrevio.checkouts) && estadoPrevio.checkouts.length>0;
       if (tuvoCheckout && Number(estadoPrevio.saldo) <= 0 && !estadoPrevio.cobroIncierto) return estadoPrevio;
       let pendiente = leerPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
+      const pendienteExistente = Boolean(pendiente);
       if (!pendiente && estadoPrevio.cobroIncierto) throw new Error("pago_estado_incierto_existente");
       if (pendiente && pendiente.medio !== medio) throw new Error("pago_estado_incierto_existente");
       if (pendiente && opciones?.importeObjetivo != null
@@ -11360,7 +11361,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         };
         guardarPendienteCobroF4(pendiente);
       }
-      const preparado = await rpcA02ConRecuperacion(supabase, "abc_preparar_checkout_cuenta", {
+      const checkoutYaConocido = pendienteExistente
+        && Array.isArray(estadoPrevio.checkouts)
+        && estadoPrevio.checkouts.some((checkout) => String(checkout.id) === String(pendiente.checkoutId));
+      const preparado = checkoutYaConocido ? null : await rpcA02ConRecuperacion(supabase, "abc_preparar_checkout_cuenta", {
         p_operation_id: pendiente.prepareOperationId,
         p_empresa_id: empresaId, p_local_id: localActivoId,
         p_checkout_id: pendiente.checkoutId, p_cuenta_id: recuperada.cuentaId,
