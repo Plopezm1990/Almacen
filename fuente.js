@@ -112741,6 +112741,65 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  // T7 (continuación, pieza 2): Puente L&A opcional, en este mismo ordenador.
+  // La configuración (habilitado/url/token) se guarda solo en este navegador
+  // -- no es un ajuste de negocio ni se sube al servidor. El registro en
+  // abc_eventos de arriba se hace siempre igual, con o sin puente activado;
+  // esto solo añade, además, el intento real de imprimir/abrir el cajón a
+  // través de él. Si el puente no responde, se avisa sin deshacer el
+  // registro ya guardado.
+  function leerConfigPuenteLA() {
+    try {
+      const guardado = JSON.parse(localStorage.getItem("almacen__puenteLA") || "null");
+      return {
+        habilitado: !!guardado?.habilitado,
+        url: typeof guardado?.url === "string" && guardado.url ? guardado.url : "http://127.0.0.1:9123",
+        token: typeof guardado?.token === "string" ? guardado.token : ""
+      };
+    } catch (e2) {
+      return { habilitado: false, url: "http://127.0.0.1:9123", token: "" };
+    }
+  }
+  function guardarConfigPuenteLA(config) {
+    try {
+      localStorage.setItem("almacen__puenteLA", JSON.stringify(config));
+    } catch (e2) {}
+  }
+  async function llamarPuenteLA(ruta, cuerpo, config) {
+    if (!config?.habilitado) return { ok: false, error: "Puente L&A no está activado en este ordenador." };
+    const controlador = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const temporizador = controlador ? setTimeout(() => controlador.abort(), 4000) : null;
+    try {
+      const respuesta = await fetch(String(config.url || "").replace(/\/$/, "") + ruta, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Puente-Token": config.token || "" },
+        body: JSON.stringify(cuerpo || {}),
+        signal: controlador?.signal
+      });
+      const cuerpoRespuesta = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok) return { ok: false, error: cuerpoRespuesta?.error || "El Puente L&A respondió con error " + respuesta.status };
+      return { ok: true };
+    } catch (error) {
+      return { ok: false, error: "No se pudo conectar con el Puente L&A (" + (error?.message || "sin conexión") + "). Comprueba que esté encendido en este ordenador." };
+    } finally {
+      if (temporizador) clearTimeout(temporizador);
+    }
+  }
+  async function comprobarConexionPuenteLA(config) {
+    const controlador = typeof AbortController !== "undefined" ? new AbortController() : null;
+    const temporizador = controlador ? setTimeout(() => controlador.abort(), 4000) : null;
+    try {
+      const respuesta = await fetch(String(config.url || "").replace(/\/$/, "") + "/estado", { signal: controlador?.signal });
+      const cuerpo = await respuesta.json().catch(() => ({}));
+      if (!respuesta.ok) return { ok: false, error: "El Puente L&A respondió con error " + respuesta.status };
+      return { ok: true, modo: cuerpo?.modo, aviso: cuerpo?.aviso };
+    } catch (error) {
+      return { ok: false, error: "No se pudo conectar con el Puente L&A (" + (error?.message || "sin conexión") + ")." };
+    } finally {
+      if (temporizador) clearTimeout(temporizador);
+    }
+  }
+
   // Modalidad de la cuenta al abrirla (pieza 6e): la que se elige y, si no se elige, Barra si está habilitada en el local y, si no,
   // la primera habilitada. Si no se puede leer la lista, Barra (como antes) y decide el servidor.
   async function leerModalidadesHabilitadasA02(supabase, empresaId, localId) {
@@ -124991,6 +125050,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [equipoCajonElegidoT7F4, setEquipoCajonElegidoT7F4] = (0, import_react4.useState)("");
   const [motivoCajonT7F4, setMotivoCajonT7F4] = (0, import_react4.useState)("");
   const [procesandoCajonT7F4, setProcesandoCajonT7F4] = (0, import_react4.useState)(false);
+  const [puenteLAConfig, setPuenteLAConfig] = (0, import_react4.useState)(() => leerConfigPuenteLA());
+  const [comprobandoPuenteLA, setComprobandoPuenteLA] = (0, import_react4.useState)(false);
+  const [estadoPuenteLA, setEstadoPuenteLA] = (0, import_react4.useState)("");
   const [mensajeCajonT7F4, setMensajeCajonT7F4] = (0, import_react4.useState)("");
   const [errorCajonT7F4, setErrorCajonT7F4] = (0, import_react4.useState)("");
   const billetesRapidosF4 = [5, 10, 20, 50, 100];
@@ -126475,12 +126537,24 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setErrorCobroF4("");
     setMensajeCobroF4("");
     const resultado = await imprimirTicketSimuladoF4({ equipoId: equipoImpresoraElegidoT7F4, checkoutId });
-    setProcesandoImpresionT7F4(false);
     if (!resultado?.ok) {
+      setProcesandoImpresionT7F4(false);
       setErrorCobroF4(resultado?.error || "No se pudo simular la impresión del ticket.");
       return;
     }
-    setMensajeCobroF4(resultado.mensaje || "Impresión simulada registrada.");
+    let mensajeFinal = resultado.mensaje || "Impresión simulada registrada.";
+    if (puenteLAConfig.habilitado) {
+      const lineasTicket = (pedidoOperativoA05?.lineas || []).map((l22) => {
+        const producto = productos.find((p22) => p22.id === l22.productoId);
+        return (l22.cantidad || 1) + " x " + (producto?.nombre || "Producto") + "    " + Number(l22.total || 0).toFixed(2) + "€";
+      });
+      const resultadoPuente = await llamarPuenteLA("/imprimir", { lineas: lineasTicket, cortar: true }, puenteLAConfig);
+      mensajeFinal += resultadoPuente.ok
+        ? " Enviado también al Puente L&A."
+        : " Aviso: el Puente L&A no respondió (" + resultadoPuente.error + ").";
+    }
+    setProcesandoImpresionT7F4(false);
+    setMensajeCobroF4(mensajeFinal);
   }
   async function abrirCajonSimuladoT7F4UI() {
     if (procesandoCajonT7F4 || typeof abrirCajonSimuladoF4 !== "function") return;
@@ -126489,13 +126563,38 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     setMensajeCajonT7F4("");
     const checkoutId = Array.isArray(estadoCobroF4?.checkouts) ? estadoCobroF4.checkouts[0]?.id : null;
     const resultado = await abrirCajonSimuladoF4({ equipoId: equipoCajonElegidoT7F4, motivo: motivoCajonT7F4, checkoutId });
-    setProcesandoCajonT7F4(false);
     if (!resultado?.ok) {
+      setProcesandoCajonT7F4(false);
       setErrorCajonT7F4(resultado?.error || "No se pudo simular la apertura del cajón.");
       return;
     }
-    setMensajeCajonT7F4(resultado.mensaje || "Apertura de cajón simulada registrada.");
+    let mensajeFinal = resultado.mensaje || "Apertura de cajón simulada registrada.";
+    if (puenteLAConfig.habilitado) {
+      const resultadoPuente = await llamarPuenteLA("/abrir-cajon", {}, puenteLAConfig);
+      mensajeFinal += resultadoPuente.ok
+        ? " Enviado también al Puente L&A."
+        : " Aviso: el Puente L&A no respondió (" + resultadoPuente.error + ").";
+    }
+    setProcesandoCajonT7F4(false);
+    setMensajeCajonT7F4(mensajeFinal);
     setMotivoCajonT7F4("");
+  }
+  function actualizarConfigPuenteLA(cambios) {
+    const nuevo = { ...puenteLAConfig, ...cambios };
+    setPuenteLAConfig(nuevo);
+    guardarConfigPuenteLA(nuevo);
+  }
+  async function probarConexionPuenteLAUI() {
+    if (comprobandoPuenteLA) return;
+    setComprobandoPuenteLA(true);
+    setEstadoPuenteLA("");
+    const resultado = await comprobarConexionPuenteLA(puenteLAConfig);
+    setComprobandoPuenteLA(false);
+    setEstadoPuenteLA(
+      resultado.ok
+        ? "Conectado (modo: " + resultado.modo + "). " + (resultado.aviso || "")
+        : resultado.error || "No se pudo comprobar la conexión."
+    );
   }
   function cambiarFormularioIncidenciaB04(campo, valor) {
     setFormularioIncidenciaB04((actual) => ({ ...actual, [campo]: valor }));
@@ -126687,10 +126786,10 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       ) : null,
       tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Imprimir ticket"),
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T7 Hoja QA-9 · modo simulador: no hay conexión real con el aparato todavía."),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, puenteLAConfig.habilitado ? "T7 · Puente L&A activado: intenta imprimir de verdad en este ordenador, sin verificar todavía contra una impresora real." : "T7 Hoja QA-9 · modo simulador: no hay conexión real con el aparato todavía."),
         equiposImpresoraT7F4.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "No hay ninguna impresora de tickets registrada en Equipos del local.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mb-2" },
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Impresora" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: equipoImpresoraElegidoT7F4, onChange: (e2) => setEquipoImpresoraElegidoT7F4(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Elige una impresora…"), equiposImpresoraT7F4.map((eq) => /* @__PURE__ */ import_react4.default.createElement("option", { key: eq.id, value: eq.id }, eq.nombre)))),
-          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: imprimirTicketSimuladoT7F4UI, disabled: procesandoImpresionT7F4 || !equipoImpresoraElegidoT7F4 }, procesandoImpresionT7F4 ? "Imprimiendo…" : "Imprimir ticket (simulado)")
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: imprimirTicketSimuladoT7F4UI, disabled: procesandoImpresionT7F4 || !equipoImpresoraElegidoT7F4 }, procesandoImpresionT7F4 ? "Imprimiendo…" : puenteLAConfig.habilitado ? "Imprimir ticket" : "Imprimir ticket (simulado)")
         )
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
@@ -126888,16 +126987,34 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       valeRegaloCreadoF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, "Vale creado: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, valeRegaloCreadoF4.codigo), ` por €${Number(valeRegaloCreadoF4.importe).toFixed(2)}. Apúntalo para el cliente.`) : null
     );
   }
+  function renderPuenteLAT7F4() {
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Puente L&A (opcional, en este ordenador)"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T7 (continuación, pieza 2): si tienes el programa Puente L&A encendido en este mismo ordenador, actívalo aquí para que \"Imprimir ticket\" y \"Abrir cajón\" intenten también la impresión/apertura real, además del registro de siempre. Todavía sin verificar con una impresora real."),
+      /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 mb-2 text-[12px]" },
+        /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: puenteLAConfig.habilitado, onChange: (e2) => actualizarConfigPuenteLA({ habilitado: e2.target.checked }) }),
+        "Usar el Puente L&A en este ordenador"
+      ),
+      puenteLAConfig.habilitado ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Dirección del puente" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: puenteLAConfig.url, onChange: (e2) => actualizarConfigPuenteLA({ url: e2.target.value }), placeholder: "http://127.0.0.1:9123" })),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Token" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "password", value: puenteLAConfig.token, onChange: (e2) => actualizarConfigPuenteLA({ token: e2.target.value }), placeholder: "el token de config.json del puente" }))
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: probarConexionPuenteLAUI, disabled: comprobandoPuenteLA }, comprobandoPuenteLA ? "Comprobando…" : "Probar conexión"),
+        estadoPuenteLA ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg mt-2", style: { background: C2.surface, color: C2.inkSoft, border: `1px solid ${C2.line}` } }, estadoPuenteLA) : null
+      ) : null
+    );
+  }
   function renderCajonT7F4() {
     return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cajón monedero"),
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T7 Hoja QA-9 · modo simulador: no hay conexión real con el aparato todavía. Si abres el cajón sin una venta asociada, escribe el motivo (igual que las entradas/salidas de caja)."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, (puenteLAConfig.habilitado ? "T7 · Puente L&A activado: intenta abrir el cajón de verdad en este ordenador, sin verificar todavía contra un cajón real." : "T7 Hoja QA-9 · modo simulador: no hay conexión real con el aparato todavía.") + " Si abres el cajón sin una venta asociada, escribe el motivo (igual que las entradas/salidas de caja)."),
       equiposCajonT7F4.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "No hay ningún cajón monedero registrado en Equipos del local.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cajón" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: equipoCajonElegidoT7F4, onChange: (e2) => setEquipoCajonElegidoT7F4(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Elige un cajón…"), equiposCajonT7F4.map((eq) => /* @__PURE__ */ import_react4.default.createElement("option", { key: eq.id, value: eq.id }, eq.nombre)))),
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (si no hay venta)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoCajonT7F4, onChange: (e2) => setMotivoCajonT7F4(e2.target.value), placeholder: "Poner cambio, por ejemplo" }))
         ),
-        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirCajonSimuladoT7F4UI, disabled: procesandoCajonT7F4 || !equipoCajonElegidoT7F4 }, procesandoCajonT7F4 ? "Abriendo…" : "Abrir cajón (simulado)"),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirCajonSimuladoT7F4UI, disabled: procesandoCajonT7F4 || !equipoCajonElegidoT7F4 }, procesandoCajonT7F4 ? "Abriendo…" : puenteLAConfig.habilitado ? "Abrir cajón" : "Abrir cajón (simulado)"),
         errorCajonT7F4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mt-2", style: { background: "#FCE8E6", color: C2.red } }, errorCajonT7F4) : null,
         mensajeCajonT7F4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg mt-2", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCajonT7F4) : null
       )
@@ -127271,6 +127388,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   ) : null,
   renderMovimientosCajaTpv(),
   renderValeRegaloF4(),
+  renderPuenteLAT7F4(),
   renderCajonT7F4(),
   renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-layout" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-product-zone" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",

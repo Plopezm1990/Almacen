@@ -34,7 +34,7 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
   assert.match(contenido, /"Vender vale regalo"/, `${nombre}: falta el botón de venta`);
   assert.match(
     contenido,
-    /renderValeRegaloF4\(\),\s*\n\s*renderCajonT7F4\(\),\s*\n\s*renderSalaA07\(\)/,
+    /renderValeRegaloF4\(\),\s*\n\s*renderPuenteLAT7F4\(\),\s*\n\s*renderCajonT7F4\(\),\s*\n\s*renderSalaA07\(\)/,
     `${nombre}: renderValeRegaloF4 debe llamarse en el nivel superior del render, no dentro de Cobro·F4 (debe estar visible sin cuenta abierta)`
   );
 
