@@ -261,3 +261,30 @@ Validaciones ejecutadas después del cambio:
 El cambio todavía no se considera aceptado en vivo: debe publicarse en un
 preview QA actualizado y repetirse A1→A2→A1 con una sesión limpia, verificando
 que no aumenta la cola de `movimientos` y que no aparece el aviso de pendiente.
+
+## 11. Repetición viva tras publicar la corrección
+
+El commit `de4ac98` se publicó por avance directo en
+`codex/etapa5-recuperacion-qa`, que alimenta el PR 175. Sobre el preview QA
+actualizado se abrió una sesión nueva con la cuenta visible de Propietario y
+se ejecutó la secuencia no destructiva `A1 → A2 → A1`.
+
+Resultado observado:
+
+- A1 cargó con `Arranque: datos que no se pudieron cargar 0`.
+- La cola inicial mostraba únicamente `1` copia de `historialRespaldos`
+  conservada solo en este equipo por la política de QA.
+- A1 → A2 mostró correctamente el resumen de A2 y la cola siguió en `1`.
+- A2 → A1 recuperó correctamente el resumen de A1 y la cola siguió en `1`.
+- No apareció el aviso `Un cambio no se ha podido guardar (movimientos)`.
+- No apareció botón `Reintentar` asociado a `movimientos`.
+- No se realizó ninguna venta, alta, ajuste, borrado ni reintento manual.
+
+La comprobación de logs de QA mantiene las lecturas históricas de
+`movimientos_registro` con respuesta HTTP `200` y no muestra escrituras
+fallidas. La sesión actual tampoco generó un nuevo pendiente de movimientos.
+
+Estado de salida de este bloqueo: **RESUELTO EN PREVIEW QA PARA EL CASO DE
+REGRESIÓN A1↔A2**. La aceptación global de la Etapa 7 sigue abierta porque
+faltan todavía el resto de la matriz viva, la prueba TPV completa, offline,
+roles y el hardware físico de T9.
