@@ -110510,9 +110510,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function fingerprintLineasA02(lineas) {
     return JSON.stringify((lineas || []).map((l22) => ({
-      productoId: String(l22.productoId || ""),
-      cantidad: Number(l22.cantidad),
-      nota: String(l22.nota || "").trim().slice(0, 500),
+        productoId: String(l22.productoId || ""),
+        cantidad: Number(l22.cantidad),
+        nota: String(l22.nota || "").trim().slice(0, 500),
       configuracionA04: l22.configuracionA04 ? {
         expectedProductVersion: Number(l22.configuracionA04.expectedProductVersion),
         selecciones: (l22.configuracionA04.selecciones || []).map((s22) => ({
@@ -123329,7 +123329,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
-const [notaA04, setNotaA04] = (0, import_react4.useState)("");
+  const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
 
@@ -124274,10 +124274,6 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   }
   function quitar(claveCarrito) {
     setCarrito((s22) => s22.filter((l22) => (l22.claveCarrito || l22.productoId) !== claveCarrito));
-  }
-  function cambiarNotaLineaA04(claveCarrito, nota) {
-    const texto = String(nota || "").slice(0, 500);
-    setCarrito((s22) => s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, nota: texto } : l22));
   }
   function vaciarCarrito() {
     setCarrito([]);
