@@ -82,15 +82,24 @@ copiado al espejo.
 - No hace falta tocar el manifiesto de CI: no se añadió ni se quitó ningún archivo de
   `tests/`, solo se corrigió contenido de tests existentes y del espejo.
 
-## 4. Aviso importante para Pedro
+## 4. Trabajo en paralelo detectado y resuelto
 
 Al intentar retirar las dos tareas sugeridas que había dejado aparcadas para esto
-(`task_3a6015c0` para A02.1, `task_b21c95f8` para A08.1), el sistema respondió que
-**ya no estaban pendientes — alguien las había arrancado como sesión nueva**. Es decir:
-es posible que exista otra sesión (tuya, en otro sitio) trabajando en este mismo arreglo
-en paralelo. Antes de fusionar esta rama, conviene comprobar si esa otra sesión también
-tocó `source-recovery/fuente-recuperado.js` o estos mismos 4 archivos de test, para no
-pisarse el trabajo.
+(`task_3a6015c0` para A02.1, `task_b21c95f8` para A08.1), el sistema respondió que ya no
+estaban pendientes — las había arrancado otra sesión. Al hacer `git pull --rebase` antes
+de empujar, se confirmó: esa otra sesión (`session_01HHzUbxZWE2yVAAabHyNqso`) ya había
+subido un commit (`86d9fff4`, "fix(tests): actualiza aserción A08.1 UI para incluir
+unirCuentasA08") a la misma rama, con conflicto real en `tests/f3/a08/a08-1-ui-contract.mjs`.
+
+Esa otra sesión solo corrigió **una** de las dos comprobaciones obsoletas de ese archivo
+(la de `unirCuentasA08` en el wiring hacia `VentaRapida`), sin tocar el espejo ni la otra
+comprobación (la del primer destructuring de `crearLogicaVenta`, que sí tenía un hueco
+real de paridad) ni los movimientos de caja del TPV. Al resolver el conflicto se conservó
+la versión de esta sesión (más completa: regenera el espejo de verdad y corrige las 4
+comprobaciones afectadas, no solo 1), verificada de nuevo tras el rebase — los 6 tests
+relacionados (`a02-1`, `a06-1`, `a07-1`, `a08-1`, `b04`, `b05`) siguen en verde, la
+sintaxis de ambos archivos es correcta y el espejo sigue coincidiendo carácter a carácter
+con la cola de `fuente.js`. Ya está subido así a `codex/etapa5-recuperacion-qa`.
 
 ## 5. Límites respetados
 
