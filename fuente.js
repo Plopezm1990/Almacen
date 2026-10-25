@@ -125384,11 +125384,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
-const [notaA04, setNotaA04] = (0, import_react4.useState)("");
+  const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
+  const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
   const bloqueoAgregarA04 = (0, import_react4.useRef)(false);
-  const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
   const [editorCantidadA04, setEditorCantidadA04] = (0, import_react4.useState)(null);
   const [calculadoraA04, setCalculadoraA04] = (0, import_react4.useState)({ abierta: false, expresion: "", visor: "0", error: "" });
 

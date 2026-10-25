@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 322,
+  "total_inventory": 331,
   "expected_counts": {
-    "active_contract": 305,
+    "active_contract": 314,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 275,
+      "active_contract": 284,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -300,6 +300,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/f3/a10/a10-route-recovery-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/f4/b04/b04-ui-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
@@ -521,6 +526,11 @@
     },
     {
       "path": "tests/f5/c12/c12-security-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/f5-tpv-line-notes-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1461,6 +1471,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/plan-maestro/documento2-revision-salida-recovery-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/pm33/db/contrato-vigente-contract.mjs",
       "classification": "active_contract",
       "environment": "postgres"
@@ -1512,16 +1527,6 @@
     },
     {
       "path": "tests/ui-context-bridge.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/f3/a10/a10-route-recovery-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/f5/f5-tpv-line-notes-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1642,6 +1647,46 @@
     },
     {
       "path": "tests/plan-maestro/etapa5-t7-puente-la-pieza2-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/documento2-fase1-puesto-completo-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/documento2-fase2-rehome-blocks-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/documento2-fase3-catalogo-ticket-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/documento2-fase4-teclados-calculadora-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/documento2-fase5-cobro-caja-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/etapa6-arqueo-server-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/etapa6-enviar-preserva-cuenta-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/etapa6-puente-scope-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     }
