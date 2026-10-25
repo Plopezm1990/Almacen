@@ -124627,6 +124627,61 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
   }
 }
 const ERROR_BORRADOR_RECUPERACION_A06 = "Tienes un borrador local activo. Guárdalo o vacíalo antes de recuperar o aparcar una cuenta. El borrador no se ha borrado ni mezclado con la cuenta del servidor.";
+// T7: estas funciones también son necesarias en VentaRapida. Las versiones
+// internas de crearLogicaVenta sirven a sus propias acciones, pero no son
+// visibles desde este componente porque viven en otro ámbito de función.
+function leerConfigPuenteLA() {
+  try {
+    const guardado = JSON.parse(localStorage.getItem("almacen__puenteLA") || "null");
+    return {
+      habilitado: !!guardado?.habilitado,
+      url: typeof guardado?.url === "string" && guardado.url ? guardado.url : "http://127.0.0.1:9123",
+      token: typeof guardado?.token === "string" ? guardado.token : ""
+    };
+  } catch (e2) {
+    return { habilitado: false, url: "http://127.0.0.1:9123", token: "" };
+  }
+}
+function guardarConfigPuenteLA(config) {
+  try {
+    localStorage.setItem("almacen__puenteLA", JSON.stringify(config));
+  } catch (e2) {}
+}
+async function llamarPuenteLA(ruta, cuerpo, config) {
+  if (!config?.habilitado) return { ok: false, error: "Puente L&A no está activado en este ordenador." };
+  const controlador = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const temporizador = controlador ? setTimeout(() => controlador.abort(), 4000) : null;
+  try {
+    const respuesta = await fetch(String(config.url || "").replace(/\/$/, "") + ruta, {
+      method: "POST",
+      headers: { "Content-Type": "application/json", "X-Puente-Token": config.token || "" },
+      body: JSON.stringify(cuerpo || {}),
+      signal: controlador?.signal
+    });
+    const cuerpoRespuesta = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) return { ok: false, error: cuerpoRespuesta?.error || "El Puente L&A respondió con error " + respuesta.status };
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, error: "No se pudo conectar con el Puente L&A (" + (error?.message || "sin conexión") + "). Comprueba que esté encendido en este ordenador." };
+  } finally {
+    if (temporizador) clearTimeout(temporizador);
+  }
+}
+async function comprobarConexionPuenteLA(config) {
+  const controlador = typeof AbortController !== "undefined" ? new AbortController() : null;
+  const temporizador = controlador ? setTimeout(() => controlador.abort(), 4000) : null;
+  try {
+    const respuesta = await fetch(String(config.url || "").replace(/\/$/, "") + "/estado", { signal: controlador?.signal });
+    const cuerpo = await respuesta.json().catch(() => ({}));
+    if (!respuesta.ok) return { ok: false, error: "El Puente L&A respondió con error " + respuesta.status };
+    return { ok: true, modo: cuerpo?.modo, aviso: cuerpo?.aviso };
+  } catch (error) {
+    return { ok: false, error: "No se pudo conectar con el Puente L&A (" + (error?.message || "sin conexión") + ")." };
+  } finally {
+    if (temporizador) clearTimeout(temporizador);
+  }
+}
+
 function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   const unirCuentasA08 = arguments[0]?.unirCuentasA08;
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
