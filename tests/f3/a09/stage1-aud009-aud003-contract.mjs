@@ -42,7 +42,7 @@ assert.ok(storageHelpersStart >= 0 && storageHelpersEnd > storageHelpersStart, '
 const storageHelpers = new Function(`const esPreviewQa = () => false; ${storageSource.slice(storageHelpersStart, storageHelpersEnd)}; return { contenidoFilaIgual, datosFilaParaServidor };`)();
 
 const syncFunction = extractFunction(storageSource, 'sincronizarColeccionPorFila');
-const storageSyncFactory = new Function('window', 'leerFilasCompletas', 'borradosDe', 'guardarBorrados',
+const storageSyncFactory = new Function('window', 'leerFilasPorIds', 'borradosDe', 'guardarBorrados',
   `const esPreviewQa = () => false; ${storageSource.slice(storageHelpersStart, storageHelpersEnd)}; return ${syncFunction};`);
 const upsertCalls = [];
 const remoteRows = new Map([['m-same', { id: 'm-same', a: 1 }]]);
@@ -67,7 +67,9 @@ const fakeWindow = {
 };
 const syncRows = storageSyncFactory(
   fakeWindow,
-  async () => [...remoteRows.entries()].map(([id, datos]) => ({ id, datos })),
+  async (_tabla, ids) => ids
+    .filter((id) => remoteRows.has(id))
+    .map((id) => ({ id, datos: remoteRows.get(id) })),
   () => [],
   () => {}
 );
