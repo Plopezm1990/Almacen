@@ -113206,11 +113206,20 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
 
       return {
         ok: true,
+        cuentaId: guardado.cuentaId,
+        cuentaVersion: guardado.cuentaVersion,
         pedidoId: guardado.pedidoId,
         pedidoVersion: guardado.pedidoVersion,
         pedidoEstado: guardado.pedidoEstado,
         lineas: guardado.lineas,
-        lineasEnviadas: Number(enviado?.lineas_enviadas) || guardado.lineas.filter((l22) => l22.estado === "ENVIADA").length
+        lineasEnviadas: Number(enviado?.lineas_enviadas) || guardado.lineas.filter((l22) => l22.estado === "ENVIADA").length,
+        terminalId: guardado.terminalId,
+        sessionId: guardado.sessionId,
+        operatingDay: guardado.operatingDay,
+        currencyCode: guardado.currencyCode,
+        modalidad: guardado.modalidad,
+        responsableActual: guardado.responsableActual || null,
+        ubicacion: guardado.ubicacion || null
       };
     } catch (error) {
       return respuestaErrorA06(error);
