@@ -233,3 +233,31 @@ estas dos salidas verificables:
 No se cambia la política RLS ni se aplica una migración desde esta acta. La
 Etapa 7 permanece abierta y la campaña TPV/hardware continúa bloqueada hasta
 resolver este criterio.
+
+## 10. Corrección aplicada para el bloqueo de navegación A1↔A2
+
+Se corrigió `fuente.js` para distinguir entre:
+
+- un cambio real de movimientos heredados que sí debe persistirse en
+  `movimientos_registro`; y
+- la sustitución de la proyección `_pm07Servidor` que llega desde
+  `movimientos_stock` al cambiar de local o refrescar el contexto.
+
+La corrección calcula una huella de los movimientos persistibles, ignorando
+las filas autoritativas de PM07 y sus marcas locales. Si esa huella no cambia,
+la actualización visual se conserva, pero el efecto reactivo no vuelve a
+ejecutar la lectura completa del histórico heredado. Si cambia un movimiento
+real, el guardado normal continúa funcionando.
+
+Validaciones ejecutadas después del cambio:
+
+- `node --check fuente.js`: PASS.
+- P05 panel UI runtime: `95/95` PASS.
+- P06 arranque plataforma runtime: `44/44` PASS.
+- P08 copia local por cuenta runtime: `28/28` PASS.
+- P08C copia de historial/cuota runtime: PASS.
+- `git diff --check`: PASS.
+
+El cambio todavía no se considera aceptado en vivo: debe publicarse en un
+preview QA actualizado y repetirse A1→A2→A1 con una sesión limpia, verificando
+que no aumenta la cola de `movimientos` y que no aparece el aviso de pendiente.

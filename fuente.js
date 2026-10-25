@@ -101752,7 +101752,19 @@ async function sincronizarConteosPm12({ setConteos, empresaId = null, localActiv
     return nuevos;
   });
 }
-async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
+function huellaMovimientosLegacyPm07(lista) {
+  const soloLegacy = (lista || []).filter((m22) => m22 && !m22._pm07Servidor).map((m22) => {
+    const copia = { ...m22 };
+    delete copia._pm07Servidor;
+    delete copia._pm07BajoMinimo;
+    delete copia._pm07LocalOperable;
+    delete copia._pm08Servidor;
+    delete copia._pm12Servidor;
+    return copia;
+  }).sort((a22, b22) => String(a22.id || "").localeCompare(String(b22.id || "")));
+  return JSON.stringify(soloLegacy);
+}
+async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = null, localActivoId = null, esContextoVigente = () => true, onMovimientosSoloAutoritativos = () => {} }) {
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
   const supabase = await window.getSupabaseClient();
   let qStock = supabase.from("stock_estado").select("empresa_id,local_id,producto_id,almacen,piso,total,minimo,bajo_minimo,fraccionable,precision_cantidad,local_operable");
@@ -101819,7 +101831,18 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
         _pm07Servidor: true
       };
     });
-    setMovimientos((prev) => [...server, ...(prev || []).filter((m4) => !m4._pm07Servidor)]);
+    setMovimientos((prev) => {
+      const siguiente = [...server, ...(prev || []).filter((m4) => !m4._pm07Servidor)];
+      // Los movimientos de PM07 son una proyección autoritativa de
+      // movimientos_stock. Cambiar de local puede reemplazar esa proyección
+      // sin que haya cambiado ningún movimiento heredado que deba subir a
+      // movimientos_registro. Marcar ese caso evita que el guardado reactivo
+      // vuelva a leer todo el histórico bajo RLS y deje la cola pendiente.
+      if (huellaMovimientosLegacyPm07(siguiente) === huellaMovimientosLegacyPm07(prev)) {
+        onMovimientosSoloAutoritativos();
+      }
+      return siguiente;
+    });
   }
   return { ok: true, stocks: stocks.length, movimientos: movs.length };
 }
@@ -104867,6 +104890,7 @@ function GestionAlmacen() {
   const contextoPm07InicializadoRef = (0, import_react4.useRef)(false);
   const contextoPm07SolicitudRef = (0, import_react4.useRef)(0);
   const contextoPm07ClaveRef = (0, import_react4.useRef)("");
+  const movimientosAutoritativosPendientesRef = (0, import_react4.useRef)(0);
   (0, import_react4.useEffect)(() => {
     localActivoIdRefPm07.current = localActivoId;
   }, [localActivoId]);
@@ -104906,7 +104930,16 @@ function GestionAlmacen() {
           });
         }
         if (!esContextoVigente()) return;
-        await sincronizarStockPm07({ setProductos, setMovimientos, empresaId: empresaContexto, localActivoId, esContextoVigente });
+        await sincronizarStockPm07({
+          setProductos,
+          setMovimientos,
+          empresaId: empresaContexto,
+          localActivoId,
+          esContextoVigente,
+          onMovimientosSoloAutoritativos: () => {
+            movimientosAutoritativosPendientesRef.current += 1;
+          }
+        });
         if (!esContextoVigente()) return;
         await sincronizarConteosPm12({ setConteos, empresaId: empresaContexto, localActivoId, esContextoVigente });
         if (!esContextoVigente()) return;
@@ -105513,7 +105546,12 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos2);
   }, [pedidos2, ready]);
   (0, import_react4.useEffect)(() => {
-    if (ready && !skipSaveRef.current) saveKey("movimientos", movimientos);
+    if (!ready || skipSaveRef.current) return;
+    if (movimientosAutoritativosPendientesRef.current > 0) {
+      movimientosAutoritativosPendientesRef.current -= 1;
+      return;
+    }
+    saveKey("movimientos", movimientos);
   }, [movimientos, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("conteos", conteos);
