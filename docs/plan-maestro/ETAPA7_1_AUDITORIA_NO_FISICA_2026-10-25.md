@@ -175,3 +175,61 @@ aislada, conservar esta evidencia como caso de regresión y repetir A1↔A2 sin
 pendientes previos. Si el fallo se reproduce, hay que corregir o justificar
 formalmente el manejo de `movimientos` antes de continuar con la carga TPV,
 la comparación de toques o el hardware real.
+
+## 9. Diagnóstico técnico posterior a la sesión viva
+
+Se consultó el proyecto Supabase de QA `qjqorixtkilwsndqayyx` en modo
+solo lectura, sin reintentar ni modificar el pendiente de la interfaz.
+
+### 9.1 Evidencia observada
+
+- `public.movimientos_registro` tiene 984 filas visibles en QA; 981 pertenecen
+  a `QA-EMP-A / QA-A1`, una a `QA-EMP-A / QA-A2`, una a `QA-EMP-B / QA-B1` y
+  una a otro contexto de empresa.
+- No hay filas con `empresa_id` o `local_id` nulos.
+- La tabla tiene índice por `(empresa_id, fecha)` y clave primaria por `id`.
+- La política de lectura exige `private.plataforma_mov_permitido(...)`, que
+  comprueba membresía, empresa activa, local permitido y cambio de contraseña
+  pendiente por fila visible.
+- En los logs de QA no apareció ningún `POST`, `PATCH` ni `DELETE` sobre
+  `movimientos_registro` asociado a la sesión observada. Por tanto, el fallo
+  visible no demuestra un rechazo del `upsert` de una fila.
+- Sí aparecen lecturas `GET` de hasta `1.000` filas sobre
+  `movimientos_registro` con tiempos de origen observados de hasta `5.722 ms`.
+  La aplicación utiliza `ESPERA_NUBE_MS = 6.000`, de modo que la lectura
+  completa queda en el límite operativo y puede vencer por cualquier latencia
+  adicional del navegador, la red o la cola de sincronización.
+- El proyecto registra además eventos de `Warp server error: Thread killed by
+  timeout manager` durante la ventana de observación. No se atribuye ese
+  evento automáticamente a una única petición de movimientos, pero confirma
+  que el backend QA estaba bajo presión de tiempo durante la campaña.
+
+### 9.2 Conclusión técnica acotada
+
+La hipótesis con mejor respaldo es un bloqueo por **lectura completa del
+histórico bajo RLS y límite de seis segundos**, antes de que el flujo llegue a
+la escritura fila a fila. Sigue siendo una hipótesis de causa raíz, no una
+prueba definitiva de que cada evento de la interfaz provenga de esa única
+lectura.
+
+La arquitectura actual de `index-storage-bootstrap.js` confirma el punto de
+presión: para sincronizar `movimientos`, primero lee todas las filas remotas
+por páginas, compara la colección completa y solo después ejecuta los
+`upsert`. Al cambiar de local, el guardado reactivo de `movimientos` puede
+volver a recorrer esa ruta aunque el usuario no haya creado una operación de
+negocio nueva.
+
+### 9.3 Criterio de salida añadido
+
+Antes de declarar PASS la aceptación viva de 7.1 se debe conseguir una de
+estas dos salidas verificables:
+
+1. optimizar la lectura/sincronización de `movimientos` y demostrar en una
+   sesión QA limpia que A1↔A2 no genera pendientes ni avisos; o
+2. demostrar con una traza controlada que la lectura termina por debajo del
+   límite, que el pendiente corresponde a un caso conocido y que existe una
+   recuperación automática sin pérdida ni duplicación.
+
+No se cambia la política RLS ni se aplica una migración desde esta acta. La
+Etapa 7 permanece abierta y la campaña TPV/hardware continúa bloqueada hasta
+resolver este criterio.
