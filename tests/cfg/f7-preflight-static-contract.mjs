@@ -51,6 +51,11 @@ const EXCLUIDAS = new Set([
   '20261020120000_plataforma_password_inicial_bloqueo_almacen_alta_reconstruida.sql',
   // PM13 P05 de pantallas de roles fijos: se valida y aplica en QA por separado antes de decidir su promoción.
   '20261020140000_pm13_p05_roles_fijos_pantallas.sql',
+  // Paquete F5 de notas TPV y recuperación A10: ventana de promoción separada,
+  // con preflight propio y sin escritura PROD en esta etapa.
+  '20261022130000_abc_f5_tpv_line_notes.sql',
+  '20261022140000_abc_f3_a10_route_recovery.sql',
+  '20261022150000_abc_f3_a10_route_recovery_merge.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
