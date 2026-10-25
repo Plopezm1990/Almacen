@@ -684,9 +684,10 @@ async function saveKey(key, value) {
   // confirmado por RPC y se vuelve a hidratar desde Supabase. No duplicamos
   // toda la colección en localStorage (límite aproximado de 5 MB), pero sí
   // mantenemos el guardado local en modo offline para no perder el borrador.
-  if (key === "devoluciones" && typeof window !== "undefined" && window.__nubeActiva && window.__nubeCliente) {
+  if (["pagosFacturas", "arqueos", "movimientosCaja", "devoluciones"].includes(key)
+      && typeof window !== "undefined" && window.__nubeActiva && window.__nubeCliente) {
     if (typeof window.dispatchEvent === "function") {
-      window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key, cacheLocalOmitida: true } }));
+      window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key, cacheLocalOmitida: true, ledgerServidor: true } }));
     }
     return;
   }
