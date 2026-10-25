@@ -155,3 +155,50 @@ queda pendiente conseguir o conectar la impresora y el cajón reales para poder
 abrir la campaña 7.2/T9.
 
 La Etapa 7 no se fusiona ni se promociona a producción desde este preflight.
+
+## 9. Comprobación viva 7.1 realizada sobre el preview disponible
+
+Se inspeccionó de forma no destructiva el preview que estaba abierto en QA el
+25/10/2026. El deploy respondía correctamente y estaba en estado `ready`, pero
+el propio registro de Netlify identifica que ese preview ejecutaba el commit
+`c436d4ad8b81b06fac56be37ee1d3e2289bdd8e2`, mientras que el head actual del PR
+#175 ya es `d9147e127d81a06c79c6e0578d6ad6717922b357`. El commit servido es
+antecesor del head actual; por tanto, esta comprobación no puede utilizarse
+como aceptación final del código `d9147e1` hasta que el preview se actualice y
+se repita la campaña.
+
+Observaciones de la sesión viva:
+
+- Plataforma cargó `9 empresas activas · 2 desactivadas`.
+- `QA Empresa A, S.L.` apareció activa, con `2` locales activos de `2` y `7`
+  usuarios activos de `8`. `QA Empresa B` apareció desactivada.
+- La aplicación entró como Propietario en `QA Empresa A, S.L.`, `Local A1`,
+  y el selector de local solo ofreció `Local A1` y `Local A2`; no se observó
+  un selector que mezclara otra empresa.
+- El panel de configuración indicó que los cambios se guardan en el servidor,
+  solo los puede cambiar el Propietario y requieren motivo de auditoría.
+- La matriz viva mostró al Propietario con todos los permisos. Las acciones
+  delicadas consultadas —cancelación sensible, resolver cobros inciertos,
+  confirmar devoluciones y reabrir cierres— aparecieron bloqueadas para
+  Cajero/a y Camarero/a. La pantalla de permisos dejó `Guardar 0 cambios`
+  deshabilitado, por lo que no se modificó ninguna política.
+- Auditoría cargó el periodo `2026-10-01` a `2026-10-25` con `973` registros
+  visibles en el entorno QA. Se observaron trazas de pruebas de Etapa 5 y de
+  operaciones de personal; no se editó ninguna.
+- Errores del sistema informó `Sin incidencias detectadas en 44 registro(s)`
+  para el diagnóstico histórico, pero al desplegar el detalle aparecieron
+  errores de runtime `leerConfigPuenteLA is not defined` y numerosos avisos de
+  edición simultánea perdida en `encargos` y `conteos`, registrados en ese
+  preview antiguo. No se deben clasificar como regresión del head `d9147e1`
+  sin repetirlos sobre el deploy actualizado.
+- La aplicación mostró `1` cambio de conteos pendiente de confirmación,
+  conservado localmente, además del aviso de que una colección solo está en
+  este equipo. No se pulsó `Reintentar`, no se guardó el conteo y no se
+  ejecutaron cobros, altas, bajas ni cambios de permisos.
+
+Resultado de esta comprobación: `7.1_PREFLIGHT_VIVO_COMPLETADO_SOBRE_PREVIEW_ANTIGUO`.
+La aceptación viva del head actual queda `PENDIENTE_DE_REPETICION`; la Etapa 7
+continúa abierta. La siguiente acción técnica es actualizar o regenerar el
+preview del PR #175 con `d9147e1` y repetir exactamente esta matriz, prestando
+especial atención a los errores del puente, a los conflictos de sincronización
+y al cambio de conteos pendiente.
