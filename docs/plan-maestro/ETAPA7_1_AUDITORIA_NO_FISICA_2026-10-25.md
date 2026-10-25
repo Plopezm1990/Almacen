@@ -325,3 +325,43 @@ respuesta básica del TPV en QA. No constituye todavía la aceptación completa
 de Etapa 7: quedan pendientes la matriz viva por roles, la recuperación offline
 real, la prueba completa de cobro/caja sin datos de negocio y la validación
 física de impresora, cajón y periféricos T9.
+
+## 13. Matriz viva de roles y recuperación offline en QA
+
+El 25-10-2026 se comprobó en el preview QA la matriz visible del contexto de
+Propietario para `QA Empresa A, S.L.` y `Local A1`. El menú operativo mostró
+las áreas de Compras, Almacén, Ventas, Costes/Producción, Finanzas, Personal,
+Calidad y Sistema, incluidos TPV, Cocina, Encargos, Caja, Auditoría,
+Respaldos, Locales, Configuración y Errores. La sesión se mantuvo en QA y no
+se ejecutó ninguna acción de negocio.
+
+En Personal se verificó que el contexto activo carga los empleados y que el
+perfil QA activo dispone de rol `Encargado`; el selector de rol mostró las
+opciones `Camarero/a`, `Cajero/a` y `Encargado`. El PIN apareció protegido y
+no se reveló, adivinó ni modificó. Por tanto, queda verificada la matriz del
+propietario y la configuración de roles, pero no se declara completada la
+prueba de inicio de sesión con un empleado: para esa evidencia falta una
+credencial dedicada de QA, sin usar ninguna credencial de producción.
+
+Para la recuperación offline se utilizó emulación temporal de red del
+navegador, sin tocar la conectividad de producción. Con la red desactivada:
+
+- el TPV cargó en `Local A1`, con tarifa General y catálogo de 18 productos;
+- el ticket permaneció vacío (`0 líneas · €0,00`);
+- `F9 Guardar` y las acciones de modificación del catálogo quedaron
+  deshabilitadas;
+- el intento controlado de seleccionar `Agua 50 cl (QA)` no añadió ninguna
+  línea ni generó un borrador guardable.
+
+Se restauró la red mediante la misma emulación y el TPV recuperó el catálogo y
+sus controles visuales. Se salió del TPV sin guardar. El panel volvió a
+mostrar `Arranque: datos que no se pudieron cargar 0`, sin un nuevo pendiente
+de movimientos, venta, cobro o caja. La única copia local visible continuó
+siendo la copia de `historialRespaldos` que ya estaba presente por la política
+de QA.
+
+Conclusión de esta tanda: **roles visibles y recuperación UI offline
+comprobados en QA; sin mutaciones de negocio**. La Etapa 7 global permanece
+abierta hasta ejecutar el login real de empleado con una credencial QA
+dedicada, completar la matriz de permisos efectiva, terminar el flujo
+Cobro/Caja sin datos de negocio y validar impresora, cajón y periféricos T9.
