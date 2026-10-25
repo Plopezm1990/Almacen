@@ -114,3 +114,64 @@ Actualizar o regenerar el Deploy Preview del PR #175 desde el HEAD actual
 métricas. Después se abrirá la campaña 7.2/T9 únicamente cuando estén
 disponibles una impresora y un cajón reales. La aceptación final de la Etapa 7
 requiere ambas campañas y una decisión explícita sobre AUD-010.
+
+## 7. Nueva comprobación viva sobre el alias QA
+
+Se abrió el alias del preview sin el parámetro que fijaba el deploy antiguo y
+se repitió una navegación no destructiva con la cuenta QA visible en la
+sesión:
+
+- la pantalla de Plataforma cargó correctamente;
+- la aplicación abrió como Propietario en `QA Empresa A, S.L.`, `Local A1`;
+- el selector ofreció `Local A1` y `Local A2`, sin mezclar empresas;
+- el arranque terminó mostrando el resumen general, `Arranque: datos que no
+  se pudieron cargar 0` y el contexto de `Local A1`;
+- el cambio a `Local A2` mostró los datos de A2 y el retorno a A1 recuperó el
+  contexto y las cifras de A1.
+
+Las mediciones observadas en esta sesión fueron:
+
+| Medición | Resultado observado | Interpretación |
+|---|---:|---|
+| Recarga hasta resumen general | `10,666 ms` (≈`10,7 s`) | Medición de navegador, no un SLA aprobado |
+| Cambio de local A1 → A2 | `489 ms` | Estado de A2 visible y coherente |
+| Cambio de local A2 → A1 | completó la vista, con incidencia de sincronización | No aceptable como PASS hasta aislar la causa |
+| Carga del TPV | No ejecutada | Se detuvo la campaña al aparecer el bloqueo de escritura |
+
+### Incidencia detectada y contención
+
+Antes de cambiar de local ya existía un pendiente local. Al volver de A2 a A1
+la interfaz mostró:
+
+> `Un cambio no se ha podido guardar (movimientos). Comprueba tu conexión o
+> reintenta ahora; mientras tanto queda guardado en este equipo.`
+
+El contador visible pasó de `1` a `2` y apareció el botón `Reintentar`. El
+botón no se pulsó: hacerlo habría iniciado una escritura/reintento y no es
+necesario para demostrar el fallo. Tampoco se borró el pendiente ni se
+modificó el histórico.
+
+El panel `Errores del sistema` siguió mostrando únicamente los registros
+históricos de `leerConfigPuenteLA` y conflictos de sincronización ya
+documentados; no apareció una nueva excepción de runtime durante esta
+navegación. Esto distingue el bloqueo de sincronización pendiente de una
+excepción JavaScript nueva, pero no demuestra que el flujo de escritura sea
+aceptable.
+
+Resultado de esta sesión: `7.1_VIVO_BLOQUEADA_POR_SINCRONIZACION_MOVIMIENTOS`.
+La prueba de aislamiento visual es positiva, pero la campaña no puede
+declararse PASS mientras no se reproduzca el flujo con una sesión QA limpia y
+se determine por qué una navegación entre locales intenta sincronizar un
+pendiente de `movimientos` y lo deja en error.
+
+## 8. Decisión actualizada
+
+La Etapa 7.1 conserva el estado **automatizado completado / aceptación viva
+bloqueada**. La Etapa 7 global sigue abierta y T9 no se declara PASS. No se
+autoriza fusión a `release` ni promoción a producción.
+
+El siguiente paso técnico es preparar una sesión QA limpia o una cuenta QA
+aislada, conservar esta evidencia como caso de regresión y repetir A1↔A2 sin
+pendientes previos. Si el fallo se reproduce, hay que corregir o justificar
+formalmente el manejo de `movimientos` antes de continuar con la carga TPV,
+la comparación de toques o el hardware real.
