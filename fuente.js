@@ -102111,6 +102111,14 @@ var CONFIG_DIAS_SEMANA = [
   { id: 6, etiqueta: "Sábado" },
   { id: 7, etiqueta: "Domingo" }
 ];
+var CONFIG_TIPOS_NEGOCIO = [
+  { id: "BAR", etiqueta: "Bar" },
+  { id: "RESTAURANTE", etiqueta: "Restaurante" },
+  { id: "CAFETERIA", etiqueta: "Cafetería" },
+  { id: "PASTELERIA", etiqueta: "Pastelería" },
+  { id: "TIENDA", etiqueta: "Tienda" },
+  { id: "OTRO", etiqueta: "Otro" }
+];
 var CONFIG_ROLES_MATRIZ = ["Encargado", "Cajero/a", "Camarero/a"];
 var CONFIG_CAPACIDADES = [
   { grupo: "Cuentas y pedidos", items: [
@@ -102266,7 +102274,11 @@ var CONFIG_ERRORES = {
   tarifa_precio_producto_no_disponible: "Ese producto no está disponible en el catálogo TPV de este local.",
   tarifa_precio_tarifa_no_disponible: "Esa tarifa está desactivada.",
   tarifa_precio_producto_no_encontrado: "No se encontró ese producto.",
-  tarifa_precio_tarifa_no_encontrada: "No se encontró esa tarifa."
+  tarifa_precio_tarifa_no_encontrada: "No se encontró esa tarifa.",
+  tipo_negocio_no_autorizado: "Necesitas acceso de propietario a todos los locales de la empresa.",
+  tipo_negocio_invalido: "Elige un tipo de negocio de la lista.",
+  tipo_negocio_motivo_requerido: "Escribe el motivo del cambio.",
+  tipo_negocio_empresa_no_encontrada: "No se encontró la empresa."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -103425,6 +103437,92 @@ function ConfigTarifas({ empresaId, localId }) {
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
+function ConfigTipoNegocio({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const [tipoActual, setTipoActual] = (0, import_react4.useState)(null);
+  const [tipoElegido, setTipoElegido] = (0, import_react4.useState)("BAR");
+  const [crearEjemplo, setCrearEjemplo] = (0, import_react4.useState)(true);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const cargar = async () => {
+    setCargando(true);
+    setError("");
+    try {
+      const d2 = await configRpc("abc_obtener_tipo_negocio", { p_empresa_id: empresaId, p_local_id: localId });
+      setTipoActual(d2?.tipo_negocio || null);
+      setTipoElegido(d2?.tipo_negocio || "BAR");
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    cargar();
+  }, [empresaId, localId]);
+  const nombreTipo = (id) => (CONFIG_TIPOS_NEGOCIO.find((x3) => x3.id === id) || { etiqueta: id }).etiqueta;
+  const guardar = async () => {
+    setError("");
+    setConfirmacion("");
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const r2 = await configRpc("abc_guardar_tipo_negocio", {
+        p_operation_id: configOperacion("tipo-negocio"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_tipo_negocio: tipoElegido,
+        p_crear_opciones_ejemplo: crearEjemplo === true,
+        p_motivo: motivo.trim()
+      });
+      const creados = Number(r2?.grupos_ejemplo_creados) || 0;
+      setConfirmacion(
+        creados > 0
+          ? `Tipo de negocio guardado. Se añadieron ${creados} grupo(s) de ejemplo a la biblioteca de opciones de este local — revísalos en "Opciones y variantes".`
+          : "Tipo de negocio guardado."
+      );
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const ocupado = cargando || guardando;
+  const campoSelect = (valor, onChange, listaOpciones, deshabilitado) => h(
+    "select",
+    { value: valor, onChange: (e2) => onChange(e2.target.value), disabled: deshabilitado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } },
+    listaOpciones.map(([v2, t3]) => h("option", { key: v2, value: v2 }, t3))
+  );
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Tipo de negocio"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Solo una etiqueta informativa de toda la empresa; no cambia ningún cálculo fiscal ni operativo. Sirve para ofrecer, si quieres, una biblioteca de opciones de ejemplo típica de ese tipo de negocio en este local, que luego puedes editar o borrar con libertad."),
+      h("div", { className: "text-[12px] mb-3" }, "Tipo actual: ", h("strong", null, tipoActual ? nombreTipo(tipoActual) : "sin especificar")),
+      h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+      h(
+        "div",
+        { className: "grid grid-cols-1 md:grid-cols-2 gap-2 mb-2" },
+        h(Field, { label: "Tipo de negocio" }, campoSelect(tipoElegido, setTipoElegido, CONFIG_TIPOS_NEGOCIO.map((x3) => [x3.id, x3.etiqueta]), ocupado))
+      ),
+      h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: crearEjemplo, onChange: (e2) => setCrearEjemplo(e2.target.checked), disabled: ocupado || tipoElegido === "OTRO" }), "Crear también una biblioteca de opciones de ejemplo para este local", tipoElegido === "OTRO" ? " (Otro no tiene ejemplos)" : ""),
+      h(Btn, { small: true, onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar tipo de negocio"),
+      cargando ? h("div", { className: "text-[12px] mt-2", style: { color: C2.inkSoft } }, "Cargando…") : null
+    )
+  );
+}
 function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
   const h = import_react4.default.createElement;
   const [datos, setDatos] = (0, import_react4.useState)(null);
@@ -104214,7 +104312,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["opciones", "Opciones y variantes"], ["tarifas", "Tarifas (hora feliz)"], ["sala", "Sala y mesas"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["opciones", "Opciones y variantes"], ["tarifas", "Tarifas (hora feliz)"], ["tiponegocio", "Tipo de negocio"], ["sala", "Sala y mesas"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -104227,6 +104325,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
     seccion === "opciones" ? h(ConfigOpciones, { empresaId, localId }) : null,
     seccion === "tarifas" ? h(ConfigTarifas, { empresaId, localId }) : null,
+    seccion === "tiponegocio" ? h(ConfigTipoNegocio, { empresaId, localId }) : null,
     seccion === "sala" ? h(ConfigSala, { empresaId, localId }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
