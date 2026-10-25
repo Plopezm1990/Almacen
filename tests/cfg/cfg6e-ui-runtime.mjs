@@ -54,7 +54,8 @@ const resultados = [];
 const ok = (nombre, cond, det) => resultados.push({ nombre, ok: !!cond, det: cond ? undefined : det });
 const esperar = async (ms = 0) => { await act(async () => { await new Promise((r) => setTimeout(r, ms)); }); };
 const texto = () => document.getElementById('raiz').textContent;
-const boton = (t) => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === t) || [...document.querySelectorAll('button')].find((b) => b.textContent.includes(t));
+const elementosPulsables = () => [...document.querySelectorAll('button,[role="button"]')];
+const boton = (t) => elementosPulsables().find((b) => b.textContent.trim() === t) || elementosPulsables().find((b) => b.textContent.includes(t));
 async function clic(el) {
   if (!el) throw new Error('clic sobre un elemento que no existe; texto actual: ' + texto().slice(-600));
   await act(async () => { el.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true })); });

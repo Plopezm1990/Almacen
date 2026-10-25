@@ -26012,7 +26012,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-tpv-fase5-cobro": "true" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", null,
-          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro · F4"),
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] uppercase tracking-wide", style: { color: C2.accent } }, "Fase 5 · estado server-side")
         ),
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarCobroF4, disabled: cargandoCobroF4 || procesandoCobroF4 }, cargandoCobroF4 ? "Actualizando…" : "Actualizar")

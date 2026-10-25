@@ -37,14 +37,13 @@ for (const [nombre, patron] of baseT5T6) {
 }
 
 const ausenciasConocidas = [
-  ["Bizum operativo", /iniciarCobroCuentaF4\(["']BIZUM/],
+  ["Bizum operativo", /prepararBizumQAF4|resolverPagoSimuladoQAF4|medio.*BIZUM/],
   ["propina", /propina/i],
   ["vale regalo", /vale regalo/i],
   ["billetes rápidos", /billetes rápidos/i],
-  ["factura a empresa con NIF", /factura a empresa con NIF/i],
-  ["envío por email", /enviar por email/i],
-  ["artículo varios", /artículo varios/i],
-  ["unir mesas", /unir mesas/i]
+  ["factura a empresa con NIF", /emitirFacturaEmpresaF4|factura a empresa/i],
+  ["envío por email", /enviarTicketCorreoF4|ticket por correo|Enviar por correo/i],
+  ["unión de cuentas", /unirCuentasA08|unir_cuentas|unir cuentas/i]
 ];
 
 const pendientes = ausenciasConocidas

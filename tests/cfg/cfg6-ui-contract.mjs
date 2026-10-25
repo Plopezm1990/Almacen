@@ -34,7 +34,10 @@ const comp = compRec;
 const compCfg6 = comp.slice(0, comp.indexOf("function ConfigCargos(")) + comp.slice(comp.indexOf("function ConfiguracionLocal("));
 const compCfg6Legacy = compCfg6
   .replace(/async function configSalaContexto[\s\S]*?(?=function ConfigAviso)/, "")
-  .replace(/function ConfigSala[\s\S]*?(?=function ConfigAviso)/, "");
+  .replace(/function ConfigSala[\s\S]*?(?=function ConfigAviso)/, "")
+  .replace(/function ConfigOpciones[\s\S]*?(?=function ConfigTarifas)/, "")
+  .replace(/function ConfigTarifas[\s\S]*?(?=function ConfigTipoNegocio)/, "")
+  .replace(/function ConfigTipoNegocio[\s\S]*?(?=function ConfigPermisos)/, "");
 assert.ok(comp.includes("Si el cierre provisional tiene diferencia, indica un motivo. Si supera el umbral configurado, el Propietario debe aprobarla antes de finalizar el cierre."),
   "Día y cajas explica el cierre con diferencia ya implementado");
 assert.doesNotMatch(comp, /De momento la pantalla de cierre no pide aún el motivo ni la aprobación/,
@@ -148,7 +151,7 @@ const modServidor = textoMig["20261002220000_abc_config_pieza3_modalidades.sql"]
 const modPantalla = [...comp.slice(comp.indexOf("var CONFIG_MODALIDADES"), comp.indexOf("var CONFIG_TIPOS_EQUIPO")).matchAll(/id: "([A-Z]+)"/g)].map((m) => m[1]);
 assert.deepEqual(modPantalla, modServidor, "las cinco modalidades, en el orden del servidor");
 const tiposServidor = textoMig["20261002230000_abc_config_pieza4_equipos.sql"].match(/constraint abc_local_equipo_tipo check \(tipo in \(([^)]*)\)\)/)[1].match(/'([A-Z_]+)'/g).map((x) => x.replace(/'/g, ""));
-const tiposPantalla = [...comp.slice(comp.indexOf("var CONFIG_TIPOS_EQUIPO"), comp.indexOf("var CONFIG_ROLES_MATRIZ")).matchAll(/id: "([A-Z_]+)"/g)].map((m) => m[1]);
+const tiposPantalla = [...comp.slice(comp.indexOf("var CONFIG_TIPOS_EQUIPO"), comp.indexOf("var CONFIG_TIPOS_GRUPO_OPCIONES")).matchAll(/id: "([A-Z_]+)"/g)].map((m) => m[1]);
 assert.deepEqual(tiposPantalla, tiposServidor, "los cinco tipos de equipo, en el orden del servidor");
 assert.deepEqual(unescape(recuperado.match(/var ROLES_RETIRADOS = (\[[^\]]*\]);/)[1]).replace(/"/g, "").slice(1, -1).split(", "), ["Básico", "Estándar", "Churrero/a"]);
 
@@ -157,7 +160,7 @@ const ficha = comp.slice(comp.indexOf("function ConfiguracionLocal("));
 assert.match(ficha, /if \(!esPropietario\) contenido = h\(Card, \{ className: "mb-4" \}, "Solo un usuario con rol Propietario puede ver y cambiar la configuración\."\);\s+else if \(!empresaId \|\| !localId\) contenido = h\(Card, \{ className: "mb-4" \}, "Selecciona un local concreto para configurarlo\."\);\s+else contenido = h\(/,
   "sin perfil Propietario o sin local concreto no se monta ninguna sección (y por tanto no se llama al servidor)");
 assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), "las secciones solo se montan en la rama con permiso");
-assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["sala", "Sala y mesas"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
+assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["opciones", "Opciones y variantes"\], \["tarifas", "Tarifas \(hora feliz\)"\], \["tiponegocio", "Tipo de negocio"\], \["sala", "Sala y mesas"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
 assert.doesNotMatch(comp, /bloqueada/, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
