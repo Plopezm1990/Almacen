@@ -123329,6 +123329,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
+  const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
   const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
