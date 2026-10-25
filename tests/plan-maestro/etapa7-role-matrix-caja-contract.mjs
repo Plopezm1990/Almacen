@@ -10,8 +10,8 @@ assert.match(
 );
 assert.match(
   fuente,
-  /local: locales\.find\(\(l22\) => l22\.id === localActivoId\) \|\| null, rolPerfil: miPerfil\?\.rol \|\| "", configEmpresa: empresaDelLocalActivo,/,
-  "el contenedor principal debe pasar el rol de perfil al TPV"
+  /local: locales\.find\(\(l22\) => l22\.id === localActivoId\) \|\| null, rolPerfil: rolEfectivoEmpleadoNav, configEmpresa: empresaDelLocalActivo,/,
+  "el contenedor principal debe pasar el rol efectivo del empleado al TPV"
 );
 
 const inicioVenta = fuente.indexOf("function VentaRapida(");
