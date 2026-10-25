@@ -125264,6 +125264,16 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [mensajeCajonT7F4, setMensajeCajonT7F4] = (0, import_react4.useState)("");
   const [errorCajonT7F4, setErrorCajonT7F4] = (0, import_react4.useState)("");
   const billetesRapidosF4 = [5, 10, 20, 50, 100];
+  function teclaEfectivoCobroF5(tecla) {
+    setEfectivoRecibidoCobroF4((actual) => {
+      let valor = String(actual || "");
+      if (/^\d$/.test(tecla)) valor += tecla;
+      else if (tecla === ",") {
+        if (!valor.includes(",") && !valor.includes(".")) valor = valor ? `${valor},` : "0,";
+      } else if (tecla === "BACKSPACE") valor = valor.slice(0, -1);
+      return valor;
+    });
+  }
   const [bizumPreparadoF4, setBizumPreparadoF4] = (0, import_react4.useState)(false);
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
   const [procesandoIncidenciaB04, setProcesandoIncidenciaB04] = (0, import_react4.useState)(false);
@@ -127007,17 +127017,30 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     const incidencias = Array.isArray(estado?.incidencias) ? estado.incidencias : [];
     const incidenciaActiva = incidencias.find((incidencia) => incidencia.estado === "ABIERTA") || null;
     const form = formularioIncidenciaB04;
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+    const estadoPagoF5 = bloqueado
+      ? "Resultado pendiente o incierto: conserva la referencia y no inicies otro cobro."
+      : procesandoCobroF4
+        ? "Procesando el pago…"
+        : tieneCheckout && String(estado?.estado) === "PAGADO"
+          ? "Pago confirmado por el servidor."
+          : !pedidoListo
+            ? "Falta enviar el pedido antes de cobrar."
+            : "Cuenta lista: revisar importe, recibido y cambio antes de confirmar.";
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-tpv-fase5-cobro": "true" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro · F4"),
+        /* @__PURE__ */ import_react4.default.createElement("div", null,
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] uppercase tracking-wide", style: { color: C2.accent } }, "Fase 5 · estado server-side")
+        ),
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarCobroF4, disabled: cargandoCobroF4 || procesandoCobroF4 }, cargandoCobroF4 ? "Actualizando…" : "Actualizar")
       ),
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "B05: el importe restante, el cambio y la caja se calculan y validan en servidor. Para un pago mixto, cobra una parte en efectivo y completa después con tarjeta."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "El importe restante, el cambio y la caja se calculan y validan en servidor. Preparar un campo o consultar la calculadora no confirma un pago."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", "data-tpv-fase5-payment-state": "true", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: bloqueado ? C2.amberSoft : C2.surface, border: `1px solid ${C2.line}` } }, estadoPagoF5),
       !pedidoListo ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.amberSoft } }, "Envía el pedido antes de cobrar.") : null,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mb-2" },
-        /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(totalVisible))),
-        /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(confirmadoVisible))),
-        /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Pendiente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(saldoVisible)))
+        /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[20px]" }, "€", fmt(totalVisible))),
+        /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[20px]" }, "€", fmt(confirmadoVisible))),
+        /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Pendiente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[20px]" }, "€", fmt(saldoVisible)))
       ),
       estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
@@ -127054,10 +127077,11 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       pedidoListo && saldoVisible > 0 && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe de este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
-          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", inputMode: "decimal", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
         ),
         cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, cambioVisible < 0 ? `Faltan €${fmt(Math.abs(cambioVisible))}` : propinaCambioF4 ? `Propina: €${fmt(cambioVisible)} (no se devuelve cambio)` : `Cambio a devolver: €${fmt(cambioVisible)}`) : null,
         cambioVisible !== null && cambioVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[11.5px] mb-2 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: propinaCambioF4, onChange: (e2) => setPropinaCambioF4(e2.target.checked) }), "El cambio es propina") : null,
+         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-2", "data-tpv-fase5-final-action": "true" }, `Acción final: Confirmar efectivo · ${fmt(importeVisible)} €`),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
           /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible, propina: propinaCambioF4 && cambioVisible > 0 }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
@@ -127071,6 +127095,10 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
         ),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "Billetes rápidos: prepara el efectivo recibido sin iniciar todavía el cobro."),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-1" }, billetesRapidosF4.map((valor) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: valor, small: true, variant: "ghost", onClick: () => setEfectivoRecibidoCobroF4(String(valor)), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, `€${valor}`))),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2", "data-tpv-fase5-cash-keypad": "true" },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-1", style: { color: C2.inkSoft } }, "Teclado de efectivo recibido · no inicia el cobro"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-fase4-keygrid" }, ["7", "8", "9", "4", "5", "6", "1", "2", "3", "BACKSPACE", "0", ","].map((tecla) => /* @__PURE__ */ import_react4.default.createElement("button", { key: tecla, type: "button", className: "tpv-fase4-key", onClick: () => teclaEfectivoCobroF5(tecla), "aria-label": tecla === "BACKSPACE" ? "Borrar carácter del efectivo recibido" : tecla, disabled: procesandoCobroF4 }, tecla === "BACKSPACE" ? "Borrar" : tecla)))
+        ),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "El botón de completar mixto usa el saldo que devuelve el servidor, no el cálculo local del navegador.")
       ) : null,
       tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
@@ -127274,11 +127302,11 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
         ["caja", "Caja"]
       ].map(([id, label]) => /* @__PURE__ */ import_react4.default.createElement("button", { key: id, type: "button", role: "tab", "aria-selected": seccionTpv === id, onClick: () => setSeccionTpv(id) }, label))),
       panelTpv("caja", /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
-      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-tpv-fase5-caja": "true" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
           /* @__PURE__ */ import_react4.default.createElement("div", null,
-            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Caja · entradas y retiradas"),
-            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Registra movimientos manuales desde el TPV. Importe, sesión, terminal, permisos y día operativo se validan en el servidor.")
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Caja · movimientos de efectivo"),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Movimientos, arqueo y cierre son tareas distintas. Aquí solo se registran entradas y retiradas; sesión, terminal, permisos y día operativo se validan en el servidor.")
           ),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirMovimientosCajaDesdeTpv, disabled: cargandoDiaCajaTpv || typeof registrarMovimientoCaja !== "function" }, cargandoDiaCajaTpv ? "Abriendo…" : "Abrir caja")
         ),
