@@ -6065,6 +6065,8 @@ function GestionAlmacen() {
         .tpv-section-nav button { min-height: 38px; padding: .45rem .7rem; border: 1px solid var(--c-line); border-radius: .55rem; background: transparent; color: var(--c-ink-soft); font-size: 12px; font-weight: 600; }
         .tpv-section-nav button[aria-selected="true"] { background: var(--c-chrome); border-color: var(--c-chrome); color: #fff; }
         .tpv-block-panel { min-width: 0; }
+        .tpv-fase3-flow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
+        .tpv-fase3-flow > div { min-width: 0; padding: .65rem .75rem; border: 1px solid var(--c-line); border-radius: .65rem; background: var(--c-bg); }
         body:has([data-tpv-shell]) aside { display: none !important; }
         body:has([data-tpv-shell]) .app-main-content + div { display: none !important; }
         body:has([data-tpv-shell]) .app-main-content { max-height: none !important; height: 100dvh; padding: 1rem !important; overflow-y: auto; }
@@ -6088,6 +6090,7 @@ function GestionAlmacen() {
         }
         @media (max-width: 640px) {
           .tpv-layout { grid-template-columns: minmax(0, 1fr); }
+          .tpv-fase3-flow { grid-template-columns: minmax(0, 1fr); }
           .tpv-ticket-zone { position: static; }
         }
 
@@ -26137,7 +26140,27 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   }
   function renderValeRegaloF4() {
     if (seccionTpv !== "venta") return null;
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+    return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-tpv-catalog-ticket": "true" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Catálogo y ticket"),
+          /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-semibold", style: { color: C2.accent } }, "Flujo Fase 3")
+        ),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Selecciona artículos en el catálogo y confirma el ticket visible antes de guardar. El total definitivo sigue siendo server-side."),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-fase3-flow" },
+          /* @__PURE__ */ import_react4.default.createElement("div", null,
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] uppercase tracking-wide", style: { color: C2.inkSoft } }, "Catálogo"),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, vendibles.length, " producto(s) disponible(s)"),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Busca por nombre o código y filtra por categoría.")
+          ),
+          /* @__PURE__ */ import_react4.default.createElement("div", null,
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] uppercase tracking-wide", style: { color: C2.inkSoft } }, "Ticket"),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, lineasCarrito.length, " línea(s) · €", fmt(total)),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, lineasCarrito.length > 0 ? "Revisa cantidades y configuración antes de guardar." : "El ticket está listo para recibir artículos.")
+          )
+        )
+      ),
+      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Vale regalo"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-7: vende un vale regalo por el importe que quieras (solo efectivo en esta primera versión). El cliente lo canjea después en Cobro, dentro de una cuenta."),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mb-2" },
@@ -26146,6 +26169,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       ),
       errorValeRegaloF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorValeRegaloF4) : null,
       valeRegaloCreadoF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, "Vale creado: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, valeRegaloCreadoF4.codigo), ` por €${Number(valeRegaloCreadoF4.importe).toFixed(2)}. Apúntalo para el cliente.`) : null
+      )
     );
   }
   function renderPuenteLAT7F4() {
