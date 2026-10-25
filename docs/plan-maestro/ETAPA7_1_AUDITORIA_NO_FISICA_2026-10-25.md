@@ -365,3 +365,61 @@ comprobados en QA; sin mutaciones de negocio**. La Etapa 7 global permanece
 abierta hasta ejecutar el login real de empleado con una credencial QA
 dedicada, completar la matriz de permisos efectiva, terminar el flujo
 Cobro/Caja sin datos de negocio y validar impresora, cajón y periféricos T9.
+
+## 14. Mitigación de la lectura completa durante el guardado
+
+Fecha de análisis y cambio: 25/10/2026. Entorno de código: rama QA del PR
+#175. No se escribieron datos ni se cambiaron políticas de Supabase.
+
+La revisión de la política `plataforma_mov_permitido(empresa_id, local_id,
+accion)` confirmó que el aislamiento de `movimientos_registro` es correcto:
+la lectura depende de la empresa, el local permitido, la membresía activa y el
+estado de seguridad de la cuenta. La consulta de `movimientos_stock` ya estaba
+acotada por `empresa_id` y `local_id` en `sincronizarStockPm07`.
+
+El cuello de botella restante estaba en el camino de guardado de las tablas por
+fila. `sincronizarColeccionPorFila` leía antes todo el histórico remoto,
+ordenado por `creado_en`, para comparar una colección local que a menudo solo
+contenía un movimiento nuevo. Bajo RLS, esa lectura completa era innecesaria y
+podía quedar cerca del límite operativo de seis segundos.
+
+Se aplicó una mitigación acotada en `index-storage-bootstrap.js`:
+
+1. se añadió `leerFilasPorIds`, que consulta únicamente las claves primarias
+   que el guardado necesita comparar, en lotes de 100;
+2. el sincronizador compara los IDs de filas subibles y los IDs marcados como
+   borrados, sin recorrer el histórico completo;
+3. una cola que solo contiene borrados ya no queda bloqueada por el filtro de
+   filas subibles;
+4. el borrado sigue ejecutándose solo para IDs que el servidor confirma como
+   visibles, preservando el comportamiento conservador;
+5. no se modificaron RLS, migraciones, RPC, columnas de alcance ni la ruta
+   autoritativa `movimientos_stock`.
+
+Se añadió el contrato
+`tests/plan-maestro/etapa7-movimientos-sync-read-scope-contract.mjs` y se
+incorporó al manifiesto general de CI. Validaciones locales ejecutadas:
+
+- `node --check index-storage-bootstrap.js`: PASS;
+- contrato de lectura acotada por IDs: PASS;
+- manifiesto JSON de CI: PASS;
+- contratos PM07 de sincronización y reintento: PASS;
+- contrato TPV/movimientos/caja de Etapa 5: PASS;
+- `git diff --check`: PASS.
+
+### Límite de esta mitigación
+
+El arranque inicial todavía llama a `leerColeccionPorFila("movimientos")` para
+hidratar la interfaz y, por tanto, conserva una lectura histórica completa en
+cold start. Esta corrección reduce el riesgo de timeout durante guardados,
+cambios de contexto y reintentos, pero no permite afirmar todavía que el
+arranque esté optimizado ni que la incidencia de Warp esté resuelta al 100 %.
+
+El criterio de aceptación siguiente es publicar este HEAD en un Deploy Preview
+QA y repetir una sesión limpia A1 → A2 → A1, una merma real y un traspaso real,
+registrando tiempos y peticiones `movimientos_registro`. Si el guardado deja de
+generar lecturas completas y no aparece ningún pendiente, se acepta esta
+mitigación y se pasa a estudiar el arranque frío por separado. Si el arranque
+sigue cerca del límite, el siguiente cambio debe resolver la hidratación por
+contexto o paginarla de forma diferida; no se debe relajar RLS ni añadir un
+índice a ciegas.

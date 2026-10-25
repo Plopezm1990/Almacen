@@ -629,11 +629,31 @@
     return todas;
   }
 
-  // Lee la tabla entera POR PÁGINAS. Antes esta consulta no paginaba, y
-  // PostgREST devuelve como mucho 1000 filas sin avisar: a partir del
-  // movimiento 1001 el programa creía que la nube estaba medio vacía, así
-  // que resubía miles de filas en cada guardado (lento, y se pasaba del
-  // tiempo límite) y daba por inexistente lo que sí estaba.
+  // Lee solo las filas que el guardado actual necesita comparar. Antes se
+  // recorría la tabla entera por páginas en cada guardado: una sola merma
+  // podía provocar una lectura completa de todo el histórico bajo RLS,
+  // aunque la operación local solo tuviera un ID nuevo.
+  async function leerFilasPorIds(tabla, ids) {
+    var idsUnicos = Array.from(new Set((ids || []).filter(function (id) { return id !== null && id !== void 0 && id !== ""; })));
+    if (!idsUnicos.length) return [];
+    var todas = [];
+    // Mantener lotes pequeños evita construir URLs excesivas si un dispositivo
+    // arranca con una colección histórica grande. La comparación sigue siendo
+    // exacta: cada lote se busca por clave primaria y RLS decide qué filas son
+    // visibles para la sesión actual.
+    var TAMANO_LOTE_IDS = 100;
+    for (var inicio = 0; inicio < idsUnicos.length; inicio += TAMANO_LOTE_IDS) {
+      var loteIds = idsUnicos.slice(inicio, inicio + TAMANO_LOTE_IDS);
+      var r = await window.__nubeCliente.from(tabla).select("id, datos").in("id", loteIds);
+      if (r.error) throw r.error;
+      todas = todas.concat(r.data || []);
+    }
+    return todas;
+  }
+
+  // Se conserva como helper de diagnóstico local; no forma parte del camino
+  // de guardado. La lectura histórica completa sigue siendo necesaria para
+  // hidratar la interfaz, pero no para decidir qué filas debe escribir.
   async function leerFilasCompletas(tabla) {
     var todas = [];
     var desde = 0;
@@ -710,8 +730,10 @@
       if (!x || !x.id) return false;
       return datosFilaParaServidor(x, claveColeccion) !== null;
     });
-    if (!filasSubibles.length) return;
-    var filasRemotas = await leerFilasCompletas(tabla);
+    var apuntados = claveColeccion ? borradosDe(claveColeccion) : [];
+    if (!filasSubibles.length && !apuntados.length) return;
+    var idsParaComparar = filasSubibles.map(function (x) { return x.id; }).concat(apuntados);
+    var filasRemotas = await leerFilasPorIds(tabla, idsParaComparar);
     var remotoPorId = {};
     filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
 
@@ -742,7 +764,6 @@
 
     // Solo se borra lo que este equipo apuntó como borrado, y solo si de
     // verdad sigue estando en la nube.
-    var apuntados = claveColeccion ? borradosDe(claveColeccion) : [];
     var idsParaBorrar = apuntados.filter(function (id) {
       return Object.prototype.hasOwnProperty.call(remotoPorId, id);
     });

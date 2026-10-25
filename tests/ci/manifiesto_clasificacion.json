@@ -1689,6 +1689,11 @@
       "path": "tests/plan-maestro/etapa6-puente-scope-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/plan-maestro/etapa7-movimientos-sync-read-scope-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
     }
   ]
 }
