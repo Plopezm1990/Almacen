@@ -48,4 +48,22 @@ Conclusión: el paquete cubre los huecos observados sin crear tablas nuevas. La 
 
 Estado: paquete preparado para revisión, todavía no promovido a PROD y todavía sin despliegue de producción.
 
-Siguiente paso recomendado: llevar esta rama a una revisión/QA controlada, validar en la suite que una nota se conserva en la venta y que una línea `SIN_RUTA` se recupera sin duplicar comanda, y repetir el preflight justo antes de aplicar las tres migraciones. Sólo después corresponde autorizar el merge a `release`, aplicar Supabase PROD y desplegar.
+Siguiente paso recomendado: repetir el preflight justo antes de aplicar las tres migraciones. Sólo después corresponde autorizar el merge a `release`, aplicar Supabase PROD y desplegar.
+
+## Evidencia de prueba controlada QA — 2026-10-25
+
+- Producto probado: `Bocadillo de jamón (QA)`.
+- Configuración: modificador `Sin cebolla`.
+- Nota introducida: `PRUEBA QA F5 - sin cebolla`.
+- Pedido creado: `c707c99a-e70f-409e-a632-0f1e909e436c`.
+- Resultado del TPV: pedido enviado con estado operativo `ENVIADO`.
+- Resultado en Cocina: una sola comanda para el pedido `0f1e909e436c`, en estación `Cocina QA-A1`, estado `PENDIENTE`, con la nota visible.
+- Recuperación de ruta: se asignó `Café solo (QA)` a `COCINA-QA · Cocina QA-A1`; la comanda previamente `SIN_RUTA/BLOQUEADA` (`99c9c190f7e6`) apareció como `PENDIENTE` en la estación destino.
+- No duplicación: el pedido con nota y la comanda recuperada aparecen una sola vez en la lista visible de Cocina.
+- Alcance de la prueba: QA; no se aplicaron migraciones, no se fusionó el PR y no se escribió en PROD.
+
+Resultado: validación controlada QA de notas y recuperación de rutas **TERMINADA**.
+
+## Qué sigue
+
+Repetir el preflight de Supabase en modo lectura inmediatamente antes de promoción. Después, con autorización explícita de promoción, fusionar el PR #177, aplicar las tres migraciones en orden, desplegar y verificar producción.
