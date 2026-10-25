@@ -107089,6 +107089,13 @@ function GestionAlmacen() {
         .tpv-block-panel { min-width: 0; }
         .tpv-fase3-flow { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: .6rem; }
         .tpv-fase3-flow > div { min-width: 0; padding: .65rem .75rem; border: 1px solid var(--c-line); border-radius: .65rem; background: var(--c-bg); }
+        .tpv-fase4-keypad, .tpv-fase4-calculator { max-width: 384px; margin: 0 auto; }
+        .tpv-fase4-field-label, .tpv-fase4-expression { min-height: 24px; color: var(--c-ink-soft); font-size: 11.5px; }
+        .tpv-fase4-display { min-height: 64px; display: flex; align-items: center; justify-content: flex-end; margin: .5rem 0 .75rem; padding: .5rem .75rem; border: 2px solid var(--c-accent); border-radius: .65rem; background: var(--c-surface); color: var(--c-ink); font-size: 32px; overflow-wrap: anywhere; }
+        .tpv-fase4-keygrid, .tpv-fase4-calc-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        .tpv-fase4-calc-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+        .tpv-fase4-key { min-height: 56px; padding: .5rem; border: 1px solid var(--c-line); border-radius: .65rem; background: var(--c-surface); color: var(--c-ink); font-size: 16px; font-weight: 600; }
+        .tpv-fase4-key:focus-visible { outline: 3px solid #176095; outline-offset: 3px; }
         body:has([data-tpv-shell]) aside { display: none !important; }
         body:has([data-tpv-shell]) .app-main-content + div { display: none !important; }
         body:has([data-tpv-shell]) .app-main-content { max-height: none !important; height: 100dvh; padding: 1rem !important; overflow-y: auto; }
@@ -124796,6 +124803,34 @@ async function comprobarConexionPuenteLA(config) {
   }
 }
 
+function evaluarCalculadoraTpvFase4(expresion) {
+  const texto = String(expresion || "").replaceAll(",", ".").replace(/[×x]/g, "*").replace(/÷/g, "/").replace(/\s+/g, "");
+  if (!texto || !/^[0-9.+*/-]+$/.test(texto)) return { ok: false, error: "Escribe una operación válida." };
+  const tokens = texto.match(/\d+(?:\.\d+)?|[+\-*/]/g) || [];
+  if (tokens.join("") !== texto || tokens.length === 0 || !/^\d/.test(tokens[0]) || !/\d$/.test(tokens[tokens.length - 1])) return { ok: false, error: "Completa la operación antes de calcular." };
+  let resultado = Number(tokens[0]);
+  if (!Number.isFinite(resultado)) return { ok: false, error: "El resultado no es válido." };
+  for (let i = 1; i < tokens.length; i += 2) {
+    const operador = tokens[i];
+    const valor = Number(tokens[i + 1]);
+    if (!Number.isFinite(valor)) return { ok: false, error: "El resultado no es válido." };
+    if (operador === "+") resultado += valor;
+    else if (operador === "-") resultado -= valor;
+    else if (operador === "*") resultado *= valor;
+    else if (operador === "/") {
+      if (valor === 0) return { ok: false, error: "No se puede dividir entre cero." };
+      resultado /= valor;
+    }
+    if (!Number.isFinite(resultado) || Math.abs(resultado) > Number.MAX_SAFE_INTEGER) return { ok: false, error: "El resultado está fuera de rango." };
+  }
+  return { ok: true, valor: resultado };
+}
+
+function formatearCalculadoraTpvFase4(valor) {
+  if (!Number.isFinite(Number(valor))) return "0";
+  return Number(valor).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 8 });
+}
+
 function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, salirTPV = () => { if (typeof window !== "undefined" && typeof window.__salirTPV === "function") window.__salirTPV(); }, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   const unirCuentasA08 = arguments[0]?.unirCuentasA08;
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
@@ -125339,6 +125374,8 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
   const bloqueoAgregarA04 = (0, import_react4.useRef)(false);
   const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
+  const [editorCantidadA04, setEditorCantidadA04] = (0, import_react4.useState)(null);
+  const [calculadoraA04, setCalculadoraA04] = (0, import_react4.useState)({ abierta: false, expresion: "", visor: "0", error: "" });
 
   (0, import_react4.useEffect)(() => {
     const empresaId = configEmpresa?.id || null;
@@ -126420,6 +126457,101 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       })
     );
   }
+  function abrirEditorCantidadA04(linea) {
+    if (!linea) return;
+    setEditorCantidadA04({ claveCarrito: linea.claveCarrito || linea.productoId, productoNombre: linea.producto?.nombre || "Producto", valorInicial: String(linea.cantidad ?? ""), borrador: String(linea.cantidad ?? ""), reemplazarSiguiente: true, error: "" });
+  }
+  function cambiarEditorCantidadA04(valor) {
+    setEditorCantidadA04((actual) => {
+      if (!actual) return actual;
+      const tecla = String(valor);
+      let borrador = actual.borrador || "";
+      if (/^\d$/.test(tecla)) borrador = actual.reemplazarSiguiente ? tecla : `${borrador}${tecla}`;
+      else if (tecla === "," || tecla === ".") {
+        if (!borrador.includes(",") && !borrador.includes(".")) borrador = borrador ? `${borrador},` : "0,";
+      } else if (tecla === "BACKSPACE") borrador = borrador.slice(0, -1);
+      return { ...actual, borrador, reemplazarSiguiente: false, error: "" };
+    });
+  }
+  function cancelarEditorCantidadA04() {
+    setEditorCantidadA04(null);
+  }
+  function aceptarEditorCantidadA04() {
+    if (!editorCantidadA04) return;
+    const texto = String(editorCantidadA04.borrador || "").replace(",", ".");
+    const valor = Number(texto);
+    if (!texto || !Number.isFinite(valor) || valor <= 0) {
+      setEditorCantidadA04((actual) => actual ? { ...actual, error: "La cantidad debe ser mayor que cero y conservar un formato válido." } : actual);
+      return;
+    }
+    fijarCantidad(editorCantidadA04.claveCarrito, editorCantidadA04.borrador);
+    setEditorCantidadA04(null);
+  }
+  function teclaCalculadoraA04(tecla) {
+    setCalculadoraA04((actual) => {
+      let expresion = actual.expresion || "";
+      let visor = actual.visor || "0";
+      let error = "";
+      if (tecla === "C") return { abierta: true, expresion: "", visor: "0", error: "" };
+      if (tecla === "BACKSPACE") {
+        expresion = expresion.slice(0, -1);
+        visor = expresion.match(/(?:\d+(?:[.,]\d*)?|[.,])$/)?.[0] || "0";
+      } else if (/^\d$/.test(tecla)) {
+        expresion = expresion + tecla;
+        visor = (expresion.match(/(?:\d+(?:[.,]\d*)?|[.,])$/) || ["0"])[0];
+      } else if (tecla === ",") {
+        const ultimo = expresion.match(/(?:\d+(?:[.,]\d*)?|[.,])$/)?.[0] || "";
+        if (!ultimo.includes(",") && !ultimo.includes(".")) {
+          expresion += ultimo ? "," : "0,";
+          visor = expresion.match(/(?:\d+(?:[.,]\d*)?|[.,])$/)?.[0] || "0,";
+        }
+      } else if (["+", "-", "×", "÷"].includes(tecla)) {
+        if (!expresion && tecla === "-") expresion = "-";
+        else if (/\d$/.test(expresion)) expresion += ` ${tecla} `;
+        else if (/[+\-×÷]\s*$/.test(expresion)) expresion = expresion.replace(/[+\-×÷]\s*$/, `${tecla} `);
+      } else if (tecla === "=") {
+        const resultado = evaluarCalculadoraTpvFase4(expresion);
+        if (!resultado.ok) return { ...actual, abierta: true, error: resultado.error };
+        visor = formatearCalculadoraTpvFase4(resultado.valor);
+        expresion = String(resultado.valor).replace(".", ",");
+      }
+      return { abierta: true, expresion, visor, error };
+    });
+  }
+  function cerrarCalculadoraA04() {
+    setCalculadoraA04({ abierta: false, expresion: "", visor: "0", error: "" });
+  }
+  function renderTecladoCantidadA04() {
+    if (!editorCantidadA04) return null;
+    const h4 = import_react4.default.createElement;
+    const teclas = ["7", "8", "9", "4", "5", "6", "1", "2", "3", "BACKSPACE", "0", ","];
+    return h4(Modal, { onClose: cancelarEditorCantidadA04, title: `Cantidad · ${editorCantidadA04.productoNombre}` },
+      h4("div", { className: "tpv-fase4-keypad", "data-tpv-fase4-keypad": "quantity" },
+        h4("div", { className: "tpv-fase4-field-label" }, "Editando solo esta línea · no guarda ni cobra"),
+        h4("div", { className: "tpv-fase4-display mono", "aria-live": "polite" }, editorCantidadA04.borrador || "0"),
+        editorCantidadA04.error ? h4("div", { role: "alert", className: "text-[12px] mb-2", style: { color: C2.red } }, editorCantidadA04.error) : null,
+        h4("div", { className: "tpv-fase4-keygrid" }, teclas.map((tecla) => h4("button", { key: tecla, type: "button", onClick: () => cambiarEditorCantidadA04(tecla), "aria-label": tecla === "BACKSPACE" ? "Borrar carácter" : tecla, className: "tpv-fase4-key" }, tecla === "BACKSPACE" ? "Borrar" : tecla))),
+        h4("div", { className: "flex gap-2 mt-3" },
+          h4(Btn, { onClick: aceptarEditorCantidadA04 }, "Aceptar cantidad"),
+          h4(Btn, { variant: "ghost", onClick: cancelarEditorCantidadA04 }, "Cancelar")
+        )
+      )
+    );
+  }
+  function renderCalculadoraA04() {
+    if (!calculadoraA04.abierta) return null;
+    const h4 = import_react4.default.createElement;
+    const teclas = ["7", "8", "9", "÷", "4", "5", "6", "×", "1", "2", "3", "-", "Borrar", "0", ",", "+", "C", "="];
+    return h4(Modal, { onClose: cerrarCalculadoraA04, title: "Calculadora" },
+      h4("div", { className: "tpv-fase4-calculator", "data-tpv-fase4-calculator": "true" },
+        h4("div", { className: "tpv-fase4-expression mono", "aria-label": "Operación en curso" }, calculadoraA04.expresion || "Operación nueva"),
+        h4("div", { className: "tpv-fase4-display mono", "aria-live": "polite" }, calculadoraA04.visor),
+        calculadoraA04.error ? h4("div", { role: "alert", className: "text-[12px] mb-2", style: { color: C2.red } }, calculadoraA04.error) : null,
+        h4("div", { className: "tpv-fase4-calc-grid" }, teclas.map((tecla) => h4("button", { key: tecla, type: "button", onClick: () => teclaCalculadoraA04(tecla === "Borrar" ? "BACKSPACE" : tecla), "aria-label": tecla === "C" ? "Borrar cálculo" : tecla, className: "tpv-fase4-key" }, tecla))),
+        h4("div", { className: "text-[11px] mt-3", style: { color: C2.inkSoft } }, "La calculadora es auxiliar: no cambia cantidades, precios, descuentos ni pagos del ticket.")
+      )
+    );
+  }
   function quitar(claveCarrito) {
     setCarrito((s22) => s22.filter((l22) => (l22.claveCarrito || l22.productoId) !== claveCarrito));
   }
@@ -127182,6 +127314,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
           )
         )
       ),
+      /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setCalculadoraA04({ abierta: true, expresion: "", visor: "0", error: "" }), "aria-label": "Abrir calculadora" }, "Calculadora"),
       /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Vale regalo"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-7: vende un vale regalo por el importe que quieras (solo efectivo en esta primera versión). El cliente lo canjea después en Cobro, dentro de una cuenta."),
@@ -127191,7 +127324,9 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       ),
       errorValeRegaloF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorValeRegaloF4) : null,
       valeRegaloCreadoF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, "Vale creado: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, valeRegaloCreadoF4.codigo), ` por €${Number(valeRegaloCreadoF4.importe).toFixed(2)}. Apúntalo para el cliente.`) : null
-      )
+      ),
+      renderCalculadoraA04(),
+      renderTecladoCantidadA04()
     );
   }
   function renderPuenteLAT7F4() {
@@ -127691,6 +127826,8 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       onChange: (e2) => fijarCantidad(l22.claveCarrito || l22.productoId, e2.target.value),
       onBlur: () => normalizarCantidad(l22.claveCarrito || l22.productoId),
       onFocus: (e2) => e2.target.select(),
+      onPointerDown: (e2) => { e2.preventDefault(); abrirEditorCantidadA04(l22); },
+      "aria-label": `Cantidad de ${l22.producto.nombre}`,
       className: "mono text-center rounded-md py-1",
       style: { width: 54, border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, fontSize: 13, minHeight: 44 }
     }
