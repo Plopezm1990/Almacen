@@ -8,6 +8,11 @@ assert.match(
   /function VentaRapida\([\s\S]*?respuestaErrorA06 \}\) \{\s+const rolPerfil = arguments\[0\]\?\.rolPerfil \|\| "";/,
   "VentaRapida debe leer el rol efectivo para filtrar Caja sin romper el contrato de props existente"
 );
+assert.match(
+  fuente,
+  /local: locales\.find\(\(l22\) => l22\.id === localActivoId\) \|\| null, rolPerfil: miPerfil\?\.rol \|\| "", configEmpresa: empresaDelLocalActivo,/,
+  "el contenedor principal debe pasar el rol de perfil al TPV"
+);
 
 const inicioVenta = fuente.indexOf("function VentaRapida(");
 const inicioCaja = fuente.indexOf("function renderMovimientosCajaTpv()", inicioVenta);
