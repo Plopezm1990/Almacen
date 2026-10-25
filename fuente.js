@@ -107083,6 +107083,10 @@ function GestionAlmacen() {
         .app-main-content > * { min-width: 0; max-width: 100%; }
         .tpv-shell { min-width: 0; min-height: 100%; }
         .tpv-workspace-heading { display: flex; align-items: center; justify-content: space-between; gap: .75rem; margin-bottom: .8rem; }
+        .tpv-section-nav { display: flex; gap: .45rem; flex-wrap: wrap; padding: .55rem; margin-bottom: .8rem; border: 1px solid var(--c-line); border-radius: .75rem; background: var(--c-surface); }
+        .tpv-section-nav button { min-height: 38px; padding: .45rem .7rem; border: 1px solid var(--c-line); border-radius: .55rem; background: transparent; color: var(--c-ink-soft); font-size: 12px; font-weight: 600; }
+        .tpv-section-nav button[aria-selected="true"] { background: var(--c-chrome); border-color: var(--c-chrome); color: #fff; }
+        .tpv-block-panel { min-width: 0; }
         body:has([data-tpv-shell]) aside { display: none !important; }
         body:has([data-tpv-shell]) .app-main-content + div { display: none !important; }
         body:has([data-tpv-shell]) .app-main-content { max-height: none !important; height: 100dvh; padding: 1rem !important; overflow-y: auto; }
@@ -124793,6 +124797,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const unirCuentasA08 = arguments[0]?.unirCuentasA08;
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
+  const [seccionTpv, setSeccionTpv] = (0, import_react4.useState)("venta");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
   const [avisoEscaneo, setAvisoEscaneo] = (0, import_react4.useState)("");
   const [confirmAnular, setConfirmAnular] = (0, import_react4.useState)(null);
@@ -124810,6 +124815,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [cargandoDiaCajaTpv, setCargandoDiaCajaTpv] = (0, import_react4.useState)(false);
   const [diaOperativoCajaTpv, setDiaOperativoCajaTpv] = (0, import_react4.useState)("");
   const [errorMovimientosCajaTpv, setErrorMovimientosCajaTpv] = (0, import_react4.useState)("");
+  function panelTpv(id, contenido) {
+    return /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-block-panel", "data-tpv-panel": id, hidden: seccionTpv !== id }, contenido);
+  }
   function datoCorreccionHistorialPM09(m22, clave) {
     if (!m22) return void 0;
     if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
@@ -126840,6 +126848,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     return "Pendiente";
   }
   function renderCobroF4() {
+    if (seccionTpv !== "cobro") return null;
     if (!pedidoOperativoA05?.cuentaId) return null;
     const pedidoListo = ["ENVIADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
     const estado = estadoCobroF4;
@@ -127120,6 +127129,16 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   function renderMovimientosCajaTpv() {
     const movimientosDelDia = (movimientosCaja || []).filter((movimiento) => movimiento?.fecha === diaOperativoCajaTpv);
     return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-section-nav", role: "tablist", "aria-label": "Secciones operativas TPV" }, [
+        ["venta", "Venta"],
+        ["sala", "Sala"],
+        ["reparto", "Reparto"],
+        ["operativo", "Operativa"],
+        ["descuento", "Descuento"],
+        ["cobro", "Cobro"],
+        ["caja", "Caja"]
+      ].map(([id, label]) => /* @__PURE__ */ import_react4.default.createElement("button", { key: id, type: "button", role: "tab", "aria-selected": seccionTpv === id, onClick: () => setSeccionTpv(id) }, label))),
+      panelTpv("caja", /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
       /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
           /* @__PURE__ */ import_react4.default.createElement("div", null,
@@ -127135,9 +127154,11 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
         /* @__PURE__ */ import_react4.default.createElement(BloqueEntradasSalidas, { fecha: diaOperativoCajaTpv, movimientosCajaDelDia: movimientosDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja }),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setMostrarMovimientosCajaTpv(false) }, "Cerrar"))
       ) : null
+      ))
     );
   }
   function renderValeRegaloF4() {
+    if (seccionTpv !== "venta") return null;
     return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Vale regalo"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-7: vende un vale regalo por el importe que quieras (solo efectivo en esta primera versión). El cliente lo canjea después en Cobro, dentro de una cuenta."),
@@ -127150,6 +127171,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     );
   }
   function renderPuenteLAT7F4() {
+    if (seccionTpv !== "venta") return null;
     return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Puente L&A (opcional, en este ordenador)"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T7 (continuación, pieza 2): si tienes el programa Puente L&A encendido en este mismo ordenador, actívalo aquí para que \"Imprimir ticket\" y \"Abrir cajón\" intenten también la impresión/apertura real, además del registro de siempre. Todavía sin verificar con una impresora real."),
@@ -127168,6 +127190,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
     );
   }
   function renderCajonT7F4() {
+    if (seccionTpv !== "venta") return null;
     return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cajón monedero"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, (puenteLAConfig.habilitado ? "T7 · Puente L&A activado: intenta abrir el cajón de verdad en este ordenador, sin verificar todavía contra un cajón real." : "T7 Hoja QA-9 · modo simulador: no hay conexión real con el aparato todavía.") + " Si abres el cajón sin una venta asociada, escribe el motivo (igual que las entradas/salidas de caja)."),
@@ -127217,6 +127240,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   }
 
   function renderSalaA07() {
+    if (seccionTpv !== "sala") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return renderCuentasRecuperablesA06();
     const ubicacion = pedido.ubicacion || mapaSalaA07?.ubicacion || null;
@@ -127305,6 +127329,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
 
 
   function renderDescuentoCuentaA09() {
+    if (seccionTpv !== "descuento") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
     if (!descuentoAbiertoA09) {
@@ -127428,6 +127453,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   }
 
   function renderRepartoProductosA08() {
+    if (seccionTpv !== "reparto") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
     const lineas = lineasMoviblesA08();
@@ -127498,6 +127524,7 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   }
 
   function renderPedidoOperativoA05() {
+    if (seccionTpv !== "operativo") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido || !pedido.pedidoId) return null;
     const terminal = pedido.pedidoEstado === "CERRADO" || pedido.pedidoEstado === "CANCELADO";
