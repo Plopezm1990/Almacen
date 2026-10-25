@@ -102102,6 +102102,15 @@ var CONFIG_TIPOS_OPCION = [
   { id: "SUSTITUCION", etiqueta: "Sustitución" },
   { id: "COMPLEMENTO", etiqueta: "Complemento" }
 ];
+var CONFIG_DIAS_SEMANA = [
+  { id: 1, etiqueta: "Lunes" },
+  { id: 2, etiqueta: "Martes" },
+  { id: 3, etiqueta: "Miércoles" },
+  { id: 4, etiqueta: "Jueves" },
+  { id: 5, etiqueta: "Viernes" },
+  { id: 6, etiqueta: "Sábado" },
+  { id: 7, etiqueta: "Domingo" }
+];
 var CONFIG_ROLES_MATRIZ = ["Encargado", "Cajero/a", "Camarero/a"];
 var CONFIG_CAPACIDADES = [
   { grupo: "Cuentas y pedidos", items: [
@@ -102238,7 +102247,26 @@ var CONFIG_ERRORES = {
   vinculo_grupo_no_disponible: "Ese grupo está desactivado.",
   vinculo_grupo_sin_opciones: "Ese grupo no tiene ninguna opción activa: añade al menos una antes de exigir una selección mínima.",
   vinculo_producto_no_encontrado: "No se encontró ese producto.",
-  vinculo_grupo_no_encontrado: "No se encontró ese grupo."
+  vinculo_grupo_no_encontrado: "No se encontró ese grupo.",
+  tarifa_horario_id_requerido: "Falta el identificador de la tarifa.",
+  tarifa_horario_nombre_invalido: "Escribe un nombre de hasta 80 caracteres.",
+  tarifa_horario_dias_invalidos: "Elige al menos un día de la semana.",
+  tarifa_horario_rango_invalido: "La hora de fin tiene que ser posterior a la de inicio.",
+  tarifa_horario_estado_requerido: "Indica si la tarifa está activa.",
+  tarifa_horario_motivo_requerido: "Escribe el motivo del cambio.",
+  tarifa_horario_solapada: "Ya hay otra tarifa activa con algún día y alguna hora en común. Desactívala primero o ajusta el horario.",
+  tarifa_horario_id_en_uso: "Esa tarifa pertenece a otro local.",
+  tarifa_horario_nombre_duplicado: "Ya hay una tarifa con ese nombre en este local.",
+  tarifa_precio_producto_requerido: "Elige el producto.",
+  tarifa_precio_moneda_invalida: "La moneda debe ser un código de 3 letras (por ejemplo, EUR).",
+  tarifa_precio_tarifa_requerida: "Elige la tarifa.",
+  tarifa_precio_valor_invalido: "Escribe un precio válido (0 o más).",
+  tarifa_precio_estado_requerido: "Indica si el precio especial está activo.",
+  tarifa_precio_motivo_requerido: "Escribe el motivo del cambio.",
+  tarifa_precio_producto_no_disponible: "Ese producto no está disponible en el catálogo TPV de este local.",
+  tarifa_precio_tarifa_no_disponible: "Esa tarifa está desactivada.",
+  tarifa_precio_producto_no_encontrado: "No se encontró ese producto.",
+  tarifa_precio_tarifa_no_encontrada: "No se encontró esa tarifa."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -103155,6 +103183,248 @@ function ConfigOpciones({ empresaId, localId }) {
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
+function ConfigTarifas({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const vacioTarifa = { id: "", nombre: "", dias: [], horaInicio: "18:00", horaFin: "20:00", activo: true };
+  const vacioPrecio = { tarifaId: "", productoId: "", currencyCode: "EUR", precioUnitario: "", activo: true };
+  const [tarifas, setTarifas] = (0, import_react4.useState)([]);
+  const [precios, setPrecios] = (0, import_react4.useState)([]);
+  const [productos, setProductos] = (0, import_react4.useState)([]);
+  const [verInactivos, setVerInactivos] = (0, import_react4.useState)(false);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const [formTarifa, setFormTarifa] = (0, import_react4.useState)(null);
+  const [formPrecio, setFormPrecio] = (0, import_react4.useState)(null);
+  const cargar = async () => {
+    setCargando(true);
+    setError("");
+    try {
+      const supabase = await configCliente();
+      const { data: t2, error: errT } = await supabase.from("catalogo_tpv_tarifas_horario").select("id,nombre,dias_semana,hora_inicio,hora_fin,activo,version").eq("empresa_id", empresaId).eq("local_id", localId).order("nombre", { ascending: true });
+      if (errT) throw errT;
+      setTarifas(Array.isArray(t2) ? t2 : []);
+      const { data: p2, error: errP } = await supabase.from("catalogo_tpv_tarifa_precios").select("tarifa_id,producto_id,currency_code,precio_unitario,activo,version").eq("empresa_id", empresaId).eq("local_id", localId);
+      if (errP) throw errP;
+      setPrecios(Array.isArray(p2) ? p2 : []);
+      const { data: pr2, error: errPr } = await supabase.from("catalogo_tpv_productos").select("producto_id,currency_code,nombre,precio_unitario,activo").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true).order("nombre", { ascending: true });
+      if (errPr) throw errPr;
+      setProductos(Array.isArray(pr2) ? pr2 : []);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    setFormTarifa(null);
+    setFormPrecio(null);
+    cargar();
+  }, [empresaId, localId]);
+  const nombreDias = (dias) => CONFIG_DIAS_SEMANA.filter((d2) => Array.isArray(dias) && dias.includes(d2.id)).map((d2) => d2.etiqueta).join(", ");
+  const nombreProducto = (id) => (productos.find((p2) => p2.producto_id === id) || {}).nombre || id;
+  const requiereMotivo = () => {
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return true;
+    }
+    return false;
+  };
+  const tarifasVisibles = tarifas.filter((t2) => verInactivos || t2.activo);
+  const enviarTarifa = async (datos, mensaje) => {
+    setError("");
+    setConfirmacion("");
+    if (requiereMotivo()) return false;
+    if (!String(datos.nombre || "").trim()) {
+      setError("Escribe el nombre de la tarifa.");
+      return false;
+    }
+    if (!Array.isArray(datos.dias) || datos.dias.length === 0) {
+      setError("Elige al menos un día de la semana.");
+      return false;
+    }
+    if (!datos.horaInicio || !datos.horaFin || datos.horaFin <= datos.horaInicio) {
+      setError("La hora de fin tiene que ser posterior a la de inicio.");
+      return false;
+    }
+    setGuardando(true);
+    try {
+      await configRpc("abc_guardar_tarifa_horario", {
+        p_operation_id: configOperacion("tarifa-horario"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_tarifa_id: datos.id || configUuid(),
+        p_nombre: String(datos.nombre).trim(),
+        p_dias_semana: datos.dias,
+        p_hora_inicio: datos.horaInicio,
+        p_hora_fin: datos.horaFin,
+        p_activo: datos.activo === true,
+        p_motivo: motivo.trim()
+      });
+      setConfirmacion(mensaje);
+      setFormTarifa(null);
+      await cargar();
+      return true;
+    } catch (e2) {
+      setError(configMensajeError(e2));
+      return false;
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const editarTarifa = (t2) => {
+    setFormTarifa({ id: t2.id, nombre: t2.nombre || "", dias: Array.isArray(t2.dias_semana) ? [...t2.dias_semana] : [], horaInicio: String(t2.hora_inicio || "").slice(0, 5), horaFin: String(t2.hora_fin || "").slice(0, 5), activo: t2.activo === true });
+    setError("");
+    setConfirmacion("");
+  };
+  const alternarTarifa = (t2) => enviarTarifa({ id: t2.id, nombre: t2.nombre, dias: t2.dias_semana, horaInicio: t2.hora_inicio, horaFin: t2.hora_fin, activo: t2.activo !== true }, t2.activo === true ? "Tarifa desactivada." : "Tarifa activada.");
+  const alternarDia = (dia) => {
+    const actual = formTarifa.dias || [];
+    const siguiente = actual.includes(dia) ? actual.filter((d2) => d2 !== dia) : [...actual, dia].sort((a3, b3) => a3 - b3);
+    setFormTarifa({ ...formTarifa, dias: siguiente });
+  };
+  const enviarPrecio = async (datos, mensaje) => {
+    setError("");
+    setConfirmacion("");
+    if (requiereMotivo()) return false;
+    if (!datos.productoId) {
+      setError("Elige el producto.");
+      return false;
+    }
+    if (String(datos.precioUnitario).trim() === "" || Number(datos.precioUnitario) < 0 || Number.isNaN(Number(datos.precioUnitario))) {
+      setError("Escribe un precio válido (0 o más).");
+      return false;
+    }
+    setGuardando(true);
+    try {
+      await configRpc("abc_guardar_tarifa_precio", {
+        p_operation_id: configOperacion("tarifa-precio"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_tarifa_id: datos.tarifaId,
+        p_producto_id: datos.productoId,
+        p_currency_code: String(datos.currencyCode || "EUR").trim().toUpperCase(),
+        p_precio_unitario: Number(datos.precioUnitario),
+        p_activo: datos.activo === true,
+        p_motivo: motivo.trim()
+      });
+      setConfirmacion(mensaje);
+      setFormPrecio(null);
+      await cargar();
+      return true;
+    } catch (e2) {
+      setError(configMensajeError(e2));
+      return false;
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const alternarPrecio = (p2) => enviarPrecio({ tarifaId: p2.tarifa_id, productoId: p2.producto_id, currencyCode: p2.currency_code, precioUnitario: p2.precio_unitario, activo: p2.activo !== true }, p2.activo === true ? "Precio especial desactivado." : "Precio especial activado.");
+  const ocupado = cargando || guardando;
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: verInactivos, onChange: (e2) => setVerInactivos(e2.target.checked) }), "Ver también las desactivadas"),
+    h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-1" }, "Tarifas de horario (hora feliz)"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Una tarifa se activa sola, según el día de la semana y la hora: mientras está vigente, los productos con precio especial cobran ese precio en vez del normal. Dos tarifas activas no pueden compartir día y hora. Todavía no hay zonas: se aplica igual en todo el local, y solo a productos sin variantes ni modificadores."),
+      formTarifa ? null : h(Btn, { small: true, onClick: () => {
+        setFormTarifa({ ...vacioTarifa });
+        setError("");
+        setConfirmacion("");
+      }, disabled: ocupado }, "Añadir una tarifa")
+    ),
+    formTarifa ? h(
+      Card,
+      { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, formTarifa.id ? "Editar tarifa" : "Nueva tarifa"),
+      h(
+        "div",
+        { className: "grid grid-cols-1 md:grid-cols-3 gap-2" },
+        h(Field, { label: "Nombre (hasta 80 caracteres)" }, h(Input, { value: formTarifa.nombre, onChange: (e2) => setFormTarifa({ ...formTarifa, nombre: e2.target.value }), maxLength: 80, disabled: ocupado })),
+        h(Field, { label: "Hora de inicio" }, h("input", { type: "time", value: formTarifa.horaInicio, onChange: (e2) => setFormTarifa({ ...formTarifa, horaInicio: e2.target.value }), disabled: ocupado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } })),
+        h(Field, { label: "Hora de fin" }, h("input", { type: "time", value: formTarifa.horaFin, onChange: (e2) => setFormTarifa({ ...formTarifa, horaFin: e2.target.value }), disabled: ocupado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }))
+      ),
+      h("div", { className: "text-[12px] font-medium mb-1 mt-2" }, "Días de la semana"),
+      h("div", { className: "flex gap-2 flex-wrap mb-3" }, CONFIG_DIAS_SEMANA.map((d2) => h(
+        "label",
+        { key: d2.id, className: "flex items-center gap-1 text-[12px]" },
+        h("input", { type: "checkbox", checked: formTarifa.dias.includes(d2.id), onChange: () => alternarDia(d2.id), disabled: ocupado }),
+        d2.etiqueta
+      ))),
+      formTarifa.id ? h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: formTarifa.activo, onChange: (e2) => setFormTarifa({ ...formTarifa, activo: e2.target.checked }), disabled: ocupado }), "Activa") : null,
+      h(
+        "div",
+        { className: "flex gap-2 flex-wrap" },
+        h(Btn, { small: true, onClick: () => enviarTarifa(formTarifa, formTarifa.id ? "Tarifa guardada." : "Tarifa añadida."), disabled: ocupado }, guardando ? "Guardando…" : "Guardar tarifa"),
+        h(Btn, { small: true, variant: "ghost", onClick: () => setFormTarifa(null), disabled: ocupado }, "Cancelar")
+      )
+    ) : null,
+    tarifasVisibles.length === 0 && !cargando ? h(Card, { className: "mb-3" }, h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Todavía no hay ninguna tarifa de horario.")) : null,
+    tarifasVisibles.map((t2) => {
+      const preciosTarifa = precios.filter((p2) => p2.tarifa_id === t2.id && (verInactivos || p2.activo));
+      const abriendoAqui = !!formPrecio && formPrecio.tarifaId === t2.id;
+      return h(
+        Card,
+        { key: t2.id, className: "mb-3" },
+        h(
+          "div",
+          { className: "flex items-start justify-between gap-2 mb-2" },
+          h("div", null,
+            h("div", { className: "font-semibold" }, t2.nombre, t2.activo ? "" : " (desactivada)"),
+            h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, nombreDias(t2.dias_semana), " · ", String(t2.hora_inicio).slice(0, 5), " a ", String(t2.hora_fin).slice(0, 5))
+          ),
+          h("div", { className: "flex gap-2 flex-wrap" },
+            h(Btn, { small: true, variant: "ghost", onClick: () => editarTarifa(t2), disabled: ocupado }, "Editar"),
+            h(Btn, { small: true, variant: t2.activo ? "danger" : "ghost", onClick: () => alternarTarifa(t2), disabled: ocupado }, t2.activo ? "Desactivar" : "Activar")
+          )
+        ),
+        preciosTarifa.length === 0 ? h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Sin ningún precio especial todavía.") : preciosTarifa.map((p2) => h(
+          "div",
+          { key: `${p2.producto_id}:${p2.currency_code}`, className: "flex items-center justify-between gap-2 mb-1", style: { opacity: p2.activo ? 1 : 0.6 } },
+          h("div", { className: "text-[12px]" }, nombreProducto(p2.producto_id), p2.activo ? "" : " (desactivado)", " · ", Number(p2.precio_unitario).toFixed(2), " ", p2.currency_code),
+          h(Btn, { small: true, variant: p2.activo ? "danger" : "ghost", onClick: () => alternarPrecio(p2), disabled: ocupado }, p2.activo ? "Quitar precio especial" : "Reactivar")
+        )),
+        abriendoAqui ? null : h(Btn, { small: true, variant: "ghost", onClick: () => {
+          setFormPrecio({ ...vacioPrecio, tarifaId: t2.id });
+          setError("");
+          setConfirmacion("");
+        }, disabled: ocupado || productos.length === 0 || !t2.activo }, !t2.activo ? "Activa la tarifa para añadir precios" : "Añadir un precio especial"),
+        abriendoAqui ? h(
+          "div",
+          { className: "mt-2" },
+          h(
+            "div",
+            { className: "grid grid-cols-1 md:grid-cols-2 gap-2" },
+            h(Field, { label: "Producto" }, h(
+              "select",
+              { value: formPrecio.productoId, onChange: (e2) => {
+                const p2 = productos.find((x3) => x3.producto_id === e2.target.value);
+                setFormPrecio({ ...formPrecio, productoId: e2.target.value, currencyCode: p2 ? p2.currency_code : formPrecio.currencyCode });
+              }, disabled: ocupado, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } },
+              [h("option", { key: "", value: "" }, "Elige un producto"), ...productos.map((p2) => h("option", { key: p2.producto_id, value: p2.producto_id }, `${p2.nombre} (normal ${Number(p2.precio_unitario).toFixed(2)} ${p2.currency_code})`))]
+            )),
+            h(Field, { label: "Precio especial" }, h(Input, { value: formPrecio.precioUnitario, onChange: (e2) => setFormPrecio({ ...formPrecio, precioUnitario: e2.target.value }), disabled: ocupado }))
+          ),
+          h(
+            "div",
+            { className: "flex gap-2 flex-wrap mt-2" },
+            h(Btn, { small: true, onClick: () => enviarPrecio(formPrecio, "Precio especial guardado."), disabled: ocupado }, guardando ? "Guardando…" : "Guardar precio"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => setFormPrecio(null), disabled: ocupado }, "Cancelar")
+          )
+        ) : null
+      );
+    }),
+    cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
+  );
+}
 function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
   const h = import_react4.default.createElement;
   const [datos, setDatos] = (0, import_react4.useState)(null);
@@ -103944,7 +104214,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["opciones", "Opciones y variantes"], ["sala", "Sala y mesas"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["opciones", "Opciones y variantes"], ["tarifas", "Tarifas (hora feliz)"], ["sala", "Sala y mesas"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -103956,6 +104226,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
     seccion === "opciones" ? h(ConfigOpciones, { empresaId, localId }) : null,
+    seccion === "tarifas" ? h(ConfigTarifas, { empresaId, localId }) : null,
     seccion === "sala" ? h(ConfigSala, { empresaId, localId }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
