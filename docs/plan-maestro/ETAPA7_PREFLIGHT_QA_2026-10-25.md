@@ -202,3 +202,38 @@ continúa abierta. La siguiente acción técnica es actualizar o regenerar el
 preview del PR #175 con `d9147e1` y repetir exactamente esta matriz, prestando
 especial atención a los errores del puente, a los conflictos de sincronización
 y al cambio de conteos pendiente.
+
+## 10. Repetición sobre el preview actualizado
+
+Tras la actualización del preview se repitió la entrada en QA con el head
+documentado por el PR (`3e27481`, que conserva el código validado de `d9147e1`).
+La comprobación fue no destructiva y no se pulsaron botones de guardado,
+reintento, cobro, alta, baja ni cambio de permisos.
+
+Resultado de la repetición:
+
+- Plataforma y aplicación cargaron correctamente como `QA Empresa A, S.L.` en
+  `Local A1`.
+- El selector de local siguió limitado a `Local A1` y `Local A2`.
+- La aplicación no mostró un error de arranque ni un nuevo error de runtime
+  durante la navegación realizada.
+- La pantalla de Configuración y la matriz de permisos cargaron completas.
+  El Propietario conserva todos los permisos, las operaciones sensibles siguen
+  bloqueadas para Cajero/a y Camarero/a, y `Guardar 0 cambios` permanece
+  deshabilitado.
+- El diagnóstico histórico volvió a indicar que no hay incompatibilidades en
+  `44` registros.
+- El registro de errores aún muestra las entradas históricas de
+  `leerConfigPuenteLA is not defined` y conflictos antiguos de sincronización;
+  la entrada más reciente visible es del `25/10/2026 12:31:57`. No apareció
+  una entrada nueva durante esta repetición. No se borra el histórico porque
+  forma parte de la evidencia QA.
+- Se mantiene el aviso de una colección guardada solo en este equipo; no se
+  trató como un cambio operativo del servidor ni se intentó subirla.
+
+Resultado: `7.1_VIVO_REPETIDO_EN_HEAD_ACTUAL_SIN_NUEVOS_ERRORES_RUNTIME`.
+Esto permite retirar el bloqueo anterior de "preview antiguo" para la carga y
+la matriz de permisos, pero no cierra la Etapa 7: siguen pendientes la prueba
+controlada de aislamiento con cuentas, las mediciones de rendimiento, la
+comparación de toques TPV antiguo/nuevo y la campaña T9 en dispositivos con
+impresora y cajón reales.
