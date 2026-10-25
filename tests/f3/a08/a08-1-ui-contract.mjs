@@ -137,7 +137,7 @@ assert.ok(src.includes('msg.includes("cuenta_destino_version_conflict")'));
 
 // Wiring completo desde la factoría hasta VentaRapida.
 assert.ok(src.includes("listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta"));
-assert.ok(src.includes("movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria"));
+assert.ok(src.includes("movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, registrarAuditoria"), "A08.1: falta unirCuentasA08 en el wiring reparto->fusión->auditoría");
 assert.ok(src.includes("renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05()"));
 
 console.log("A08_1_DEDICATED_SNAPSHOT=PASS");
