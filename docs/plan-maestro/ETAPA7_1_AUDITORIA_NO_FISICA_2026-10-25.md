@@ -415,14 +415,18 @@ cold start. Esta corrección reduce el riesgo de timeout durante guardados,
 cambios de contexto y reintentos, pero no permite afirmar todavía que el
 arranque esté optimizado ni que la incidencia de Warp esté resuelta al 100 %.
 
-El criterio de aceptación siguiente es publicar este HEAD en un Deploy Preview
-QA y repetir una sesión limpia A1 → A2 → A1, una merma real y un traspaso real,
-registrando tiempos y peticiones `movimientos_registro`. Si el guardado deja de
-generar lecturas completas y no aparece ningún pendiente, se acepta esta
-mitigación y se pasa a estudiar el arranque frío por separado. Si el arranque
-sigue cerca del límite, el siguiente cambio debe resolver la hidratación por
-contexto o paginarla de forma diferida; no se debe relajar RLS ni añadir un
-índice a ciegas.
+El Deploy Preview QA de la mitigación se probó con una sesión limpia A1 → A2 →
+A1. El selector cambió de contexto, la interfaz mostró los datos de cada local,
+no apareció pendiente de `movimientos`, no apareció botón de reintento y la
+sesión volvió correctamente a A1. Esta prueba no creó ninguna mutación de
+negocio. La merma real, el traspaso real y la medición detallada de tiempos y
+peticiones `movimientos_registro` quedan como la siguiente prueba operativa,
+porque no deben simularse ni ejecutarse sobre datos de producción.
+
+El arranque frío sigue siendo un asunto separado: si en esa prueba se acerca al
+límite, el siguiente cambio debe resolver la hidratación por contexto o
+paginarla de forma diferida; no se debe relajar RLS ni añadir un índice a
+ciegas.
 
 ## 15. Bloqueos de CI detectados y cierre técnico
 
@@ -451,6 +455,13 @@ La resolución aplicada fue mecánica y quedó verificada localmente:
    de fuente, validador de manifiesto y el contrato de lectura por IDs pasan.
 
 Esta reparación no modifica cobros, facturas, RLS, Supabase remoto ni
-producción. La segunda ejecución remota debe confirmar los mismos resultados
-en el merge del PR; hasta recibirla, CI queda en estado **corrección aplicada,
-confirmación remota pendiente**.
+producción. La ejecución remota de la puerta general
+`40234934071` terminó en **success** sobre el commit
+`1fb7a6ee916259eea679631cc384804b60e7d633`: `node-y-postgres`,
+`a09_postgres17`, `pm33-p05-supabase-full`, `pm12-p08-supabase-full` y
+`gate-final` pasaron. El gate final revalidó el inventario de 332 archivos,
+315 contratos activos, 285 Node, 26 PostgreSQL, 1 PGlite y 3 full-stack.
+
+Por tanto, el bloqueo de CI queda **cerrado formalmente**. La mitigación de
+guardado por IDs queda aceptada; la optimización del arranque frío y la matriz
+operativa de Etapa 7 siguen abiertas como trabajo funcional independiente.
