@@ -26,7 +26,7 @@ const migracionFix = fs.readFileSync(
 for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación", espejo]]) {
   // Las 3 funciones de orquestación.
   assert.match(contenido, /async function listarEquiposT7F4\(tipo\)/, `${nombre}: falta listarEquiposT7F4`);
-  assert.match(contenido, /async function imprimirTicketSimuladoF4\(\{ equipoId, checkoutId \} = \{\}\)/, `${nombre}: falta imprimirTicketSimuladoF4`);
+  assert.match(contenido, /async function imprimirTicketSimuladoF4\(\{ equipoId, checkoutId(?:, operationId)? \} = \{\}\)/, `${nombre}: falta imprimirTicketSimuladoF4`);
   assert.match(contenido, /async function abrirCajonSimuladoF4\(\{ equipoId, motivo, checkoutId \} = \{\}\)/, `${nombre}: falta abrirCajonSimuladoF4`);
 
   // Reutiliza el catálogo de equipos ya existente, nunca inventa otra
@@ -50,7 +50,7 @@ for (const [nombre, contenido] of [["fuente", fuente], ["espejo de recuperación
   assert.match(contenido, /"Imprimir ticket"/, `${nombre}: falta la sección de impresión en Cobro·F4`);
   assert.match(
     contenido,
-    /onClick: imprimirTicketSimuladoT7F4UI, disabled: procesandoImpresionT7F4 \|\| !equipoImpresoraElegidoT7F4 \}/,
+    /onClick: imprimirTicketSimuladoT7F4UI, disabled: procesandoImpresionT7F4 \|\| !equipoImpresoraElegidoT7F4(?: \|\| \(esQaFiscal && !qrFiscalReady\))? \}/,
     `${nombre}: el botón de imprimir debe depender de que haya una impresora elegida y no haya otra impresión en curso`
   );
 

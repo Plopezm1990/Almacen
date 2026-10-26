@@ -70,7 +70,7 @@ async function entorno(cobro = {}) {
   const srv = crearServidorFalso({ productos: [{ id: 'P1', precio: 1.5 }] });
   const { E, L } = srv.estado.ids;
   const c = {
-    checkouts: [], pagos: [], intentos: [],
+    checkouts: [], checkoutVentas: [], ticketsFiscalQr: [], pagos: [], intentos: [],
     resumen: { estado: 'PENDIENTE', total: 3, confirmado: 0, saldo: 3, reservado: 0, efectivo_recibido: 0, cambio_entregado: 0, cajas: [] },
     rpcMixtoSinIntentos: false, errorPagos: null, errorMixto: null, errorResumen: null, ...cobro
   };
@@ -82,6 +82,8 @@ async function entorno(cobro = {}) {
     from(nombre) {
       if (SIN_ACCESO.has(nombre)) { prohibidas.push(nombre); return consultaSobre([], { message: `permission denied for table ${nombre}` }); }
       if (nombre === 'checkouts') return consultaSobre(c.checkouts);
+      if (nombre === 'checkout_ventas') return consultaSobre(c.checkoutVentas);
+      if (nombre === 'abc_fiscal_qr_documentos') return consultaSobre(c.ticketsFiscalQr);
       if (nombre === 'pagos') return consultaSobre(c.pagos, c.errorPagos);
       return base.from(nombre);
     },
