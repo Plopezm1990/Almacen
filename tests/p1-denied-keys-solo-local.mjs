@@ -5,13 +5,17 @@ import { readFile } from "node:fs/promises";
 const storageScript = await readFile(new URL("../index-storage-bootstrap.js", import.meta.url), "utf8");
 const H = 60 * 60 * 1000;
 
-function makeLocalStorage(initial = {}) {
+function makeLocalStorage(initial = {}, { quotaKeys = [] } = {}) {
   const data = new Map(Object.entries(initial));
+  const keysWithQuota = new Set(quotaKeys);
   return {
     get length() { return data.size; },
     key(i) { return [...data.keys()][i] ?? null; },
     getItem(k) { return data.has(k) ? data.get(k) : null; },
-    setItem(k, v) { data.set(k, String(v)); },
+    setItem(k, v) {
+      if (keysWithQuota.has(k)) throw new Error("No cabe en el almacenamiento de este equipo");
+      data.set(k, String(v));
+    },
     removeItem(k) { data.delete(k); },
     clear() { data.clear(); },
   };
@@ -53,10 +57,10 @@ function makeCloud(mode) {
   };
 }
 
-function setup({ initial = {}, modo = "acepta" } = {}) {
+function setup({ initial = {}, modo = "acepta", quotaKeys = [] } = {}) {
   const mode = { value: modo };
   const cloud = makeCloud(mode);
-  const localStorage = makeLocalStorage(initial);
+  const localStorage = makeLocalStorage(initial, { quotaKeys });
   const events = [];
   const warns = [];
   const elementos = {};
@@ -146,6 +150,24 @@ for (const modo of ["http401", "http403"]) {
   assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "respaldo-qa-solo-local");
   await t.context.storage.set("conteos", JSON.stringify([]));
   assert.deepEqual(t.pendientes(), ["conteos"], "los datos operativos sí conservan el reintento");
+}
+
+// Si el navegador no puede reemplazar una copia local ya existente por cuota,
+// QA conserva la última copia disponible y no convierte ese caso en un error
+// genérico que bloquee el resto de la aplicación.
+{
+  const t = setup({
+    modo: "jwt",
+    initial: { "almacen:historialRespaldos": JSON.stringify([{ id: "backup-anterior" }]) },
+    quotaKeys: ["almacen:historialRespaldos"],
+  });
+  const resultado = await t.context.storage.set("historialRespaldos", JSON.stringify([{ id: "backup-nuevo" }]));
+  assert.equal(resultado.soloLocal, true, "la copia de QA agotada debe quedar identificada como solo local");
+  assert.deepEqual(t.pendientes(), [], "la copia local agotada no bloquea la cola");
+  assert.deepEqual(Object.keys(t.denegados()), ["historialRespaldos"]);
+  assert.equal(t.localStorage.getItem("almacen:historialRespaldos"), JSON.stringify([{ id: "backup-anterior" }]));
+  assert.match(t.indicador().textContent, /1 colección solo en este equipo/);
+  assert.doesNotMatch(t.indicador().textContent, /cambios sin confirmar/);
 }
 
 // Las preferencias de sesión del dispositivo no son datos de negocio: nunca

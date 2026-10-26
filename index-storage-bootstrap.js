@@ -201,7 +201,7 @@
   function esRechazoPorCuota(e) {
     if (!e) return false;
     var texto = String((e && (e.message || e.details || e.hint)) || e);
-    return /(?:payload|upload|request|value).*(?:exceed|exceeds|too large|quota|limit)|(?:quota|limit|too large).*(?:exceed|payload|upload|value)/i.test(texto);
+    return /(?:payload|upload|request|value|storage|almacenamiento).*(?:exceed|exceeds|too large|quota|limit|supera|lleno|cabe)|(?:quota|limit|too large|supera|lleno|no cabe|almacenamiento).*(?:exceed|payload|upload|value|storage|equipo|límite|limite)/i.test(texto);
   }
   function esTiempoAgotadoNube(e) {
     if (!e) return false;
@@ -1284,18 +1284,22 @@
         // Si la subida quedó en cola, saveKey() emitirá el aviso específico
         // de pendiente. No lo sustituimos por una excepción genérica de cuota
         // que oculte si el servidor aceptó o rechazó la fila.
-        if (!confirmadoServidor && !pendienteSincronizacion) {
+        var copiaQaSoloLocal = key === "historialRespaldos" && esPreviewQa();
+        if (!confirmadoServidor && !pendienteSincronizacion && !copiaQaSoloLocal) {
           throw new Error(
             "No cabe en el almacenamiento de este equipo (" + key + "). " +
             "Suele significar que hay algo muy grande guardado, como una foto."
           );
         }
-        console.warn("[almacén] La caché local de «" + key + "» está llena; el cambio queda confirmado o pendiente según el servidor.");
+        console.warn(copiaQaSoloLocal
+          ? "[almacén] La copia automática de QA conserva la última copia local disponible; no bloquea los datos operativos."
+          : "[almacén] La caché local de «" + key + "» está llena; el cambio queda confirmado o pendiente según el servidor.");
       }
       return {
         key: key, value: value, shared: false,
         confirmadoServidor: confirmadoServidor,
         pendienteSincronizacion: pendienteSincronizacion || pendientes().indexOf(key) !== -1,
+        soloLocal: !!(falloLocal && key === "historialRespaldos" && esPreviewQa() && !confirmadoServidor),
         catalogoYaSincronizado: !!(resultadoProductos && resultadoProductos.catalogoYaSincronizado),
         catalogoBloqueado: !!catalogoBloqueado,
         productosConfirmados: !!(resultadoProductos && resultadoProductos.productosConfirmados),
