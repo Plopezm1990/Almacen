@@ -155,14 +155,51 @@ La lectura directa y no mutante de QA encontró una única fila completada para 
 
 No se observan operaciones ni eventos duplicados, y la UI no ofrece un segundo cobro después de la confirmación. La repetición literal del mismo `operation_id` para comprobar la rama `replayed=true` no se ejecutó: la interfaz no expone ese control y reproducirlo mediante SQL saltaría el contexto autenticado de la UI. Por tanto, el resultado formal es **sin duplicidad observada**, no una afirmación de replay end-to-end.
 
-## 8. Qué sigue
+## 8. Continuación comprobada el 26/10/2026
 
-El siguiente paso recomendado es:
+Se hizo una lectura adicional, exclusivamente de QA y sin mutaciones, antes de decidir la
+limpieza de la fixture:
 
-1. ejecutar la limpieza o cierre operativo de esta cuenta QA siguiendo el procedimiento autorizado del entorno;
-2. cerrar la documentación de C02/C03 con la limitación de replay indicada arriba;
-3. comprobar documentos en modo simulador sin emitir ni enviar fiscalidad real;
-4. dejar el hardware T9 para el último bloque.
+- La cuenta `16cae507-2855-4c02-8d35-5a98abcf3b68` sigue `ABIERTA`.
+- El pedido `0b28ba43-782a-4c0b-99cd-6b5f7931ac14` sigue `ENVIADO`, versión `4`.
+- El checkout sigue `COMPLETADO`, el pago e intento siguen `CONFIRMADO` y la venta fiscal
+  `8d83372f-5e3b-42c7-991a-898d151c3dd1` sigue `ABIERTA` por `€1,00`.
+- El único efecto asociado al cobro es `PROVIDER_COBRO`, estado `COMPLETADO`, con la clave
+  de deduplicación `pago-intento:6bcf07d1-ca1a-4c83-adec-72aa203822d1`.
+- No hay efectos de esta fixture en `PENDIENTE`, `EN_PROCESO` ni `ERROR`, y no hay fila de
+  `caja_operaciones` asociada al cobro de tarjeta.
 
-El hardware T9 continúa reservado para el último bloque, cuando esté disponible.
+La limpieza no se ejecutó deliberadamente. El contrato server-side de cierre operativo solo
+permite cerrar un pedido en estado `SERVIDO`; la UI actual muestra el pedido `ENVIADO` y solo
+ofrece `Iniciar preparación`. No existe una función general autorizada de cierre de cuenta en
+este recorrido. Forzar una transición de cocina o borrar filas directamente en QA introduciría
+una mutación distinta de la prueba financiera, por lo que la fixture queda abierta y trazable
+hasta que exista un procedimiento de limpieza QA aprobado.
+
+## 9. Contratos locales del bloque siguiente
+
+Se ejecutaron los contratos de T6/T7 con este resultado:
+
+- Factura empresa en simulador: `PASS`.
+- Ticket por correo: `PASS`.
+- Impresión/cajón simulados: `PASS`.
+- Tarjeta QA, Bizum operativo y vale regalo: `PASS`.
+- Puente L&A pieza 1: `PASS` después de repetir el runner fuera del aislamiento local; el
+  primer intento fue un bloqueo del entorno al abrir `127.0.0.1`, no un fallo del código.
+- Puente L&A pieza 2: `PASS`.
+
+La vista Cobro QA se dejó abierta con el pago confirmado. Se verificó que los controles de
+factura y ticket existen, pero no se pulsaron: la factura crea un documento server-side y el
+ticket invoca la función de correo, aunque ambos estén etiquetados como simulador/informativo.
+No se introdujeron datos de empresa cliente, NIF ni correo, y no se realizó ninguna emisión,
+envío o impresión.
+
+## 10. Qué sigue
+
+1. Obtener o definir el procedimiento autorizado para cerrar/purgar únicamente esta fixture QA,
+   sin tocar producción y sin alterar comandas históricas.
+2. Con una confirmación puntual en el momento de la acción, probar factura simulada y/o ticket
+   informativo con datos sintéticos, verificando el resultado server-side y la idempotencia.
+3. Después, revisar la impresión simulada y el puente local en modo no físico.
+4. Mantener el hardware T9 para el último bloque, cuando esté disponible.
 
