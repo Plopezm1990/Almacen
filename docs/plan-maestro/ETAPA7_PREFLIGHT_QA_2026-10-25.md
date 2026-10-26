@@ -237,3 +237,28 @@ la matriz de permisos, pero no cierra la Etapa 7: siguen pendientes la prueba
 controlada de aislamiento con cuentas, las mediciones de rendimiento, la
 comparación de toques TPV antiguo/nuevo y la campaña T9 en dispositivos con
 impresora y cajón reales.
+
+## 11. T9 dejada pendiente por ahora
+
+A fecha 26/10/2026 se decide dejar la campaña física T9 pendiente. El software
+de impresión y cajón en modo simulador está en PASS, pero no hay una impresora
+de tickets ni un cajón monedero reales conectados al puesto de prueba. El
+simulador no sustituye la aceptación física.
+
+Los contratos ejecutados para dejar cerrada la parte no física fueron:
+
+- `etapa5-t7-impresion-cajon-simulador-contract.mjs`: PASS;
+- `etapa7-role-matrix-caja-contract.mjs`: PASS;
+- `etapa7-movimientos-sync-read-scope-contract.mjs`: PASS;
+- `git diff --check`: PASS.
+
+La comprobación del sistema Windows no pudo enumerar impresoras porque el
+recurso CIM no estaba disponible en esta estación. No se toma esta limitación
+como evidencia sobre otro puesto; únicamente confirma que no existe aquí una
+prueba física reproducible que permita cerrar T9.
+
+La T9 se reabrirá cuando se conecten los periféricos reales y se ejecutará
+exclusivamente sobre QA. La secuencia pendiente incluye impresión, apertura
+del cajón, motivo sin venta, equipo inactivo, desconexión, recuperación,
+reintento sin duplicación y trazabilidad. La ficha de bloqueo queda en
+[`ETAPA7_2_T9_BLOQUEO_HARDWARE_2026-10-26.md`](ETAPA7_2_T9_BLOQUEO_HARDWARE_2026-10-26.md).
