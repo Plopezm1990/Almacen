@@ -61,6 +61,7 @@ if (css.length < 10000) throw new Error(`Tailwind output is unexpectedly small: 
 
 for (const required of [
   'index.html',
+  'offline-shell-bootstrap.js',
   'fuente.js',
   'edge-auth-patch.js',
   'reset-pruebas-preview.js',

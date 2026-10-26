@@ -5,13 +5,17 @@ import { readFile } from "node:fs/promises";
 const storageScript = await readFile(new URL("../index-storage-bootstrap.js", import.meta.url), "utf8");
 const H = 60 * 60 * 1000;
 
-function makeLocalStorage(initial = {}) {
+function makeLocalStorage(initial = {}, { quotaKeys = [] } = {}) {
   const data = new Map(Object.entries(initial));
+  const keysWithQuota = new Set(quotaKeys);
   return {
     get length() { return data.size; },
     key(i) { return [...data.keys()][i] ?? null; },
     getItem(k) { return data.has(k) ? data.get(k) : null; },
-    setItem(k, v) { data.set(k, String(v)); },
+    setItem(k, v) {
+      if (keysWithQuota.has(k)) throw new Error("No cabe en el almacenamiento de este equipo");
+      data.set(k, String(v));
+    },
     removeItem(k) { data.delete(k); },
     clear() { data.clear(); },
   };
@@ -24,7 +28,11 @@ function makeCloud(mode) {
     if (mode.value === "acepta") return null;
     if (mode.value === "rls") return { code: "42501", message: 'new row violates row-level security policy for table "almacen_kv"' };
     if (mode.value === "rls-sin-codigo") return { message: "new row violates row-level security policy" };
+    if (mode.value === "quota") return { message: "Upload payload exceeds 5242880 bytes" };
     if (mode.value === "jwt") return { code: "PGRST301", message: "JWT expired" };
+    if (mode.value === "http401") return { status: 401, message: "Unauthorized" };
+    if (mode.value === "http403") return { status: 403, message: "Forbidden" };
+    if (mode.value === "qa-timeout") return { message: "La nube tarda demasiado en responder" };
     throw new Error("modo desconocido " + mode.value);
   };
   const builder = (table) => {
@@ -49,10 +57,10 @@ function makeCloud(mode) {
   };
 }
 
-function setup({ initial = {}, modo = "acepta" } = {}) {
+function setup({ initial = {}, modo = "acepta", quotaKeys = [] } = {}) {
   const mode = { value: modo };
   const cloud = makeCloud(mode);
-  const localStorage = makeLocalStorage(initial);
+  const localStorage = makeLocalStorage(initial, { quotaKeys });
   const events = [];
   const warns = [];
   const elementos = {};
@@ -74,6 +82,7 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
     Promise, JSON, Error, Date: RelojDate,
   };
   context.window = context;
+  context.location = { hostname: "deploy-preview-172--chic-entremet-9107cf.netlify.app" };
   context.globalThis = context;
   context.dispatchEvent = (e) => { events.push(e); return true; };
   vm.createContext(context);
@@ -91,6 +100,75 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
 }
 
 const claveEvento = (events) => events.filter((e) => e.type === "clave-solo-local").map((e) => e.detail.key).sort();
+
+// Un 401/403 de la autoridad Supabase sí es un rechazo verificable: se
+// conserva localmente y queda visible como rechazo de autoridad. Un timeout,
+// en cambio, no demuestra que la escritura esté prohibida; debe quedar
+// pendiente para que el usuario pueda reintentarlo.
+for (const modo of ["http401", "http403"]) {
+  const t = setup({ modo });
+  await t.context.storage.set("movimientos", JSON.stringify([{ id: "mv-qa", tipo: "merma" }]));
+  assert.deepEqual(t.pendientes(), [], `${modo}: movimientos no queda reintentándose`);
+  assert.deepEqual(Object.keys(t.denegados()), ["movimientos"]);
+  assert.deepEqual([...t.context.__clavesSoloLocal()], ["movimientos"]);
+  assert.match(t.indicador().textContent, /1 colección solo en este equipo/);
+  assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "permisos");
+}
+
+{
+  const t = setup({ modo: "qa-timeout" });
+  await t.context.storage.set("movimientos", JSON.stringify([{ id: "mv-qa-timeout", tipo: "merma" }]));
+  assert.deepEqual(t.pendientes(), ["movimientos"], "qa-timeout: movimientos conserva el reintento");
+  assert.deepEqual(t.denegados(), {}, "qa-timeout: no se marca como rechazado por permisos");
+  assert.deepEqual([...t.context.__clavesSoloLocal()], [], "qa-timeout: no se fuerza solo local");
+  assert.match(t.indicador().textContent, /Subiendo 1/);
+}
+
+// Un respaldo puede estar correctamente guardado en este navegador y, aun
+// así, superar el límite de carga del servidor. No debe quedarse en la cola
+// junto con movimientos o ventas, porque bloquearía el diagnóstico de todo lo
+// demás. Se conserva localmente y queda identificado como solo local.
+{
+  const t = setup({ modo: "quota" });
+  await t.context.storage.set("historialRespaldos", JSON.stringify([{ id: "backup-grande" }]));
+  assert.deepEqual(t.pendientes(), [], "un respaldo demasiado grande no queda reintentándose");
+  assert.deepEqual(Object.keys(t.denegados()), ["historialRespaldos"]);
+  assert.deepEqual([...t.context.__clavesSoloLocal()], ["historialRespaldos"]);
+  assert.match(t.indicador().textContent, /1 colección solo en este equipo/);
+  assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "cuota");
+  const leido = await t.context.storage.get("historialRespaldos");
+  assert.equal(leido.value, JSON.stringify([{ id: "backup-grande" }]));
+}
+
+// En preview QA, un 401 de la autoridad no debe dejar el respaldo automático
+// bloqueando toda la cola; los datos operativos sí siguen siendo pendientes.
+{
+  const t = setup({ modo: "jwt" });
+  await t.context.storage.set("historialRespaldos", JSON.stringify([{ id: "backup-qa" }]));
+  assert.deepEqual(t.pendientes(), [], "el respaldo de QA no queda en cola tras un 401");
+  assert.deepEqual(Object.keys(t.denegados()), ["historialRespaldos"]);
+  assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "respaldo-qa-solo-local");
+  await t.context.storage.set("conteos", JSON.stringify([]));
+  assert.deepEqual(t.pendientes(), ["conteos"], "los datos operativos sí conservan el reintento");
+}
+
+// Si el navegador no puede reemplazar una copia local ya existente por cuota,
+// QA conserva la última copia disponible y no convierte ese caso en un error
+// genérico que bloquee el resto de la aplicación.
+{
+  const t = setup({
+    modo: "jwt",
+    initial: { "almacen:historialRespaldos": JSON.stringify([{ id: "backup-anterior" }]) },
+    quotaKeys: ["almacen:historialRespaldos"],
+  });
+  const resultado = await t.context.storage.set("historialRespaldos", JSON.stringify([{ id: "backup-nuevo" }]));
+  assert.equal(resultado.soloLocal, true, "la copia de QA agotada debe quedar identificada como solo local");
+  assert.deepEqual(t.pendientes(), [], "la copia local agotada no bloquea la cola");
+  assert.deepEqual(Object.keys(t.denegados()), ["historialRespaldos"]);
+  assert.equal(t.localStorage.getItem("almacen:historialRespaldos"), JSON.stringify([{ id: "backup-anterior" }]));
+  assert.match(t.indicador().textContent, /1 colección solo en este equipo/);
+  assert.doesNotMatch(t.indicador().textContent, /cambios sin confirmar/);
+}
 
 // Las preferencias de sesión del dispositivo no son datos de negocio: nunca
 // deben entrar en KV, pendientes o el aviso de sincronización.
@@ -111,7 +189,15 @@ const claveEvento = (events) => events.filter((e) => e.type === "clave-solo-loca
   const t = setup({ modo: "acepta" });
   await t.context.storage.set("temaOscuro", "true");
   await t.context.storage.set("productos", JSON.stringify([{ id: "p1" }]));
-  assert.equal(t.cloud.calls.upsert.length, 2, "con servidor que acepta, se sube cada clave");
+  await t.context.storage.set("movimientos", JSON.stringify([{
+    id: "mv1", fecha: "2026-10-22", empresaId: "empresa-test", localId: "local-test", tipo: "MERMA"
+  }]));
+  assert.equal(t.cloud.calls.upsert.length, 3, "con servidor que acepta, se sube cada clave");
+  const movimientoSubido = t.cloud.calls.upsert.find((llamada) => llamada.table === "movimientos_registro");
+  assert.equal(movimientoSubido.payload[0].empresa_id, "empresa-test");
+  assert.equal(movimientoSubido.payload[0].local_id, "local-test");
+  assert.equal(movimientoSubido.payload[0].datos.empresaId, "empresa-test");
+  assert.equal(movimientoSubido.payload[0].datos.localId, "local-test");
   assert.deepEqual(t.pendientes(), []);
   assert.deepEqual(t.denegados(), {});
   assert.equal(t.indicador().style.display, "none", "sin pendientes ni denegadas no hay aviso");

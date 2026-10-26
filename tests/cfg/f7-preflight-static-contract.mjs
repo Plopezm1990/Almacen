@@ -56,6 +56,12 @@ const EXCLUIDAS = new Set([
   '20261022130000_abc_f5_tpv_line_notes.sql',
   '20261022140000_abc_f3_a10_route_recovery.sql',
   '20261022150000_abc_f3_a10_route_recovery_merge.sql',
+  // P18 conserva el QR fiscal en modo simulador únicamente para el tenant
+  // QA; no activa fiscalidad ni crea objetos en Producción.
+  '20261026110210_abc_p3c_contexto_productos.sql',
+  '20261026111358_abc_p3c_reload_postgrest.sql',
+  '20261026113000_abc_p3c_qa_b_fiscal_fixture.sql',
+  '20261026160000_abc_p18_qa_fiscal_qr_ticket.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

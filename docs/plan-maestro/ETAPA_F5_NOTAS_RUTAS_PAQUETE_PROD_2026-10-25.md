@@ -1,6 +1,6 @@
 # Paquete de preparación F5: notas TPV y recuperación de rutas
 
-Fecha: 2026-10-25  
+Fecha: 2026-10-25
 Base: `release` en `4e8f629cefa614e0705096f87efa4f8dd13ad2af`
 
 ## Alcance de esta etapa

@@ -522,6 +522,12 @@ assert.ok(!guardarPedidoHandler.includes("setShowCobro(true)"), "A02.1 P13: Guar
 
 
 // P14 — contrato A02.1 consolidado P1–P13 con allowlist del camino primario.
+// abc_actualizar_nota_linea (F5, notas de línea) aparece dos veces en el
+// código fuente: una en la rama de replay de una línea ya creada (justo tras
+// abc_crear_pedido, antes del bucle de líneas nuevas) y otra justo después
+// de crear una línea nueva (abc_agregar_linea_pedido / _configurada). Es
+// parte legítima del camino primario, con su propio contrato
+// (tests/f5/f5-tpv-line-notes-contract.mjs), no un RPC fuera de alcance.
 const rpcPrimariosA02 = [...adapter.matchAll(/rpcA02ConRecuperacion\(supabase, "([^"]+)"/g)].map((m) => m[1]);
 assert.deepEqual(
   rpcPrimariosA02,

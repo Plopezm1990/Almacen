@@ -1,14 +1,14 @@
 {
   "pm": "PM-01",
-  "commit_rama_validada": "bd0dc4a85609e2b9581713cd3dc6973ffd57e893",
+  "commit_rama_validada": "500887573161a50d335d9c4501707bbe4e12b893",
   "bundle": "fuente.js",
-  "bundle_bytes": 5522269,
-  "marca_fuente_linea": 116850,
-  "lineas_cuerpo_aplicacion": 14104,
-  "bytes_cuerpo_aplicacion": 1212885,
-  "sha256_cuerpo_bundle": "cff5ce8af4420ae14eb0a74fa44515e74be5d88e543b9ab9d624313a63aa3b06",
-  "sha256_cuerpo_recuperado": "cff5ce8af4420ae14eb0a74fa44515e74be5d88e543b9ab9d624313a63aa3b06",
+  "bundle_bytes": 6467720,
+  "marca_fuente_linea": 101037,
+  "lineas_cuerpo_aplicacion": 31585,
+  "bytes_cuerpo_aplicacion": 2393800,
+  "sha256_cuerpo_bundle": "904150ecfae0e64aaafb45083b469a4afd805e5199ae5d614f7017ff7338b43d",
+  "sha256_cuerpo_recuperado": "904150ecfae0e64aaafb45083b469a4afd805e5199ae5d614f7017ff7338b43d",
   "paridad_cuerpo_exacta": true,
-  "fuente_recuperada_bytes": 1214135,
-  "nota": "Se sustituyen únicamente los dos bootstrap de React/ReactDOM por imports normales; la lógica de aplicación se conserva byte a byte por líneas UTF-8 normalizadas con LF."
+  "fuente_recuperada_bytes": 2426649,
+  "nota": "Espejo regenerado desde la frontera var C2 del bundle local porque el objeto Git del baseline histórico no está disponible en este checkout."
 }

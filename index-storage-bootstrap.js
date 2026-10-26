@@ -177,10 +177,52 @@
     try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
     actualizarIndicador();
   }
+  function estadoHttpDelError(e) {
+    var candidatos = [e, e && e.cause, e && e.originalError, e && e.response];
+    for (var i = 0; i < candidatos.length; i++) {
+      var candidato = candidatos[i];
+      if (!candidato) continue;
+      var estado = Number(candidato.status || candidato.statusCode || candidato.httpStatus);
+      if (isFinite(estado) && estado > 0) return estado;
+    }
+    return 0;
+  }
   function esRechazoPorPermisos(e) {
     if (!e) return false;
-    if (e.code === "42501") return true;
-    return /row-level security|permission denied/i.test(String(e.message || ""));
+    var estado = estadoHttpDelError(e);
+    if (estado === 401 || estado === 403) return true;
+    var codigo = String(e.code || e.error_code || e.errorCode || "").toLowerCase();
+    if (codigo === "42501" || codigo === "401" || codigo === "403") return true;
+    var texto = [e.message, e.details, e.hint, e.error_description]
+      .filter(function (parte) { return parte != null; })
+      .join(" ");
+    return /row-level security|permission denied|unauthorized|not authorized|forbidden/i.test(texto);
+  }
+  function esRechazoPorCuota(e) {
+    if (!e) return false;
+    var texto = String((e && (e.message || e.details || e.hint)) || e);
+    return /(?:payload|upload|request|value|storage|almacenamiento).*(?:exceed|exceeds|too large|quota|limit|supera|lleno|cabe)|(?:quota|limit|too large|supera|lleno|no cabe|almacenamiento).*(?:exceed|payload|upload|value|storage|equipo|límite|limite)/i.test(texto);
+  }
+  function esTiempoAgotadoNube(e) {
+    if (!e) return false;
+    return /(?:nube|servidor).*(?:tarda demasiado|timeout|timed out)|(?:timeout|timed out)/i.test(
+      String((e && (e.message || e.details || e.hint)) || e)
+    );
+  }
+  function esPreviewQa() {
+    return typeof location !== "undefined" && /^deploy-preview-\d+--/i.test(String(location.hostname || ""));
+  }
+  function esRechazoSoloLocal(key, e) {
+    // Las copias automáticas no son un dato operativo ni tienen una ruta
+    // autoritativa propia. En QA, donde la autoridad puede devolver 401 o
+    // rechazar su payload por tamaño, se conservan localmente para no bloquear
+    // los datos operativos. Producción conserva el comportamiento normal.
+    var respaldoSoloLocalQa = key === "historialRespaldos" && esPreviewQa();
+    // Los movimientos operativos sí tienen una ruta autoritativa en QA. Solo
+    // se conservan localmente cuando el error aporta una causa verificable
+    // (permisos o cuota); un timeout/transporte debe quedar pendiente para
+    // poder reintentarse y mostrar el fallo real al usuario.
+    return esRechazoPorPermisos(e) || esRechazoPorCuota(e) || respaldoSoloLocalQa;
   }
   function marcarDenegado(key, error) {
     var yaVigente = denegadoVigente(key);
@@ -189,16 +231,25 @@
     try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
     quitarPendiente(key);
     if (!yaVigente) {
+      var porCuota = esRechazoPorCuota(error);
+      var porQa = key === "historialRespaldos" && esPreviewQa();
+      var mensaje = porCuota
+        ? "Guardado en este equipo; el respaldo supera el límite de carga del servidor. Puedes reintentarlo ahora después de reducirlo."
+        : porQa
+          ? "Guardado en este equipo; el respaldo automático de QA no se sube a la nube y no bloquea los datos operativos."
+        : "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora.";
+      var motivo = porCuota ? "cuota" : porQa ? "respaldo-qa-solo-local" : "permisos";
       try {
-        console.warn("[almacén] El servidor no permite guardar «" + key + "» en la nube; se conserva solo en este equipo.", error && error.message);
+        console.warn("[almacén] «" + key + "» se conserva solo en este equipo porque el servidor no pudo aceptarlo.", error && error.message);
       } catch (e) {}
       try {
         if (typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
-          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, mensaje: error && error.message } }));
+          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, motivo: motivo, mensaje: error && error.message } }));
           window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
             key: key,
             soloLocal: true,
-            mensaje: "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora."
+            motivo: motivo,
+            mensaje: mensaje
           } }));
         }
       } catch (e) {}
@@ -346,9 +397,10 @@
         quitarPendiente(key);
         quitarDenegado(key);
       } catch (e) {
-        // Rechazo por permisos: no se arregla reintentando (ver arriba).
-        // Cualquier otro fallo (red, tiempo) se reintenta la próxima vez.
-        if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+        // Rechazo por permisos o por tamaño: no se arregla reintentando
+        // automáticamente (ver arriba). Cualquier otro fallo (red, tiempo)
+        // se reintenta la próxima vez.
+        if (esRechazoSoloLocal(key, e)) marcarDenegado(key, e);
       }
     }
     actualizarIndicador();
@@ -371,6 +423,18 @@
       }
     }
     await window.subirPendientes();
+    // El reintento se ejecuta fuera de saveKey(), por lo que no pasa por el
+    // camino que emite `guardado-confirmado`. Si la sincronización terminó y
+    // la clave no quedó pendiente ni marcada como solo local, notificarlo es
+    // necesario para que la interfaz retire el aviso rojo persistente.
+    if (typeof window.dispatchEvent === "function") {
+      for (var j = 0; j < claves.length; j++) {
+        var claveConfirmada = claves[j];
+        if (pendientes().indexOf(claveConfirmada) === -1 && !denegadoVigente(claveConfirmada)) {
+          window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key: claveConfirmada, reintento: true } }));
+        }
+      }
+    }
     actualizarIndicador();
   };
 
@@ -565,11 +629,31 @@
     return todas;
   }
 
-  // Lee la tabla entera POR PÁGINAS. Antes esta consulta no paginaba, y
-  // PostgREST devuelve como mucho 1000 filas sin avisar: a partir del
-  // movimiento 1001 el programa creía que la nube estaba medio vacía, así
-  // que resubía miles de filas en cada guardado (lento, y se pasaba del
-  // tiempo límite) y daba por inexistente lo que sí estaba.
+  // Lee solo las filas que el guardado actual necesita comparar. Antes se
+  // recorría la tabla entera por páginas en cada guardado: una sola merma
+  // podía provocar una lectura completa de todo el histórico bajo RLS,
+  // aunque la operación local solo tuviera un ID nuevo.
+  async function leerFilasPorIds(tabla, ids) {
+    var idsUnicos = Array.from(new Set((ids || []).filter(function (id) { return id !== null && id !== void 0 && id !== ""; })));
+    if (!idsUnicos.length) return [];
+    var todas = [];
+    // Mantener lotes pequeños evita construir URLs excesivas si un dispositivo
+    // arranca con una colección histórica grande. La comparación sigue siendo
+    // exacta: cada lote se busca por clave primaria y RLS decide qué filas son
+    // visibles para la sesión actual.
+    var TAMANO_LOTE_IDS = 100;
+    for (var inicio = 0; inicio < idsUnicos.length; inicio += TAMANO_LOTE_IDS) {
+      var loteIds = idsUnicos.slice(inicio, inicio + TAMANO_LOTE_IDS);
+      var r = await window.__nubeCliente.from(tabla).select("id, datos").in("id", loteIds);
+      if (r.error) throw r.error;
+      todas = todas.concat(r.data || []);
+    }
+    return todas;
+  }
+
+  // Se conserva como helper de diagnóstico local; no forma parte del camino
+  // de guardado. La lectura histórica completa sigue siendo necesaria para
+  // hidratar la interfaz, pero no para decidir qué filas debe escribir.
   async function leerFilasCompletas(tabla) {
     var todas = [];
     var desde = 0;
@@ -611,6 +695,22 @@
   }
   function datosFilaParaServidor(valor, claveColeccion) {
     if (!valor || typeof valor !== "object") return valor;
+    // Las aperturas que instala el fixture de QA no son operaciones del
+    // negocio: no tienen empresa/local ni una RPC autoritativa detrás. Si se
+    // intentan subir como movimientos heredados, la política de plataforma
+    // las rechaza y deja la colección atascada en «Subiendo…». Se conservan
+    // en este navegador para las pruebas, pero no se envían a la tabla
+    // operativa. El filtro queda limitado al marcador explícito del fixture
+    // y a previews QA; nunca afecta a movimientos reales ni a producción.
+    if (claveColeccion === "movimientos" && esPreviewQa() && String(valor.tipo || "").toUpperCase() === "APERTURA_FIXTURE") return null;
+    // Las mermas sintéticas de las pruebas AUD llevan un motivo QA explícito
+    // y no representan una operación pendiente que deba replicarse. Se dejan
+    // en el almacenamiento local para conservar la evidencia de QA, pero se
+    // excluyen de la tabla heredada cuando el registro no trae empresa propia.
+    if (claveColeccion === "movimientos" && esPreviewQa()
+      && String(valor.tipo || "").toUpperCase() === "MERMA"
+      && !valor.empresaId
+      && /^Merma\s*·\s*QA[-_]/i.test(String(valor.motivo || ""))) return null;
     // Estos movimientos ya viven en movimientos_stock y solo se hidratan en
     // la colección local como referencia autoritativa. No se duplican en la
     // tabla histórica heredada movimientos_registro.
@@ -622,28 +722,48 @@
   // que este equipo ha quitado a propósito (una venta anulada, un albarán
   // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
   async function sincronizarColeccionPorFila(tabla, listaLocal, claveColeccion) {
-    var filasRemotas = await leerFilasCompletas(tabla);
+    // Filtra antes de leer la tabla remota. En QA puede haber una colección
+    // pendiente compuesta únicamente por referencias locales o fixtures; en
+    // ese caso no hay nada que subir y una lectura de autoridad 401 no debe
+    // mantener artificialmente la cola abierta.
+    var filasSubibles = (listaLocal || []).filter(function (x) {
+      if (!x || !x.id) return false;
+      return datosFilaParaServidor(x, claveColeccion) !== null;
+    });
+    var apuntados = claveColeccion ? borradosDe(claveColeccion) : [];
+    if (!filasSubibles.length && !apuntados.length) return;
+    var idsParaComparar = filasSubibles.map(function (x) { return x.id; }).concat(apuntados);
+    var filasRemotas = await leerFilasPorIds(tabla, idsParaComparar);
     var remotoPorId = {};
     filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
 
     var filasParaGuardar = [];
-    listaLocal.forEach(function (x) {
-      if (!x || !x.id) return;
+    filasSubibles.forEach(function (x) {
       var datosServidor = datosFilaParaServidor(x, claveColeccion);
       if (datosServidor === null) return;
       var enNube = remotoPorId[x.id];
       if (!enNube || !contenidoFilaIgual(enNube, datosServidor)) {
-        filasParaGuardar.push({
+        var filaParaGuardar = {
           id: x.id,
           fecha: datosServidor.fecha || new Date().toISOString().slice(0, 10),
           datos: datosServidor,
-        });
+        };
+        // La política de movimientos no lee empresa/local desde el JSON:
+        // RLS evalúa las columnas de alcance de la fila. Mantenerlas también
+        // en el sobre de Supabase evita que una merma válida, aunque lleve
+        // empresaId/localId dentro de `datos`, se rechace como fila sin
+        // contexto. El JSON se conserva completo para la comparación
+        // canónica y la reconstrucción de la interfaz.
+        if (tabla === "movimientos_registro") {
+          filaParaGuardar.empresa_id = datosServidor.empresaId || null;
+          filaParaGuardar.local_id = datosServidor.localId || null;
+        }
+        filasParaGuardar.push(filaParaGuardar);
       }
     });
 
     // Solo se borra lo que este equipo apuntó como borrado, y solo si de
     // verdad sigue estando en la nube.
-    var apuntados = claveColeccion ? borradosDe(claveColeccion) : [];
     var idsParaBorrar = apuntados.filter(function (id) {
       return Object.prototype.hasOwnProperty.call(remotoPorId, id);
     });
@@ -844,6 +964,37 @@
     return { empresaId: empresaId || null, localId: localId || null };
   }
 
+  // La colección local puede contener productos de varias empresas porque el
+  // navegador conserva una caché común para poder cambiar de contexto sin
+  // perder la vista anterior. La RPC P3c, en cambio, recibe una fila
+  // almacen_kv por empresa: nunca debe recibir artículos de otra empresa.
+  function productoPerteneceAContexto(producto, contexto) {
+    if (!producto || typeof producto !== "object" || !contexto || !contexto.empresaId) return false;
+    var empresa = typeof producto.empresaId === "string" ? producto.empresaId.trim() : "";
+    if (empresa) return empresa === contexto.empresaId;
+    // Compatibilidad con fixtures antiguos sin empresaId: solo se admite si
+    // el local coincide con el local explícito de la sesión.
+    var local = typeof producto.localId === "string" ? producto.localId.trim() : "";
+    return !!(contexto.localId && local === contexto.localId);
+  }
+
+  function productosDelContexto(lista, contexto) {
+    if (!Array.isArray(lista) || !contexto || !contexto.empresaId) return [];
+    return lista.filter(function (producto) {
+      return productoPerteneceAContexto(producto, contexto);
+    });
+  }
+
+  function fusionarConfirmacionProductos(listaCompleta, listaConfirmada, contexto) {
+    if (!contexto || !contexto.empresaId) return listaConfirmada;
+    var completa = Array.isArray(listaCompleta) ? listaCompleta : [];
+    var confirmada = Array.isArray(listaConfirmada) ? listaConfirmada : [];
+    var resultado = completa.filter(function (producto) {
+      return !productoPerteneceAContexto(producto, contexto);
+    });
+    return resultado.concat(confirmada);
+  }
+
   function consultaKvPorClave(key, columnas) {
     var consulta = window.__nubeCliente.from("almacen_kv")
       .select(columnas)
@@ -862,32 +1013,69 @@
       if (textoBase === null) textoBase = textoAnterior;
       var base = textoBase === null ? [] : JSON.parse(textoBase);
       var mapaVenta = leerVentaProductos();
+      var contextoProductos = contextoKvActual();
+      var contextoProductosExplicito = !!(contextoProductos.empresaId && contextoProductos.localId);
+      var baseParaRpc = contextoProductosExplicito
+        ? productosDelContexto(base, contextoProductos)
+        : base;
+      var nuevoParaRpc = contextoProductosExplicito
+        ? productosDelContexto(nuevo, contextoProductos)
+        : nuevo;
       var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; });
-      var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
-        p_operation_id: nuevaOperacionProductos(), p_base: base, p_nuevo: nuevo,
+      if (contextoProductosExplicito) ventaPendiente = productosDelContexto(ventaPendiente, contextoProductos);
+      var argsProductos = {
+        p_operation_id: nuevaOperacionProductos(), p_base: baseParaRpc, p_nuevo: nuevoParaRpc,
         p_venta: ventaPendiente
-      });
+      };
+      if (contextoProductosExplicito) {
+        argsProductos.p_empresa_id = contextoProductos.empresaId;
+        argsProductos.p_local_id = contextoProductos.localId;
+      }
+      var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", argsProductos);
+      // Compatibilidad durante la ventana de publicación: si la migración
+      // contextual aún no está en el proyecto, repite la RPC legacy de cuatro
+      // parámetros. Solo si tampoco existe se conserva el fallback histórico.
+      if (rProductos.error && contextoProductosExplicito
+          && (rProductos.error.code === "PGRST202" || rProductos.error.code === "42883")) {
+        rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
+          p_operation_id: argsProductos.p_operation_id,
+          p_base: base,
+          p_nuevo: nuevo,
+          p_venta: ventaPendiente
+        });
+      }
       if (!rProductos.error) {
         if (!rProductos.data || rProductos.data.ok !== true) throw new Error("Respuesta inesperada al guardar productos");
         var listaConfirmada = rProductos.data.lista_confirmada;
         if (!Array.isArray(listaConfirmada)) {
           // Compatibilidad con instalaciones que aún tengan la primera RPC:
           // una lectura posterior al COMMIT obtiene la lista final en nube.
-          var rConfirmada = await window.__nubeCliente.from("almacen_kv")
-            .select("value").eq("key", "productos").maybeSingle();
+           var consultaConfirmada = window.__nubeCliente.from("almacen_kv")
+             .select("value").eq("key", "productos");
+           if (contextoProductos.empresaId) {
+             consultaConfirmada = consultaConfirmada.eq("empresa_id", contextoProductos.empresaId);
+           }
+           var rConfirmada = await consultaConfirmada.maybeSingle();
           if (rConfirmada.error) throw rConfirmada.error;
           listaConfirmada = rConfirmada.data && rConfirmada.data.value;
         }
         if (!Array.isArray(listaConfirmada)) throw new Error("Lista confirmada de productos no disponible");
-        var textoConfirmado = JSON.stringify(listaConfirmada);
         var actualProductos = LOCAL.get("productos");
         var productosConfirmados = actualProductos === textoNuevo;
+         var listaConfirmadaCompleta = contextoProductosExplicito
+           ? fusionarConfirmacionProductos(
+             actualProductos === null ? nuevo : JSON.parse(actualProductos),
+             listaConfirmada,
+             contextoProductos
+           )
+           : listaConfirmada;
         if (productosConfirmados) {
-          LOCAL.set("productos", textoConfirmado);
-          confirmarBaseProductos(textoConfirmado);
+           var textoConfirmado = JSON.stringify(listaConfirmadaCompleta);
+           LOCAL.set("productos", textoConfirmado);
+           confirmarBaseProductos(textoConfirmado);
           try {
             window.dispatchEvent(new CustomEvent("productos-servidor-confirmados", {
-              detail: { enviados: nuevo, confirmados: listaConfirmada }
+               detail: { enviados: nuevo, confirmados: listaConfirmadaCompleta }
             }));
           } catch (e) {}
         }
@@ -897,7 +1085,7 @@
         return {
           catalogoYaSincronizado: rProductos.data.catalogo_ya_sincronizado === true,
           productosConfirmados: productosConfirmados,
-          listaConfirmada: productosConfirmados ? listaConfirmada : null
+           listaConfirmada: productosConfirmados ? listaConfirmadaCompleta : null
         };
       }
       // Antes de desplegar P3c, producción sigue por el camino heredado.
@@ -1043,7 +1231,15 @@
             lista = r.data.value;
           }
           var texto = JSON.stringify(lista);
-          LOCAL.set(cacheKey, texto);
+          // La lectura remota sigue siendo válida aunque este dispositivo no
+          // tenga espacio para actualizar su caché local. No convertir un
+          // fallo de persistencia del navegador en un falso fallo de nube:
+          // el otro contexto debe poder mostrar los datos recién sincronizados.
+          try {
+            LOCAL.set(cacheKey, texto);
+          } catch (eCache) {
+            console.warn("[almacén] No se pudo actualizar la caché local de «" + key + "»; se conserva la lectura remota.", eCache && eCache.message);
+          }
           return { key: key, value: texto, shared: false };
         } catch (e) {
           // La ausencia remota es normal en un first-run. Cualquier otro error
@@ -1140,7 +1336,7 @@
             confirmadoServidor = true;
           } catch (e) {
             if (key === "productos") catalogoBloqueado = true;
-            if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+            if (esRechazoSoloLocal(key, e)) marcarDenegado(key, e);
             else { marcarPendiente(key, value, cacheKey); pendienteSincronizacion = true; }
           }
         }
@@ -1149,18 +1345,29 @@
         pendienteSincronizacion = true;
       }
 
-      // Si no cupo en el equipo, se avisa AHORA — pero después de haber
-      // intentado subirlo, para no perderlo por partida doble.
+      // Si no cupo en el equipo, se avisa solo si tampoco quedó confirmado en
+      // el servidor. Con nube confirmada, el fallo afecta únicamente a la
+      // caché local y no debe aparentar que el movimiento sigue pendiente.
       if (falloLocal) {
-        throw new Error(
-          "No cabe en el almacenamiento de este equipo (" + key + "). " +
-          "Suele significar que hay algo muy grande guardado, como una foto."
-        );
+        // Si la subida quedó en cola, saveKey() emitirá el aviso específico
+        // de pendiente. No lo sustituimos por una excepción genérica de cuota
+        // que oculte si el servidor aceptó o rechazó la fila.
+        var copiaQaSoloLocal = key === "historialRespaldos" && esPreviewQa();
+        if (!confirmadoServidor && !pendienteSincronizacion && !copiaQaSoloLocal) {
+          throw new Error(
+            "No cabe en el almacenamiento de este equipo (" + key + "). " +
+            "Suele significar que hay algo muy grande guardado, como una foto."
+          );
+        }
+        console.warn(copiaQaSoloLocal
+          ? "[almacén] La copia automática de QA conserva la última copia local disponible; no bloquea los datos operativos."
+          : "[almacén] La caché local de «" + key + "» está llena; el cambio queda confirmado o pendiente según el servidor.");
       }
       return {
         key: key, value: value, shared: false,
         confirmadoServidor: confirmadoServidor,
         pendienteSincronizacion: pendienteSincronizacion || pendientes().indexOf(key) !== -1,
+        soloLocal: !!(falloLocal && key === "historialRespaldos" && esPreviewQa() && !confirmadoServidor),
         catalogoYaSincronizado: !!(resultadoProductos && resultadoProductos.catalogoYaSincronizado),
         catalogoBloqueado: !!catalogoBloqueado,
         productosConfirmados: !!(resultadoProductos && resultadoProductos.productosConfirmados),

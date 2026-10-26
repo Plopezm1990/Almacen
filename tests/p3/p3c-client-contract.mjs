@@ -8,11 +8,11 @@ const controlAcceso = await readFile("edge-auth-patch.js", "utf8");
 const puente = await readFile("ui-context-bridge.js", "utf8");
 const bundle = await readFile("fuente.js", "utf8");
 const recuperado = await readFile("source-recovery/fuente-recuperado.js", "utf8");
-const base = [{ id: "p1", empresaId: "QA-EMP-A", localId: "QA-A1", nombre: "Agua", precioVenta: 1, costo: 0.4 }];
+const base = [{ id: "p1", empresaId: "empresa-test", localId: "local-test", nombre: "Agua", precioVenta: 1, costo: 0.4 }];
 const textoBase = JSON.stringify(base);
 
-function entorno(rpc, leerRemoto = () => base) {
-  const datos = new Map([["almacen:productos", textoBase]]);
+function entorno(rpc, leerRemoto = () => base, listaInicial = base) {
+  const datos = new Map([["almacen:productos", JSON.stringify(listaInicial)]]);
   const localStorage = {
     getItem: k => datos.has(k) ? datos.get(k) : null,
     setItem: (k, v) => datos.set(k, String(v)),
@@ -59,6 +59,25 @@ function entorno(rpc, leerRemoto = () => base) {
   return { window, datos, subidasDirectas, eventos };
 }
 
+// En una sesión A/B, la caché local puede mezclar empresas. La RPC contextual
+// solo recibe la parte de la empresa activa y la confirmación no borra la otra.
+{
+  const otraEmpresa = { id: "p0", empresaId: "otra-empresa", localId: "otro-local", nombre: "Otro", precioVenta: 2, costo: 1 };
+  const nuevoProducto = { id: "p2", empresaId: "empresa-test", localId: "local-test", nombre: "Zumo", precioVenta: 1.5, costo: 0.4 };
+  const inicial = [otraEmpresa, base[0]];
+  const nuevo = [otraEmpresa, base[0], nuevoProducto];
+  const llamadas = [];
+  const e = entorno(async (nombre, args) => {
+    llamadas.push(args);
+    return { data: { ok: true, catalogo_ya_sincronizado: true, lista_confirmada: args.p_nuevo }, error: null };
+  }, () => [], inicial);
+  await e.window.storage.set("productos", JSON.stringify(nuevo), false, { venta: [nuevoProducto] });
+  assert.equal(JSON.stringify(llamadas[0].p_base.map(p => p.id)), JSON.stringify(["p1"]));
+  assert.equal(JSON.stringify(llamadas[0].p_nuevo.map(p => p.id)), JSON.stringify(["p1", "p2"]));
+  assert.equal(JSON.stringify(llamadas[0].p_venta.map(p => p.id)), JSON.stringify(["p2"]));
+  assert.equal(JSON.stringify(JSON.parse(e.datos.get("almacen:productos")).map(p => p.id)), JSON.stringify(["p0", "p1", "p2"]));
+}
+
 // La barrera de acceso se carga después del puente de catálogo en la página.
 // Debe transmitir las opciones P3c por todos los caminos permitidos.
 assert.match(controlAcceso, /window\.storage\.set = async function \(key, value, shared, opcionesP3c\)/);
@@ -80,6 +99,8 @@ for (const codigoUi of [bundle, recuperado]) {
   assert.equal(r.catalogoYaSincronizado, true);
   assert.equal(llamadas.length, 1);
   assert.equal(llamadas[0].nombre, "abc_productos_guardar_lista");
+  assert.equal(llamadas[0].args.p_empresa_id, "empresa-test");
+  assert.equal(llamadas[0].args.p_local_id, "local-test");
   assert.equal(JSON.stringify(llamadas[0].args.p_base), textoBase);
   assert.equal(JSON.stringify(llamadas[0].args.p_nuevo), JSON.stringify(nuevo));
   assert.equal(JSON.stringify(llamadas[0].args.p_venta), JSON.stringify(nuevo));

@@ -39,11 +39,11 @@ function extractFunction(source, name) {
 const storageHelpersStart = storageSource.indexOf('var CAMPOS_SINCRONIZACION_SOLO_LOCAL');
 const storageHelpersEnd = storageSource.indexOf('  // Sube a la nube lo que ha cambiado', storageHelpersStart);
 assert.ok(storageHelpersStart >= 0 && storageHelpersEnd > storageHelpersStart, 'storage canonical helpers must be present');
-const storageHelpers = new Function(`${storageSource.slice(storageHelpersStart, storageHelpersEnd)}; return { contenidoFilaIgual, datosFilaParaServidor };`)();
+const storageHelpers = new Function(`const esPreviewQa = () => false; ${storageSource.slice(storageHelpersStart, storageHelpersEnd)}; return { contenidoFilaIgual, datosFilaParaServidor };`)();
 
 const syncFunction = extractFunction(storageSource, 'sincronizarColeccionPorFila');
-const storageSyncFactory = new Function('window', 'leerFilasCompletas', 'borradosDe', 'guardarBorrados',
-  `${storageSource.slice(storageHelpersStart, storageHelpersEnd)}; return ${syncFunction};`);
+const storageSyncFactory = new Function('window', 'leerFilasPorIds', 'borradosDe', 'guardarBorrados',
+  `const esPreviewQa = () => false; ${storageSource.slice(storageHelpersStart, storageHelpersEnd)}; return ${syncFunction};`);
 const upsertCalls = [];
 const remoteRows = new Map([['m-same', { id: 'm-same', a: 1 }]]);
 let rejectFailingRow = true;
@@ -67,7 +67,9 @@ const fakeWindow = {
 };
 const syncRows = storageSyncFactory(
   fakeWindow,
-  async () => [...remoteRows.entries()].map(([id, datos]) => ({ id, datos })),
+  async (_tabla, ids) => ids
+    .filter((id) => remoteRows.has(id))
+    .map((id) => ({ id, datos: remoteRows.get(id) })),
   () => [],
   () => {}
 );
@@ -92,6 +94,10 @@ assert.equal(storageHelpers.contenidoFilaIgual(
 ), true, 'server markers and object key order must not create a resend');
 assert.equal(storageHelpers.datosFilaParaServidor({ id: 'pm07-1', _pm07Servidor: true }, 'movimientos'), null,
   'authoritative PM07 movements must not be mirrored into legacy movements_registro');
+assert.match(storageSource, /claveColeccion === "movimientos" && esPreviewQa\(\).*APERTURA_FIXTURE/,
+  'QA opening fixtures must stay local and must not block the operational movement queue');
+assert.match(storageSource, /tipo \\|\\| ""\)\\.toUpperCase\(\) === "MERMA"[\\s\\S]*QA\[-_\]/,
+  'synthetic QA merma rows must stay local and must not block the operational movement queue');
 assert.deepEqual(storageHelpers.datosFilaParaServidor({ id: 'm-2', _pm07Servidor: false, z: 2, a: 1 }, 'movimientos'),
   { a: 1, id: 'm-2', z: 2 }, 'local movement payload must be canonicalized before upload');
 

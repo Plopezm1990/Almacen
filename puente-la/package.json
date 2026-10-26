@@ -1,0 +1,11 @@
+{
+  "name": "puente-la",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Programa intermedio (fuera del navegador) para imprimir tickets y abrir el cajón desde el TPV L&A Suite, sin depender de una marca de impresora concreta.",
+  "type": "module",
+  "main": "servidor.js",
+  "scripts": {
+    "start": "node iniciar.js"
+  }
+}

@@ -191,7 +191,7 @@ const indexPath = path.resolve('index.html');
 if (fs.existsSync(indexPath)) {
   const index = fs.readFileSync(indexPath, 'utf8');
   const resetPos = index.indexOf('reset-pruebas-preview.js');
-  const fuentePos = index.indexOf('src="./fuente.js"');
+  const fuentePos = index.indexOf('src="./fuente.js');
   assert.ok(resetPos >= 0, 'index.html debe cargar reset-pruebas-preview.js');
   assert.ok(fuentePos >= 0, 'index.html debe cargar fuente.js');
   assert.ok(resetPos < fuentePos, 'el hotfix debe instalarse antes de fuente.js');

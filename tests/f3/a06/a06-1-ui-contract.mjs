@@ -30,16 +30,16 @@ assert.ok(
   "A06.1: GestionAlmacen no pasa empresaDelLocalActivo"
 );
 assert.ok(
-  recovered.includes("venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06"),
+  recovered.includes("venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06"),
   "A06.1: los adaptadores A02/A05/A06 no salen del factory"
 );
 assert.ok(
-  recovered.includes("return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06"),
+  recovered.includes("return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06"),
   "A06.1: crearLogicaVenta no devuelve los adaptadores operativos"
 );
 
-const start = recovered.indexOf("async function recuperarCuentaA06()");
-const end = recovered.indexOf("\n  function leerPedidoOperativoA05()", start);
+const start = recovered.indexOf("async function recuperarCuentaA06(cuentaIdSolicitada = null, cuentaRecuperable = null)");
+const end = recovered.indexOf("\n  async function listarCuentasRecuperablesA06", start);
 assert.ok(start >= 0 && end > start, "A06.1: adaptador de recuperación no localizable");
 const adapter = recovered.slice(start, end);
 
@@ -99,11 +99,11 @@ assert.ok(adapter.includes("offline: true"), "A06.1: no conserva contexto durant
 assert.ok(adapter.includes("...contextoLocal"), "A06.1: fallback offline no reutiliza la misma identidad");
 
 assert.ok(
-  recovered.includes("function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06,"),
+  recovered.includes("function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06,"),
   "A06.1: VentaRapida no recibe la recuperación"
 );
 assert.ok(
-  recovered.includes("venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06"),
+  recovered.includes("venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06"),
   "A06.1: recuperación no está cableada al TPV"
 );
 assert.ok(

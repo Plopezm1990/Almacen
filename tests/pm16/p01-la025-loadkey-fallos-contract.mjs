@@ -50,6 +50,7 @@ function nuevoContexto() {
   assert.equal(ctx.motivoFalloCargaPM16({ code: 22 }), 'cuota');
   assert.equal(ctx.motivoFalloCargaPM16({ name: 'NetworkError' }), 'acceso');
   assert.equal(ctx.motivoFalloCargaPM16(null), 'acceso');
+  assert.equal(ctx.esRespaldoSoloLocalPM16('historialRespaldos', new Error('No cabe en el almacenamiento de este equipo')), true, 'la cuota local en español debe clasificarse como copia QA solo local');
   console.log('P01_LA025_MOTIVO_FALLO_CLASIFICA_CORRECTAMENTE=PASS');
 }
 
