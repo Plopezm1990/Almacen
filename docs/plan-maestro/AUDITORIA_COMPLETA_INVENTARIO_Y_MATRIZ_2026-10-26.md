@@ -69,7 +69,7 @@ Leyenda: ✅ REVISADO (evidencia reproducible: test real + código) · 🟡 PARC
 | Productos, proveedores, albaranes, recepción | `productos`, `proveedores`, `albaranes`, `recepcion` | ⬜ NO APLICA todavía | Sin revisar en esta auditoría; Documento2/A04 cubre solo "opciones", no el catálogo general |
 | Traspasos, mermas, conteo, almacén | `traspasos`, `mermas`, `conteo`, `resumen_almacen` | 🟡 PARCIAL | El traspaso QA B→piso rechazado (H7) queda sin investigar |
 | Encargos, clientes | `encargos`, `clientes` | ⬜ NO APLICA todavía | Sin revisar |
-| Facturas, pagos, Libro IVA, descuentos, devoluciones | — | ⬜ NO APLICA todavía | Sin revisar en esta auditoría |
+| Facturas, pagos, Libro IVA, descuentos, devoluciones | `facturas`, `pagos`, `libroiva`, `descuentos`, `devoluciones` | 🟡 PARCIAL | Revisión de código completa (ver `AUDITORIA_BLOQUE3_CODIGO_...md`); prueba en vivo con Cowork pendiente de resultado |
 | Personal, turnos, fichajes, nóminas, fichas, cargos | `personal`, `turnos`, `fichaje`, `nominas`, `fichas` | 🟡 PARCIAL | Las 3 cuentas QA sintéticas se crearon y probaron (login + matriz), pero solo esa pantalla puntual, no el módulo completo |
 | Producción, aceite, APPCC | — | ⬜ NO APLICA todavía | Sin revisar |
 | Caja (tesorería), saldo, estacionalidad, reportes, resultados, dashboard | — | ⬜ NO APLICA todavía | Sin revisar |
