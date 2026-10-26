@@ -465,3 +465,24 @@ producción. La ejecución remota de la puerta general
 Por tanto, el bloqueo de CI queda **cerrado formalmente**. La mitigación de
 guardado por IDs queda aceptada; la optimización del arranque frío y la matriz
 operativa de Etapa 7 siguen abiertas como trabajo funcional independiente.
+
+## 16. Cierre de la incidencia de re-sincronización al cambiar de local
+
+La incidencia detectada durante la comprobación viva del cambio `A1 ↔ A2` se
+investigó y corrigió posteriormente en QA. El efecto reactivo de productos
+estaba escuchando cambios de local/empresa y reenviaba el catálogo completo,
+provocando el rechazo correcto del fixture legacy por
+`abc_productos_cambio_contexto_no_admitido`.
+
+La corrección elimina esas dependencias del guardado reactivo, conserva la
+paridad del archivo de recuperación y se verificó sobre el ciclo `A2 → A1 →
+A2`, sin nuevos errores, sin cambios sin confirmar y sin nuevos registros de
+producto en los logs QA. El commit corregido es `7de71dc` y las 34
+comprobaciones de CI quedaron completadas sin fallos.
+
+El cierre detallado, con la causa, las pruebas y los límites, queda en
+[`ETAPA7_1_CIERRE_INCIDENCIA_CAMBIO_LOCAL_PRODUCTOS_QA_2026-10-26.md`](ETAPA7_1_CIERRE_INCIDENCIA_CAMBIO_LOCAL_PRODUCTOS_QA_2026-10-26.md).
+
+Este cierre resuelve la incidencia concreta, pero no cambia la decisión de
+mantener abierta la Etapa 7 global mientras sigan pendientes la campaña T9
+física, las mediciones operativas y la decisión sobre AUD-010.
