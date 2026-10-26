@@ -2,7 +2,7 @@
 
 Fecha: 2026-10-26  
 Entorno: QA del puesto TPV  
-Estado: EN VALIDACIÓN
+Estado: TERMINADA
 
 ## Alcance leído del PDF
 
@@ -33,6 +33,19 @@ La validación se realiza en QA. En este bloque no se crea una comanda, no se a�
 3. Publicar únicamente en la rama/preview de QA.
 4. Revisar a 1024×768 y 390×844: búsqueda, calculadora, foco, objetivos táctiles y ausencia de overflow/errores de consola.
 
-## Resultado
+## Resultado — TERMINADA
 
-Pendiente de cerrar tras los tests y la comprobación visual en el deploy de QA.
+- Contrato nuevo A07/A08/A09: PASS.
+- Sintaxis de ambas fuentes: PASS.
+- Contratos existentes A04, A05/A06, fase 4 de teclados/calculadora, pase visual 3 y revisión de salida/recovery: PASS.
+- Build determinista y límite de publicación: PASS (`NETLIFY_PUBLISH_BOUNDARY_PASS`, 68 entradas; CSS generado 17.764 bytes).
+- Deploy QA: READY — `6adf58137f3a27a942781037`.
+- Commit validado: `ada82ed3b0fbebb1aed6b267dc875c8dd695de63`.
+- Check Netlify del commit: SUCCESS.
+- Escaneo de secretos del deploy: 0 coincidencias.
+- Prueba viva a 1024×768: búsqueda de 48 px de alto, 16 px, nombre accesible correcto, sin autofocus forzado; calculadora de 408 px, visor de 79,2 px, teclas de 56 px y sin overflow.
+- Prueba viva a 390×844: calculadora adaptada a 318,4 px, teclas de 56 px y sin overflow; búsqueda de 355,2 × 48 px y sin overflow.
+- Consola del navegador: 0 errores durante la navegación y las comprobaciones.
+- No se añadió producto, no se creó una comanda, no se guardó un pedido, no se modificó stock y no se ejecutó ningún cobro.
+
+Producción no se ha modificado: el deploy productivo `6ade31231b74245b4d359d98` queda fuera de este bloque.
