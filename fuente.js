@@ -107401,7 +107401,7 @@ function GestionAlmacen() {
         .tpv-task-card--accounts button,
         .tpv-task-card--sala button,
         .tpv-task-card--pedido button {
-          min-height: 48px;
+          min-height: 48px !important;
         }
         .tpv-task-card--pedido .py-2 { padding-block: 16px; }
         .tpv-task-card--pedido [class~="text-[12px]"] {
