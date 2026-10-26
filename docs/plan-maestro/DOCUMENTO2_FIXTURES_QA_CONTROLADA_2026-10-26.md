@@ -226,10 +226,27 @@ misma venta QA:
 El envío fue informativo y corresponde a la venta QA de `1,00 €`; no es un ticket fiscal,
 no modifica el cobro y no afecta a producción.
 
+## 10.2. T07 · impresión simulada ejecutada
+
+Se seleccionó el equipo lógico `Impresora barra` y se ejecutó la acción `Imprimir ticket
+(simulado)`:
+
+- Resultado visible: `Se habría impreso el ticket en Impresora barra`.
+- Modo: `SIMULADO`; no se conectó ningún aparato físico.
+- `operation_id`: `t7.impresion.simulada.e89a6b87-3ada-4b80-a4c9-22579a68a23a`.
+- Evento server-side: `TRABAJO_IMPRESION_SIMULADO`, exactamente una fila.
+- Equipo registrado: `3c98bd49-9bcb-4cdf-81b1-5ddec7e760ab`.
+- Efectos pendientes asociados: ninguno.
+- Consola del navegador tras la operación: sin errores.
+
+Con esto queda comprobado el recorrido software de T7. La conexión del Puente L&A con una
+impresora o cajón físicos sigue pendiente de hardware; sus contratos locales ya están en
+`PASS` y la aplicación conserva el simulador como camino seguro mientras no haya aparato.
+
 ## 11. Qué sigue
 
 1. Obtener o definir el procedimiento autorizado para cerrar/purgar únicamente esta fixture QA,
    sin tocar producción y sin alterar comandas históricas.
-2. Revisar la impresión simulada y el puente local en modo no físico.
-3. Mantener el hardware T9 para el último bloque, cuando esté disponible.
+2. Mantener el hardware T9 para el último bloque y ejecutar entonces la prueba física del
+   Puente L&A, impresora y cajón.
 
