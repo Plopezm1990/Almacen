@@ -600,11 +600,31 @@ pendiente de un contexto QA que exponga la empresa B.
 La evidencia operativa se incorporó a
 [`ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md`](ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md).
 
+## 23. Resultado del arranque frío offline
+
+La prueba de arranque con la red desconectada desde el inicio quedó
+**TERMINADA**, pero con resultado **NO APTO PARA CERRAR LA GARANTÍA OFFLINE**.
+Después de activar la emulación offline y recargar ignorando la caché, el
+navegador mostró `ERR_INTERNET_DISCONNECTED` y la aplicación no llegó a montar
+su shell ni el TPV. No se produjo ninguna mutación de negocio ni se tocó
+producción. La red se restauró y una pestaña QA nueva volvió a cargar
+correctamente el preview.
+
+Esto no contradice el PASS anterior sobre la vista TPV ya hidratada: aquella
+vista sí mantuvo el ticket vacío y el guardado bloqueado durante la pérdida de
+red. La diferencia es que aún no existe evidencia de arranque offline desde
+cero.
+
+La evidencia completa queda en
+[`ETAPA7_1_RESULTADO_ARRANQUE_FRIO_OFFLINE_QA_2026-10-26.md`](ETAPA7_1_RESULTADO_ARRANQUE_FRIO_OFFLINE_QA_2026-10-26.md).
+
 ### Próximo trabajo de Etapa 7.1
 
-1. Ejecutar arranque en frío con la red desconectada desde el inicio y
-   documentar el límite de hidratación sin mutar datos.
-2. Preparar y ejecutar separadamente la campaña T9 física con hardware
-   autorizado.
-3. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA
-   de empresa y repetir la comparación sin reutilizar datos de producción.
+1. Corregir el arranque offline con un shell estático/precacheado, recuperación
+   visible y bloqueo explícito de operaciones server-side.
+2. Añadir contratos automatizados y repetir el arranque en frío con caché
+   limpia, red desconectada y recuperación posterior.
+3. Preparar y ejecutar separadamente la campaña T9 física con hardware
+   autorizado cuando la garantía offline quede en PASS.
+4. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA de
+   empresa y repetir la comparación sin reutilizar datos de producción.
