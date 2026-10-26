@@ -107167,6 +107167,58 @@ function GestionAlmacen() {
           .tpv-ticket-zone { position: static; }
         }
 
+        /* Documento 2 · primera pasada visual del puesto TPV */
+        body:has([data-tpv-shell]) { background: var(--c-bg); }
+        body:has([data-tpv-shell]) .app-main-content { background: var(--c-bg); padding: 0 !important; overflow: hidden; }
+        body:has([data-tpv-shell]) .app-main-content > * { max-width: none; }
+        .tpv-shell { box-sizing: border-box; display: flex; flex-direction: column; gap: 12px; padding: 16px 20px 18px; background: var(--c-bg); color: var(--c-ink); }
+        .tpv-workspace-heading { min-height: 56px; margin-bottom: 0; padding-bottom: 12px; border-bottom: 1px solid var(--c-divider); }
+        .tpv-workspace-heading h2 { font-size: 28px !important; line-height: 36px; letter-spacing: -.02em; }
+        .tpv-workspace-heading button { min-height: 48px !important; padding: 0 16px !important; border-radius: 10px !important; font-size: 14px !important; }
+        .tpv-toolbar { min-height: 72px; padding: 12px 16px; margin-bottom: 0; border-radius: 12px; border-width: 1px; box-shadow: 0 1px 0 rgba(18, 59, 45, .05); }
+        .tpv-toolbar > div { flex: 1 1 0; min-width: 140px; }
+        .tpv-toolbar > div > div:first-child { font-size: 12px !important; letter-spacing: .08em; }
+        .tpv-toolbar > div > div:last-child { font-size: 18px; line-height: 24px; }
+        .tpv-keybar { min-height: 48px; margin-bottom: 0; gap: 8px; }
+        .tpv-keybar button { min-height: 48px !important; padding: 0 16px !important; border-radius: 10px !important; font-size: 14px !important; }
+        .tpv-keybar button:last-child { background: var(--c-accent-fill) !important; color: var(--c-on-accent) !important; border-color: var(--c-accent-fill) !important; }
+        .tpv-section-nav { position: sticky; bottom: 0; z-index: 20; flex-wrap: nowrap; gap: 8px; padding: 8px; margin: 0 0 4px; overflow-x: auto; border: 0; border-radius: 12px; background: var(--c-accent-fill); box-shadow: 0 -4px 18px rgba(18, 59, 45, .14); scrollbar-width: thin; }
+        .tpv-section-nav button { flex: 0 0 auto; min-width: 88px; min-height: 56px; padding: 0 14px; border: 1px solid transparent; border-radius: 9px; background: transparent; color: var(--c-on-accent); font-size: 14px; font-weight: 600; white-space: nowrap; }
+        .tpv-section-nav button[aria-selected="true"] { background: var(--c-bg); border-color: var(--c-bg); color: var(--c-accent-fill); }
+        .tpv-fase3-flow { gap: 12px; }
+        .tpv-fase3-flow > div { min-height: 84px; padding: 12px 14px; border-radius: 12px; background: var(--c-surface); }
+        .tpv-layout { grid-template-columns: minmax(0, 1.65fr) minmax(320px, .85fr); gap: 16px; align-items: start; }
+        .tpv-product-zone > div:first-child input { min-height: 56px; padding: 0 16px !important; border-width: 2px !important; border-radius: 12px !important; font-size: 18px !important; }
+        .tpv-product-zone > div:nth-child(2) { gap: 8px !important; margin-bottom: 12px !important; padding-bottom: 2px; }
+        .tpv-product-zone > div:nth-child(2) button { min-height: 48px; padding: 0 14px; border-radius: 9px; font-size: 14px; }
+        .tpv-product-zone > div:nth-child(3) { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px !important; }
+        .tpv-product-zone > div:nth-child(3) > [role="button"] { display: flex; flex-direction: column; min-height: 216px !important; padding: 16px !important; border-radius: 12px !important; box-shadow: 0 1px 0 rgba(18, 59, 45, .05); cursor: pointer; }
+        .tpv-product-zone > div:nth-child(3) > [role="button"]:focus-visible { outline: 3px solid #176095; outline-offset: 3px; }
+        .tpv-product-zone > div:nth-child(3) > [role="button"] .tpv-product-photo { height: 96px; margin-bottom: 12px; border-radius: 10px; }
+        .tpv-product-zone > div:nth-child(3) > [role="button"] .mono { margin-top: auto; font-size: 18px !important; line-height: 27px; }
+        .tpv-product-zone > div:nth-child(3) > [role="button"] .tpv-quick-quantity { min-width: 48px; min-height: 48px; padding: 0 12px; border-radius: 8px; font-size: 14px; }
+        .tpv-ticket-zone { top: 8px; }
+        .tpv-ticket-zone > .mb-4 { min-height: 220px; padding: 16px; border-radius: 16px; background: var(--c-surface); box-shadow: 0 2px 0 rgba(18, 59, 45, .06); }
+        .tpv-ticket-zone:empty { min-height: 320px; padding: 20px; border: 1px solid var(--c-line); border-radius: 16px; background: var(--c-surface); box-shadow: 0 2px 0 rgba(18, 59, 45, .06); }
+        .tpv-ticket-zone:empty::before { content: "Ticket\\A0 líneas · €0,00\\AEl ticket está listo para recibir artículos."; display: block; white-space: pre-line; color: var(--c-ink); font-size: 18px; line-height: 28px; font-weight: 600; }
+        .tpv-ticket-zone:empty::after { content: "Añade productos desde el catálogo para empezar."; display: block; margin-top: 12px; color: var(--c-ink-soft); font-size: 16px; line-height: 24px; }
+        .tpv-shell .tpv-fase4-key, .tpv-shell .tpv-fase5-cash-keypad button { min-height: 56px; }
+        @media (max-width: 900px) {
+          .tpv-layout { grid-template-columns: minmax(0, 1fr); }
+          .tpv-ticket-zone { position: static; }
+        }
+        @media (max-width: 640px) {
+          .tpv-shell { gap: 10px; padding: 12px 12px calc(12px + env(safe-area-inset-bottom)); }
+          .tpv-workspace-heading h2 { font-size: 24px !important; line-height: 32px; }
+          .tpv-toolbar { padding: 10px 12px; }
+          .tpv-toolbar > div { min-width: 120px; }
+          .tpv-keybar button { flex: 1 1 auto; padding: 0 10px !important; }
+          .tpv-product-zone > div:nth-child(3) { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+          .tpv-product-zone > div:nth-child(3) > [role="button"] { min-height: 184px !important; padding: 12px !important; }
+          .tpv-product-zone > div:nth-child(3) > [role="button"] .tpv-product-photo { height: 72px; }
+          .tpv-section-nav button { min-width: 80px; min-height: 52px; padding: 0 10px; font-size: 13px; }
+        }
+
         @media print {
           @page { size: A4; margin: 12mm; }
           body * { visibility: hidden !important; }
