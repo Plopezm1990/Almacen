@@ -52,6 +52,7 @@ assert.match(cssBase, /min-height: 64px/, "A11: falta la acción final de 64px")
 assert.match(cssBase, /min-height: 56px/, "A11: faltan teclas de efectivo de 56px");
 assert.match(cssBase, /font-size: 22px/, "A15: falta producto de 22px");
 assert.match(cssBase, /font-size: 28px/, "A15/A11: falta cantidad o importe de 28px");
+assert.match(cssBase, /min-height: 48px !important/, "A15: falta nota táctil de al menos 48px");
 assert.match(cssBase, /width: min\(100%, 980px\)/, "A11/A15/A16: falta el ancho de lectura");
 
 console.log("DOCUMENTO2_A11_A16_PUESTO=PASS");

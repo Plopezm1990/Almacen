@@ -6536,7 +6536,7 @@ function GestionAlmacen() {
           font-weight: 700;
         }
         .tpv-a15-comanda-card input {
-          min-height: 48px;
+          min-height: 48px !important;
           font-size: 16px !important;
         }
         .tpv-a16-cash-view {
