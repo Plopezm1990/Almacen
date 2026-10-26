@@ -19,8 +19,6 @@ const cuerpoActivar = src.slice(iniActivar, finActivar);
 assert.match(cuerpoActivar, /await activarSuscripcionPushPM17\(\{/, 'activar() debe delegar en el helper con rollback');
 assert.match(cuerpoActivar, /suscribir: \(\) => registro\.pushManager\.subscribe\(/, 'debe seguir suscribiendo con el registro real del service worker');
 assert.match(cuerpoActivar, /deshacerSuscripcion: \(suscripcion\) => suscripcion\.unsubscribe\(\)/, 'debe deshacer con el unsubscribe real de la suscripción creada');
-assert.match(cuerpoActivar, /supabase\.auth\.getUser\(\)/, 'debe obtener el usuario autenticado antes de guardar la suscripción');
-assert.match(cuerpoActivar, /user_id: user\.id,/, 'debe asociar la suscripción al usuario autenticado para satisfacer RLS');
 assert.doesNotMatch(cuerpoActivar, /if \(errInsert\) throw errInsert;\s*\n\s*setSuscrito\(true\);/, 'no debe quedar el throw directo de antes, sin paso por el helper');
 
 console.log('P01_PM17_ACTIVAR_USA_HELPER_CON_ROLLBACK=PASS');

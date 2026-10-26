@@ -17,7 +17,7 @@ import assert from 'node:assert/strict';
 // Propietario de la empresa dueña de la fila; INSERT solo permite empresa_id propio o
 // null). fuente.js actualizado para enviar ese contexto en cada inserción.
 
-const src = fs.readFileSync('fuente.js', 'utf8').replace(/\r\n/g, '\n');
+const src = fs.readFileSync('fuente.js', 'utf8');
 
 // ---- 1. Migración trackeada en el repo (no solo aplicada en el proyecto). ----
 {

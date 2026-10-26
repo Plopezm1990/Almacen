@@ -11,13 +11,12 @@
 //   node tests/cfg/a09-eventos-ui-runtime.mjs
 // CFG_A09EV_FUENTE (opcional) permite probar otro archivo (la versión anterior, que debe fallar, o variantes rotas de mutantes).
 import { readFileSync } from 'node:fs';
-import { join } from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { join, resolve } from 'node:path';
 import { SIN_ACCESO_QA } from './lib/tablas-sin-acceso-qa.mjs';
 
-const REPO = fileURLToPath(new URL('../../', import.meta.url));
+const REPO = resolve(new URL('../../', import.meta.url).pathname);
 const origen = process.env.CFG_A09EV_FUENTE || join(REPO, 'source-recovery/fuente-recuperado.js');
-const fuente = readFileSync(origen, 'utf8').replace(/\r\n/g, '\n');
+const fuente = readFileSync(origen, 'utf8');
 
 // ---------- carga de las funciones reales ----------
 function trozo(inicio, fin) {

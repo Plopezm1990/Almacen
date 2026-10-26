@@ -60,8 +60,8 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   assert.equal(cuenta("configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 })"), 1, nombre + ": la aplicación se la pasa (al final)");
   assert.equal(cuenta("venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05"), 1, nombre + ": el montaje conserva su inicio (lo exige el contrato P07)");
   assert.equal(cuenta("  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta,"), 1, nombre + ": la aplicación la obtiene de la lógica (la primera de la lista: el final lo exige el contrato A08.1)");
-  assert.equal(cuenta("listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08 } = crearLogicaVenta("), 1, nombre + ": la lista que obtiene la aplicación conserva su final (lo exige el contrato A08.1)");
-  assert.equal(cuenta("moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };"), 1, nombre + ": la lógica ofrece las ayudas del TPV y el ensayo C12 (al final de la lista)");
+  assert.equal(cuenta("listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta("), 1, nombre + ": la lista que obtiene la aplicación conserva su final (lo exige el contrato A08.1)");
+  assert.equal(cuenta("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };"), 1, nombre + ": la lógica ofrece las ayudas del TPV y el ensayo C12 (al final de la lista)");
   assert.equal(cuenta("  return { venderCarrito, venderLocal, anularVenta,"), 1, nombre + ": la lista que devuelve la lógica conserva su inicio (lo exige el contrato A06.1)");
   assert.equal(cuenta('modalidad: "BARRA",'), 0, nombre + ": ya no hay una modalidad fija «BARRA» en el registro pendiente");
   assert.equal(cuenta("modalidad: modalidadApertura,"), 1, nombre + ": el registro pendiente usa la modalidad decidida");

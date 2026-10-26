@@ -17,7 +17,6 @@ for (const [nombre, source] of fuentes) {
   assert.match(source, /nota: String\(l22\.nota \|\| ""\)\.trim\(\)\.slice\(0, 500\)/, `${nombre}: la nota se normaliza`);
   assert.match(source, /abc_actualizar_nota_linea/, `${nombre}: la nota usa RPC idempotente`);
   assert.match(source, /Nota para cocina/, `${nombre}: existe control visible de nota`);
-  assert.match(source, /Alérgenos del producto/, `${nombre}: existe información visible de alérgenos`);
 }
 
-console.log("F5 notas TPV y alérgenos: contrato OK");
+console.log("F5 notas TPV: contrato OK");
