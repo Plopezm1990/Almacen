@@ -36,6 +36,12 @@ enviar dos veces el mismo trabajo al transporte local.
 6. `/estado` publica las capacidades `qrFiscalEscPos` e
    `idempotenciaImpresion`, para que la conexión del TPV pueda comprobar qué
    versión de puente está disponible.
+7. El TPV incorpora la opción **Ver ticket en pantalla** después de confirmar
+   el cobro. La vista reutiliza las mismas líneas, total, estado de pago y
+   `qrFiscalSvg` del ticket ya preparado; no crea una venta, una numeración ni
+   un documento fiscal adicional. Incluye la leyenda visible de que es una
+   vista informativa y, en QA, mantiene la advertencia `Simulador QA; no
+   presentado a AEAT`.
 
 ## Pruebas ejecutadas
 
@@ -49,11 +55,20 @@ enviar dos veces el mismo trabajo al transporte local.
 - `node tests/plan-maestro/etapa5-t7-puente-la-pieza1-contract.mjs`: correcto.
 - `node tests/plan-maestro/etapa5-t7-puente-la-pieza2-contract.mjs`: correcto.
 - `node tests/plan-maestro/etapa6-puente-scope-contract.mjs`: correcto.
+- `node tests/pm18/p05-ticket-screen-contract.mjs`: correcto
+  (`PASS: vista de ticket en pantalla TPV QA P18`). Comprueba que el botón,
+  el contenedor de la vista, las líneas, el total, el estado y el QR proceden
+  del mismo flujo de ticket.
 - `node .github/scripts/build-netlify-publish.mjs`: correcto; el bundle QA y la
   carpeta `puente-la/` se copian al directorio de publicación.
-- Preview QA de PR 175: actualizado al commit `912c51f`; comprobación directa del
+- Preview QA de PR 175: actualizado al commit `685b6a7`; comprobación directa del
   `fuente.js` servido confirmó la clave estable `t7.ticket.print.*`, el payload
-  `operationId` del puente y el objeto `qrFiscal`.
+  `operationId` del puente, el objeto `qrFiscal` y el botón de vista en pantalla.
+- Prueba funcional en el preview QA: se guardó una venta de `Agua 50 cl (QA)`
+  por `€1,00`, se envió, se cobró en efectivo y se abrió la vista. El ticket
+  mostró `PAGADO`, el documento `TPV-000002`, el mismo QR fiscal renderizado y
+  la leyenda de simulador; el DOM confirmó un único
+  `[data-tpv-ticket-screen="true"]`.
 - `git diff --check`: correcto.
 
 ## Límites y decisión de hardware
