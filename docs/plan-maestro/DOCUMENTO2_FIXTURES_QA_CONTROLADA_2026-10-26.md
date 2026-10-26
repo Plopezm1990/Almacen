@@ -208,16 +208,28 @@ ficticios:
 - Efectos pendientes asociados: ninguno; no se creó movimiento de caja.
 - Consola del navegador tras la operación: sin errores.
 
-La factura no activa fiscalidad real y no se contactó con un proveedor fiscal. El ticket por
-correo no se ejecutó: falta un destinatario autorizado y esa acción invoca el servicio de
-correo, por lo que queda separada de la factura.
+La factura no activa fiscalidad real y no se contactó con un proveedor fiscal.
+
+## 10.1. C04 · ticket informativo por correo ejecutado
+
+Con confirmación puntual del destinatario se ejecutó el envío del ticket informativo de la
+misma venta QA:
+
+- Destinatario autorizado: `chocoloyosangines@gmail.com`.
+- Resultado visible: `Ticket enviado por correo.`
+- Evento server-side: `TICKET_CORREO_ENVIADO`, exactamente una fila.
+- `operation_id`: `t6.ticket.correo.0a083f51-9936-4187-a65e-a696e247e4cf.b62743f8-2461-49bc-96c9-d2b403ad5e87`.
+- Referencia devuelta por el proveedor: `01a178a0-1eee-760a-9e83-096e7fb88c79`.
+- Efectos pendientes asociados: ninguno.
+- Consola del navegador tras el envío: sin errores.
+
+El envío fue informativo y corresponde a la venta QA de `1,00 €`; no es un ticket fiscal,
+no modifica el cobro y no afecta a producción.
 
 ## 11. Qué sigue
 
 1. Obtener o definir el procedimiento autorizado para cerrar/purgar únicamente esta fixture QA,
    sin tocar producción y sin alterar comandas históricas.
-2. Con una confirmación puntual y un destinatario concreto, probar el ticket informativo por
-   correo y verificar el resultado server-side, el efecto de entrega y la idempotencia.
-3. Después, revisar la impresión simulada y el puente local en modo no físico.
-4. Mantener el hardware T9 para el último bloque, cuando esté disponible.
+2. Revisar la impresión simulada y el puente local en modo no físico.
+3. Mantener el hardware T9 para el último bloque, cuando esté disponible.
 
