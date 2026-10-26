@@ -503,3 +503,20 @@ sustituye la prueba de arranque en frío offline ni la campaña T9 con hardware.
 
 La evidencia detallada queda en
 [`ETAPA7_1_RESULTADO_MATRIZ_TPV_RESPONSIVE_OFFLINE_QA_2026-10-26.md`](ETAPA7_1_RESULTADO_MATRIZ_TPV_RESPONSIVE_OFFLINE_QA_2026-10-26.md).
+
+## 18. Resultado de contratos de roles, Caja y movimientos
+
+La siguiente comprobación técnica terminó con resultado satisfactorio:
+
+- `etapa7-role-matrix-caja-contract.mjs`: PASS;
+- `etapa7-movimientos-sync-read-scope-contract.mjs`: PASS;
+- `etapa5-tpv-movimientos-caja-contract.mjs`: PASS;
+- `git diff --check`: PASS.
+
+Los contratos verifican el rol efectivo del TPV, la defensa de Caja antes del
+RPC, la exclusión de Caja para `Camarero/a` y la lectura por IDs del guardado de
+movimientos. No se presenta este resultado como login real de cuatro perfiles:
+la matriz viva sigue necesitando cuentas QA dedicadas y autorizadas.
+
+La evidencia detallada queda en
+[`ETAPA7_1_RESULTADO_CONTRATOS_ROLES_CAJA_MOVIMIENTOS_QA_2026-10-26.md`](ETAPA7_1_RESULTADO_CONTRATOS_ROLES_CAJA_MOVIMIENTOS_QA_2026-10-26.md).
