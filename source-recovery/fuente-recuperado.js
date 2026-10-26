@@ -646,7 +646,7 @@ function notificarFalloCargaPM16(key, motivo, error) {
 function esRespaldoSoloLocalPM16(key, error) {
   if (key !== "historialRespaldos") return false;
   const mensaje = String(error?.message || error || "").toLowerCase();
-  return error?.name === "QuotaExceededError" || error?.code === 22 || mensaje.includes("quota") || mensaje.includes("exceeds") || mensaje.includes("no permite guardarla");
+  return error?.name === "QuotaExceededError" || error?.code === 22 || mensaje.includes("quota") || mensaje.includes("exceeds") || mensaje.includes("no permite guardarla") || mensaje.includes("no cabe en el almacenamiento") || mensaje.includes("almacenamiento de este equipo") || mensaje.includes("storage quota");
 }
 function esAvisoRespaldoSoloLocalPM16(fallo) {
   if (!fallo) return false;
