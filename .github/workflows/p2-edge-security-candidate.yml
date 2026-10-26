@@ -105,11 +105,17 @@ jobs:
           expected=$'.github/scripts/p2-edge-security/behavior.mjs\n.github/scripts/p2-edge-security/contract.mjs\n.github/scripts/p2-edge-security/ephemeral-rate-limit.sql\n.github/workflows/p2-edge-security-candidate.yml\ndocs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md\nsupabase/functions/_shared/tenant-scope.js\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/edge-security-manifest.json\nsupabase/functions/enviar-notificacion/index.ts\nsupabase/functions/prefiltro-candidato/index.ts\nsupabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql\nsupabase/migrations/20260922095000_p2_sec_revoke_pm05_scope_anon.sql\nsupabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
           actual="$(printf '%s\n' "${security_changed[@]}")"
           hotfix=$'.github/scripts/p2-edge-security/contract.mjs\n.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
+          # El hotfix de notificaciones debe viajar junto con esta propia puerta:
+          # al cambiar el workflow para reconocer el perímetro, ambos archivos
+          # forman parte del cambio mínimo verificable.
+          notification_hotfix=$'.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/enviar-notificacion/index.ts'
           account_point1=$'.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/qa-crear-empleado/index.ts\nsupabase/migrations/20261016121308_pm11_read_account_state_no_cross_tenant_existence.sql\nsupabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql\ntests/pm10/p07-personal-contract.mjs\ntests/pm12/p11-create-account-behavior.mjs\ntests/pm12/p11-create-account-routing-contract.mjs\ntests/pm12/p12-account-enrichment-race-contract.mjs\ntests/pm12/p12-account-enrichment-runtime.mjs'
           if [ "$actual" = "$expected" ]; then
             scope='CANDIDATE'
           elif [ "$actual" = "$hotfix" ]; then
             scope='ACCOUNT_HOTFIX'
+          elif [ "$actual" = "$notification_hotfix" ]; then
+            scope='NOTIFICATION_HOTFIX'
           elif [ "$actual" = "$account_point1" ]; then
             scope='ACCOUNT_POINT1'
           else
@@ -127,10 +133,12 @@ jobs:
           elif [ "$actual" = "$hotfix" ]; then
             test "${#migrations[@]}" = "1"
             test "${migrations[0]}" = 'supabase/migrations/20260922180000_p2_sec_pm11_finalize_account_dependency.sql'
-          else
+          elif [ "$actual" = "$account_point1" ]; then
             test "${#migrations[@]}" = "2"
             test "${migrations[0]}" = 'supabase/migrations/20261016121308_pm11_read_account_state_no_cross_tenant_existence.sql'
             test "${migrations[1]}" = 'supabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql'
+          else
+            test "${#migrations[@]}" = "0"
           fi
           echo "P2_EDGE_SECURITY_SCOPE=PASS"
           echo "P2_EDGE_SECURITY_BASE=$BASE"
