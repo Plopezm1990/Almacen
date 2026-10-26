@@ -56,6 +56,8 @@ const EXCLUIDAS = new Set([
   '20261022130000_abc_f5_tpv_line_notes.sql',
   '20261022140000_abc_f3_a10_route_recovery.sql',
   '20261022150000_abc_f3_a10_route_recovery_merge.sql',
+  // C07-A: borradores por emisor, con preflight propio. No forma parte de la ventana F7 del 3/10.
+  '20261026175245_abc_fiscal_multiempresa_borradores.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

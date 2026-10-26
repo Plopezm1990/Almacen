@@ -114,6 +114,8 @@ Se validarán contenido, concordancia con la factura y lectura de pantalla/PDF e
 
 Migración local generada con CLI: `20261026175245_abc_fiscal_multiempresa_borradores.sql`.
 
+Preflight específico de solo lectura: `QR_FISCAL_MULTIEMPRESA_PREFLIGHT_SOLO_LECTURA.sql`. La migración se excluye expresamente de la ventana histórica F7 del 3/10; no se incorpora de forma implícita a aquel paquete de promoción.
+
 - Dos tablas privadas: borrador vigente y revisiones inmutables.
 - Clave de alcance: empresa y entidad emisora, con FK compuesta.
 - RPC `abc_fiscal_leer_borrador`: emisor autoritativo, versión, preferencias y estado.
