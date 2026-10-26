@@ -6312,6 +6312,43 @@ function GestionAlmacen() {
           .tpv-shell > .tpv-section-nav { position: sticky; bottom: 0; z-index: 25; margin-bottom: 0; background: var(--c-surface); box-shadow: 0 -4px 16px rgba(18, 59, 45, .12); }
         }
 
+        /* Documento 2 · A04 Opciones: acceso visual 3x3 sin crear rutas paralelas */
+        .tpv-options-panel { width: min(100%, 980px); margin-inline: auto; padding: 18px; border: 1px solid var(--c-line); border-radius: 16px; background: var(--c-surface); box-shadow: 0 2px 0 rgba(18, 59, 45, .06); }
+        .tpv-options-header { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 16px; }
+        .tpv-options-header button { border: 0; background: transparent; cursor: pointer; }
+        .tpv-options-trigger { min-height: 38px; padding: 0 12px; border: 1px solid var(--c-line); border-radius: 9px; background: var(--c-surface); color: var(--c-ink); font-size: 12px; font-weight: 700; cursor: pointer; }
+        .tpv-options-trigger:focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 3px; }
+        .tpv-options-title { font-size: 20px; line-height: 28px; font-weight: 700; color: var(--c-ink); }
+        .tpv-options-subtitle { margin-top: 4px; color: var(--c-ink-soft); font-size: 12px; line-height: 18px; }
+        .tpv-options-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
+        .tpv-option-card { display: flex; min-height: 148px; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: 12px; padding: 16px; border: 1px solid var(--c-line); border-radius: 14px; background: var(--c-bg); color: var(--c-ink); text-align: left; transition: border-color .15s ease, transform .15s ease, box-shadow .15s ease; }
+        .tpv-option-card:hover { border-color: var(--c-accent); box-shadow: 0 4px 14px rgba(18, 59, 45, .10); transform: translateY(-1px); }
+        .tpv-option-card:focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 3px; }
+        .tpv-option-icon { display: inline-flex; width: 40px; height: 40px; align-items: center; justify-content: center; border-radius: 12px; background: var(--c-accent-soft); color: var(--c-accent); font-size: 20px; }
+        .tpv-option-label { font-size: 15px; line-height: 20px; font-weight: 700; }
+        .tpv-option-description { color: var(--c-ink-soft); font-size: 11.5px; line-height: 17px; }
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > .tpv-toolbar,
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > .tpv-keybar,
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > .tpv-section-nav,
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > .tpv-layout,
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > .tpv-ticket-zone,
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > .tpv-catalog-ticket,
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > .mt-5 { display: none !important; }
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > .tpv-block-panel:not([data-tpv-panel="opciones"]) { display: none !important; }
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > [data-tpv-panel="opciones"] { display: block !important; order: 40; width: 100%; margin: 12px 0 0 !important; }
+        body:has([data-tpv-shell]) .tpv-shell > .tpv-options-trigger { order: 35; align-self: flex-end; margin: 4px 0 0; }
+        body:has([data-tpv-panel="opciones"]:not([hidden])) .tpv-shell > .tpv-options-trigger { display: none !important; }
+        @media (max-width: 640px) {
+          .tpv-options-panel { padding: 12px; border-radius: 12px; }
+          .tpv-options-header { margin-bottom: 12px; }
+          .tpv-options-title { font-size: 18px; line-height: 25px; }
+          .tpv-options-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+          .tpv-option-card { min-height: 128px; padding: 12px; border-radius: 11px; }
+          .tpv-option-icon { width: 34px; height: 34px; border-radius: 10px; font-size: 17px; }
+          .tpv-option-label { font-size: 13px; line-height: 17px; }
+          .tpv-option-description { font-size: 10.5px; line-height: 15px; }
+        }
+
         @media print {
           @page { size: A4; margin: 12mm; }
           body * { visibility: hidden !important; }
@@ -26517,6 +26554,53 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
 
+  function abrirOpcionTpvA04(id) {
+    if (["sala", "operativo", "descuento", "cobro", "caja"].includes(id)) {
+      setSeccionTpv(id);
+      return;
+    }
+    if (id === "venta" || id === "vales") {
+      setSeccionTpv("venta");
+      return;
+    }
+    if (id === "calculadora") {
+      setSeccionTpv("venta");
+      setCalculadoraA04({ abierta: true, expresion: "", visor: "0", error: "" });
+      return;
+    }
+    if (id === "cocina" || id === "documentos") {
+      if (typeof salirTPV === "function") salirTPV();
+    }
+  }
+
+  function renderOpcionesTpvA04() {
+    const opciones = [
+      ["sala", "Mesas y cuentas", "Sala, mesas y cuentas activas", "▦"],
+      ["operativo", "Pedido actual", "Revisar y preparar el pedido", "☷"],
+      ["cobro", "Cobrar", "Medios de pago y cierre", "€"],
+      ["cocina", "Cocina", "Comandas y estaciones", "⌁"],
+      ["caja", "Caja", "Movimientos y arqueo", "▣"],
+      ["calculadora", "Calculadora", "Cálculos rápidos del puesto", "＋"],
+      ["documentos", "Documentos y correo", "Tickets, facturas y envíos", "✉"],
+      ["descuento", "Descuento/cortesía", "Aplicar autorización a la cuenta", "%"],
+      ["vales", "Vales regalo", "Emitir o consultar un vale", "◇"]
+    ];
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "tpv-options-panel" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-options-header" },
+        /* @__PURE__ */ import_react4.default.createElement("div", null,
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-options-title" }, "Opciones"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-options-subtitle" }, "Accesos rápidos del puesto de venta")
+        ),
+        /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", className: "text-[11px] font-semibold", style: { color: C2.accent }, onClick: () => setSeccionTpv("venta") }, "Volver a Venta")
+      ),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-options-grid" }, opciones.map(([id, label, description, icon]) => /* @__PURE__ */ import_react4.default.createElement("button", { key: id, type: "button", className: "tpv-option-card", "data-tpv-option": id, "aria-label": `${label}: ${description}`, onClick: () => abrirOpcionTpvA04(id) },
+        /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-option-icon", "aria-hidden": "true" }, icon),
+        /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-option-label" }, label),
+        /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-option-description" }, description)
+      )))
+    );
+  }
+
   function renderMovimientosCajaTpv() {
     const movimientosDelDia = (movimientosCaja || []).filter((movimiento) => movimiento?.fecha === diaOperativoCajaTpv);
     const seccionesOperativasTpv = [
@@ -26529,6 +26613,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ["caja", "Caja"]
     ].filter(([id]) => id !== "caja" || puedeOperarCajaTpv);
     return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+      panelTpv("opciones", renderOpcionesTpvA04()),
+      /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", className: "tpv-options-trigger", onClick: () => setSeccionTpv("opciones") }, "Opciones"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-section-nav", role: "tablist", "aria-label": "Secciones operativas TPV" }, seccionesOperativasTpv.map(([id, label]) => /* @__PURE__ */ import_react4.default.createElement("button", { key: id, type: "button", role: "tab", "aria-selected": seccionTpv === id, onClick: () => setSeccionTpv(id) }, label))),
       puedeOperarCajaTpv ? panelTpv("caja", /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
       /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-tpv-fase5-caja": "true" },
