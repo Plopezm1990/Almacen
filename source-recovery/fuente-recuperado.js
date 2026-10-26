@@ -6349,6 +6349,58 @@ function GestionAlmacen() {
           .tpv-option-description { font-size: 10.5px; line-height: 15px; }
         }
 
+        /* Documento 2 · A07/A08/A09: teclados y calculadora */
+        .tpv-a08-search-field {
+          min-height: 52px;
+          padding-block: 14px !important;
+          font-size: 16px !important;
+          line-height: 24px;
+        }
+        .tpv-a08-search-field:focus-visible,
+        .tpv-a08-note-field:focus-visible {
+          outline: 3px solid var(--c-focus-ring);
+          outline-offset: 2px;
+        }
+        .tpv-a08-note-field {
+          min-height: 96px;
+          padding: 12px !important;
+          font-size: 16px !important;
+          line-height: 24px;
+        }
+        .tpv-a08-note-counter {
+          color: var(--c-ink-soft);
+          font-size: 12px;
+          line-height: 18px;
+          text-align: right;
+          margin-top: 4px;
+        }
+        .tpv-a07-keypad .tpv-fase4-key,
+        .tpv-a09-calculator .tpv-fase4-key {
+          min-height: 56px !important;
+          font-size: 18px;
+        }
+        .tpv-a07-keypad .tpv-fase4-display,
+        .tpv-a09-calculator .tpv-fase4-display {
+          min-height: 72px;
+          font-size: clamp(32px, 8vw, 40px);
+          border-width: 2px;
+        }
+        .tpv-a07-keypad .tpv-fase4-keygrid {
+          grid-template-columns: repeat(3, minmax(0, 1fr));
+        }
+        .tpv-a09-calculator {
+          width: min(100%, 480px);
+          max-width: 480px;
+          margin-inline: auto;
+        }
+        .tpv-a09-calculator .tpv-fase4-calc-grid { gap: 8px; }
+        @media (max-width: 640px) {
+          .tpv-a08-search-field { min-height: 48px; }
+          .tpv-a08-note-field { min-height: 88px; }
+          .tpv-a07-keypad .tpv-fase4-key,
+          .tpv-a09-calculator .tpv-fase4-key { min-height: 56px !important; }
+        }
+
         /* Documento 2 · A05/A06: Mesas y Pedido como tareas dedicadas */
         .tpv-task-card {
           width: min(100%, 980px);
@@ -25852,7 +25904,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const h4 = import_react4.default.createElement;
     const teclas = ["7", "8", "9", "4", "5", "6", "1", "2", "3", "BACKSPACE", "0", ","];
     return h4(Modal, { onClose: cancelarEditorCantidadA04, title: `Cantidad · ${editorCantidadA04.productoNombre}` },
-      h4("div", { className: "tpv-fase4-keypad", "data-tpv-fase4-keypad": "quantity" },
+      h4("div", { className: "tpv-fase4-keypad tpv-a07-keypad", "data-tpv-fase4-keypad": "quantity", "data-tpv-pdf-section": "A07" },
         h4("div", { className: "tpv-fase4-field-label" }, "Editando solo esta línea · no guarda ni cobra"),
         h4("div", { className: "tpv-fase4-display mono", "aria-live": "polite" }, editorCantidadA04.borrador || "0"),
         editorCantidadA04.error ? h4("div", { role: "alert", className: "text-[12px] mb-2", style: { color: C2.red } }, editorCantidadA04.error) : null,
@@ -25869,7 +25921,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const h4 = import_react4.default.createElement;
     const teclas = ["7", "8", "9", "÷", "4", "5", "6", "×", "1", "2", "3", "-", "Borrar", "0", ",", "+", "C", "="];
     return h4(Modal, { onClose: cerrarCalculadoraA04, title: "Calculadora" },
-      h4("div", { className: "tpv-fase4-calculator", "data-tpv-fase4-calculator": "true" },
+      h4("div", { className: "tpv-fase4-calculator tpv-a09-calculator", "data-tpv-fase4-calculator": "true", "data-tpv-pdf-section": "A09" },
         h4("div", { className: "tpv-fase4-expression mono", "aria-label": "Operación en curso" }, calculadoraA04.expresion || "Operación nueva"),
         h4("div", { className: "tpv-fase4-display mono", "aria-live": "polite" }, calculadoraA04.visor),
         calculadoraA04.error ? h4("div", { role: "alert", className: "text-[12px] mb-2", style: { color: C2.red } }, calculadoraA04.error) : null,
@@ -25949,7 +26001,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       }, title: `Configurar ${configurandoA04.producto.nombre}` },
       h4("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Elige variantes y modificadores. El precio e IVA definitivos se recalculan y validan en el servidor al guardar el pedido."),
       h4("div", { className: "text-[11.5px] mb-3", "aria-label": "Alérgenos del producto", style: { color: C2.inkSoft } }, "Alérgenos: ", alergenosA04.length ? alergenosA04.join(" · ") : "sin declarar"),
-      h4("label", { className: "block text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Nota para cocina (opcional)", h4("textarea", { value: notaA04, onChange: (e2) => setNotaA04(e2.target.value.slice(0, 500)), maxLength: 500, rows: 2, placeholder: "Sin cebolla, servir aparte…", "aria-label": "Nota para cocina", className: "w-full rounded-md px-2 py-1 mt-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })),
+      h4("label", { className: "tpv-a08-note-label block text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Nota para cocina (opcional)", h4("textarea", { value: notaA04, onChange: (e2) => setNotaA04(e2.target.value.slice(0, 500)), maxLength: 500, rows: 2, placeholder: "Sin cebolla, servir aparte…", "aria-label": "Nota para cocina", className: "tpv-a08-note-field w-full rounded-md px-2 py-1 mt-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }), h4("div", { className: "tpv-a08-note-counter", "aria-live": "polite" }, `${String(notaA04 || "").length}/500`)),
       configurandoA04.grupos.map((grupo) => {
         const elegidas = seleccionesA04[grupo.id] || {};
         const totalGrupo = Object.values(elegidas).reduce((acc, cantidad) => acc + (Number(cantidad) || 0), 0);
@@ -27143,8 +27195,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       onChange: (e2) => setBusqueda(e2.target.value),
       onKeyDown: manejarEnterEscaneo,
       placeholder: "Escanea un c\xF3digo de barras o busca por nombre\u2026",
-      autoFocus: true,
-      className: "w-full rounded-xl px-4 py-3 text-[14px]",
+      "aria-label": "Buscar productos o escanear código",
+      className: "tpv-a08-search-field w-full rounded-xl px-4 py-3 text-[14px]",
       style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
     }
   ), avisoEscaneo && /* @__PURE__ */ import_react4.default.createElement(
