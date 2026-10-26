@@ -113330,7 +113330,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
   }
-  async function imprimirTicketSimuladoF4({ equipoId, checkoutId } = {}) {
+  async function imprimirTicketSimuladoF4({ equipoId, checkoutId, operationId } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para imprimir el ticket." };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
@@ -113349,11 +113349,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
       if (!hayConexion) return { ok: false, error: "Imprimir el ticket necesita conexión con el servidor." };
       const supabase = await window.getSupabaseClient();
-      const operationId = "t7.impresion.simulada." + uuidA02();
+      const impresionOperationId = operationId || ("t7.impresion.simulada." + uuidA02());
       const resultado = await rpcA02ConRecuperacion(supabase, "abc_simular_impresion_ticket", {
-        p_operation_id: operationId, p_empresa_id: empresaId, p_local_id: localActivoId,
+        p_operation_id: impresionOperationId, p_empresa_id: empresaId, p_local_id: localActivoId,
         p_equipo_id: equipoId, p_checkout_id: checkoutId
-      }, empresaId, localActivoId, operationId);
+      }, empresaId, localActivoId, impresionOperationId);
       return { ok: true, qrFiscal, mensaje: resultado?.mensaje || "Impresión simulada registrada." };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
@@ -127422,10 +127422,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setErrorCobroF4("El cobro está confirmado, pero el QR fiscal de QA todavía no está preparado. No se puede imprimir el ticket fiscal.");
       return;
     }
+    const printOperationId = checkoutId
+      ? `t7.ticket.print.${checkoutId}.${qrFiscalActual?.id || "sin-qr"}.${equipoImpresoraElegidoT7F4 || "sin-equipo"}`
+      : null;
     setProcesandoImpresionT7F4(true);
     setErrorCobroF4("");
     setMensajeCobroF4("");
-    const resultado = await imprimirTicketSimuladoF4({ equipoId: equipoImpresoraElegidoT7F4, checkoutId });
+    const resultado = await imprimirTicketSimuladoF4({ equipoId: equipoImpresoraElegidoT7F4, checkoutId, operationId: printOperationId });
     if (!resultado?.ok) {
       setProcesandoImpresionT7F4(false);
       setErrorCobroF4(resultado?.error || "No se pudo simular la impresión del ticket.");
@@ -127438,6 +127441,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         return (l22.cantidad || 1) + " x " + (producto?.nombre || "Producto") + "    " + Number(l22.total || 0).toFixed(2) + "€";
       });
       const resultadoPuente = await llamarPuenteLA("/imprimir", {
+        operationId: printOperationId,
         lineas: lineasTicket,
         qrFiscal: qrFiscalActual ? {
           url: qrFiscalActual.qr_url,

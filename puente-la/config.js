@@ -22,5 +22,9 @@ export function cargarConfig(rutaConfig) {
   if (config.modo === "windows" && !config.windows?.nombreImpresora) {
     throw new Error("Falta config.windows.nombreImpresora");
   }
+  if (config.origenesPermitidos != null && (!Array.isArray(config.origenesPermitidos)
+      || config.origenesPermitidos.some((origen) => typeof origen !== "string" || !/^https?:\/\//i.test(origen)))) {
+    throw new Error("config.origenesPermitidos debe ser una lista de orígenes http(s)");
+  }
   return config;
 }

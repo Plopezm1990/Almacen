@@ -35,19 +35,28 @@ en PROD hasta haberlo probado con tu impresora real en QA.
      a usar una impresora ya instalada y compartida en Windows.
    - Rellena `red` (ip y puerto, normalmente 9100) o `windows`
      (nombreImpresora, el nombre que le pusiste al compartirla).
+   - En `origenesPermitidos`, deja el origen exacto de la web que usará el
+     TPV, sin una barra final. El puente responde a la comprobación CORS solo
+     para esos orígenes; añade también el dominio productivo cuando se
+     autorice el paso a producción.
 4. Ejecuta `npm start` (o `node iniciar.js`) dentro de esta carpeta.
 5. Debe aparecer: `Puente L&A escuchando en http://127.0.0.1:9123 (modo: ...)`.
 
 ## Qué hace
 
 - `GET /estado` — para comprobar que está encendido y en qué modo está.
-- `POST /imprimir` — recibe `{ "lineas": ["línea 1", "línea 2", ...], "cortar": true }`
-  y lo manda a la impresora.
+- `POST /imprimir` — recibe `{ "operationId": "...", "lineas": ["línea 1", "línea 2", ...], "qrFiscal": { "url": "https://...", "numero": "TPV-000001", "fecha": "2026-10-26", "importe": "1.00", "leyenda": "..." }, "cortar": true }`
+  y lo manda a la impresora. Si llega `qrFiscal`, el puente añade el QR
+  nativo ESC/POS y deja además la URL como texto de respaldo.
 - `POST /abrir-cajon` — abre el cajón monedero (a través de la impresora,
   como es habitual).
 
 Las dos últimas rutas exigen la cabecera `X-Puente-Token` con el mismo
 token de `config.json`; sin él, o con uno equivocado, responde 401.
+El `operationId` de impresión es estable para una misma venta: mientras el
+puente siga encendido, repetir exactamente la misma operación devuelve éxito
+idempotente sin volver a enviar bytes al transporte. Si el primer envío falla,
+la operación se libera para poder reintentarse.
 
 ## Seguridad
 
