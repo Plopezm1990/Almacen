@@ -649,12 +649,41 @@ guardado o sincronización offline.
 La evidencia detallada queda en
 [`ETAPA7_1_CORRECCION_ARRANQUE_FRIO_OFFLINE_QA_2026-10-26.md`](ETAPA7_1_CORRECCION_ARRANQUE_FRIO_OFFLINE_QA_2026-10-26.md).
 
+## 25. Medición de rendimiento bloqueada por pendiente QA preexistente
+
+La medición de rendimiento se inició sobre una pestaña nueva del Deploy
+Preview. El documento inicial alcanzó `DOMContentLoaded` en `815,1 ms` y
+`loadEventEnd` en `839,9 ms`; la Plataforma y el contexto `Local A2` fueron
+visibles correctamente.
+
+Antes del cambio de local ya aparecía la cola local
+`Subiendo 1… · 1 solo en este equipo`. Al ejecutar el cambio no destructivo
+`A2 → A1`, el contexto de A1 se mostró en aproximadamente `260 ms`, pero la
+interfaz informó:
+
+`Un cambio no se ha podido guardar (conteos). Comprueba tu conexión o
+reintenta ahora; mientras tanto queda guardado en este equipo.`
+
+El indicador quedó en `Guardado: cambios sin confirmar 1` y apareció
+`Reintentar`. No se pulsó ese botón ni se borró el pendiente para conservar la
+evidencia. Tampoco se creó ninguna venta, cobro o movimiento de Caja.
+
+Por tanto, esta tanda queda **BLOQUEADA / NO CONCLUYENTE** para aceptar el
+rendimiento. El dato del cambio visual de contexto se conserva, pero la
+sincronización no puede considerarse PASS hasta repetir con una sesión QA
+limpia. La red quedó restaurada y no se utilizó producción.
+
+La evidencia completa queda en
+[`ETAPA7_1_MEDICION_RENDIMIENTO_QA_2026-10-26.md`](ETAPA7_1_MEDICION_RENDIMIENTO_QA_2026-10-26.md).
+
 ### Próximo trabajo de Etapa 7.1
 
 1. Mantener la corrección offline bajo vigilancia del contrato `f4-b11-offline`;
    la garantía cubierta es el arranque del shell, no el funcionamiento de
    cobros o sincronización sin servidor.
-2. Preparar y ejecutar separadamente la campaña T9 física con hardware
+2. Repetir la medición de rendimiento con una sesión QA limpia, empezando por
+   A2 → A1 → A2 y sin pendientes locales previos.
+3. Preparar y ejecutar separadamente la campaña T9 física con hardware
    autorizado cuando la garantía offline quede en PASS.
-3. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA de
+4. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA de
    empresa y repetir la comparación sin reutilizar datos de producción.
