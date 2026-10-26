@@ -705,6 +705,33 @@ Este resultado no cierra la comparación A/B, la campaña T9 física ni la
 garantía de cobro o sincronización offline; esas comprobaciones siguen fuera
 del alcance de esta sesión.
 
+## 27. Aislamiento entre QA Empresa A y QA Empresa B
+
+El segundo contexto ya existente, `QA Empresa B`, estaba desactivado. Se
+reactivó desde la Plataforma QA, sin crear una empresa duplicada ni modificar
+usuarios, roles, locales, productos u operaciones. La aplicación confirmó que
+B quedó activa con `1` local activo de `2` y `2` usuarios activos de `2`.
+
+La matriz viva recorrió `QA Empresa A, S.L. / Local A1 → QA Empresa B / Local
+B1 → QA Empresa A, S.L. / Local A1`. El cambio a B mostró sus propios
+indicadores, un catálogo TPV vacío, ticket `0 líneas · €0,00` y `0` ventas; el
+retorno a A recuperó saldo `€12,27`, facturas pendientes por `€100.075,80`, `2`
+encargos urgentes, `2` conteos atrasados y el contexto A1. No se observaron
+indicadores de A dentro de B ni datos de B dentro de A. El TPV se abrió y se
+cerró sin guardar ninguna operación.
+
+Resultado: **PASS de aislamiento A/B y retorno de contexto**. La comparación de
+datos equivalentes queda **NO CONCLUYENTE** porque B tiene `0 productos` y `0`
+ventas, por lo que no existe todavía un fixture de negocio comparable al de A.
+
+Durante la prueba reapareció el aviso QA de colección local `productos`; la
+inspección de solo lectura confirmó `almacen__pendientes=[]` y
+`almacen__pendientes_contexto=[]`. No se limpió porque la autorización anterior
+era exclusivamente para `conteos`.
+
+La evidencia completa queda en
+[`ETAPA7_1_COMPARACION_AB_QA_2026-10-26.md`](ETAPA7_1_COMPARACION_AB_QA_2026-10-26.md).
+
 ### Próximo trabajo de Etapa 7.1
 
 1. Mantener la corrección offline bajo vigilancia del contrato `f4-b11-offline`;
@@ -712,5 +739,6 @@ del alcance de esta sesión.
    cobros o sincronización sin servidor.
 2. Preparar y ejecutar separadamente la campaña T9 física con hardware
    autorizado cuando la garantía offline quede en PASS.
-3. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA de
-   empresa y repetir la comparación sin reutilizar datos de producción.
+3. Preparar un fixture operativo QA equivalente para B y repetir la
+   comparación de catálogo, indicadores y TPV sin reutilizar datos de
+   producción.

@@ -82,8 +82,8 @@ como aceptación final:
 
 ## 6. Qué sigue
 
-1. Completar la comparación A/B cuando exista un segundo contexto QA de empresa;
-   esta medición solo cubre QA Empresa A.
+1. Repetir la comparación A/B cuando B disponga de un fixture operativo
+   equivalente; el aislamiento de contexto ya quedó comprobado.
 2. Ejecutar por separado la campaña T9 física con hardware autorizado.
 3. Mantener la vigilancia de producción y del contrato offline; esta prueba no
    habilita cobros ni sincronización offline.
