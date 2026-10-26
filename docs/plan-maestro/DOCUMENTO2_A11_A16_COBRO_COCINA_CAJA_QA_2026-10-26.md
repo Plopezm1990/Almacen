@@ -1,7 +1,7 @@
 # Documento 2 — A11–A16: cobro, documentos, cocina y caja
 
 **Fecha:** 26/10/2026  
-**Estado del bloque:** EN VALIDACIÓN QA  
+**Estado del bloque:** TERMINADA
 **Alcance:** secciones 10–16 del cuerpo del PDF y láminas A11–A16  
 **Entorno:** preview QA de la rama de recuperación  
 **Producción:** no modificada  
@@ -72,13 +72,38 @@ comprueba en ambas fuentes:
 - bloqueo de pago incierto y separación de operaciones sensibles;
 - tamaños mínimos establecidos por el PDF.
 
-## 5. Estado y siguiente paso
+## 5. Evidencia de validación QA
 
-**Estado actual:** implementación aplicada; pendiente ejecutar contrato, build,
-deploy QA y comprobación visual con la suite.
+La validación se realizó sobre el deploy QA de Netlify:
 
-**Siguiente:** ejecutar las pruebas estáticas, publicar la rama en el preview
-QA y revisar las métricas reales de los contenedores A11/A15/A16 en escritorio
-y móvil. Tras esa validación se cerrará formalmente este bloque; luego quedará
-la prueba controlada de estados con fixtures QA y, en último lugar, la
-aceptación del hardware físico T9.
+- deploy: `6adf5b0f1ab45ecc5124ca10`;
+- commit: `02503e8fa1f804b1121a0269eb9c501379a15861`;
+- preview: `https://deploy-preview-175--chic-entremet-9107cf.netlify.app/`;
+- estado Netlify: `ready`;
+- frontera de publicación: `NETLIFY_PUBLISH_BOUNDARY_PASS entries=68 tailwind_bytes=17764`;
+- escaneo de secretos del deploy: sin coincidencias.
+
+Comprobaciones visibles y de métricas:
+
+- cobro: resumen de importes a 96 px de alto en móvil y escritorio; factura a
+  empresa y ticket por correo visibles; no se disparó ningún cobro;
+- vales: tarjeta A13 visible con radio de 14 px; no se emitió ningún vale;
+- cocina: contenedor A15 visible, 37 comandas QA cargadas, producto a 22 px,
+  cantidad a 28 px y campo de nota a 48 px;
+- caja: contenedor A16 visible con anchura de 980 px en escritorio, sin
+  desbordamiento horizontal ni vertical; no se abrió la caja ni se registró
+  movimiento;
+- consola del navegador: 0 errores;
+- acciones sensibles: 0 cobros, 0 pedidos, 0 cambios de comanda, 0
+  reimpresiones, 0 mermas, 0 aperturas/cierres y 0 escrituras de producción.
+
+## 6. Estado y siguiente paso
+
+**Estado actual:** implementación, contrato, build, deploy QA y comprobación
+visual completados. El ajuste final del campo de nota se corrigió de 44 px a
+48 px y quedó incluido en el deploy final.
+
+**Siguiente:** realizar la prueba controlada de estados con fixtures QA
+(cuenta cobrable, pago incierto, documentos, cocina y caja) sin tocar
+producción; después queda la aceptación del hardware físico T9, que se mantiene
+reservada para el final como se acordó.
