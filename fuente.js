@@ -107261,6 +107261,56 @@ function GestionAlmacen() {
           .tpv-section-nav { justify-content: flex-start; overflow-x: auto; }
         }
 
+        /* Documento 2 · tercera pasada visual: tareas secundarias y marcos responsive */
+        body:has([data-tpv-shell]) .tpv-shell > .mt-5 { order: 90; margin-top: 12px !important; }
+        body:has([data-tpv-shell]) .tpv-shell > [data-tpv-fase5-cobro],
+        body:has([data-tpv-shell]) .tpv-shell > [data-tpv-fase5-caja] { width: min(100%, 760px); margin-inline: auto; }
+        body:has([data-tpv-shell]) .tpv-shell > [data-tpv-fase5-cobro] .tpv-fase5-cash-keypad { grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+        body:has([data-tpv-shell]) .tpv-shell > [data-tpv-fase5-cobro] .tpv-fase5-cash-keypad button { min-height: 48px; border-radius: 8px; }
+
+        /* Sala, reparto, operativa, descuento, cobro y caja son pantallas completas. */
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(2)[aria-selected="true"]) .tpv-shell > .tpv-layout,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(3)[aria-selected="true"]) .tpv-shell > .tpv-layout,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(4)[aria-selected="true"]) .tpv-shell > .tpv-layout,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(5)[aria-selected="true"]) .tpv-shell > .tpv-layout,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(6)[aria-selected="true"]) .tpv-shell > .tpv-layout,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .tpv-layout { display: none !important; }
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(2)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(3)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(4)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(5)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(6)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]) { order: 40; width: 100%; margin: 12px 0 0 !important; }
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(2)[aria-selected="true"]) .tpv-shell > .mt-5,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(3)[aria-selected="true"]) .tpv-shell > .mt-5,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(4)[aria-selected="true"]) .tpv-shell > .mt-5,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(5)[aria-selected="true"]) .tpv-shell > .mt-5,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(6)[aria-selected="true"]) .tpv-shell > .mt-5,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .mt-5 { display: none !important; }
+
+        @media (min-width: 901px) and (max-width: 1100px) {
+          body:has([data-tpv-shell]) .tpv-shell { padding-inline: 10px; }
+          .tpv-layout { grid-template-columns: minmax(0, 1fr) 300px; gap: 8px; }
+          .tpv-product-zone > div:nth-child(3) { gap: 8px !important; }
+          .tpv-product-zone > div:nth-child(3) > [role="button"] { min-height: 164px !important; padding: 9px !important; }
+          .tpv-product-zone > div:nth-child(3) > [role="button"] .tpv-product-photo { height: 70px; margin: -9px -9px 8px; width: calc(100% + 18px); }
+        }
+
+        @media (max-width: 640px) {
+          body:has([data-tpv-shell]) .tpv-shell { min-height: calc(100dvh - 3.5rem); padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-workspace-heading { min-height: 46px; padding-block: 8px; }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-toolbar { padding-block: 8px; }
+          .tpv-product-zone > div:nth-child(3) { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px !important; }
+          .tpv-product-zone > div:nth-child(3) > [role="button"] { min-height: 154px !important; padding: 8px !important; }
+          .tpv-product-zone > div:nth-child(3) > [role="button"] .tpv-product-photo { height: 64px; margin: -8px -8px 8px; width: calc(100% + 16px); }
+          .tpv-product-zone > div:nth-child(3) > [role="button"] .mono { font-size: 14px !important; line-height: 19px; }
+          .tpv-ticket-zone > .mb-4 { padding: 10px; }
+          .tpv-shell > [data-tpv-fase5-cobro], .tpv-shell > [data-tpv-fase5-caja] { width: 100%; }
+          .tpv-shell > [data-tpv-fase5-cobro] .tpv-fase5-cash-keypad { gap: 6px; }
+          .tpv-shell > [data-tpv-fase5-cobro] .tpv-fase5-cash-keypad button { min-height: 44px; }
+          .tpv-shell > .tpv-section-nav { position: sticky; bottom: 0; z-index: 25; margin-bottom: 0; background: var(--c-surface); box-shadow: 0 -4px 16px rgba(18, 59, 45, .12); }
+        }
+
         @media print {
           @page { size: A4; margin: 12mm; }
           body * { visibility: hidden !important; }
