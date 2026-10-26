@@ -4,6 +4,8 @@ import fs from 'node:fs';
 const decision = fs.readFileSync('docs/plan-maestro/PM03_CONTRATOS_MINIMOS_PROPUESTA.md', 'utf8');
 const source = fs.readFileSync('fuente.js', 'utf8');
 const recoveredSource = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
+const indexHtml = fs.readFileSync('index.html', 'utf8');
+const serviceWorker = fs.readFileSync('sw.js', 'utf8');
 const contract = fs.readFileSync('docs/plan-abc/F4_B11_CONTRATO_TECNICO_2026-10-01.md', 'utf8');
 const contingency = fs.readFileSync('docs/plan-abc/F4_B11_CONTINGENCIA_TERMINAL_OFFLINE_2026-10-01.md', 'utf8');
 
@@ -98,5 +100,15 @@ for (const required of [
   'contracargo',
 ]) assert.match(contingency, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
 assert.match(contingency, /No se activa ningún\s+camino offline/i);
+assert.match(indexHtml, /serviceWorker\.register\('\.\/sw\.js'/i, 'el shell offline debe registrarse antes de cargar la aplicación');
+assert.match(serviceWorker, /const CACHE_NAME = "la-suite-shell-v2"/);
+assert.match(serviceWorker, /"\/index\.html"/);
+assert.match(serviceWorker, /"\/fuente\.js"/);
+assert.match(serviceWorker, /request\.mode === "navigate"/);
+assert.match(serviceWorker, /cache\.match\(request, \{ ignoreSearch: true \}\)/);
+assert.match(serviceWorker, /request\.method !== "GET"/);
+assert.match(serviceWorker, /self\.clients\.claim\(\)/);
+assert.match(serviceWorker, /self\.skipWaiting\(\)/);
+assert.doesNotMatch(serviceWorker, /fetch\([^)]*supabase/i, 'el service worker no debe cachear Supabase');
 
 console.log('ABC_F4_B11_OFFLINE_BOUNDARY=PASS');

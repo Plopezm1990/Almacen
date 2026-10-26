@@ -8,6 +8,25 @@
 <meta name="application-name" content="L&amp;A Suite" />
 <meta name="apple-mobile-web-app-title" content="L&amp;A Suite" />
 
+<!-- Registrar el shell antes de cargar el módulo principal. La aplicación no
+     bloquea su arranque esperando al service worker; este se prepara en
+     segundo plano para la siguiente recarga sin conexión. -->
+<script>
+  (function () {
+    if (!('serviceWorker' in navigator)) return;
+    function registrarShellOffline() {
+      navigator.serviceWorker.register('./sw.js', { scope: './' }).then(function (registro) {
+        if (registro.waiting) registro.waiting.postMessage({ type: 'SKIP_WAITING' });
+      }).catch(function () {
+        // La aplicación sigue funcionando online aunque el navegador no admita
+        // service workers o rechace su instalación.
+      });
+    }
+    if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', registrarShellOffline);
+    else registrarShellOffline();
+  }());
+</script>
+
 <link rel="manifest" href="manifest.json?v=la-suite-20260904" />
 <link rel="icon" type="image/svg+xml" href="la-suite-icon.svg" />
 <link rel="apple-touch-icon" href="la-suite-icon.svg" />
@@ -54,6 +73,17 @@
   <div class="barra"><i></i></div>
   <div class="paso" id="paso">Abriendo…</div>
 </div>
+
+<script>
+  (function () {
+    var paso = document.getElementById('paso');
+    function actualizarEstadoRed() {
+      if (paso && navigator.onLine === false) paso.textContent = 'Sin conexión · abriendo copia local…';
+    }
+    window.addEventListener('offline', actualizarEstadoRed);
+    actualizarEstadoRed();
+  }());
+</script>
 
 <div id="root"></div>
 
