@@ -51,6 +51,9 @@ enviar dos veces el mismo trabajo al transporte local.
 - `node tests/plan-maestro/etapa6-puente-scope-contract.mjs`: correcto.
 - `node .github/scripts/build-netlify-publish.mjs`: correcto; el bundle QA y la
   carpeta `puente-la/` se copian al directorio de publicación.
+- Preview QA de PR 175: actualizado al commit `912c51f`; comprobación directa del
+  `fuente.js` servido confirmó la clave estable `t7.ticket.print.*`, el payload
+  `operationId` del puente y el objeto `qrFiscal`.
 - `git diff --check`: correcto.
 
 ## Límites y decisión de hardware
