@@ -2,11 +2,11 @@
 
 Fecha: 26/10/2026  
 Entorno: QA `qjqorixtkilwsndqayyx` y Deploy Preview del PR `#175`  
-Estado: `CUENTAS_QA_CREADAS; LOGIN_CAJERO_Y_CAMARERO_VERIFICADO; ENCARGADO_PENDIENTE`
+Estado: `CUENTAS_QA_CREADAS; MATRIZ_VIVA_DE_ROLES_VERIFICADA`
 
 ## 1. Alcance
 
-Con autorización expresa se crearon dos perfiles sintéticos de QA desde la
+Con autorización expresa se crearon tres perfiles sintéticos de QA desde la
 pantalla `Personal` del preview. Se utilizarán exclusivamente para comprobar
 la matriz viva de permisos del TPV y Caja.
 
@@ -19,17 +19,21 @@ se guardaron códigos de acceso en el repositorio ni en esta acta.
 |---|---|---|---|
 | `QA Cajero` | `Cajero QA` | `Cajero/a` | PIN configurado; cuenta creada |
 | `QA Camarero` | `Camarero QA` | `Camarero/a` | PIN configurado; cuenta creada |
+| `QA Encargado` | `Encargado QA` | `Encargado` | PIN configurado; cuenta creada |
 
 La ficha previa existente de QA conserva su rol `Encargado` y no fue editada.
+La nueva ficha `QA Encargado` se añadió exclusivamente para completar la
+matriz viva.
 
 ## 3. Verificación inmediata
 
-Después de cada alta, la pantalla volvió a la lista de Personal y mostró:
+Después de las altas, la pantalla volvió a la lista de Personal y mostró:
 
-- las tres fichas QA visibles en el contexto actual;
+- las cuentas QA visibles en el contexto actual;
 - `QA Cajero` con rol `Cajero/a`;
 - `QA Camarero` con rol `Camarero/a`;
-- PIN configurado en ambas cuentas nuevas;
+- `QA Encargado` con rol `Encargado`;
+- PIN configurado en las tres cuentas sintéticas;
 - ningún error nuevo en la consola;
 - ningún cambio en ventas, cobros, Caja, productos o permisos de negocio.
 
@@ -54,8 +58,9 @@ de negocio:
 |---|---|---|---|---|
 | `QA Cajero` | Correcto | Visible | Visible; aparece `Abrir caja` | PASS |
 | `QA Camarero` | Correcto | Visible | No aparece la pestaña `Caja` | PASS |
+| `QA Encargado` | Correcto | Visible | Visible; aparece `Abrir caja` | PASS |
 
-En ambos casos el TPV quedó con `0 líneas · €0,00`, `0` ventas y total
+En los tres casos el TPV quedó con `0 líneas · €0,00`, `0` ventas y total
 `€0,00`. No se pulsó `Guardar`, no se abrió Caja, no se registró movimiento
 de efectivo y no se creó ningún cobro. Al finalizar se salió del modo
 empleado y el contexto volvió a mostrar `Modo empleado` sin usuario activo.
@@ -64,19 +69,16 @@ La consola del navegador quedó sin errores ni advertencias nuevas durante la
 prueba. El aislamiento de empresa/local observado permaneció en `Local A2 ·
 QA Empresa A, S.L.` y no se utilizó el proyecto Supabase de producción.
 
-La prueba viva del perfil `Encargado` sigue pendiente porque la cuenta
-existente tiene PIN configurado, pero su código no está disponible para esta
-sesión y no se debe adivinar ni registrar. Los contratos estáticos ya
-verifican la regla esperada para `Encargado`; falta únicamente la evidencia de
-login real con su credencial proporcionada de forma segura.
+El perfil `QA Encargado` también se comprobó en vivo: el login fue correcto,
+el TPV mostró la pestaña `Caja` y la acción `Abrir caja`, y el menú `Más`
+mostró las áreas operativas permitidas para ese nivel. No se abrió Caja ni se
+ejecutó ninguna acción con efecto económico.
 
 ## 6. Qué sigue
 
-1. Ejecutar el login vivo de `Encargado` cuando el responsable introduzca su
-   PIN de forma segura, verificando Caja y las acciones reservadas a ese rol.
-2. Completar la comparación A/B/A1/A2 y el aislamiento entre locales con
+1. Completar la comparación A/B/A1/A2 y el aislamiento entre locales con
    sesión de empleado, sin guardar operaciones.
-3. Mantener pendiente la prueba de arranque en frío sin red y la campaña T9
+2. Mantener pendiente la prueba de arranque en frío sin red y la campaña T9
    física; estas no quedan cubiertas por esta validación visual.
 
 Las credenciales temporales usadas en la prueba no se documentan ni se

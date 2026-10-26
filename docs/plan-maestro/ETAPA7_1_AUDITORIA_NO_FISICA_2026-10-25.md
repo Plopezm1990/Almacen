@@ -539,14 +539,15 @@ La evidencia detallada queda en
 
 ## 20. Cuentas sintéticas QA creadas
 
-Con autorización expresa se crearon dos perfiles sintéticos para desbloquear
+Con autorización expresa se crearon tres perfiles sintéticos para desbloquear
 la matriz viva:
 
 - `QA Cajero` con rol `Cajero/a`;
 - `QA Camarero` con rol `Camarero/a`.
+- `QA Encargado` con rol `Encargado`.
 
 La ficha QA existente con rol `Encargado` permanece sin cambios. La pantalla
-confirmó las tres fichas y sus roles, sin errores nuevos y sin mutaciones de
+confirmó las cuentas y sus roles, sin errores nuevos y sin mutaciones de
 ventas, cobros, Caja, productos o permisos. Los códigos temporales no se
 guardan en Git ni en la documentación.
 
@@ -555,17 +556,21 @@ La evidencia detallada queda en
 
 ## 21. Resultado de login vivo por rol
 
-La matriz viva se ejecutó con las dos cuentas sintéticas recién creadas:
+La matriz viva se ejecutó con las tres cuentas sintéticas recién creadas:
 
 - `QA Cajero`: login correcto, TPV visible y pestaña `Caja` visible con la
   acción `Abrir caja` disponible;
 - `QA Camarero`: login correcto, TPV visible y pestaña `Caja` ausente.
+- `QA Encargado`: login correcto, TPV visible y pestaña `Caja` visible con la
+  acción `Abrir caja` disponible.
 
 No se guardó ninguna comanda, cobro ni movimiento de efectivo. El TPV quedó
 vacío (`0 líneas · €0,00`, `0` ventas), se salió del modo empleado al terminar
-y no hubo errores ni advertencias nuevas en la consola del navegador. La
-prueba del `Encargado` queda pendiente únicamente por disponibilidad segura de
-su PIN, no por un fallo observado en los contratos.
+y no hubo errores ni advertencias nuevas en la consola del navegador. Después
+se creó `QA Encargado` con rol `Encargado`, se inició sesión correctamente y
+se confirmó Caja visible con `Abrir caja` disponible. También se observó el
+menú operativo restringido propio del rol, sin ejecutar ninguna acción con
+efecto económico.
 
 La evidencia completa queda en
 [`ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md`](ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md).
