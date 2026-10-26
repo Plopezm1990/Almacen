@@ -135,3 +135,7 @@ El siguiente paso operativo es preparar una única ficha de promoción para una 
 La validación física y el QR fiscal se mantienen deliberadamente para el momento en que estén disponibles el hardware, los datos fiscales y la definición del proveedor.
 
 **Resultado de este documento: cierre de la incidencia PR #175 TERMINADO; cierre global de la Etapa 7 PENDIENTE.**
+
+## Aclaración posterior: fiscalidad multiempresa
+
+Pedro ha confirmado que cada empresa cliente debe configurar su fiscalidad y su asesoría. El diseño se desarrolla en `QR_FISCAL_MULTIEMPRESA_DISENO_2026-10-26.md`. La conexión admite integración directa o proveedor opcional y representación propia o delegada según la vía válida; no se exige contratar un proveedor fiscal externo. Los borradores y la comprobación del sistema preceden a la activación por empresa. La revisión de la asesoría no sustituye la responsabilidad del productor ni su declaración responsable por versión.
