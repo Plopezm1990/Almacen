@@ -3,7 +3,7 @@
 **Fecha:** 2026-10-26  
 **Referencia:** `LA-Suite-TPV-puesto-unico-documento-2.pdf`, lámina A04  
 **Ámbito:** QA exclusivamente (`qjqorixtkilwsndqayyx`)  
-**Estado:** IMPLEMENTADA — pendiente de comprobación viva tras el deploy
+**Estado:** TERMINADA — desplegada y comprobada en QA
 
 ## 1. Decisión aplicada
 
@@ -55,8 +55,19 @@ Han pasado correctamente:
 - build de publicación Netlify;
 - límite del payload publicable.
 
-La comprobación viva en el preview de QA se realizará después de publicar el commit, navegando a Opciones a 1024×768 y a 390×844. No se pulsarán artículos, guardado, cobro, cajón ni tarjetas con efectos de negocio.
+La comprobación viva en el preview de QA se realizó después de publicar el commit, navegando a Opciones a 1024×768 y a 390×844. No se pulsaron artículos, guardado, cobro, cajón ni tarjetas con efectos de negocio.
+
+La comprobación viva se completó sobre el deploy QA `6adf50c0cb480c9ffd65d609`:
+
+- A 1024×768 se visualizan las nueve tarjetas en una cuadrícula 3×3.
+- A 390×844 se visualizan en dos columnas, sin desbordamiento ni textos cortados.
+- El árbol de accesibilidad expone las nueve tarjetas con nombres descriptivos.
+- La consola del navegador no registra errores.
+- La suite quedó restaurada en viewport normal con A04 abierta.
+- No se ejecutó ninguna acción de negocio ni se modificó producción.
 
 ## 6. Siguiente paso
 
-Comprobar visualmente la lámina A04 en QA y, si no aparecen defectos, cerrar la revisión de fidelidad A03/A04/A17 antes del pase final de accesibilidad y hardware.
+El siguiente paso es la revisión final conjunta de fidelidad A03/A04/A17 y el pase de accesibilidad, teclado y hardware antes de considerar cerrado el bloque visual del Documento 2.
+
+**A04 Opciones QA: TERMINADA.**

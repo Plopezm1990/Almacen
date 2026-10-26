@@ -40,7 +40,7 @@ La pasada cubre la composición y el comportamiento de las siguientes referencia
 - **A08:** la pantalla de búsqueda/teclado conserva el toolbar y el espacio de tarea sin el ruido del ticket duplicado.
 - **A17:** el puesto móvil conserva dos columnas, resumen inferior, ticket posterior y navegación táctil.
 
-El acceso visual exacto de **A04**, con las nueve tarjetas 3×3 de “Opciones”, todavía requiere una decisión de producto: el código actual expone siete pestañas operativas (`Venta`, `Sala`, `Reparto`, `Operativa`, `Descuento`, `Cobro`, `Caja`) y no debe inventarse una nueva pantalla ni renombrar rutas sin cerrar esa decisión. Queda anotado como el siguiente ajuste de fidelidad, no como una tarea escondida.
+El acceso visual exacto de **A04** ya está implementado como una pantalla propia de Opciones 3×3, sin convertirla en una octava pestaña. Las nueve tarjetas reutilizan las siete secciones y módulos existentes, con salida controlada para Cocina y Documentos/correo. Su detalle y contrato quedan documentados en `DOCUMENTO2_A04_OPCIONES_QA_2026-10-26.md`.
 
 ## 4. Contrato de no regresión
 
@@ -87,7 +87,7 @@ La preview del PR #175 se comprobó sobre el tenant de QA, con la sesión de dat
 
 ## 7. Siguiente paso
 
-El siguiente trabajo recomendado es un pase específico de A04: decidir si “Opciones” será una pantalla 3×3 propia o una reorganización de las siete pestañas actuales. Después de esa decisión se puede cerrar la fidelidad de A04 y repetir la comprobación de A03/A17 antes de pasar a una revisión final de accesibilidad y hardware.
+El siguiente trabajo recomendado es la revisión final conjunta A03/A04/A17: contraste visual de salida, foco y teclado, tamaños táctiles, navegación por teclado y comprobación de hardware pendiente. A04 ya no queda abierta como bloqueo de fidelidad.
 
 **Pase visual 3 QA: TERMINADA.**  
 Producción continúa sin cambios.
