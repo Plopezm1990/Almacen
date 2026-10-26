@@ -6230,7 +6230,7 @@ function GestionAlmacen() {
         @media (max-width: 900px) {
           body:has([data-tpv-shell]) .tpv-shell { padding: 0 10px 12px; }
           .tpv-layout { grid-template-columns: minmax(0, 1fr); }
-          .tpv-ticket-zone { order: 2; }
+          .tpv-ticket-zone { order: 60; }
         }
         @media (max-width: 640px) {
           body:has([data-tpv-shell]) .tpv-shell > .tpv-keybar { justify-content: stretch; }
@@ -6297,7 +6297,7 @@ function GestionAlmacen() {
           body:has([data-tpv-shell]) .tpv-shell { display: flex; }
           body:has([data-tpv-shell]) .tpv-shell > .tpv-layout { display: block; }
           body:has([data-tpv-shell]) .tpv-shell > .tpv-layout > .tpv-product-zone { grid-column: auto; order: 0; }
-          body:has([data-tpv-shell]) .tpv-shell > .tpv-ticket-zone { grid-column: auto; order: 2; }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-ticket-zone { grid-column: auto; order: 60; }
           body:has([data-tpv-shell]) .tpv-shell { min-height: calc(100dvh - 3.5rem); padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
           body:has([data-tpv-shell]) .tpv-shell > .tpv-workspace-heading { min-height: 46px; padding-block: 8px; }
           body:has([data-tpv-shell]) .tpv-shell > .tpv-toolbar { padding-block: 8px; }
