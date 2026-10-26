@@ -125502,7 +125502,20 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   function renderTicketVenta() {
     if (!ticketVenta) return null;
     const h3 = import_react4.default.createElement;
-    const v22 = ticketVenta;
+    // PM18: una venta ordinaria se imprime como ticket interno, no como documento
+    // fiscal. Si algún origen legado arrastra datos QR, se eliminan antes de
+    // renderizar el ticket; un QR fiscal solo podrá vivir en un flujo fiscal
+    // independiente y validado.
+    const v22 = ticketVenta.numeroFiscal ? ticketVenta : {
+      ...ticketVenta,
+      qr: null,
+      qrCode: null,
+      codigoQr: null,
+      codigoQR: null,
+      fiscalQr: null,
+      verifactuQr: null,
+      codigoVerificacion: null
+    };
     const desglose = desgloseIvaTicketVista(v22);
     const subtotal = desglose.reduce((a22, r2) => a22 + r2.base, 0);
     const nombreLocal = local?.nombreComercial || local?.nombreComercialTicket || local?.nombre || "Local sin nombre";
