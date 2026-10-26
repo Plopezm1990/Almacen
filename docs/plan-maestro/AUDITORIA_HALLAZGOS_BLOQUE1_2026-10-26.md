@@ -94,42 +94,112 @@ hipótesis.
 ## H-ALTA-01 — Banner de error ocupa toda la pantalla a 768px
 
 - **Prioridad:** Alta.
-- **Pantalla / ancho:** TPV, 768px (tablet). No ocurre a 390px ni a 1440px según
-  Cowork.
-- **Resultado esperado:** Un aviso de fondo (el ya conocido de
-  `historialRespaldos`/PGRST116) no debería impedir ver ni usar el TPV.
+- **Pantalla / ancho:** TPV, 768px (tablet). Cowork no lo vio a 390px ni a 1440px,
+  pero ver la nota al final sobre por qué eso no significa que el mecanismo de la
+  causa sea exclusivo de 768px.
+- **Resultado esperado:** Un aviso de fondo (el de `historialRespaldos`/PGRST116,
+  ver H-MEDIA-01) no debería impedir ver ni usar el TPV.
 - **Resultado observado:** El banner se estira al 100% del alto del viewport,
   tapando el TPV por completo hasta cerrarlo manualmente con la "✕".
-- **Causa:** NO CONFIRMADA en código por mi parte en esta vuelta — Cowork apunta a
-  "CSS con `flex-row` y sin límite de altura a partir de un breakpoint `md:`", pero
-  es su hipótesis, no algo que yo haya verificado leyendo el componente exacto.
-  Queda pendiente de localizar el componente del banner y confirmar la regla CSS
-  responsable antes de dar un veredicto de causa cerrado.
-- **Corrección recomendada (provisional):** fijar una altura máxima y `overflow:
-  auto` en el contenedor del banner para cualquier ancho ≥768px, una vez localizado.
-- **Cómo validarlo:** repetir la carga a 768px tras el cambio y confirmar que el
-  TPV sigue visible debajo/junto al banner.
+- **Causa — CONFIRMADA en código (actualización 26/10, segunda vuelta):**
+  - El contenedor raíz de `GestionAlmacen` (`fuente.js:107051`) usa
+    `className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]"`. El
+    breakpoint `md:` de Tailwind es exactamente 768px: por debajo es `flex-col`
+    (apilado vertical, sin problema), a partir de 768px pasa a `flex-row`.
+  - Los dos banners de aviso (`falloGuardadoVisible && ...` en `fuente.js:107051-107064`
+    y el de `fallosCarga` en `fuente.js:107065-107072`) son **hijos directos de ese
+    mismo contenedor flex**, al mismo nivel que la barra lateral y el contenido
+    principal — y ninguno de los dos fija su propia altura.
+  - En un `flex-row`, `align-items` por defecto es `stretch`: cada hijo se estira en
+    el eje transversal (aquí, la altura) hasta igualar al hermano más alto de la
+    fila — que es la columna de contenido principal, tan alta como toda la app. Por
+    eso el banner (con fondo rojo/ámbar sólido y `position: sticky`) se estira
+    verticalmente y cubre la pantalla: no es un error puntual de una regla CSS
+    suelta, es el comportamiento por defecto de flexbox aplicado a un elemento que
+    nunca debió estar dentro de la fila.
+  - Nota honesta: no he podido confirmar en vivo por qué Cowork no lo vio a 1440px —
+    mecánicamente, `md:flex-row` se aplica igual a 1440px que a 768px, así que el
+    mismo estiramiento debería ocurrir ahí también. Como el banner solo aparece
+    cuando se dispara H-MEDIA-01 (ver abajo), y esa condición es una carrera de
+    temporización no determinista, lo más probable es que simplemente no se diera
+    la carrera durante la prueba a 1440px, no que el CSS se comporte distinto a ese
+    ancho. Recomiendo que Cowork repita la carga varias veces a 1440px para
+    confirmar o descartar esto.
+- **Corrección recomendada:** sacar los dos banners del flujo `flex` del contenedor
+  raíz (por ejemplo, envolviendo `data-tema=...` en un `<div>` exterior no-flex que
+  contenga el banner arriba y el `flex md:flex-row` solo alrededor de barra lateral
+  + contenido), o añadir `self-start` / `max-h-*` explícito a cada banner para que no
+  herede el `stretch` del contenedor.
+- **Cómo validarlo:** forzar la aparición del banner (ver H-MEDIA-01) a 768px y a
+  1440px tras el cambio y confirmar en ambos que el TPV sigue completamente visible
+  y utilizable debajo del banner.
 
 ---
 
 ## H-MEDIA-01 — Error PGRST116 ("2 rows", se esperaba 1) en 4 colecciones, cada carga
 
-- **Prioridad:** Media (no bloquea la operación, pero ensucia la consola en cada
-  carga y generó el banner de H-ALTA-01).
+- **Prioridad:** reclasificado de Media a **Alta** — ver nota de riesgo al final.
 - **Pantalla:** Cualquiera, en cada carga de página (`traspasos`, `productos`,
   `conteos`, `historialRespaldos`).
-- **Causa — investigada, NO encontrada la fuente exacta todavía:** comprobé
-  directamente en la base de datos QA (`almacen_kv`, solo lectura) si había filas
-  duplicadas para `(empresa_id, local_id, key)` en esas cuatro claves — **no hay
-  ninguna duplicada** (cada una tiene exactamente 1 fila, con `local_id` nulo porque
-  son colecciones de ámbito de empresa, no de local). Esto descarta mi primera
-  hipótesis (duplicado simple en `almacen_kv`). La causa real del "2 rows" que
-  PostgREST reporta sigue sin identificarse — probablemente en otra tabla o en cómo
-  `window.storage.get` construye la petición (cabecera `Accept:
-  application/vnd.pgrst.object+json`, que exige exactamente 1 fila) contra una vista
-  o join con más de una fila real. **Marco esto explícitamente como pendiente de
-  investigar con una sesión en vivo** (inspeccionar la pestaña Red del navegador para
-  ver la URL exacta de la petición que falla), no como una causa cerrada.
+- **Causa — CONFIRMADA en código y en datos reales de QA (segunda vuelta, 26/10):**
+  Mi primera hipótesis (fila duplicada en `almacen_kv`) quedó descartada en la
+  primera vuelta y sigue descartada: **el propio `almacen_kv` tiene su clave
+  primaria definida como `PRIMARY KEY (empresa_id, key)`** (confirmado por SQL de
+  solo lectura contra el proyecto QA), así que una fila duplicada para la misma
+  empresa y clave es estructuralmente imposible. La causa real es otra, y la
+  localicé siguiendo la ruta de lectura completa:
+  1. Al arrancar la app, `fuente.js:105256-105294` lanza un único
+     `useEffect(() => {...}, [])` que llama, entre otras, a
+     `loadKey("productos", [])`, `loadKey("conteos", [])`,
+     `loadKey("historialRespaldos", [])` y `loadKey("traspasos", [])` dentro de un
+     `Promise.all`. Esto ocurre **antes** de que exista ningún contexto de
+     empresa/local publicado: `window.__empresaActivaIdParaContexto` solo se fija
+     más adelante, dentro de ese mismo efecto tras resolverse el `Promise.all`
+     (`fuente.js:105472`) o en efectos posteriores que dependen de `ready`
+     (`fuente.js:105520-105534`) — `ready` se pone a `true` justo después de este
+     mismo `Promise.all` (`fuente.js:105494`), es decir, siempre después.
+  2. Cada `loadKey` llama a `window.storage.get(key)`
+     (`index-storage-bootstrap.js:1195` y siguientes). Para estas 4 claves (no
+     están en `TABLAS_EMPRESA`/`TABLAS_EMPRESA_LOCAL`/`TABLAS_POR_FILA`/`LEDGERS_RPC`,
+     `index-storage-bootstrap.js:454-480`), cae en la rama genérica
+     (`index-storage-bootstrap.js:1221-1222`):
+     `consultaKvPorClave(key, "value").maybeSingle()`.
+  3. `consultaKvPorClave` (`index-storage-bootstrap.js:998-1005`) construye:
+     `from("almacen_kv").select("value").eq("key", key)` y **solo añade
+     `.eq("empresa_id", contexto.empresaId)` si `contexto.empresaId` es verdadero**
+     (`if (contexto.empresaId) consulta = consulta.eq(...)`). En el primer
+     `Promise.all` del arranque, `contexto.empresaId` todavía es `null`/vacío (ver
+     punto 1) — así que ese filtro se **omite por completo** y la consulta pide
+     "la fila con esta clave", sin acotar por empresa.
+  4. Comprobé en vivo (solo lectura) cuántas filas tiene hoy cada una de esas 4
+     claves en el proyecto QA, sin filtrar por empresa: `traspasos` → **2 filas**
+     (`QA-EMP-A`, `QA-EMP-B`) — coincide exactamente con el "se esperaba 1, hay 2"
+     reportado; `productos` → 10 filas; `conteos` → 8 filas; `historialRespaldos` →
+     7 filas (una por cada empresa de prueba creada en este proyecto a lo largo del
+     desarrollo). Con 2 o más filas, PostgREST rechaza `.maybeSingle()` con
+     PGRST116 ("JSON object requested, multiple (or no) rows returned").
+  - **Conclusión:** no es una fila duplicada ni un fallo de servidor — es que la
+    primera lectura de estas 4 claves, en cada carga de página, sale sin filtro de
+    empresa porque todavía no se ha publicado el contexto en ese instante exacto.
+- **Riesgo real, no solo cosmético (por eso subo la prioridad a Alta):** el fallo
+  solo es *visible* porque hay más de una empresa de prueba en el proyecto QA. En
+  una instalación con una sola empresa, esta misma consulta sin filtro
+  devolvería 1 fila por pura coincidencia (la única que existe) y **no lanzaría
+  ningún error** — cargando los datos de esa única empresa en silencio, sin que el
+  filtro de empresa haya intervenido realmente. Es decir: el filtro de aislamiento
+  por empresa de estas 4 claves no está roto por azar en QA — está ausente en ese
+  instante del arranque en cualquier entorno, y QA simplemente es el único sitio
+  donde hay suficientes empresas para que se note. Antes de promocionar nada de esto
+  a producción habría que confirmar que una cuenta con una sola empresa nunca
+  importa, por la misma coincidencia de "una fila", datos de otra empresa.
+- **Corrección recomendada:** en `consultaKvPorClave`, si `contexto.empresaId` está
+  vacío, no lanzar la consulta sin filtro — devolver "sin datos todavía" (como ya
+  hace el bloque de `if (!r.data)` más abajo) y dejar que `loadKey` reintente
+  cuando el contexto exista. Alternativa más simple: no lanzar estas 4 lecturas
+  hasta que `window.__empresaActivaIdParaContexto` esté resuelto por primera vez.
+- **Cómo validarlo:** repetir la carga de página varias veces en QA tras el cambio
+  y confirmar que la consola no muestra PGRST116 para estas 4 claves ninguna vez,
+  en ninguno de los 3 anchos.
 
 ---
 
@@ -165,7 +235,7 @@ hallazgo como resuelto — no hace falta seguir investigándolo.
 
 - No se pudo confirmar un PIN propio y reproducible para las cuentas `QA Cajero` /
   `QA Encargado` (Cowork entró gracias a la autorización directa de Pedro cada vez).
-- H-ALTA-01 y H-MEDIA-01 quedan con causa sin cerrar — necesitan otra vuelta de
-  investigación en código/red, no solo narración de lo que se vio en pantalla.
+- H-ALTA-01 y H-MEDIA-01: causa cerrada en la segunda vuelta (26/10), ver ambas
+  secciones arriba — quedan las correcciones por aplicar y validar en vivo.
 - Quedan 27 de 44 módulos sin ninguna revisión (ver
   `AUDITORIA_COMPLETA_INVENTARIO_Y_MATRIZ_2026-10-26.md`) — esto es solo el Bloque 1.
