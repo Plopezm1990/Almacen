@@ -3,7 +3,7 @@
 **Fecha:** 2026-10-26  
 **Referencia:** `LA-Suite-TPV-puesto-unico-documento-2.pdf`, láminas A05 y A06  
 **Ámbito:** QA exclusivamente (`qjqorixtkilwsndqayyx`)  
-**Estado:** IMPLEMENTACIÓN PREPARADA — pendiente de publicación y comprobación viva
+**Estado:** TERMINADA — publicada y comprobada visualmente en QA
 
 ## 1. Objetivo
 
@@ -47,12 +47,22 @@ Se añade `tests/plan-maestro/documento2-a05-a06-tareas-contract.mjs`, que compr
 - composición de tres columnas en escritorio y dos en móvil;
 - conservación de los títulos y contenidos operativos de las tres tareas.
 
-## 5. Validación prevista
+## 5. Validación ejecutada
 
-Se ejecutarán comprobación sintáctica, el contrato específico, los contratos Documento 2 ya existentes, `git diff --check`, build y boundary de publicación. Después se publicará únicamente una preview de QA y se comprobarán Sala y Operativa a 1024×768 y 390×844, incluyendo ausencia de overflow horizontal y errores de consola.
+Se ejecutaron comprobación sintáctica, el contrato específico, los contratos Documento 2 ya existentes, `git diff --check`, build y boundary de publicación. La preview de QA quedó lista en el deploy `6adf561d067c610c16412523`, con escaneo de secretos sin coincidencias y sin funciones desplegadas.
+
+La revisión viva se realizó sobre Empresa A, Local A1, sin pulsar ninguna acción de negocio:
+
+- Sala comprobada a 1024×768 y 390×844.
+- Pedido operativo comprobado a 390×844.
+- No hubo overflow horizontal (`bodyWidth === clientWidth`) en las comprobaciones.
+- Las tarjetas de sala, cuentas y pedido conservaron la lectura principal en escritorio y móvil.
+- Los botones del pedido midieron 48 px, incluidos los controles deshabilitados.
+- La consola devolvió cero errores.
+- No se crearon, modificaron, aparcaron, trasladaron ni cobraron cuentas; no se cambiaron mesas ni estados de cocina.
 
 ## 6. Estado y siguiente paso
 
-Este documento queda preparado antes de publicar para que el alcance sea auditable. Tras pasar las pruebas y la revisión viva, se cerrará como **TERMINADA** si las dos resoluciones mantienen la lectura de tarea y no aparecen regresiones.
+El bloque queda cerrado como **TERMINADA**. El código, la fuente de recuperación y el contrato se publicaron en QA en los commits `2f147e7` y `bd7d845`.
 
 El hardware físico de T9 permanece deliberadamente aparcado para el final, hasta disponer del equipo real. Después de A05/A06, el siguiente bloque no físico recomendado es completar las láminas A07/A08/A09 —cantidad, teclado de búsqueda/notas y descuento/cortesía— antes de volver al hardware.
