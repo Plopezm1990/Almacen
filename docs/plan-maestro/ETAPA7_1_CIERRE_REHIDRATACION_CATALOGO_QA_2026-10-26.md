@@ -136,10 +136,18 @@ Todas las comprobaciones siguientes superaron el resultado esperado:
 - `node tests/netlify-publish-boundary.mjs`.
 
 El script heredado
-`node .github/scripts/punto6-netlify-publicacion-recuperacion.mjs` sigue
-teniendo un error sintáctico independiente en su propia línea 40. No se
-modificó porque no pertenece a esta corrección y el build más el contrato de
-publicación sí pasaron.
+`node .github/scripts/punto6-netlify-publicacion-recuperacion.mjs` tenía un
+error sintáctico independiente causado por plantillas literales escapadas de
+forma incorrecta. Ese error quedó corregido y el contrato se revalidó en su
+commit histórico de Punto 6; el resultado fue
+`PUNTO6_PAYLOAD_BYTE_PARITY=PASS` y `PUNTO6_NETLIFY_REPO_CONTRACT=PASS`.
+
+Si se ejecuta desde esta rama actual de Etapa 7, el contrato falla al detectar
+cambios fuera del alcance 6A. Ese resultado es intencional: el script certifica
+una candidata histórica que solo puede contener sus dos archivos de Punto 6,
+no una rama de trabajo posterior con cambios de las etapas 5, 6 y 7. La
+revalidación correcta queda documentada en
+[`PUNTO6_REVALIDACION_CONTRATO_2026-10-26.md`](PUNTO6_REVALIDACION_CONTRATO_2026-10-26.md).
 
 ## 7. Observaciones de la prueba
 

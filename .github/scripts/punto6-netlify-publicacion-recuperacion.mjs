@@ -37,7 +37,7 @@ async function snapshot(dir, relative = '') {
       for (const [key, value] of nested) out.set(key, value);
       continue;
     }
-    assert(entry.isFile(), \`Tipo no soportado en payload: \${rel}\`);
+    assert(entry.isFile(), `Tipo no soportado en payload: ${rel}`);
     const bytes = await readFile(full);
     out.set(rel, createHash('sha256').update(bytes).digest('hex'));
   }
@@ -46,32 +46,32 @@ async function snapshot(dir, relative = '') {
 
 function assertSameSnapshot(base, candidate) {
   assert(base.size === candidate.size,
-    \`Número de archivos distinto: release=\${base.size}, candidato=\${candidate.size}\`);
+    `Número de archivos distinto: release=${base.size}, candidato=${candidate.size}`);
 
   for (const [file, sha] of base) {
-    assert(candidate.has(file), \`Falta archivo publicable: \${file}\`);
+    assert(candidate.has(file), `Falta archivo publicable: ${file}`);
     assert(candidate.get(file) === sha,
-      \`Payload distinto en \${file}: release=\${sha}, candidato=\${candidate.get(file)}\`);
+      `Payload distinto en ${file}: release=${sha}, candidato=${candidate.get(file)}`);
   }
   for (const file of candidate.keys()) {
-    assert(base.has(file), \`Archivo publicable nuevo no presente en release: \${file}\`);
+    assert(base.has(file), `Archivo publicable nuevo no presente en release: ${file}`);
   }
 }
 
 const head = run('git', ['rev-parse', 'HEAD']);
-run('git', ['cat-file', '-e', \`\${RELEASE_BASE}^{commit}\`]);
+run('git', ['cat-file', '-e', `${RELEASE_BASE}^{commit}`]);
 run('git', ['merge-base', '--is-ancestor', RELEASE_BASE, head]);
 
-const changed = run('git', ['diff', '--name-only', \`\${RELEASE_BASE}..HEAD\`])
+const changed = run('git', ['diff', '--name-only', `${RELEASE_BASE}..HEAD`])
   .split('\n')
   .map((x) => x.trim())
   .filter(Boolean);
 
 for (const file of changed) {
-  assert(ALLOWED_DIFF.has(file), \`Cambio fuera del alcance 6A: \${file}\`);
+  assert(ALLOWED_DIFF.has(file), `Cambio fuera del alcance 6A: ${file}`);
 }
 for (const file of ALLOWED_DIFF) {
-  assert(changed.includes(file), \`Falta archivo esperado de 6A: \${file}\`);
+    assert(changed.includes(file), `Falta archivo esperado de 6A: ${file}`);
 }
 
 const netlifyToml = await readFile(path.join(root, 'netlify.toml'), 'utf8');
@@ -91,7 +91,7 @@ for (const excluded of [
   "'tools'",
   "'netlify.toml'",
 ]) {
-  assert(exporter.includes(excluded), \`El exportador dejó de excluir \${excluded}\`);
+  assert(exporter.includes(excluded), `El exportador dejó de excluir ${excluded}`);
 }
 
 const headers = await readFile(path.join(root, '_headers'), 'utf8');
@@ -99,7 +99,7 @@ const headerRoutes = headers
   .split('\n')
   .filter((line) => line.startsWith('/') && !line.startsWith('  '));
 assert(headerRoutes.length === 7,
-  \`Número inesperado de reglas en _headers: \${headerRoutes.length} (esperado 7)\`);
+  `Número inesperado de reglas en _headers: ${headerRoutes.length} (esperado 7)`);
 
 const tmp = await mkdtemp(path.join(os.tmpdir(), 'la-suite-punto6-'));
 const baseWorktree = path.join(tmp, 'release-base');
@@ -123,13 +123,13 @@ try {
   ];
   for (const file of candidatePayload.keys()) {
     assert(!forbidden.some((prefix) => file.startsWith(prefix)),
-      \`Ruta técnica publicada: \${file}\`);
+      `Ruta técnica publicada: ${file}`);
   }
 
-  console.log(\`PUNTO6_RELEASE_BASE=\${RELEASE_BASE}\`);
-  console.log(\`PUNTO6_CANDIDATE_HEAD=\${head}\`);
-  console.log(\`PUNTO6_CHANGED_FILES=\${changed.length}\`);
-  console.log(\`PUNTO6_PUBLISH_FILES=\${candidatePayload.size}\`);
+  console.log(`PUNTO6_RELEASE_BASE=${RELEASE_BASE}`);
+  console.log(`PUNTO6_CANDIDATE_HEAD=${head}`);
+  console.log(`PUNTO6_CHANGED_FILES=${changed.length}`);
+  console.log(`PUNTO6_PUBLISH_FILES=${candidatePayload.size}`);
   console.log('PUNTO6_PAYLOAD_BYTE_PARITY=PASS');
   console.log('PUNTO6_NETLIFY_REPO_CONTRACT=PASS');
 } finally {
