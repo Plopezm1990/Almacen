@@ -194,12 +194,30 @@ ticket invoca la función de correo, aunque ambos estén etiquetados como simula
 No se introdujeron datos de empresa cliente, NIF ni correo, y no se realizó ninguna emisión,
 envío o impresión.
 
-## 10. Qué sigue
+## 10. C04 · factura simulada ejecutada
+
+Con autorización puntual se ejecutó únicamente la factura simulada en QA, usando datos
+ficticios:
+
+- Receptor: `Cliente QA S.L.`.
+- Identificador fiscal sintético: `B12345678`.
+- Resultado visible: `Factura FA-000003 emitida (modo simulador)`.
+- Documento server-side: `286d38f2-d74e-45d1-aec0-e2b85b2b5962`, estado `EMITIDO`.
+- Evaluación fiscal: modo `SIMULADOR`, resultado `PREPARADO_SIMULADOR`, sin bloqueos.
+- Eventos observados: uno de reserva de número, uno de clasificación y uno de emisión.
+- Efectos pendientes asociados: ninguno; no se creó movimiento de caja.
+- Consola del navegador tras la operación: sin errores.
+
+La factura no activa fiscalidad real y no se contactó con un proveedor fiscal. El ticket por
+correo no se ejecutó: falta un destinatario autorizado y esa acción invoca el servicio de
+correo, por lo que queda separada de la factura.
+
+## 11. Qué sigue
 
 1. Obtener o definir el procedimiento autorizado para cerrar/purgar únicamente esta fixture QA,
    sin tocar producción y sin alterar comandas históricas.
-2. Con una confirmación puntual en el momento de la acción, probar factura simulada y/o ticket
-   informativo con datos sintéticos, verificando el resultado server-side y la idempotencia.
+2. Con una confirmación puntual y un destinatario concreto, probar el ticket informativo por
+   correo y verificar el resultado server-side, el efecto de entrega y la idempotencia.
 3. Después, revisar la impresión simulada y el puente local en modo no físico.
 4. Mantener el hardware T9 para el último bloque, cuando esté disponible.
 
