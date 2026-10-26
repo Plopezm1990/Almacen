@@ -10,6 +10,7 @@ const PRECACHE_URLS = [
   "/index.html",
   "/tailwind.generated.css",
   "/manifest.json",
+  "/offline-shell-bootstrap.js",
   "/la-suite-icon.svg",
   "/la-suite-logo.svg",
   "/apple-touch-icon.png",

@@ -9,6 +9,7 @@ on:
       - "docs/plan-abc/F4_B11_CONTINGENCIA_TERMINAL_OFFLINE_2026-10-01.md"
       - "source-recovery/fuente-recuperado.js"
       - "index.html"
+      - "offline-shell-bootstrap.js"
       - "sw.js"
       - "tests/pm07/frontend-contract.mjs"
       - "tests/f4/b11/**"

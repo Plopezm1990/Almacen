@@ -5,6 +5,7 @@ const decision = fs.readFileSync('docs/plan-maestro/PM03_CONTRATOS_MINIMOS_PROPU
 const source = fs.readFileSync('fuente.js', 'utf8');
 const recoveredSource = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
 const indexHtml = fs.readFileSync('index.html', 'utf8');
+const offlineBootstrap = fs.readFileSync('offline-shell-bootstrap.js', 'utf8');
 const serviceWorker = fs.readFileSync('sw.js', 'utf8');
 const contract = fs.readFileSync('docs/plan-abc/F4_B11_CONTRATO_TECNICO_2026-10-01.md', 'utf8');
 const contingency = fs.readFileSync('docs/plan-abc/F4_B11_CONTINGENCIA_TERMINAL_OFFLINE_2026-10-01.md', 'utf8');
@@ -100,9 +101,11 @@ for (const required of [
   'contracargo',
 ]) assert.match(contingency, new RegExp(required.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'), 'i'));
 assert.match(contingency, /No se activa ningún\s+camino offline/i);
-assert.match(indexHtml, /serviceWorker\.register\('\.\/sw\.js'/i, 'el shell offline debe registrarse antes de cargar la aplicación');
+assert.match(indexHtml, /<script src="\.\/offline-shell-bootstrap\.js"><\/script>/i, 'el shell offline debe registrarse desde un archivo sujeto a CSP');
+assert.match(offlineBootstrap, /serviceWorker\.register\("\.\/sw\.js"/i);
 assert.match(serviceWorker, /const CACHE_NAME = "la-suite-shell-v2"/);
 assert.match(serviceWorker, /"\/index\.html"/);
+assert.match(serviceWorker, /"\/offline-shell-bootstrap\.js"/);
 assert.match(serviceWorker, /"\/fuente\.js"/);
 assert.match(serviceWorker, /request\.mode === "navigate"/);
 assert.match(serviceWorker, /cache\.match\(request, \{ ignoreSearch: true \}\)/);
