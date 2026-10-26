@@ -127617,7 +127617,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center pb-2 mb-2", style: { borderBottom: `1px dashed ${C2.line}` } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, local?.nombreComercial || local?.nombre || "L&A Suite"),
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, local?.direccion || "Local ", local?.direccion ? "" : local?.nombre || "")
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, local?.direccion || local?.direccionTicket || "Puesto de venta")
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 text-[11.5px] mb-3" },
         lineasTicketPantallaF4.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft } }, "Sin líneas de venta disponibles.") : lineasTicketPantallaF4.map((linea, indice) => {
