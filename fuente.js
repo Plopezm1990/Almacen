@@ -125822,6 +125822,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [equiposImpresoraT7F4, setEquiposImpresoraT7F4] = (0, import_react4.useState)([]);
   const [equipoImpresoraElegidoT7F4, setEquipoImpresoraElegidoT7F4] = (0, import_react4.useState)("");
   const [procesandoImpresionT7F4, setProcesandoImpresionT7F4] = (0, import_react4.useState)(false);
+  const [mostrarTicketPantallaF4, setMostrarTicketPantallaF4] = (0, import_react4.useState)(false);
   const [equiposCajonT7F4, setEquiposCajonT7F4] = (0, import_react4.useState)([]);
   const [equipoCajonElegidoT7F4, setEquipoCajonElegidoT7F4] = (0, import_react4.useState)("");
   const [motivoCajonT7F4, setMotivoCajonT7F4] = (0, import_react4.useState)("");
@@ -127605,6 +127606,42 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const qrFiscalReady = !!(estado?.ticketFiscalQrReady && qrFiscal?.qr_url);
     const qrFiscalSvg = qrFiscalReady && typeof window !== "undefined" && typeof window.LA_FISCAL_QR?.svgForUrl === "function"
       ? window.LA_FISCAL_QR.svgForUrl(qrFiscal.qr_url, { size: 220 }) : "";
+    const lineasTicketPantallaF4 = Array.isArray(pedidoOperativoA05?.lineas) ? pedidoOperativoA05.lineas : [];
+    const ticketPantallaF4 = mostrarTicketPantallaF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-3 rounded-lg mt-2", style: { background: "#fff", color: "#1B211E", border: `1px solid ${C2.line}`, maxWidth: 460 }, "data-tpv-ticket-screen": "true" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between gap-2 mb-3" },
+        /* @__PURE__ */ import_react4.default.createElement("div", null,
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-semibold" }, "Ticket de venta"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "Vista en pantalla · no crea otra venta ni otro documento")
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setMostrarTicketPantallaF4(false) }, "Ocultar")
+      ),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center pb-2 mb-2", style: { borderBottom: `1px dashed ${C2.line}` } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, local?.nombreComercial || local?.nombre || "L&A Suite"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, local?.direccion || "Local ", local?.direccion ? "" : local?.nombre || "")
+      ),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1 text-[11.5px] mb-3" },
+        lineasTicketPantallaF4.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: C2.inkSoft } }, "Sin líneas de venta disponibles.") : lineasTicketPantallaF4.map((linea, indice) => {
+          const producto = productos.find((producto2) => producto2.id === linea.productoId);
+          return /* @__PURE__ */ import_react4.default.createElement("div", { key: linea.id || `${linea.productoId || "linea"}-${indice}`, className: "flex justify-between gap-3" },
+            /* @__PURE__ */ import_react4.default.createElement("span", null, fmt(Number(linea.cantidad) || 0), " × ", producto?.nombre || "Producto"),
+            /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "€", fmt(Number(linea.total) || 0))
+          );
+        })
+      ),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-between pt-2 mb-1 font-semibold", style: { borderTop: `1px solid ${C2.line}` } },
+        /* @__PURE__ */ import_react4.default.createElement("span", null, "TOTAL"),
+        /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "€", fmt(totalVisible))
+      ),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Estado: ", String(estado?.estado || "PENDIENTE"), " · Pago confirmado por servidor"),
+      esQaFiscal ? qrFiscalReady ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 pt-3 text-center", style: { borderTop: `1px dashed ${C2.line}` } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Ticket fiscal QR (QA)"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-center mb-1", dangerouslySetInnerHTML: { __html: qrFiscalSvg } }),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Factura simplificada · ", qrFiscal.codigo_serie, "-", String(qrFiscal.numero).padStart(6, "0")),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Fecha: ", qrFiscal.fecha_expedicion, " · Importe: €", Number(qrFiscal.importe_total || 0).toFixed(2)),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: "#7A4B00" } }, "Simulador QA; no presentado a AEAT")
+      ) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg text-[10.5px]", style: { background: "#FFF8E8", color: "#7A4B00" } }, "El ticket está visible, pero el QR fiscal todavía está pendiente. No lo presentes como factura simplificada.") : null,
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-end mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => setMostrarTicketPantallaF4(false) }, "Cerrar vista del ticket"))
+    ) : null;
     const bloqueado = !!estado?.cobroIncierto;
     const importeVisible = importeCobroF4 === "" ? saldoVisible : Number(importeCobroF4);
     const recibidoVisible = efectivoRecibidoCobroF4 === "" ? null : Number(efectivoRecibidoCobroF4);
@@ -127697,6 +127734,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         ),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "El botón de completar mixto usa el saldo que devuelve el servidor, no el cálculo local del navegador.")
       ) : null,
+      ticketPantallaF4,
       tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Factura a empresa"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-5 · modo simulador: no sustituye una verificación fiscal real con la asesoría."),
@@ -127731,6 +127769,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Imprimir ticket"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, puenteLAConfig.habilitado ? "T7 · Puente L&A activado: intenta imprimir de verdad en este ordenador, sin verificar todavía contra una impresora real." : "T7 Hoja QA-9 · modo simulador: no hay conexión real con el aparato todavía."),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setMostrarTicketPantallaF4((visible) => !visible), className: "mb-2" }, mostrarTicketPantallaF4 ? "Ocultar ticket en pantalla" : "Ver ticket en pantalla"),
         equiposImpresoraT7F4.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "No hay ninguna impresora de tickets registrada en Equipos del local.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mb-2" },
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Impresora" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: equipoImpresoraElegidoT7F4, onChange: (e2) => setEquipoImpresoraElegidoT7F4(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Elige una impresora…"), equiposImpresoraT7F4.map((eq) => /* @__PURE__ */ import_react4.default.createElement("option", { key: eq.id, value: eq.id }, eq.nombre)))),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: imprimirTicketSimuladoT7F4UI, disabled: procesandoImpresionT7F4 || !equipoImpresoraElegidoT7F4 || (esQaFiscal && !qrFiscalReady) }, procesandoImpresionT7F4 ? "Imprimiendo…" : esQaFiscal && !qrFiscalReady ? "Imprimir ticket (QR pendiente)" : puenteLAConfig.habilitado ? "Imprimir ticket" : "Imprimir ticket (simulado)")
