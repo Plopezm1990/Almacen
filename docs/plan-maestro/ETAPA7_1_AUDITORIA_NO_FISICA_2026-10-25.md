@@ -676,14 +676,41 @@ limpia. La red quedó restaurada y no se utilizó producción.
 La evidencia completa queda en
 [`ETAPA7_1_MEDICION_RENDIMIENTO_QA_2026-10-26.md`](ETAPA7_1_MEDICION_RENDIMIENTO_QA_2026-10-26.md).
 
+## 26. Repetición de rendimiento tras limpieza autorizada del pendiente QA
+
+La limpieza autorizada se limitó al pendiente local de `conteos` del Deploy
+Preview QA. Se retiraron la entrada `conteos` de `almacen__pendientes` y su
+entrada de contexto en `almacen__pendientes_contexto`; se conservó el valor
+local `almacen:conteos`. No se tocó Supabase de producción, no se modificaron
+datos de negocio y no se ejecutaron ventas, cobros ni movimientos de Caja.
+
+La repetición confirmó `Guardado: cambios sin confirmar 0` y
+`Arranque: datos que no se pudieron cargar 0`. Los cambios de contexto
+`Local A1 → Local A2` y `Local A2 → Local A1` tardaron `232 ms` y `254 ms`,
+respectivamente, sin pendiente ni botón `Reintentar`. La apertura del TPV desde
+`Más` tardó `966 ms`; se mostraron `18` productos, el ticket quedó en `0 líneas
+· €0,00` y `F9 Guardar` permaneció deshabilitado.
+
+La pérdida de red y la recarga mostraron la pantalla propia
+`Instalación bloqueada de forma segura`, con `navigator.onLine=false` y el
+service worker controlando la página; no apareció `ERR_INTERNET_DISCONNECTED`.
+Al restaurar la red, el panel de `Local A1` volvió a cargar y el pendiente
+continuó en `[]`.
+
+Resultado: **PASS** de la medición de rendimiento para el ciclo A1 ↔ A2, la
+apertura del TPV y el shell offline seguro. La evidencia completa queda en
+[`ETAPA7_1_MEDICION_RENDIMIENTO_QA_2026-10-26.md`](ETAPA7_1_MEDICION_RENDIMIENTO_QA_2026-10-26.md).
+
+Este resultado no cierra la comparación A/B, la campaña T9 física ni la
+garantía de cobro o sincronización offline; esas comprobaciones siguen fuera
+del alcance de esta sesión.
+
 ### Próximo trabajo de Etapa 7.1
 
 1. Mantener la corrección offline bajo vigilancia del contrato `f4-b11-offline`;
    la garantía cubierta es el arranque del shell, no el funcionamiento de
    cobros o sincronización sin servidor.
-2. Repetir la medición de rendimiento con una sesión QA limpia, empezando por
-   A2 → A1 → A2 y sin pendientes locales previos.
-3. Preparar y ejecutar separadamente la campaña T9 física con hardware
+2. Preparar y ejecutar separadamente la campaña T9 física con hardware
    autorizado cuando la garantía offline quede en PASS.
-4. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA de
+3. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA de
    empresa y repetir la comparación sin reutilizar datos de producción.

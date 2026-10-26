@@ -2,7 +2,7 @@
 
 Fecha: 26/10/2026  
 Entorno: QA `qjqorixtkilwsndqayyx` y Deploy Preview del PR `#175`  
-Estado: **MEDICIÓN INICIADA; BLOQUEADA POR PENDIENTE QA PREEXISTENTE**
+Estado: **MEDICIÓN REPETIDA TRAS LIMPIEZA QA; CONTEXTO, TPV Y SHELL OFFLINE EN PASS**
 
 ## 1. Objetivo
 
@@ -82,9 +82,49 @@ como aceptación final:
 
 ## 6. Qué sigue
 
-1. Preparar una sesión QA limpia que no tenga el pendiente local de `conteos`.
-2. Repetir A2 → A1 → A2 sin pulsar acciones de negocio.
-3. Medir la hidratación completa del TPV y la cola de movimientos/conteos.
-4. Solo después ejecutar la pérdida de red y la recuperación.
-5. Si el pendiente reaparece en una sesión limpia, abrir una incidencia técnica
-   separada y corregirla antes de cerrar la aceptación de rendimiento.
+1. Completar la comparación A/B cuando exista un segundo contexto QA de empresa;
+   esta medición solo cubre QA Empresa A.
+2. Ejecutar por separado la campaña T9 física con hardware autorizado.
+3. Mantener la vigilancia de producción y del contrato offline; esta prueba no
+   habilita cobros ni sincronización offline.
+
+## 7. Repetición tras limpieza autorizada de QA
+
+La limpieza fue autorizada expresamente y se limitó al almacenamiento local del
+Deploy Preview QA. No se usó Supabase de producción ni se ejecutó ninguna
+mutación en servidor. Se retiraron únicamente:
+
+- la entrada `conteos` de `almacen__pendientes`;
+- una entrada de contexto `conteos` de `almacen__pendientes_contexto`.
+
+El valor local `almacen:conteos` se conservó. Tras recargar, la interfaz mostró
+`Guardado: cambios sin confirmar 0` y `Arranque: datos que no se pudieron
+cargar 0`. El aviso de una colección local que el servidor no permite guardar
+se mantuvo como característica del entorno QA, no como una cola pendiente.
+
+### 7.1 Mediciones obtenidas
+
+| Escenario | Resultado | Tiempo observado |
+|---|---|---:|
+| Navegación online posterior a la limpieza | PASS; `Local A1` y panel montados | `DOMContentLoaded 294 ms`; `load 323 ms` |
+| Cambio `Local A1 → Local A2` | PASS; sin pendiente ni reintento | `232 ms` |
+| Cambio `Local A2 → Local A1` | PASS; sin pendiente ni reintento | `254 ms` |
+| Apertura de TPV desde `Más` | PASS; TPV visible, 18 productos, ticket vacío y `F9 Guardar` deshabilitado | `966 ms` |
+| Pérdida de red y recarga | PASS de bloqueo seguro; shell propio de la suite visible | `online=false`, service worker controlador |
+| Restauración de red | PASS; vuelve el panel A1 | `DOMContentLoaded 294 ms`; `load 323 ms` |
+
+Durante la repetición no se añadió producto, no se abrió Caja, no se guardó una
+comanda, no se cobró y no se generó ningún movimiento. El pendiente local quedó
+en `[]` antes y después de la prueba.
+
+### 7.2 Decisión de esta medición
+
+La medición de rendimiento de esta tanda queda **PASS** para el ciclo de
+contexto A1 ↔ A2, la apertura del TPV y la recuperación segura del shell ante
+pérdida de red. El bloqueo observado en la primera tanda queda explicado por un
+pendiente local QA preexistente y no reapareció después de su limpieza
+autorizada.
+
+Este PASS no amplía el alcance a una segunda empresa, a hardware físico ni a
+cobros o sincronización offline. Esos controles siguen abiertos en el acta de
+Etapa 7.1.
