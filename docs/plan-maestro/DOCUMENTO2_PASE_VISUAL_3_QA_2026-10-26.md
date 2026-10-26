@@ -29,6 +29,8 @@ Cambios principales:
 - En móvil se mantiene el catálogo a dos columnas, se compactan las tarjetas, se conserva el ticket debajo y la navegación queda accesible como barra inferior desplazable.
 - Se conserva el foco visible y no se eliminan las funciones existentes: solo cambia el orden y la visibilidad contextual.
 
+Durante la comprobación final del preview se detectó y corrigió el orden móvil del ticket: una regla heredada (`order: 2`) lo colocaba antes de la cabecera; el cierre lo fija después del catálogo (`order: 60`) en ambas fuentes.
+
 ## 3. Correspondencia con el PDF
 
 La pasada cubre la composición y el comportamiento de las siguientes referencias:
@@ -80,6 +82,7 @@ La preview del PR #175 se comprobó sobre el tenant de QA, con la sesión de dat
 - Las vistas secundarias no arrastran visualmente el catálogo/ticket de Venta.
 - Cobro conserva el panel centrado y el teclado numérico.
 - El layout responde a escritorio de 1024 × 768 y a móvil de 390 × 844.
+- La captura móvil final confirma catálogo antes que ticket y no muestra errores de consola.
 - No se alteraron productos, cuentas, inventario, empresa, local, permisos ni producción.
 
 ## 7. Siguiente paso
