@@ -107475,6 +107475,113 @@ function GestionAlmacen() {
           .tpv-task-card--pedido [class~="text-[10.5px]"] { font-size: 13px; line-height: 19px; }
         }
 
+        /* Documento 2 · cobro, documentos, cocina y caja (A11-A16) */
+        .tpv-a11-payment-card {
+          width: min(100%, 980px);
+          margin-inline: auto;
+          padding: 18px !important;
+          border-radius: 16px !important;
+        }
+        .tpv-a11-payment-card [data-tpv-fase5-payment-state] {
+          min-height: 48px;
+          padding: 12px 14px !important;
+          font-size: 16px;
+          line-height: 24px;
+        }
+        .tpv-a11-payment-card > .grid.grid-cols-3.gap-2.mb-2 {
+          min-height: 96px;
+          align-items: center;
+          padding: 14px 16px;
+          border: 1px solid var(--c-divider);
+          border-radius: 12px;
+          background: var(--c-bg);
+        }
+        .tpv-a11-payment-card > .grid.grid-cols-3.gap-2.mb-2 > div > div:first-child {
+          font-size: 14px;
+          line-height: 20px;
+        }
+        .tpv-a11-payment-card > .grid.grid-cols-3.gap-2.mb-2 > div > div:last-child {
+          font-size: 28px !important;
+          line-height: 36px;
+        }
+        .tpv-a11-payment-card [data-tpv-fase5-final-action="true"] {
+          min-height: 64px;
+          display: flex;
+          align-items: center;
+          padding: 12px 14px;
+          border-radius: 10px;
+          background: var(--c-accent-soft);
+          color: var(--c-ink);
+          font-size: 18px;
+          line-height: 24px;
+        }
+        .tpv-a11-payment-card [data-tpv-fase5-cash-keypad="true"] {
+          max-width: 384px;
+          margin-inline: auto;
+        }
+        .tpv-a11-payment-card [data-tpv-fase5-cash-keypad="true"] .tpv-fase4-key {
+          min-height: 56px !important;
+          font-size: 18px;
+        }
+        .tpv-a11-payment-card > .p-2.rounded-lg.mt-2 {
+          padding: 16px !important;
+          border-radius: 12px;
+        }
+        .tpv-a11-payment-card > .p-2.rounded-lg.mt-2 > div:first-child {
+          font-size: 18px;
+          line-height: 24px;
+        }
+        .tpv-a13-voucher-card {
+          border-radius: 14px !important;
+        }
+        .tpv-a15-kitchen-view {
+          width: min(100%, 980px);
+          margin-inline: auto;
+        }
+        .tpv-a15-kitchen-view h2 {
+          font-size: 24px !important;
+          line-height: 32px;
+        }
+        .tpv-a15-comanda-card {
+          padding: 16px !important;
+          border-radius: 14px !important;
+        }
+        .tpv-a15-comanda-card [data-tpv-kitchen-product="true"] {
+          font-size: 22px;
+          line-height: 30px;
+          font-weight: 600;
+        }
+        .tpv-a15-comanda-card [data-tpv-kitchen-quantity="true"] {
+          font-size: 28px;
+          line-height: 36px;
+          font-family: 'IBM Plex Mono', ui-monospace, monospace;
+          font-weight: 700;
+        }
+        .tpv-a15-comanda-card input {
+          min-height: 48px;
+          font-size: 16px !important;
+        }
+        .tpv-a16-cash-view {
+          width: min(100%, 980px);
+          margin-inline: auto;
+        }
+        .tpv-a16-cash-view > .mb-4 {
+          border-radius: 14px;
+        }
+        .tpv-a16-cash-view .mono {
+          font-size: 26px;
+          line-height: 34px;
+        }
+        @media (max-width: 640px) {
+          .tpv-a11-payment-card { padding: 12px !important; border-radius: 12px !important; }
+          .tpv-a11-payment-card > .grid.grid-cols-3.gap-2.mb-2 { min-height: 96px; padding: 12px; }
+          .tpv-a11-payment-card > .grid.grid-cols-3.gap-2.mb-2 > div > div:last-child { font-size: 22px !important; line-height: 28px; }
+          .tpv-a15-kitchen-view { width: 100%; }
+          .tpv-a15-comanda-card { padding: 12px !important; }
+          .tpv-a15-comanda-card [data-tpv-kitchen-product="true"] { font-size: 18px; line-height: 24px; }
+          .tpv-a15-comanda-card [data-tpv-kitchen-quantity="true"] { font-size: 24px; line-height: 30px; }
+        }
+
         @media print {
           @page { size: A4; margin: 12mm; }
           body * { visibility: hidden !important; }
@@ -127416,7 +127523,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           : !pedidoListo
             ? "Falta enviar el pedido antes de cobrar."
             : "Cuenta lista: revisar importe, recibido y cambio antes de confirmar.";
-    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-tpv-fase5-cobro": "true" },
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "tpv-a11-payment-card mb-4", "data-tpv-fase5-cobro": "true", "data-tpv-pdf-section": "A11" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro · F4"),
@@ -127743,7 +127850,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", className: "tpv-options-trigger", onClick: () => setSeccionTpv("opciones") }, "Opciones"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-section-nav", role: "tablist", "aria-label": "Secciones operativas TPV" }, seccionesOperativasTpv.map(([id, label]) => /* @__PURE__ */ import_react4.default.createElement("button", { key: id, type: "button", role: "tab", "aria-selected": seccionTpv === id, onClick: () => setSeccionTpv(id) }, label))),
       puedeOperarCajaTpv ? panelTpv("caja", /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
-      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-tpv-fase5-caja": "true" },
+      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "tpv-a16-cash-view mb-4", "data-tpv-fase5-caja": "true", "data-tpv-pdf-section": "A16" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
           /* @__PURE__ */ import_react4.default.createElement("div", null,
             /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Caja · movimientos de efectivo"),
@@ -127784,7 +127891,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         )
       ),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setCalculadoraA04({ abierta: true, expresion: "", visor: "0", error: "" }), "aria-label": "Abrir calculadora" }, "Calculadora"),
-      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "tpv-a13-voucher-card mb-4", "data-tpv-pdf-section": "A13" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Vale regalo"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-7: vende un vale regalo por el importe que quieras (solo efectivo en esta primera versión). El cliente lo canjea después en Cobro, dentro de una cuenta."),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mb-2" },
@@ -128859,7 +128966,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
 
   function renderComanda(comanda) {
     const lineas = Array.isArray(comanda?.lineas) ? comanda.lineas : [];
-    return h3(Card, { key: comanda.id, className: "mb-2" },
+    return h3(Card, { key: comanda.id, className: "tpv-a15-comanda-card mb-2", "data-tpv-pdf-section": "A15" },
       h3("div", { className: "flex items-center justify-between gap-2 mb-2" },
         h3("div", { className: "text-[12.5px] font-semibold" }, String(comanda.tipo || "COMANDA"), " · ", nombreEstacion(comanda.estacion_id)),
         h3("span", { className: "text-[10.5px] font-semibold", style: { color: comanda.estado === "BLOQUEADA" ? C2.red : C2.accent } }, String(comanda.estado || "PENDIENTE"))
@@ -128870,7 +128977,10 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
         const version = versionLinea(linea);
         return h3("div", { key: linea.id, className: "py-2", style: { borderTop: "1px solid " + C2.line } },
           h3("div", { className: "flex items-center justify-between gap-2" },
-            h3("div", { className: "text-[12px] font-medium" }, nombreProducto(linea.producto_id), " · ", String(linea.cantidad)),
+            h3("div", { className: "tpv-a15-product-row flex items-center justify-between gap-2" },
+              h3("span", { "data-tpv-kitchen-product": "true" }, nombreProducto(linea.producto_id)),
+              h3("span", { "data-tpv-kitchen-quantity": "true" }, String(linea.cantidad))
+            ),
             h3("span", { className: "text-[10px]", style: { color: C2.inkSoft } }, String(linea.accion || "ALTA"))
           ),
           linea.nota ? h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Nota: ", linea.nota) : null,
@@ -128901,7 +129011,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     return h3(Card, { className: "p-5" }, h3("div", { className: "text-[16px] font-semibold mb-2" }, "Cocina y comandas"), h3("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Selecciona un local concreto para consultar estaciones y comandas."));
   }
 
-  return h3("div", null,
+  return h3("div", { className: "tpv-a15-kitchen-view", "data-tpv-pdf-section": "A15" },
     h3("div", { className: "flex items-center justify-between mb-3" }, h3("h2", { className: "text-[16px] font-semibold" }, "Cocina y comandas"), h3(Btn, { small: true, variant: "ghost", onClick: () => { refrescarEstaciones(); refrescarComandas(); }, disabled: !!procesando || cargando }, cargando ? "Actualizando…" : "Actualizar")),
     h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, h3("div", { className: "text-[12px]" }, "La cocina enruta comandas por estación mediante el servidor. ", h3("b", null, "No mueve stock, no cobra ni emite fiscalidad."))),
     error ? h3("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", error) : null,
