@@ -6349,6 +6349,58 @@ function GestionAlmacen() {
           .tpv-option-description { font-size: 10.5px; line-height: 15px; }
         }
 
+        /* Documento 2 · A05/A06: Mesas y Pedido como tareas dedicadas */
+        .tpv-task-card {
+          width: min(100%, 980px);
+          margin-inline: auto;
+          padding: 18px !important;
+          border-radius: 16px !important;
+        }
+        .tpv-task-card > .flex.items-center.justify-between { gap: 16px; }
+        .tpv-task-card--accounts > .flex.items-center.justify-between [class~="text-[12.5px]"],
+        .tpv-task-card--sala > .flex.items-center.justify-between [class~="text-[12.5px]"],
+        .tpv-task-card--pedido > .flex.items-center.justify-between [class~="text-[12.5px]"] {
+          font-size: 22px;
+          line-height: 30px;
+        }
+        .tpv-task-card--accounts .grid { gap: 12px !important; }
+        .tpv-task-card--sala > .mb-3 > .grid { gap: 12px !important; }
+        .tpv-task-card--accounts .rounded-lg.p-2.text-left,
+        .tpv-task-card--sala .rounded-lg.p-2.text-left {
+          min-height: 112px;
+          padding: 16px;
+          border-radius: 12px;
+        }
+        .tpv-task-card--accounts .rounded-lg.p-2.text-left:focus-visible,
+        .tpv-task-card--sala .rounded-lg.p-2.text-left:focus-visible {
+          outline: 3px solid var(--c-focus-ring);
+          outline-offset: 3px;
+        }
+        .tpv-task-card--accounts button,
+        .tpv-task-card--sala button,
+        .tpv-task-card--pedido button {
+          min-height: 48px;
+        }
+        .tpv-task-card--pedido .py-2 { padding-block: 16px; }
+        .tpv-task-card--pedido [class~="text-[12px]"] {
+          font-size: 18px;
+          line-height: 24px;
+        }
+        .tpv-task-card--pedido [class~="text-[10.5px]"] {
+          font-size: 14px;
+          line-height: 20px;
+        }
+        @media (max-width: 640px) {
+          .tpv-task-card { padding: 12px !important; border-radius: 12px !important; }
+          .tpv-task-card--accounts .grid,
+          .tpv-task-card--sala > .mb-3 > .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px !important; }
+          .tpv-task-card--accounts .rounded-lg.p-2.text-left,
+          .tpv-task-card--sala .rounded-lg.p-2.text-left { min-height: 96px; padding: 12px; }
+          .tpv-task-card--pedido .py-2 { padding-block: 12px; }
+          .tpv-task-card--pedido [class~="text-[12px]"] { font-size: 16px; line-height: 22px; }
+          .tpv-task-card--pedido [class~="text-[10.5px]"] { font-size: 13px; line-height: 19px; }
+        }
+
         @media print {
           @page { size: A4; margin: 12mm; }
           body * { visibility: hidden !important; }
@@ -26711,7 +26763,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   function renderCuentasRecuperablesA06() {
     return /* @__PURE__ */ import_react4.default.createElement(
       Card,
-      { className: "mb-4" },
+      { className: "tpv-task-card tpv-task-card--accounts mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", null,
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cuentas aparcadas / recuperables"),
@@ -26750,7 +26802,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const zonas = Array.isArray(mapaSalaA07?.zonas) ? mapaSalaA07.zonas : [];
     return /* @__PURE__ */ import_react4.default.createElement(
       Card,
-      { className: "mb-4" },
+      { className: "tpv-task-card tpv-task-card--sala mb-4" },
       renderCuentasRecuperablesA06(),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Sala y mesas"),
@@ -27034,7 +27086,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const puedeCancelarPedido = !terminal && !tieneServidas;
     return /* @__PURE__ */ import_react4.default.createElement(
       Card,
-      { className: "mb-4" },
+      { className: "tpv-task-card tpv-task-card--pedido mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Pedido operativo"),
         /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold", style: { color: pedido.pedidoEstado === "CANCELADO" ? C2.red : C2.accent } }, pedido.pedidoEstado || "ABIERTO")
