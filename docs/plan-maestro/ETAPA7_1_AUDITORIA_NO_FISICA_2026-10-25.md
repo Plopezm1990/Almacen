@@ -618,13 +618,43 @@ cero.
 La evidencia completa queda en
 [`ETAPA7_1_RESULTADO_ARRANQUE_FRIO_OFFLINE_QA_2026-10-26.md`](ETAPA7_1_RESULTADO_ARRANQUE_FRIO_OFFLINE_QA_2026-10-26.md).
 
+## 24. Corrección y repetición del arranque frío offline
+
+La incidencia quedó corregida en el commit
+`6996699e4739d0c6cc670f3a4d30cb9aa1c055ac`. El diagnóstico había identificado
+que `sw.js` solo atendía notificaciones push y que la primera corrección con
+registro inline era bloqueada por la CSP `script-src 'self'`.
+
+La corrección final usa el bootstrap externo
+`offline-shell-bootstrap.js`, precachea el shell completo y mantiene el
+service worker limitado a peticiones `GET` del mismo origen. No intercepta
+Supabase ni mutaciones `POST`, `PUT`, `PATCH` o `DELETE`.
+
+La repetición sobre el Deploy Preview del PR `#175` confirmó:
+
+- deploy Netlify **READY** y status de preview **success**;
+- contrato `f4-b11-offline`: **PASS**;
+- service worker en estado `activated` y controlando la página;
+- tras cortar la red y recargar, la suite mostró su propia pantalla
+  `Instalación bloqueada de forma segura`;
+- no apareció `ERR_INTERNET_DISCONNECTED`;
+- no se abrió el panel ni se presentó ninguna operación de negocio como
+  confirmada;
+- la conexión se restauró al terminar.
+
+Por tanto, queda **PASS el shell de arranque offline y el bloqueo seguro de
+operaciones server-side**. No se habilita ni se declara como PASS el cobro,
+guardado o sincronización offline.
+
+La evidencia detallada queda en
+[`ETAPA7_1_CORRECCION_ARRANQUE_FRIO_OFFLINE_QA_2026-10-26.md`](ETAPA7_1_CORRECCION_ARRANQUE_FRIO_OFFLINE_QA_2026-10-26.md).
+
 ### Próximo trabajo de Etapa 7.1
 
-1. Corregir el arranque offline con un shell estático/precacheado, recuperación
-   visible y bloqueo explícito de operaciones server-side.
-2. Añadir contratos automatizados y repetir el arranque en frío con caché
-   limpia, red desconectada y recuperación posterior.
-3. Preparar y ejecutar separadamente la campaña T9 física con hardware
+1. Mantener la corrección offline bajo vigilancia del contrato `f4-b11-offline`;
+   la garantía cubierta es el arranque del shell, no el funcionamiento de
+   cobros o sincronización sin servidor.
+2. Preparar y ejecutar separadamente la campaña T9 física con hardware
    autorizado cuando la garantía offline quede en PASS.
-4. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA de
+3. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA de
    empresa y repetir la comparación sin reutilizar datos de producción.
