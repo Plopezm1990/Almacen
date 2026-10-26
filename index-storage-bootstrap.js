@@ -983,10 +983,29 @@
       var base = textoBase === null ? [] : JSON.parse(textoBase);
       var mapaVenta = leerVentaProductos();
       var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; });
-      var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
+      var contextoProductos = contextoKvActual();
+      var argsProductos = {
         p_operation_id: nuevaOperacionProductos(), p_base: base, p_nuevo: nuevo,
         p_venta: ventaPendiente
-      });
+      };
+      var contextoProductosExplicito = !!(contextoProductos.empresaId && contextoProductos.localId);
+      if (contextoProductosExplicito) {
+        argsProductos.p_empresa_id = contextoProductos.empresaId;
+        argsProductos.p_local_id = contextoProductos.localId;
+      }
+      var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", argsProductos);
+      // Compatibilidad durante la ventana de publicación: si la migración
+      // contextual aún no está en el proyecto, repite la RPC legacy de cuatro
+      // parámetros. Solo si tampoco existe se conserva el fallback histórico.
+      if (rProductos.error && contextoProductosExplicito
+          && (rProductos.error.code === "PGRST202" || rProductos.error.code === "42883")) {
+        rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
+          p_operation_id: argsProductos.p_operation_id,
+          p_base: base,
+          p_nuevo: nuevo,
+          p_venta: ventaPendiente
+        });
+      }
       if (!rProductos.error) {
         if (!rProductos.data || rProductos.data.ok !== true) throw new Error("Respuesta inesperada al guardar productos");
         var listaConfirmada = rProductos.data.lista_confirmada;
