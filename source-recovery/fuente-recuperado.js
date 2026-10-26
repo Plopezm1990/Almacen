@@ -6197,6 +6197,48 @@ function GestionAlmacen() {
           .tpv-section-nav button { min-width: 80px; min-height: 52px; padding: 0 10px; font-size: 13px; }
         }
 
+        /* Documento 2 · segunda pasada visual: venta primero, herramientas después */
+        body:has([data-tpv-shell]) .tpv-shell { gap: 0; padding: 0 12px 14px; }
+        body:has([data-tpv-shell]) .tpv-shell > .tpv-workspace-heading { order: 10; min-height: 52px; padding: 10px 0; border-bottom: 1px solid var(--c-line); }
+        body:has([data-tpv-shell]) .tpv-shell > .tpv-toolbar { order: 20; margin: 0; padding: 10px 0; border: 0; border-bottom: 1px solid var(--c-line); border-radius: 0; box-shadow: none; background: transparent; }
+        body:has([data-tpv-shell]) .tpv-shell > .tpv-keybar { order: 30; justify-content: flex-end; min-height: 44px; padding: 8px 0; margin: 0; }
+        body:has([data-tpv-shell]) .tpv-shell > .tpv-keybar + .mb-4 { display: none !important; }
+        body:has([data-tpv-shell]) .tpv-shell > .tpv-layout { order: 40; width: 100%; margin: 0; }
+        body:has([data-tpv-shell]) .tpv-shell > .tpv-section-nav { order: 50; }
+        body:has([data-tpv-shell]) .tpv-shell > [data-tpv-catalog-ticket] { display: none !important; }
+        body:has([data-tpv-shell]) .tpv-shell > .mb-4 { order: 80; margin: 12px 0 0 !important; }
+        body:has([data-tpv-shell]) .tpv-shell > button[aria-label="Abrir calculadora"] { order: 80; align-self: flex-start; margin-top: 12px; }
+        .tpv-layout { grid-template-columns: minmax(0, 1fr) minmax(292px, 33%); gap: 10px; }
+        .tpv-product-zone { min-width: 0; }
+        .tpv-product-zone > div:first-child input { min-height: 48px; font-size: 16px !important; }
+        .tpv-product-zone > div:nth-child(2) { margin-bottom: 10px !important; }
+        .tpv-product-zone > div:nth-child(2) button { min-height: 40px; padding: 0 12px; border-radius: 8px; font-size: 13px; }
+        .tpv-product-zone > div:nth-child(3) { gap: 10px !important; }
+        .tpv-product-zone > div:nth-child(3) > [role="button"] { min-height: 178px !important; padding: 10px !important; border-radius: 9px !important; box-shadow: none; }
+        .tpv-product-zone > div:nth-child(3) > [role="button"] .tpv-product-photo { height: 82px; margin: -10px -10px 10px; width: calc(100% + 20px); border-radius: 9px 9px 0 0; }
+        .tpv-product-zone > div:nth-child(3) > [role="button"] .mono { font-size: 16px !important; line-height: 22px; }
+        .tpv-product-zone > div:nth-child(3) > [role="button"] .tpv-quick-quantity { min-width: 34px; min-height: 34px; padding: 0 9px; border-radius: 7px; font-size: 13px; }
+        .tpv-ticket-zone { top: 0; }
+        .tpv-ticket-zone > .mb-4 { min-height: 0; padding: 12px; border-radius: 10px; box-shadow: none; }
+        .tpv-ticket-zone:empty { min-height: 260px; padding: 18px; border-radius: 10px; box-shadow: none; }
+        .tpv-ticket-zone:empty::before { font-size: 16px; line-height: 24px; }
+        .tpv-ticket-zone:empty::after { font-size: 13px; line-height: 19px; }
+        .tpv-section-nav { justify-content: space-between; gap: 6px; padding: 6px; margin: 12px 0 0; border: 1px solid var(--c-line); border-radius: 9px; background: var(--c-surface); box-shadow: none; }
+        .tpv-section-nav button { min-width: 72px; min-height: 44px; padding: 0 10px; border-color: transparent; border-radius: 7px; background: transparent; color: var(--c-ink); font-size: 12px; }
+        .tpv-section-nav button[aria-selected="true"] { background: var(--c-accent-soft); border-color: var(--c-accent); color: var(--c-ink); }
+        @media (max-width: 900px) {
+          body:has([data-tpv-shell]) .tpv-shell { padding: 0 10px 12px; }
+          .tpv-layout { grid-template-columns: minmax(0, 1fr); }
+          .tpv-ticket-zone { order: 2; }
+        }
+        @media (max-width: 640px) {
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-keybar { justify-content: stretch; }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-keybar button { flex: 1 1 0; min-width: 0; }
+          .tpv-product-zone > div:nth-child(3) > [role="button"] { min-height: 160px !important; }
+          .tpv-product-zone > div:nth-child(3) > [role="button"] .tpv-product-photo { height: 70px; }
+          .tpv-section-nav { justify-content: flex-start; overflow-x: auto; }
+        }
+
         @media print {
           @page { size: A4; margin: 12mm; }
           body * { visibility: hidden !important; }
