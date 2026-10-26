@@ -486,3 +486,20 @@ El cierre detallado, con la causa, las pruebas y los límites, queda en
 Este cierre resuelve la incidencia concreta, pero no cambia la decisión de
 mantener abierta la Etapa 7 global mientras sigan pendientes la campaña T9
 física, las mediciones operativas y la decisión sobre AUD-010.
+
+## 17. Resultado de la matriz TPV responsive y frontera offline
+
+La siguiente tanda no física se completó sobre el preview actualizado: carga
+estable del TPV en `Local A2`, vista de `690 × 668` sin desbordamiento
+horizontal ni vertical, ticket inicial vacío, guardado deshabilitado y
+limpieza controlada de un borrador local de prueba de `€0,99` sin crear ventas
+ni cobros.
+
+También se emuló temporalmente la pérdida de red sobre la vista ya cargada. El
+TPV conservó el ticket en `0 líneas · €0,00`, mantuvo `F9 Guardar` bloqueado y
+no generó errores nuevos. La conectividad se restauró al terminar. Esta tanda
+verifica la frontera de no cobrar/no guardar en la vista hidratada, pero no
+sustituye la prueba de arranque en frío offline ni la campaña T9 con hardware.
+
+La evidencia detallada queda en
+[`ETAPA7_1_RESULTADO_MATRIZ_TPV_RESPONSIVE_OFFLINE_QA_2026-10-26.md`](ETAPA7_1_RESULTADO_MATRIZ_TPV_RESPONSIVE_OFFLINE_QA_2026-10-26.md).
