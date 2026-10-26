@@ -1,8 +1,8 @@
 # Documento 2 · Prueba controlada de fixtures QA
 
 **Fecha:** 26 de octubre de 2026  
-**Estado:** `FIXTURES_QA_PREPARADOS_C02_C03_PENDIENTES`
-**Alcance:** QA del puesto único de L&A Suite. No se ejecutó ningún cobro confirmado ni se contactó con un proveedor real.
+**Estado:** `C02_C03_RESUELTOS_QA_SIN_DUPLICIDAD_OBSERVADA`
+**Alcance:** QA del puesto único de L&A Suite. No se ejecutó ningún cobro confirmado real ni se contactó con un proveedor real.
 
 ## 1. Objetivo
 
@@ -17,7 +17,7 @@ La prueba no autoriza ni sustituye:
 - creación de estaciones, rutas, comandas o cuentas;
 - cualquier operación en producción.
 
-Como parte de la preparación controlada sí se creó un intento de tarjeta **simulado y pendiente** en QA y se abrió una incidencia B04 para conservar el caso bloqueado. No hubo autorización, captura, liquidación ni comunicación con una pasarela externa.
+Como parte de la preparación controlada se creó un intento de tarjeta **simulado y pendiente** en QA y se abrió una incidencia B04 para conservar el caso bloqueado. Después de una confirmación explícita para el paso financiero, la incidencia se resolvió con importes sintéticos de `1,00 €`; no hubo comunicación con una pasarela externa.
 
 ## 2. Entorno y evidencia
 
@@ -59,9 +59,9 @@ Conclusión: no había una cuenta cobrable segura del día que permitiera probar
 
 ### C03 · Pago incierto y recuperación
 
-**Resultado inicial: BLOCKED en la UI existente. Fixture simulado preparado después; resolución pendiente.**
+**Resultado inicial: BLOCKED en la UI existente. Fixture simulado preparado y resuelto después.**
 
-No se encontró en la UI QA existente una cuenta con intento `PENDIENTE` o `INCIERTO` que pudiera abrirse sin alterar datos. Posteriormente se preparó expresamente el fixture descrito en §6: tarjeta simulada QA en `PENDIENTE` e incidencia B04 `ABIERTA`. Todavía no se ha aprobado ni resuelto.
+No se encontró en la UI QA existente una cuenta con intento `PENDIENTE` o `INCIERTO` que pudiera abrirse sin alterar datos. Posteriormente se preparó expresamente el fixture descrito en §6: tarjeta simulada QA en `PENDIENTE` e incidencia B04 `ABIERTA`. Ese fixture se resolvió después con datos sintéticos y quedó confirmado en QA.
 
 El ensayo backend QA documentado previamente en `docs/plan-abc/F5_ENSAYO_INTEGRAL_QA_2026-10-02.md` cubrió transaccionalmente la retención de saldo, la resolución `CONFIRMED`, la liberación de reserva, la confirmación del pago y la ausencia de efecto de caja; aquel ensayo terminó con las transacciones revertidas y no constituye una prueba UI actual.
 
@@ -114,11 +114,11 @@ No se pulsó `Abrir caja`, `Añadir`, `Guardar arqueo`, `Contar por denominacion
 
 ## 5. Resultado formal
 
-La etapa de lectura UI de fixtures QA queda **TERMINADA**. La preparación de fixtures C02/C03 queda **TERMINADA**, con una cuenta QA cobrable y un intento simulado pendiente bloqueado por una incidencia B04 abierta. La resolución de la incidencia, la aprobación simulada y la comprobación de idempotencia siguen pendientes para la siguiente ejecución controlada.
+La etapa de lectura UI de fixtures QA queda **TERMINADA**. La preparación y resolución de fixtures C02/C03 queda **TERMINADA**: la cuenta QA pasó de pendiente a pagada, la incidencia B04 quedó resuelta y una nueva lectura server-side mantuvo el mismo resultado.
 
 La estación `COCINA-QA` ya aparece activa con 5 rutas. La nueva comanda del fixture quedó en estado `NUEVA · Cocina QA-A1 PENDIENTE`, por lo que el caso de cocina ya dispone de una ruta utilizable.
 
-## 6. Fixture QA creado y dejado preparado
+## 6. Fixture QA creado y resultado de resolución
 
 La preparación se realizó el 26 de octubre de 2026 en `QA Empresa A, S.L. · Local A1`:
 
@@ -131,19 +131,38 @@ La preparación se realizó el 26 de octubre de 2026 en `QA Empresa A, S.L. · L
 - Comanda visible: sufijo de pedido `6b5f7931ac14`, en `Cocina QA-A1`, estado de entrega `PENDIENTE`.
 - Pago: tarjeta simulada QA, intento `PENDIENTE`.
 - Cuenta tras el intento: `PENDIENTE`, confirmado `€0,00`, pendiente `€1,00`.
-- Incidencia B04: `ABIERTA`, motivo `Respuesta del proveedor perdida`.
+- Incidencia B04: creada con motivo `Respuesta del proveedor perdida` y posteriormente `RESUELTA` con resultado `CONFIRMADO`.
 
-El fixture se deja expresamente en ese estado para ejecutar la resolución en la siguiente prueba. No se pulsó `Aprobar pago simulado`, no se resolvió la incidencia y no se registró ningún importe en caja.
+Identificadores server-side obtenidos mediante lectura QA posterior:
 
-## 7. Qué sigue
+- Checkout: `0a083f51-9936-4187-a65e-a696e247e4cf`, estado `COMPLETADO`.
+- Pago: `c2ef67f6-762d-457c-9336-d5b8acb96c67`, medio `TARJETA`, estado `CONFIRMADO`.
+- Intento: `6bcf07d1-ca1a-4c83-adec-72aa203822d1`, estado `CONFIRMADO`.
+- Incidencia: `1688871a-db4e-442b-a1b2-37a26d53c789`, estado `RESUELTA`.
+- Proveedor sintético: `QA-SIMULADOR`.
+- Referencia sintética: `QA-REF-20261026-16CA`.
+- Autorizado, capturado y liquidado: `1,00 €` en cada campo.
 
-El siguiente paso es ejecutar sobre este fixture, sin crear otra cuenta:
+La UI mostró `Pago confirmado por el servidor`, `Cuenta: PAGADO`, `Último intento: Confirmado`, `Confirmado €1,00` y `Pendiente €0,00`. La acción de actualización volvió a leer esos mismos valores. No se emitió factura, no se envió ticket y no se registró movimiento de caja.
 
-1. comprobar que la UI mantiene bloqueado un segundo cobro;
-2. resolver B04 con proveedor y referencia sintéticos, importes autorizados/capturados/liquidados de `1,00 €` y evidencia sin datos de tarjeta;
-3. verificar que la cuenta pasa a confirmada, que el pendiente queda en `0,00 €` y que no se duplica ningún efecto;
-4. repetir el cobro una segunda vez para confirmar idempotencia;
-5. cerrar la cobertura con documento y limpieza/reversión QA de acuerdo con las reglas del entorno.
+## 7. Control de duplicidad e idempotencia
+
+La lectura directa y no mutante de QA encontró una única fila completada para cada operación del flujo:
+
+- `f4.b02b03.pay.6bcf07d1-ca1a-4c83-adec-72aa203822d1` · `ABC_INICIAR_COBRO` · 1 evento.
+- `f4.b04.incident.open.a3f5af1e-7240-4c47-91bb-53209da259a2` · `ABC_ABRIR_INCIDENCIA_COBRO` · 1 evento.
+- `f4.b04.incident.resolve.2e2be5fb-455d-4579-b2c4-2bd27ac74062` · `ABC_RESOLVER_INTENTO` · 1 evento.
+
+No se observan operaciones ni eventos duplicados, y la UI no ofrece un segundo cobro después de la confirmación. La repetición literal del mismo `operation_id` para comprobar la rama `replayed=true` no se ejecutó: la interfaz no expone ese control y reproducirlo mediante SQL saltaría el contexto autenticado de la UI. Por tanto, el resultado formal es **sin duplicidad observada**, no una afirmación de replay end-to-end.
+
+## 8. Qué sigue
+
+El siguiente paso recomendado es:
+
+1. ejecutar la limpieza o cierre operativo de esta cuenta QA siguiendo el procedimiento autorizado del entorno;
+2. cerrar la documentación de C02/C03 con la limitación de replay indicada arriba;
+3. comprobar documentos en modo simulador sin emitir ni enviar fiscalidad real;
+4. dejar el hardware T9 para el último bloque.
 
 El hardware T9 continúa reservado para el último bloque, cuando esté disponible.
 
