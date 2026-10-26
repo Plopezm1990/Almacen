@@ -4499,15 +4499,19 @@ function GestionAlmacen() {
   }, [proveedores, ready]);
   (0, import_react4.useEffect)(() => {
     if (!ready || skipSaveRef.current) return;
-    // El guardado reactivo debe usar siempre el mismo contexto que acaba de
-    // producir el estado. Las dependencias de empresa/local fuerzan un
-    // reintento cuando el contexto se hidrata después de los productos.
+    // El contexto se publica en el efecto anterior y el bootstrap ya guarda
+    // cualquier normalización inicial con el contexto confirmado. Cambiar de
+    // local no es una edición de productos: incluir empresa/local como
+    // dependencias aquí provocaba una RPC automática de toda la colección al
+    // cambiar de A1 a A2, pudiendo reactivar una intención P3c antigua o
+    // intentar reasignar un producto legacy. La RPC debe salir solo cuando la
+    // colección cambia de verdad.
     if (typeof window !== "undefined") {
       window.__localActivoIdParaContexto = typeof localActivoId === "string" && localActivoId ? localActivoId : null;
       window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;
     }
     saveKey("productos", productos);
-  }, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);
+  }, [productos, ready]);
   (0, import_react4.useEffect)(() => {
     function onProductosServidor(ev) {
       const d3 = ev && ev.detail ? ev.detail : {};
