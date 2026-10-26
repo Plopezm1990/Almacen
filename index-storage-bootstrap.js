@@ -964,6 +964,37 @@
     return { empresaId: empresaId || null, localId: localId || null };
   }
 
+  // La colección local puede contener productos de varias empresas porque el
+  // navegador conserva una caché común para poder cambiar de contexto sin
+  // perder la vista anterior. La RPC P3c, en cambio, recibe una fila
+  // almacen_kv por empresa: nunca debe recibir artículos de otra empresa.
+  function productoPerteneceAContexto(producto, contexto) {
+    if (!producto || typeof producto !== "object" || !contexto || !contexto.empresaId) return false;
+    var empresa = typeof producto.empresaId === "string" ? producto.empresaId.trim() : "";
+    if (empresa) return empresa === contexto.empresaId;
+    // Compatibilidad con fixtures antiguos sin empresaId: solo se admite si
+    // el local coincide con el local explícito de la sesión.
+    var local = typeof producto.localId === "string" ? producto.localId.trim() : "";
+    return !!(contexto.localId && local === contexto.localId);
+  }
+
+  function productosDelContexto(lista, contexto) {
+    if (!Array.isArray(lista) || !contexto || !contexto.empresaId) return [];
+    return lista.filter(function (producto) {
+      return productoPerteneceAContexto(producto, contexto);
+    });
+  }
+
+  function fusionarConfirmacionProductos(listaCompleta, listaConfirmada, contexto) {
+    if (!contexto || !contexto.empresaId) return listaConfirmada;
+    var completa = Array.isArray(listaCompleta) ? listaCompleta : [];
+    var confirmada = Array.isArray(listaConfirmada) ? listaConfirmada : [];
+    var resultado = completa.filter(function (producto) {
+      return !productoPerteneceAContexto(producto, contexto);
+    });
+    return resultado.concat(confirmada);
+  }
+
   function consultaKvPorClave(key, columnas) {
     var consulta = window.__nubeCliente.from("almacen_kv")
       .select(columnas)
@@ -982,13 +1013,20 @@
       if (textoBase === null) textoBase = textoAnterior;
       var base = textoBase === null ? [] : JSON.parse(textoBase);
       var mapaVenta = leerVentaProductos();
-      var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; });
       var contextoProductos = contextoKvActual();
+      var contextoProductosExplicito = !!(contextoProductos.empresaId && contextoProductos.localId);
+      var baseParaRpc = contextoProductosExplicito
+        ? productosDelContexto(base, contextoProductos)
+        : base;
+      var nuevoParaRpc = contextoProductosExplicito
+        ? productosDelContexto(nuevo, contextoProductos)
+        : nuevo;
+      var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; });
+      if (contextoProductosExplicito) ventaPendiente = productosDelContexto(ventaPendiente, contextoProductos);
       var argsProductos = {
-        p_operation_id: nuevaOperacionProductos(), p_base: base, p_nuevo: nuevo,
+        p_operation_id: nuevaOperacionProductos(), p_base: baseParaRpc, p_nuevo: nuevoParaRpc,
         p_venta: ventaPendiente
       };
-      var contextoProductosExplicito = !!(contextoProductos.empresaId && contextoProductos.localId);
       if (contextoProductosExplicito) {
         argsProductos.p_empresa_id = contextoProductos.empresaId;
         argsProductos.p_local_id = contextoProductos.localId;
@@ -1012,21 +1050,32 @@
         if (!Array.isArray(listaConfirmada)) {
           // Compatibilidad con instalaciones que aún tengan la primera RPC:
           // una lectura posterior al COMMIT obtiene la lista final en nube.
-          var rConfirmada = await window.__nubeCliente.from("almacen_kv")
-            .select("value").eq("key", "productos").maybeSingle();
+           var consultaConfirmada = window.__nubeCliente.from("almacen_kv")
+             .select("value").eq("key", "productos");
+           if (contextoProductos.empresaId) {
+             consultaConfirmada = consultaConfirmada.eq("empresa_id", contextoProductos.empresaId);
+           }
+           var rConfirmada = await consultaConfirmada.maybeSingle();
           if (rConfirmada.error) throw rConfirmada.error;
           listaConfirmada = rConfirmada.data && rConfirmada.data.value;
         }
         if (!Array.isArray(listaConfirmada)) throw new Error("Lista confirmada de productos no disponible");
-        var textoConfirmado = JSON.stringify(listaConfirmada);
         var actualProductos = LOCAL.get("productos");
         var productosConfirmados = actualProductos === textoNuevo;
+         var listaConfirmadaCompleta = contextoProductosExplicito
+           ? fusionarConfirmacionProductos(
+             actualProductos === null ? nuevo : JSON.parse(actualProductos),
+             listaConfirmada,
+             contextoProductos
+           )
+           : listaConfirmada;
         if (productosConfirmados) {
-          LOCAL.set("productos", textoConfirmado);
-          confirmarBaseProductos(textoConfirmado);
+           var textoConfirmado = JSON.stringify(listaConfirmadaCompleta);
+           LOCAL.set("productos", textoConfirmado);
+           confirmarBaseProductos(textoConfirmado);
           try {
             window.dispatchEvent(new CustomEvent("productos-servidor-confirmados", {
-              detail: { enviados: nuevo, confirmados: listaConfirmada }
+               detail: { enviados: nuevo, confirmados: listaConfirmadaCompleta }
             }));
           } catch (e) {}
         }
@@ -1036,7 +1085,7 @@
         return {
           catalogoYaSincronizado: rProductos.data.catalogo_ya_sincronizado === true,
           productosConfirmados: productosConfirmados,
-          listaConfirmada: productosConfirmados ? listaConfirmada : null
+           listaConfirmada: productosConfirmados ? listaConfirmadaCompleta : null
         };
       }
       // Antes de desplegar P3c, producción sigue por el camino heredado.
