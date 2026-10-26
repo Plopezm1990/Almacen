@@ -4,7 +4,11 @@
 // intercepta POST/PUT/PATCH/DELETE ni peticiones a Supabase: sin red no se
 // puede presentar una mutación server-side como confirmada.
 
-const CACHE_NAME = "la-suite-shell-v2";
+// Se incrementa con cada cambio del shell para que un navegador que ya tenga
+// una versión offline no siga ejecutando un bundle anterior después del
+// deploy. El service worker nuevo precachea el shell completo y reclama el
+// cliente durante la activación.
+const CACHE_NAME = "la-suite-shell-v3";
 const PRECACHE_URLS = [
   "/",
   "/index.html",

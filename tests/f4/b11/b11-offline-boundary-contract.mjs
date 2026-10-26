@@ -103,7 +103,7 @@ for (const required of [
 assert.match(contingency, /No se activa ningún\s+camino offline/i);
 assert.match(indexHtml, /<script src="\.\/offline-shell-bootstrap\.js"><\/script>/i, 'el shell offline debe registrarse desde un archivo sujeto a CSP');
 assert.match(offlineBootstrap, /serviceWorker\.register\("\.\/sw\.js"/i);
-assert.match(serviceWorker, /const CACHE_NAME = "la-suite-shell-v2"/);
+assert.match(serviceWorker, /const CACHE_NAME = "la-suite-shell-v3"/);
 assert.match(serviceWorker, /"\/index\.html"/);
 assert.match(serviceWorker, /"\/offline-shell-bootstrap\.js"/);
 assert.match(serviceWorker, /"\/fuente\.js"/);
