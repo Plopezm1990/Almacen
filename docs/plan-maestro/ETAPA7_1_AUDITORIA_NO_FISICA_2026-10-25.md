@@ -520,3 +520,19 @@ la matriz viva sigue necesitando cuentas QA dedicadas y autorizadas.
 
 La evidencia detallada queda en
 [`ETAPA7_1_RESULTADO_CONTRATOS_ROLES_CAJA_MOVIMIENTOS_QA_2026-10-26.md`](ETAPA7_1_RESULTADO_CONTRATOS_ROLES_CAJA_MOVIMIENTOS_QA_2026-10-26.md).
+
+## 19. Inventario de cuentas QA para la matriz viva
+
+La inspección no destructiva de `Personal` encontró un único perfil de
+empleado visible en el contexto QA, con PIN configurado y rol `Encargado`. No
+aparecen cuentas QA dedicadas visibles para `Cajero/a` ni `Camarero/a`, y la
+sesión de Propietario abierta no sustituye una cuenta de empleado para probar
+el login efectivo.
+
+No se abrió el editor, no se creó ningún empleado, no se cambiaron roles y no
+se introdujo ni reveló ningún PIN. Por tanto, la matriz viva queda bloqueada
+por disponibilidad de credenciales, no por un fallo de contrato: los contratos
+de roles y Caja siguen en PASS.
+
+La evidencia detallada queda en
+[`ETAPA7_1_INVENTARIO_CUENTAS_ROLES_QA_2026-10-26.md`](ETAPA7_1_INVENTARIO_CUENTAS_ROLES_QA_2026-10-26.md).
