@@ -574,3 +574,37 @@ efecto económico.
 
 La evidencia completa queda en
 [`ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md`](ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md).
+
+## 22. Aislamiento vivo entre Local A2 y Local A1
+
+La matriz de sesión de empleado se amplió con una comprobación específica de
+aislamiento de contexto. Con `QA Encargado` se inició en `Local A2`, se abrió
+el TPV sin crear una línea y se verificó `15` productos, ticket `0 líneas ·
+€0,00`, historial de ventas `0` y `F9 Guardar` deshabilitado. Después se
+cambió a `Local A1` y la interfaz mostró la cabecera y el filtro de A1, sus
+indicadores propios, `18` productos, ticket vacío y el historial ya existente
+de ese local (`31` ventas con total vigente `€0,00`).
+
+El resultado demuestra que el cambio de local no mezcló catálogo, métricas,
+historial ni zona del TPV. Se volvió a `Local A2` y se recuperaron sus
+indicadores originales; se cerró el modo empleado sin guardar operaciones.
+No se abrió Caja, no se fichó, no se abrió el cajón, no se añadió producto, no
+se cobró y no se registró ningún movimiento. La consola final devolvió `[]`
+en niveles `error` y `warn`.
+
+El selector de la sesión solo expuso `QA Empresa A, S.L.` y `Local A1` /
+`Local A2`; no apareció una segunda empresa B. Por ello, queda cerrado el
+aislamiento A1 ↔ A2 de la empresa A, pero la comparación A/B permanece
+pendiente de un contexto QA que exponga la empresa B.
+
+La evidencia operativa se incorporó a
+[`ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md`](ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md).
+
+### Próximo trabajo de Etapa 7.1
+
+1. Ejecutar arranque en frío con la red desconectada desde el inicio y
+   documentar el límite de hidratación sin mutar datos.
+2. Preparar y ejecutar separadamente la campaña T9 física con hardware
+   autorizado.
+3. Si se necesita evidencia A/B, provisionar primero un segundo contexto QA
+   de empresa y repetir la comparación sin reutilizar datos de producción.
