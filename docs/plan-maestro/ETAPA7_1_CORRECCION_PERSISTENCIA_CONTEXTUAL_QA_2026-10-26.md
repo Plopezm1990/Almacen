@@ -89,24 +89,48 @@ Resultado server-side en QA:
 
 La prueba no realizó ventas, cobros ni operaciones de caja. El cambio validado es únicamente persistencia de producto y traspaso de stock en QA.
 
-## 5. Limitación independiente que queda abierta
+## 5. Contexto fiscal y espejo de catálogo TPV cerrados
 
-La respuesta devuelve `catalogo_ya_sincronizado=false` porque el fixture B no tiene contexto fiscal configurado. Por ello no se ha creado todavía la fila correspondiente en `public.catalogo_tpv_productos` para este nuevo SKU.
+Se creó en QA, y se dejó versionado como fixture idempotente en:
 
-Esto ya no es el bloqueo de persistencia ni el de stock: el producto y su stock son server-side y el traspaso funciona. Queda como trabajo separado configurar el contexto fiscal de QA B y repetir la publicación al catálogo TPV, sin activar nada en producción.
+- `supabase/migrations/20261026113000_abc_p3c_qa_b_fiscal_fixture.sql`;
+- entidad fiscal simulada `b0000000-0000-0000-0000-0000000000b1`;
+- empresa/local `QA-EMP-B` / `QA-B1`;
+- moneda principal activa `EUR`.
+
+El fixture incluye preflight de dependencias, valida que el UUID reservado no pertenezca a otra empresa y no toca producción.
+
+La confirmación contextual posterior se ejecutó en QA con la identidad autenticada de `owner.a` y la operación `p3c.qa.fiscal.b.catalogo.20261026.v1.1`. El resultado fue:
+
+```text
+ok=true
+venta_cambiada=1
+productos_cambiados=0
+catalogo_ya_sincronizado=true
+catalogo_pendiente_contexto_fiscal=false
+```
+
+La fila server-side de `public.catalogo_tpv_productos` quedó creada para `QA B Scoped Producto 4` (`QA-B-SCOPE-04`), con precio unitario `1,10`, precio con impuesto `1,21`, IVA `10%`, moneda `EUR`, entidad fiscal simulada B y origen `ABC_P3_GUARDAR_PRODUCTOS`. La consulta de aislamiento confirmó `catalogo_qa_a_mismo_id=0`; el stock permaneció en `almacen=9` y `piso=1`.
+
+La pantalla TPV de QA B/B1 mostró visualmente `1 producto(s) disponible(s)` y la tarjeta `QA B Scoped Producto 4 €1,21`. No se pulsó el producto, no se creó línea de ticket y no se ejecutó venta, cobro ni operación de caja.
+
+### Nota sobre la primera pulsación de Guardar
+
+La primera prueba desde la interfaz fue un Guardar sin cambiar ningún campo comercial. Esa acción no llevaba `p_venta`, por lo que correctamente no creó el espejo fiscal. Para cerrar este bloque se repitió la confirmación mediante la RPC contextual autenticada, con el contexto fiscal de QA B ya configurado. La ausencia de cambio comercial en el primer Guardar no constituye un fallo de persistencia: es una operación sin modificación de precio, IVA o disponibilidad de venta.
 
 ## 6. Commits de la corrección
 
 - `a590dc7` — `fix(p3c): persist products with explicit QA context`;
 - `420cdae` — `fix(p3c): scope product sync to active company`;
 - `fa28d52` — `fix(offline): refresh cached QA shell after deploy`.
+- `e041e76` — `docs(etapa7): close QA product persistence correction`;
+- este commit — fixture fiscal QA B y cierre documental de este subbloque.
 
 ## Estado
 
-**CERRADA en QA:** persistencia contextual de productos y traspaso almacén → piso de venta.  
-**PENDIENTE separado:** contexto fiscal y espejo en catálogo TPV de QA B.  
+**CERRADA en QA:** persistencia contextual de productos, traspaso almacén → piso de venta, contexto fiscal simulado y espejo en catálogo TPV de QA B.
 **Producción:** sin cambios.
 
 ## Siguiente paso
 
-Configurar o reutilizar un contexto fiscal controlado para `QA-EMP-B / QA-B1`, repetir la confirmación del catálogo TPV y comprobar que el producto queda vendible sin ejecutar una venta real. Después se puede cerrar el subbloque P3c de la Etapa 7 y continuar con la siguiente prueba de aceptación prevista.
+Cerrar formalmente el subbloque P3c de la Etapa 7 y continuar con la siguiente prueba de aceptación prevista. Mantener la regla de no ejecutar venta real hasta que esa prueba lo autorice expresamente.
