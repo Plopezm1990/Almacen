@@ -20,17 +20,21 @@ begin
     raise exception 'ABC_P3C_QA_FISCAL_B_PREFLIGHT_FALLO: dependencias ausentes';
   end if;
 
+end $$;
+
+do $$
+begin
+  -- En producción u otro entorno sin el fixture QA, esta migración es un
+  -- no-op deliberado: no crea empresas, locales ni configuración fiscal.
   if not exists (
-    select 1
-    from public.empresas
-    where id='QA-EMP-B'
+    select 1 from public.empresas where id='QA-EMP-B'
   ) or not exists (
     select 1
     from public.locales
-    where empresa_id='QA-EMP-B'
-      and id='QA-B1'
+    where empresa_id='QA-EMP-B' and id='QA-B1'
   ) then
-    raise exception 'ABC_P3C_QA_FISCAL_B_PREFLIGHT_FALLO: QA-EMP-B/QA-B1 ausente';
+    raise notice 'ABC_P3C_QA_FISCAL_B: fixture QA ausente; no-op fuera de QA';
+    return;
   end if;
 
   if exists (
@@ -41,7 +45,6 @@ begin
   ) then
     raise exception 'ABC_P3C_QA_FISCAL_B_PREFLIGHT_FALLO: UUID reservado pertenece a otra empresa';
   end if;
-end $$;
 
 insert into public.entidades_fiscales(
   id,
@@ -128,5 +131,7 @@ values (
 )
 on conflict (empresa_id,local_id,entidad_fiscal_id,currency_code)
 do update set activa=true;
+
+end $$;
 
 commit;

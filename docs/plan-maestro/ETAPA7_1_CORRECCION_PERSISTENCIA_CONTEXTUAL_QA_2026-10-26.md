@@ -98,7 +98,7 @@ Se creó en QA, y se dejó versionado como fixture idempotente en:
 - empresa/local `QA-EMP-B` / `QA-B1`;
 - moneda principal activa `EUR`.
 
-El fixture incluye preflight de dependencias, valida que el UUID reservado no pertenezca a otra empresa y no toca producción.
+El fixture incluye preflight de dependencias, valida que el UUID reservado no pertenezca a otra empresa y no toca producción. Si se ejecuta en un entorno donde no existen `QA-EMP-B / QA-B1`, termina como `no-op` con un aviso; de ese modo no bloquea ni crea datos al aplicar migraciones compartidas fuera de QA.
 
 La confirmación contextual posterior se ejecutó en QA con la identidad autenticada de `owner.a` y la operación `p3c.qa.fiscal.b.catalogo.20261026.v1.1`. El resultado fue:
 
