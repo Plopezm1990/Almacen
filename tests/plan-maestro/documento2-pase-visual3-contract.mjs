@@ -13,8 +13,11 @@ const marker = "/* Documento 2 · tercera pasada visual: tareas secundarias y ma
 const required = [
   ".tpv-section-nav button:nth-child(2)[aria-selected=\"true\"]",
   ".tpv-section-nav button:nth-child(7)[aria-selected=\"true\"]",
-  ".tpv-shell > .tpv-layout { display: none !important; }",
-  ".tpv-shell > .mb-4:not([hidden]) { order: 40",
+  ".tpv-section-nav button:nth-child(7)[aria-selected=\"true\"]) .tpv-shell > .tpv-layout",
+  ".tpv-section-nav button:nth-child(7)[aria-selected=\"true\"]) .tpv-shell > .tpv-ticket-zone { display: none !important; }",
+  ".tpv-shell > .tpv-catalog-ticket { display: none !important; }",
+  ".tpv-shell > .tpv-layout > .tpv-product-zone { grid-column: 1; order: 40",
+  ".tpv-section-nav button:nth-child(7)[aria-selected=\"true\"]) .tpv-shell > .mb-4:not([hidden]),",
   ".tpv-shell > .mt-5 { display: none !important; }",
   "[data-tpv-fase5-cobro] .tpv-fase5-cash-keypad",
   "@media (min-width: 901px) and (max-width: 1100px)",

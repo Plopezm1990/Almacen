@@ -6206,8 +6206,9 @@ function GestionAlmacen() {
         body:has([data-tpv-shell]) .tpv-shell > .tpv-layout { order: 40; width: 100%; margin: 0; }
         body:has([data-tpv-shell]) .tpv-shell > .tpv-section-nav { order: 50; }
         body:has([data-tpv-shell]) .tpv-shell > [data-tpv-catalog-ticket] { display: none !important; }
+        body:has([data-tpv-shell]) .tpv-shell > .tpv-catalog-ticket { display: none !important; }
         body:has([data-tpv-shell]) .tpv-shell > .mb-4 { order: 80; margin: 12px 0 0 !important; }
-        body:has([data-tpv-shell]) .tpv-shell > button[aria-label="Abrir calculadora"] { order: 80; align-self: flex-start; margin-top: 12px; }
+        body:has([data-tpv-shell]) .tpv-shell > button { order: 80; align-self: flex-start; margin-top: 12px; }
         .tpv-layout { grid-template-columns: minmax(0, 1fr) minmax(292px, 33%); gap: 10px; }
         .tpv-product-zone { min-width: 0; }
         .tpv-product-zone > div:first-child input { min-height: 48px; font-size: 16px !important; }
@@ -6240,6 +6241,8 @@ function GestionAlmacen() {
         }
 
         /* Documento 2 · tercera pasada visual: tareas secundarias y marcos responsive */
+        body:has([data-tpv-shell]) .tpv-shell > .tpv-catalog-ticket { display: none !important; }
+        body:has([data-tpv-shell]) .tpv-shell > button { order: 80; align-self: flex-start; margin-top: 12px; }
         body:has([data-tpv-shell]) .tpv-shell > .mt-5 { order: 90; margin-top: 12px !important; }
         body:has([data-tpv-shell]) .tpv-shell > [data-tpv-fase5-cobro],
         body:has([data-tpv-shell]) .tpv-shell > [data-tpv-fase5-caja] { width: min(100%, 760px); margin-inline: auto; }
@@ -6252,13 +6255,25 @@ function GestionAlmacen() {
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(4)[aria-selected="true"]) .tpv-shell > .tpv-layout,
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(5)[aria-selected="true"]) .tpv-shell > .tpv-layout,
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(6)[aria-selected="true"]) .tpv-shell > .tpv-layout,
-        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .tpv-layout { display: none !important; }
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .tpv-layout,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(2)[aria-selected="true"]) .tpv-shell > .tpv-ticket-zone,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(3)[aria-selected="true"]) .tpv-shell > .tpv-ticket-zone,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(4)[aria-selected="true"]) .tpv-shell > .tpv-ticket-zone,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(5)[aria-selected="true"]) .tpv-shell > .tpv-ticket-zone,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(6)[aria-selected="true"]) .tpv-shell > .tpv-ticket-zone,
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .tpv-ticket-zone { display: none !important; }
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(2)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(3)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(4)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(5)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(6)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
-        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]) { order: 40; width: 100%; margin: 12px 0 0 !important; }
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .mb-4:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(2)[aria-selected="true"]) .tpv-shell > .tpv-block-panel:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(3)[aria-selected="true"]) .tpv-shell > .tpv-block-panel:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(4)[aria-selected="true"]) .tpv-shell > .tpv-block-panel:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(5)[aria-selected="true"]) .tpv-shell > .tpv-block-panel:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(6)[aria-selected="true"]) .tpv-shell > .tpv-block-panel:not([hidden]),
+        body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .tpv-block-panel:not([hidden]) { order: 40; width: 100%; margin: 12px 0 0 !important; }
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(2)[aria-selected="true"]) .tpv-shell > .mt-5,
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(3)[aria-selected="true"]) .tpv-shell > .mt-5,
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(4)[aria-selected="true"]) .tpv-shell > .mt-5,
@@ -6267,7 +6282,11 @@ function GestionAlmacen() {
         body:has([data-tpv-shell] .tpv-section-nav button:nth-child(7)[aria-selected="true"]) .tpv-shell > .mt-5 { display: none !important; }
 
         @media (min-width: 901px) and (max-width: 1100px) {
-          body:has([data-tpv-shell]) .tpv-shell { padding-inline: 10px; }
+          body:has([data-tpv-shell]) .tpv-shell { display: grid; grid-template-columns: minmax(0, 1fr) 300px; align-items: start; column-gap: 8px; row-gap: 0; padding-inline: 10px; }
+          body:has([data-tpv-shell]) .tpv-shell > * { grid-column: 1 / -1; }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-layout { display: contents; }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-layout > .tpv-product-zone { grid-column: 1; order: 40; min-width: 0; }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-ticket-zone { grid-column: 2; order: 40; min-width: 0; }
           .tpv-layout { grid-template-columns: minmax(0, 1fr) 300px; gap: 8px; }
           .tpv-product-zone > div:nth-child(3) { gap: 8px !important; }
           .tpv-product-zone > div:nth-child(3) > [role="button"] { min-height: 164px !important; padding: 9px !important; }
@@ -6275,6 +6294,10 @@ function GestionAlmacen() {
         }
 
         @media (max-width: 640px) {
+          body:has([data-tpv-shell]) .tpv-shell { display: flex; }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-layout { display: block; }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-layout > .tpv-product-zone { grid-column: auto; order: 0; }
+          body:has([data-tpv-shell]) .tpv-shell > .tpv-ticket-zone { grid-column: auto; order: 2; }
           body:has([data-tpv-shell]) .tpv-shell { min-height: calc(100dvh - 3.5rem); padding-bottom: calc(64px + env(safe-area-inset-bottom)); }
           body:has([data-tpv-shell]) .tpv-shell > .tpv-workspace-heading { min-height: 46px; padding-block: 8px; }
           body:has([data-tpv-shell]) .tpv-shell > .tpv-toolbar { padding-block: 8px; }
@@ -26529,7 +26552,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   function renderValeRegaloF4() {
     if (seccionTpv !== "venta") return null;
     return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
-      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-tpv-catalog-ticket": "true" },
+      /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 tpv-catalog-ticket", "data-tpv-catalog-ticket": "true" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Catálogo y ticket"),
           /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-semibold", style: { color: C2.accent } }, "Flujo Fase 3")
