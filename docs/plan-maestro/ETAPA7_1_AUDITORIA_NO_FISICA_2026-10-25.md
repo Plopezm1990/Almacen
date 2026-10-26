@@ -536,3 +536,36 @@ de roles y Caja siguen en PASS.
 
 La evidencia detallada queda en
 [`ETAPA7_1_INVENTARIO_CUENTAS_ROLES_QA_2026-10-26.md`](ETAPA7_1_INVENTARIO_CUENTAS_ROLES_QA_2026-10-26.md).
+
+## 20. Cuentas sintéticas QA creadas
+
+Con autorización expresa se crearon dos perfiles sintéticos para desbloquear
+la matriz viva:
+
+- `QA Cajero` con rol `Cajero/a`;
+- `QA Camarero` con rol `Camarero/a`.
+
+La ficha QA existente con rol `Encargado` permanece sin cambios. La pantalla
+confirmó las tres fichas y sus roles, sin errores nuevos y sin mutaciones de
+ventas, cobros, Caja, productos o permisos. Los códigos temporales no se
+guardan en Git ni en la documentación.
+
+La evidencia detallada queda en
+[`ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md`](ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md).
+
+## 21. Resultado de login vivo por rol
+
+La matriz viva se ejecutó con las dos cuentas sintéticas recién creadas:
+
+- `QA Cajero`: login correcto, TPV visible y pestaña `Caja` visible con la
+  acción `Abrir caja` disponible;
+- `QA Camarero`: login correcto, TPV visible y pestaña `Caja` ausente.
+
+No se guardó ninguna comanda, cobro ni movimiento de efectivo. El TPV quedó
+vacío (`0 líneas · €0,00`, `0` ventas), se salió del modo empleado al terminar
+y no hubo errores ni advertencias nuevas en la consola del navegador. La
+prueba del `Encargado` queda pendiente únicamente por disponibilidad segura de
+su PIN, no por un fallo observado en los contratos.
+
+La evidencia completa queda en
+[`ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md`](ETAPA7_1_CUENTAS_QA_CREADAS_ROLES_2026-10-26.md).
