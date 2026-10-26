@@ -2,8 +2,8 @@
 
 Fecha: 26/10/2026  
 Entorno: QA `qjqorixtkilwsndqayyx`, Deploy Preview del PR `#175`, commit
-`2311191`  
-Estado: **AISLAMIENTO A/B PASS; COMPARACIÓN DE DATASET NO CONCLUYENTE POR B VACÍA**
+`e0a897e`
+Estado: **AISLAMIENTO A/B PASS; FIXTURE B LOCAL VISIBLE; PERSISTENCIA Y STOCK BLOQUEADOS**
 
 ## 1. Objetivo y alcance
 
@@ -30,7 +30,9 @@ acción explícita de reactivación del contexto existente. La aplicación confi
 - locales disponibles: `Local B1` activo y el segundo local inactivo.
 
 El contexto B se dejó activo para poder continuar la campaña A/B. No se
-modificaron sus usuarios, roles, locales, productos ni operaciones.
+modificaron sus usuarios, roles ni locales. En una comprobación posterior se
+preparó un único producto QA claramente identificado; el resultado completo
+queda en [`ETAPA7_1_FIXTURE_B_QA_2026-10-26.md`](ETAPA7_1_FIXTURE_B_QA_2026-10-26.md).
 
 ## 3. Recorrido A/B ejecutado
 
@@ -58,12 +60,16 @@ cambió a `Local B1 · QA Empresa B`. Los indicadores mostraron el dataset de B:
 - pedidos pendientes: `0`;
 - facturas por pagar: `0`;
 - encargos urgentes: `0`;
-- catálogo del TPV: `0 productos`;
+- catálogo del TPV: inicialmente `0 productos`; después del fixture local,
+  `1 producto` visible;
 - ticket: `0 líneas · €0,00`;
 - ventas registradas: `0`.
 
 La interfaz no conservó los indicadores de A en el contexto B. El TPV de B
-abrió en `Local B1`, con `F9 Guardar` deshabilitado, sin catálogo y sin ticket.
+abrió en `Local B1`, con `F9 Guardar` deshabilitado y sin ticket. Tras crear el
+fixture local `QA B A-B Producto 1 elaborado` (SKU `QA-B-AB-01`), el catálogo
+mostró `1 producto`, pero el botón permaneció deshabilitado porque el producto
+tenía `10` unidades en almacén y `0` en piso.
 
 ### 3.3 Cambio B → A
 
@@ -97,17 +103,23 @@ indicadores y TPV se separan correctamente al cambiar de empresa y vuelven a
 su estado correspondiente al regresar.
 
 La parte de **comparación equivalente de datos** queda **NO CONCLUYENTE**:
-`QA Empresa B` tiene un fixture operativo vacío (`0 productos`, `0 ventas`),
-por lo que no se puede comparar catálogo, ticket, stock o ventas de A contra un
-dataset equivalente de B. Esto no se presenta como fallo de producción ni como
-mezcla de datos.
+`QA Empresa B` tiene ahora un producto de prueba visible durante la sesión,
+pero la colección `productos` está marcada como local/no subible y el traspaso
+de `1` unidad de almacén a piso fue rechazado por el servidor. Por tanto no se
+puede comparar catálogo, ticket, stock o ventas de A contra un dataset
+persistentemente equivalente de B. Esto no se presenta como fallo de
+producción ni como mezcla de datos.
+
+La comprobación detallada queda en
+[`ETAPA7_1_FIXTURE_B_QA_2026-10-26.md`](ETAPA7_1_FIXTURE_B_QA_2026-10-26.md).
 
 ## 6. Qué sigue
 
-1. Preparar, con autorización específica y solo en QA, un fixture operativo
-   mínimo para B o restaurar una copia QA equivalente; no usar datos de
-   producción ni borrar el aviso local de `productos` sin autorización.
-2. Repetir la comparación de catálogo, indicadores y TPV A1/B1 con datasets
-   equivalentes, manteniendo el ticket vacío y sin cobrar.
+1. Resolver, con autorización específica y solo en QA, una vía de fixture
+   persistente para `productos` y stock por empresa/local, o corregir el
+   contrato de traspaso rechazado; no usar datos de producción ni borrar el
+   aviso local de `productos` sin autorización.
+2. Repetir la comparación de catálogo, indicadores, stock y TPV A1/B1 con
+   datasets equivalentes, manteniendo el ticket vacío y sin cobrar.
 3. Ejecutar después la campaña T9 física con hardware autorizado.
 

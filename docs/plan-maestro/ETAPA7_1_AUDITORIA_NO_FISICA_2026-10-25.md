@@ -739,6 +739,48 @@ La evidencia completa queda en
    cobros o sincronización sin servidor.
 2. Preparar y ejecutar separadamente la campaña T9 física con hardware
    autorizado cuando la garantía offline quede en PASS.
-3. Preparar un fixture operativo QA equivalente para B y repetir la
-   comparación de catálogo, indicadores y TPV sin reutilizar datos de
-   producción.
+3. Preparar, mediante una vía autorizada y exclusiva de QA, un fixture
+   persistente de producto y stock por empresa/local para B; el intento de
+   fixture local ya realizado dejó el catálogo visible, pero el traspaso de
+   almacén a piso fue rechazado y no modificó el stock.
+
+## 28. Fixture mínimo de QA Empresa B y bloqueo de persistencia
+
+El usuario autorizó preparar un fixture mínimo exclusivamente en QA para
+continuar la comparación A/B. En `QA Empresa B / Local B1` se creó mediante la
+interfaz el producto `QA B A-B Producto 1 elaborado`, SKU `QA-B-AB-01`, con
+precio de venta con IVA `€1,21`, coste sin IVA `€0,50`, `10` unidades iniciales
+en almacén y stock mínimo `2`.
+
+La lista de productos mostró el registro y el TPV B hidrató un catálogo de
+`1` producto. El ticket permaneció en `0 líneas · €0,00`, `F9 Guardar` siguió
+deshabilitado y el historial permaneció en `0` ventas. El producto no pudo
+seleccionarse porque tenía `0` unidades en piso y `10` en almacén.
+
+Se intentó un único traspaso controlado de `1` unidad de `Almacén → Piso de
+venta`. El servidor respondió que no podía confirmar el traspaso y que no se
+modificó el stock local. La pantalla conservó `10,00` en almacén y `0,00` en
+piso; no se añadió historial de traspaso. La inspección de solo lectura
+confirmó `almacen__pendientes=[]` y `almacen__pendientes_contexto=[]`.
+
+Este resultado es un **smoke test parcial de interfaz/hidratación**, no un
+fixture A/B persistente. QA sigue marcando `productos` como colección
+local/no subible para este contexto y el contrato servidor del traspaso queda
+bloqueado. No se hicieron ventas, cobros, movimientos de Caja ni cambios en
+producción.
+
+La evidencia detallada queda en
+[`ETAPA7_1_FIXTURE_B_QA_2026-10-26.md`](ETAPA7_1_FIXTURE_B_QA_2026-10-26.md).
+
+### Decisión actualizada
+
+- aislamiento A/B y retorno de contexto: **PASS**;
+- fixture local visible en TPV B: **PASS parcial**;
+- persistencia de producto/stock B: **BLOQUEADA**;
+- comparación de dataset equivalente: **NO CONCLUYENTE**;
+- Etapa 7 global: **ABIERTA**.
+
+El siguiente paso no es crear más datos desde la interfaz. Es identificar y
+usar, con autorización específica de QA, una vía de fixture servidor o
+corregir el contrato de persistencia/traspaso, y repetir después la matriz
+A1/B1 sin cobrar.
