@@ -112680,6 +112680,30 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         if (pagosError) throw pagosError;
         pagos = pagosData || [];
       }
+      let checkoutVentas = [];
+      let ticketsFiscalQr = [];
+      // P18 is deliberately scoped to the simulated QA tenant. Production
+      // keeps the existing checkout read path until its fiscal contract is
+      // separately approved and migrated.
+      if (empresaId === "QA-EMP-A" && checkoutIds.length) {
+        const { data: checkoutVentasData, error: checkoutVentasError } = await supabase
+          .from("checkout_ventas")
+          .select("checkout_id,venta_fiscal_id,importe_objetivo")
+          .eq("empresa_id", empresaId).eq("local_id", localActivoId)
+          .in("checkout_id", checkoutIds);
+        if (checkoutVentasError) throw checkoutVentasError;
+        checkoutVentas = checkoutVentasData || [];
+        const ventaFiscalIds = [...new Set(checkoutVentas.map((row) => row.venta_fiscal_id).filter(Boolean))];
+        if (ventaFiscalIds.length) {
+          const { data: qrData, error: qrError } = await supabase
+            .from("abc_fiscal_qr_documentos")
+            .select("id,checkout_id,venta_fiscal_id,documento_id,estado,modo,nif_emisor,codigo_serie,numero,fecha_expedicion,importe_total,qr_url,qr_payload,registro_hash")
+            .eq("empresa_id", empresaId).eq("local_id", localActivoId)
+            .in("venta_fiscal_id", ventaFiscalIds);
+          if (qrError) throw qrError;
+          ticketsFiscalQr = qrData || [];
+        }
+      }
       // Los intentos de pago llegan con abc_estado_pago_mixto_cuenta (más abajo): el navegador no puede leer pago_intentos directamente.
       let intentos = [];
       let incidencias = [];
@@ -112710,13 +112734,51 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         reservado: Number(resumenServidor?.reservado) || 0,
         efectivoRecibido: Number(resumenServidor?.efectivo_recibido) || 0,
         cambioEntregado: Number(resumenServidor?.cambio_entregado) || 0,
-        cajas: Array.isArray(resumenServidor?.cajas) ? resumenServidor.cajas : [],
-        checkouts: checkouts || [], pagos, intentos, incidencias, pendienteLocal,
+         cajas: Array.isArray(resumenServidor?.cajas) ? resumenServidor.cajas : [],
+         checkouts: checkouts || [], checkoutVentas, ticketsFiscalQr, pagos, intentos, incidencias, pendienteLocal,
         cobroIncierto: intentos.some((x3) => ["PENDIENTE", "AUTORIZADO", "DESCONOCIDO"].includes(String(x3.estado || "")))
       };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
+  }
+  async function prepararTicketsFiscalesQAF4(estado) {
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (empresaId !== "QA-EMP-A" || localActivoId !== "QA-A1") return estado;
+    if (!estado?.ok || String(estado.estado || "") !== "PAGADO") return estado;
+    if (estado.ticketFiscalQrReady && !estado.ticketFiscalQrError) return estado;
+    const checkoutVentas = Array.isArray(estado.checkoutVentas) ? estado.checkoutVentas : [];
+    if (!checkoutVentas.length) {
+      return { ...estado, ticketFiscalQrRequired: true, ticketFiscalQrReady: false, ticketFiscalQrError: "No se encontró la venta fiscal asociada al checkout." };
+    }
+    try {
+      if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+        throw new Error("El QR fiscal QA necesita conexión con Supabase.");
+      }
+      const supabase = await window.getSupabaseClient();
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      const fecha = /^\d{4}-\d{2}-\d{2}$/.test(String(contexto?.operatingDay || ""))
+        ? contexto.operatingDay : new Date().toISOString().slice(0, 10);
+      for (const row of checkoutVentas) {
+        if (!row.checkout_id || !row.venta_fiscal_id) throw new Error("La venta fiscal asociada al checkout está incompleta.");
+        const operationId = `p18.ticket.qr.${row.checkout_id}.${row.venta_fiscal_id}`;
+        await rpcA02ConRecuperacion(supabase, "abc_preparar_ticket_fiscal_qa", {
+          p_operation_id: operationId,
+          p_empresa_id: empresaId,
+          p_local_id: localActivoId,
+          p_venta_fiscal_id: row.venta_fiscal_id,
+          p_checkout_id: row.checkout_id,
+          p_fecha_expedicion: fecha
+        }, empresaId, localActivoId, operationId);
+      }
+      const actualizado = await leerEstadoCobroF4();
+      return { ...actualizado, ticketFiscalQrRequired: true, ticketFiscalQrReady: Array.isArray(actualizado?.ticketsFiscalQr) && actualizado.ticketsFiscalQr.length >= checkoutVentas.length };
+    } catch (error) {
+      return { ...estado, ticketFiscalQrRequired: true, ticketFiscalQrReady: false, ticketFiscalQrError: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function reintentarTicketFiscalQAF4() {
+    return prepararTicketsFiscalesQAF4(await leerEstadoCobroF4());
   }
   async function prepararBizumQAF4() {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para preparar Bizum QA." };
@@ -112818,7 +112880,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const estadoPrevio = await leerEstadoCobroF4();
       if (!estadoPrevio.ok) return estadoPrevio;
       const tuvoCheckout = Array.isArray(estadoPrevio.checkouts) && estadoPrevio.checkouts.length>0;
-      if (tuvoCheckout && Number(estadoPrevio.saldo) <= 0 && !estadoPrevio.cobroIncierto) return estadoPrevio;
+      if (tuvoCheckout && Number(estadoPrevio.saldo) <= 0 && !estadoPrevio.cobroIncierto) return await prepararTicketsFiscalesQAF4(estadoPrevio);
       let pendiente = leerPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
       const pendienteExistente = Boolean(pendiente);
       if (!pendiente && estadoPrevio.cobroIncierto) throw new Error("pago_estado_incierto_existente");
@@ -112864,7 +112926,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const saldo = Number(resumen?.saldo);
       if (!Number.isFinite(saldo) || saldo <= 0) {
         limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
-        return await leerEstadoCobroF4();
+        return await prepararTicketsFiscalesQAF4(await leerEstadoCobroF4());
       }
       if (pendiente.importeObjetivo == null) {
         pendiente.importeObjetivo = opciones?.importeObjetivo == null || opciones.importeObjetivo === ""
@@ -112934,7 +112996,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         }
         limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
         if (propinaResultado) {
-          const estadoConPropina = await leerEstadoCobroF4();
+          const estadoConPropina = await prepararTicketsFiscalesQAF4(await leerEstadoCobroF4());
           estadoConPropina.mensaje = propinaResultado.ok
             ? `Efectivo confirmado y cuenta pagada. Propina de €${Number(propinaResultado.importe).toFixed(2)} registrada; no se devuelve cambio.`
             : `Efectivo confirmado, pero la propina no se pudo registrar: ${propinaResultado.error} El cambio sigue pendiente de devolver.`;
@@ -112953,7 +113015,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (medio === "BIZUM" && estadoFinal.ok) {
         estadoFinal.mensaje = "Bizum iniciado en modo simulado (solo QA): el intento queda pendiente hasta que el adaptador de proveedor lo resuelva.";
       }
-      return estadoFinal;
+      return await prepararTicketsFiscalesQAF4(estadoFinal);
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -112999,7 +113061,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_importe: importe
       });
       if (error) throw error;
-      const estadoFinal = await leerEstadoCobroF4();
+      const estadoFinal = await prepararTicketsFiscalesQAF4(await leerEstadoCobroF4());
       return { ok: true, resultado: data, estado: estadoFinal, mensaje: "Pago simulado aprobado en QA." };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
@@ -113237,7 +113299,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_operation_id: confirmOperationId, p_empresa_id: empresaId, p_local_id: localActivoId,
         p_intento_id: intentoId, p_codigo: codigoLimpio
       }, empresaId, localActivoId, confirmOperationId);
-      const estadoFinal = await leerEstadoCobroF4();
+      const estadoFinal = await prepararTicketsFiscalesQAF4(await leerEstadoCobroF4());
       return {
         ok: true, resultado: confirmado, estado: estadoFinal,
         mensaje: `Vale ${confirmado?.codigo || codigoLimpio} aplicado: €${Number(confirmado?.importe_aplicado ?? importeAplicar).toFixed(2)}. Saldo restante del vale: €${Number(confirmado?.saldo_restante ?? 0).toFixed(2)}.`
@@ -113275,6 +113337,15 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (!equipoId) return { ok: false, error: "Elige la impresora." };
     if (!checkoutId) return { ok: false, error: "No se encontró el checkout de esta cuenta." };
     try {
+      let qrFiscal = null;
+      if (empresaId === "QA-EMP-A" && localActivoId === "QA-A1") {
+        const estadoFiscal = await leerEstadoCobroF4();
+        qrFiscal = Array.isArray(estadoFiscal?.ticketsFiscalQr)
+          ? estadoFiscal.ticketsFiscalQr.find((ticket) => String(ticket.checkout_id) === String(checkoutId)) || null : null;
+        if (!estadoFiscal?.ticketFiscalQrReady || !qrFiscal?.qr_url) {
+          return { ok: false, error: "El cobro está confirmado, pero el QR fiscal de QA todavía no está preparado. No se puede imprimir el ticket fiscal." };
+        }
+      }
       const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
       if (!hayConexion) return { ok: false, error: "Imprimir el ticket necesita conexión con el servidor." };
       const supabase = await window.getSupabaseClient();
@@ -113283,7 +113354,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_operation_id: operationId, p_empresa_id: empresaId, p_local_id: localActivoId,
         p_equipo_id: equipoId, p_checkout_id: checkoutId
       }, empresaId, localActivoId, operationId);
-      return { ok: true, mensaje: resultado?.mensaje || "Impresión simulada registrada." };
+      return { ok: true, qrFiscal, mensaje: resultado?.mensaje || "Impresión simulada registrada." };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -115484,7 +115555,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, aparcarCuentaA06, recuperarCuentaA06, listarCuentasRecuperablesA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, prepararBizumQAF4, resolverPagoSimuladoQAF4, emitirFacturaEmpresaF4, enviarTicketCorreoF4, emitirValeRegaloF4, consultarValeRegaloF4, pagarConValeRegaloF4, listarEquiposT7F4, imprimirTicketSimuladoF4, abrirCajonSimuladoF4, reintentarCobroF4, leerEstadoCobroF4, prepararTicketsFiscalesQAF4, reintentarTicketFiscalQAF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, unirCuentasA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -127345,6 +127416,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   async function imprimirTicketSimuladoT7F4UI() {
     if (procesandoImpresionT7F4 || typeof imprimirTicketSimuladoF4 !== "function") return;
     const checkoutId = Array.isArray(estadoCobroF4?.checkouts) ? estadoCobroF4.checkouts[0]?.id : null;
+    const qrFiscalActual = Array.isArray(estadoCobroF4?.ticketsFiscalQr)
+      ? estadoCobroF4.ticketsFiscalQr.find((ticket) => String(ticket.checkout_id) === String(checkoutId)) || null : null;
+    if (configEmpresa?.id === "QA-EMP-A" && (!estadoCobroF4?.ticketFiscalQrReady || !qrFiscalActual?.qr_url)) {
+      setErrorCobroF4("El cobro está confirmado, pero el QR fiscal de QA todavía no está preparado. No se puede imprimir el ticket fiscal.");
+      return;
+    }
     setProcesandoImpresionT7F4(true);
     setErrorCobroF4("");
     setMensajeCobroF4("");
@@ -127360,7 +127437,17 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         const producto = productos.find((p22) => p22.id === l22.productoId);
         return (l22.cantidad || 1) + " x " + (producto?.nombre || "Producto") + "    " + Number(l22.total || 0).toFixed(2) + "€";
       });
-      const resultadoPuente = await llamarPuenteLA("/imprimir", { lineas: lineasTicket, cortar: true }, puenteLAConfig);
+      const resultadoPuente = await llamarPuenteLA("/imprimir", {
+        lineas: lineasTicket,
+        qrFiscal: qrFiscalActual ? {
+          url: qrFiscalActual.qr_url,
+          numero: `${qrFiscalActual.codigo_serie}-${String(qrFiscalActual.numero).padStart(6, "0")}`,
+          fecha: qrFiscalActual.fecha_expedicion,
+          importe: qrFiscalActual.importe_total,
+          leyenda: "QR fiscal · simulador QA · no presentado a AEAT"
+        } : null,
+        cortar: true
+      }, puenteLAConfig);
       mensajeFinal += resultadoPuente.ok
         ? " Enviado también al Puente L&A."
         : " Aviso: el Puente L&A no respondió (" + resultadoPuente.error + ").";
@@ -127506,6 +127593,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const pagoDelUltimoIntento = ultimoIntento && Array.isArray(estado?.pagos)
       ? estado.pagos.find((p22) => String(p22.id) === String(ultimoIntento.pago_id)) || null
       : null;
+    const qrFiscal = Array.isArray(estado?.ticketsFiscalQr) ? estado.ticketsFiscalQr.find((ticket) => {
+      const checkoutId = estado?.checkouts?.[0]?.id;
+      return checkoutId ? String(ticket.checkout_id) === String(checkoutId) : true;
+    }) || null : null;
+    const esQaFiscal = configEmpresa?.id === "QA-EMP-A" && local?.id === "QA-A1";
+    const qrFiscalReady = !!(estado?.ticketFiscalQrReady && qrFiscal?.qr_url);
+    const qrFiscalSvg = qrFiscalReady && typeof window !== "undefined" && typeof window.LA_FISCAL_QR?.svgForUrl === "function"
+      ? window.LA_FISCAL_QR.svgForUrl(qrFiscal.qr_url, { size: 220 }) : "";
     const bloqueado = !!estado?.cobroIncierto;
     const importeVisible = importeCobroF4 === "" ? saldoVisible : Number(importeCobroF4);
     const recibidoVisible = efectivoRecibidoCobroF4 === "" ? null : Number(efectivoRecibidoCobroF4);
@@ -127607,6 +127702,20 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         ),
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: emitirFacturaEmpresaF4UI, disabled: procesandoFacturaF4 }, procesandoFacturaF4 ? "Emitiendo…" : "Emitir factura (modo simulador)")
       ) : null,
+      tieneCheckout && String(estado?.estado) === "PAGADO" && esQaFiscal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${qrFiscalReady ? "#8DBA8A" : "#D5A04A"}`, background: qrFiscalReady ? "#F0F8EF" : "#FFF8E8" }, "data-fiscal-qr-ticket": qrFiscalReady ? "ready" : "pending" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Ticket fiscal QR (QA)"),
+        qrFiscalReady ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-3" },
+            /* @__PURE__ */ import_react4.default.createElement("div", { style: { width: 132, minWidth: 132 }, dangerouslySetInnerHTML: { __html: qrFiscalSvg } }),
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } },
+              /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold", style: { color: C2.ink } }, "QR tributario preparado"),
+              /* @__PURE__ */ import_react4.default.createElement("div", null, "Factura simplificada · ", qrFiscal.codigo_serie, "-", String(qrFiscal.numero).padStart(6, "0")),
+              /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha: ", qrFiscal.fecha_expedicion, " · Importe: €", Number(qrFiscal.importe_total || 0).toFixed(2)),
+              /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1" }, "Verificación AEAT de pruebas externas. Simulador QA; no presentado a AEAT.")
+            )
+          )
+        ) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: "#7A4B00" } }, estado?.ticketFiscalQrError || "Cobro confirmado. Preparando el QR fiscal del ticket…", estado?.ticketFiscalQrError ? " No imprimas este ticket como factura simplificada." : "")
+      ) : null,
       tieneCheckout && String(estado?.estado) === "PAGADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mt-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Ticket por correo"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "T6 Hoja QA-6: envía una copia informativa de esta venta. No es un ticket fiscal ni sustituye al impreso."),
@@ -127620,7 +127729,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, puenteLAConfig.habilitado ? "T7 · Puente L&A activado: intenta imprimir de verdad en este ordenador, sin verificar todavía contra una impresora real." : "T7 Hoja QA-9 · modo simulador: no hay conexión real con el aparato todavía."),
         equiposImpresoraT7F4.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "No hay ninguna impresora de tickets registrada en Equipos del local.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end gap-2 mb-2" },
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Impresora" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: equipoImpresoraElegidoT7F4, onChange: (e2) => setEquipoImpresoraElegidoT7F4(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Elige una impresora…"), equiposImpresoraT7F4.map((eq) => /* @__PURE__ */ import_react4.default.createElement("option", { key: eq.id, value: eq.id }, eq.nombre)))),
-          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: imprimirTicketSimuladoT7F4UI, disabled: procesandoImpresionT7F4 || !equipoImpresoraElegidoT7F4 }, procesandoImpresionT7F4 ? "Imprimiendo…" : puenteLAConfig.habilitado ? "Imprimir ticket" : "Imprimir ticket (simulado)")
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: imprimirTicketSimuladoT7F4UI, disabled: procesandoImpresionT7F4 || !equipoImpresoraElegidoT7F4 || (esQaFiscal && !qrFiscalReady) }, procesandoImpresionT7F4 ? "Imprimiendo…" : esQaFiscal && !qrFiscalReady ? "Imprimir ticket (QR pendiente)" : puenteLAConfig.habilitado ? "Imprimir ticket" : "Imprimir ticket (simulado)")
         )
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
