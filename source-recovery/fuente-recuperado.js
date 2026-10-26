@@ -1125,18 +1125,19 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length, estadoCajaServer };
 }
 async function sincronizarContextoPm07(args) {
-  const { setProductos, esContextoVigente = () => true } = args || {};
+  const { setProductos, empresaId = null, esContextoVigente = () => true } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
+  if (!empresaId) return { ok: false, sinContexto: true };
   const supabase = await window.getSupabaseClient();
-  // Empresas, locales y localActivoId ya vienen del contexto seguro sembrado
-  // por ui-context-bridge. El bloque global de almacen_kv es legado y no debe
-  // ampliar el contexto filtrado de una cuenta de empleado.
-  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["productos"]);
+  // El contexto seguro ya ha resuelto la empresa activa. El filtro explícito
+  // evita que una respuesta tardía o un contexto anterior pueda reemplazar la
+  // colección visible al cambiar de A1 a B1 (o entre empresas).
+  const r2 = await supabase.from("almacen_kv").select("key,value").eq("empresa_id", empresaId).eq("key", "productos");
   if (r2.error) throw r2.error;
   const porClave = new Map((r2.data || []).map((fila) => [fila.key, fila.value]));
   const productosNube = porClave.get("productos");
   if (!esContextoVigente()) return { ok: false, obsoleto: true };
-  if (Array.isArray(productosNube) && productosNube.length && typeof setProductos === "function" && esContextoVigente()) setProductos(productosNube.filter((p3) => p3 && p3.id));
+  if (Array.isArray(productosNube) && typeof setProductos === "function" && esContextoVigente()) setProductos(productosNube.filter((p3) => p3 && p3.id));
   return { ok: true, productos: Array.isArray(productosNube) ? productosNube.length : 0 };
 }
 function SelectorLocalInformes({ locales = [], valor = "", onChange, empresas = [], empresaActivaId = "", onCambiarEmpresa }) {
@@ -3865,7 +3866,6 @@ function GestionAlmacen() {
   const [localActivoId, setLocalActivoId] = (0, import_react4.useState)(null);
   const [localInformeId, setLocalInformeId] = (0, import_react4.useState)("");
   const localActivoIdRefPm07 = (0, import_react4.useRef)(localActivoId);
-  const contextoPm07InicializadoRef = (0, import_react4.useRef)(false);
   const contextoPm07SolicitudRef = (0, import_react4.useRef)(0);
   const contextoPm07ClaveRef = (0, import_react4.useRef)("");
   const movimientosAutoritativosPendientesRef = (0, import_react4.useRef)(0);
@@ -3881,9 +3881,6 @@ function GestionAlmacen() {
     // cambio de local fuerza una recarga inmediata del contexto: nunca se
     // sigue usando en memoria el contexto resuelto para el local anterior.
     window.__localActivoIdParaContexto = typeof localActivoId === "string" && localActivoId ? localActivoId : null;
-    if (typeof window.__recargarContextoOperativo === "function") {
-      window.__recargarContextoOperativo();
-    }
   }, [localActivoId]);
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
@@ -3891,19 +3888,24 @@ function GestionAlmacen() {
     const localContexto = localActivoId ? String(localActivoId) : "";
     const localActual = locales.find((l22) => l22 && String(l22.id) === localContexto) || null;
     const empresaContexto = localActual?.empresaId ? String(localActual.empresaId) : empresas.length === 1 ? String(empresas[0]?.id || "") : "";
+    // Publicar ambos identificadores en el mismo efecto evita que el cambio
+    // de local consulte todavía la empresa anterior durante un render.
+    window.__localActivoIdParaContexto = localContexto || null;
+    window.__empresaActivaIdParaContexto = empresaContexto || null;
+    if (typeof window.__recargarContextoOperativo === "function") window.__recargarContextoOperativo();
     const claveContexto = claveContextoPm07({ empresaId: empresaContexto, localId: localContexto });
     const solicitud = contextoPm07SolicitudRef.current + 1;
     contextoPm07SolicitudRef.current = solicitud;
     contextoPm07ClaveRef.current = claveContexto;
     const esContextoVigente = () => activo && contextoPm07SolicitudRef.current === solicitud && contextoPm07ClaveRef.current === claveContexto && localActivoIdRefPm07.current === localActivoId;
     const perfilContextoListo = !!miPerfil?.rol;
-    const sincronizarContextoCompleto = perfilContextoListo && miPerfil.rol === "Propietario" && !contextoPm07InicializadoRef.current;
-    if (perfilContextoListo) contextoPm07InicializadoRef.current = true;
+    const sincronizarContextoCompleto = perfilContextoListo && miPerfil.rol === "Propietario";
     (async () => {
       try {
         if (sincronizarContextoCompleto) {
           await sincronizarContextoPm07({
             setProductos,
+            empresaId: empresaContexto,
             esContextoVigente
           });
         }
@@ -3924,7 +3926,6 @@ function GestionAlmacen() {
         const cajaSincronizada = await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones, empresaId: empresaContexto, localActivoId, esContextoVigente });
         if (esContextoVigente()) setEstadoCajaServerPM08(cajaSincronizada?.estadoCajaServer || null);
       } catch (e2) {
-        if (sincronizarContextoCompleto) contextoPm07InicializadoRef.current = false;
         if (activo) console.error("PM-08: no se pudo sincronizar contexto, stock o caja autoritativos", e2);
       }
     })();
