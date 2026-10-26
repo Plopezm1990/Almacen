@@ -9,10 +9,10 @@ Decisiones que cita: D12, D26, D28, D29, D31 (`F1_HOJA_DECISIONES_PEDRO_2026-10-
 
 ## 1. Resumen para Pedro
 
-Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de otras migraciones anteriores**: hay **85 migraciones candidatas** desde la A09 (24/9). La foto de producción del 3/10 encontró 10 aplicadas; las migraciones añadidas después de esa foto también requieren comprobación previa. Lo que pesa, por orden:
+Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de otras migraciones anteriores**: hay **69 migraciones candidatas** desde la A09 (24/9). La foto de producción del 3/10 encontró 10 aplicadas; las migraciones añadidas después de esa foto también requieren comprobación previa. Lo que pesa, por orden:
 
 1. **Ya sé en qué estado está producción** (foto del 3/10, solo lectura): tiene todo hasta B02-B03 (29/9) y nada posterior, ninguna migración a medias, y su registro coincide con sus objetos. **Una deriva pequeña:** las dos funciones de PM07 de producción son un borrador anterior (a una expresión regular le falta una barra invertida): hay que corregirlas con una migración aparte. Lleva sin actividad desde el 28/9.
-2. **12 de las 85 migraciones candidatas nunca se han aplicado en QA** (B06, B07, B09 y B10: proveedor de pagos, anticipos, liquidaciones, tarjeta). Solo se han probado en una base desechable de CI. Mi propuesta: **dejarlas fuera** del primer paquete.
+2. **12 de las 69 migraciones candidatas nunca se han aplicado en QA** (B06, B07, B09 y B10: proveedor de pagos, anticipos, liquidaciones, tarjeta). Solo se han probado en una base desechable de CI. Mi propuesta: **dejarlas fuera** del primer paquete.
 3. **Datos:** el volumen en producción es muy pequeño (0 pagos, 0 reembolsos, 30 eventos, 1 producto en el catálogo). PM07 y PM10 ya hicieron sus bootstraps y D13 no tiene reembolsos que marcar. Lo que sí pesa es que P3 pasa a leer el precio de carta **con IVA incluido** (D31, **sin confirmar con la asesoría**, que aún no tienes): cambia lo que se cobra. Mi propuesta: P3 y P3b **no** entran hasta que lo confirmes.
 4. **La pieza 5 retira tres roles** (Churrero/a, Básico, Estándar): **nadie los tiene en producción** (las 3 membresías son Propietario activo), así que no quita permisos a nadie; sí impide dar de alta a alguien con ellos.
 5. **PM09 está bloqueada** por la deriva de producción (faltan dos funciones y la RPC base de reverso). Es otro trabajo, previo, y no está hecho.
@@ -26,7 +26,7 @@ Tú decides al final (§12). Mientras tanto, **no se aplica nada**.
 - **Rama:** `claude/vigilant-hawking-uji8l4`, commit `c85ff0c` al escribir esto. **PR 118: borrador, «NO FUSIONAR»**, base `release`, 64 commits, 101 archivos (+21 576 / −249). Es un PR de **preview de QA**: no debe fusionarse (la aplicación solo reconoce como QA los previews de PR `deploy-preview-N--chic-entremet-9107cf…`; cualquier otra dirección usa producción).
 - **Contenido:** 4 archivos de aplicación (`fuente.js`, `source-recovery/fuente-recuperado.js`, `index-storage-bootstrap.js`, `ui-context-bridge.js`), las migraciones, las pruebas y la documentación.
 - **Recomendación:** **no fusionar el PR 118.** Cuando se autorice, abrir un **PR de promoción nuevo desde la última `release`**, con un candidato congelado (un commit exacto y el `sha256` de `fuente.js`), con las pruebas registradas en el manifiesto de CI y sin documentación de trabajo que no deba viajar. Hoy la rama figura «behind» respecto a `release`: habrá que traer lo nuevo de `release` y volver a probar.
-- **Migraciones candidatas:** 85 archivos desde `20260924160739` (A09) hasta `20261025110000` (corrección T8 de tipo de negocio). Lista completa en el apéndice A; las filas 47–85 son posteriores a la foto de bases del 3/10 y deben verificarse de nuevo antes de cualquier promoción.
+- **Migraciones candidatas:** 51 archivos desde `20260924160739` (A09) hasta `20261009112332` (alcance de sesión C12). Lista completa en el apéndice A; las filas 47–51 son posteriores a la foto de bases del 3/10 y deben verificarse de nuevo antes de cualquier promoción.
 
 ## 3. Lo que se sabe de producción, y lo que no
 
@@ -107,7 +107,7 @@ Lectura del código y de los informes de cada pieza (**no probado** en combinaci
 9. **D12:** política de 0 % del local productivo preparada (o la opción B decidida).
 10. **Ventana:** bloque P8: **sin cajas abiertas, sin reembolsos ni envíos pendientes, sin pedidos aún sin servir ni cancelar ni pagos en curso**; fuera del servicio. El 3/10 había **2 cuentas abiertas y 1 efecto pendiente** (con 5 días sin actividad): se miraron con tu permiso y son restos de la prueba A10 del 28/9; **no existe una operación del servidor para cerrar cuentas** (solo la fusión), así que «sin cuentas abiertas» no es un criterio útil. Pedro decidió dejarlas, con su comanda, como **restos conocidos** (sin escribir nada en producción); el bloque P8b las acepta por identificador (`F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md`, §3 bis).
 11. **Netlify (mirado en solo lectura el 4/10/2026, `F7_PROMOCION_PRODUCCION_DECISIONES_2026-10-03.md` §3 ter):** la rama de producción es **`release`**; el despliegue de producción actual es **`6abf43047ed8030008ffb5a9`** (commit `01f47bf`, publicado el 2/10/2026 05:37 UTC), al que se vuelve publicándolo de nuevo. El coste por despliegue sigue sin comprobar (según `A09_NETLIFY_QA_REVIEW_PROPOSAL_2026-09-24.md`, 15 créditos por despliegue de producción).
-12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **92 funciones** que las migraciones reemplazan). **La organización de producción está en el plan gratuito** (API de Supabase, 4/10/2026) y, según la documentación de Supabase, ese plan **no tiene copias diarias automáticas**. **Decisión 20 (Pedro, 4/10/2026): copia manual con la CLI de Supabase el mismo día de la ventana, antes de empezar** (`supabase db dump` de roles, esquema y datos, con la cadena «Session pooler» del botón Connect; hace falta Docker Desktop). La hace Pedro; los archivos se guardan fuera del repositorio (público) y en dos sitios; se anotan hora y tamaños (ninguno de 0 bytes). **Sin esa copia no se empieza.** **Confirmado el 4/10/2026 con Cowork en el panel de Supabase (solo lectura):** «Free Plan does not include project backups», Point in Time es un complemento de pago y no hay ninguna copia con fecha (decisión 18).
+12. **Copia de seguridad:** guardar la salida del bloque P4 (definición de las **80 funciones** que las migraciones reemplazan). **La organización de producción está en el plan gratuito** (API de Supabase, 4/10/2026) y, según la documentación de Supabase, ese plan **no tiene copias diarias automáticas**. **Decisión 20 (Pedro, 4/10/2026): copia manual con la CLI de Supabase el mismo día de la ventana, antes de empezar** (`supabase db dump` de roles, esquema y datos, con la cadena «Session pooler» del botón Connect; hace falta Docker Desktop). La hace Pedro; los archivos se guardan fuera del repositorio (público) y en dos sitios; se anotan hora y tamaños (ninguno de 0 bytes). **Sin esa copia no se empieza.** **Confirmado el 4/10/2026 con Cowork en el panel de Supabase (solo lectura):** «Free Plan does not include project backups», Point in Time es un complemento de pago y no hay ninguna copia con fecha (decisión 18).
 
 ## 9. Ejecución, paso a paso
 
@@ -168,9 +168,9 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 
 ---
 
-## Apéndice A · Las 85 migraciones candidatas, en orden
+## Apéndice A · Las 69 migraciones candidatas, en orden
 
-«Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Las filas 47–85 se añadieron después de esa foto y quedan pendientes de una nueva lectura de ambos registros.
+«Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Las filas 47–69 se añadieron después de esa foto y quedan pendientes de una nueva lectura de ambos registros.
 
 | # | Archivo | Nombre | Qué hace | Paquete | Registro en QA | Producción (3/10) |
 |---|---|---|---|---|---|---|
@@ -244,22 +244,6 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 | 67 | `20261019220000` | `pm13_p04_restaurar_rpc_ausencias` | PM13 P04: restauración correctora de las RPC de ausencias | Corrector PM13 | aplicada | aplicada |
 | 68 | `20261019223000` | `pm13_p05_guardas_rpc_ausencias_corrector` | PM13 P05: guardas correctoras para las RPC de ausencias | Corrector PM13 | aplicada | aplicada |
 | 69 | `20261020170000` | `pm13_p05_roles_fijos_pantallas_rpc_operacion` | PM13 P05: inicia la operación antes de auditar la configuración de pantallas de roles fijos | Punto 5.8 | pendiente de verificar | pendiente de verificar |
-| 70 | `20261011140000` | `abc_f4_b02b_qa_simulated_resolver` | B02b: resolutor simulado de pagos para QA | F4 | pendiente de verificar | pendiente de verificar |
-| 71 | `20261023190144` | `t6_bizum_qa_simulated_adapter` | T6: adaptador simulado de Bizum para QA | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 72 | `20261024070000` | `t6_propina_efectivo` | T6: registro de propina en efectivo y efecto explicado en caja | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 73 | `20261024090000` | `t6_factura_empresa_serie` | T6: creación de serie documental para factura a empresa | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 74 | `20261024100000` | `t6_ticket_correo` | T6: datos auténticos y registro de ticket enviado por correo | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 75 | `20261024110000` | `t6_ticket_correo_fix_fk_eventos` | T6: corrección de la referencia de operación del ticket por correo | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 76 | `20261024120000` | `t6_vale_regalo` | T6: emisión y canje de vales regalo | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 77 | `20261024130000` | `t6_vale_regalo_fix_gen_random_bytes` | T6: corrección del generador seguro del código de vale | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 78 | `20261024140000` | `t6_vale_regalo_fix_provider_reference` | T6: referencia idempotente por aplicación del vale | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 79 | `20261024150000` | `t6_bizum_operativo_simulador` | T6: Bizum explícito y resolución en simulador QA | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 80 | `20261024160000` | `t7_impresion_cajon_simulador` | T7: impresión de ticket y apertura de cajón en simulador | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 81 | `20261024170000` | `t7_fix_impresion_checkout_completado` | T7: corrección del estado real del checkout para imprimir | Etapa 5 | pendiente de verificar | no promover desde QA |
-| 82 | `20261024180000` | `t8_biblioteca_opciones_reutilizables` | T8: biblioteca de grupos, opciones y vínculos de producto | Etapa 6 | pendiente de verificar | no promover desde QA |
-| 83 | `20261024190000` | `t8_tarifa_horario_hora_feliz` | T8: tarifas de horario y precios de hora feliz | Etapa 6 | pendiente de verificar | no promover desde QA |
-| 84 | `20261025100000` | `t8_tipo_negocio_plantillas` | T8: tipo de negocio y plantillas de ejemplo | Etapa 6 | pendiente de verificar | no promover desde QA |
-| 85 | `20261025110000` | `t8_tipo_negocio_fix_omitidos` | T8: transparencia de grupos de plantilla omitidos | Etapa 6 | pendiente de verificar | no promover desde QA |
 
 Paquetes: F3/F4/F5 = «A · Base»; B06-B10 = «D · Proveedor de pagos»; P3 = «B · Catálogo con IVA»; Configuración = «C»; PM13 = «Punto 5.8».
 

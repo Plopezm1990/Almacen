@@ -144,10 +144,6 @@ function tarjetaDescuento() {
   return titulo ? titulo.parentElement.parentElement : null;
 }
 const botonDe = (tarjeta, t) => [...(tarjeta?.querySelectorAll('button') || [])].find((b) => b.textContent.trim() === t);
-async function abrirSeccionDescuento() {
-  const pestana = [...document.querySelectorAll('button[role="tab"]')].find((b) => b.textContent.trim() === 'Descuento');
-  await clic(pestana);
-}
 // cambiar un <select> controlado por React: el valor se fija con el setter nativo y se avisa con un evento «change»
 async function elegir(sel, valor) {
   Object.getOwnPropertyDescriptor(dom.window.HTMLSelectElement.prototype, 'value').set.call(sel, valor);
@@ -159,7 +155,6 @@ try {
     const env = await entorno();
     ok('A0 el entorno abre una cuenta y deja su contexto', env.abierta?.ok === true && !!env.ctx?.cuentaId, env.abierta);
     await montar(env);
-    await abrirSeccionDescuento();
     ok('A1 el TPV muestra la tarjeta «Descuento / cortesía» con su botón «Abrir»', !!botonDe(tarjetaDescuento(), 'Abrir'), texto().slice(0, 500));
     await clic(botonDe(tarjetaDescuento(), 'Abrir'));
     await esperar(250);
@@ -195,7 +190,6 @@ try {
     // sin descuentos: el historial lo dice
     const env = await entorno({ eventos: [], caja: [] });
     await montar(env);
-    await abrirSeccionDescuento();
     await clic(botonDe(tarjetaDescuento(), 'Abrir'));
     await esperar(250);
     const t = texto();
@@ -205,14 +199,12 @@ try {
     // errores: salen como TEXTO y la carga termina (antes: la pantalla se rompía o se quedaba colgada)
     let env = await entorno({ errorEventos: 'descuento_eventos_no_autorizado' });
     await montar(env);
-    await abrirSeccionDescuento();
     await clic(botonDe(tarjetaDescuento(), 'Abrir'));
     await esperar(250);
     let alerta = tarjetaDescuento()?.querySelector('[role="alert"]');
     ok('D1 sin permiso para ver el historial: aviso rojo en español, la carga termina y la pantalla sigue viva', !!alerta && alerta.textContent.includes('Tu perfil no tiene permiso para ver el historial de descuentos de esta cuenta.') && !alerta.textContent.includes('[object Object]') && !!botonDe(tarjetaDescuento(), 'Actualizar'), alerta?.textContent);
     env = await entorno({ errorDescuentos: { message: 'fallo_de_red_inesperado' } });
     await montar(env);
-    await abrirSeccionDescuento();
     await clic(botonDe(tarjetaDescuento(), 'Abrir'));
     await esperar(250);
     alerta = tarjetaDescuento()?.querySelector('[role="alert"]');
@@ -222,7 +214,6 @@ try {
     // la propia carga se puede repetir con «Actualizar»
     const env = await entorno();
     await montar(env);
-    await abrirSeccionDescuento();
     await clic(botonDe(tarjetaDescuento(), 'Abrir'));
     await esperar(250);
     await clic(botonDe(tarjetaDescuento(), 'Actualizar'));

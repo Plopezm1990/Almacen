@@ -122,11 +122,11 @@ const checks = {
   storage_pendientes_no_resube_ledger: storageBootstrap.includes('if (LEDGERS_RPC[key])'),
 
   // PM08 regresión: una normalización inicial de productos no puede salir
-  // antes de publicar empresa/local; cambiar de local después no debe emitir
-  // una RPC automática de toda la colección.
+  // antes de publicar empresa/local, y el guardado reactivo debe reintentarse
+  // cuando ese contexto se hidrata después de la lista.
   productos_bootstrap_publica_contexto: source.includes('window.__localActivoIdParaContexto = localInicial;') && source.includes('window.__empresaActivaIdParaContexto = localInicialObj?.empresaId || empresaLegacyUnicaId || null;') && source.includes('await saveKey("productos", productosFinales);'),
-  productos_reactivo_no_reactiva_por_contexto: source.includes('window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;') && source.includes('}, [productos, ready]);') && !source.includes('}, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);'),
-  productos_bundle_mantiene_guard: bundle.includes('window.__localActivoIdParaContexto = localInicial;') && bundle.includes('}, [productos, ready]);') && !bundle.includes('}, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);'),
+  productos_reactivo_depende_contexto: source.includes('window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;') && source.includes('}, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);'),
+  productos_bundle_mantiene_guard: bundle.includes('window.__localActivoIdParaContexto = localInicial;') && bundle.includes('}, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);'),
 };
 
 for (const [name, passed] of Object.entries(checks)) {

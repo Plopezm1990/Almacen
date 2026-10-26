@@ -23,11 +23,6 @@ group.add_argument(
     action="store_true",
     help="Regenera fuente-recuperado.js desde el runtime actual usando como ancla un baseline histórico con paridad exacta demostrada.",
 )
-group.add_argument(
-    "--sync-local",
-    action="store_true",
-    help="Regenera el espejo desde el sufijo de aplicación del fuente.js presente en este checkout.",
-)
 args = parser.parse_args()
 
 iconos = """ArrowLeftRight Bell Boxes Calculator CalendarClock CalendarDays CalendarRange Camera ChartColumn ChartLine ChevronRight CircleArrowDown CircleArrowUp CircleCheck ClipboardList Clock Cog Coins Download Droplet Ellipsis Eye EyeOff Factory FileText Files LoaderCircle LogIn LogOut Mail MessageCircle Minus Package Pencil Phone Plus Receipt RotateCcwClock ScanBarcode Search ShieldCheck ShoppingBag ShoppingCart Stethoscope Tags Trash2 TrendingUp TriangleAlert Truck Upload UserRound Users Wallet X""".split()
@@ -77,55 +72,6 @@ def require_markers(body):
 
 
 bundle_text = BUNDLE.read_text(encoding="utf-8")
-
-if args.sync_local:
-    # Algunos checkouts conservan la evidencia PM-01 pero no el objeto Git del
-    # commit histórico que esa evidencia cita. En ese caso no se puede aplicar
-    # --sync-current, aunque el bundle actual siga teniendo una frontera de
-    # aplicación estable. El espejo se reconstruye desde esa frontera y se
-    # verifica con el mismo criterio de sufijo exacto que usa --check.
-    bundle_lines = bundle_text.splitlines()
-    marcas_c2 = [i for i, line in enumerate(bundle_lines) if line.strip() == "var C2 = {"]
-    if len(marcas_c2) != 1:
-        raise SystemExit(f"SOURCE_RECOVERY_LOCAL_INVALID: se esperaba una sola frontera var C2 y hay {len(marcas_c2)}")
-    marca = marcas_c2[0]
-    cuerpo = "\n".join(bundle_lines[marca:]) + "\n"
-    require_markers(cuerpo)
-    if not bundle_text.endswith(cuerpo):
-        raise SystemExit("SOURCE_RECOVERY_LOCAL_INVALID: el cuerpo local no es el sufijo del bundle")
-
-    target_fuente_commit = git_text("log", "-1", "--format=%H", "--", "fuente.js").strip()
-    texto_recuperado = "\n".join(cabecera) + "\n" + cuerpo
-    OUT.write_text(texto_recuperado, encoding="utf-8")
-    escrito = OUT.read_text(encoding="utf-8")
-    cuerpo_escrito = recovered_body(escrito)
-    if cuerpo_escrito != cuerpo or not bundle_text.endswith(cuerpo_escrito):
-        raise SystemExit("SOURCE_RECOVERY_LOCAL_INVALID: el espejo escrito no conserva el sufijo exacto")
-
-    sha_cuerpo = hashlib.sha256(cuerpo.encode("utf-8")).hexdigest()
-    info = {
-        "pm": "PM-01",
-        "commit_rama_validada": target_fuente_commit,
-        "bundle": "fuente.js",
-        "bundle_bytes": BUNDLE.stat().st_size,
-        "marca_fuente_linea": marca + 1,
-        "lineas_cuerpo_aplicacion": len(bundle_lines) - marca,
-        "bytes_cuerpo_aplicacion": len(cuerpo.encode("utf-8")),
-        "sha256_cuerpo_bundle": sha_cuerpo,
-        "sha256_cuerpo_recuperado": sha_cuerpo,
-        "paridad_cuerpo_exacta": True,
-        "fuente_recuperada_bytes": OUT.stat().st_size,
-        "nota": "Espejo regenerado desde la frontera var C2 del bundle local porque el objeto Git del baseline histórico no está disponible en este checkout."
-    }
-    EVIDENCIA.write_text(json.dumps(info, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
-    print(f"SOURCE_RECOVERY_LOCAL_TARGET_FUENTE_COMMIT={target_fuente_commit}")
-    print(f"SOURCE_RECOVERY_LOCAL_BODY_START_LINE={marca + 1}")
-    print(f"LINEAS_CUERPO={len(bundle_lines) - marca}")
-    print(f"BYTES_CUERPO={len(cuerpo.encode('utf-8'))}")
-    print(f"SHA256_CUERPO={sha_cuerpo}")
-    print("PARIDAD_CUERPO_EXACTA=1")
-    print("SOURCE_RECOVERY_SYNC_LOCAL=PASS")
-    raise SystemExit(0)
 
 if args.sync_current:
     # Baseline elegido porque contiene evidencia histórica de paridad exacta
