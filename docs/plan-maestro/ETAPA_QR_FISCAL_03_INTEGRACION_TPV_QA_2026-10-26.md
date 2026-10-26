@@ -23,10 +23,11 @@ Conectar un cobro completado del TPV con el documento fiscal QR simulado de la E
 - `node --check fuente.js`: correcto.
 - `node --check fiscal-qr.js`: correcto.
 - Render de URL AEAT de pruebas en Node: correcto; SVG con `viewBox`, `path` y más de 100 módulos oscuros.
-- `node tests/pm18/p03-qr-fiscal-qa-contract.mjs`: pendiente de ejecutar en este cierre.
-- `node tests/pm18/p04-qr-renderer-contract.mjs`: pendiente de ejecutar en este cierre.
+- `node tests/pm18/p03-qr-fiscal-qa-contract.mjs`: correcto (`PASS: contrato QR fiscal QA P18`).
+- `node tests/pm18/p04-qr-renderer-contract.mjs`: correcto (`PASS: renderer e integración QR fiscal TPV QA P18`).
 - `git diff --check`: correcto en la validación inicial.
-- Prueba e2e en navegador QA: pendiente de ejecutar tras publicar el commit en el preview.
+- Prueba e2e en navegador QA: correcta en el preview de PR 175. Se creó una venta de `Agua 50 cl (QA)` por 1,00 €, se confirmó el cobro en efectivo y el TPV mostró `QR tributario preparado`, el QR visible, serie `TPV`, número `000001`, fecha `2026-10-26` e importe `€ 1.00`. El botón de impresión permaneció condicionado a la selección de una impresora.
+- Verificación read-only en Supabase QA: correcta. La fila quedó en `PREPARADO_SIMULADOR`, con `modo=SIMULADOR`, importe `1.00000000` y `qr_url` del endpoint AEAT de pruebas. La operación idempotente quedó asociada al checkout y a la venta fiscal.
 
 ## Límites fiscales
 
@@ -34,7 +35,9 @@ La URL usa el endpoint AEAT de pruebas externas definido en el contrato de la Et
 
 ## Estado
 
-**IMPLEMENTACIÓN COMPLETADA; cierre formal pendiente de pruebas de contrato y e2e QA.**
+**ETAPA 03 TERMINADA EN QA.**
+
+El flujo queda cerrado para el entorno de pruebas: el servidor prepara el documento y la URL; el navegador genera un QR real a partir de esa URL; el ticket lo muestra; y la impresión no se habilita mientras falte el documento QR o una impresora seleccionada. Producción no fue consultada ni modificada.
 
 ## Siguiente etapa
 
