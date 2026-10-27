@@ -23,5 +23,8 @@ check("MIGRATION_STATUS_FUNCTION", migration.includes("abc_c07d_estado_configura
 check("MIGRATION_AUTHENTICATED_ONLY", migration.includes("grant execute on function public.abc_c07d_estado_configuracion_emision(text, text, text) to authenticated"));
 check("MIGRATION_NO_AEAT_TRANSPORT", !migration.match(/https?:\/\/|agenciatributaria|tike-cont|private_key|client_secret/i));
 check("MIGRATION_CREDENTIALS_REDUCED_TO_BOOLEAN", migration.includes("credential_configured") && migration.includes("credential_ref is not null"));
+check("QA_FIXTURE_READY_SCOPED", runtime.includes('"c07d-d2-4-ready"') && runtime.includes("deploy-preview-\\d+--"));
+check("QA_FIXTURE_BLOCKED_SCOPED", runtime.includes('"c07d-d2-4-blocked"') && runtime.includes('"RECTIFICATIVA"'));
+check("QA_FIXTURE_NO_PAYMENT_RPC", runtime.includes("c07dD24EstadoCobroFixtureInicial") && runtime.includes("return () => { activo = false; }"));
 
 console.log("C07D_D2_3_FRONTEND_CONTRACT=PASS");

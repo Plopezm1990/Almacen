@@ -123194,6 +123194,56 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return null;
     }
   }
+  function c07dD24FixturePermitido() {
+    try {
+      const host = window.location.hostname;
+      const qa = new URLSearchParams(window.location.search).get("qa");
+      const hostPermitido = host === "localhost" || host === "127.0.0.1" || /^deploy-preview-\d+--/u.test(host);
+      return hostPermitido && ["c07d-d2-4-ready", "c07d-d2-4-blocked"].includes(qa) ? qa : null;
+    } catch {
+      return null;
+    }
+  }
+  function c07dD24TipoDocumentoFixture() {
+    return c07dD24FixturePermitido() === "c07d-d2-4-blocked" ? "RECTIFICATIVA" : "FACTURA";
+  }
+  function c07dD24PedidoFixtureInicial() {
+    if (!c07dD24FixturePermitido()) return null;
+    return {
+      ok: true,
+      pedidoId: "qa-c07d-d2-4-pedido",
+      cuentaId: "qa-c07d-d2-4-cuenta",
+      pedidoVersion: 1,
+      pedidoEstado: "ENVIADO",
+      estado: "ENVIADO",
+      total: 5.5,
+      totalServidor: 5.5,
+      lineas: [{ id: "qa-c07d-d2-4-linea", productoId: productos?.[0]?.id || "qa-fiscal-producto-a", cantidad: 1, total: 5.5, ingresoUnitario: 5, ivaVentaAplicado: 10 }],
+      currencyCode: "EUR",
+      modalidad: "MESA"
+    };
+  }
+  function c07dD24EstadoCobroFixtureInicial() {
+    if (!c07dD24FixturePermitido()) return null;
+    return {
+      ok: true,
+      disponible: true,
+      estado: "PENDIENTE",
+      total: 5.5,
+      confirmado: 0,
+      saldo: 5.5,
+      reservado: 0,
+      efectivoRecibido: 0,
+      cambioEntregado: 0,
+      checkouts: [{ id: "qa-c07d-d2-4-checkout", estado: "ABIERTO" }],
+      pagos: [],
+      intentos: [],
+      incidencias: [],
+      pendienteLocal: false,
+      cobroIncierto: false,
+      fiscal: null
+    };
+  }
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -123613,7 +123663,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
   const inputEscaneoRef = (0, import_react4.useRef)(null);
-  const [estadoCobroF4, setEstadoCobroF4] = (0, import_react4.useState)(null);
+  const [estadoCobroF4, setEstadoCobroF4] = (0, import_react4.useState)(() => c07dD24EstadoCobroFixtureInicial());
   const [cargandoCobroF4, setCargandoCobroF4] = (0, import_react4.useState)(false);
   const [configFiscalC07D, setConfigFiscalC07D] = (0, import_react4.useState)(null);
   const [cargandoConfigFiscalC07D, setCargandoConfigFiscalC07D] = (0, import_react4.useState)(false);
@@ -123658,7 +123708,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [enviandoVenta, setEnviandoVenta] = (0, import_react4.useState)(false);
   const [procesandoA05, setProcesandoA05] = (0, import_react4.useState)(false);
   const [errorA05, setErrorA05] = (0, import_react4.useState)("");
-  const [pedidoOperativoA05, setPedidoOperativoA05] = (0, import_react4.useState)(null);
+  const [pedidoOperativoA05, setPedidoOperativoA05] = (0, import_react4.useState)(() => c07dD24PedidoFixtureInicial());
   const [borradorCargadoA06, setBorradorCargadoA06] = (0, import_react4.useState)(false);
   const [estadoBorradorA06, setEstadoBorradorA06] = (0, import_react4.useState)({ estado: "VACIO", lineas: [] });
   const [conflictoA06, setConflictoA06] = (0, import_react4.useState)(null);
@@ -123734,6 +123784,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
   (0, import_react4.useEffect)(() => {
     let activo = true;
+    const fixture = c07dD24PedidoFixtureInicial();
+    if (fixture) {
+      setPedidoOperativoA05(fixture);
+      return () => { activo = false; };
+    }
     const localPersistido = typeof leerPedidoOperativoA05 === "function" ? leerPedidoOperativoA05() : null;
     Promise.resolve(localPersistido).then((pedido) => {
       if (activo) setPedidoOperativoA05(pedido || null);
@@ -125002,7 +125057,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return () => { activo = false; };
     }
     setCargandoConfigFiscalC07D(true);
-    Promise.resolve(leerConfiguracionEmisionC07D("FACTURA")).then((resultado) => {
+    Promise.resolve(leerConfiguracionEmisionC07D(c07dD24TipoDocumentoFixture())).then((resultado) => {
       if (!activo) return;
       setConfigFiscalC07D(resultado || { ok: false, error: "No se pudo comprobar la configuración fiscal." });
       setCargandoConfigFiscalC07D(false);
@@ -125016,6 +125071,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
   (0, import_react4.useEffect)(() => {
     let activo = true;
+    const fixture = c07dD24EstadoCobroFixtureInicial();
+    if (fixture) {
+      setEstadoCobroF4(fixture);
+      setCargandoCobroF4(false);
+      setErrorCobroF4("");
+      return () => { activo = false; };
+    }
     if (!pedidoOperativoA05?.cuentaId || typeof leerEstadoCobroF4 !== "function") {
       setEstadoCobroF4(null);
       setErrorCobroF4("");
