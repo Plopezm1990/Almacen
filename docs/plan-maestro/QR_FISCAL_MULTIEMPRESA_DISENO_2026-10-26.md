@@ -2,7 +2,7 @@
 
 Fecha de investigación: 26/10/2026. Decisión de producto: Pedro solicita fiscalidad propia para cada empresa y su asesoría.
 
-Estado: C07-A implementado localmente y C07-B implementado en código en un PR de trabajo; pendientes CI, ensayo QA y cualquier conexión fiscal. Este documento no acredita conformidad fiscal ni activa facturación.
+Estado: C07-A y C07-B validados en QA; backend C07-C validado en QA y su interfaz preparada localmente; la emisión real sigue bloqueada. Este documento no acredita conformidad fiscal ni activa facturación.
 
 ## 1. Decisión de arquitectura
 
@@ -144,7 +144,7 @@ La integración de borrado de empresas debe revisarse antes de aplicar: las nuev
 
 1. **C07-A:** investigación, modelo y borradores multiempresa; revisión del PR y contrato nativo.
 2. **C07-B:** panel de configuración con datos del servidor, estados claros, conflictos de versión y cambios de empresa sin herencia de caché. Ensayo QA y ciclo de baja/purga de tablas nuevas.
-3. **C07-C:** acceso delegado de asesoría y evidencia de representación; custodia y renovación de credenciales.
+3. **C07-C:** acceso delegado de asesoría y evidencia de representación; backend validado en QA, interfaz pendiente de Deploy Preview, sin custodia ni activación de credenciales.
 4. **C07-D:** emisión, series por emisor, registro y hash encadenado; transporte y cola por obligado. Primero adaptador VERI*FACTU en pruebas.
 5. **C07-E:** QR en pantalla/PDF, cotejo oficial, errores, rectificaciones, concurrencia y evidencias con dos empresas.
 6. **C07-F:** revisión de conformidad del producto, declaración responsable por versión y activación específica por empresa. Ensayo físico al disponer de hardware.
@@ -153,7 +153,7 @@ Se cierra el punto de QR digital cuando existe una factura consistente, un regis
 
 El régimen, los tipos de IVA y los plazos legales se confirman al activar cada empresa sobre normativa vigente. No se convierten fechas históricas del plan en constantes del programa. La facturación electrónica B2B y el SII son circuitos que requieren su propio alcance.
 
-**Siguiente entrega concreta: validar C07-B en CI y QA; la pantalla «Fiscalidad y AEAT» ya está conectada en código a los borradores, pero no se ha aplicado la migración a QA ni producción.**
+**C07-B queda validado en QA y el backend C07-C también. Antes del cierre visual de C07-C falta publicar el commit en un Deploy Preview y probar la pantalla con dos cuentas. Después, la siguiente entrega será C07-D: series por emisor, registro, hash encadenado y cola por obligado, todavía sin transporte real.**
 
 ## 11. Estado de implementación de C07-B
 
@@ -170,6 +170,6 @@ La primera implementación del panel está contenida en el PR de trabajo #180, s
 
 El listado de emisores requiere Propietario global de la empresa y solo entrega metadatos del emisor vinculado al local. La lectura y el guardado del borrador mantienen el control más estricto de C07-A. Esta diferencia es deliberada: consultar el selector no autoriza a modificar la configuración común.
 
-La migración `20261026182012_abc_fiscal_multiempresa_panel.sql` sigue siendo local y no se ha aplicado en QA ni producción. No incluye certificados, claves privadas, contraseñas, endpoints libres, activación, transporte ni remisión a AEAT. El contrato local PGlite valida 41 comprobaciones; el contrato PostgreSQL nativo queda delegado al CI porque este entorno no tiene instalado el cliente `pg`.
+La migración `20261026182012_abc_fiscal_multiempresa_panel.sql` se aplicó únicamente en QA y se verificó con propietarios reales de dos empresas ficticias. No incluye certificados, claves privadas, contraseñas, endpoints libres, activación, transporte ni remisión a AEAT. El contrato local PGlite valida 41 comprobaciones; además, la prueba remota de QA confirmó listado, lectura, guardado, aislamiento y rechazo de acceso cruzado.
 
-**Siguiente paso obligatorio:** esperar CI verde del PR #180 y aplicar después únicamente la migración C07-A/B en QA, con JWT reales de dos empresas y pruebas del cambio de empresa antes de considerar C07-B terminada.
+**C07-B está terminada en QA y el backend de C07-C está validado en QA.** Ninguna de estas migraciones se ha promovido a producción. El resultado de C07-C está en `C07_C_QA_RESULTADO_2026-10-27.md`; falta el Deploy Preview de la interfaz. El siguiente paso, después de esa comprobación visual, es C07-D.

@@ -175,7 +175,7 @@ assert.match(comp, /await cargar\(true\);\s+\}\s+\};\s+const verRetirados/, "tra
 const fiscal = comp.slice(comp.indexOf("var FISCAL_CONFIG_INICIAL ="), comp.indexOf("function ConfiguracionLocal("));
 assert.ok(fiscal.length > 1000, "existe el panel Fiscalidad y AEAT");
 assert.deepEqual([...new Set([...fiscal.matchAll(/configRpc\("([a-z_0-9]+)"/g)].map((m) => m[1]))].sort(),
-  ["abc_fiscal_guardar_borrador", "abc_fiscal_leer_borrador", "abc_fiscal_listar_emisores"], "el panel usa solo las tres RPC fiscales");
+  ["abc_fiscal_guardar_borrador", "abc_fiscal_guardar_representacion", "abc_fiscal_invitar_asesoria", "abc_fiscal_leer_borrador", "abc_fiscal_leer_representacion", "abc_fiscal_listar_delegaciones", "abc_fiscal_listar_emisores", "abc_fiscal_revocar_delegacion"], "el panel usa solo las RPC fiscales autorizadas");
 assert.doesNotMatch(fiscal, /\.from\(|\.insert\(|\.update\(|\.delete\(|\.upsert\(/, "el panel fiscal no accede a tablas directamente");
 assert.match(fiscal, /p_operation_id: configUuid\(\)/, "cada guardado fiscal usa un UUID nuevo");
 assert.match(fiscal, /p_version_esperada: Number\(detalle\.version \|\| 0\)/, "el guardado aplica control optimista de versión");
@@ -185,12 +185,30 @@ assert.match(fiscal, /\[empresaId, localId, emisorId\]/, "el detalle depende del
 assert.match(fiscal, /No convierte el TPV en sistema fiscal, no envía a la AEAT y no admite certificados, claves privadas ni contraseñas\./);
 assert.match(fiscal, /Conexión: no configurada · Emisión: deshabilitada/);
 assert.doesNotMatch(fiscal, /p_(?:certificado|clave_privada|password|endpoint):/, "no existe ningún parámetro cliente para secretos o destinos");
+assert.match(fiscal, /data-fiscal-delegacion/, "el panel muestra el acceso delegado");
+assert.match(fiscal, /data-fiscal-representacion/, "el panel muestra los metadatos de representación");
+assert.match(fiscal, /envío de correo queda pendiente/, "la invitación no finge haber enviado un correo");
+assert.match(fiscal, /Emisión: deshabilitada/, "C07-C mantiene la emisión deshabilitada");
 const migPanel = lf(await read("supabase/migrations/20261026182012_abc_fiscal_multiempresa_panel.sql"));
 assert.match(migPanel, /create (?:or replace )?function public\.abc_fiscal_listar_emisores\(p_empresa_id text, p_local_id text\)/);
 assert.match(migPanel, /grant execute on function public\.abc_fiscal_listar_emisores\(text,text\) to authenticated;/);
 assert.match(migPanel, /revoke all on function public\.abc_fiscal_listar_emisores\(text,text\) from public,anon,authenticated,service_role;/);
 assert.match(migPanel, /'emision_habilitada',false/);
 assert.doesNotMatch(migPanel.slice(migPanel.indexOf("create function public.abc_fiscal_listar_emisores"), migPanel.indexOf("-- Las revisiones")), /b\.configuracion/, "el listado no devuelve la configuración ni secretos");
+const migDelegacion = lf(await read("supabase/migrations/20261027110000_abc_fiscal_multiempresa_delegacion.sql"));
+const migAceptacion = lf(await read("supabase/migrations/20261027111500_abc_fiscal_multiempresa_delegacion_accept.sql"));
+const migRepresentacionRead = lf(await read("supabase/migrations/20261027113000_abc_fiscal_multiempresa_representacion_read.sql"));
+const migLifecycle = lf(await read("supabase/migrations/20261027114500_abc_fiscal_multiempresa_delegacion_lifecycle_checks.sql"));
+assert.match(migDelegacion, /create table private\.abc_fiscal_delegaciones/);
+assert.match(migDelegacion, /create table private\.abc_fiscal_representaciones/);
+assert.match(migDelegacion, /alter table private\.abc_fiscal_delegaciones enable row level security/);
+assert.match(migDelegacion, /secret|clave privada|certificado/i, "la migración deja explícita la prohibición de secretos");
+assert.match(migAceptacion, /create function public\.abc_fiscal_aceptar_delegacion/);
+assert.match(migAceptacion, /FISCAL_DELEGACION_IDENTIDAD_NO_COINCIDE/);
+assert.match(migAceptacion, /abc_fiscal_config_puede_guardar/);
+assert.match(migRepresentacionRead, /create function public\.abc_fiscal_leer_representacion/);
+assert.match(migLifecycle, /abc_fiscal_delegaciones_accepted_data_check/);
+assert.match(migLifecycle, /abc_fiscal_delegaciones_revoked_data_check/);
 
 // 6. El contrato de ejecución existe y cubre los casos exigidos.
 const runtime = await read("tests/cfg/cfg6-ui-runtime.mjs");

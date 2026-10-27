@@ -102182,7 +102182,16 @@ var CONFIG_ERRORES = {
   FISCAL_CONFIG_EMAIL_INVALIDO: "Revisa el correo electrónico de la asesoría.",
   FISCAL_CONFIG_NIF_FORMATO_INVALIDO: "El NIF del presentador debe tener nueve caracteres alfanuméricos.",
   FISCAL_CONFIG_AMBITO_INCOMPATIBLE: "La modalidad VeriFactu o no VeriFactu solo puede elegirse para AEAT y una empresa sujeta al RRSIF.",
-  FISCAL_CONFIG_REPRESENTACION_INCOMPATIBLE: "El canal y la forma de representación elegidos no son compatibles."
+  FISCAL_CONFIG_REPRESENTACION_INCOMPATIBLE: "El canal y la forma de representación elegidos no son compatibles.",
+  FISCAL_DELEGACION_NO_AUTORIZADO: "No tienes autorización para este emisor fiscal.",
+  FISCAL_DELEGACION_EMAIL_INVALIDO: "Revisa el correo de la invitación.",
+  FISCAL_DELEGACION_YA_INVITADA: "Ya existe una invitación pendiente para ese correo.",
+  FISCAL_DELEGACION_EXPIRACION_INVALIDA: "La caducidad de la invitación no es válida.",
+  FISCAL_DELEGACION_IDENTIDAD_NO_COINCIDE: "La cuenta conectada no coincide con el correo invitado.",
+  FISCAL_DELEGACION_CADUCADA: "La invitación ya ha caducado.",
+  FISCAL_DELEGACION_ESTADO_INVALIDO: "La invitación ya no está disponible.",
+  FISCAL_REPRESENTACION_EVIDENCIA_REQUERIDA: "Hace falta una referencia y la huella de la evidencia externa.",
+  FISCAL_REPRESENTACION_FECHAS_INVALIDAS: "Las fechas de vigencia no son coherentes."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -103404,6 +103413,9 @@ var FISCAL_CONFIG_OPCIONES = {
   representacion: [["PENDIENTE", "Pendiente de acreditar"], ["PROPIO", "Certificado propio"], ["APODERAMIENTO", "Apoderamiento"], ["COLABORACION_SOCIAL", "Colaboración social"]],
   tipo_factura: [["PENDIENTE", "Pendiente de revisar"], ["SIMPLIFICADA", "Factura simplificada cuando proceda"], ["COMPLETA", "Factura completa"]]
 };
+var FISCAL_DELEGACION_PERMISOS = [["CONSULTAR", "Consultar"], ["PROPONER", "Proponer cambios"], ["VALIDAR_SITUACION", "Validar situación comunicada"]];
+var FISCAL_REPRESENTACION_TIPOS = [["PENDIENTE", "Pendiente de acreditar"], ["APODERAMIENTO", "Apoderamiento"], ["COLABORACION_SOCIAL", "Colaboración social"]];
+var FISCAL_REPRESENTACION_ESTADOS = [["PENDIENTE", "Pendiente"], ["ACREDITADA", "Acreditada externamente"], ["REVOCADA", "Revocada"], ["CADUCADA", "Caducada"]];
 function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
   const h = import_react4.default.createElement;
   return h(Field, { label: etiqueta }, h("select", {
@@ -103422,6 +103434,12 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   const [guardando, setGuardando] = (0, import_react4.useState)(false);
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [delegaciones, setDelegaciones] = (0, import_react4.useState)([]);
+  const [invitacion, setInvitacion] = (0, import_react4.useState)({ email: "", permiso: "CONSULTAR", dias: "30" });
+  const [representacion, setRepresentacion] = (0, import_react4.useState)({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" });
+  const [c07cDisponible, setC07cDisponible] = (0, import_react4.useState)(true);
+  const [guardandoDelegacion, setGuardandoDelegacion] = (0, import_react4.useState)(false);
+  const [guardandoRepresentacion, setGuardandoRepresentacion] = (0, import_react4.useState)(false);
   const listaSolicitud = (0, import_react4.useRef)(0);
   const detalleSolicitud = (0, import_react4.useRef)(0);
   const reiniciarDetalle = () => { setDetalle(null); setForm({ ...FISCAL_CONFIG_INICIAL }); };
@@ -103450,6 +103468,20 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
     return () => { ++listaSolicitud.current; ++detalleSolicitud.current; };
   }, [empresaId, localId]);
   (0, import_react4.useEffect)(() => { if (emisorId) cargarDetalle(emisorId); else reiniciarDetalle(); }, [empresaId, localId, emisorId]);
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (!emisorId) { setDelegaciones([]); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); return () => { activo = false; }; }
+    setC07cDisponible(true);
+    Promise.all([
+      configRpc("abc_fiscal_listar_delegaciones", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }),
+      configRpc("abc_fiscal_leer_representacion", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId })
+    ]).then(([r2, r3]) => {
+      if (!activo) return;
+      setDelegaciones(Array.isArray(r2?.delegaciones) ? r2.delegaciones : []);
+      setRepresentacion({ tipo: r3?.tipo || "PENDIENTE", estado: r3?.estado || "PENDIENTE", referencia_opaca: r3?.referencia_opaca || "", evidencia_sha256: r3?.evidencia_sha256 || "", vigente_desde: r3?.vigente_desde || "", vigente_hasta: r3?.vigente_hasta || "" });
+    }).catch(() => { if (activo) setC07cDisponible(false); });
+    return () => { activo = false; };
+  }, [empresaId, localId, emisorId]);
   const campo = (clave, valor) => setForm((actual) => ({ ...actual, [clave]: valor }));
   const guardar = async () => {
     setError(""); setConfirmacion("");
@@ -103467,6 +103499,39 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
       if (String(e2?.message || e2 || "").includes("FISCAL_CONFIG_VERSION_OBSOLETA")) await cargarDetalle(emisorId);
       setError(configMensajeError(e2));
     } finally { setGuardando(false); }
+  };
+  const invitarAsesoria = async () => {
+    const email = String(invitacion.email || "").trim().toLowerCase();
+    const dias = Number(invitacion.dias);
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Escribe un correo válido para la invitación.");
+    if (!Number.isInteger(dias) || dias < 1 || dias > 180) return setError("La invitación puede durar entre 1 y 180 días.");
+    setError(""); setConfirmacion(""); setGuardandoDelegacion(true);
+    try {
+      const r2 = await configRpc("abc_fiscal_invitar_asesoria", { p_operation_id: configUuid(), p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId, p_email: email, p_permiso: invitacion.permiso, p_expira_at: new Date(Date.now() + dias * 86400000).toISOString() });
+      setInvitacion((actual) => ({ ...actual, email: "" }));
+      setDelegaciones((actual) => [r2, ...actual]);
+      setConfirmacion("Invitación creada. El envío de correo queda pendiente y aceptar la invitación no acredita representación ante la AEAT.");
+    } catch (e2) { setError(configMensajeError(e2)); }
+    finally { setGuardandoDelegacion(false); }
+  };
+  const revocarAsesoria = async (delegacion) => {
+    setError(""); setConfirmacion(""); setGuardandoDelegacion(true);
+    try {
+      const r2 = await configRpc("abc_fiscal_revocar_delegacion", { p_operation_id: configUuid(), p_empresa_id: empresaId, p_local_id: localId, p_delegacion_id: delegacion.id });
+      setDelegaciones((actual) => actual.map((item) => item.id === delegacion.id ? { ...item, ...r2 } : item));
+      setConfirmacion("Acceso revocado. Esto no revoca por sí solo la representación tributaria externa.");
+    } catch (e2) { setError(configMensajeError(e2)); }
+    finally { setGuardandoDelegacion(false); }
+  };
+  const guardarRepresentacion = async () => {
+    const r2 = representacion;
+    if (r2.tipo !== "PENDIENTE" && (!r2.referencia_opaca.trim() || !/^[0-9a-f]{64}$/i.test(r2.evidencia_sha256.trim()))) return setError("Para registrar una representación hace falta una referencia opaca y una huella SHA-256 de 64 caracteres.");
+    setError(""); setConfirmacion(""); setGuardandoRepresentacion(true);
+    try {
+      await configRpc("abc_fiscal_guardar_representacion", { p_operation_id: configUuid(), p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId, p_tipo: r2.tipo, p_estado: r2.tipo === "PENDIENTE" ? "PENDIENTE" : r2.estado, p_referencia_opaca: r2.tipo === "PENDIENTE" ? null : r2.referencia_opaca.trim(), p_evidencia_sha256: r2.tipo === "PENDIENTE" ? null : r2.evidencia_sha256.trim().toLowerCase(), p_vigente_desde: r2.vigente_desde || null, p_vigente_hasta: r2.vigente_hasta || null });
+      setConfirmacion("Metadatos de representación guardados. No se ha activado ninguna emisión.");
+    } catch (e2) { setError(configMensajeError(e2)); }
+    finally { setGuardandoRepresentacion(false); }
   };
   const ocupado = cargando || guardando;
   const emisor = detalle?.emisor || emisores.find((e2) => e2.id === emisorId) || null;
@@ -103497,6 +103562,34 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
           h(Field, { label: "Correo de contacto" }, h(Input, { type: "email", value: form.asesoria_email || "", onChange: (e2) => campo("asesoria_email", e2.target.value), maxLength: 200, disabled: ocupado })),
           h(Field, { label: "NIF del presentador" }, h(Input, { value: form.presentador_nif || "", onChange: (e2) => campo("presentador_nif", e2.target.value.toUpperCase()), maxLength: 9, disabled: ocupado, placeholder: "Solo identificador; nunca el certificado" }))),
         h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Indicar una asesoría no le concede acceso ni acredita representación. Eso se validará por separado.")),
+      c07cDisponible ? h(import_react4.default.Fragment, null,
+        h(Card, { className: "mb-3", "data-fiscal-delegacion": "panel" },
+          h("div", { className: "font-semibold mb-1" }, "Acceso delegado al panel"),
+          h("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Invitar a una asesoría solo concede el permiso elegido dentro de L&A Suite. No acredita representación ante la AEAT, no entrega certificados y no activa emisión."),
+          h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-x-3 items-end" },
+            h(Field, { label: "Correo de la asesoría" }, h(Input, { type: "email", value: invitacion.email, onChange: (e2) => setInvitacion((actual) => ({ ...actual, email: e2.target.value })), maxLength: 200, disabled: ocupado || guardandoDelegacion })),
+            h(Field, { label: "Permiso del panel" }, h("select", { value: invitacion.permiso, onChange: (e2) => setInvitacion((actual) => ({ ...actual, permiso: e2.target.value })), disabled: ocupado || guardandoDelegacion, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, FISCAL_DELEGACION_PERMISOS.map(([valor, texto]) => h("option", { key: valor, value: valor }, texto)))),
+            h(Field, { label: "Duración (días)" }, h(Input, { type: "number", min: 1, max: 180, value: invitacion.dias, onChange: (e2) => setInvitacion((actual) => ({ ...actual, dias: e2.target.value })), disabled: ocupado || guardandoDelegacion }))
+          ),
+          h(Btn, { small: true, onClick: invitarAsesoria, disabled: ocupado || guardandoDelegacion }, guardandoDelegacion ? "Guardando…" : "Crear invitación"),
+          delegaciones.length ? h("div", { className: "space-y-2 mt-3" }, delegaciones.map((item) => h("div", { key: item.id, className: "flex flex-wrap items-center justify-between gap-2 rounded-lg p-2", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
+            h("div", { className: "min-w-0 text-[11.5px]" }, h("div", { className: "font-medium" }, item.email), h("div", { style: { color: C2.inkSoft } }, `${item.permiso} · ${item.estado} · caduca ${item.expira_at ? new Date(item.expira_at).toLocaleDateString("es-ES") : "—"}`)),
+            item.estado !== "REVOCADA" && item.estado !== "CADUCADA" ? h(Btn, { small: true, variant: "ghost", onClick: () => revocarAsesoria(item), disabled: ocupado || guardandoDelegacion }, "Revocar") : null
+          ))) : h("div", { className: "text-[11px] mt-3", style: { color: C2.inkSoft } }, "Todavía no hay invitaciones para este emisor.")),
+        h(Card, { className: "mb-3", "data-fiscal-representacion": "metadatos" },
+          h("div", { className: "font-semibold mb-1" }, "Representación tributaria: solo metadatos"),
+          h("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Registra únicamente la referencia y la huella de una evidencia revisada externamente. No subas aquí escrituras, certificados, contraseñas ni claves privadas."),
+          h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-x-3" },
+            h(Field, { label: "Vía" }, h("select", { value: representacion.tipo, onChange: (e2) => setRepresentacion((actual) => ({ ...actual, tipo: e2.target.value, estado: e2.target.value === "PENDIENTE" ? "PENDIENTE" : actual.estado })), disabled: ocupado || guardandoRepresentacion, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, FISCAL_REPRESENTACION_TIPOS.map(([valor, texto]) => h("option", { key: valor, value: valor }, texto)))),
+            h(Field, { label: "Estado revisado" }, h("select", { value: representacion.estado, onChange: (e2) => setRepresentacion((actual) => ({ ...actual, estado: e2.target.value })), disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, FISCAL_REPRESENTACION_ESTADOS.map(([valor, texto]) => h("option", { key: valor, value: valor }, texto)))),
+            h(Field, { label: "Referencia externa opaca" }, h(Input, { value: representacion.referencia_opaca, onChange: (e2) => setRepresentacion((actual) => ({ ...actual, referencia_opaca: e2.target.value })), maxLength: 200, disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE", placeholder: "ID o referencia, no el documento" })),
+            h(Field, { label: "Huella SHA-256 de la evidencia" }, h(Input, { value: representacion.evidencia_sha256, onChange: (e2) => setRepresentacion((actual) => ({ ...actual, evidencia_sha256: e2.target.value.toLowerCase() })), maxLength: 64, disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE", placeholder: "64 caracteres hexadecimales" })),
+            h(Field, { label: "Vigente desde" }, h(Input, { type: "date", value: representacion.vigente_desde || "", onChange: (e2) => setRepresentacion((actual) => ({ ...actual, vigente_desde: e2.target.value })), disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE" })),
+            h(Field, { label: "Vigente hasta" }, h(Input, { type: "date", value: representacion.vigente_hasta || "", onChange: (e2) => setRepresentacion((actual) => ({ ...actual, vigente_hasta: e2.target.value })), disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE" }))
+          ),
+          h(Btn, { small: true, onClick: guardarRepresentacion, disabled: ocupado || guardandoRepresentacion }, guardandoRepresentacion ? "Guardando…" : "Guardar metadatos")
+        )
+      ) : null,
       h(Card, { className: "mb-3" }, h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
         h("div", null, h("div", { className: "text-[12px] font-semibold" }, `Versión del borrador: ${detalle.version || 0}`), h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Conexión: no configurada · Emisión: deshabilitada")),
         h(Btn, { onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar borrador fiscal")))) : null);
