@@ -8,6 +8,7 @@ import { jsPDF as E } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { ArrowLeftRight, Bell, Boxes, Calculator, CalendarClock, CalendarDays, CalendarRange, Camera, ChartColumn, ChartLine, ChevronRight, CircleArrowDown, CircleArrowUp, CircleCheck, ClipboardList, Clock, Cog, Coins, Download, Droplet, Ellipsis, Eye, EyeOff, Factory, FileText, Files, LoaderCircle, LogIn, LogOut, Mail, MessageCircle, Minus, Package, Pencil, Phone, Plus, Receipt, RotateCcwClock, ScanBarcode, Search, ShieldCheck, ShoppingBag, ShoppingCart, Stethoscope, Tags, Trash2, TrendingUp, TriangleAlert, Truck, Upload, UserRound, Users, Wallet, X, Map as Map2 } from "lucide-react";
+import { renderQrSvg } from "../fiscal/qr/qr-matrix.mjs";
 const import_react4 = Object.assign({ default: React }, ReactNS);
 const import_client = { createRoot };
 const utils = XLSX.utils;
@@ -22052,7 +22053,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const medioPago2 = lineas[0]?.medioPago || "—";
       const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
       const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
-      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", qrFiscal: lineas[0]?.qrFiscal || null, entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
     }).sort((a22, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a22.fecha} ${a22.marcaTiempo}`));
   }, [movimientos, productos]);
   const ventasFiltradas = (0, import_react4.useMemo)(() => {
@@ -22110,11 +22111,30 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     });
     return [...mapa.values()].sort((a22, b2) => a22.pct - b2.pct);
   }
+  function ticketQrFiscalVista(v22) {
+    const qr = v22 && v22.qrFiscal;
+    if (!qr || typeof qr !== "object" || Array.isArray(qr)) return null;
+    if (qr.production !== false || typeof qr.url !== "string" || !/^https:\/\//u.test(qr.url)) return null;
+    let svg;
+    try {
+      svg = renderQrSvg(qr.url, { quietZone: 4 });
+    } catch {
+      return null;
+    }
+    return {
+      url: qr.url,
+      textLabel: qr.textLabel || "QR tributario:",
+      modalityLabel: qr.modalityLabel || "VERI*FACTU",
+      matrixRendered: true,
+      svg
+    };
+  }
   function renderTicketVenta() {
     if (!ticketVenta) return null;
     const h3 = import_react4.default.createElement;
     const v22 = ticketVenta;
     const desglose = desgloseIvaTicketVista(v22);
+    const qrFiscalVista = ticketQrFiscalVista(v22);
     const subtotal = desglose.reduce((a22, r2) => a22 + r2.base, 0);
     const nombreLocal = local?.nombreComercial || local?.nombreComercialTicket || local?.nombre || "Local sin nombre";
     const direccionLocal = local?.direccion || local?.direccionTicket || "";
@@ -22208,6 +22228,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           h3("div", { className: "flex justify-between gap-3" }, h3("span", null, "CAMBIO:"), h3("span", null, cambioTicket == null || !Number.isFinite(cambioTicket) ? "\u2014" : `\u20AC${fmt(cambioTicket)}`)),
           v22.medioPago === "Mixto" && v22.detallePago ? h3("div", { className: "mt-2 text-center" }, `TARJETA \u20AC${fmt(v22.detallePago.tarjeta || 0)} \xB7 EFECTIVO \u20AC${fmt(v22.detallePago.efectivo || 0)}`) : null
         ),
+        qrFiscalVista ? h3(
+          "div",
+          { className: "mt-3 pt-3 text-center", "data-qr-fiscal-preview": "qa", style: { borderTop: `1px dashed ${C2.line}` } },
+          h3("div", { className: "text-[11px] font-bold" }, qrFiscalVista.textLabel),
+          h3("div", { className: "text-[9px] font-semibold mt-1" }, `${qrFiscalVista.modalityLabel} \xB7 QA \xB7 EMISI\xD3N REAL DESACTIVADA`),
+          h3("div", { className: "flex justify-center mt-2", "data-qr-fiscal-matrix": "local-svg", dangerouslySetInnerHTML: { __html: qrFiscalVista.svg } }),
+          h3("div", { className: "text-[8.5px] break-all mt-2", style: { color: C2.inkSoft } }, qrFiscalVista.url),
+          h3("div", { className: "text-[9px] mt-2", style: { color: C2.inkSoft } }, "Matriz QR generada localmente a partir del payload verificable de QA.")
+        ) : null,
         h3(
           "div",
           { className: "text-center text-[10px] pt-3", style: { borderTop: `1px dashed ${C2.line}` } },
