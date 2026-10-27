@@ -38,6 +38,7 @@ cabecera = [
     'import autoTable from "jspdf-autotable";',
     'import * as XLSX from "xlsx";',
     'import { ' + ", ".join(iconos) + ', Map as Map2 } from "lucide-react";',
+    'import { renderQrSvg } from "../fiscal/qr/qr-matrix.mjs";',
     'const import_react4 = Object.assign({ default: React }, ReactNS);',
     'const import_client = { createRoot };',
     'const utils = XLSX.utils;',
