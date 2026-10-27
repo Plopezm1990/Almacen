@@ -139,6 +139,44 @@ Por tanto:
 
 ## 7. Entrada necesaria para continuar
 
+## 8. Preparación server-side aplicada en QA
+
+La estructura técnica del expediente ya está preparada y aplicada exclusivamente en
+el proyecto Supabase QA `qjqorixtkilwsndqayyx` mediante la migración
+`20261027150403_abc_f7_c07d_d3_pilot_sandbox.sql`.
+
+Incluye:
+
+- tabla privada por alcance `empresa_id + local_id + entidad_fiscal_id`;
+- historial de revisiones inmutable y versionado;
+- RPC autenticada de lectura;
+- RPC autenticada de guardado idempotente;
+- RLS habilitado y acceso a tablas revocado para los roles públicos;
+- entorno fijado a `SANDBOX`;
+- transiciones monotónicas del expediente;
+- bloqueo del simulador `SIMULADOR_C07D` como prueba externa;
+- bloqueo de cualquier estado de producción;
+- rechazo de secretos, endpoints y certificados dentro de evidencias;
+- validación de serie C05 y adaptador server-side.
+
+La verificación posterior confirmó en QA:
+
+```text
+pilot_table   = private.abc_c07d_pilotos_sandbox
+revision_table = private.abc_c07d_pilotos_sandbox_revisiones
+read_rpc      = abc_c07d_leer_piloto_sandbox(text,text,uuid)
+write_rpc     = abc_c07d_guardar_piloto_sandbox(uuid,text,text,uuid,text,text,text,uuid,text,jsonb,bigint)
+pilot_rls     = true
+revision_rls  = true
+pilot_rows    = 0
+revision_rows = 0
+```
+
+La prueba negativa sin sesión fue rechazada con `C07D_PILOT_NO_AUTORIZADO`. No se
+creó ningún expediente ficticio y no se ha aplicado esta migración a producción.
+
+## 9. Entrada necesaria para continuar
+
 Cuando el propietario tenga la primera empresa piloto, debe aportar en el chat solo la
 decisión y los identificadores no secretos: empresa seleccionada, asesoría o vía de
 representación, proveedor/adaptador elegido y disponibilidad de hardware. Los datos
