@@ -6,14 +6,23 @@ Producción: **no consultada para cambios y no modificada**.
 
 ## Estado de esta entrega
 
-**Preflight y contrato técnico inicial: TERMINADOS.**
+**Preflight, reconciliación C05 y primera migración C07-D en QA: TERMINADOS.**
 
-Todavía no se ha aplicado una migración C07-D. El motivo es importante: QA ya
+Al inicio no se aplicó directamente C07-D. El motivo era importante: QA ya
 tiene C05 aplicado y conserva documentos numerados, pero las series actuales
 están definidas por empresa, local, tipo y código de serie. C07-D necesita una
 identidad fiscal por empresa y emisor. Añadir una cadena de hashes encima de la
 identidad actual sin reconciliarla permitiría mezclar dos locales del mismo
 emisor o reiniciar una cadena por un cambio de local.
+
+Después de comprobar que el mapeo era determinista, se aplicaron en QA las
+migraciones `abc_f7_c07d_c05_reconcile` y
+`abc_f7_c07d_fiscal_chain_queue`, más los índices de cobertura de claves
+foráneas. El hardening de concurrencia de la cadena quedó aplicado mediante
+SQL idempotente directo en QA porque el conector `apply_migration` expiró dos
+veces con ese bloque concreto; el SQL versionado permanece en
+`20261027133000_abc_f7_c07d_chain_hardening.sql`.
+Los mapeos ambiguos siguen provocando aborto explícito.
 
 ## Preflight observado en QA
 
@@ -30,13 +39,13 @@ emisor o reiniciar una cadena por un cambio de local.
 - En `QA-A1` existen dos series de factura: `FA` y `TPV`.
 - Los documentos C05 existentes de `QA-A1` están numerados y emitidos: tres
   documentos en `FA` y cinco en `TPV`.
-- `public.abc_c05_documentos_emitidos` todavía no tiene
-  `entidad_fiscal_id`. El documento conserva el local, pero no captura de
-  forma explícita el emisor fiscal que debe gobernar la cadena.
-- No existen todavía `abc_c07d_registros_fiscales`, `abc_c07d_cola_fiscal` ni
-  una cola fiscal dedicada. La tabla genérica `efectos_pendientes` existe,
-  pero no se reutilizará para transportar registros fiscales: tiene otra
-  semántica, estados y controles.
+- `public.abc_c05_series_documentales` y
+  `public.abc_c05_documentos_emitidos` ya tienen `entidad_fiscal_id`; el
+  backfill terminó con cero nulos, conservando las dos series y los ocho
+  documentos existentes.
+- Ya existen `abc_c07d_registros_fiscales` y `abc_c07d_cola_fiscal`, ambas con
+  RLS y sin DML directo para los roles de API. La tabla genérica
+  `efectos_pendientes` no se reutiliza.
 - Los asesores de Supabase siguen mostrando avisos generales ya conocidos del
   proyecto. No se interpretan como bloqueo C07-D mientras las tablas nuevas no
   se expongan por DML directo y sus RPC mantengan el control de alcance.
@@ -150,8 +159,9 @@ idempotencia, referencia externa opaca y marca de reclamación del worker.
 
 ## Siguiente paso exacto
 
-Preparar y revisar la migración de reconciliación C05 en el repositorio, con un
-contrato local que aborte ante mapeos ambiguos. Después se podrá aplicar en QA
-la primera migración C07-D sobre series y cadena, con datos ficticios y
-`ROLLBACK`/fixtures controladas. Producción queda fuera.
+Completar el contrato funcional de C07-D con la integración de la emisión
+documental: registrar el documento `EMITIDO`, generar el registro fiscal,
+encolarlo y mostrar el estado de la cola en el panel de QA. Después se hará un
+ensayo persistente controlado y el cierre de evidencia. La AEAT real y
+producción siguen fuera.
 
