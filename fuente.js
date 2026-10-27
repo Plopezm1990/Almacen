@@ -122973,6 +122973,46 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
   }
 }
 function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+  function ticketQrQaFixtureInicial(listaProductos) {
+    try {
+      const host = window.location.hostname;
+      const qa = new URLSearchParams(window.location.search).get("qa");
+      const hostPermitido = host === "localhost" || host === "127.0.0.1" || /^deploy-preview-\d+--/u.test(host);
+      if (qa !== "qr-fiscal-ticket" || !hostPermitido) return null;
+      const productoId = listaProductos?.[0]?.id || "qa-fiscal-producto-a";
+      return {
+        ventaId: "qa-qr-fiscal-a-000001",
+        referencia: "V-27102026-QRA001",
+        fecha: "2026-10-27",
+        marcaTiempo: "2026-10-27T10:30:00.000Z",
+        lineas: [{ id: "qa-qr-fiscal-linea-a-000001", productoId, cantidad: 1, ingresoUnitario: 5, ivaVentaAplicado: 10 }],
+        resumen: "QA QR fiscal Empresa A",
+        importe: 5.5,
+        importeOriginal: 5.5,
+        importeNetoGestion: 5.5,
+        estado: "ACTIVA",
+        trazabilidad: [],
+        medioPago: "Efectivo",
+        detallePago: null,
+        usuario: "QA C07-A",
+        anulada: false,
+        mesa: "QA-1",
+        zona: "QA",
+        numeroFiscal: "QA-A-000001",
+        entregado: 10,
+        cambio: 4.5,
+        qrFiscal: {
+          url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345678&numserie=QA-A-000001&fecha=27-10-2026&importe=5.50",
+          textLabel: "QR tributario:",
+          modalityLabel: "VERI*FACTU",
+          source: { nif: "A12345678", numserie: "QA-A-000001", fecha: "27-10-2026", importe: "5.50" },
+          production: false
+        }
+      };
+    } catch {
+      return null;
+    }
+  }
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -122982,7 +123022,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorAnular, setErrorAnular] = (0, import_react4.useState)("");
   const [procesandoAnulacion, setProcesandoAnulacion] = (0, import_react4.useState)(false);
   const [ventaDetalle, setVentaDetalle] = (0, import_react4.useState)(null);
-  const [ticketVenta, setTicketVenta] = (0, import_react4.useState)(null);
+  const [ticketVenta, setTicketVenta] = (0, import_react4.useState)(() => ticketQrQaFixtureInicial(productos));
   const [filtroVentasTexto, setFiltroVentasTexto] = (0, import_react4.useState)("");
   const [filtroVentasDesde, setFiltroVentasDesde] = (0, import_react4.useState)("");
   const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");

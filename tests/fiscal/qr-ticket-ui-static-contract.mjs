@@ -8,6 +8,13 @@ test("el historial conserva el payload fiscal asociado a la venta", () => {
   assert.match(source, /qrFiscal:\s*lineas\[0\]\?\.qrFiscal\s*\|\|\s*null/);
 });
 
+test("la fixture visual QR solo puede activarse en preview QA o localhost", () => {
+  assert.match(source, /get\("qa"\)/);
+  assert.match(source, /qa !== "qr-fiscal-ticket"/);
+  assert.match(source, /deploy-preview-\\d\+--/u);
+  assert.match(source, /production: false/);
+});
+
 test("el ticket muestra el payload solo como QA y lo incluye en la zona imprimible", () => {
   assert.match(source, /data-qr-fiscal-preview/);
   assert.match(source, /data-qr-fiscal-matrix/);

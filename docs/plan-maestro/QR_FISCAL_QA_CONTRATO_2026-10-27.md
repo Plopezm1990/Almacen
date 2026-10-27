@@ -29,6 +29,7 @@ Estado: **PASS — QA local; emisión real deshabilitada**.
 12. El historial conserva `qrFiscal` únicamente como dato asociado a la venta; no se reconstruye desde una configuración editable.
 13. El ticket imprime el bloque de payload únicamente para URLs HTTPS marcadas con `production=false`.
 14. La pantalla y la salida de impresión/PDF rotulan el bloque como QA, dejan explícita la emisión real desactivada y dibujan la matriz con un SVG local.
+15. La fixture visual `?qa=qr-fiscal-ticket` abre el mismo modal real de ticket sólo en `deploy-preview-*` o localhost; no existe en el dominio productivo y no escribe en Supabase.
 
 ## Ejecución
 
@@ -41,7 +42,7 @@ node --test tests/fiscal/aeat-qr-contract.mjs tests/fiscal/qr-ticket-preview-con
 Resultado:
 
 ```text
-15 tests passed, 0 failed
+16 tests passed, 0 failed
 ```
 
 ## Límite de esta entrega
