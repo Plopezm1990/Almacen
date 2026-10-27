@@ -30,6 +30,8 @@ test("la impresión del ticket desancla el modal y conserva todo el contenido", 
     assert.match(source, /html, body, #root \{ margin: 0 !important; padding: 0 !important; height: var\(--ticket-print-height, auto\) !important;/);
   assert.match(source, /\.zona-impresion \{[\s\S]*?position: static !important;/);
     assert.match(source, /function imprimirTicketVenta\(\)/);
+    assert.match(source, /ticket-printing/);
+    assert.match(source, /requestAnimationFrame\(\(\) =>/);
     assert.match(source, /--ticket-print-height/);
     assert.match(source, /window\.addEventListener\("afterprint"/);
     assert.match(source, /onClick: imprimirTicketVenta/);

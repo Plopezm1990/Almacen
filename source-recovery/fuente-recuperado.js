@@ -5220,6 +5220,12 @@ function GestionAlmacen() {
         .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
         input, select { font-family: inherit; }
         ::placeholder { color: #9AA5A0; }
+        html.ticket-printing .modal-ticket-impresion [data-qr-fiscal-preview] svg {
+          width: 220px !important;
+          height: 220px !important;
+          max-width: 220px !important;
+          max-height: 220px !important;
+        }
 
         @media print {
           @page { size: A4; margin: 12mm; }
@@ -5256,12 +5262,6 @@ function GestionAlmacen() {
             overflow: visible !important;
             margin: 0 !important;
             background: #fff !important;
-          }
-          .modal-ticket-impresion [data-qr-fiscal-preview] svg {
-            width: 220px !important;
-            height: 220px !important;
-            max-width: 220px !important;
-            max-height: 220px !important;
           }
           .no-imprimir { display: none !important; }
           .zona-impresion table { page-break-inside: auto; }
@@ -22452,15 +22452,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
   function imprimirTicketVenta() {
     const root = document.documentElement;
-    const zona = document.querySelector(".modal-ticket-impresion .zona-impresion");
-    const altura = Math.ceil(zona?.scrollHeight || zona?.getBoundingClientRect().height || 0);
-    if (altura > 0) root.style.setProperty("--ticket-print-height", `${altura}px`);
     const limpiarAlturaImpresion = () => {
+      root.classList.remove("ticket-printing");
       root.style.removeProperty("--ticket-print-height");
       window.removeEventListener("afterprint", limpiarAlturaImpresion);
     };
     window.addEventListener("afterprint", limpiarAlturaImpresion, { once: true });
-    window.print();
+    root.classList.add("ticket-printing");
+    window.requestAnimationFrame(() => {
+      const zona = document.querySelector(".modal-ticket-impresion .zona-impresion");
+      const altura = Math.ceil(zona?.scrollHeight || zona?.getBoundingClientRect().height || 0);
+      if (altura > 0) root.style.setProperty("--ticket-print-height", `${altura}px`);
+      window.print();
+    });
   }
   function renderTicketVenta() {
     if (!ticketVenta) return null;
