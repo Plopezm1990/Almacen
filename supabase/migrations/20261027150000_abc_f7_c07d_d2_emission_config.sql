@@ -582,4 +582,3 @@ revoke all on function public.abc_c07d_guardar_emision_config(uuid,text,text,uui
 grant execute on function public.abc_c07d_listar_adaptadores_fiscales(text,text) to authenticated;
 grant execute on function public.abc_c07d_leer_emision_config(text,text,uuid,text) to authenticated;
 grant execute on function public.abc_c07d_guardar_emision_config(uuid,text,text,uuid,text,uuid,text,text,text,text,jsonb,bigint) to authenticated;
-

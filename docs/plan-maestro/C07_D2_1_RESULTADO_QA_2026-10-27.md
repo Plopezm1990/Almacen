@@ -1,7 +1,7 @@
 # ABC F7 C07-D.2.1 — configuración de emisión por empresa en QA
 
-Fecha: 2026-10-27  
-Ámbito: Supabase QA `qjqorixtkilwsndqayyx`.  
+Fecha: 2026-10-27
+Ámbito: Supabase QA `qjqorixtkilwsndqayyx`.
 Producción: no modificada. AEAT: no conectada.
 
 ## Objetivo
