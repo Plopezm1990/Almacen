@@ -8,7 +8,7 @@ import {
 
 test("el ticket acepta únicamente payloads QA HTTPS y los deja visibles para impresión", () => {
   const preview = buildTicketQrPreview({
-    url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345678",
+    url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345674",
     production: false,
     textLabel: "QR tributario:",
     modalityLabel: "VERI*FACTU",
@@ -16,7 +16,7 @@ test("el ticket acepta únicamente payloads QA HTTPS y los deja visibles para im
 
   assert.deepEqual(preview, {
     ...TICKET_QR_PREVIEW_CONTRACT,
-    url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345678",
+    url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345674",
     textLabel: "QR tributario:",
     modalityLabel: "VERI*FACTU",
   });
@@ -28,7 +28,7 @@ test("el ticket acepta únicamente payloads QA HTTPS y los deja visibles para im
 test("el ticket no muestra payloads de producción ni URLs no HTTPS", () => {
   assert.equal(
     buildTicketQrPreview({
-      url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345678",
+      url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345674",
       production: true,
     }),
     null,

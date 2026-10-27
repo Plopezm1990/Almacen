@@ -123002,10 +123002,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         entregado: 10,
         cambio: 4.5,
         qrFiscal: {
-          url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345678&numserie=QA-A-000001&fecha=27-10-2026&importe=5.50",
+          url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345674&numserie=QA-A-000001&fecha=27-10-2026&importe=5.50",
           textLabel: "QR tributario:",
           modalityLabel: "VERI*FACTU",
-          source: { nif: "A12345678", numserie: "QA-A-000001", fecha: "27-10-2026", importe: "5.50" },
+          source: { nif: "A12345674", numserie: "QA-A-000001", fecha: "27-10-2026", importe: "5.50" },
           production: false
         }
       };

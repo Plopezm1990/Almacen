@@ -5,7 +5,7 @@ import { buildAeatQrPayload } from "../../fiscal/qr/aeat-qr.mjs";
 import { encodeQrMatrix, renderQrSvg } from "../../fiscal/qr/qr-matrix.mjs";
 
 const payload = buildAeatQrPayload({
-  nif: "A12345678",
+  nif: "A12345674",
   numserie: "T-2026/000001",
   fecha: "27-10-2026",
   importe: "1234.50",
@@ -26,13 +26,13 @@ test("es determinista, cambia por payload y no incrusta la URL en el SVG", () =>
   const first = encodeQrMatrix(payload.url);
   const second = encodeQrMatrix(payload.url);
   assert.deepEqual(first, second);
-  const other = encodeQrMatrix(payload.url.replace("A12345678", "B12345678"));
+  const other = encodeQrMatrix(payload.url.replace("A12345674", "B12345674"));
   assert.notDeepEqual(first.modules, other.modules);
   const svg = renderQrSvg(payload.url);
   assert.match(svg, /<svg /);
   assert.match(svg, /aria-label="QR tributario"/);
   assert.match(svg, /shape-rendering="crispEdges"/);
-  assert.doesNotMatch(svg, /A12345678/);
+  assert.doesNotMatch(svg, /A12345674/);
   assert.doesNotMatch(svg, /<script/i);
 });
 
@@ -44,7 +44,7 @@ test("mantiene la zona de silencio y rechaza entrada vacía o demasiado larga", 
 
 test("escribe alineación y bits BCH de versión en payloads largos", () => {
   const longPayload = buildAeatQrPayload({
-    nif: "A12345678",
+    nif: "A12345674",
     numserie: "QA-A-000001",
     fecha: "27-10-2026",
     importe: "5.50",

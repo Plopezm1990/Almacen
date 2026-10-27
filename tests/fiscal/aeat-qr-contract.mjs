@@ -10,14 +10,14 @@ import {
 } from "../../fiscal/qr/aeat-qr.mjs";
 
 const valid = {
-  nif: "A12345678",
+  nif: "A12345674",
   numserie: "T-2026/000001",
   fecha: "27-10-2026",
   importe: "1234.50",
 };
 
 test("construye una URL AEAT estable con los cuatro parámetros oficiales", () => {
-  const expected = `${AEAT_QR_ENDPOINT}?nif=A12345678&numserie=T-2026%2F000001&fecha=27-10-2026&importe=1234.50`;
+  const expected = `${AEAT_QR_ENDPOINT}?nif=A12345674&numserie=T-2026%2F000001&fecha=27-10-2026&importe=1234.50`;
   assert.equal(buildAeatQrUrl(valid), expected);
   assert.equal(buildAeatQrUrl({ ...valid }), expected);
   assert.equal(buildAeatQrUrl(valid).includes("formato"), false);
@@ -30,9 +30,9 @@ test("codifica UTF-8 y conserva caracteres ASCII imprimibles de serie", () => {
 });
 
 test("normaliza NIF a mayúsculas y conserva el importe decimal exacto", () => {
-  assert.deepEqual(normalizeAeatQrInput({ ...valid, nif: "a12345678" }), {
+  assert.deepEqual(normalizeAeatQrInput({ ...valid, nif: "a12345674" }), {
     ...valid,
-    nif: "A12345678",
+    nif: "A12345674",
   });
   assert.equal(buildAeatQrUrl({ ...valid, importe: "0.00" }).endsWith("importe=0.00"), true);
 });
@@ -63,9 +63,9 @@ test("el payload visual fija rotulado, modalidad, contrato de render y modo no p
 });
 
 test("no mezcla el NIF de otra empresa: el QR solo usa el snapshot recibido", () => {
-  const empresaA = buildAeatQrPayload({ ...valid, nif: "A12345678" });
+  const empresaA = buildAeatQrPayload({ ...valid, nif: "A12345674" });
   const empresaB = buildAeatQrPayload({ ...valid, nif: "B12345678" });
   assert.notEqual(empresaA.url, empresaB.url);
-  assert.match(empresaA.url, /nif=A12345678/);
+  assert.match(empresaA.url, /nif=A12345674/);
   assert.match(empresaB.url, /nif=B12345678/);
 });

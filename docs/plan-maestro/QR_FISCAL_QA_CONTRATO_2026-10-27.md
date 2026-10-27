@@ -47,6 +47,8 @@ Resultado:
 
 Además, la matriz del payload QA largo se decodificó localmente con un lector QR independiente y devolvió exactamente la URL AEAT esperada. La comprobación cubrió la versión 8, los patrones de alineación y los bits BCH de versión.
 
+La primera fixture usaba `A12345678`, cuyo control no era válido. Se sustituyó por `A12345674`; la consulta directa a AEAT ya acepta el formato del NIF y responde `No encontrada`, que es el resultado esperado para una factura QA no emitida ni remitida.
+
 ## Límite de esta entrega
 
 Esta entrega ya conecta el payload opcional al ticket del TPV y a su zona de impresión/PDF. La matriz QR visual se genera localmente en SVG a partir de exactamente `payload.url`, con byte mode, corrección M y zona de silencio. No se ha añadido una librería remota ni se ha llamado a AEAT.
