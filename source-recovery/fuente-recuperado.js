@@ -5223,11 +5223,34 @@ function GestionAlmacen() {
 
         @media print {
           @page { size: A4; margin: 12mm; }
+          html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
           body * { visibility: hidden !important; }
           .zona-impresion, .zona-impresion * { visibility: visible !important; }
+          .modal-ticket-impresion {
+            position: static !important;
+            inset: auto !important;
+            display: block !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            background: transparent !important;
+          }
+          .modal-ticket-impresion-dialog {
+            position: static !important;
+            width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+          }
           .zona-impresion {
-            position: absolute !important;
-            left: 0; top: 0; width: 100%;
+            position: static !important;
+            left: auto !important; top: auto !important; width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            overflow: visible !important;
+            margin: 0 !important;
             background: #fff !important;
           }
           .no-imprimir { display: none !important; }
@@ -15371,7 +15394,7 @@ function CompraPorCaja({ form, setForm }) {
   const unidadBruta = costoUd > 0 ? costoUd * (1 + iva / 100) : "";
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-lg p-3 mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "C\xF3mo te lo vende el proveedor"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Escribe en la casilla que traiga tu factura. Las dem\xE1s se calculan solas."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidades por caja (1 si lo compras suelto)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "1", value: form.udsPorCaja, onChange: (e2) => setForm({ ...form, udsPorCaja: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.01", valor: cajaNeta, decimales: 2, onEscribir: (v22) => desdeCaja(v22, false) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.01", valor: cajaBruta, decimales: 2, onEscribir: (v22) => desdeCaja(v22, true) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: form.costo, decimales: 4, onEscribir: (v22) => setForm({ ...form, costo: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: unidadBruta, decimales: 4, onEscribir: desdeUnidadBruta }))), uds > 1 && costoUd > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mono", style: { color: C2.accent } }, "Caja de ", uds, ": \u20AC", fmt(costoUd * uds), " sin IVA \xB7 \u20AC", fmt(costoUd * uds * (1 + iva / 100)), " con IVA \u2192 unidad \u20AC", fmt(costoUd)));
 }
-function Modal({ children, onClose, title, ancho = "max-w-md" }) {
+function Modal({ children, onClose, title, ancho = "max-w-md", claseImpresion = "" }) {
   const cajaRef = (0, import_react4.useRef)(null);
   (0, import_react4.useEffect)(() => {
     const focoPrevio = document.activeElement;
@@ -15409,7 +15432,7 @@ function Modal({ children, onClose, title, ancho = "max-w-md" }) {
     document.addEventListener("keydown", alTecla);
     return () => document.removeEventListener("keydown", alTecla);
   }, []);
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto", style: { background: "rgba(20,32,28,0.45)" } }, /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: `fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto ${claseImpresion}`.trim(), style: { background: "rgba(20,32,28,0.45)" } }, /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       ref: cajaRef,
@@ -15417,7 +15440,7 @@ function Modal({ children, onClose, title, ancho = "max-w-md" }) {
       role: "dialog",
       "aria-modal": "true",
       "aria-label": title,
-      className: `rounded-xl p-5 w-full ${ancho} my-4`,
+      className: `rounded-xl p-5 w-full ${ancho} my-4 ${claseImpresion ? `${claseImpresion}-dialog` : ""}`.trim(),
       style: { background: C2.surface, outline: "none" }
     },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[15px]" }, title), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: onClose, "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 17 }))),
@@ -22444,7 +22467,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const cambioTicket = v22.cambio == null ? null : Number(v22.cambio);
     return h3(
       Modal,
-      { onClose: () => setTicketVenta(null), title: `Ticket ${v22.referencia}` },
+      { onClose: () => setTicketVenta(null), title: `Ticket ${v22.referencia}`, claseImpresion: "modal-ticket-impresion" },
       h3(
         "div",
         { className: "rounded-xl p-4 mono zona-impresion", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
