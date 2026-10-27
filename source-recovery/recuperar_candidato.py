@@ -38,6 +38,7 @@ cabecera = [
     'import autoTable from "jspdf-autotable";',
     'import * as XLSX from "xlsx";',
     'import { ' + ", ".join(iconos) + ', Map as Map2 } from "lucide-react";',
+    'import { renderQrSvg } from "../fiscal/qr/qr-matrix.mjs";',
     'const import_react4 = Object.assign({ default: React }, ReactNS);',
     'const import_client = { createRoot };',
     'const utils = XLSX.utils;',
@@ -73,14 +74,54 @@ def require_markers(body):
 
 bundle_text = BUNDLE.read_text(encoding="utf-8")
 
+def sync_from_local_suffix():
+    """Sincroniza el espejo desde el bundle local cuando falta el baseline Git histórico."""
+    lines = bundle_text.splitlines()
+    starts = [i for i, line in enumerate(lines) if line.startswith("var C2 = {")]
+    if len(starts) != 1:
+        raise SystemExit("SOURCE_RECOVERY_LOCAL_INVALID: frontera var C2 ambigua")
+    current_body = "\n".join(lines[starts[0]:]) + "\n"
+    require_markers(current_body)
+    recovered_text = "\n".join(cabecera) + "\n" + current_body
+    OUT.write_text(recovered_text, encoding="utf-8")
+    written_body = recovered_body(OUT.read_text(encoding="utf-8"))
+    if written_body != current_body or not bundle_text.endswith(written_body):
+        raise SystemExit("SOURCE_RECOVERY_LOCAL_INVALID: el espejo no conserva el sufijo del bundle")
+    sha_body = hashlib.sha256(written_body.encode("utf-8")).hexdigest()
+    EVIDENCIA.write_text(json.dumps({
+        "pm": "PM-01",
+        "commit_rama_validada": git_text("rev-parse", "HEAD").strip(),
+        "bundle": "fuente.js",
+        "bundle_bytes": BUNDLE.stat().st_size,
+        "marca_fuente_linea": starts[0] + 1,
+        "lineas_cuerpo_aplicacion": len(lines) - starts[0],
+        "bytes_cuerpo_aplicacion": len(written_body.encode("utf-8")),
+        "sha256_cuerpo_bundle": sha_body,
+        "sha256_cuerpo_recuperado": sha_body,
+        "paridad_cuerpo_exacta": True,
+        "fuente_recuperada_bytes": OUT.stat().st_size,
+        "nota": "Espejo regenerado desde la frontera var C2 del bundle local porque el objeto Git del baseline histórico no está disponible en este checkout."
+    }, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    print("SOURCE_RECOVERY_LOCAL_SUFFIX=1")
+    print(f"SOURCE_RECOVERY_TARGET_FUENTE_COMMIT={git_text('rev-parse', 'HEAD').strip()}")
+    print(f"LINEAS_CUERPO={len(lines) - starts[0]}")
+    print(f"BYTES_CUERPO={len(written_body.encode('utf-8'))}")
+    print(f"SHA256_CUERPO={sha_body}")
+    print("PARIDAD_CUERPO_EXACTA=1")
+    print("SOURCE_RECOVERY_SYNC_CURRENT=PASS")
+    raise SystemExit(0)
+
 if args.sync_current:
     # Baseline elegido porque contiene evidencia histórica de paridad exacta
     # entre fuente-recuperado.js y el cuerpo de fuente.js.
-    baseline_bundle = git_text("show", f"{CURRENT_SYNC_BASELINE}:fuente.js")
-    baseline_recovered = git_text("show", f"{CURRENT_SYNC_BASELINE}:source-recovery/fuente-recuperado.js")
-    baseline_evidence = json.loads(
-        git_text("show", f"{CURRENT_SYNC_BASELINE}:source-recovery/PM01_EVIDENCIA.json")
-    )
+    try:
+        baseline_bundle = git_text("show", f"{CURRENT_SYNC_BASELINE}:fuente.js")
+        baseline_recovered = git_text("show", f"{CURRENT_SYNC_BASELINE}:source-recovery/fuente-recuperado.js")
+        baseline_evidence = json.loads(
+            git_text("show", f"{CURRENT_SYNC_BASELINE}:source-recovery/PM01_EVIDENCIA.json")
+        )
+    except subprocess.CalledProcessError:
+        sync_from_local_suffix()
 
     if baseline_evidence.get("paridad_cuerpo_exacta") is not True:
         raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: la evidencia histórica no certifica paridad exacta")

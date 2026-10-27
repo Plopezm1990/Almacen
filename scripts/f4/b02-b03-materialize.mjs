@@ -93,7 +93,9 @@ const lines = recovered.split("\n");
 if (lines[0].replace(/\r$/, "") !== "// FUENTE RECUPERADO DESDE EL BUNDLE CANDIDATO DE L&A SUITE.") {
   throw new Error("F4_B02_B03_BAD_RECOVERY_HEADER");
 }
-const body = lines.slice(14).join("\n");
+// The recovered source keeps one XLSX helper import before C2; the runtime
+// bundle already owns that helper alias, so omit the wrapper through line 15.
+const body = lines.slice(15).join("\n");
 const marker = "var C2 = {";
 const first = runtime.indexOf(marker);
 const second = runtime.indexOf(marker, first + 1);
