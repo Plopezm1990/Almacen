@@ -63,9 +63,13 @@ No se aplicaron en producción.
 - El modo local mostró «No hay emisores vinculados», que es el resultado
   esperado sin una sesión sincronizada ni un emisor fiscal local; no se creó
   ni se simuló una credencial para forzar el panel delegado.
-- Queda pendiente únicamente el smoke visual autenticado con el propietario
-  QA y un emisor ficticio ya vinculado; el backend remoto ya está validado con
-  transacciones reales de QA.
+- El smoke visual autenticado quedó completado con el propietario QA y el
+  emisor ficticio `QA Fiscal A2 · QA-A2-TEST`: se creó una invitación de
+  prueba `CONSULTAR` para `c07c.smoke@qa.invalid` con un día de duración,
+  apareció como `INVITADA` y el envío quedó en `PENDIENTE`; después se revocó
+  y la pantalla mostró `REVOCADA`. La invitación temporal quedó sin acceso
+  efectivo. El backend remoto ya estaba validado con transacciones reales de
+  QA.
 
 ## Controles aplicados
 
@@ -117,7 +121,7 @@ fuera:
 ### Estado
 
 **C07-C backend: TERMINADA EN QA.**
-**Interfaz: preparada y validada localmente; Deploy Preview publicado y accesible; smoke autenticado pendiente.**
+**Interfaz: preparada, publicada y validada en Deploy Preview con sesión autenticada de propietario QA.**
 **Producción: sin cambios.**
 **Emisión fiscal: deshabilitada.**
 
