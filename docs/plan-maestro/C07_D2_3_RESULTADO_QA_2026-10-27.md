@@ -115,9 +115,14 @@ Commit enviado a la rama `codex/fiscal-multiempresa-config`:
 
 PR: [#182](https://github.com/Plopezm1990/Almacen/pull/182)
 
-En esta comprobación todavía no había aparecido un resultado nuevo de GitHub
-Actions para el commit recién enviado; la validación local y QA sí están
-completas. Producción permanece intacta.
+El check de preview de Netlify terminó correctamente para el commit de
+documentación `b20cb29`:
+
+`netlify/chic-entremet-9107cf/deploy-preview: success`
+
+Preview: [deploy-preview-182](https://deploy-preview-182--chic-entremet-9107cf.netlify.app)
+
+Producción permanece intacta.
 
 ## Límite y siguiente paso
 
