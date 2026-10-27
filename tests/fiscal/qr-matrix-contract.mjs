@@ -41,3 +41,29 @@ test("mantiene la zona de silencio y rechaza entrada vacía o demasiado larga", 
   assert.throws(() => encodeQrMatrix(""), { message: "QR_PAYLOAD_VACIO" });
   assert.throws(() => encodeQrMatrix("x".repeat(2000)), { message: "QR_PAYLOAD_DEMASIADO_LARGO" });
 });
+
+test("escribe alineación y bits BCH de versión en payloads largos", () => {
+  const longPayload = buildAeatQrPayload({
+    nif: "A12345678",
+    numserie: "QA-A-000001",
+    fecha: "27-10-2026",
+    importe: "5.50",
+  }).url;
+  const qr = encodeQrMatrix(longPayload);
+  assert.equal(qr.version, 8);
+
+  // QR versión 8: bits BCH oficiales 0x85BC, duplicados en ambas zonas.
+  const versionBits = 0x85bc;
+  for (let i = 0; i < 18; i += 1) {
+    const bit = Boolean((versionBits >>> i) & 1);
+    const row = Math.floor(i / 3);
+    const col = i % 3 + qr.size - 11;
+    assert.equal(qr.modules[row][col], bit);
+    assert.equal(qr.modules[col][row], bit);
+  }
+
+  // Los patrones que tocan la línea de sincronización también deben existir.
+  assert.equal(qr.modules[4][22], true);
+  assert.equal(qr.modules[6][24], true);
+  assert.equal(qr.modules[24][6], true);
+});

@@ -65,7 +65,9 @@ function reedSolomonDivisor(degree) {
     result[0] = galoisMultiply(result[0], root);
     root = galoisMultiply(root, 2);
   }
-  return result;
+  // El algoritmo construye los coeficientes desde el término constante;
+  // el divisor QR se aplica con el coeficiente líder en la primera posición.
+  return result.reverse();
 }
 
 function reedSolomonRemainder(data, divisor) {
@@ -205,8 +207,19 @@ function drawFormatBits(matrix, mask) {
 function drawVersionBits(matrix, version) {
   if (version < 7) return;
   let remainder = version << 12;
-  for (let i = 0; i < 12; i += 1) remainder = (remainder << 1) ^ ((remainder >>> 11) * 0x1f25);
-  const bits = (version << 12) | (remainder & 0xfff);
+  const generator = 0x1f25;
+  const bchDigit = (value) => {
+    let digit = 0;
+    while (value !== 0) {
+      digit += 1;
+      value >>>= 1;
+    }
+    return digit;
+  };
+  while (bchDigit(remainder) >= bchDigit(generator)) {
+    remainder ^= generator << (bchDigit(remainder) - bchDigit(generator));
+  }
+  const bits = (version << 12) | remainder;
   for (let i = 0; i < 18; i += 1) {
     const bit = (bits >>> i) & 1;
     const row = Math.floor(i / 3);
@@ -227,7 +240,11 @@ function drawFunctionPatterns(matrix, version) {
   const positions = ALIGNMENT_POSITIONS[version - 1] || [];
   for (const row of positions) {
     for (const col of positions) {
-      if (!matrix.functionModules[row][col]) drawAlignment(matrix, row, col);
+      const overlapsFinder =
+        (row === 6 && col === 6) ||
+        (row === 6 && col === matrix.size - 7) ||
+        (row === matrix.size - 7 && col === 6);
+      if (!overlapsFinder) drawAlignment(matrix, row, col);
     }
   }
   setFunction(matrix, matrix.size - 8, 8, true);
