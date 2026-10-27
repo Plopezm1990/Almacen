@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 
 // Contrato estático de pantalla de la capa de configuración, PIEZA 6 (sub-piezas 6a, 6b, 6c y 6f):
-//  - la pestaña «Configuración» (día y cajas, modalidades, equipos y permisos) y su cableado en el menú;
+//  - la pestaña «Configuración» (día y cajas, modalidades, equipos, fiscalidad y permisos) y su cableado en el menú;
 //  - los tres roles retirados fuera de la lista de alta de empleados;
 //  - el botón «Reabrir cierre provisional» según el permiso real (D14).
 // Lee `source-recovery/fuente-recuperado.js` y `fuente.js` (deben llevar exactamente lo mismo; la paridad completa de la
@@ -154,10 +154,10 @@ const ficha = comp.slice(comp.indexOf("function ConfiguracionLocal("));
 assert.match(ficha, /if \(!esPropietario\) contenido = h\(Card, \{ className: "mb-4" \}, "Solo un usuario con rol Propietario puede ver y cambiar la configuración\."\);\s+else if \(!empresaId \|\| !localId\) contenido = h\(Card, \{ className: "mb-4" \}, "Selecciona un local concreto para configurarlo\."\);\s+else contenido = h\(/,
   "sin perfil Propietario o sin local concreto no se monta ninguna sección (y por tanto no se llama al servidor)");
 assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), "las secciones solo se montan en la rama con permiso");
-assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
+assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
-assert.doesNotMatch(comp, /bloqueada/, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
+assert.doesNotMatch(comp, /Barra[^.\n]*bloquead/i, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
 assert.doesNotMatch(comp, /siempre en Barra/);
 assert.match(comp, /disabled: ocupado, onChange: \(e2\) => setElegidas\(\{ \.\.\.elegidas, \[m2\.modalidad\]: e2\.target\.checked \}\) \}\),/, "todas las casillas, también Barra, se pueden cambiar");
 assert.match(comp, /El TPV abre la cuenta en Barra si est\u00E1 habilitada y, si no, en la primera habilitada; si hay varias, el cajero elige\./, "la pantalla explica qué hace el TPV");
@@ -171,11 +171,33 @@ assert.match(comp, /p_cutoff_time: corte \+ ":00",/);
 assert.match(comp, /p_permitido: c3\.permitido,/, "heredar se envía como nulo");
 assert.match(comp, /await cargar\(true\);\s+\}\s+\};\s+const verRetirados/, "tras un fallo se recarga sin borrar el mensaje de error");
 
+// 5b. El panel fiscal es multiempresa, usa solo RPC y continúa siendo un borrador no activable.
+const fiscal = comp.slice(comp.indexOf("var FISCAL_CONFIG_INICIAL ="), comp.indexOf("function ConfiguracionLocal("));
+assert.ok(fiscal.length > 1000, "existe el panel Fiscalidad y AEAT");
+assert.deepEqual([...new Set([...fiscal.matchAll(/configRpc\("([a-z_0-9]+)"/g)].map((m) => m[1]))].sort(),
+  ["abc_fiscal_guardar_borrador", "abc_fiscal_leer_borrador", "abc_fiscal_listar_emisores"], "el panel usa solo las tres RPC fiscales");
+assert.doesNotMatch(fiscal, /\.from\(|\.insert\(|\.update\(|\.delete\(|\.upsert\(/, "el panel fiscal no accede a tablas directamente");
+assert.match(fiscal, /p_operation_id: configUuid\(\)/, "cada guardado fiscal usa un UUID nuevo");
+assert.match(fiscal, /p_version_esperada: Number\(detalle\.version \|\| 0\)/, "el guardado aplica control optimista de versión");
+assert.match(fiscal, /useRef\)\(0\)/, "las respuestas tardías se invalidan al cambiar de alcance");
+assert.match(fiscal, /\[empresaId, localId\]/, "la lista se reinicia al cambiar empresa o local");
+assert.match(fiscal, /\[empresaId, localId, emisorId\]/, "el detalle depende del emisor y del alcance");
+assert.match(fiscal, /No convierte el TPV en sistema fiscal, no envía a la AEAT y no admite certificados, claves privadas ni contraseñas\./);
+assert.match(fiscal, /Conexión: no configurada · Emisión: deshabilitada/);
+assert.doesNotMatch(fiscal, /p_(?:certificado|clave_privada|password|endpoint):/, "no existe ningún parámetro cliente para secretos o destinos");
+const migPanel = lf(await read("supabase/migrations/20261026182012_abc_fiscal_multiempresa_panel.sql"));
+assert.match(migPanel, /create (?:or replace )?function public\.abc_fiscal_listar_emisores\(p_empresa_id text, p_local_id text\)/);
+assert.match(migPanel, /grant execute on function public\.abc_fiscal_listar_emisores\(text,text\) to authenticated;/);
+assert.match(migPanel, /revoke all on function public\.abc_fiscal_listar_emisores\(text,text\) from public,anon,authenticated,service_role;/);
+assert.match(migPanel, /'emision_habilitada',false/);
+assert.doesNotMatch(migPanel.slice(migPanel.indexOf("create function public.abc_fiscal_listar_emisores"), migPanel.indexOf("-- Las revisiones")), /b\.configuracion/, "el listado no devuelve la configuración ni secretos");
+
 // 6. El contrato de ejecución existe y cubre los casos exigidos.
 const runtime = await read("tests/cfg/cfg6-ui-runtime.mjs");
 for (const marca of ["S1.1 sin perfil Propietario", "S2.1 sin local concreto", "S3.5 con motivo envía una sola operación", "S3.9 una hora de corte posterior", "S3.14 un rechazo del servidor se traduce",
   "S4.2 Barra se puede deshabilitar", "S4.6 con varios cambios se habilita antes de deshabilitar", "S5.5 el alta envía todos los parámetros", "S5.8 editar conserva el id", "S5.9 desactivar reenvía el equipo con activo=false",
   "S6.4 lo delicado no se puede dar", "S6.9 guarda cada cambio con ámbito LOCAL", "S6.12 se envía permitido nulo", "S6.13 con «Toda la empresa»", "S6.14 si falla el segundo", "S6.16 lista a las personas con roles retirados",
+  "S8.1 Fiscalidad lista y lee solo el emisor del alcance", "S8.2 el borrador fiscal envía UUID, versión y configuración cerrada", "S8.3 confirma sin afirmar conexión ni emisión", "S8.4 un conflicto de versión recarga y se explica", "S8.5 cambiar de empresa limpia los datos anteriores",
   "R1 los tres roles retirados no están en la lista de alta", "C1 el Propietario ve el motivo", "C4 el Cajero/a no ve el botón", "C6 si el Propietario autoriza al Encargado", "C7 si no se puede consultar el permiso", "C9 un rol que no está en la matriz"])
   assert.ok(runtime.includes(marca), "falta el caso de ejecución: " + marca);
 
