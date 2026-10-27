@@ -42,13 +42,15 @@ node --test tests/fiscal/aeat-qr-contract.mjs tests/fiscal/qr-ticket-preview-con
 Resultado:
 
 ```text
-16 tests passed, 0 failed
+17 tests passed, 0 failed
 ```
+
+Además, la matriz del payload QA largo se decodificó localmente con un lector QR independiente y devolvió exactamente la URL AEAT esperada. La comprobación cubrió la versión 8, los patrones de alineación y los bits BCH de versión.
 
 ## Límite de esta entrega
 
 Esta entrega ya conecta el payload opcional al ticket del TPV y a su zona de impresión/PDF. La matriz QR visual se genera localmente en SVG a partir de exactamente `payload.url`, con byte mode, corrección M y zona de silencio. No se ha añadido una librería remota ni se ha llamado a AEAT.
 
-La siguiente entrega debe ejecutar una prueba de lectura/decodificación desde una captura o dispositivo móvil en QA. La matriz sigue siendo exclusivamente de previsualización QA y no equivale a un QR fiscal emitido mientras la empresa no tenga activada y validada su configuración fiscal.
+Queda como comprobación física opcional apuntar la cámara de un dispositivo móvil al ticket en la preview QA. La matriz sigue siendo exclusivamente de previsualización QA y no equivale a un QR fiscal emitido mientras la empresa no tenga activada y validada su configuración fiscal.
 
 No se ha creado ningún registro fiscal en producción, no se ha usado ningún certificado, no se ha llamado a AEAT y no se ha activado una empresa.
