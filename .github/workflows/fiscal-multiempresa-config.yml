@@ -59,3 +59,34 @@ jobs:
         env:
           CFG6_UI_DEPS: ${{ runner.temp }}/fiscal-ui
         run: node tests/cfg/cfg6-ui-runtime.mjs
+
+  delegacion:
+    strategy:
+      fail-fast: false
+      matrix:
+        postgres: ['16', '17']
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    services:
+      postgres:
+        image: postgres:${{ matrix.postgres }}
+        env:
+          POSTGRES_PASSWORD: postgres
+        ports: ['5432:5432']
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444
+        with:
+          node-version: '20'
+      - name: Instalar cliente PostgreSQL fijado en el lockfile
+        run: npm ci --prefix tests/pm12/db --no-audit --no-fund
+      - name: Contrato PostgreSQL C07-C de delegación y representación
+        env:
+          C07_PG_CLIENT: ${{ github.workspace }}/tests/pm12/db/node_modules/pg
+          ABC_F5_C07_TEST_DATABASE_URL: postgresql://postgres:postgres@127.0.0.1:5432/postgres
+        run: node tests/f5/c07/c07c-delegacion-postgres-contract.mjs
