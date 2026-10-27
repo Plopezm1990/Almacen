@@ -14,8 +14,11 @@ const m03a = readText("supabase/migrations/20260923233000_abc_f2_m03a_autoridad_
 const m04a = readText("supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql");
 const a11 = readText("supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11.sql");
 
-const headerLines = 14;
-const recoveredBody = recovered.split("\n").slice(headerLines).join("\n");
+// La frontera estable es el inicio del cuerpo de aplicación, no un número
+// fijo de líneas: el encabezado puede crecer al incorporar dependencias del bundle.
+const cuerpoInicio = recovered.indexOf("var C2 = {");
+assert.ok(cuerpoInicio >= 0, "A02.1: falta la frontera var C2 del cuerpo recuperado");
+const recoveredBody = recovered.slice(cuerpoInicio);
 assert.ok(runtime.endsWith(recoveredBody), "A02.1: runtime y fuente recuperada perdieron paridad de cuerpo");
 
 assert.ok(recovered.includes("A02.1 UI -> A03 server authority"), "A02.1: falta marcador del adaptador");

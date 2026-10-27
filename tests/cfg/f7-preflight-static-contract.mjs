@@ -60,6 +60,25 @@ const EXCLUIDAS = new Set([
   '20261026175245_abc_fiscal_multiempresa_borradores.sql',
   // C07-B: panel configurable multiempresa, validación y promoción separadas del paquete F7 histórico.
   '20261026182012_abc_fiscal_multiempresa_panel.sql',
+  // C07-C/D: ventanas QA separadas; no forman parte de la foto F7 histórica.
+  '20261027110000_abc_fiscal_multiempresa_delegacion.sql',
+  '20261027111500_abc_fiscal_multiempresa_delegacion_accept.sql',
+  '20261027113000_abc_fiscal_multiempresa_representacion_read.sql',
+  '20261027114500_abc_fiscal_multiempresa_delegacion_lifecycle_checks.sql',
+  '20261027130000_abc_f7_c07d_c05_reconcile.sql',
+  '20261027131500_abc_f7_c07d_fiscal_chain_queue.sql',
+  '20261027133000_abc_f7_c07d_chain_hardening.sql',
+  '20261027134500_abc_f7_c07d_fk_indexes.sql',
+  '20261027135000_abc_f7_c07d_entity_fk_index.sql',
+  '20261027143000_abc_f7_c07d_checkout_emit_qa.sql',
+  '20261027150000_abc_f7_c07d_d2_emission_config.sql',
+  '20261027150403_abc_f7_c07d_d3_pilot_sandbox.sql',
+  '20261027151000_abc_f7_c07d_d2_emission_config_fix.sql',
+  '20261027152000_abc_f7_c07d_d2_adapter_scope_fix.sql',
+  '20261027160000_abc_f7_c07d_d2_emission_wiring.sql',
+  '20261027161000_abc_f7_c07d_d2_emission_resolver_lock_fix.sql',
+  '20261027162000_abc_f7_c07d_d2_emission_config_indexes.sql',
+  '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
