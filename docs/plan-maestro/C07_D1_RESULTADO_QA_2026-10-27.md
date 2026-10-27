@@ -22,9 +22,10 @@ El TPV también usa `abc_c07d_estado_cuenta` para refrescar el estado sin leer n
 - Migración aplicada: `20261027143000_abc_f7_c07d_checkout_emit_qa.sql`.
 - RPC de emisión disponible para `authenticated`: `abc_c07d_emitir_checkout(text,text,text,uuid,text,text)`.
 - RPC de lectura disponible para `authenticated`: `abc_c07d_estado_cuenta(text,text,uuid)`.
-- Smoke con usuario autenticado y checkout QA completado: devolvió C05 `EMITIDO`, serie `TPV`, número `5`, secuencia C07-D `1`, hash SHA-256 y cola `PENDIENTE`.
-- El smoke se ejecutó dentro de `BEGIN … ROLLBACK`; no dejó datos de prueba.
-- Conteo posterior: registros C07-D `0`, cola C07-D `0`; los 8 documentos C05 emitidos existentes permanecen intactos.
+- Smoke transaccional con usuario autenticado y checkout QA completado: devolvió C05 `EMITIDO`, serie `TPV`, número `5`, secuencia C07-D `1`, hash SHA-256 y cola `PENDIENTE`; terminó con `ROLLBACK`.
+- Ensayo persistente controlado con la operación `f7.c07d.persist.qa.20261027.01`: devolvió el mismo contrato y dejó 1 registro C07-D, 1 elemento de cola `PENDIENTE` y 0 elementos en `ERROR`.
+- La RPC autenticada de lectura devolvió el documento `EMITIDO`, `TPV-5`, secuencia `1`, hash, entidad fiscal y transporte `DISABLED`.
+- La lectura directa de tablas con `authenticated` fue rechazada por RLS; la aplicación solo usa las RPC previstas.
 - No se llamó a AEAT, no se usaron certificados, claves ni secretos.
 
 ## Verificaciones locales
@@ -43,4 +44,4 @@ El TPV también usa `abc_c07d_estado_cuenta` para refrescar el estado sin leer n
 
 Esta pieza prueba la integración interna de cobro, C05 y cadena/cola C07-D en QA. La cola todavía no transporta datos a AEAT: su estado queda `PENDIENTE` hasta que se diseñe y autorice el adaptador fiscal por empresa/asesoría.
 
-Sigue C07-D.2: completar la selección persistente de serie por entidad fiscal y definir el contrato del adaptador de cada empresa/asesoría —credenciales fuera del frontend, rotación, auditoría, reintentos y resolución `ACEPTADO/RECHAZADO/ERROR`— manteniendo QA aislada. Después habrá que repetir las pruebas con datos reales de QA y solo entonces preparar una promoción formal, sin aplicar nada en producción automáticamente.
+Sigue C07-D.2: completar la selección persistente de serie por entidad fiscal y definir el contrato del adaptador de cada empresa/asesoría —credenciales fuera del frontend, rotación, auditoría, reintentos y resolución `ACEPTADO/RECHAZADO/ERROR`— manteniendo QA aislada. La evidencia persistente queda limitada al fixture QA anterior; después habrá que preparar una promoción formal, sin aplicar nada en producción automáticamente.

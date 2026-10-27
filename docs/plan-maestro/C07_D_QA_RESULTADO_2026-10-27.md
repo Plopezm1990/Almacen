@@ -89,6 +89,10 @@ acotada. El smoke volvió a terminar con `ROLLBACK`, por lo que el conteo QA
 sigue en 0 registros C07-D y 0 elementos de cola.
 
 El punto 1 y el punto 2 de “Qué queda” están completados en alcance QA. Sigue
-el punto 3: ensayo persistente controlado, y después C07-D.2 para cerrar la
+el punto 3: ensayo persistente controlado, que ya se ejecutó con un fixture QA
+documentado: 1 registro C07-D, 1 elemento de cola `PENDIENTE` y 0 elementos en
+`ERROR`. La RPC de lectura autenticada devolvió C05 `EMITIDO`, `TPV-5`,
+secuencia `1`, hash y transporte `DISABLED`; la lectura directa de las tablas
+fue rechazada correctamente por RLS. Sigue C07-D.2 para cerrar la
 configuración persistente de serie y el contrato del adaptador por empresa o
 asesoría. AEAT y producción siguen fuera.
