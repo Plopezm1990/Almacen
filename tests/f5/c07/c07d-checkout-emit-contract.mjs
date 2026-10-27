@@ -15,6 +15,8 @@ for (const source of [runtime, recovered]) {
   check("FRONTEND_EMIT_RPC", source.includes('supabase.rpc("abc_c07d_emitir_checkout"'));
   check("FRONTEND_STATE_RPC", source.includes('supabase.rpc("abc_c07d_estado_cuenta"'));
   check("FRONTEND_QA_STATUS", source.includes('data-c07d-qa-status'));
+  check("FRONTEND_QA_ENVIRONMENT_GATE", source.includes("c07dActivoEnEntornoQa") && source.includes("window.__modoPruebasQA === true"));
+  check("FRONTEND_PRODUCTION_GATE_UI", source.includes('data-c07d-production-gate') && source.includes("todavía no está activa en producción"));
   check("FRONTEND_NO_AEAT_TRANSPORT", source.includes('aeat_transport') === false || source.includes("DISABLED"));
 }
 

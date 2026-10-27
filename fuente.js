@@ -103430,7 +103430,8 @@ function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
 function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   const h = import_react4.default.createElement;
   const modoFiscalLocal = typeof window !== "undefined" && window.__nubeActiva === false;
-  const modoPilotoSandboxQa = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || /^deploy-preview-\d+--/u.test(window.location.hostname));
+  const modoFiscalQa = typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+  const modoPilotoSandboxQa = modoFiscalQa;
   const [emisores, setEmisores] = (0, import_react4.useState)([]);
   const [emisorId, setEmisorId] = (0, import_react4.useState)("");
   const [detalle, setDetalle] = (0, import_react4.useState)(null);
@@ -103443,7 +103444,7 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   const [delegaciones, setDelegaciones] = (0, import_react4.useState)([]);
   const [invitacion, setInvitacion] = (0, import_react4.useState)({ email: "", permiso: "CONSULTAR", dias: "30" });
   const [representacion, setRepresentacion] = (0, import_react4.useState)({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" });
-  const [c07cDisponible, setC07cDisponible] = (0, import_react4.useState)(true);
+  const [c07cDisponible, setC07cDisponible] = (0, import_react4.useState)(modoFiscalQa);
   const [guardandoDelegacion, setGuardandoDelegacion] = (0, import_react4.useState)(false);
   const [guardandoRepresentacion, setGuardandoRepresentacion] = (0, import_react4.useState)(false);
   const listaSolicitud = (0, import_react4.useRef)(0);
@@ -103480,7 +103481,7 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   (0, import_react4.useEffect)(() => { if (emisorId) cargarDetalle(emisorId); else reiniciarDetalle(); }, [empresaId, localId, emisorId]);
   (0, import_react4.useEffect)(() => {
     let activo = true;
-    if (modoFiscalLocal || !emisorId) { setDelegaciones([]); setPilotoSandbox(null); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); return () => { activo = false; }; }
+    if (modoFiscalLocal || !emisorId || !modoFiscalQa) { setDelegaciones([]); setPilotoSandbox(null); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); setC07cDisponible(modoFiscalQa); return () => { activo = false; }; }
     setC07cDisponible(true);
     const leerPilotoSandbox = modoPilotoSandboxQa
       ? configRpc("abc_c07d_leer_piloto_sandbox", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }).catch(() => null)
@@ -103613,7 +103614,9 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
           ),
           h(Btn, { small: true, onClick: guardarRepresentacion, disabled: ocupado || guardandoRepresentacion }, guardandoRepresentacion ? "Guardando…" : "Guardar metadatos")
         )
-      ) : null,
+      ) : !modoFiscalQa ? h(Card, { className: "mb-3", "data-c07d-production-gate": "disabled" },
+        h("div", { className: "font-semibold mb-1" }, "Delegación y representación fiscal no activas en producción"),
+        h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Esta capacidad se valida en QA antes de su promoción. No se ha activado ninguna conexión ni emisión fiscal.")) : null,
       h(Card, { className: "mb-3" }, h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
         h("div", null, h("div", { className: "text-[12px] font-semibold" }, `Versión del borrador: ${detalle.version || 0}`), h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Conexión: no configurada · Emisión: deshabilitada")),
         h(Btn, { onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar borrador fiscal")))) : null);
@@ -110527,6 +110530,9 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
 var MODALIDADES_A02 = ["BARRA", "MESA", "TERRAZA", "TAKEAWAY", "OTRO"];
 var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza", TAKEAWAY: "Para llevar", OTRO: "Otro" };
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
+  function c07dActivoEnEntornoQa() {
+    return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+  }
   function productoEsDelLocalActivoVenta(prod) {
     if (!prod) return false;
     if (!localActivoId) return true;
@@ -111340,6 +111346,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
   async function emitirCheckoutFiscalC07D(cuentaId, opciones = {}) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, disponible: false, error: "La fiscalización C07-D se valida en QA y todavía no está activa en producción." };
     if (!localActivoId) return { ok: false, error: "Selecciona un local para emitir el documento fiscal." };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId || !cuentaId) return { ok: false, error: "No se pudo determinar la cuenta fiscal." };
@@ -111371,6 +111378,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
   async function leerConfiguracionEmisionC07D(tipoDocumento = "FACTURA") {
+    if (!c07dActivoEnEntornoQa()) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
     if (!localActivoId) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
@@ -111390,6 +111398,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
   async function leerEstadoFiscalC07D(cuentaId = null) {
+    if (!c07dActivoEnEntornoQa()) return { ok: true, disponible: false, documentos: [], estado: "NO_DISPONIBLE" };
     if (!localActivoId) return { ok: false, error: "Selecciona un local para consultar la cola fiscal." };
     const empresaId = empresaDelLocalActivo?.id || null;
     const contexto = empresaId ? leerContextoCuentaA02(empresaId, localActivoId) : null;
