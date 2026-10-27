@@ -67,7 +67,7 @@ Leyenda: ✅ REVISADO (evidencia reproducible: test real + código) · 🟡 PARC
 | Puente L&A | (fuera de la app, programa aparte) | 🔴 BLOQUEADO | Sigue sin hardware real, documentado y aceptado desde el 25/10 |
 | Pedidos, cocina | `pedidos`, `cocina` | ⬜ NO APLICA todavía | Sin revisar en esta auditoría ni en la previa |
 | Productos, proveedores, albaranes, recepción | `productos`, `proveedores`, `albaranes`, `recepcion` | ⬜ NO APLICA todavía | Sin revisar en esta auditoría; Documento2/A04 cubre solo "opciones", no el catálogo general |
-| Traspasos, mermas, conteo, almacén | `traspasos`, `mermas`, `conteo`, `resumen_almacen` | 🟡 PARCIAL | Revisión de código completa (ver `AUDITORIA_BLOQUE2_CODIGO_...md`); H7 ya resuelto; prueba en vivo con Cowork pendiente de resultado |
+| Traspasos, mermas, conteo, almacén | `traspasos`, `mermas`, `conteo`, `resumen_almacen` | 🟡 PARCIAL | Código + prueba en vivo con Cowork completas (ver `AUDITORIA_HALLAZGOS_BLOQUE2_2026-10-27.md`); H-CRIT-B2-01 (Mermas bloqueada) con causa confirmada y corrección pendiente de aplicar |
 | Encargos, clientes | `encargos`, `clientes` | ⬜ NO APLICA todavía | Sin revisar |
 | Facturas, pagos, Libro IVA, descuentos, devoluciones | `facturas`, `pagos`, `libroiva`, `descuentos`, `devoluciones` | 🟡 PARCIAL | Revisión de código completa (ver `AUDITORIA_BLOQUE3_CODIGO_...md`); prueba en vivo con Cowork pendiente de resultado |
 | Personal, turnos, fichajes, nóminas, fichas, cargos | `personal`, `turnos`, `fichaje`, `nominas`, `fichas` | 🟡 PARCIAL | Las 3 cuentas QA sintéticas se crearon y probaron (login + matriz), pero solo esa pantalla puntual, no el módulo completo |
