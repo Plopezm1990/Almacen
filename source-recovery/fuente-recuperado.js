@@ -1129,6 +1129,23 @@ var CONFIG_ERRORES = {
   equipo_id_en_uso: "Ese equipo pertenece a otro local.",
   equipo_nombre_duplicado: "Ya hay un equipo con ese nombre en este local.",
   equipo_tipo_inmutable: "El tipo de un equipo no se puede cambiar; desactívalo y crea otro.",
+  terminal_id_requerido: "Falta el identificador del terminal.",
+  terminal_nombre_invalido: "Escribe un nombre de terminal de hasta 80 caracteres.",
+  terminal_device_key_invalida: "La identidad del dispositivo puede tener hasta 120 caracteres.",
+  terminal_capacidades_invalidas: "Las capacidades del terminal no tienen un formato válido.",
+  terminal_estado_requerido: "Indica si el terminal está activo.",
+  terminal_motivo_requerido: "Escribe el motivo del cambio.",
+  terminal_local_no_disponible: "El local no está disponible.",
+  terminal_id_en_uso: "Ese terminal pertenece a otro local.",
+  terminal_device_key_duplicada: "La identidad del dispositivo ya está vinculada a otro terminal de este local.",
+  terminal_sesion_abierta: "No se puede desactivar un terminal que está vinculado a una sesión de caja abierta.",
+  caja_id_requerido: "Falta el identificador de la caja.",
+  caja_nombre_invalido: "Escribe un nombre de caja de hasta 80 caracteres.",
+  caja_estado_requerido: "Indica si la caja está activa.",
+  caja_motivo_requerido: "Escribe el motivo del cambio.",
+  caja_local_no_disponible: "El local no está disponible.",
+  caja_id_en_uso: "Esa caja pertenece a otro local.",
+  caja_sesion_abierta: "No se puede desactivar una caja que tiene una sesión abierta.",
   capacidad_ambito_invalido: "Ámbito no válido.",
   capacidad_rol_invalido: "Ese rol no se puede configurar.",
   capacidad_invalida: "Permiso no válido.",
@@ -1589,6 +1606,139 @@ function ConfigEquipos({ empresaId, localId }) {
         h(Btn, { small: true, variant: "ghost", onClick: () => setForm(null), disabled: ocupado }, "Cancelar")
       )
     ) : null,
+    cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
+  );
+}
+function ConfigTerminalesCajas({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const [terminales, setTerminales] = (0, import_react4.useState)([]);
+  const [cajas, setCajas] = (0, import_react4.useState)([]);
+  const [verInactivos, setVerInactivos] = (0, import_react4.useState)(false);
+  const [nombreTerminal, setNombreTerminal] = (0, import_react4.useState)("");
+  const [nombreCaja, setNombreCaja] = (0, import_react4.useState)("");
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const cargar = async (inactivos = verInactivos) => {
+    setCargando(true);
+    setError("");
+    try {
+      const datos = await configRpc("abc_listar_terminales_cajas_local", { p_empresa_id: empresaId, p_local_id: localId, p_incluir_inactivos: inactivos });
+      setTerminales(Array.isArray(datos?.terminales) ? datos.terminales : []);
+      setCajas(Array.isArray(datos?.cajas) ? datos.cajas : []);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    setNombreTerminal("");
+    setNombreCaja("");
+    cargar();
+  }, [empresaId, localId]);
+  const guardarTerminal = async (existente = null) => {
+    setError("");
+    setConfirmacion("");
+    const nombre = String(existente?.nombre || nombreTerminal || "").trim();
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    if (!nombre) {
+      setError("Escribe el nombre del terminal.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const capacidades = existente?.capacidades || { operaciones: ["VENTA", "CAJA"] };
+      const r2 = await configRpc("abc_configurar_terminal_tpv", {
+        p_operation_id: configOperacion("terminal-tpv"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_terminal_id: existente?.id || configUuid(),
+        p_nombre: nombre,
+        p_device_key: null,
+        p_capacidades: capacidades,
+        p_activo: existente ? existente.activo !== true : true,
+        p_motivo: motivo.trim()
+      });
+      setNombreTerminal("");
+      setConfirmacion(r2?.creado ? "Terminal TPV creado en este local." : r2?.cambio === false ? "No había nada que cambiar." : "Terminal TPV actualizado.");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const guardarCaja = async (existente = null) => {
+    setError("");
+    setConfirmacion("");
+    const nombre = String(existente?.nombre || nombreCaja || "").trim();
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    if (!nombre) {
+      setError("Escribe el nombre de la caja.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const r2 = await configRpc("abc_configurar_caja_fisica", {
+        p_operation_id: configOperacion("caja-fisica"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_caja_id: existente?.id || configUuid(),
+        p_nombre: nombre,
+        p_activo: existente ? existente.activo !== true : true,
+        p_motivo: motivo.trim()
+      });
+      setNombreCaja("");
+      setConfirmacion(r2?.creado ? "Caja física creada en este local." : r2?.cambio === false ? "No había nada que cambiar." : "Caja física actualizada.");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const ocupado = cargando || guardando;
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h(Card, { className: "mb-3", style: { background: C2.amberSoft } },
+      h("div", { className: "font-semibold mb-1" }, "Terminales TPV y cajas físicas"),
+      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Esta pantalla solo está disponible para Propietario. El servidor comprueba tu sesión y tu rol; el PIN local no autoriza por sí solo. El terminal es la identidad operativa del navegador, no un datáfono ni una clave secreta.")),
+    h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: verInactivos, onChange: (e2) => {
+      setVerInactivos(e2.target.checked);
+      cargar(e2.target.checked);
+    }, disabled: ocupado }), "Ver también los desactivados"),
+    h(Card, { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Terminales TPV del local"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, terminales.filter((t3) => t3.activo).length > 1 ? "Hay varios terminales activos: el TPV deberá seleccionar cuál usa." : "Con un único terminal activo, el TPV lo selecciona automáticamente."),
+      terminales.length ? terminales.map((t3) => h("div", { key: t3.id, className: "flex items-center justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: t3.activo ? 1 : 0.6 } },
+        h("div", { className: "text-[13px]" }, h("div", { className: "font-semibold" }, t3.nombre, t3.activo ? "" : " (desactivado)"), h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, t3.device_key_present ? "Identidad de dispositivo vinculada" : "Sin identidad de dispositivo; se puede vincular más adelante")),
+        h(Btn, { small: true, variant: t3.activo ? "danger" : "ghost", onClick: () => guardarTerminal(t3), disabled: ocupado }, t3.activo ? "Desactivar" : "Activar")
+      )) : h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún terminal TPV en este local."),
+      h(Field, { label: "Nombre del nuevo terminal" }, h(Input, { value: nombreTerminal, onChange: (e2) => setNombreTerminal(e2.target.value), maxLength: 80, disabled: ocupado, placeholder: "TPV mostrador" })),
+      h(Btn, { small: true, onClick: () => guardarTerminal(), disabled: ocupado }, guardando ? "Guardando…" : "Crear terminal TPV")
+    ),
+    h(Card, { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Cajas físicas del local"),
+      cajas.length ? cajas.map((c3) => h("div", { key: c3.id, className: "flex items-center justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: c3.activo ? 1 : 0.6 } },
+        h("div", { className: "text-[13px]" }, c3.nombre, c3.activo ? "" : " (desactivada)"),
+        h(Btn, { small: true, variant: c3.activo ? "danger" : "ghost", onClick: () => guardarCaja(c3), disabled: ocupado }, c3.activo ? "Desactivar" : "Activar")
+      )) : h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ninguna caja física en este local."),
+      h(Field, { label: "Nombre de la nueva caja" }, h(Input, { value: nombreCaja, onChange: (e2) => setNombreCaja(e2.target.value), maxLength: 80, disabled: ocupado, placeholder: "Caja principal" })),
+      h(Btn, { small: true, onClick: () => guardarCaja(), disabled: ocupado }, guardando ? "Guardando…" : "Crear caja física")
+    ),
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
@@ -2599,7 +2749,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -2610,6 +2760,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
+    seccion === "terminales" ? h(ConfigTerminalesCajas, { empresaId, localId }) : null,
     seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null

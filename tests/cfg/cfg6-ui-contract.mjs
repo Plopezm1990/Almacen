@@ -72,8 +72,8 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
 
 // 2. El componente solo habla con el servidor por las funciones previstas, con sus nombres y parámetros exactos.
 // La pantalla de permisos también consulta y configura la matriz de pantallas de PM13 P05.
-const migraciones = (await readdir(new URL("supabase/migrations/", root))).filter((n) => (/^2026100219|^2026100221|^2026100222|^2026100223|^2026100224/.test(n) && n.includes("_abc_config_pieza")) || n === "20261020140000_pm13_p05_roles_fijos_pantallas.sql").sort();
-assert.equal(migraciones.length, 6, "las migraciones de las piezas 1 a 5 y PM13 P05");
+const migraciones = (await readdir(new URL("supabase/migrations/", root))).filter((n) => (/^2026100219|^2026100221|^2026100222|^2026100223|^2026100224/.test(n) && n.includes("_abc_config_pieza")) || n === "20261020140000_pm13_p05_roles_fijos_pantallas.sql" || n === "20261027200000_abc_f8_c04_terminal_caja_propietario.sql").sort();
+assert.equal(migraciones.length, 7, "las migraciones de las piezas 1 a 5, PM13 P05 y F8 C04");
 const textoMig = {};
 for (const m of migraciones) textoMig[m] = lf(await read("supabase/migrations/" + m));
 const firmas = new Map();
@@ -87,8 +87,8 @@ const llamadas = [...compCfg6.matchAll(/configRpc\("([a-z_0-9]+)",\s*\{([^}]*)\}
 assert.ok(llamadas.length >= 11, "se localizan las llamadas al servidor");
 const esperadas = ["abc_obtener_ajustes", "abc_configurar_ajuste", "abc_configurar_dia_operativo", "abc_obtener_modalidades_local", "abc_configurar_modalidad_local",
   "abc_listar_equipos_local", "abc_configurar_equipo_local", "abc_obtener_capacidades_rol", "abc_configurar_capacidad_rol", "abc_listar_roles_retirados",
-  "abc_obtener_pantallas_rol", "abc_configurar_pantalla_rol"];
-assert.deepEqual([...new Set(llamadas.map((l) => l.nombre))].sort(), esperadas.slice().sort(), "la pantalla usa exactamente estas 12 funciones (y nada más)");
+  "abc_obtener_pantallas_rol", "abc_configurar_pantalla_rol", "abc_listar_terminales_cajas_local", "abc_configurar_terminal_tpv", "abc_configurar_caja_fisica"];
+assert.deepEqual([...new Set(llamadas.map((l) => l.nombre))].sort(), esperadas.slice().sort(), "la pantalla usa exactamente estas 15 funciones (y nada más)");
 for (const l of llamadas) {
   const firma = firmas.get(l.nombre);
   assert.ok(firma, "existe la función " + l.nombre + " en las migraciones");
@@ -99,7 +99,7 @@ for (const l of llamadas) {
     assert.ok(l.claves.includes("p_motivo") && l.claves.includes("p_operation_id"), `${l.nombre}: todo cambio lleva motivo y operation_id`);
   }
 }
-assert.equal(llamadas.filter((l) => l.nombre.startsWith("abc_configurar_")).length, 7, "siete llamadas que cambian algo (cajas y umbral comparten función)");
+assert.equal(llamadas.filter((l) => l.nombre.startsWith("abc_configurar_")).length, 9, "nueve llamadas que cambian algo, incluyendo terminales y cajas físicas");
 assert.ok(!/\.supabase|supabase\.rpc\(/.test(comp.replace(/const \{ data, error \} = await supabase\.rpc\(nombre, parametros\);/, "")), "el componente solo llama al servidor a través de configRpc");
 const tablas = [...comp.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]);
 assert.deepEqual(tablas, ["terminales_tpv"], "la única lectura directa de una tabla es la de los terminales del local (como hace el resto de la aplicación)");
@@ -154,7 +154,7 @@ const ficha = comp.slice(comp.indexOf("function ConfiguracionLocal("));
 assert.match(ficha, /if \(!esPropietario\) contenido = h\(Card, \{ className: "mb-4" \}, "Solo un usuario con rol Propietario puede ver y cambiar la configuración\."\);\s+else if \(!empresaId \|\| !localId\) contenido = h\(Card, \{ className: "mb-4" \}, "Selecciona un local concreto para configurarlo\."\);\s+else contenido = h\(/,
   "sin perfil Propietario o sin local concreto no se monta ninguna sección (y por tanto no se llama al servidor)");
 assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), "las secciones solo se montan en la rama con permiso");
-assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
+assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["terminales", "Terminales y cajas"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
 assert.doesNotMatch(comp, /Barra[^.\n]*bloquead/i, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
