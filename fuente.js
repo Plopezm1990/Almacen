@@ -103430,9 +103430,11 @@ function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
 function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   const h = import_react4.default.createElement;
   const modoFiscalLocal = typeof window !== "undefined" && window.__nubeActiva === false;
+  const modoPilotoSandboxQa = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || /^deploy-preview-\d+--/u.test(window.location.hostname));
   const [emisores, setEmisores] = (0, import_react4.useState)([]);
   const [emisorId, setEmisorId] = (0, import_react4.useState)("");
   const [detalle, setDetalle] = (0, import_react4.useState)(null);
+  const [pilotoSandbox, setPilotoSandbox] = (0, import_react4.useState)(null);
   const [form, setForm] = (0, import_react4.useState)({ ...FISCAL_CONFIG_INICIAL });
   const [cargando, setCargando] = (0, import_react4.useState)(false);
   const [guardando, setGuardando] = (0, import_react4.useState)(false);
@@ -103478,14 +103480,19 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   (0, import_react4.useEffect)(() => { if (emisorId) cargarDetalle(emisorId); else reiniciarDetalle(); }, [empresaId, localId, emisorId]);
   (0, import_react4.useEffect)(() => {
     let activo = true;
-    if (modoFiscalLocal || !emisorId) { setDelegaciones([]); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); return () => { activo = false; }; }
+    if (modoFiscalLocal || !emisorId) { setDelegaciones([]); setPilotoSandbox(null); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); return () => { activo = false; }; }
     setC07cDisponible(true);
+    const leerPilotoSandbox = modoPilotoSandboxQa
+      ? configRpc("abc_c07d_leer_piloto_sandbox", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }).catch(() => null)
+      : Promise.resolve(null);
     Promise.all([
       configRpc("abc_fiscal_listar_delegaciones", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }),
-      configRpc("abc_fiscal_leer_representacion", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId })
-    ]).then(([r2, r3]) => {
+      configRpc("abc_fiscal_leer_representacion", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }),
+      leerPilotoSandbox
+    ]).then(([r2, r3, r4]) => {
       if (!activo) return;
       setDelegaciones(Array.isArray(r2?.delegaciones) ? r2.delegaciones : []);
+      setPilotoSandbox(r4 || null);
       setRepresentacion({ tipo: r3?.tipo || "PENDIENTE", estado: r3?.estado || "PENDIENTE", referencia_opaca: r3?.referencia_opaca || "", evidencia_sha256: r3?.evidencia_sha256 || "", vigente_desde: r3?.vigente_desde || "", vigente_hasta: r3?.vigente_hasta || "" });
     }).catch(() => { if (activo) setC07cDisponible(false); });
     return () => { activo = false; };
@@ -103543,9 +103550,18 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   };
   const ocupado = cargando || guardando;
   const emisor = detalle?.emisor || emisores.find((e2) => e2.id === emisorId) || null;
+  const pilotoSandboxVisible = modoPilotoSandboxQa && !!emisorId;
+  const pilotoSandboxEstado = pilotoSandbox?.piloto?.estado || pilotoSandbox?.estado || "PENDIENTE_EMPRESA";
+  const pilotoSandboxConfigurado = pilotoSandbox?.configurado === true;
   const selector = (clave, etiqueta) => h(ConfigFiscalSelect, { clave, etiqueta, form, onCambio: campo, disabled: ocupado });
   return h("div", { "data-fiscal-config": "borrador" },
     h(ConfigAviso, { error, confirmacion }),
+    pilotoSandboxVisible ? h(Card, { className: "mb-3", "data-c07d-d3-pilot": "readonly-qa", style: { background: C2.surface2, border: `1px solid ${C2.line}` } },
+      h("div", { className: "font-semibold text-[13px]" }, "Expediente de piloto sandbox"),
+      h("div", { className: "text-[12px] mt-1" }, `${pilotoSandboxConfigurado ? "Estado actual" : "Estado inicial"}: ${pilotoSandboxEstado}`),
+      h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, `Empresa ${empresaId || "—"} · Local ${localId || "—"} · Entorno SANDBOX`),
+      h("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Solo lectura en preview QA. Este panel no crea expedientes, no cambia estados, no utiliza secretos y no activa producción.")
+    ) : null,
     h(Card, { className: "mb-3", style: { background: C2.amberSoft } },
       h("div", { className: "font-semibold text-[13px]" }, "Configuración fiscal en borrador"),
       h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "Prepara la situación de cada empresa y emisor. No convierte el TPV en sistema fiscal, no envía a la AEAT y no admite certificados, claves privadas ni contraseñas.")),
