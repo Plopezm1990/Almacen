@@ -106249,7 +106249,7 @@ function GestionAlmacen() {
 
         @media print {
           @page { size: A4; margin: 12mm; }
-          html, body { margin: 0 !important; padding: 0 !important; overflow: visible !important; background: #fff !important; }
+          html, body, #root { margin: 0 !important; padding: 0 !important; height: var(--ticket-print-height, auto) !important; max-height: var(--ticket-print-height, none) !important; overflow: hidden !important; background: #fff !important; }
           body * { visibility: hidden !important; }
           .zona-impresion, .zona-impresion * { visibility: visible !important; }
           .modal-ticket-impresion {
@@ -106283,7 +106283,7 @@ function GestionAlmacen() {
             margin: 0 !important;
             background: #fff !important;
           }
-          .modal-ticket-impresion [data-qr-fiscal-matrix] svg {
+          .modal-ticket-impresion [data-qr-fiscal-preview] svg {
             width: 220px !important;
             height: 220px !important;
             max-width: 220px !important;
@@ -123476,6 +123476,18 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       svg
     };
   }
+  function imprimirTicketVenta() {
+    const root = document.documentElement;
+    const zona = document.querySelector(".modal-ticket-impresion .zona-impresion");
+    const altura = Math.ceil(zona?.scrollHeight || zona?.getBoundingClientRect().height || 0);
+    if (altura > 0) root.style.setProperty("--ticket-print-height", `${altura}px`);
+    const limpiarAlturaImpresion = () => {
+      root.style.removeProperty("--ticket-print-height");
+      window.removeEventListener("afterprint", limpiarAlturaImpresion);
+    };
+    window.addEventListener("afterprint", limpiarAlturaImpresion, { once: true });
+    window.print();
+  }
   function renderTicketVenta() {
     if (!ticketVenta) return null;
     const h3 = import_react4.default.createElement;
@@ -123600,7 +123612,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           !tieneNumeroFiscal ? h3("div", { className: "text-[8.5px] mt-1", style: { color: C2.inkSoft } }, "Documento interno del TPV \xB7 pendiente de numeraci\xF3n fiscal") : null
         )
       ),
-      h3("div", { className: "mt-3 flex gap-2 flex-wrap no-imprimir" }, h3(Btn, { onClick: () => window.print() }, "Imprimir / Guardar PDF"), h3(Btn, { variant: "ghost", onClick: () => setTicketVenta(null) }, "Cerrar ticket"))
+      h3("div", { className: "mt-3 flex gap-2 flex-wrap no-imprimir" }, h3(Btn, { onClick: imprimirTicketVenta }, "Imprimir / Guardar PDF"), h3(Btn, { variant: "ghost", onClick: () => setTicketVenta(null) }, "Cerrar ticket"))
     );
   }
   function renderHistorialVentas() {
