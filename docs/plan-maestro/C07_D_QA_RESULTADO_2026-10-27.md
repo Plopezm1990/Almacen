@@ -98,3 +98,19 @@ de adaptadores, configuración persistente por empresa/local/entidad/tipo/serie,
 historial inmutable y adaptador `SIMULADOR_C07D` en QA. Sigue C07-D.2.2 para
 resolver esa configuración desde el servidor durante la emisión y evitar que
 el frontend elija una serie libre. AEAT y producción siguen fuera.
+
+## Actualización C07-D.2.2 — emisión gobernada por servidor
+
+El subpunto C07-D.2.2 queda implementado y verificado en QA. La emisión del
+checkout hace un preflight completo antes de mutar C05/C07-D y resuelve la
+configuración persistente por empresa, local, entidad fiscal y tipo documental.
+Una serie falsa enviada por el cliente (`CLIENTE_NO_AUTORITATIVO`) fue ignorada
+como autoridad: el documento resultó `TPV-6`, con secuencia C07-D `2`, cola
+`PENDIENTE` y transporte `DISABLED`. El resultado final de QA es 9 documentos
+C05, 2 registros C07-D, 2 elementos `PENDIENTE` y 0 en `ERROR`.
+
+Se corrigió además la volatilidad del resolver (`VOLATILE` con `FOR SHARE`) y
+se añadieron índices para las nuevas claves foráneas de configuración. No se
+tocó producción ni se contactó con la AEAT. El siguiente punto es C07-D.2.3:
+reflejar el estado resuelto en el frontend y bloquear visualmente la emisión
+cuando no haya configuración `VALIDADA/ACTIVA`.

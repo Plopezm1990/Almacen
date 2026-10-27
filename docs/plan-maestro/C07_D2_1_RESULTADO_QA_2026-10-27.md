@@ -61,12 +61,17 @@ Pruebas negativas realizadas:
   sola entidad fiscal activa mediante
   `20261027152000_abc_f7_c07d_d2_adapter_scope_fix.sql`.
 
-## Límites
+## Cierre y continuidad
 
-Esta entrega todavía no conecta `abc_c07d_emitir_checkout` con la configuración
-persistentemente guardada. Ese es el siguiente subpunto C07-D.2.2: el servidor
-deberá resolver la serie y el adaptador configurados y no aceptar una serie
-libre del frontend, manteniendo el adaptador simulado y QA aislada.
+La conexión de `abc_c07d_emitir_checkout` con la configuración persistente se
+cerró posteriormente en C07-D.2.2. La evidencia completa está en
+`C07_D2_2_RESULTADO_QA_2026-10-27.md`: el servidor resuelve la serie y el
+adaptador, registra la serie recibida del frontend solo como auditoría y no
+acepta una serie libre como autoridad.
+
+El siguiente subpunto es C07-D.2.3: reflejar en el frontend el estado de
+configuración resuelto y bloquear visualmente la emisión si no existe una
+configuración `VALIDADA/ACTIVA`.
 
 No se ha modificado producción, no se ha usado el proyecto Supabase de
 producción y no se ha contactado con la AEAT.
