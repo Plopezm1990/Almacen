@@ -5227,9 +5227,12 @@ function GestionAlmacen() {
           body * { visibility: hidden !important; }
           .zona-impresion, .zona-impresion * { visibility: visible !important; }
           .modal-ticket-impresion {
-            position: static !important;
+     position: absolute !important;
             inset: auto !important;
+     left: 0 !important;
+     top: 0 !important;
             display: block !important;
+     visibility: visible !important;
             overflow: visible !important;
             padding: 0 !important;
             background: transparent !important;
@@ -5239,6 +5242,7 @@ function GestionAlmacen() {
             width: 100% !important;
             max-width: none !important;
             max-height: none !important;
+     visibility: visible !important;
             overflow: visible !important;
             margin: 0 !important;
             padding: 0 !important;
