@@ -225,7 +225,7 @@
   // que "lo que ya no está en local" NO significa "borrado" — significa
   // "más antiguo de 500". Si se tratara como borrado, cada apunte nuevo
   // iría eliminando el histórico de la nube. Por eso se excluye.
-  var NUNCA_BORRAR = { auditoria: true };
+  var NUNCA_BORRAR = { auditoria: true, movimientos: true };
 
   function borradosDe(key) {
     if (NUNCA_BORRAR[key]) return [];
@@ -622,6 +622,8 @@
   // que este equipo ha quitado a propósito (una venta anulada, un albarán
   // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
   async function sincronizarColeccionPorFila(tabla, listaLocal, claveColeccion) {
+    var esMovimientoHistorico = claveColeccion === "movimientos" && tabla === "movimientos_registro";
+    if (esMovimientoHistorico && !Array.isArray(listaLocal)) throw new Error("movimientos_historicos_lista_invalida");
     var filasRemotas = await leerFilasCompletas(tabla);
     var remotoPorId = {};
     filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
@@ -631,13 +633,38 @@
       if (!x || !x.id) return;
       var datosServidor = datosFilaParaServidor(x, claveColeccion);
       if (datosServidor === null) return;
+      var existeRemoto = Object.prototype.hasOwnProperty.call(remotoPorId, x.id);
       var enNube = remotoPorId[x.id];
-      if (!enNube || !contenidoFilaIgual(enNube, datosServidor)) {
-        filasParaGuardar.push({
+      if (esMovimientoHistorico && existeRemoto) {
+        // El historial confirmado es inmutable; ninguna caché desactualizada
+        // puede reescribir una fila de este ledger heredado.
+        if (!contenidoFilaIgual(enNube, datosServidor)) {
+          var conflicto = new Error("movimiento_historico_divergente");
+          conflicto.code = "MOVIMIENTO_HISTORICO_DIVERGENTE";
+          throw conflicto;
+        }
+        return;
+      }
+      if (!existeRemoto || !contenidoFilaIgual(enNube, datosServidor)) {
+        var nuevaFila = {
           id: x.id,
           fecha: datosServidor.fecha || new Date().toISOString().slice(0, 10),
           datos: datosServidor,
-        });
+        };
+        if (esMovimientoHistorico) {
+          // No aceptar un tenant inferido silenciosamente por triggers.
+          // El servidor vuelve a autorizar la pareja empresa/local mediante RLS.
+          var empresaId = typeof datosServidor.empresaId === "string" ? datosServidor.empresaId.trim() : "";
+          var localId = typeof datosServidor.localId === "string" ? datosServidor.localId.trim() : "";
+          if (!empresaId || !localId || localId.toUpperCase() === "TODOS" || localId.toUpperCase() === "TODOS LOS LOCALES") {
+            var sinContexto = new Error("movimiento_historico_sin_empresa_local");
+            sinContexto.code = "MOVIMIENTO_HISTORICO_SIN_CONTEXTO";
+            throw sinContexto;
+          }
+          nuevaFila.empresa_id = empresaId;
+          nuevaFila.local_id = localId;
+        }
+        filasParaGuardar.push(nuevaFila);
       }
     });
 
@@ -672,7 +699,19 @@
         // gracias a la comparación canónica anterior.
         for (var j = 0; j < filasParaGuardar.length; j++) {
           try {
-            var rUp = await window.__nubeCliente.from(tabla).upsert([filasParaGuardar[j]]);
+            // INSERT evita que el cliente haga UPDATE a movimientos ya confirmados.
+            // La tabla heredada no tiene una política de UPDATE por diseño.
+            var rUp = esMovimientoHistorico
+              ? await window.__nubeCliente.from(tabla).insert([filasParaGuardar[j]])
+              : await window.__nubeCliente.from(tabla).upsert([filasParaGuardar[j]]);
+            if (rUp.error && esMovimientoHistorico && rUp.error.code === "23505") {
+              // Dos equipos pueden insertar simultáneamente el mismo id.
+              // Solo se considera replay válido si la fila persistida coincide.
+              var comprobacion = await window.__nubeCliente.from(tabla)
+                .select("id,datos").eq("id", filasParaGuardar[j].id).maybeSingle();
+              if (!comprobacion.error && comprobacion.data &&
+                  contenidoFilaIgual(comprobacion.data.datos, filasParaGuardar[j].datos)) continue;
+            }
             if (rUp.error) throw rUp.error;
           } catch (e2) {
             if (!primerError) primerError = e2;
@@ -681,7 +720,7 @@
       }
     }
     if (primerError) throw primerError;
-    if (idsParaBorrar.length > 0) {
+    if (!esMovimientoHistorico && idsParaBorrar.length > 0) {
       var rDel = await window.__nubeCliente.from(tabla).delete().in("id", idsParaBorrar);
       if (rDel.error) throw rDel.error;
     }
@@ -1184,6 +1223,8 @@
           } else if (tablaEmpresaLocal) {
             var rFinDel = await conTiempoLimite(window.__nubeCliente.from(tablaEmpresaLocal).delete().neq("id", ""), ESPERA_NUBE_MS);
             if (rFinDel.error) throw rFinDel.error;
+          } else if (tablaEspecial && key === "movimientos") {
+            // Limpiar la caché local nunca borra el historial remoto.
           } else if (tablaEspecial) {
             await conTiempoLimite(window.__nubeCliente.from(tablaEspecial).delete().neq("id", ""), ESPERA_NUBE_MS);
           } else {
