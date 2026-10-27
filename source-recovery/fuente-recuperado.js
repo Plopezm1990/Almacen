@@ -2404,7 +2404,8 @@ function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
 function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   const h = import_react4.default.createElement;
   const modoFiscalLocal = typeof window !== "undefined" && window.__nubeActiva === false;
-  const modoPilotoSandboxQa = typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1" || /^deploy-preview-\d+--/u.test(window.location.hostname));
+  const modoFiscalQa = typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+  const modoPilotoSandboxQa = modoFiscalQa;
   const [emisores, setEmisores] = (0, import_react4.useState)([]);
   const [emisorId, setEmisorId] = (0, import_react4.useState)("");
   const [detalle, setDetalle] = (0, import_react4.useState)(null);
@@ -2417,7 +2418,7 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   const [delegaciones, setDelegaciones] = (0, import_react4.useState)([]);
   const [invitacion, setInvitacion] = (0, import_react4.useState)({ email: "", permiso: "CONSULTAR", dias: "30" });
   const [representacion, setRepresentacion] = (0, import_react4.useState)({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" });
-  const [c07cDisponible, setC07cDisponible] = (0, import_react4.useState)(true);
+  const [c07cDisponible, setC07cDisponible] = (0, import_react4.useState)(modoFiscalQa);
   const [guardandoDelegacion, setGuardandoDelegacion] = (0, import_react4.useState)(false);
   const [guardandoRepresentacion, setGuardandoRepresentacion] = (0, import_react4.useState)(false);
   const listaSolicitud = (0, import_react4.useRef)(0);
@@ -2454,7 +2455,7 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   (0, import_react4.useEffect)(() => { if (emisorId) cargarDetalle(emisorId); else reiniciarDetalle(); }, [empresaId, localId, emisorId]);
   (0, import_react4.useEffect)(() => {
     let activo = true;
-    if (modoFiscalLocal || !emisorId) { setDelegaciones([]); setPilotoSandbox(null); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); return () => { activo = false; }; }
+    if (modoFiscalLocal || !emisorId || !modoFiscalQa) { setDelegaciones([]); setPilotoSandbox(null); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); setC07cDisponible(modoFiscalQa); return () => { activo = false; }; }
     setC07cDisponible(true);
     const leerPilotoSandbox = modoPilotoSandboxQa
       ? configRpc("abc_c07d_leer_piloto_sandbox", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }).catch(() => null)
@@ -2587,7 +2588,9 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
           ),
           h(Btn, { small: true, onClick: guardarRepresentacion, disabled: ocupado || guardandoRepresentacion }, guardandoRepresentacion ? "Guardando…" : "Guardar metadatos")
         )
-      ) : null,
+      ) : !modoFiscalQa ? h(Card, { className: "mb-3", "data-c07d-production-gate": "disabled" },
+        h("div", { className: "font-semibold mb-1" }, "Delegación y representación fiscal no activas en producción"),
+        h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Esta capacidad se valida en QA antes de su promoción. No se ha activado ninguna conexión ni emisión fiscal.")) : null,
       h(Card, { className: "mb-3" }, h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
         h("div", null, h("div", { className: "text-[12px] font-semibold" }, `Versión del borrador: ${detalle.version || 0}`), h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Conexión: no configurada · Emisión: deshabilitada")),
         h(Btn, { onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar borrador fiscal")))) : null);
@@ -5220,14 +5223,47 @@ function GestionAlmacen() {
         .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
         input, select { font-family: inherit; }
         ::placeholder { color: #9AA5A0; }
+        html.ticket-printing .modal-ticket-impresion [data-qr-fiscal-preview] svg {
+          width: 220px !important;
+          height: 220px !important;
+          max-width: 220px !important;
+          max-height: 220px !important;
+        }
 
         @media print {
           @page { size: A4; margin: 12mm; }
+          html, body, #root { margin: 0 !important; padding: 0 !important; height: var(--ticket-print-height, auto) !important; max-height: var(--ticket-print-height, none) !important; overflow: hidden !important; background: #fff !important; }
           body * { visibility: hidden !important; }
           .zona-impresion, .zona-impresion * { visibility: visible !important; }
+          .modal-ticket-impresion {
+     position: absolute !important;
+            inset: auto !important;
+     left: 0 !important;
+     top: 0 !important;
+            display: block !important;
+     visibility: visible !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            background: transparent !important;
+          }
+          .modal-ticket-impresion-dialog {
+            position: static !important;
+            width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+     visibility: visible !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+          }
           .zona-impresion {
-            position: absolute !important;
-            left: 0; top: 0; width: 100%;
+            position: static !important;
+            left: auto !important; top: auto !important; width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            overflow: visible !important;
+            margin: 0 !important;
             background: #fff !important;
           }
           .no-imprimir { display: none !important; }
@@ -9468,6 +9504,9 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
 var MODALIDADES_A02 = ["BARRA", "MESA", "TERRAZA", "TAKEAWAY", "OTRO"];
 var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza", TAKEAWAY: "Para llevar", OTRO: "Otro" };
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
+  function c07dActivoEnEntornoQa() {
+    return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+  }
   function productoEsDelLocalActivoVenta(prod) {
     if (!prod) return false;
     if (!localActivoId) return true;
@@ -10281,6 +10320,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
   async function emitirCheckoutFiscalC07D(cuentaId, opciones = {}) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, disponible: false, error: "La fiscalización C07-D se valida en QA y todavía no está activa en producción." };
     if (!localActivoId) return { ok: false, error: "Selecciona un local para emitir el documento fiscal." };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId || !cuentaId) return { ok: false, error: "No se pudo determinar la cuenta fiscal." };
@@ -10312,6 +10352,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
   async function leerConfiguracionEmisionC07D(tipoDocumento = "FACTURA") {
+    if (!c07dActivoEnEntornoQa()) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
     if (!localActivoId) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
@@ -10331,6 +10372,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
   async function leerEstadoFiscalC07D(cuentaId = null) {
+    if (!c07dActivoEnEntornoQa()) return { ok: true, disponible: false, documentos: [], estado: "NO_DISPONIBLE" };
     if (!localActivoId) return { ok: false, error: "Selecciona un local para consultar la cola fiscal." };
     const empresaId = empresaDelLocalActivo?.id || null;
     const contexto = empresaId ? leerContextoCuentaA02(empresaId, localActivoId) : null;
@@ -15371,7 +15413,7 @@ function CompraPorCaja({ form, setForm }) {
   const unidadBruta = costoUd > 0 ? costoUd * (1 + iva / 100) : "";
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-lg p-3 mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "C\xF3mo te lo vende el proveedor"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Escribe en la casilla que traiga tu factura. Las dem\xE1s se calculan solas."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidades por caja (1 si lo compras suelto)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "1", value: form.udsPorCaja, onChange: (e2) => setForm({ ...form, udsPorCaja: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.01", valor: cajaNeta, decimales: 2, onEscribir: (v22) => desdeCaja(v22, false) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.01", valor: cajaBruta, decimales: 2, onEscribir: (v22) => desdeCaja(v22, true) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: form.costo, decimales: 4, onEscribir: (v22) => setForm({ ...form, costo: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: unidadBruta, decimales: 4, onEscribir: desdeUnidadBruta }))), uds > 1 && costoUd > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mono", style: { color: C2.accent } }, "Caja de ", uds, ": \u20AC", fmt(costoUd * uds), " sin IVA \xB7 \u20AC", fmt(costoUd * uds * (1 + iva / 100)), " con IVA \u2192 unidad \u20AC", fmt(costoUd)));
 }
-function Modal({ children, onClose, title, ancho = "max-w-md" }) {
+function Modal({ children, onClose, title, ancho = "max-w-md", claseImpresion = "" }) {
   const cajaRef = (0, import_react4.useRef)(null);
   (0, import_react4.useEffect)(() => {
     const focoPrevio = document.activeElement;
@@ -15409,7 +15451,7 @@ function Modal({ children, onClose, title, ancho = "max-w-md" }) {
     document.addEventListener("keydown", alTecla);
     return () => document.removeEventListener("keydown", alTecla);
   }, []);
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto", style: { background: "rgba(20,32,28,0.45)" } }, /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: `fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto ${claseImpresion}`.trim(), style: { background: "rgba(20,32,28,0.45)" } }, /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       ref: cajaRef,
@@ -15417,7 +15459,7 @@ function Modal({ children, onClose, title, ancho = "max-w-md" }) {
       role: "dialog",
       "aria-modal": "true",
       "aria-label": title,
-      className: `rounded-xl p-5 w-full ${ancho} my-4`,
+      className: `rounded-xl p-5 w-full ${ancho} my-4 ${claseImpresion ? `${claseImpresion}-dialog` : ""}`.trim(),
       style: { background: C2.surface, outline: "none" }
     },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[15px]" }, title), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: onClose, "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 17 }))),
@@ -22417,6 +22459,22 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       svg
     };
   }
+  function imprimirTicketVenta() {
+    const root = document.documentElement;
+    const limpiarAlturaImpresion = () => {
+      root.classList.remove("ticket-printing");
+      root.style.removeProperty("--ticket-print-height");
+      window.removeEventListener("afterprint", limpiarAlturaImpresion);
+    };
+    window.addEventListener("afterprint", limpiarAlturaImpresion, { once: true });
+    root.classList.add("ticket-printing");
+    window.requestAnimationFrame(() => {
+      const zona = document.querySelector(".modal-ticket-impresion .zona-impresion");
+      const altura = Math.ceil(zona?.scrollHeight || zona?.getBoundingClientRect().height || 0);
+      if (altura > 0) root.style.setProperty("--ticket-print-height", `${altura}px`);
+      window.print();
+    });
+  }
   function renderTicketVenta() {
     if (!ticketVenta) return null;
     const h3 = import_react4.default.createElement;
@@ -22444,7 +22502,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const cambioTicket = v22.cambio == null ? null : Number(v22.cambio);
     return h3(
       Modal,
-      { onClose: () => setTicketVenta(null), title: `Ticket ${v22.referencia}` },
+      { onClose: () => setTicketVenta(null), title: `Ticket ${v22.referencia}`, claseImpresion: "modal-ticket-impresion" },
       h3(
         "div",
         { className: "rounded-xl p-4 mono zona-impresion", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
@@ -22541,7 +22599,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           !tieneNumeroFiscal ? h3("div", { className: "text-[8.5px] mt-1", style: { color: C2.inkSoft } }, "Documento interno del TPV \xB7 pendiente de numeraci\xF3n fiscal") : null
         )
       ),
-      h3("div", { className: "mt-3 flex gap-2 flex-wrap no-imprimir" }, h3(Btn, { onClick: () => window.print() }, "Imprimir / Guardar PDF"), h3(Btn, { variant: "ghost", onClick: () => setTicketVenta(null) }, "Cerrar ticket"))
+      h3("div", { className: "mt-3 flex gap-2 flex-wrap no-imprimir" }, h3(Btn, { onClick: imprimirTicketVenta }, "Imprimir / Guardar PDF"), h3(Btn, { variant: "ghost", onClick: () => setTicketVenta(null) }, "Cerrar ticket"))
     );
   }
   function renderHistorialVentas() {

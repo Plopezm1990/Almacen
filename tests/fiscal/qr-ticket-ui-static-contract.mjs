@@ -24,6 +24,19 @@ test("el ticket muestra el payload solo como QA y lo incluye en la zona imprimib
   assert.match(source, /className: "rounded-xl p-4 mono zona-impresion"/);
 });
 
+test("la impresión del ticket desancla el modal y conserva todo el contenido", () => {
+  assert.match(source, /claseImpresion: "modal-ticket-impresion"/);
+  assert.match(source, /\.modal-ticket-impresion-dialog/);
+    assert.match(source, /html, body, #root \{ margin: 0 !important; padding: 0 !important; height: var\(--ticket-print-height, auto\) !important;/);
+  assert.match(source, /\.zona-impresion \{[\s\S]*?position: static !important;/);
+    assert.match(source, /function imprimirTicketVenta\(\)/);
+    assert.match(source, /ticket-printing/);
+    assert.match(source, /requestAnimationFrame\(\(\) =>/);
+    assert.match(source, /--ticket-print-height/);
+    assert.match(source, /window\.addEventListener\("afterprint"/);
+    assert.match(source, /onClick: imprimirTicketVenta/);
+});
+
 test("el ticket rechaza payloads sin HTTPS o marcados como producción", () => {
   assert.equal(source.includes("qr.production !== false"), true);
   assert.equal(source.includes("https:\\/\\//u.test(qr.url)"), true);
