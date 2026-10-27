@@ -78,3 +78,17 @@ Controles implementados:
    conexión real con la AEAT.
 6. Mantener producción bloqueada hasta cerrar la evidencia y la revisión
    fiscal/legal.
+
+## Actualización C07-D.1 — 2026-10-27
+
+La integración con F4 quedó implementada y probada en QA. El checkout
+`COMPLETADO` invoca `abc_c07d_emitir_checkout`, que enlaza C05 `EMITIDO`, la
+cadena C07-D y la cola `PENDIENTE` en una sola transacción. El TPV muestra en
+QA el número, la secuencia y el estado de cola mediante una RPC de lectura
+acotada. El smoke volvió a terminar con `ROLLBACK`, por lo que el conteo QA
+sigue en 0 registros C07-D y 0 elementos de cola.
+
+El punto 1 y el punto 2 de “Qué queda” están completados en alcance QA. Sigue
+el punto 3: ensayo persistente controlado, y después C07-D.2 para cerrar la
+configuración persistente de serie y el contrato del adaptador por empresa o
+asesoría. AEAT y producción siguen fuera.
