@@ -93,6 +93,8 @@ el punto 3: ensayo persistente controlado, que ya se ejecutó con un fixture QA
 documentado: 1 registro C07-D, 1 elemento de cola `PENDIENTE` y 0 elementos en
 `ERROR`. La RPC de lectura autenticada devolvió C05 `EMITIDO`, `TPV-5`,
 secuencia `1`, hash y transporte `DISABLED`; la lectura directa de las tablas
-fue rechazada correctamente por RLS. Sigue C07-D.2 para cerrar la
-configuración persistente de serie y el contrato del adaptador por empresa o
-asesoría. AEAT y producción siguen fuera.
+fue rechazada correctamente por RLS. C07-D.2.1 queda cerrada con el catálogo
+de adaptadores, configuración persistente por empresa/local/entidad/tipo/serie,
+historial inmutable y adaptador `SIMULADOR_C07D` en QA. Sigue C07-D.2.2 para
+resolver esa configuración desde el servidor durante la emisión y evitar que
+el frontend elija una serie libre. AEAT y producción siguen fuera.

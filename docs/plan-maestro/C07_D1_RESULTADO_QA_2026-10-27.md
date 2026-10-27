@@ -44,4 +44,9 @@ El TPV también usa `abc_c07d_estado_cuenta` para refrescar el estado sin leer n
 
 Esta pieza prueba la integración interna de cobro, C05 y cadena/cola C07-D en QA. La cola todavía no transporta datos a AEAT: su estado queda `PENDIENTE` hasta que se diseñe y autorice el adaptador fiscal por empresa/asesoría.
 
-Sigue C07-D.2: completar la selección persistente de serie por entidad fiscal y definir el contrato del adaptador de cada empresa/asesoría —credenciales fuera del frontend, rotación, auditoría, reintentos y resolución `ACEPTADO/RECHAZADO/ERROR`— manteniendo QA aislada. La evidencia persistente queda limitada al fixture QA anterior; después habrá que preparar una promoción formal, sin aplicar nada en producción automáticamente.
+Sigue C07-D.2.2: conectar la emisión C07-D con la configuración persistente
+resuelta por servidor y dejar de aceptar una serie libre procedente del
+frontend. La configuración inicial y el adaptador simulado de C07-D.2.1 están
+limitados a QA; después habrá que definir credenciales, rotación, auditoría,
+reintentos y estados finales antes de preparar una promoción formal, sin aplicar
+nada en producción automáticamente.
