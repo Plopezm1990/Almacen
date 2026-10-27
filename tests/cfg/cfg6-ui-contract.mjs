@@ -175,7 +175,7 @@ assert.match(comp, /await cargar\(true\);\s+\}\s+\};\s+const verRetirados/, "tra
 const fiscal = comp.slice(comp.indexOf("var FISCAL_CONFIG_INICIAL ="), comp.indexOf("function ConfiguracionLocal("));
 assert.ok(fiscal.length > 1000, "existe el panel Fiscalidad y AEAT");
 assert.deepEqual([...new Set([...fiscal.matchAll(/configRpc\("([a-z_0-9]+)"/g)].map((m) => m[1]))].sort(),
-  ["abc_fiscal_guardar_borrador", "abc_fiscal_guardar_representacion", "abc_fiscal_invitar_asesoria", "abc_fiscal_leer_borrador", "abc_fiscal_leer_representacion", "abc_fiscal_listar_delegaciones", "abc_fiscal_listar_emisores", "abc_fiscal_revocar_delegacion"], "el panel usa solo las RPC fiscales autorizadas");
+  ["abc_c07d_leer_piloto_sandbox", "abc_fiscal_guardar_borrador", "abc_fiscal_guardar_representacion", "abc_fiscal_invitar_asesoria", "abc_fiscal_leer_borrador", "abc_fiscal_leer_representacion", "abc_fiscal_listar_delegaciones", "abc_fiscal_listar_emisores", "abc_fiscal_revocar_delegacion"], "el panel usa solo las RPC fiscales autorizadas");
 assert.doesNotMatch(fiscal, /\.from\(|\.insert\(|\.update\(|\.delete\(|\.upsert\(/, "el panel fiscal no accede a tablas directamente");
 assert.match(fiscal, /p_operation_id: configUuid\(\)/, "cada guardado fiscal usa un UUID nuevo");
 assert.match(fiscal, /p_version_esperada: Number\(detalle\.version \|\| 0\)/, "el guardado aplica control optimista de versión");
