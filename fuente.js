@@ -103426,6 +103426,7 @@ function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
 }
 function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   const h = import_react4.default.createElement;
+  const modoFiscalLocal = typeof window !== "undefined" && window.__nubeActiva === false;
   const [emisores, setEmisores] = (0, import_react4.useState)([]);
   const [emisorId, setEmisorId] = (0, import_react4.useState)("");
   const [detalle, setDetalle] = (0, import_react4.useState)(null);
@@ -103459,6 +103460,10 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
     const solicitud = ++listaSolicitud.current;
     ++detalleSolicitud.current;
     setCargando(true); setError(""); setConfirmacion(""); setEmisores([]); setEmisorId(""); reiniciarDetalle();
+    if (modoFiscalLocal) {
+      setCargando(false);
+      return () => { ++listaSolicitud.current; ++detalleSolicitud.current; };
+    }
     configRpc("abc_fiscal_listar_emisores", { p_empresa_id: empresaId, p_local_id: localId }).then((r2) => {
       if (solicitud !== listaSolicitud.current) return;
       const lista = Array.isArray(r2?.emisores) ? r2.emisores : [];
@@ -103470,7 +103475,7 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   (0, import_react4.useEffect)(() => { if (emisorId) cargarDetalle(emisorId); else reiniciarDetalle(); }, [empresaId, localId, emisorId]);
   (0, import_react4.useEffect)(() => {
     let activo = true;
-    if (!emisorId) { setDelegaciones([]); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); return () => { activo = false; }; }
+    if (modoFiscalLocal || !emisorId) { setDelegaciones([]); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); return () => { activo = false; }; }
     setC07cDisponible(true);
     Promise.all([
       configRpc("abc_fiscal_listar_delegaciones", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }),

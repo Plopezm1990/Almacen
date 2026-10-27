@@ -9,9 +9,11 @@ Producción: **no modificada**.
 **PASS — backend de acceso delegado al panel y ciclo de vida de la delegación.**
 
 La interfaz correspondiente quedó implementada en el bundle y pasó los
-contratos locales (`cfg6-ui-contract: OK`, runtime `73/73`), pero el commit aún
-no se ha subido a GitHub; por ello todavía no se declara un ensayo visual en
-Deploy Preview.
+contratos locales (`cfg6-ui-contract: OK`, runtime `73/73`). El commit ya está
+publicado en GitHub y el Deploy Preview responde correctamente. En modo local
+sin sesión sincronizada la pantalla ya no intenta llamar a las RPC fiscales,
+evitando un falso aviso de permisos; el smoke visual autenticado con una
+sesión de propietario sigue pendiente.
 
 Se aplicaron únicamente en QA estas migraciones:
 
@@ -100,7 +102,7 @@ fuera:
 ### Estado
 
 **C07-C backend: TERMINADA EN QA.**
-**Interfaz: preparada y validada localmente; Deploy Preview pendiente.**
+**Interfaz: preparada y validada localmente; Deploy Preview publicado y accesible; smoke autenticado pendiente.**
 **Producción: sin cambios.**
 **Emisión fiscal: deshabilitada.**
 
