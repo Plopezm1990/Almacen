@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 297,
+  "total_inventory": 313,
   "expected_counts": {
-    "active_contract": 280,
+    "active_contract": 296,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 250,
+      "active_contract": 266,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -1517,6 +1517,86 @@
     },
     {
       "path": "tests/ui-context-bridge.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-checkout-emit-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-3-frontend-config-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-5-adapter-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-6-activation-dossier-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-7-visual-hardware-matrix-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-emission-config-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-emission-wiring-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d3-pilot-sandbox-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d3-pilot-sandbox-migration-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d3-pilot-sandbox-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-migration-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-preflight-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/fiscal/aeat-qr-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/fiscal/qr-matrix-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/fiscal/qr-ticket-preview-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/fiscal/qr-ticket-ui-static-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     }
