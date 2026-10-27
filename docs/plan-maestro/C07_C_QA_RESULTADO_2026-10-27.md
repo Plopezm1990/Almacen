@@ -52,6 +52,21 @@ No se aplicaron en producción.
 - No se subieron documentos, certificados, contraseñas ni claves privadas.
 - La vía de representación y la evidencia externa permanecen separadas del acceso al panel.
 
+### 4. Smoke visual del Deploy Preview
+
+- PR: [#182](https://github.com/Plopezm1990/Almacen/pull/182).
+- Preview: [deploy-preview-182](https://deploy-preview-182--chic-entremet-9107cf.netlify.app/?qa=c07-visual).
+- El Preview respondió correctamente para el commit `4e55b4c`.
+- En modo local, la sección «Fiscalidad y AEAT» abrió sin el aviso rojo de
+  permisos que aparecía cuando se intentaba llamar a una RPC autenticada sin
+  sesión sincronizada.
+- El modo local mostró «No hay emisores vinculados», que es el resultado
+  esperado sin una sesión sincronizada ni un emisor fiscal local; no se creó
+  ni se simuló una credencial para forzar el panel delegado.
+- Queda pendiente únicamente el smoke visual autenticado con el propietario
+  QA y un emisor ficticio ya vinculado; el backend remoto ya está validado con
+  transacciones reales de QA.
+
 ## Controles aplicados
 
 - tablas en esquema `private`;
