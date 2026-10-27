@@ -7,6 +7,7 @@ const root = resolve(import.meta.dirname, '../..');
 const db = await bootstrapA08();
 try {
   await db.exec(await readFile(resolve(root, 'supabase/migrations/20261026175245_abc_fiscal_multiempresa_borradores.sql'), 'utf8'));
+  await db.exec(await readFile(resolve(root, 'supabase/migrations/20261026182012_abc_fiscal_multiempresa_panel.sql'), 'utf8'));
   const results = await db.exec(await readFile(resolve(root, 'tests/f5/c07/fiscal-config-multiempresa.sql'), 'utf8'));
   const checks = results.flatMap(r => r.rows).find(row => row.fiscal_config_checks !== undefined)?.fiscal_config_checks;
   if (!Number.isInteger(checks) || checks < 30) throw new Error('Contrato incompleto');

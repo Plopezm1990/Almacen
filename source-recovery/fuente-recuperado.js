@@ -1146,7 +1146,19 @@ var CONFIG_ERRORES = {
   cargo_operation_id_requerido: "No se pudo identificar la operación. Recarga e inténtalo de nuevo.",
   cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
   cargo_nombre_reservado: "Ese nombre está reservado para un rol protegido del sistema.",
-  cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado."
+  cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado.",
+  FISCAL_CONFIG_NO_AUTORIZADO: "Necesitas acceso de Propietario a toda la empresa para configurar su emisor fiscal.",
+  FISCAL_CONFIG_VERSION_OBSOLETA: "Otra sesión cambió este borrador. Se han recargado los datos más recientes; revisa antes de volver a guardar.",
+  FISCAL_CONFIG_OPERATION_CONFLICT: "La operación fiscal ya se había usado con otros datos. Recarga e inténtalo de nuevo.",
+  FISCAL_CONFIG_FORMATO_INVALIDO: "La configuración fiscal no tiene un formato válido.",
+  FISCAL_CONFIG_CAMPO_NO_PERMITIDO: "La configuración contiene un campo que no se puede guardar.",
+  FISCAL_CONFIG_TIPO_INVALIDO: "Uno de los datos fiscales no tiene el tipo permitido.",
+  FISCAL_CONFIG_VALOR_INVALIDO: "Uno de los datos fiscales contiene un valor no permitido.",
+  FISCAL_CONFIG_OPCION_INVALIDA: "Selecciona una opción fiscal válida.",
+  FISCAL_CONFIG_EMAIL_INVALIDO: "Revisa el correo electrónico de la asesoría.",
+  FISCAL_CONFIG_NIF_FORMATO_INVALIDO: "El NIF del presentador debe tener nueve caracteres alfanuméricos.",
+  FISCAL_CONFIG_AMBITO_INCOMPATIBLE: "La modalidad VeriFactu o no VeriFactu solo puede elegirse para AEAT y una empresa sujeta al RRSIF.",
+  FISCAL_CONFIG_REPRESENTACION_INCOMPATIBLE: "El canal y la forma de representación elegidos no son compatibles."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -2355,11 +2367,121 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     )
   );
 }
+var FISCAL_CONFIG_INICIAL = {
+  jurisdiccion: "PENDIENTE", sujecion: "PENDIENTE", modalidad: "PENDIENTE",
+  canal: "PENDIENTE", representacion: "PENDIENTE", tipo_factura: "PENDIENTE",
+  asesoria_nombre: "", asesoria_email: "", presentador_nif: ""
+};
+var FISCAL_CONFIG_OPCIONES = {
+  jurisdiccion: [["PENDIENTE", "Pendiente de revisar"], ["ES_AEAT", "España · AEAT"], ["ES_FORAL", "España · Hacienda foral"], ["OTRA", "Otra jurisdicción"]],
+  sujecion: [["PENDIENTE", "Pendiente de revisar"], ["SUJETO_RRSIF", "Sujeta al RRSIF"], ["EXCLUIDO_SII", "Excluida por SII"], ["EXCLUIDO_OTRO", "Otra exclusión"]],
+  modalidad: [["PENDIENTE", "Pendiente de decidir"], ["VERIFACTU", "VeriFactu"], ["NO_VERIFACTU", "No VeriFactu"]],
+  canal: [["PENDIENTE", "Pendiente de decidir"], ["DIRECTO", "Conexión directa de la empresa"], ["ASESORIA", "A través de la asesoría"], ["PROVEEDOR", "A través de un proveedor fiscal"]],
+  representacion: [["PENDIENTE", "Pendiente de acreditar"], ["PROPIO", "Certificado propio"], ["APODERAMIENTO", "Apoderamiento"], ["COLABORACION_SOCIAL", "Colaboración social"]],
+  tipo_factura: [["PENDIENTE", "Pendiente de revisar"], ["SIMPLIFICADA", "Factura simplificada cuando proceda"], ["COMPLETA", "Factura completa"]]
+};
+function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
+  const h = import_react4.default.createElement;
+  return h(Field, { label: etiqueta }, h("select", {
+    value: form[clave] || "PENDIENTE", onChange: (e2) => onCambio(clave, e2.target.value), disabled,
+    className: "w-full rounded-lg px-3 py-2 text-[13px]",
+    style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 }
+  }, FISCAL_CONFIG_OPCIONES[clave].map(([valor, texto]) => h("option", { key: valor, value: valor }, texto))));
+}
+function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
+  const h = import_react4.default.createElement;
+  const [emisores, setEmisores] = (0, import_react4.useState)([]);
+  const [emisorId, setEmisorId] = (0, import_react4.useState)("");
+  const [detalle, setDetalle] = (0, import_react4.useState)(null);
+  const [form, setForm] = (0, import_react4.useState)({ ...FISCAL_CONFIG_INICIAL });
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const listaSolicitud = (0, import_react4.useRef)(0);
+  const detalleSolicitud = (0, import_react4.useRef)(0);
+  const reiniciarDetalle = () => { setDetalle(null); setForm({ ...FISCAL_CONFIG_INICIAL }); };
+  const cargarDetalle = async (id) => {
+    const solicitud = ++detalleSolicitud.current;
+    reiniciarDetalle();
+    if (!id) return;
+    setCargando(true); setError(""); setConfirmacion("");
+    try {
+      const r2 = await configRpc("abc_fiscal_leer_borrador", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: id });
+      if (solicitud !== detalleSolicitud.current) return;
+      setDetalle(r2 || null); setForm({ ...FISCAL_CONFIG_INICIAL, ...r2?.configuracion });
+    } catch (e2) { if (solicitud === detalleSolicitud.current) setError(configMensajeError(e2)); }
+    finally { if (solicitud === detalleSolicitud.current) setCargando(false); }
+  };
+  (0, import_react4.useEffect)(() => {
+    const solicitud = ++listaSolicitud.current;
+    ++detalleSolicitud.current;
+    setCargando(true); setError(""); setConfirmacion(""); setEmisores([]); setEmisorId(""); reiniciarDetalle();
+    configRpc("abc_fiscal_listar_emisores", { p_empresa_id: empresaId, p_local_id: localId }).then((r2) => {
+      if (solicitud !== listaSolicitud.current) return;
+      const lista = Array.isArray(r2?.emisores) ? r2.emisores : [];
+      setEmisores(lista); setEmisorId(lista[0]?.id || "");
+    }).catch((e2) => { if (solicitud === listaSolicitud.current) setError(configMensajeError(e2));
+    }).finally(() => { if (solicitud === listaSolicitud.current) setCargando(false); });
+    return () => { ++listaSolicitud.current; ++detalleSolicitud.current; };
+  }, [empresaId, localId]);
+  (0, import_react4.useEffect)(() => { if (emisorId) cargarDetalle(emisorId); else reiniciarDetalle(); }, [empresaId, localId, emisorId]);
+  const campo = (clave, valor) => setForm((actual) => ({ ...actual, [clave]: valor }));
+  const guardar = async () => {
+    setError(""); setConfirmacion("");
+    if (!detalle || !emisorId) return setError("Selecciona un emisor fiscal disponible.");
+    if (form.modalidad !== "PENDIENTE" && (form.jurisdiccion !== "ES_AEAT" || form.sujecion !== "SUJETO_RRSIF")) return setError(CONFIG_ERRORES.FISCAL_CONFIG_AMBITO_INCOMPATIBLE);
+    if (form.canal === "DIRECTO" && !["PENDIENTE", "PROPIO"].includes(form.representacion) || ["ASESORIA", "PROVEEDOR"].includes(form.canal) && form.representacion === "PROPIO") return setError(CONFIG_ERRORES.FISCAL_CONFIG_REPRESENTACION_INCOMPATIBLE);
+    setGuardando(true);
+    try {
+      const configuracion = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, typeof v === "string" && !v.trim() ? null : typeof v === "string" ? v.trim() : v]));
+      const r2 = await configRpc("abc_fiscal_guardar_borrador", { p_operation_id: configUuid(), p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId, p_version_esperada: Number(detalle.version || 0), p_configuracion: configuracion });
+      setDetalle(r2); setForm({ ...FISCAL_CONFIG_INICIAL, ...r2?.configuracion });
+      setEmisores((actual) => actual.map((e2) => e2.id === emisorId ? { ...e2, version_borrador: r2?.version || 0 } : e2));
+      setConfirmacion("Borrador fiscal guardado. No se ha activado ninguna conexión ni envío a la AEAT.");
+    } catch (e2) {
+      if (String(e2?.message || e2 || "").includes("FISCAL_CONFIG_VERSION_OBSOLETA")) await cargarDetalle(emisorId);
+      setError(configMensajeError(e2));
+    } finally { setGuardando(false); }
+  };
+  const ocupado = cargando || guardando;
+  const emisor = detalle?.emisor || emisores.find((e2) => e2.id === emisorId) || null;
+  const selector = (clave, etiqueta) => h(ConfigFiscalSelect, { clave, etiqueta, form, onCambio: campo, disabled: ocupado });
+  return h("div", { "data-fiscal-config": "borrador" },
+    h(ConfigAviso, { error, confirmacion }),
+    h(Card, { className: "mb-3", style: { background: C2.amberSoft } },
+      h("div", { className: "font-semibold text-[13px]" }, "Configuración fiscal en borrador"),
+      h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "Prepara la situación de cada empresa y emisor. No convierte el TPV en sistema fiscal, no envía a la AEAT y no admite certificados, claves privadas ni contraseñas.")),
+    h(Card, { className: "mb-3" },
+      h(Field, { label: "Emisor fiscal vinculado a " + (localNombre || "este local") }, h("select", {
+        value: emisorId, onChange: (e2) => { setError(""); setConfirmacion(""); setEmisorId(e2.target.value); },
+        disabled: ocupado || emisores.length < 2, className: "w-full rounded-lg px-3 py-2 text-[13px]",
+        style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 }
+      }, emisores.length ? emisores.map((e2) => h("option", { key: e2.id, value: e2.id }, `${e2.nombre_legal}${e2.nif ? " · " + e2.nif : " · NIF pendiente"}`)) : h("option", { value: "" }, cargando ? "Cargando emisores…" : "No hay emisores vinculados"))),
+      !cargando && emisores.length === 0 ? h("div", { className: "text-[12px]", style: { color: C2.red } }, "No hay una entidad fiscal activa vinculada a esta empresa y local. Debe crearla o vincularla un administrador.") : null,
+      emisor ? h("div", { className: "rounded-lg p-3 text-[12px]", style: { background: C2.bg, border: `1px solid ${C2.line}` } },
+        h("div", { className: "font-semibold" }, emisor.nombre_legal || "Emisor"),
+        h("div", { className: "mt-1", style: { color: C2.inkSoft } }, `NIF: ${emisor.nif || "pendiente"} · País: ${emisor.pais || "pendiente"}`),
+        h("div", { className: "mt-1", style: { color: emisor.simulada ? C2.amber : C2.inkSoft } }, emisor.simulada ? "Entidad simulada: nunca podrá activarse para emisión real." : "Entidad real: la activación sigue bloqueada hasta completar validación, credenciales y pruebas.")) : null),
+    detalle ? h(import_react4.default.Fragment, null,
+      h(Card, { className: "mb-3" }, h("div", { className: "font-semibold mb-2" }, "Ámbito y modalidad"),
+        h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-x-3" }, selector("jurisdiccion", "Administración tributaria"), selector("sujecion", "Situación frente al RRSIF"), selector("modalidad", "Modalidad prevista"), selector("tipo_factura", "Documento habitual previsto")),
+        h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Es una preferencia operativa: cada operación deberá cumplir sus requisitos legales y una venta no equivale por sí sola a una factura.")),
+      h(Card, { className: "mb-3" }, h("div", { className: "font-semibold mb-2" }, "Presentación y asesoría"),
+        h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-x-3" }, selector("canal", "Canal previsto"), selector("representacion", "Acreditación prevista"),
+          h(Field, { label: "Nombre de la asesoría o proveedor" }, h(Input, { value: form.asesoria_nombre || "", onChange: (e2) => campo("asesoria_nombre", e2.target.value), maxLength: 200, disabled: ocupado })),
+          h(Field, { label: "Correo de contacto" }, h(Input, { type: "email", value: form.asesoria_email || "", onChange: (e2) => campo("asesoria_email", e2.target.value), maxLength: 200, disabled: ocupado })),
+          h(Field, { label: "NIF del presentador" }, h(Input, { value: form.presentador_nif || "", onChange: (e2) => campo("presentador_nif", e2.target.value.toUpperCase()), maxLength: 9, disabled: ocupado, placeholder: "Solo identificador; nunca el certificado" }))),
+        h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Indicar una asesoría no le concede acceso ni acredita representación. Eso se validará por separado.")),
+      h(Card, { className: "mb-3" }, h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
+        h("div", null, h("div", { className: "text-[12px] font-semibold" }, `Versión del borrador: ${detalle.version || 0}`), h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Conexión: no configurada · Emisión: deshabilitada")),
+        h(Btn, { onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar borrador fiscal")))) : null);
+}
 function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [] }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -2370,6 +2492,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
+    seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );

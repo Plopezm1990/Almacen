@@ -96,6 +96,7 @@ try {
   assert.deepEqual(blocked.bloqueos, ['MODALIDAD_NO_ACTIVA']);
 
   await admin.query(await readFile(resolve(root, 'supabase/migrations/20261026175245_abc_fiscal_multiempresa_borradores.sql'), 'utf8'));
+  await admin.query(await readFile(resolve(root, 'supabase/migrations/20261026182012_abc_fiscal_multiempresa_panel.sql'), 'utf8'));
   const multiempresa = await admin.query(await readFile(resolve(root, 'tests/f5/c07/fiscal-config-multiempresa.sql'), 'utf8'));
   const fiscalChecks = multiempresa.flatMap(r => r.rows).find(row => row.fiscal_config_checks !== undefined)?.fiscal_config_checks;
   assert.ok(fiscalChecks >= 30, 'Contrato multiempresa completo');

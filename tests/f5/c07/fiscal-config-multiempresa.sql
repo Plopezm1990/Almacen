@@ -23,7 +23,6 @@ end $$;
 
 grant execute on function pg_temp.fiscal_assert(boolean,text) to authenticated;
 grant execute on function pg_temp.fiscal_reject(text,text,text) to authenticated;
-
 insert into auth.users(id) values
  ('10000000-0000-0000-0000-000000000001'),
  ('10000000-0000-0000-0000-000000000002'),
@@ -51,12 +50,17 @@ select pg_temp.fiscal_assert(not has_table_privilege('authenticated','private.ab
 select pg_temp.fiscal_assert(not has_table_privilege('service_role','private.abc_fiscal_borradores','UPDATE'), 'Sin escritura service_role');
 select pg_temp.fiscal_assert(not has_function_privilege('anon','public.abc_fiscal_leer_borrador(text,text,uuid)','EXECUTE'), 'Anon sin RPC');
 select pg_temp.fiscal_assert(not has_function_privilege('service_role','public.abc_fiscal_guardar_borrador(uuid,text,text,uuid,bigint,jsonb)','EXECUTE'), 'Service sin RPC');
+select pg_temp.fiscal_assert(not has_function_privilege('anon','public.abc_fiscal_listar_emisores(text,text)','EXECUTE'), 'Anon sin listado');
+select pg_temp.fiscal_assert(not has_function_privilege('service_role','public.abc_fiscal_listar_emisores(text,text)','EXECUTE'), 'Service sin listado');
 select pg_temp.fiscal_assert(not has_function_privilege('authenticated','private.abc_fiscal_config_acceso(text,text,uuid)','EXECUTE'), 'Helper privado');
 
 select set_config('app.test_empresa','fiscal-a',true),set_config('app.test_local','fiscal-a1',true),
   set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',true);
 set local role authenticated;
 select pg_temp.fiscal_assert((public.abc_fiscal_leer_borrador('fiscal-a','fiscal-a1','20000000-0000-0000-0000-000000000001')->>'version')::int = 0, 'Emisor sin borrador');
+select pg_temp.fiscal_assert(jsonb_array_length(public.abc_fiscal_listar_emisores('fiscal-a','fiscal-a1')->'emisores')=1
+  and public.abc_fiscal_listar_emisores('fiscal-a','fiscal-a1')->'emisores'->0->>'nombre_legal'='Emisor A'
+  and not (public.abc_fiscal_listar_emisores('fiscal-a','fiscal-a1')->'emisores'->0 ? 'configuracion'), 'Listado mínimo y aislado de A');
 create temporary table fiscal_results(id text, result jsonb);
 insert into fiscal_results values ('a',public.abc_fiscal_guardar_borrador(
   '30000000-0000-0000-0000-000000000001','fiscal-a','fiscal-a1','20000000-0000-0000-0000-000000000001',0,
@@ -79,7 +83,15 @@ select pg_temp.fiscal_reject($q$select public.abc_fiscal_guardar_borrador('30000
 select pg_temp.fiscal_reject($q$select public.abc_fiscal_leer_borrador('fiscal-a','fiscal-a1','20000000-0000-0000-0000-000000000002')$q$,'FISCAL_CONFIG_NO_AUTORIZADO','Emisor de otra empresa rechazado');
 reset role;
 
-select set_config('app.test_empresa','fiscal-a',true),set_config('app.test_local','fiscal-a2',true);
+select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',true),
+  set_config('app.test_empresa','fiscal-b',true),set_config('app.test_local','fiscal-b1',true);
+set local role authenticated;
+select pg_temp.fiscal_assert(jsonb_array_length(public.abc_fiscal_listar_emisores('fiscal-b','fiscal-b1')->'emisores')=1
+  and public.abc_fiscal_listar_emisores('fiscal-b','fiscal-b1')->'emisores'->0->>'nombre_legal'='Emisor B', 'B solo lista su emisor');
+reset role;
+
+select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',true),
+  set_config('app.test_empresa','fiscal-a',true),set_config('app.test_local','fiscal-a2',true);
 set local role authenticated;
 select pg_temp.fiscal_assert(public.abc_fiscal_leer_borrador('fiscal-a','fiscal-a2','20000000-0000-0000-0000-000000000001')->'configuracion'->>'asesoria_nombre'='Asesoría A','Mismo emisor compartido entre locales');
 reset role;
@@ -97,10 +109,12 @@ reset role;
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',true),
   set_config('app.test_empresa','fiscal-a',true),set_config('app.test_local','fiscal-a1',true);
 set local role authenticated;
+select pg_temp.fiscal_reject($q$select public.abc_fiscal_listar_emisores('fiscal-a','fiscal-a1')$q$,'FISCAL_CONFIG_NO_AUTORIZADO','Cajero no lista emisores');
 select pg_temp.fiscal_reject($q$select public.abc_fiscal_leer_borrador('fiscal-a','fiscal-a1','20000000-0000-0000-0000-000000000001')$q$,'FISCAL_CONFIG_NO_AUTORIZADO','Cajero no lee datos de configuración');
 reset role;
 select set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000004',true);
 set local role authenticated;
+select pg_temp.fiscal_reject($q$select public.abc_fiscal_listar_emisores('fiscal-a','fiscal-a1')$q$,'FISCAL_CONFIG_NO_AUTORIZADO','Propietario local no lista emisores globales');
 select pg_temp.fiscal_reject($q$select public.abc_fiscal_guardar_borrador('30000000-0000-0000-0000-000000000004','fiscal-a','fiscal-a1','20000000-0000-0000-0000-000000000001',1,'{}')$q$,'FISCAL_CONFIG_NO_AUTORIZADO','Propietario de local no cambia emisor global');
 reset role;
 
@@ -119,6 +133,7 @@ select pg_temp.fiscal_reject($q$select public.abc_fiscal_guardar_borrador('30000
 reset role;
 select set_config('request.jwt.claim.sub','',true);
 set local role authenticated;
+select pg_temp.fiscal_reject($q$select public.abc_fiscal_listar_emisores('fiscal-a','fiscal-a1')$q$,'FISCAL_CONFIG_NO_AUTORIZADO','Sin identidad no lista');
 select pg_temp.fiscal_reject($q$select public.abc_fiscal_leer_borrador('fiscal-a','fiscal-a1','20000000-0000-0000-0000-000000000001')$q$,'FISCAL_CONFIG_NO_AUTORIZADO','Sin identidad no accede');
 reset role;
 select count(*)::int as fiscal_config_checks from fiscal_checks;

@@ -2,7 +2,7 @@
 
 Fecha de investigación: 26/10/2026. Decisión de producto: Pedro solicita fiscalidad propia para cada empresa y su asesoría.
 
-Estado: diseño e implementación local de borradores por emisor; pendiente de revisión CI, pantalla, ensayo QA y conexión fiscal. Este documento no acredita conformidad fiscal ni activa facturación.
+Estado: C07-A implementado localmente y C07-B implementado en código en un PR de trabajo; pendientes CI, ensayo QA y cualquier conexión fiscal. Este documento no acredita conformidad fiscal ni activa facturación.
 
 ## 1. Decisión de arquitectura
 
@@ -153,4 +153,23 @@ Se cierra el punto de QR digital cuando existe una factura consistente, un regis
 
 El régimen, los tipos de IVA y los plazos legales se confirman al activar cada empresa sobre normativa vigente. No se convierten fechas históricas del plan en constantes del programa. La facturación electrónica B2B y el SII son circuitos que requieren su propio alcance.
 
-**Siguiente entrega concreta: C07-B, pantalla «Fiscalidad y AEAT» conectada a los borradores, después de verificar C07-A en CI.**
+**Siguiente entrega concreta: validar C07-B en CI y QA; la pantalla «Fiscalidad y AEAT» ya está conectada en código a los borradores, pero no se ha aplicado la migración a QA ni producción.**
+
+## 11. Estado de implementación de C07-B
+
+La primera implementación del panel está contenida en el PR de trabajo #180, sin merge ni promoción. Incluye:
+
+- sección «Fiscalidad y AEAT» en Configuración Local;
+- selección de empresa, local y emisor con limpieza de estado al cambiar de alcance;
+- lectura de emisores mediante `abc_fiscal_listar_emisores`, sin devolver el borrador ni secretos;
+- lectura y guardado mediante las RPC de C07-A, con UUID de operación y versión esperada;
+- tratamiento visible del conflicto de versión obsoleta y recarga del servidor;
+- validación de jurisdicción, sujeción, modalidad y coherencia de canal/representación;
+- contrato de aislamiento para dos empresas y dos identidades, incluyendo cajero, propietario local y ausencia de identidad;
+- estado explícito `NO_CONFIGURADA` / `emision_habilitada=false`.
+
+El listado de emisores requiere Propietario global de la empresa y solo entrega metadatos del emisor vinculado al local. La lectura y el guardado del borrador mantienen el control más estricto de C07-A. Esta diferencia es deliberada: consultar el selector no autoriza a modificar la configuración común.
+
+La migración `20261026182012_abc_fiscal_multiempresa_panel.sql` sigue siendo local y no se ha aplicado en QA ni producción. No incluye certificados, claves privadas, contraseñas, endpoints libres, activación, transporte ni remisión a AEAT. El contrato local PGlite valida 41 comprobaciones; el contrato PostgreSQL nativo queda delegado al CI porque este entorno no tiene instalado el cliente `pg`.
+
+**Siguiente paso obligatorio:** esperar CI verde del PR #180 y aplicar después únicamente la migración C07-A/B en QA, con JWT reales de dos empresas y pruebas del cambio de empresa antes de considerar C07-B terminada.
