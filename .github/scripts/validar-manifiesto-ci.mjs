@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const INVENTORY = 313;
+const INVENTORY = 314;
 const CLASSES = ['active_contract', 'historical_expected_fail', 'utility', 'diagnostic'];
 const ENVIRONMENTS = ['node', 'postgres', 'pglite', 'supabase_full_stack'];
 const PAIRS = {
@@ -12,10 +12,10 @@ const PAIRS = {
   pglite: ['active_contract', 'utility'],
   supabase_full_stack: ['active_contract'],
 };
-const COUNTS = { active_contract: 296, historical_expected_fail: 1, utility: 11, diagnostic: 5 };
+const COUNTS = { active_contract: 297, historical_expected_fail: 1, utility: 11, diagnostic: 5 };
 const ENVIRONMENT_COUNTS = {
   node: { active_contract: 266, historical_expected_fail: 0, utility: 10, diagnostic: 5 },
-  postgres: { active_contract: 26, historical_expected_fail: 1, utility: 0, diagnostic: 0 },
+  postgres: { active_contract: 27, historical_expected_fail: 1, utility: 0, diagnostic: 0 },
   pglite: { active_contract: 1, historical_expected_fail: 0, utility: 1, diagnostic: 0 },
   supabase_full_stack: { active_contract: 3, historical_expected_fail: 0, utility: 0, diagnostic: 0 },
 };
