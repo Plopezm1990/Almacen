@@ -1,4 +1,7 @@
-import { renderQrSvg } from "./fiscal/qr/qr-matrix.mjs";
+let renderQrSvg = null;
+import("./fiscal/qr/qr-matrix.mjs").then((modulo) => {
+  if (typeof modulo?.renderQrSvg === "function") renderQrSvg = modulo.renderQrSvg;
+}).catch(() => {});
 
 var __create = Object.create;
 var __defProp = Object.defineProperty;
@@ -123409,6 +123412,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const qr = v22 && v22.qrFiscal;
     if (!qr || typeof qr !== "object" || Array.isArray(qr)) return null;
     if (qr.production !== false || typeof qr.url !== "string" || !/^https:\/\//u.test(qr.url)) return null;
+    if (typeof renderQrSvg !== "function") return null;
     let svg;
     try {
       svg = renderQrSvg(qr.url, { quietZone: 4 });
@@ -124986,6 +124990,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const configFiscalCargando = cargandoConfigFiscalC07D || configFiscalC07D === null;
     const fixtureSoloLectura = !!c07dD24FixturePermitido();
     const form = formularioIncidenciaB04;
+    const configFiscalAviso = configFiscalCargando
+      ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "p-2 rounded-lg mb-2", "data-c07d-config-status": "loading", style: { background: C2.surface, border: `1px solid ${C2.line}` } }, "Comprobando configuración fiscal del servidor…")
+      : configFiscalLista
+        ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", "data-c07d-config-status": "ready", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Configuración fiscal lista"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, `${configFiscalC07D?.configuracion?.codigo_serie || "—"} · ${configFiscalC07D?.configuracion?.adapter_code || "—"} · entorno ${configFiscalC07D?.configuracion?.environment || "—"} · estado ${estadoConfigFiscalC07D}`))
+        : /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "p-2 rounded-lg mb-2", "data-c07d-config-status": "blocked", style: { background: C2.amberSoft, color: C2.ink } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Emisión fiscal bloqueada"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1" }, configFiscalC07D?.error || `No existe una configuración C07-D VALIDADA/ACTIVA para este local (${estadoConfigFiscalC07D || "NO DISPONIBLE"}). El cobro no se cancela, pero el documento fiscal no se emitirá hasta completar la configuración en el servidor.`));
     return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro · F4"),
@@ -124993,7 +125006,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "B05: el importe restante, el cambio y la caja se calculan y validan en servidor. Para un pago mixto, cobra una parte en efectivo y completa después con tarjeta."),
       !pedidoListo ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.amberSoft } }, "Envía el pedido antes de cobrar.") : null,
-      configFiscalCargando ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "p-2 rounded-lg mb-2", "data-c07d-config-status": "loading", style: { background: C2.surface, border: `1px solid ${C2.line}` } }, "Comprobando configuración fiscal del servidor…") : configFiscalLista ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", "data-c07d-config-status": "ready", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Configuración fiscal lista"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, `${configFiscalC07D?.configuracion?.codigo_serie || "—"} · ${configFiscalC07D?.configuracion?.adapter_code || "—"} · entorno ${configFiscalC07D?.configuracion?.environment || "—"} · estado ${estadoConfigFiscalC07D}`)) : /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "p-2 rounded-lg mb-2", "data-c07d-config-status": "blocked", style: { background: C2.amberSoft, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Emisión fiscal bloqueada"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1" }, configFiscalC07D?.error || `No existe una configuración C07-D VALIDADA/ACTIVA para este local (${estadoConfigFiscalC07D || "NO DISPONIBLE"}). El cobro no se cancela, pero el documento fiscal no se emitirá hasta completar la configuración en el servidor.")),
+      configFiscalAviso,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(totalVisible))),
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(confirmadoVisible))),
