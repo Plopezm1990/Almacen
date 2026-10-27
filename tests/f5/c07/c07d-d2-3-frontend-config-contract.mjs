@@ -26,5 +26,6 @@ check("MIGRATION_CREDENTIALS_REDUCED_TO_BOOLEAN", migration.includes("credential
 check("QA_FIXTURE_READY_SCOPED", runtime.includes('"c07d-d2-4-ready"') && runtime.includes("deploy-preview-\\d+--"));
 check("QA_FIXTURE_BLOCKED_SCOPED", runtime.includes('"c07d-d2-4-blocked"') && runtime.includes('"RECTIFICATIVA"'));
 check("QA_FIXTURE_NO_PAYMENT_RPC", runtime.includes("c07dD24EstadoCobroFixtureInicial") && runtime.includes("return () => { activo = false; }"));
+check("QA_FIXTURE_READONLY_GUARD", runtime.includes("El fixture QA C07-D.2.4 es solo visual; no se permite iniciar cobros.") && runtime.includes('data-c07d-fixture": "readonly"'));
 
 console.log("C07D_D2_3_FRONTEND_CONTRACT=PASS");
