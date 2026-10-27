@@ -106283,6 +106283,12 @@ function GestionAlmacen() {
             margin: 0 !important;
             background: #fff !important;
           }
+          .modal-ticket-impresion [data-qr-fiscal-matrix] svg {
+            width: 220px !important;
+            height: 220px !important;
+            max-width: 220px !important;
+            max-height: 220px !important;
+          }
           .no-imprimir { display: none !important; }
           .zona-impresion table { page-break-inside: auto; }
           .zona-impresion tr { page-break-inside: avoid; page-break-after: auto; }
