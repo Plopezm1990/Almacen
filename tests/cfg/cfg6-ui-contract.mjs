@@ -76,6 +76,9 @@ const migraciones = (await readdir(new URL("supabase/migrations/", root))).filte
 assert.equal(migraciones.length, 7, "las migraciones de las piezas 1 a 5, PM13 P05 y F8 C04");
 const textoMig = {};
 for (const m of migraciones) textoMig[m] = lf(await read("supabase/migrations/" + m));
+const fixFk = lf(await read("supabase/migrations/20261028193000_abc_f8_c04_defer_terminal_fk.sql"));
+assert.match(fixFk, /drop constraint if exists abc_operacion_terminal_fk/, "la corrección reemplaza la FK anterior");
+assert.match(fixFk, /foreign key \(empresa_id,local_id,terminal_id\)[\s\S]*?references public\.terminales_tpv\(empresa_id,local_id,id\)[\s\S]*?on delete restrict[\s\S]*?deferrable initially deferred/, "la FK mantiene la integridad y permite el alta atómica");
 const firmas = new Map();
 for (const m of migraciones) {
   for (const x of textoMig[m].matchAll(/create (?:or replace )?function public\.([a-z_0-9]+)\(([\s\S]*?)\)\s*returns/g)) {
