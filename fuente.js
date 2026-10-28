@@ -105068,7 +105068,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -111408,6 +111408,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("checkout_cuotas_importe_pendiente_b05")) return "Esta cuenta tiene un reparto por importe. Se cobrará cuando se implemente B05 para conservar el reparto exacto.";
     if (msg.includes("pedido_lineas_no_cobrables")) return "El pedido contiene líneas que todavía no están confirmadas para cobro.";
     if (msg.includes("cuenta_version_conflict")) return "La cuenta cambió en otro terminal. Recarga antes de cobrar.";
+    if (msg.includes("cuenta_saldo_pendiente")) return "La cuenta todavía tiene saldo pendiente según el servidor.";
+    if (msg.includes("cuenta_pago_no_resuelto") || msg.includes("cuenta_reserva_saldo_activa")) return "El servidor todavía tiene un pago o reserva sin resolver para esta cuenta.";
+    if (msg.includes("cuenta_incidencia_cobro_abierta")) return "La cuenta tiene una incidencia de cobro abierta y no se puede cerrar todavía.";
+    if (msg.includes("cuenta_pedido_no_cerrable")) return "La cuenta tiene un pedido que todavía no está servido o cerrado.";
+    if (msg.includes("cuenta_checkout_abierto")) return "La cuenta todavía tiene un checkout abierto.";
+    if (msg.includes("cuenta_ya_cerrada")) return "La cuenta ya estaba cerrada; se conserva el resultado anterior.";
+    if (msg.includes("cuenta_cierre_no_autorizado")) return "Tu usuario no tiene permiso para cerrar esta cuenta.";
     if (msg.includes("abc_cobro_no_autorizado") || msg.includes("abc_efectivo_no_autorizado") || msg.includes("abc_checkout_no_autorizado")) return "Tu usuario no tiene permiso para realizar este cobro.";
     if (msg.includes("abc_cobro_resolver_no_autorizado")) return "Solo un Propietario o Encargado puede resolver esta incidencia.";
     if (msg.includes("evidencia_datos_tarjeta_prohibidos")) return "La evidencia no puede contener PAN, CVV ni datos completos de tarjeta.";
@@ -111487,6 +111494,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         ok: true, disponible: true, cuentaId: contextoCuenta.cuentaId,
         currencyCode: String(contextoCuenta.currencyCode || "EUR"),
         estado: String(resumenServidor?.estado || "PENDIENTE"),
+        cuentaEstado: String(resumenServidor?.cuenta_estado || ""),
+        cuentaVersion: resumenServidor?.cuenta_version == null ? null : Number(resumenServidor.cuenta_version),
+        cuentaClosedAt: resumenServidor?.closed_at || null,
         total: Number(resumenServidor?.total) || 0,
         confirmado: Number(resumenServidor?.confirmado) || 0,
         saldo: Number(resumenServidor?.saldo) || 0,
@@ -111529,6 +111539,34 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       });
       if (error) throw error;
       return data?.ok ? data : { ok: false, error: "El servidor no confirmó la emisión fiscal." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function cerrarCuentaPagadaF4(cuentaId, checkoutId, cuentaVersion, terminal = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para cerrar la cuenta." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId || !cuentaId || !checkoutId) return { ok: false, error: "Faltan datos para cerrar la cuenta pagada." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "El cierre de cuenta necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      const terminalActivo = terminal || await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationId = "f4.cuenta.close." + String(cuentaId) + "." + String(checkoutId) + "." + String(cuentaVersion);
+      const { data, error } = await supabase.rpc("abc_cerrar_cuenta_pagada", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: cuentaId,
+        p_checkout_id: checkoutId,
+        p_expected_cuenta_version: versionServidorA02(cuentaVersion, "f4.cuenta.close.version"),
+        p_terminal_id: terminalActivo.terminalId,
+        p_session_id: terminalActivo.sessionId,
+        p_operating_day: contexto?.operatingDay || terminalActivo.operatingDay
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, error: "El servidor no confirmó el cierre de la cuenta." };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -111782,6 +111820,14 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         const checkoutCompletado = Array.isArray(estadoFinal.checkouts)
           ? estadoFinal.checkouts.find((checkout) => String(checkout?.estado || "").toUpperCase() === "COMPLETADO")
           : null;
+        const cierreCuenta = checkoutCompletado?.id
+          ? await cerrarCuentaPagadaF4(recuperada.cuentaId, checkoutCompletado.id, recuperada.cuentaVersion, terminal)
+          : { ok: false, error: "No se encontró el checkout completado para cerrar la cuenta." };
+        estadoFinal.cuentaCierre = cierreCuenta;
+        if (cierreCuenta?.ok) {
+          estadoFinal.cuentaEstado = "CERRADA";
+          estadoFinal.cuentaVersion = Number(cierreCuenta.cuenta_version);
+        }
         const fiscalEmitido = await emitirCheckoutFiscalC07D(recuperada.cuentaId, {
           checkoutId: checkoutCompletado?.id || "latest",
           tipoDocumento: opciones?.tipoDocumento || "FACTURA",
@@ -111798,9 +111844,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (medio === "EFECTIVO" && estadoFinal.ok) {
         estadoFinal.mensaje = Number(estadoFinal.saldo) > 0
           ? `Efectivo confirmado. Saldo restante calculado por el servidor: €${Number(estadoFinal.saldo).toFixed(2)}. Puedes completar el pago con tarjeta.`
+          : estadoFinal.cuentaCierre?.ok === false
+            ? `Efectivo confirmado, pero la cuenta sigue abierta: ${estadoFinal.cuentaCierre.error || "el cierre requiere revisión"}`
           : estadoFinal.fiscal?.ok === false
-            ? "Efectivo confirmado y cuenta pagada. La fiscalización QA queda pendiente de reintento."
-            : "Efectivo confirmado, cuenta pagada y documento fiscal QA encolado.";
+            ? "Efectivo confirmado y cuenta cerrada. La fiscalización QA queda pendiente de reintento."
+            : "Efectivo confirmado, cuenta cerrada y documento fiscal QA encolado.";
       }
       if (medio === "TARJETA" && estadoFinal.ok) {
         estadoFinal.mensaje = "Tarjeta iniciada en modo simulado: el intento queda pendiente hasta que el adaptador de proveedor lo resuelva.";
@@ -112276,14 +112324,16 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (String(data.cuenta.id || "") !== String(contextoLocal.cuentaId)) {
         throw new Error("cuenta_recuperacion_id_distinto");
       }
-      if (data.requires_operating_day_resolution || data.reanudable === false) {
+      if (data.requires_operating_day_resolution || (data.reanudable === false && data.cuenta.estado !== "CERRADA")) {
         throw new Error("cuenta_recuperacion_otro_dia");
       }
 
       const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
       const activos = pedidos.filter((p22) => !["CERRADO", "CANCELADO"].includes(String(p22?.estado || "")));
-      if (activos.length !== 1) throw new Error("cuenta_recuperacion_pedidos_ambigua");
-      const pedido = activos[0];
+      const pedido = pedidos.find((p22) => String(p22?.id || "") === String(contextoLocal.pedidoId || ""))
+        || (activos.length === 1 ? activos[0] : null)
+        || (data.cuenta.estado === "CERRADA" && pedidos.length === 1 ? pedidos[0] : null);
+      if (!pedido) throw new Error("cuenta_recuperacion_pedidos_ambigua");
       const lineasServidor = Array.isArray(pedido.lineas) ? pedido.lineas : [];
       if (lineasServidor.length === 0) throw new Error("cuenta_recuperacion_sin_lineas");
 
@@ -113745,7 +113795,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -123540,7 +123590,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
       const host = window.location.hostname;
@@ -125511,7 +125561,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(confirmadoVisible))),
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Pendiente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(saldoVisible)))
       ),
-      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
+      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), estado?.cuentaEstado ? " · Cuenta comercial: " + estado.cuentaEstado : "", ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
       fiscal?.ok && Array.isArray(fiscal.documentos) && fiscal.documentos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "visible", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Fiscalización C07-D · QA"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Documento emitido en C05 y registrado en cadena. AEAT real desactivada; transporte simulado."),
