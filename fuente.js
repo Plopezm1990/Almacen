@@ -106024,7 +106024,8 @@ function GestionAlmacen() {
       puedeAltaProveedorIA,
       addProveedorDesdeAlbaran,
       asignarNifProveedor,
-      completarProveedorConDatos: completarProveedorConDatosAlb
+      completarProveedorConDatos: completarProveedorConDatosAlb,
+      setTab: cambiarTabPM15
     }
   ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
     CuentasPorPagar,
@@ -106100,7 +106101,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -114238,6 +114239,7 @@ function crearLogicaAlbaranes({
     procesarRecepcion._pm10UltimoReplay = false;
     const avisos = [];
     const lineasResueltas = [];
+    const productosNuevosRecepcion = [];
     lineas.forEach((ln2, idxRecepcionPM10) => {
       const uds = Number(ln2.udsPorCaja) > 0 ? Number(ln2.udsPorCaja) : 1;
       const cantidad = Number(ln2.cantidad) || 0;
@@ -114293,6 +114295,7 @@ function crearLogicaAlbaranes({
         const nuevoYaCreadoPM10 = productos.find((p22) => p22.id === nuevoId);
         const nuevo = nuevoYaCreadoPM10 || {
           id: nuevoId,
+          empresaId: empresaId || null,
           localId: localActivoId || null,
           codigo: ln2.codigoProveedor || "",
           nombre: ln2.descripcion || "Sin descripci\xF3n",
@@ -114303,7 +114306,10 @@ function crearLogicaAlbaranes({
           udsPorCaja: uds,
           precioVenta: 0,
           ivaVenta: 10,
+          activo: true,
+          tipo: "materia_prima",
           stock: 0,
+          stockPisoVenta: 0,
           stockMinimo: 0,
           ubicacion: "",
           proveedorId,
@@ -114312,6 +114318,7 @@ function crearLogicaAlbaranes({
         };
         if (!nuevoYaCreadoPM10) {
           setProductos((s22) => s22.some((p22) => p22.id === nuevoId) ? s22 : [...s22, nuevo]);
+          productosNuevosRecepcion.push(nuevo);
           registrarProductoSnapshot(nuevo);
         }
         productosCreadosRecepcion.set(claveProductoRecepcion, nuevoId);
@@ -114332,6 +114339,18 @@ function crearLogicaAlbaranes({
       }
     });
     if (lineasResueltas.length !== lineas.length) return errorValidacionPM10("conflicto_movimiento_stock", "lineas", "No se pudieron aplicar todas las líneas de la recepción.");
+    // Reafirma las altas automáticas al final de la recepción. Esto evita que
+    // una hidratación de stock que llegue en paralelo publique una fotografía
+    // anterior del catálogo local y haga desaparecer el producto recién creado.
+    if (productosNuevosRecepcion.length) {
+      setProductos((actuales) => {
+        const porId = new Map((actuales || []).map((producto) => [producto.id, producto]));
+        productosNuevosRecepcion.forEach((producto) => {
+          if (!porId.has(producto.id)) porId.set(producto.id, producto);
+        });
+        return [...porId.values()];
+      });
+    }
     setCatalogoProv((prev) => {
       const copia = { ...prev };
       lineasResueltas.forEach((ln2) => {
@@ -114467,6 +114486,7 @@ function crearLogicaAlbaranes({
     const salidaPM11 = Array.isArray(avisos) ? avisos : [];
     salidaPM11.replayed = replayedRecepcionPM10;
     salidaPM11.operationId = `pm11-albaran:${albaranId}`;
+    salidaPM11.lineasResueltas = lineasResueltas;
     return salidaPM11;
   }
   function anularAlbaran(alb) {
@@ -118804,12 +118824,14 @@ function Albaranes({
   puedeAltaProveedorIA = false,
   addProveedorDesdeAlbaran = null,
   asignarNifProveedor = null,
-  completarProveedorConDatos = null
+  completarProveedorConDatos = null,
+  setTab = null
 }) {
   const [modo, setModo] = (0, import_react4.useState)("lista");
   const [alb, setAlb] = (0, import_react4.useState)(null);
   const [error, setError] = (0, import_react4.useState)("");
   const [avisos, setAvisos] = (0, import_react4.useState)(null);
+  const [entradaResumen, setEntradaResumen] = (0, import_react4.useState)(null);
   const [filtroMes, setFiltroMes] = (0, import_react4.useState)("");
   const [mostrarPegar, setMostrarPegar] = (0, import_react4.useState)(false);
   const [textoPegado, setTextoPegado] = (0, import_react4.useState)("");
@@ -119093,6 +119115,7 @@ function Albaranes({
     setFotoRevisionIA("");
     setConfianzaIA(null);
     setAvisosIA([]);
+    setEntradaResumen(null);
     setModo("editor");
   }
   function abrir(a22) {
@@ -119101,6 +119124,7 @@ function Albaranes({
     setFotoRevisionIA("");
     setConfianzaIA(null);
     setAvisosIA([]);
+    setEntradaResumen(null);
     setModo("editor");
   }
   function setLinea(idx, campo, valor) {
@@ -119231,10 +119255,25 @@ function Albaranes({
         setError(resultado.error || "No se pudo registrar la recepción del pedido.");
         return;
       }
+      const lineasRecibidas = Array.isArray(resultado?.lineasResueltas) && resultado.lineasResueltas.length
+        ? resultado.lineasResueltas
+        : limpio.lineas;
+      setEntradaResumen({
+        albaranId: limpio.id,
+        fecha: limpio.fecha,
+        lineas: lineasRecibidas.map((ln2) => ({
+          productoId: ln2.productoId || "",
+          nombre: productos.find((producto) => producto.id === ln2.productoId)?.nombre || ln2.descripcion || "Producto recibido",
+          cantidad: Number(ln2.unidadesEntradas) || 0,
+          unidad: ln2.unidad || "unidad"
+        }))
+      });
       setAvisos(resultado && resultado.length ? resultado : []);
       if (asegurado.creado) {
         setAvisoAltaProveedor(`Se ha dado de alta el proveedor «${asegurado.creado.nombre}» a partir del albarán. Está en Proveedores marcado como «pendiente de revisar»: completa sus datos cuando puedas.`);
       }
+      const nombresRecibidos = lineasRecibidas.map((ln2) => ln2.descripcion || productos.find((producto) => producto.id === ln2.productoId)?.nombre || "producto").join(", ");
+      setAvisoAltaProveedor((actual) => `${actual ? actual + " " : ""}Entrada registrada: ${nombresRecibidos}. El stock queda en almacén. Para venderlo: configura el precio con IVA en Productos y después pásalo de Almacén a Piso de venta desde Traspasos. El TPV no muestra artículos sin precio ni sin stock en el piso.`);
       setModo("lista");
       setAlb(null);
       setFotoRevisionIA("");
@@ -123400,7 +123439,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
       const host = window.location.hostname;
@@ -123501,6 +123540,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [procesandoAnulacion, setProcesandoAnulacion] = (0, import_react4.useState)(false);
   const [ventaDetalle, setVentaDetalle] = (0, import_react4.useState)(null);
   const [ticketVenta, setTicketVenta] = (0, import_react4.useState)(() => ticketQrQaFixtureInicial(productos));
+  const [fondoInicialTPV, setFondoInicialTPV] = (0, import_react4.useState)("0");
+  const [abriendoSesionTPV, setAbriendoSesionTPV] = (0, import_react4.useState)(false);
+  const [errorSesionTPV, setErrorSesionTPV] = (0, import_react4.useState)("");
+  const [exitoSesionTPV, setExitoSesionTPV] = (0, import_react4.useState)("");
   const [filtroVentasTexto, setFiltroVentasTexto] = (0, import_react4.useState)("");
   const [filtroVentasDesde, setFiltroVentasDesde] = (0, import_react4.useState)("");
   const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
@@ -125227,8 +125270,45 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     if (valor === "DESCONOCIDO") return "Resultado desconocido";
     return "Pendiente";
   }
+  async function abrirSesionDesdeTPV() {
+    if (abriendoSesionTPV || typeof abrirSesionCajaA10 !== "function") return;
+    setErrorSesionTPV("");
+    setExitoSesionTPV("");
+    const fondo = Number(fondoInicialTPV);
+    if (!Number.isFinite(fondo) || fondo < 0) {
+      setErrorSesionTPV("El fondo inicial debe ser un número igual o mayor que cero.");
+      return;
+    }
+    setAbriendoSesionTPV(true);
+    try {
+      const resultado = await abrirSesionCajaA10({ fondoInicial: fondo });
+      if (!resultado?.ok) {
+        setErrorSesionTPV(resultado?.error || "No se pudo abrir la sesión de caja.");
+        return;
+      }
+      setExitoSesionTPV(`Sesión abierta${resultado.caja_nombre ? ` en ${resultado.caja_nombre}` : ""}. Ya puedes cobrar en el TPV.`);
+    } catch (e2) {
+      setErrorSesionTPV(String(e2?.message || "No se pudo abrir la sesión de caja."));
+    } finally {
+      setAbriendoSesionTPV(false);
+    }
+  }
+  function renderCajaTPV() {
+    if (typeof abrirSesionCajaA10 !== "function") return null;
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-c01-tpv-caja": "1", style: { background: C2.accentSoft, border: "none" } },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Caja del TPV"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El fondo abre la sesión operativa de este terminal. El arqueo es el cierre y contado; puedes abrirlo desde aquí y entrar después en su pantalla completa."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-end flex-wrap" },
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fondo inicial (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "0", step: "0.01", value: fondoInicialTPV, disabled: abriendoSesionTPV, onChange: (e2) => setFondoInicialTPV(e2.target.value) })),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirSesionDesdeTPV, disabled: abriendoSesionTPV || !String(fondoInicialTPV).trim() }, abriendoSesionTPV ? "Abriendo…" : "Abrir fondo"),
+        typeof irACaja === "function" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irACaja }, "Ver arqueo y cierre") : null
+      ),
+      errorSesionTPV ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesionTPV) : null,
+      exitoSesionTPV ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesionTPV) : null
+    );
+  }
   function renderCobroF4() {
-    if (!pedidoOperativoA05?.cuentaId) return null;
+    if (!pedidoOperativoA05?.cuentaId) return renderCajaTPV();
     const pedidoListo = ["ENVIADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
     const estado = estadoCobroF4;
     const tieneCheckout = Array.isArray(estado?.checkouts) && estado.checkouts.length>0;
