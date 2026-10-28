@@ -125582,6 +125582,33 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setProcesandoA05(false);
     }
   }
+  async function enviarPedidoOperativoA05() {
+    if (procesandoA05 || !pedidoOperativoA05?.pedidoId || typeof enviarPedidoA05 !== "function") return;
+    setProcesandoA05(true);
+    setErrorA05("");
+    try {
+      const resultado = await enviarPedidoA05();
+      if (!resultado || resultado.ok === false) {
+        if (await gestionarConflictoA06(resultado, "ENVIAR_PEDIDO")) {
+          setErrorA05("");
+          return;
+        }
+        setErrorA05(resultado?.error || "No se pudo enviar el pedido.");
+        return;
+      }
+      setConflictoA06(null);
+      setPedidoOperativoA05(resultado);
+      setConfirmacion((actual) => actual && actual.pedidoId === resultado.pedidoId ? {
+        ...actual,
+        pedidoVersion: resultado.pedidoVersion,
+        pedidoEstado: resultado.pedidoEstado || "ENVIADO",
+        lineas: Array.isArray(resultado.lineas) ? resultado.lineas : actual.lineas
+      } : actual);
+      await refrescarCobroF4();
+    } finally {
+      setProcesandoA05(false);
+    }
+  }
   async function ejecutarAccionA05(accion, lineaId = null) {
     if (accionEnCursoA05 || typeof accionPedidoA05 !== "function") return;
     if ((accion === "CANCELAR_LINEA" || accion === "CANCELAR_PEDIDO") && !motivoOperacionA05.trim()) {
@@ -125894,6 +125921,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const terminal = pedido.pedidoEstado === "CERRADO" || pedido.pedidoEstado === "CANCELADO";
     const tieneServidas = (pedido.lineas || []).some((l22) => l22.estado === "SERVIDA");
     const puedeCancelarPedido = !terminal && !tieneServidas;
+    const puedeEnviarPedido = pedido.pedidoEstado === "ABIERTO" && (pedido.lineas || []).some((l22) => !["CANCELADA", "ENVIADA", "EN_PREPARACION", "PREPARADA", "SERVIDA"].includes(l22.estado));
     return /* @__PURE__ */ import_react4.default.createElement(
       Card,
       { className: "mb-4" },
@@ -125902,6 +125930,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold", style: { color: pedido.pedidoEstado === "CANCELADO" ? C2.red : C2.accent } }, pedido.pedidoEstado || "ABIERTO")
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Los permisos se validan siempre en el servidor. Preparación, servido y cancelaciones no registran cobro ni documento fiscal."),
+      puedeEnviarPedido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { background: C2.accentSoft, border: "1px solid " + C2.line } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2" }, "Este pedido está guardado y todavía no se ha enviado a preparación."),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoOperativoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando…" : "Enviar pedido a preparación")
+      ) : null,
       (pedido.lineas || []).map((linea) => {
         const producto = productos.find((p22) => p22.id === linea.productoId);
         const busy = !!accionEnCursoA05;
