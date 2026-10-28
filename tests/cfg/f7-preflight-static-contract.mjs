@@ -81,6 +81,8 @@ const EXCLUIDAS = new Set([
   '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
   // F8 C04: alta de terminal/caja por propietario, con preflight propio.
   '20261027200000_abc_f8_c04_terminal_caja_propietario.sql',
+  // Corrección posterior de F8 C04 aplicada primero en QA; no forma parte de la foto F7 histórica.
+  '20261028193000_abc_f8_c04_defer_terminal_fk.sql',
   // Ventanas QA posteriores a F7: recepción, rutas bloqueadas y cierre de cuenta.
   '20261028170000_pm10_recepcion_stock_atomica.sql',
   '20261028180000_abc_f3_a10_requeue_blocked_routes.sql',
