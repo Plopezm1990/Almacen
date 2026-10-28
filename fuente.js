@@ -103575,7 +103575,7 @@ function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
     style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 }
   }, FISCAL_CONFIG_OPCIONES[clave].map(([valor, texto]) => h("option", { key: valor, value: valor }, texto))));
 }
-function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
+function ConfigFiscalidad({ empresaId, localId, localNombre = "", procesarColaFiscalQaC07D = null }) {
   const h = import_react4.default.createElement;
   const modoFiscalLocal = typeof window !== "undefined" && window.__nubeActiva === false;
   const modoFiscalQa = typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
@@ -103595,6 +103595,8 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   const [c07cDisponible, setC07cDisponible] = (0, import_react4.useState)(modoFiscalQa);
   const [guardandoDelegacion, setGuardandoDelegacion] = (0, import_react4.useState)(false);
   const [guardandoRepresentacion, setGuardandoRepresentacion] = (0, import_react4.useState)(false);
+  const [procesandoColaQa, setProcesandoColaQa] = (0, import_react4.useState)(false);
+  const [resultadoColaQa, setResultadoColaQa] = (0, import_react4.useState)(null);
   const listaSolicitud = (0, import_react4.useRef)(0);
   const detalleSolicitud = (0, import_react4.useRef)(0);
   const reiniciarDetalle = () => { setDetalle(null); setForm({ ...FISCAL_CONFIG_INICIAL }); };
@@ -103697,6 +103699,21 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
     } catch (e2) { setError(configMensajeError(e2)); }
     finally { setGuardandoRepresentacion(false); }
   };
+  const procesarColaQa = async () => {
+    if (typeof procesarColaFiscalQaC07D !== "function") {
+      setError("La acción del worker QA todavía no está disponible en esta versión.");
+      return;
+    }
+    setError(""); setConfirmacion(""); setResultadoColaQa(null); setProcesandoColaQa(true);
+    try {
+      const r2 = await procesarColaFiscalQaC07D(10);
+      if (!r2?.ok) throw new Error(r2?.error || "El worker QA no confirmó el procesamiento.");
+      setResultadoColaQa(r2);
+      setConfirmacion(`Worker QA ejecutado: ${Number(r2.reclamadas || 0)} reclamadas, ${Number(r2.resueltas || 0)} resueltas y ${Number(r2.fallidas || 0)} fallidas. No se ha contactado con la AEAT.`);
+    } catch (e2) {
+      setError(e2?.message || "No se pudo ejecutar el worker QA.");
+    } finally { setProcesandoColaQa(false); }
+  };
   const ocupado = cargando || guardando;
   const emisor = detalle?.emisor || emisores.find((e2) => e2.id === emisorId) || null;
   const pilotoSandboxVisible = modoPilotoSandboxQa && !!emisorId;
@@ -103710,6 +103727,14 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
       h("div", { className: "text-[12px] mt-1" }, `${pilotoSandboxConfigurado ? "Estado actual" : "Estado inicial"}: ${pilotoSandboxEstado}`),
       h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, `Empresa ${empresaId || "—"} · Local ${localId || "—"} · Entorno SANDBOX`),
       h("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Solo lectura en preview QA. Este panel no crea expedientes, no cambia estados, no utiliza secretos y no activa producción.")
+    ) : null,
+    modoFiscalQa ? h(Card, { className: "mb-3", "data-c07d-worker-qa": "manual" },
+      h("div", { className: "font-semibold mb-1" }, "Procesamiento fiscal QA"),
+      h("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Acción manual y controlada para este local. Reclama y resuelve hasta 10 elementos de la cola en modo QA_SIMULADOR; no envía datos a la AEAT ni modifica producción."),
+      h("div", { className: "flex flex-wrap items-center gap-2" },
+        h(Btn, { small: true, onClick: procesarColaQa, disabled: procesandoColaQa || !empresaId || !localId }, procesandoColaQa ? "Procesando…" : "Procesar cola QA"),
+        resultadoColaQa ? h("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, `Última ejecución: ${Number(resultadoColaQa.reclamadas || 0)} reclamadas · ${Number(resultadoColaQa.resueltas || 0)} resueltas · ${Number(resultadoColaQa.fallidas || 0)} fallidas`) : null
+      )
     ) : null,
     h(Card, { className: "mb-3", style: { background: C2.amberSoft } },
       h("div", { className: "font-semibold text-[13px]" }, "Configuración fiscal en borrador"),
@@ -103769,7 +103794,7 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
         h("div", null, h("div", { className: "text-[12px] font-semibold" }, `Versión del borrador: ${detalle.version || 0}`), h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Conexión: no configurada · Emisión: deshabilitada")),
         h(Btn, { onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar borrador fiscal")))) : null);
 }
-function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [] }) {
+function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [], procesarColaFiscalQaC07D = null }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
@@ -103785,7 +103810,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
     seccion === "terminales" ? h(ConfigTerminalesCajas, { empresaId, localId }) : null,
-    seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre }) : null,
+    seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre, procesarColaFiscalQaC07D }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );
@@ -105068,7 +105093,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -106212,7 +106237,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D }));
   // PM13-P04.2: claves estables de capacidad de consulta, separadas del texto visible y de la navegacion.
   const CAPACIDADES_CONSULTA_PANTALLA = Object.freeze({
     dashboard: "ABC_PANTALLA_DASHBOARD_CONSULTAR",
@@ -111654,6 +111679,25 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
   }
+  async function procesarColaFiscalQaC07D(limiteSolicitado = 10) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, qa: false, error: "El worker de cola fiscal solo está disponible en QA." };
+    if (!localActivoId) return { ok: false, qa: true, error: "Selecciona un local antes de procesar la cola fiscal QA." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, qa: true, error: "No hay una empresa activa para este local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, qa: true, error: "El worker QA necesita una sesión sincronizada con el servidor." };
+    const limite = Math.max(1, Math.min(50, Number.isFinite(Number(limiteSolicitado)) ? Math.trunc(Number(limiteSolicitado)) : 10));
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.functions.invoke("c07d-worker-qa", {
+        body: { empresaId, localId: localActivoId, limite, modo: "QA_SIMULADOR" }
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, qa: true, error: data?.error || "El worker QA no devolvió un resultado válido." };
+    } catch (error) {
+      return { ok: false, qa: true, error: mensajeErrorCobroF4(error) };
+    }
+  }
   async function abrirIncidenciaCobroF4({ intentoId = null, motivo = "", providerCode = null, providerReference = null, evidencia = {} } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para abrir la incidencia." };
     const empresaId = empresaDelLocalActivo?.id || null;
@@ -113807,7 +113851,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
