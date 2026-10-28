@@ -4,6 +4,7 @@ import assert from 'node:assert/strict';
 const createAccount = fs.readFileSync('supabase/functions/crear-cuenta-empleado/index.ts', 'utf8');
 const notify = fs.readFileSync('supabase/functions/enviar-notificacion/index.ts', 'utf8');
 const prefiltro = fs.readFileSync('supabase/functions/prefiltro-candidato/index.ts', 'utf8');
+const workerQa = fs.readFileSync('supabase/functions/c07d-worker-qa/index.ts', 'utf8');
 const shared = fs.readFileSync('supabase/functions/_shared/tenant-scope.js', 'utf8');
 const manifest = JSON.parse(fs.readFileSync('supabase/functions/edge-security-manifest.json', 'utf8'));
 const rateMigration = fs.readFileSync('supabase/migrations/20260922080500_p2_sec_prefiltro_rate_limit_rpc.sql', 'utf8');
@@ -18,13 +19,21 @@ assert.deepEqual(
     ['crear-cuenta-empleado', true],
     ['enviar-notificacion', false],
     ['prefiltro-candidato', false],
+    ['c07d-worker-qa', true],
   ],
 );
 
-for (const [name, source] of Object.entries({ createAccount, notify, prefiltro })) {
+for (const [name, source] of Object.entries({ createAccount, notify, prefiltro, workerQa })) {
   assert.doesNotMatch(source, /https:\/\/[a-z]{20}\.supabase\.co/i, name + ' must not hardcode a Supabase project URL');
   assert.doesNotMatch(source, /sb_secret_|eyJ[a-zA-Z0-9_-]{20,}/, name + ' must not contain credential literals');
 }
+
+assert.match(workerQa, /caller\.auth\.getUser\(\)/);
+assert.match(workerQa, /modo !== "QA_SIMULADOR"/);
+assert.match(workerQa, /aeat_real: false/);
+assert.match(workerQa, /abc_c07d_reclamar_cola_fiscal/);
+assert.match(workerQa, /abc_c07d_resolver_cola_fiscal/);
+assert.doesNotMatch(workerQa, /SUPABASE_SERVICE_ROLE_KEY/);
 
 assert.match(createAccount, /SUPABASE_SERVICE_ROLE_KEY/);
 assert.match(createAccount, /caller\.auth\.getUser\(\)/);

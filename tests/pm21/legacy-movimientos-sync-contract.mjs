@@ -5,7 +5,8 @@ import vm from "node:vm";
 
 // Ejecuta la implementación real de sincronizarColeccionPorFila sin red ni BD.
 // El doble de Supabase simula conflictos de unicidad y rechazos RLS.
-const src = fs.readFileSync(new URL("../../index-storage-bootstrap.js", import.meta.url), "utf8");
+const src = fs.readFileSync(new URL("../../index-storage-bootstrap.js", import.meta.url), "utf8")
+  .replace(/\r\n/g, "\n");
 const start = src.indexOf("  var CAMPOS_SINCRONIZACION_SOLO_LOCAL = {");
 const end = src.indexOf("  /* ----------------------------------------------------------\n     COLECCIONES GUARDADAS EN BLOQUE", start);
 assert.ok(start !== -1 && end > start, "fragmento funcional localizado");

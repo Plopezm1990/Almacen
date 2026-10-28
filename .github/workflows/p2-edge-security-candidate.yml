@@ -66,10 +66,12 @@ jobs:
         run: |
           set -euo pipefail
           ACTUAL_HEAD="$(git rev-parse HEAD)"
-          git fetch origin release --quiet
-          BASE="$(git rev-parse origin/release)"
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             test "$ACTUAL_HEAD" = '${{ github.event.pull_request.head.sha }}'
+            BASE='${{ github.event.pull_request.base.sha }}'
+          else
+            git fetch origin release --quiet
+            BASE="$(git rev-parse origin/release)"
           fi
           git merge-base --is-ancestor "$BASE" "$ACTUAL_HEAD"
           mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
@@ -110,6 +112,7 @@ jobs:
           # forman parte del cambio mínimo verificable.
           notification_hotfix=$'.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/enviar-notificacion/index.ts'
           notification_removal=$'supabase/functions/enviar-notificacion/index.ts'
+          manifest_registry=$'.github/scripts/p2-edge-security/contract.mjs\n.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/edge-security-manifest.json'
           account_point1=$'.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/qa-crear-empleado/index.ts\nsupabase/migrations/20261016121308_pm11_read_account_state_no_cross_tenant_existence.sql\nsupabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql\ntests/pm10/p07-personal-contract.mjs\ntests/pm12/p11-create-account-behavior.mjs\ntests/pm12/p11-create-account-routing-contract.mjs\ntests/pm12/p12-account-enrichment-race-contract.mjs\ntests/pm12/p12-account-enrichment-runtime.mjs'
           if [ "$actual" = "$expected" ]; then
             scope='CANDIDATE'
@@ -121,6 +124,8 @@ jobs:
             scope='NOTIFICATION_ROLLBACK'
           elif [ "$actual" = "$account_point1" ]; then
             scope='ACCOUNT_POINT1'
+          elif [ "$actual" = "$manifest_registry" ]; then
+            scope='MANIFEST_REGISTRY'
           else
             echo 'Perímetro P2-SEC no reconocido:' >&2
             printf '%s\n' "${security_changed[@]}" >&2

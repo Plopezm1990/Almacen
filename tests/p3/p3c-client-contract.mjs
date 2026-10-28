@@ -80,6 +80,8 @@ for (const codigoUi of [bundle, recuperado]) {
   assert.equal(r.catalogoYaSincronizado, true);
   assert.equal(llamadas.length, 1);
   assert.equal(llamadas[0].nombre, "abc_productos_guardar_lista");
+  assert.equal(llamadas[0].args.p_empresa_id, "empresa-test");
+  assert.equal(llamadas[0].args.p_local_id, "local-test");
   assert.equal(JSON.stringify(llamadas[0].args.p_base), textoBase);
   assert.equal(JSON.stringify(llamadas[0].args.p_nuevo), JSON.stringify(nuevo));
   assert.equal(JSON.stringify(llamadas[0].args.p_venta), JSON.stringify(nuevo));
