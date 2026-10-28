@@ -125246,14 +125246,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const documento = Array.isArray(fiscal?.documentos) ? fiscal.documentos[0] : null;
     const qr = fiscal?.qr;
     const pedido = pedidoOperativoA05;
-    if (!estado?.ok || !pedido?.cuentaId || !documento || !qr?.ok || typeof qr.qr_url !== "string" || !/^https:\/\//u.test(qr.qr_url)) return null;
-    const lineas = Array.isArray(pedido.lineas) ? pedido.lineas.map((linea, indice) => ({
+    if (!pedido?.cuentaId || !documento || !qr?.ok || typeof qr.qr_url !== "string" || !/^https:\/\//u.test(qr.qr_url)) return null;
+    const lineas = Array.isArray(pedido.lineas) ? pedido.lineas.map((linea, indice) => {
+      const cantidad = Number(linea.cantidad) || 0;
+      const totalLinea = Number(linea.total) || 0;
+      const ingresoUnitario = Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario);
+      return {
       id: linea.id || `checkout-linea-${indice}`,
       productoId: linea.productoId || linea.producto_id,
-      cantidad: Number(linea.cantidad) || 0,
-      ingresoUnitario: Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario) || 0,
+      cantidad,
+      ingresoUnitario: Number.isFinite(ingresoUnitario) && ingresoUnitario >= 0 ? ingresoUnitario : cantidad > 0 ? totalLinea / cantidad : 0,
       ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
-    })).filter((linea) => linea.productoId && linea.cantidad > 0) : [];
+      };
+    }).filter((linea) => linea.productoId && linea.cantidad > 0) : [];
     if (lineas.length === 0) return null;
     const importe = Number(estado.total) || lineas.reduce((total, linea) => total + Math.abs(linea.cantidad * linea.ingresoUnitario) * (1 + linea.ivaVentaAplicado / 100), 0);
     const numero = documento.numero == null ? "" : String(documento.numero).padStart(6, "0");
