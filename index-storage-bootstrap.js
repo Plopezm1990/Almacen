@@ -888,7 +888,11 @@
       var base = textoBase === null ? [] : JSON.parse(textoBase);
       base = normalizarListaProductosParaRpc(base);
       var mapaVenta = leerVentaProductos();
-      var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; });
+      var idsNuevo = {};
+      nuevo.forEach(function (producto) { if (producto && producto.id) idsNuevo[String(producto.id)] = true; });
+      var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; }).filter(function (producto) {
+        return producto && producto.id && idsNuevo[String(producto.id)];
+      });
       var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
         p_operation_id: nuevaOperacionProductos(), p_base: base, p_nuevo: nuevo,
         p_venta: ventaPendiente, p_empresa_id: contexto.empresaId,
