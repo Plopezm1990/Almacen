@@ -24,7 +24,7 @@ assert.match(bloque, /const perfilContextoListo = !!miPerfil\?\.rol/);
 assert.match(bloque, /const sincronizarContextoCompleto = perfilContextoListo && miPerfil\.rol === "Propietario" && !contextoPm07InicializadoRef\.current/);
 assert.match(bloque, /if \(perfilContextoListo\) contextoPm07InicializadoRef\.current = true/);
 assert.match(bloque, /if \(sincronizarContextoCompleto\) \{/);
-assert.match(bloque, /sincronizarContextoPm07\(\{\s*setProductos,\s*esContextoVigente\s*\}\)/);
+assert.match(bloque, /sincronizarContextoPm07\(\{\s*setProductos,\s*empresaId:\s*empresaContexto,\s*localActivoId,\s*esContextoVigente\s*\}\)/);
 assert.doesNotMatch(bloque, /sincronizarContextoPm07\(\{[\s\S]*?setEmpresas/);
 assert.doesNotMatch(bloque, /sincronizarContextoPm07\(\{[\s\S]*?setLocales/);
 assert.doesNotMatch(bloque, /sincronizarContextoPm07\(\{[\s\S]*?setLocalActivoId/);

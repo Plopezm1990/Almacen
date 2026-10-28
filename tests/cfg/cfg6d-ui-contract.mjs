@@ -208,6 +208,16 @@ for (const k of ["DIFERENCIA_SIN_MOTIVO", "DIFERENCIA_PENDIENTE_APROBACION", "DI
 // 6f sigue en su sitio
 assert.match(c, /puedeReabrirCierre === false \? null : h3\(Btn, \{ small: true, variant: "ghost", onClick: reabrirProvisional/, "el permiso de reabrir (6f) no se toca");
 
+// 7b. Arqueo de caja ofrece también la apertura de la sesión operativa.
+const arqueoR = entre(recuperado, "function ArqueoCaja(", "\nvar PLANTILLAS_TURNO", "fuente recuperado");
+const arqueoB = entre(bundle, "function ArqueoCaja(", "\nvar PLANTILLAS_TURNO", "bundle");
+assert.equal(arqueoR, arqueoB, "la pantalla ArqueoCaja es idéntica en ambas fuentes");
+assert.match(arqueoR, /abrirSesionCajaA10/, "ArqueoCaja recibe la apertura de sesión existente");
+assert.match(arqueoR, /data-c01-apertura-sesion/, "ArqueoCaja pinta la tarjeta de apertura");
+assert.match(arqueoR, /Abrir sesión de caja/, "ArqueoCaja muestra el botón de apertura");
+assert.match(arqueoR, /La sesión es la caja operativa del turno/, "ArqueoCaja explica la diferencia entre sesión y arqueo");
+assert.match(bundle, /ArqueoCaja, \{ key: localActivoId \|\| "todos"[\s\S]*?abrirSesionCajaA10 \}/, "la aplicación pasa la apertura a ArqueoCaja");
+
 // 8. El contrato vivo y la prueba de ejecución existen y cubren los casos exigidos.
 const vivo = await read("tests/cfg/cfg6d-ui-runtime.mjs");
 for (const marca of ["A1.1 iniciar el cierre funciona sin ninguna cuenta abierta", "A2.1 con la sesión ya EN_CIERRE el siguiente paso funciona", "A2.2b C12 ensaya sin cerrar", "A2.2c C12 envía sesión, terminal y día", "A3.1 una cuenta antigua guardada", "A4.3 en cierre provisional trae la diferencia",

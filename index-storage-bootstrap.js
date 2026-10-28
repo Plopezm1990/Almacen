@@ -62,6 +62,18 @@
     }
   };
 
+  // La marca de solo-local de productos procede de una versión anterior que
+  // no enviaba empresa/local a la RPC. Se invalida una sola vez al instalar la
+  // corrección PM10; no se borra ningún producto ni se toca la nube.
+  try {
+    var VERSION_REINTENTO_PRODUCTOS = "pm10-recepcion-20261028";
+    var versionAnteriorProductos = localStorage.getItem("almacen__productos_reintento_version");
+    if (versionAnteriorProductos !== VERSION_REINTENTO_PRODUCTOS) {
+      quitarDenegado("productos");
+      localStorage.setItem("almacen__productos_reintento_version", VERSION_REINTENTO_PRODUCTOS);
+    }
+  } catch (e) {}
+
   // Una clave que todavía no existe es un estado normal de primer arranque.
   // Solo se normaliza ese sentinel exacto; SecurityError/cuota/etc. se propagan.
   function leerLocalOpcional(key) {
@@ -787,6 +799,15 @@
     return { resultado: ahora, conflictos: [] }; // números, textos y preferencias del propio equipo
   }
 
+  function normalizarListaProductosParaRpc(lista) {
+    if (!Array.isArray(lista)) return lista;
+    var porId = {};
+    lista.forEach(function (producto) {
+      if (producto && producto.id) porId[String(producto.id)] = producto;
+    });
+    return Object.keys(porId).sort().map(function (id) { return porId[id]; });
+  }
+
   // La referencia de productos se conserva hasta que el servidor confirma el
   // guardado. Si hay varios set seguidos u ocurre un corte de red, el siguiente
   // intento compara contra la última lista confirmada, no contra otro borrador
@@ -850,22 +871,43 @@
       .eq("key", key);
     var contexto = contextoKvActual();
     if (contexto.empresaId) consulta = consulta.eq("empresa_id", contexto.empresaId);
+    else consulta = consulta.eq("empresa_id", "__contexto_empresa_pendiente__");
     return consulta;
   }
 
   async function guardarBloque(key, textoAnterior, textoNuevo) {
     var nuevo = JSON.parse(textoNuevo);
+    if (key === "productos") nuevo = normalizarListaProductosParaRpc(nuevo);
     var aSubir = nuevo;
+    var contexto = contextoKvActual();
+    if (!contexto.empresaId) throw new Error("No hay empresa activa para guardar " + key + " en la nube");
 
     if (key === "productos") {
       var textoBase = localStorage.getItem(BASE_PRODUCTOS_PENDIENTE);
       if (textoBase === null) textoBase = textoAnterior;
       var base = textoBase === null ? [] : JSON.parse(textoBase);
+      base = normalizarListaProductosParaRpc(base);
+      // Recupera una base antigua que quedó vacía tras un corte o una
+      // primera carga incompleta. Sin esta lectura, la RPC interpreta todos
+      // los productos ya existentes como altas nuevas y rechaza el reintento.
+      if (Array.isArray(base) && base.length === 0 && nuevo.length > 0 &&
+          (textoBase === null || textoBase === "[]")) {
+        var rBaseActual = await consultaKvPorClave("productos", "value").maybeSingle();
+        if (rBaseActual.error) throw rBaseActual.error;
+        if (rBaseActual.data && Array.isArray(rBaseActual.data.value)) {
+          base = normalizarListaProductosParaRpc(rBaseActual.data.value);
+        }
+      }
       var mapaVenta = leerVentaProductos();
-      var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; });
+      var idsNuevo = {};
+      nuevo.forEach(function (producto) { if (producto && producto.id) idsNuevo[String(producto.id)] = true; });
+      var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; }).filter(function (producto) {
+        return producto && producto.id && idsNuevo[String(producto.id)];
+      });
       var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
         p_operation_id: nuevaOperacionProductos(), p_base: base, p_nuevo: nuevo,
-        p_venta: ventaPendiente
+        p_venta: ventaPendiente, p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId
       });
       if (!rProductos.error) {
         if (!rProductos.data || rProductos.data.ok !== true) throw new Error("Respuesta inesperada al guardar productos");
@@ -873,8 +915,7 @@
         if (!Array.isArray(listaConfirmada)) {
           // Compatibilidad con instalaciones que aún tengan la primera RPC:
           // una lectura posterior al COMMIT obtiene la lista final en nube.
-          var rConfirmada = await window.__nubeCliente.from("almacen_kv")
-            .select("value").eq("key", "productos").maybeSingle();
+          var rConfirmada = await consultaKvPorClave("productos", "value").maybeSingle();
           if (rConfirmada.error) throw rConfirmada.error;
           listaConfirmada = rConfirmada.data && rConfirmada.data.value;
         }
@@ -923,8 +964,6 @@
       }
     }
 
-    var contexto = contextoKvActual();
-    if (!contexto.empresaId) throw new Error("No hay empresa activa para guardar " + key + " en la nube");
     var rSube = await window.__nubeCliente.from("almacen_kv").upsert({
       empresa_id: contexto.empresaId,
       key: key,
@@ -1107,6 +1146,7 @@
         return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
       }
 
+      if (key === "productos" && opcionesP3c && opcionesP3c.forzarReintento) quitarDenegado(key);
       if (window.__nubeActiva && window.__nubeCliente) {
         var resultadoProductos = null;
         var catalogoBloqueado = false;

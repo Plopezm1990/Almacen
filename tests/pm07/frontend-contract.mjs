@@ -44,7 +44,7 @@ const checks = {
   contexto_cloud_no_hidrata_locales: !contexto.includes('setLocales('),
   contexto_cloud_no_hidrata_local_activo: !contexto.includes('setLocalActivoId('),
   contexto_cloud_hidrata_productos: contexto.includes('setProductos(productosNube.filter'),
-  contexto_cloud_solo_propietario_una_vez: s.includes('miPerfil.rol === "Propietario" && !contextoPm07InicializadoRef.current') && /await\s+sincronizarContextoPm07\(\{\s*setProductos,\s*esContextoVigente\s*\}\)/.test(s),
+  contexto_cloud_solo_propietario_una_vez: s.includes('const sincronizarContextoCompleto = perfilContextoListo && miPerfil.rol === "Propietario"') && /await\s+sincronizarContextoPm07\(\{\s*setProductos,\s*empresaId:\s*empresaContexto,[\s\S]*?localActivoId,[\s\S]*?esContextoVigente\s*\}\)/.test(s),
   // RPC con prefijo estable: el sufijo de versión (_pm07 en origen, _pm09
   // desde una ronda posterior que las renombró) puede volver a cambiar;
   // lo que importa es que sigue siendo la RPC atómica de venta/reverso de

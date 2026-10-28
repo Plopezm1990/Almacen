@@ -10,11 +10,14 @@ assert.match(storage, /function contextoKvActual\(\)/, 'el bootstrap resuelve el
 assert.match(storage, /__empresaActivaIdParaContexto/, 'el bootstrap usa la empresa activa');
 assert.match(storage, /consultaKvPorClave\(key, "value"\)\.maybeSingle\(\)/, 'la lectura KV usa el helper contextual');
 assert.match(storage, /\.eq\("empresa_id", contexto\.empresaId\)/, 'la lectura KV queda acotada por empresa');
+assert.match(storage, /else consulta = consulta\.eq\("empresa_id", "__contexto_empresa_pendiente__"\)/, 'sin contexto la lectura KV no cae en una consulta global');
+assert.match(storage, /p_venta: ventaPendiente, p_empresa_id: contexto\.empresaId,\s*p_local_id: contexto\.localId/, 'la RPC de productos recibe empresa y local explícitos');
 assert.match(storage, /upsert\(\{\s*empresa_id: contexto\.empresaId,\s*key: key,\s*value: aSubir,\s*local_id: null\s*\}\)/s, 'la escritura KV incluye empresa_id y local_id');
 assert.doesNotMatch(storage, /upsert\(\{ key: key, value: aSubir \}\)/, 'no queda upsert KV global');
 assert.match(storage, /\.delete\(\)\.eq\("empresa_id", contextoBorrado\.empresaId\)\.eq\("key", key\)/, 'el borrado KV queda acotado por empresa');
 assert.match(fuente, /key === "localActivoId" && window\.__nubeActiva && typeof window\.__empresaActivaIdParaContexto === "string"/, 'el cambio de local no se pierde mientras se renueva el contexto');
 assert.match(fuente, /contexto = await obtenerContexto\(true\)/, 'el guard de local reintenta el contexto antes de guardar');
+assert.match(fuente, /select\("key,value"\)\.eq\("empresa_id", String\(empresaId\)\)\.in\("key", \["productos"\]\)/, 'la hidratación PM07 queda acotada por empresa');
 
 for (const [nombre, codigo] of [['fuente.js', fuente], ['fuente-recuperado.js', recovery]]) {
   assert.match(codigo, /window\.__empresaActivaIdParaContexto = empresaDelLocalActivo\?\.id \? String\(empresaDelLocalActivo\.id\) : null;/, `${nombre}: publica empresa activa`);

@@ -703,13 +703,10 @@ async function sincronizarConteosPm12({ setConteos, empresaId = null, localActiv
   const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
   if (!esContextoVigente()) return { ok: false, obsoleto: true };
   setConteos((cs) => {
-    const nuevos = [...cs];
-    for (const documento of documentos) {
-      const i = nuevos.findIndex((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
-      if (i >= 0) nuevos[i] = { ...nuevos[i], ...documento, _pm12Servidor: true };
-      else if (!nuevos.some((c) => c.id === documento.id)) nuevos.push({ ...documento, _pm12Servidor: true });
-    }
-    return nuevos;
+    const idsServidor = new Set(documentos.map((documento) => documento.id));
+    const localesSinVersionServidor = (cs || []).filter((conteo) => !idsServidor.has(conteo.id));
+    const versionesServidor = documentos.map((documento) => ({ ...documento, _pm12Servidor: true }));
+    return [...localesSinVersionServidor, ...versionesServidor];
   });
 }
 async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
@@ -1008,13 +1005,14 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
 }
 async function sincronizarContextoPm07(args) {
-  const { setProductos, esContextoVigente = () => true } = args || {};
+  const { setProductos, empresaId, localActivoId, esContextoVigente = () => true } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
+  if (!empresaId) return { ok: false, contexto_ausente: true };
   const supabase = await window.getSupabaseClient();
   // Empresas, locales y localActivoId ya vienen del contexto seguro sembrado
   // por ui-context-bridge. El bloque global de almacen_kv es legado y no debe
   // ampliar el contexto filtrado de una cuenta de empleado.
-  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["productos"]);
+  const r2 = await supabase.from("almacen_kv").select("key,value").eq("empresa_id", String(empresaId)).in("key", ["productos"]);
   if (r2.error) throw r2.error;
   const porClave = new Map((r2.data || []).map((fila) => [fila.key, fila.value]));
   const productosNube = porClave.get("productos");
@@ -1129,6 +1127,23 @@ var CONFIG_ERRORES = {
   equipo_id_en_uso: "Ese equipo pertenece a otro local.",
   equipo_nombre_duplicado: "Ya hay un equipo con ese nombre en este local.",
   equipo_tipo_inmutable: "El tipo de un equipo no se puede cambiar; desactívalo y crea otro.",
+  terminal_id_requerido: "Falta el identificador del terminal.",
+  terminal_nombre_invalido: "Escribe un nombre de terminal de hasta 80 caracteres.",
+  terminal_device_key_invalida: "La identidad del dispositivo puede tener hasta 120 caracteres.",
+  terminal_capacidades_invalidas: "Las capacidades del terminal no tienen un formato válido.",
+  terminal_estado_requerido: "Indica si el terminal está activo.",
+  terminal_motivo_requerido: "Escribe el motivo del cambio.",
+  terminal_local_no_disponible: "El local no está disponible.",
+  terminal_id_en_uso: "Ese terminal pertenece a otro local.",
+  terminal_device_key_duplicada: "La identidad del dispositivo ya está vinculada a otro terminal de este local.",
+  terminal_sesion_abierta: "No se puede desactivar un terminal que está vinculado a una sesión de caja abierta.",
+  caja_id_requerido: "Falta el identificador de la caja.",
+  caja_nombre_invalido: "Escribe un nombre de caja de hasta 80 caracteres.",
+  caja_estado_requerido: "Indica si la caja está activa.",
+  caja_motivo_requerido: "Escribe el motivo del cambio.",
+  caja_local_no_disponible: "El local no está disponible.",
+  caja_id_en_uso: "Esa caja pertenece a otro local.",
+  caja_sesion_abierta: "No se puede desactivar una caja que tiene una sesión abierta.",
   capacidad_ambito_invalido: "Ámbito no válido.",
   capacidad_rol_invalido: "Ese rol no se puede configurar.",
   capacidad_invalida: "Permiso no válido.",
@@ -1589,6 +1604,139 @@ function ConfigEquipos({ empresaId, localId }) {
         h(Btn, { small: true, variant: "ghost", onClick: () => setForm(null), disabled: ocupado }, "Cancelar")
       )
     ) : null,
+    cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
+  );
+}
+function ConfigTerminalesCajas({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const [terminales, setTerminales] = (0, import_react4.useState)([]);
+  const [cajas, setCajas] = (0, import_react4.useState)([]);
+  const [verInactivos, setVerInactivos] = (0, import_react4.useState)(false);
+  const [nombreTerminal, setNombreTerminal] = (0, import_react4.useState)("");
+  const [nombreCaja, setNombreCaja] = (0, import_react4.useState)("");
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const cargar = async (inactivos = verInactivos) => {
+    setCargando(true);
+    setError("");
+    try {
+      const datos = await configRpc("abc_listar_terminales_cajas_local", { p_empresa_id: empresaId, p_local_id: localId, p_incluir_inactivos: inactivos });
+      setTerminales(Array.isArray(datos?.terminales) ? datos.terminales : []);
+      setCajas(Array.isArray(datos?.cajas) ? datos.cajas : []);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    setNombreTerminal("");
+    setNombreCaja("");
+    cargar();
+  }, [empresaId, localId]);
+  const guardarTerminal = async (existente = null) => {
+    setError("");
+    setConfirmacion("");
+    const nombre = String(existente?.nombre || nombreTerminal || "").trim();
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    if (!nombre) {
+      setError("Escribe el nombre del terminal.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const capacidades = existente?.capacidades || { operaciones: ["VENTA", "CAJA"] };
+      const r2 = await configRpc("abc_configurar_terminal_tpv", {
+        p_operation_id: configOperacion("terminal-tpv"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_terminal_id: existente?.id || configUuid(),
+        p_nombre: nombre,
+        p_device_key: null,
+        p_capacidades: capacidades,
+        p_activo: existente ? existente.activo !== true : true,
+        p_motivo: motivo.trim()
+      });
+      setNombreTerminal("");
+      setConfirmacion(r2?.creado ? "Terminal TPV creado en este local." : r2?.cambio === false ? "No había nada que cambiar." : "Terminal TPV actualizado.");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const guardarCaja = async (existente = null) => {
+    setError("");
+    setConfirmacion("");
+    const nombre = String(existente?.nombre || nombreCaja || "").trim();
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    if (!nombre) {
+      setError("Escribe el nombre de la caja.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const r2 = await configRpc("abc_configurar_caja_fisica", {
+        p_operation_id: configOperacion("caja-fisica"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_caja_id: existente?.id || configUuid(),
+        p_nombre: nombre,
+        p_activo: existente ? existente.activo !== true : true,
+        p_motivo: motivo.trim()
+      });
+      setNombreCaja("");
+      setConfirmacion(r2?.creado ? "Caja física creada en este local." : r2?.cambio === false ? "No había nada que cambiar." : "Caja física actualizada.");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const ocupado = cargando || guardando;
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h(Card, { className: "mb-3", style: { background: C2.amberSoft } },
+      h("div", { className: "font-semibold mb-1" }, "Terminales TPV y cajas físicas"),
+      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Esta pantalla solo está disponible para Propietario. El servidor comprueba tu sesión y tu rol; el PIN local no autoriza por sí solo. El terminal es la identidad operativa del navegador, no un datáfono ni una clave secreta.")),
+    h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: verInactivos, onChange: (e2) => {
+      setVerInactivos(e2.target.checked);
+      cargar(e2.target.checked);
+    }, disabled: ocupado }), "Ver también los desactivados"),
+    h(Card, { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Terminales TPV del local"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, terminales.filter((t3) => t3.activo).length > 1 ? "Hay varios terminales activos: el TPV deberá seleccionar cuál usa." : "Con un único terminal activo, el TPV lo selecciona automáticamente."),
+      terminales.length ? terminales.map((t3) => h("div", { key: t3.id, className: "flex items-center justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: t3.activo ? 1 : 0.6 } },
+        h("div", { className: "text-[13px]" }, h("div", { className: "font-semibold" }, t3.nombre, t3.activo ? "" : " (desactivado)"), h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, t3.device_key_present ? "Identidad de dispositivo vinculada" : "Sin identidad de dispositivo; se puede vincular más adelante")),
+        h(Btn, { small: true, variant: t3.activo ? "danger" : "ghost", onClick: () => guardarTerminal(t3), disabled: ocupado }, t3.activo ? "Desactivar" : "Activar")
+      )) : h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún terminal TPV en este local."),
+      h(Field, { label: "Nombre del nuevo terminal" }, h(Input, { value: nombreTerminal, onChange: (e2) => setNombreTerminal(e2.target.value), maxLength: 80, disabled: ocupado, placeholder: "TPV mostrador" })),
+      h(Btn, { small: true, onClick: () => guardarTerminal(), disabled: ocupado }, guardando ? "Guardando…" : "Crear terminal TPV")
+    ),
+    h(Card, { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Cajas físicas del local"),
+      cajas.length ? cajas.map((c3) => h("div", { key: c3.id, className: "flex items-center justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: c3.activo ? 1 : 0.6 } },
+        h("div", { className: "text-[13px]" }, c3.nombre, c3.activo ? "" : " (desactivada)"),
+        h(Btn, { small: true, variant: c3.activo ? "danger" : "ghost", onClick: () => guardarCaja(c3), disabled: ocupado }, c3.activo ? "Desactivar" : "Activar")
+      )) : h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ninguna caja física en este local."),
+      h(Field, { label: "Nombre de la nueva caja" }, h(Input, { value: nombreCaja, onChange: (e2) => setNombreCaja(e2.target.value), maxLength: 80, disabled: ocupado, placeholder: "Caja principal" })),
+      h(Btn, { small: true, onClick: () => guardarCaja(), disabled: ocupado }, guardando ? "Guardando…" : "Crear caja física")
+    ),
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
@@ -2401,7 +2549,7 @@ function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
     style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 }
   }, FISCAL_CONFIG_OPCIONES[clave].map(([valor, texto]) => h("option", { key: valor, value: valor }, texto))));
 }
-function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
+function ConfigFiscalidad({ empresaId, localId, localNombre = "", procesarColaFiscalQaC07D = null }) {
   const h = import_react4.default.createElement;
   const modoFiscalLocal = typeof window !== "undefined" && window.__nubeActiva === false;
   const modoFiscalQa = typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
@@ -2421,6 +2569,8 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
   const [c07cDisponible, setC07cDisponible] = (0, import_react4.useState)(modoFiscalQa);
   const [guardandoDelegacion, setGuardandoDelegacion] = (0, import_react4.useState)(false);
   const [guardandoRepresentacion, setGuardandoRepresentacion] = (0, import_react4.useState)(false);
+  const [procesandoColaQa, setProcesandoColaQa] = (0, import_react4.useState)(false);
+  const [resultadoColaQa, setResultadoColaQa] = (0, import_react4.useState)(null);
   const listaSolicitud = (0, import_react4.useRef)(0);
   const detalleSolicitud = (0, import_react4.useRef)(0);
   const reiniciarDetalle = () => { setDetalle(null); setForm({ ...FISCAL_CONFIG_INICIAL }); };
@@ -2523,6 +2673,21 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
     } catch (e2) { setError(configMensajeError(e2)); }
     finally { setGuardandoRepresentacion(false); }
   };
+  const procesarColaQa = async () => {
+    if (typeof procesarColaFiscalQaC07D !== "function") {
+      setError("La acción del worker QA todavía no está disponible en esta versión.");
+      return;
+    }
+    setError(""); setConfirmacion(""); setResultadoColaQa(null); setProcesandoColaQa(true);
+    try {
+      const r2 = await procesarColaFiscalQaC07D(10);
+      if (!r2?.ok) throw new Error(r2?.error || "El worker QA no confirmó el procesamiento.");
+      setResultadoColaQa(r2);
+      setConfirmacion(`Worker QA ejecutado: ${Number(r2.reclamadas || 0)} reclamadas, ${Number(r2.resueltas || 0)} resueltas y ${Number(r2.fallidas || 0)} fallidas. No se ha contactado con la AEAT.`);
+    } catch (e2) {
+      setError(e2?.message || "No se pudo ejecutar el worker QA.");
+    } finally { setProcesandoColaQa(false); }
+  };
   const ocupado = cargando || guardando;
   const emisor = detalle?.emisor || emisores.find((e2) => e2.id === emisorId) || null;
   const pilotoSandboxVisible = modoPilotoSandboxQa && !!emisorId;
@@ -2536,6 +2701,14 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
       h("div", { className: "text-[12px] mt-1" }, `${pilotoSandboxConfigurado ? "Estado actual" : "Estado inicial"}: ${pilotoSandboxEstado}`),
       h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, `Empresa ${empresaId || "—"} · Local ${localId || "—"} · Entorno SANDBOX`),
       h("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Solo lectura en preview QA. Este panel no crea expedientes, no cambia estados, no utiliza secretos y no activa producción.")
+    ) : null,
+    modoFiscalQa ? h(Card, { className: "mb-3", "data-c07d-worker-qa": "manual" },
+      h("div", { className: "font-semibold mb-1" }, "Procesamiento fiscal QA"),
+      h("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Acción manual y controlada para este local. Reclama y resuelve hasta 10 elementos de la cola en modo QA_SIMULADOR; no envía datos a la AEAT ni modifica producción."),
+      h("div", { className: "flex flex-wrap items-center gap-2" },
+        h(Btn, { small: true, onClick: procesarColaQa, disabled: procesandoColaQa || !empresaId || !localId }, procesandoColaQa ? "Procesando…" : "Procesar cola QA"),
+        resultadoColaQa ? h("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, `Última ejecución: ${Number(resultadoColaQa.reclamadas || 0)} reclamadas · ${Number(resultadoColaQa.resueltas || 0)} resueltas · ${Number(resultadoColaQa.fallidas || 0)} fallidas`) : null
+      )
     ) : null,
     h(Card, { className: "mb-3", style: { background: C2.amberSoft } },
       h("div", { className: "font-semibold text-[13px]" }, "Configuración fiscal en borrador"),
@@ -2595,11 +2768,11 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "" }) {
         h("div", null, h("div", { className: "text-[12px] font-semibold" }, `Versión del borrador: ${detalle.version || 0}`), h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Conexión: no configurada · Emisión: deshabilitada")),
         h(Btn, { onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar borrador fiscal")))) : null);
 }
-function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [] }) {
+function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [], procesarColaFiscalQaC07D = null }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -2610,7 +2783,8 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
-    seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre }) : null,
+    seccion === "terminales" ? h(ConfigTerminalesCajas, { empresaId, localId }) : null,
+    seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre, procesarColaFiscalQaC07D }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );
@@ -3066,6 +3240,8 @@ function GestionAlmacen() {
         if (sincronizarContextoCompleto) {
           await sincronizarContextoPm07({
             setProductos,
+            empresaId: empresaContexto,
+            localActivoId,
             esContextoVigente
           });
         }
@@ -3891,7 +4067,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -3946,7 +4122,11 @@ function GestionAlmacen() {
     }).ok === true;
   })();
   const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId: empresaDelLocalActivo && empresaDelLocalActivo.id || null, obtenerContextoActor: obtenerContextoAjusteConteo });
-  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => {
+    const estado = String(c22.estado || "").trim().toUpperCase();
+    const cerrado = c22.completado === true || c22.cancelado === true || ["CANCELADO", "ANULADO", "COMPLETADO", "FINALIZADO"].includes(estado);
+    return !cerrado;
+  }) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
   const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
@@ -4847,7 +5027,8 @@ function GestionAlmacen() {
       puedeAltaProveedorIA,
       addProveedorDesdeAlbaran,
       asignarNifProveedor,
-      completarProveedorConDatos: completarProveedorConDatosAlb
+      completarProveedorConDatos: completarProveedorConDatosAlb,
+      setTab: cambiarTabPM15
     }
   ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
     CuentasPorPagar,
@@ -4923,7 +5104,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -4987,7 +5168,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -5030,7 +5211,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D }));
   // PM13-P04.2: claves estables de capacidad de consulta, separadas del texto visible y de la navegacion.
   const CAPACIDADES_CONSULTA_PANTALLA = Object.freeze({
     dashboard: "ABC_PANTALLA_DASHBOARD_CONSULTAR",
@@ -10226,6 +10407,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("checkout_cuotas_importe_pendiente_b05")) return "Esta cuenta tiene un reparto por importe. Se cobrará cuando se implemente B05 para conservar el reparto exacto.";
     if (msg.includes("pedido_lineas_no_cobrables")) return "El pedido contiene líneas que todavía no están confirmadas para cobro.";
     if (msg.includes("cuenta_version_conflict")) return "La cuenta cambió en otro terminal. Recarga antes de cobrar.";
+    if (msg.includes("cuenta_saldo_pendiente")) return "La cuenta todavía tiene saldo pendiente según el servidor.";
+    if (msg.includes("cuenta_pago_no_resuelto") || msg.includes("cuenta_reserva_saldo_activa")) return "El servidor todavía tiene un pago o reserva sin resolver para esta cuenta.";
+    if (msg.includes("cuenta_incidencia_cobro_abierta")) return "La cuenta tiene una incidencia de cobro abierta y no se puede cerrar todavía.";
+    if (msg.includes("cuenta_pedido_no_cerrable")) return "La cuenta tiene un pedido que todavía no está servido o cerrado.";
+    if (msg.includes("cuenta_checkout_abierto")) return "La cuenta todavía tiene un checkout abierto.";
+    if (msg.includes("cuenta_ya_cerrada")) return "La cuenta ya estaba cerrada; se conserva el resultado anterior.";
+    if (msg.includes("cuenta_cierre_no_autorizado")) return "Tu usuario no tiene permiso para cerrar esta cuenta.";
     if (msg.includes("abc_cobro_no_autorizado") || msg.includes("abc_efectivo_no_autorizado") || msg.includes("abc_checkout_no_autorizado")) return "Tu usuario no tiene permiso para realizar este cobro.";
     if (msg.includes("abc_cobro_resolver_no_autorizado")) return "Solo un Propietario o Encargado puede resolver esta incidencia.";
     if (msg.includes("evidencia_datos_tarjeta_prohibidos")) return "La evidencia no puede contener PAN, CVV ni datos completos de tarjeta.";
@@ -10305,6 +10493,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         ok: true, disponible: true, cuentaId: contextoCuenta.cuentaId,
         currencyCode: String(contextoCuenta.currencyCode || "EUR"),
         estado: String(resumenServidor?.estado || "PENDIENTE"),
+        cuentaEstado: String(resumenServidor?.cuenta_estado || ""),
+        cuentaVersion: resumenServidor?.cuenta_version == null ? null : Number(resumenServidor.cuenta_version),
+        cuentaClosedAt: resumenServidor?.closed_at || null,
         total: Number(resumenServidor?.total) || 0,
         confirmado: Number(resumenServidor?.confirmado) || 0,
         saldo: Number(resumenServidor?.saldo) || 0,
@@ -10351,6 +10542,60 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
   }
+  async function cerrarCuentaPagadaF4(cuentaId, checkoutId, cuentaVersion, terminal = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para cerrar la cuenta." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId || !cuentaId || !checkoutId) return { ok: false, error: "Faltan datos para cerrar la cuenta pagada." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "El cierre de cuenta necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      const terminalActivo = terminal || await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationId = "f4.cuenta.close." + String(cuentaId) + "." + String(checkoutId) + "." + String(cuentaVersion);
+      const { data, error } = await supabase.rpc("abc_cerrar_cuenta_pagada", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: cuentaId,
+        p_checkout_id: checkoutId,
+        p_expected_cuenta_version: versionServidorA02(cuentaVersion, "f4.cuenta.close.version"),
+        p_terminal_id: terminalActivo.terminalId,
+        p_session_id: terminalActivo.sessionId,
+        p_operating_day: contexto?.operatingDay || terminalActivo.operatingDay
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, error: "El servidor no confirmó el cierre de la cuenta." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function prepararTicketFiscalQa(cuentaId, fiscalEmitido, checkoutId) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, disponible: false, error: "El QR fiscal solo se prepara en QA." };
+    if (!localActivoId || !cuentaId || !checkoutId) return { ok: false, error: "Faltan datos del checkout para preparar el QR fiscal." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    const documento = Array.isArray(fiscalEmitido?.documentos) ? fiscalEmitido.documentos[0] : null;
+    const ventaFiscalId = String(documento?.venta_fiscal_id || "").trim();
+    if (!empresaId || !ventaFiscalId) return { ok: false, error: "La emisión fiscal no devolvió una venta fiscal para el QR." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "La preparación del QR fiscal necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const operationId = "f7.c07d.qr.prepare:" + String(cuentaId) + ":" + String(checkoutId);
+      const { data, error } = await supabase.rpc("abc_preparar_ticket_fiscal_qa", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_venta_fiscal_id: ventaFiscalId,
+        p_checkout_id: checkoutId,
+        p_fecha_expedicion: new Date().toISOString().slice(0, 10)
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, error: "El servidor no confirmó la preparación del QR fiscal." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
   async function leerConfiguracionEmisionC07D(tipoDocumento = "FACTURA") {
     if (!c07dActivoEnEntornoQa()) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
     if (!localActivoId) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
@@ -10388,9 +10633,43 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_cuenta_id: cuenta
       });
       if (error) throw error;
-      return data?.ok ? data : { ok: false, error: "El servidor no devolvió el estado fiscal." };
+      if (!data?.ok) return { ok: false, error: "El servidor no devolvió el estado fiscal." };
+      if (Array.isArray(data.documentos) && data.documentos.length > 0 && typeof prepararTicketFiscalQa === "function") {
+        const { data: checkouts, error: checkoutsError } = await supabase
+          .from("checkouts")
+          .select("id,estado,completed_at")
+          .eq("empresa_id", empresaId)
+          .eq("local_id", localActivoId)
+          .eq("cuenta_id", cuenta)
+          .eq("estado", "COMPLETADO")
+          .order("completed_at", { ascending: false })
+          .limit(1);
+        if (!checkoutsError && checkouts?.[0]?.id) {
+          data.qr = await prepararTicketFiscalQa(cuenta, data, checkouts[0].id);
+        }
+      }
+      return data;
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function procesarColaFiscalQaC07D(limiteSolicitado = 10) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, qa: false, error: "El worker de cola fiscal solo está disponible en QA." };
+    if (!localActivoId) return { ok: false, qa: true, error: "Selecciona un local antes de procesar la cola fiscal QA." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, qa: true, error: "No hay una empresa activa para este local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, qa: true, error: "El worker QA necesita una sesión sincronizada con el servidor." };
+    const limite = Math.max(1, Math.min(50, Number.isFinite(Number(limiteSolicitado)) ? Math.trunc(Number(limiteSolicitado)) : 10));
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.functions.invoke("c07d-worker-qa", {
+        body: { empresaId, localId: localActivoId, limite, modo: "QA_SIMULADOR" }
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, qa: true, error: data?.error || "El worker QA no devolvió un resultado válido." };
+    } catch (error) {
+      return { ok: false, qa: true, error: mensajeErrorCobroF4(error) };
     }
   }
   async function abrirIncidenciaCobroF4({ intentoId = null, motivo = "", providerCode = null, providerReference = null, evidencia = {} } = {}) {
@@ -10460,7 +10739,19 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const estadoPrevio = await leerEstadoCobroF4();
       if (!estadoPrevio.ok) return estadoPrevio;
       const tuvoCheckout = Array.isArray(estadoPrevio.checkouts) && estadoPrevio.checkouts.length>0;
-      if (tuvoCheckout && Number(estadoPrevio.saldo) <= 0 && !estadoPrevio.cobroIncierto) return estadoPrevio;
+      if (tuvoCheckout && Number(estadoPrevio.saldo) <= 0 && !estadoPrevio.cobroIncierto) {
+        if (String(estadoPrevio.cuentaEstado || "").toUpperCase() === "CERRADA") return estadoPrevio;
+        const checkoutCompletado = estadoPrevio.checkouts.find((checkout) => String(checkout?.estado || "").toUpperCase() === "COMPLETADO");
+        if (!checkoutCompletado?.id) return estadoPrevio;
+        const cierreCuenta = await cerrarCuentaPagadaF4(recuperada.cuentaId, checkoutCompletado.id, recuperada.cuentaVersion, terminal);
+        const estadoCerrado = { ...estadoPrevio, cuentaCierre: cierreCuenta };
+        if (cierreCuenta?.ok) {
+          estadoCerrado.cuentaEstado = "CERRADA";
+          estadoCerrado.cuentaVersion = Number(cierreCuenta.cuenta_version);
+          estadoCerrado.mensaje = "Cuenta pagada cerrada formalmente por el servidor.";
+        }
+        return estadoCerrado;
+      }
       let pendiente = leerPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
       const pendienteExistente = Boolean(pendiente);
       if (!pendiente && estadoPrevio.cobroIncierto) throw new Error("pago_estado_incierto_existente");
@@ -10559,18 +10850,35 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         const checkoutCompletado = Array.isArray(estadoFinal.checkouts)
           ? estadoFinal.checkouts.find((checkout) => String(checkout?.estado || "").toUpperCase() === "COMPLETADO")
           : null;
-        estadoFinal.fiscal = await emitirCheckoutFiscalC07D(recuperada.cuentaId, {
+        const cierreCuenta = checkoutCompletado?.id
+          ? await cerrarCuentaPagadaF4(recuperada.cuentaId, checkoutCompletado.id, recuperada.cuentaVersion, terminal)
+          : { ok: false, error: "No se encontró el checkout completado para cerrar la cuenta." };
+        estadoFinal.cuentaCierre = cierreCuenta;
+        if (cierreCuenta?.ok) {
+          estadoFinal.cuentaEstado = "CERRADA";
+          estadoFinal.cuentaVersion = Number(cierreCuenta.cuenta_version);
+        }
+        const fiscalEmitido = await emitirCheckoutFiscalC07D(recuperada.cuentaId, {
           checkoutId: checkoutCompletado?.id || "latest",
           tipoDocumento: opciones?.tipoDocumento || "FACTURA",
           codigoSerie: opciones?.codigoSerie || "TPV"
         });
+        estadoFinal.fiscal = fiscalEmitido;
+        if (fiscalEmitido?.ok && checkoutCompletado?.id) {
+          estadoFinal.fiscal = {
+            ...fiscalEmitido,
+            qr: await prepararTicketFiscalQa(recuperada.cuentaId, fiscalEmitido, checkoutCompletado.id)
+          };
+        }
       }
       if (medio === "EFECTIVO" && estadoFinal.ok) {
         estadoFinal.mensaje = Number(estadoFinal.saldo) > 0
           ? `Efectivo confirmado. Saldo restante calculado por el servidor: €${Number(estadoFinal.saldo).toFixed(2)}. Puedes completar el pago con tarjeta.`
+          : estadoFinal.cuentaCierre?.ok === false
+            ? `Efectivo confirmado, pero la cuenta sigue abierta: ${estadoFinal.cuentaCierre.error || "el cierre requiere revisión"}`
           : estadoFinal.fiscal?.ok === false
-            ? "Efectivo confirmado y cuenta pagada. La fiscalización QA queda pendiente de reintento."
-            : "Efectivo confirmado, cuenta pagada y documento fiscal QA encolado.";
+            ? "Efectivo confirmado y cuenta cerrada. La fiscalización QA queda pendiente de reintento."
+            : "Efectivo confirmado, cuenta cerrada y documento fiscal QA encolado.";
       }
       if (medio === "TARJETA" && estadoFinal.ok) {
         estadoFinal.mensaje = "Tarjeta iniciada en modo simulado: el intento queda pendiente hasta que el adaptador de proveedor lo resuelva.";
@@ -11046,14 +11354,16 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (String(data.cuenta.id || "") !== String(contextoLocal.cuentaId)) {
         throw new Error("cuenta_recuperacion_id_distinto");
       }
-      if (data.requires_operating_day_resolution || data.reanudable === false) {
+      if (data.requires_operating_day_resolution || (data.reanudable === false && data.cuenta.estado !== "CERRADA")) {
         throw new Error("cuenta_recuperacion_otro_dia");
       }
 
       const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
       const activos = pedidos.filter((p22) => !["CERRADO", "CANCELADO"].includes(String(p22?.estado || "")));
-      if (activos.length !== 1) throw new Error("cuenta_recuperacion_pedidos_ambigua");
-      const pedido = activos[0];
+      const pedido = pedidos.find((p22) => String(p22?.id || "") === String(contextoLocal.pedidoId || ""))
+        || (activos.length === 1 ? activos[0] : null)
+        || (data.cuenta.estado === "CERRADA" && pedidos.length === 1 ? pedidos[0] : null);
+      if (!pedido) throw new Error("cuenta_recuperacion_pedidos_ambigua");
       const lineasServidor = Array.isArray(pedido.lineas) ? pedido.lineas : [];
       if (lineasServidor.length === 0) throw new Error("cuenta_recuperacion_sin_lineas");
 
@@ -12515,7 +12825,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -13061,6 +13371,7 @@ function crearLogicaAlbaranes({
     procesarRecepcion._pm10UltimoReplay = false;
     const avisos = [];
     const lineasResueltas = [];
+    const productosNuevosRecepcion = [];
     lineas.forEach((ln2, idxRecepcionPM10) => {
       const uds = Number(ln2.udsPorCaja) > 0 ? Number(ln2.udsPorCaja) : 1;
       const cantidad = Number(ln2.cantidad) || 0;
@@ -13116,6 +13427,7 @@ function crearLogicaAlbaranes({
         const nuevoYaCreadoPM10 = productos.find((p22) => p22.id === nuevoId);
         const nuevo = nuevoYaCreadoPM10 || {
           id: nuevoId,
+          empresaId: empresaId || null,
           localId: localActivoId || null,
           codigo: ln2.codigoProveedor || "",
           nombre: ln2.descripcion || "Sin descripci\xF3n",
@@ -13126,7 +13438,10 @@ function crearLogicaAlbaranes({
           udsPorCaja: uds,
           precioVenta: 0,
           ivaVenta: 10,
+          activo: true,
+          tipo: "materia_prima",
           stock: 0,
+          stockPisoVenta: 0,
           stockMinimo: 0,
           ubicacion: "",
           proveedorId,
@@ -13135,6 +13450,7 @@ function crearLogicaAlbaranes({
         };
         if (!nuevoYaCreadoPM10) {
           setProductos((s22) => s22.some((p22) => p22.id === nuevoId) ? s22 : [...s22, nuevo]);
+          productosNuevosRecepcion.push(nuevo);
           registrarProductoSnapshot(nuevo);
         }
         productosCreadosRecepcion.set(claveProductoRecepcion, nuevoId);
@@ -13155,6 +13471,18 @@ function crearLogicaAlbaranes({
       }
     });
     if (lineasResueltas.length !== lineas.length) return errorValidacionPM10("conflicto_movimiento_stock", "lineas", "No se pudieron aplicar todas las líneas de la recepción.");
+    // Reafirma las altas automáticas al final de la recepción. Esto evita que
+    // una hidratación de stock que llegue en paralelo publique una fotografía
+    // anterior del catálogo local y haga desaparecer el producto recién creado.
+    if (productosNuevosRecepcion.length) {
+      setProductos((actuales) => {
+        const porId = new Map((actuales || []).map((producto) => [producto.id, producto]));
+        productosNuevosRecepcion.forEach((producto) => {
+          if (!porId.has(producto.id)) porId.set(producto.id, producto);
+        });
+        return [...porId.values()];
+      });
+    }
     setCatalogoProv((prev) => {
       const copia = { ...prev };
       lineasResueltas.forEach((ln2) => {
@@ -13180,11 +13508,51 @@ function crearLogicaAlbaranes({
       });
       return copia;
     });
-    const resultadoRecepcionPM10 = { lineasResueltas, avisos, operationId: operationIdRecepcionPM10, concurrencyKey: claveEfectoRecepcionPM11, firmaEfectoPM11, replayed: false };
+    const resultadoRecepcionPM10 = { lineasResueltas, productosNuevos: productosNuevosRecepcion, avisos, operationId: operationIdRecepcionPM10, concurrencyKey: claveEfectoRecepcionPM11, firmaEfectoPM11, replayed: false };
     procesarRecepcion._pm10Resultados.set(claveEfectoRecepcionPM11, resultadoRecepcionPM10);
     return resultadoRecepcionPM10;
   }
-  function confirmarAlbaran(alb) {
+  async function confirmarRecepcionServidorPM10({ lineasResueltas, productosNuevos = [], operationId, documentoId, documentoNumero }) {
+    if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+      return { ok: false, error: "La recepción necesita una sesión sincronizada para confirmar productos y stock en el servidor." };
+    }
+    try {
+      const porId = new Map((productos || []).map((producto) => [producto.id, producto]));
+      (productosNuevos || []).forEach((producto) => porId.set(producto.id, producto));
+      const listaProductos = [...porId.values()];
+      if (productosNuevos.length && typeof window.storage?.set === "function") {
+        const guardadoProductos = await window.storage.set("productos", JSON.stringify(listaProductos), false, { forzarReintento: true });
+        if (!guardadoProductos?.confirmadoServidor) {
+          return { ok: false, error: "El producto se ha creado en este dispositivo, pero todavía no ha sido confirmado por el servidor. No se confirma el albarán." };
+        }
+      }
+      const cliente = await window.getSupabaseClient();
+      const lineasStock = (lineasResueltas || []).map((linea) => {
+        const producto = porId.get(linea.productoId) || {};
+        return {
+          productoId: linea.productoId,
+          cantidad: Number(linea.unidadesEntradas) || 0,
+          minimo: Number(producto.stockMinimo) || 0,
+          fraccionable: producto.fraccionable === true,
+          precisionCantidad: Number(producto.precisionCantidad) || 0,
+          unidad: producto.unidad || linea.unidad || "ud"
+        };
+      });
+      const respuesta = await cliente.rpc("registrar_entrada_stock", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_lineas: lineasStock,
+        p_datos: { origen: "albaran", documentoId, documentoNumero: documentoNumero || "", version: 1 }
+      });
+      if (respuesta.error) throw respuesta.error;
+      if (!respuesta.data || respuesta.data.ok !== true) return { ok: false, error: "El servidor no confirmó la entrada de stock." };
+      return respuesta.data;
+    } catch (error) {
+      return { ok: false, error: `No se pudo confirmar la recepción en servidor: ${error?.message || "error desconocido"}` };
+    }
+  }
+  async function confirmarAlbaran(alb) {
     const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
     if (!contexto.ok) return contexto;
     if (!albaranEsDelLocalActivo(alb, true)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Albarán fuera del local activo.");
@@ -13236,10 +13604,17 @@ function crearLogicaAlbaranes({
     if (!resultadoRecepcionPM11 || !Array.isArray(resultadoRecepcionPM11.lineasResueltas)) {
       return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción del albarán.");
     }
-    const { lineasResueltas, avisos } = resultadoRecepcionPM11;
+    const { lineasResueltas, productosNuevos = [], avisos } = resultadoRecepcionPM11;
     const replayedRecepcionPM10 = !!resultadoRecepcionPM11.replayed || !!procesarRecepcion._pm10UltimoReplay;
-    if (replayedRecepcionPM10) {
-      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "La versión del pedido enlazado ya fue usada por otra recepción. Recarga antes de confirmar otro albarán.");
+    const recepcionServidorPM10 = await confirmarRecepcionServidorPM10({
+      lineasResueltas,
+      productosNuevos,
+      operationId: `pm10-recepcion-albaran:${albaranId}`,
+      documentoId: albaranId,
+      documentoNumero: alb.numero
+    });
+    if (!recepcionServidorPM10.ok) {
+      return errorValidacionPM10("conflicto_persistencia", "recepcion", recepcionServidorPM10.error);
     }
     if (pedidoLigado && !replayedRecepcionPM10) {
       setPedidos((prev) => prev.map((pe2) => pe2.id === alb.pedidoId ? aplicarRecepcionPedidoPM10(pe2, lineasResueltas) : pe2));
@@ -13290,6 +13665,7 @@ function crearLogicaAlbaranes({
     const salidaPM11 = Array.isArray(avisos) ? avisos : [];
     salidaPM11.replayed = replayedRecepcionPM10;
     salidaPM11.operationId = `pm11-albaran:${albaranId}`;
+    salidaPM11.lineasResueltas = lineasResueltas;
     return salidaPM11;
   }
   function anularAlbaran(alb) {
@@ -13932,7 +14308,7 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     registrarAuditoria("Crear factura directa", `${nuevo.concepto || nuevo.numeroFactura || id} \xB7 \u20AC${nuevo.importeTotal.toFixed(2)} \xB7 ${empresaId}/${localActivoId}`);
     return { ok: true, factura: nuevo };
   }
-  function confirmarFacturaConAlbaranes(data) {
+  async function confirmarFacturaConAlbaranes(data) {
     const facturaId = data?.id || uid();
     const operationId = data?.operationId || `factura-proveedor:${empresaId}:${localActivoId}:${facturaId}`;
     const yaConfirmada = (facturasDirectas || []).find((f22) => f22.operationId === operationId && f22.estado === "ACTIVA");
@@ -13974,7 +14350,7 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
       };
       const guardado = guardarAlbaran(documento);
       if (guardado === false) return { ok: false, error: `No se pudo preparar el albarán ${item.numeroAlbaran}.`, parcial: vinculos };
-      const recibido = confirmarAlbaran(documento);
+      const recibido = await confirmarAlbaran(documento);
       if (!recibido || recibido.ok === false) return { ok: false, error: recibido?.error || `No se pudo recepcionar el albarán ${item.numeroAlbaran}.`, parcial: vinculos };
       vinculos.push({ albaranId, numero: item.numeroAlbaran, accion: item.existenteId ? "COMPLETADO_Y_RECEPCIONADO" : "CREADO_Y_RECEPCIONADO", recepcionAplicada: true });
     }
@@ -17627,12 +18003,14 @@ function Albaranes({
   puedeAltaProveedorIA = false,
   addProveedorDesdeAlbaran = null,
   asignarNifProveedor = null,
-  completarProveedorConDatos = null
+  completarProveedorConDatos = null,
+  setTab = null
 }) {
   const [modo, setModo] = (0, import_react4.useState)("lista");
   const [alb, setAlb] = (0, import_react4.useState)(null);
   const [error, setError] = (0, import_react4.useState)("");
   const [avisos, setAvisos] = (0, import_react4.useState)(null);
+  const [entradaResumen, setEntradaResumen] = (0, import_react4.useState)(null);
   const [filtroMes, setFiltroMes] = (0, import_react4.useState)("");
   const [mostrarPegar, setMostrarPegar] = (0, import_react4.useState)(false);
   const [textoPegado, setTextoPegado] = (0, import_react4.useState)("");
@@ -17916,6 +18294,7 @@ function Albaranes({
     setFotoRevisionIA("");
     setConfianzaIA(null);
     setAvisosIA([]);
+    setEntradaResumen(null);
     setModo("editor");
   }
   function abrir(a22) {
@@ -17924,6 +18303,7 @@ function Albaranes({
     setFotoRevisionIA("");
     setConfianzaIA(null);
     setAvisosIA([]);
+    setEntradaResumen(null);
     setModo("editor");
   }
   function setLinea(idx, campo, valor) {
@@ -18023,7 +18403,7 @@ function Albaranes({
     guardarAlbaran(limpio);
     setAlb(limpio);
   }
-  function darEntrada() {
+  async function darEntrada() {
     if (procesandoEntrada) return;
     const previoProveedor = asegurarProveedor(alb, { crear: false });
     if (!previoProveedor.ok) {
@@ -18049,18 +18429,35 @@ function Albaranes({
         ...asegurado.alb,
         lineas: candidatas.map((ln2) => ({ ...ln2, importe: ln2.importe !== "" ? Number(ln2.importe) : Number(importeCalculado(ln2).toFixed(4)) }))
       };
-      const resultado = confirmarAlbaran(limpio);
+      const resultado = await confirmarAlbaran(limpio);
       if (resultado && resultado.ok === false) {
         setError(resultado.error || "No se pudo registrar la recepción del pedido.");
         return;
       }
+      const lineasRecibidas = Array.isArray(resultado?.lineasResueltas) && resultado.lineasResueltas.length
+        ? resultado.lineasResueltas
+        : limpio.lineas;
+      setEntradaResumen({
+        albaranId: limpio.id,
+        fecha: limpio.fecha,
+        lineas: lineasRecibidas.map((ln2) => ({
+          productoId: ln2.productoId || "",
+          nombre: productos.find((producto) => producto.id === ln2.productoId)?.nombre || ln2.descripcion || "Producto recibido",
+          cantidad: Number(ln2.unidadesEntradas) || 0,
+          unidad: ln2.unidad || "unidad"
+        }))
+      });
       setAvisos(resultado && resultado.length ? resultado : []);
       if (asegurado.creado) {
         setAvisoAltaProveedor(`Se ha dado de alta el proveedor «${asegurado.creado.nombre}» a partir del albarán. Está en Proveedores marcado como «pendiente de revisar»: completa sus datos cuando puedas.`);
       }
+      const nombresRecibidos = lineasRecibidas.map((ln2) => ln2.descripcion || productos.find((producto) => producto.id === ln2.productoId)?.nombre || "producto").join(", ");
+      setAvisoAltaProveedor((actual) => `${actual ? actual + " " : ""}Entrada registrada: ${nombresRecibidos}. El stock queda en almacén. Para venderlo: configura el precio con IVA en Productos y después pásalo de Almacén a Piso de venta desde Traspasos. El TPV no muestra artículos sin precio ni sin stock en el piso.`);
       setModo("lista");
       setAlb(null);
       setFotoRevisionIA("");
+    } catch (error) {
+      setError(error?.message || "No se pudo registrar la recepción del pedido.");
     } finally {
       setProcesandoEntrada(false);
     }
@@ -20011,7 +20408,7 @@ function Facturas({ albaranes = [], facturasDirectas = [], pagosFacturas = [], p
       const r2 = addFacturaDirecta(candidata); if (!r2?.ok) return setError(r2?.error || "No se ha podido guardar el borrador.");
       resetForm(); setMostrarAlta(false); setMensaje("Borrador guardado. No ha movido stock ni creado deuda activa."); return;
     }
-    const r2 = confirmarFacturaConAlbaranes(candidata);
+    const r2 = await confirmarFacturaConAlbaranes(candidata);
     if (!r2?.ok) return setError(r2?.error || "No se ha podido confirmar la factura y sus albaranes.");
     const resumen = `Factura confirmada: ${r2.albaranesVinculados.filter((x3) => !x3.recepcionAplicada).length} albarán(es) vinculados y ${r2.albaranesVinculados.filter((x3) => x3.recepcionAplicada).length} recepcionado(s).`;
     resetForm(); setMostrarAlta(false); setMensaje(resumen);
@@ -21237,7 +21634,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -21252,6 +21649,10 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const [motivoAnulacion, setMotivoAnulacion] = (0, import_react4.useState)("");
   const [mostrarAnulacion, setMostrarAnulacion] = (0, import_react4.useState)(false);
   const [anulando, setAnulando] = (0, import_react4.useState)(false);
+  const [fondoInicialSesion, setFondoInicialSesion] = (0, import_react4.useState)("0");
+  const [abriendoSesion, setAbriendoSesion] = (0, import_react4.useState)(false);
+  const [errorSesion, setErrorSesion] = (0, import_react4.useState)("");
+  const [exitoSesion, setExitoSesion] = (0, import_react4.useState)("");
   const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
   const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   encargos.forEach((e2) => {
@@ -21283,6 +21684,29 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const contadoNumero = hayDesglose ? totalDenominaciones : contado === "" ? NaN : redondearDineroPM08(contado);
   const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
+  async function abrirSesion() {
+    if (abriendoSesion || typeof abrirSesionCajaA10 !== "function") return;
+    setErrorSesion("");
+    setExitoSesion("");
+    const fondo = Number(fondoInicialSesion);
+    if (!Number.isFinite(fondo) || fondo < 0) {
+      setErrorSesion("El fondo inicial debe ser un número igual o mayor que cero.");
+      return;
+    }
+    setAbriendoSesion(true);
+    try {
+      const r2 = await abrirSesionCajaA10({ fondoInicial: fondo });
+      if (!r2?.ok) {
+        setErrorSesion(r2?.error || "No se pudo abrir la sesión de caja.");
+        return;
+      }
+      setExitoSesion(`Sesión de caja abierta${r2.caja_nombre ? ` en ${r2.caja_nombre}` : ""}. Ya puedes operar en el TPV.`);
+    } catch (e2) {
+      setErrorSesion(String(e2?.message || "No se pudo abrir la sesión de caja."));
+    } finally {
+      setAbriendoSesion(false);
+    }
+  }
   (0, import_react4.useEffect)(() => {
     setError("");
     setExito("");
@@ -21392,6 +21816,14 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     "div",
     null,
     h3(SectionTitle, null, "Arqueo de caja"),
+    typeof abrirSesionCajaA10 === "function" ? h3(Card, { className: "mb-4", "data-c01-apertura-sesion": "1", style: { background: C2.accentSoft, border: "none" } },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Apertura de sesión de caja"),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "La sesión es la caja operativa del turno. El arqueo que aparece debajo es el cierre y contado diario; son pasos distintos. Introduce el fondo inicial para abrir la sesión desde aquí."),
+      h3(Field, { label: "Fondo inicial (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicialSesion, disabled: abriendoSesion, onChange: (e2) => setFondoInicialSesion(e2.target.value) })),
+      h3(Btn, { small: true, onClick: abrirSesion, disabled: abriendoSesion || !String(fondoInicialSesion).trim() }, abriendoSesion ? "Abriendo…" : "Abrir sesión de caja"),
+      errorSesion ? h3("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesion) : null,
+      exitoSesion ? h3("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesion) : null
+    ) : null,
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
       Card,
@@ -22188,7 +22620,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
       const host = window.location.hostname;
@@ -22289,6 +22721,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [procesandoAnulacion, setProcesandoAnulacion] = (0, import_react4.useState)(false);
   const [ventaDetalle, setVentaDetalle] = (0, import_react4.useState)(null);
   const [ticketVenta, setTicketVenta] = (0, import_react4.useState)(() => ticketQrQaFixtureInicial(productos));
+  const [fondoInicialTPV, setFondoInicialTPV] = (0, import_react4.useState)("0");
+  const [abriendoSesionTPV, setAbriendoSesionTPV] = (0, import_react4.useState)(false);
+  const [errorSesionTPV, setErrorSesionTPV] = (0, import_react4.useState)("");
+  const [exitoSesionTPV, setExitoSesionTPV] = (0, import_react4.useState)("");
   const [filtroVentasTexto, setFiltroVentasTexto] = (0, import_react4.useState)("");
   const [filtroVentasDesde, setFiltroVentasDesde] = (0, import_react4.useState)("");
   const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
@@ -23884,6 +24320,64 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const fiscal = await leerEstadoFiscalC07D(resultado.cuentaId);
     return { ...resultado, fiscal };
   }
+  function ticketCobroFiscalC07D() {
+    const estado = estadoCobroF4;
+    const fiscal = estado?.fiscal;
+    const documento = Array.isArray(fiscal?.documentos) ? fiscal.documentos[0] : null;
+    const qr = fiscal?.qr;
+    const pedido = pedidoOperativoA05;
+    if (!pedido?.cuentaId || !documento || !qr?.ok || typeof qr.qr_url !== "string" || !/^https:\/\//u.test(qr.qr_url)) return null;
+    const lineas = Array.isArray(pedido.lineas) ? pedido.lineas.map((linea, indice) => {
+      const cantidad = Number(linea.cantidad) || 0;
+      const totalLinea = Number(linea.total) || 0;
+      const ingresoUnitario = Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario);
+      return {
+      id: linea.id || `checkout-linea-${indice}`,
+      productoId: linea.productoId || linea.producto_id,
+      cantidad,
+      ingresoUnitario: Number.isFinite(ingresoUnitario) && ingresoUnitario >= 0 ? ingresoUnitario : cantidad > 0 ? totalLinea / cantidad : 0,
+      ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
+      };
+    }).filter((linea) => linea.productoId && linea.cantidad > 0) : [];
+    if (lineas.length === 0) return null;
+    const importe = Number(estado.total) || lineas.reduce((total, linea) => total + Math.abs(linea.cantidad * linea.ingresoUnitario) * (1 + linea.ivaVentaAplicado / 100), 0);
+    const numero = documento.numero == null ? "" : String(documento.numero).padStart(6, "0");
+    const fecha = String(qr.fecha_expedicion || new Date().toISOString().slice(0, 10));
+    return {
+      ventaId: documento.venta_fiscal_id || pedido.cuentaId,
+      referencia: `V-${fecha.replaceAll("-", "")}-${String(documento.documento_id || pedido.cuentaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
+      fecha,
+      marcaTiempo: pedido.completed_at || new Date().toISOString(),
+      lineas,
+      resumen: lineas.map((linea) => productos.find((producto) => producto.id === linea.productoId)?.nombre || "Producto").slice(0, 3).join(", "),
+      importe,
+      importeOriginal: importe,
+      importeNetoGestion: importe,
+      estado: "ACTIVA",
+      trazabilidad: [],
+      medioPago: "Efectivo",
+      detallePago: null,
+      usuario: "",
+      anulada: false,
+      mesa: "",
+      zona: "",
+      numeroFiscal: `${documento.codigo_serie || "TPV"}-${numero}`,
+      qrFiscal: {
+        url: qr.qr_url,
+        textLabel: "QR tributario:",
+        modalityLabel: "VERI*FACTU",
+        source: {
+          nif: qr.nif_emisor || "",
+          numserie: `${documento.codigo_serie || "TPV"}-${numero}`,
+          fecha,
+          importe: importe.toFixed(2)
+        },
+        production: false
+      },
+      entregado: importe,
+      cambio: 0
+    };
+  }
   async function refrescarCobroF4() {
     if (typeof leerEstadoCobroF4 !== "function" || !pedidoOperativoA05?.cuentaId) {
       setEstadoCobroF4(null);
@@ -24015,8 +24509,45 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     if (valor === "DESCONOCIDO") return "Resultado desconocido";
     return "Pendiente";
   }
+  async function abrirSesionDesdeTPV() {
+    if (abriendoSesionTPV || typeof abrirSesionCajaA10 !== "function") return;
+    setErrorSesionTPV("");
+    setExitoSesionTPV("");
+    const fondo = Number(fondoInicialTPV);
+    if (!Number.isFinite(fondo) || fondo < 0) {
+      setErrorSesionTPV("El fondo inicial debe ser un número igual o mayor que cero.");
+      return;
+    }
+    setAbriendoSesionTPV(true);
+    try {
+      const resultado = await abrirSesionCajaA10({ fondoInicial: fondo });
+      if (!resultado?.ok) {
+        setErrorSesionTPV(resultado?.error || "No se pudo abrir la sesión de caja.");
+        return;
+      }
+      setExitoSesionTPV(`Sesión abierta${resultado.caja_nombre ? ` en ${resultado.caja_nombre}` : ""}. Ya puedes cobrar en el TPV.`);
+    } catch (e2) {
+      setErrorSesionTPV(String(e2?.message || "No se pudo abrir la sesión de caja."));
+    } finally {
+      setAbriendoSesionTPV(false);
+    }
+  }
+  function renderCajaTPV() {
+    if (typeof abrirSesionCajaA10 !== "function") return null;
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-c01-tpv-caja": "1", style: { background: C2.accentSoft, border: "none" } },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Caja del TPV"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El fondo abre la sesión operativa de este terminal. El arqueo es el cierre y contado; puedes abrirlo desde aquí y entrar después en su pantalla completa."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-end flex-wrap" },
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fondo inicial (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "0", step: "0.01", value: fondoInicialTPV, disabled: abriendoSesionTPV, onChange: (e2) => setFondoInicialTPV(e2.target.value) })),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirSesionDesdeTPV, disabled: abriendoSesionTPV || !String(fondoInicialTPV).trim() }, abriendoSesionTPV ? "Abriendo…" : "Abrir fondo"),
+        typeof irACaja === "function" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irACaja }, "Ver arqueo y cierre") : null
+      ),
+      errorSesionTPV ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesionTPV) : null,
+      exitoSesionTPV ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesionTPV) : null
+    );
+  }
   function renderCobroF4() {
-    if (!pedidoOperativoA05?.cuentaId) return null;
+    if (!pedidoOperativoA05?.cuentaId) return renderCajaTPV();
     const pedidoListo = ["ENVIADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
     const estado = estadoCobroF4;
     const tieneCheckout = Array.isArray(estado?.checkouts) && estado.checkouts.length>0;
@@ -24060,11 +24591,18 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(confirmadoVisible))),
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Pendiente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(saldoVisible)))
       ),
-      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
+      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), estado?.cuentaEstado ? " · Cuenta comercial: " + estado.cuentaEstado : "", ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
       fiscal?.ok && Array.isArray(fiscal.documentos) && fiscal.documentos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "visible", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Fiscalización C07-D · QA"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Documento emitido en C05 y registrado en cadena. AEAT real desactivada; transporte simulado."),
-        fiscal.documentos.map((documento) => /* @__PURE__ */ import_react4.default.createElement("div", { key: documento.documento_id || documento.registro_id, className: "text-[11px] mt-1" }, `${documento.codigo_serie || "—"}-${documento.numero || "—"} · cola ${documento.cola_estado || "PENDIENTE"} · secuencia ${documento.secuencia || "—"}`))
+        fiscal.documentos.map((documento) => /* @__PURE__ */ import_react4.default.createElement("div", { key: documento.documento_id || documento.registro_id, className: "text-[11px] mt-1" }, `${documento.codigo_serie || "—"}-${documento.numero || "—"} · cola ${documento.cola_estado || "PENDIENTE"} · secuencia ${documento.secuencia || "—"}`)),
+        fiscal.qr?.ok && fiscal.qr.qr_url ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 pt-2 text-center", "data-qr-fiscal-live": "qa", style: { borderTop: `1px dashed ${C2.line}` } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold" }, "QR fiscal QA preparado"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-center mt-2", dangerouslySetInnerHTML: { __html: renderQrSvg(fiscal.qr.qr_url, { quietZone: 4 }) } }),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[8.5px] break-all mt-2", style: { color: C2.inkSoft } }, fiscal.qr.qr_url),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[9px] mt-1", style: { color: C2.inkSoft } }, "Matriz generada desde el payload verificable de QA; presentación AEAT real desactivada.")
+        ) : fiscal.qr?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.ink } }, "QR fiscal pendiente: ", fiscal.qr.error || "actualiza para reintentar.") : null,
+        ticketCobroFiscalC07D() ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", className: "mt-2", "data-ticket-c07d-live": "qa", onClick: () => setTicketVenta(ticketCobroFiscalC07D()) }, "Ver ticket con QR") : null
       ) : fiscal?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "pending", style: { background: C2.amberSoft, color: C2.ink } }, "Cobro confirmado. Fiscalización C07-D pendiente: ", fiscal.error || "actualiza para reintentar.") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
@@ -24109,6 +24647,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible, codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV" }), disabled: fixtureSoloLectura || procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
         ),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "El botón de completar mixto usa el saldo que devuelve el servidor, no el cálculo local del navegador.")
+      ) : null,
+      pedidoListo && saldoVisible <= 0 && String(estado?.cuentaEstado || "").toUpperCase() !== "CERRADA" && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Cierre de cuenta pagada"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "El saldo ya está confirmado. Ejecuta el cierre formal en el servidor para dejar la cuenta y sus pedidos cerrados."),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: 0, importeRecibido: 0, cambioEntregado: 0 }), disabled: fixtureSoloLectura || procesandoCobroF4 }, procesandoCobroF4 ? "Cerrando…" : "Cerrar cuenta pagada")
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
@@ -24233,6 +24776,33 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         lineas: Array.isArray(resultado.lineas) ? resultado.lineas : actual.lineas
       } : actual);
       setPedidoOperativoA05(resultado);
+    } finally {
+      setProcesandoA05(false);
+    }
+  }
+  async function enviarPedidoOperativoA05() {
+    if (procesandoA05 || !pedidoOperativoA05?.pedidoId || typeof enviarPedidoA05 !== "function") return;
+    setProcesandoA05(true);
+    setErrorA05("");
+    try {
+      const resultado = await enviarPedidoA05();
+      if (!resultado || resultado.ok === false) {
+        if (await gestionarConflictoA06(resultado, "ENVIAR_PEDIDO")) {
+          setErrorA05("");
+          return;
+        }
+        setErrorA05(resultado?.error || "No se pudo enviar el pedido.");
+        return;
+      }
+      setConflictoA06(null);
+      setPedidoOperativoA05(resultado);
+      setConfirmacion((actual) => actual && actual.pedidoId === resultado.pedidoId ? {
+        ...actual,
+        pedidoVersion: resultado.pedidoVersion,
+        pedidoEstado: resultado.pedidoEstado || "ENVIADO",
+        lineas: Array.isArray(resultado.lineas) ? resultado.lineas : actual.lineas
+      } : actual);
+      await refrescarCobroF4();
     } finally {
       setProcesandoA05(false);
     }
@@ -24549,6 +25119,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const terminal = pedido.pedidoEstado === "CERRADO" || pedido.pedidoEstado === "CANCELADO";
     const tieneServidas = (pedido.lineas || []).some((l22) => l22.estado === "SERVIDA");
     const puedeCancelarPedido = !terminal && !tieneServidas;
+    const puedeEnviarPedido = pedido.pedidoEstado === "ABIERTO" && (pedido.lineas || []).some((l22) => !["CANCELADA", "ENVIADA", "EN_PREPARACION", "PREPARADA", "SERVIDA"].includes(l22.estado));
     return /* @__PURE__ */ import_react4.default.createElement(
       Card,
       { className: "mb-4" },
@@ -24557,6 +25128,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold", style: { color: pedido.pedidoEstado === "CANCELADO" ? C2.red : C2.accent } }, pedido.pedidoEstado || "ABIERTO")
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Los permisos se validan siempre en el servidor. Preparación, servido y cancelaciones no registran cobro ni documento fiscal."),
+      puedeEnviarPedido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { background: C2.accentSoft, border: "1px solid " + C2.line } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2" }, "Este pedido está guardado y todavía no se ha enviado a preparación."),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoOperativoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando…" : "Enviar pedido a preparación")
+      ) : null,
       (pedido.lineas || []).map((linea) => {
         const producto = productos.find((p22) => p22.id === linea.productoId);
         const busy = !!accionEnCursoA05;
