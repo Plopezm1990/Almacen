@@ -5138,7 +5138,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -21388,7 +21388,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -21403,6 +21403,10 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const [motivoAnulacion, setMotivoAnulacion] = (0, import_react4.useState)("");
   const [mostrarAnulacion, setMostrarAnulacion] = (0, import_react4.useState)(false);
   const [anulando, setAnulando] = (0, import_react4.useState)(false);
+  const [fondoInicialSesion, setFondoInicialSesion] = (0, import_react4.useState)("0");
+  const [abriendoSesion, setAbriendoSesion] = (0, import_react4.useState)(false);
+  const [errorSesion, setErrorSesion] = (0, import_react4.useState)("");
+  const [exitoSesion, setExitoSesion] = (0, import_react4.useState)("");
   const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
   const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   encargos.forEach((e2) => {
@@ -21434,6 +21438,29 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const contadoNumero = hayDesglose ? totalDenominaciones : contado === "" ? NaN : redondearDineroPM08(contado);
   const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
+  async function abrirSesion() {
+    if (abriendoSesion || typeof abrirSesionCajaA10 !== "function") return;
+    setErrorSesion("");
+    setExitoSesion("");
+    const fondo = Number(fondoInicialSesion);
+    if (!Number.isFinite(fondo) || fondo < 0) {
+      setErrorSesion("El fondo inicial debe ser un número igual o mayor que cero.");
+      return;
+    }
+    setAbriendoSesion(true);
+    try {
+      const r2 = await abrirSesionCajaA10({ fondoInicial: fondo });
+      if (!r2?.ok) {
+        setErrorSesion(r2?.error || "No se pudo abrir la sesión de caja.");
+        return;
+      }
+      setExitoSesion(`Sesión de caja abierta${r2.caja_nombre ? ` en ${r2.caja_nombre}` : ""}. Ya puedes operar en el TPV.`);
+    } catch (e2) {
+      setErrorSesion(String(e2?.message || "No se pudo abrir la sesión de caja."));
+    } finally {
+      setAbriendoSesion(false);
+    }
+  }
   (0, import_react4.useEffect)(() => {
     setError("");
     setExito("");
@@ -21543,6 +21570,14 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     "div",
     null,
     h3(SectionTitle, null, "Arqueo de caja"),
+    typeof abrirSesionCajaA10 === "function" ? h3(Card, { className: "mb-4", "data-c01-apertura-sesion": "1", style: { background: C2.accentSoft, border: "none" } },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Apertura de sesión de caja"),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "La sesión es la caja operativa del turno. El arqueo que aparece debajo es el cierre y contado diario; son pasos distintos. Introduce el fondo inicial para abrir la sesión desde aquí."),
+      h3(Field, { label: "Fondo inicial (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicialSesion, disabled: abriendoSesion, onChange: (e2) => setFondoInicialSesion(e2.target.value) })),
+      h3(Btn, { small: true, onClick: abrirSesion, disabled: abriendoSesion || !String(fondoInicialSesion).trim() }, abriendoSesion ? "Abriendo…" : "Abrir sesión de caja"),
+      errorSesion ? h3("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesion) : null,
+      exitoSesion ? h3("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesion) : null
+    ) : null,
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
       Card,
