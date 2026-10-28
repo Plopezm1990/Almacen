@@ -102034,13 +102034,14 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
 }
 async function sincronizarContextoPm07(args) {
-  const { setProductos, esContextoVigente = () => true } = args || {};
+  const { setProductos, empresaId, localActivoId, esContextoVigente = () => true } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
+  if (!empresaId) return { ok: false, contexto_ausente: true };
   const supabase = await window.getSupabaseClient();
   // Empresas, locales y localActivoId ya vienen del contexto seguro sembrado
   // por ui-context-bridge. El bloque global de almacen_kv es legado y no debe
   // ampliar el contexto filtrado de una cuenta de empleado.
-  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["productos"]);
+  const r2 = await supabase.from("almacen_kv").select("key,value").eq("empresa_id", String(empresaId)).in("key", ["productos"]);
   if (r2.error) throw r2.error;
   const porClave = new Map((r2.data || []).map((fila) => [fila.key, fila.value]));
   const productosNube = porClave.get("productos");
@@ -104243,6 +104244,8 @@ function GestionAlmacen() {
         if (sincronizarContextoCompleto) {
           await sincronizarContextoPm07({
             setProductos,
+            empresaId: empresaContexto,
+            localActivoId,
             esContextoVigente
           });
         }

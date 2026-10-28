@@ -856,6 +856,8 @@
   async function guardarBloque(key, textoAnterior, textoNuevo) {
     var nuevo = JSON.parse(textoNuevo);
     var aSubir = nuevo;
+    var contexto = contextoKvActual();
+    if (!contexto.empresaId) throw new Error("No hay empresa activa para guardar " + key + " en la nube");
 
     if (key === "productos") {
       var textoBase = localStorage.getItem(BASE_PRODUCTOS_PENDIENTE);
@@ -865,7 +867,8 @@
       var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; });
       var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
         p_operation_id: nuevaOperacionProductos(), p_base: base, p_nuevo: nuevo,
-        p_venta: ventaPendiente
+        p_venta: ventaPendiente, p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId
       });
       if (!rProductos.error) {
         if (!rProductos.data || rProductos.data.ok !== true) throw new Error("Respuesta inesperada al guardar productos");
@@ -873,8 +876,7 @@
         if (!Array.isArray(listaConfirmada)) {
           // Compatibilidad con instalaciones que aún tengan la primera RPC:
           // una lectura posterior al COMMIT obtiene la lista final en nube.
-          var rConfirmada = await window.__nubeCliente.from("almacen_kv")
-            .select("value").eq("key", "productos").maybeSingle();
+          var rConfirmada = await consultaKvPorClave("productos", "value").maybeSingle();
           if (rConfirmada.error) throw rConfirmada.error;
           listaConfirmada = rConfirmada.data && rConfirmada.data.value;
         }
@@ -923,8 +925,6 @@
       }
     }
 
-    var contexto = contextoKvActual();
-    if (!contexto.empresaId) throw new Error("No hay empresa activa para guardar " + key + " en la nube");
     var rSube = await window.__nubeCliente.from("almacen_kv").upsert({
       empresa_id: contexto.empresaId,
       key: key,
@@ -1030,6 +1030,12 @@
           } else if (tablaEspecial) {
             lista = await conTiempoLimite(leerColeccionPorFila(tablaEspecial, key), ESPERA_NUBE_MS);
           } else {
+            var contextoLectura = contextoKvActual();
+            if (!contextoLectura.empresaId) {
+              var contextoAusente = new Error("No hay empresa activa para leer " + key + " en la nube");
+              contextoAusente.code = "ALMACEN_KV_EMPRESA_CONTEXTO_AUSENTE";
+              throw contextoAusente;
+            }
             var r = await conTiempoLimite(
               consultaKvPorClave(key, "value").maybeSingle(),
               ESPERA_NUBE_MS
