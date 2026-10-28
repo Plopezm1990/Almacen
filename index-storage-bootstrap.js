@@ -799,6 +799,15 @@
     return { resultado: ahora, conflictos: [] }; // números, textos y preferencias del propio equipo
   }
 
+  function normalizarListaProductosParaRpc(lista) {
+    if (!Array.isArray(lista)) return lista;
+    var porId = {};
+    lista.forEach(function (producto) {
+      if (producto && producto.id) porId[String(producto.id)] = producto;
+    });
+    return Object.keys(porId).sort().map(function (id) { return porId[id]; });
+  }
+
   // La referencia de productos se conserva hasta que el servidor confirma el
   // guardado. Si hay varios set seguidos u ocurre un corte de red, el siguiente
   // intento compara contra la última lista confirmada, no contra otro borrador
@@ -868,6 +877,7 @@
 
   async function guardarBloque(key, textoAnterior, textoNuevo) {
     var nuevo = JSON.parse(textoNuevo);
+    if (key === "productos") nuevo = normalizarListaProductosParaRpc(nuevo);
     var aSubir = nuevo;
     var contexto = contextoKvActual();
     if (!contexto.empresaId) throw new Error("No hay empresa activa para guardar " + key + " en la nube");
@@ -876,6 +886,7 @@
       var textoBase = localStorage.getItem(BASE_PRODUCTOS_PENDIENTE);
       if (textoBase === null) textoBase = textoAnterior;
       var base = textoBase === null ? [] : JSON.parse(textoBase);
+      base = normalizarListaProductosParaRpc(base);
       var mapaVenta = leerVentaProductos();
       var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; });
       var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
