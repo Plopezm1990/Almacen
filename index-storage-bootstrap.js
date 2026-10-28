@@ -887,6 +887,17 @@
       if (textoBase === null) textoBase = textoAnterior;
       var base = textoBase === null ? [] : JSON.parse(textoBase);
       base = normalizarListaProductosParaRpc(base);
+      // Recupera una base antigua que quedó vacía tras un corte o una
+      // primera carga incompleta. Sin esta lectura, la RPC interpreta todos
+      // los productos ya existentes como altas nuevas y rechaza el reintento.
+      if (Array.isArray(base) && base.length === 0 && nuevo.length > 0 &&
+          (textoBase === null || textoBase === "[]")) {
+        var rBaseActual = await consultaKvPorClave("productos", "value").maybeSingle();
+        if (rBaseActual.error) throw rBaseActual.error;
+        if (rBaseActual.data && Array.isArray(rBaseActual.data.value)) {
+          base = normalizarListaProductosParaRpc(rBaseActual.data.value);
+        }
+      }
       var mapaVenta = leerVentaProductos();
       var idsNuevo = {};
       nuevo.forEach(function (producto) { if (producto && producto.id) idsNuevo[String(producto.id)] = true; });
