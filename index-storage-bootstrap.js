@@ -1108,6 +1108,7 @@
         return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
       }
 
+      if (key === "productos" && opcionesP3c && opcionesP3c.forzarReintento) quitarDenegado(key);
       if (window.__nubeActiva && window.__nubeCliente) {
         var resultadoProductos = null;
         var catalogoBloqueado = false;

@@ -101729,13 +101729,10 @@ async function sincronizarConteosPm12({ setConteos, empresaId = null, localActiv
   const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
   if (!esContextoVigente()) return { ok: false, obsoleto: true };
   setConteos((cs) => {
-    const nuevos = [...cs];
-    for (const documento of documentos) {
-      const i = nuevos.findIndex((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
-      if (i >= 0) nuevos[i] = { ...nuevos[i], ...documento, _pm12Servidor: true };
-      else if (!nuevos.some((c) => c.id === documento.id)) nuevos.push({ ...documento, _pm12Servidor: true });
-    }
-    return nuevos;
+    const idsServidor = new Set(documentos.map((documento) => documento.id));
+    const localesSinVersionServidor = (cs || []).filter((conteo) => !idsServidor.has(conteo.id));
+    const versionesServidor = documentos.map((documento) => ({ ...documento, _pm12Servidor: true }));
+    return [...localesSinVersionServidor, ...versionesServidor];
   });
 }
 async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
@@ -105126,7 +105123,11 @@ function GestionAlmacen() {
     }).ok === true;
   })();
   const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId: empresaDelLocalActivo && empresaDelLocalActivo.id || null, obtenerContextoActor: obtenerContextoAjusteConteo });
-  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => {
+    const estado = String(c22.estado || "").trim().toUpperCase();
+    const cerrado = c22.completado === true || c22.cancelado === true || ["CANCELADO", "ANULADO", "COMPLETADO", "FINALIZADO"].includes(estado);
+    return !cerrado;
+  }) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
   const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
@@ -114379,11 +114380,51 @@ function crearLogicaAlbaranes({
       });
       return copia;
     });
-    const resultadoRecepcionPM10 = { lineasResueltas, avisos, operationId: operationIdRecepcionPM10, concurrencyKey: claveEfectoRecepcionPM11, firmaEfectoPM11, replayed: false };
+    const resultadoRecepcionPM10 = { lineasResueltas, productosNuevos: productosNuevosRecepcion, avisos, operationId: operationIdRecepcionPM10, concurrencyKey: claveEfectoRecepcionPM11, firmaEfectoPM11, replayed: false };
     procesarRecepcion._pm10Resultados.set(claveEfectoRecepcionPM11, resultadoRecepcionPM10);
     return resultadoRecepcionPM10;
   }
-  function confirmarAlbaran(alb) {
+  async function confirmarRecepcionServidorPM10({ lineasResueltas, productosNuevos = [], operationId, documentoId, documentoNumero }) {
+    if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+      return { ok: false, error: "La recepción necesita una sesión sincronizada para confirmar productos y stock en el servidor." };
+    }
+    try {
+      const porId = new Map((productos || []).map((producto) => [producto.id, producto]));
+      (productosNuevos || []).forEach((producto) => porId.set(producto.id, producto));
+      const listaProductos = [...porId.values()];
+      if (productosNuevos.length && typeof window.storage?.set === "function") {
+        const guardadoProductos = await window.storage.set("productos", JSON.stringify(listaProductos), false, { forzarReintento: true });
+        if (!guardadoProductos?.confirmadoServidor) {
+          return { ok: false, error: "El producto se ha creado en este dispositivo, pero todavía no ha sido confirmado por el servidor. No se confirma el albarán." };
+        }
+      }
+      const cliente = await window.getSupabaseClient();
+      const lineasStock = (lineasResueltas || []).map((linea) => {
+        const producto = porId.get(linea.productoId) || {};
+        return {
+          productoId: linea.productoId,
+          cantidad: Number(linea.unidadesEntradas) || 0,
+          minimo: Number(producto.stockMinimo) || 0,
+          fraccionable: producto.fraccionable === true,
+          precisionCantidad: Number(producto.precisionCantidad) || 0,
+          unidad: producto.unidad || linea.unidad || "ud"
+        };
+      });
+      const respuesta = await cliente.rpc("registrar_entrada_stock", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_lineas: lineasStock,
+        p_datos: { origen: "albaran", documentoId, documentoNumero: documentoNumero || "", version: 1 }
+      });
+      if (respuesta.error) throw respuesta.error;
+      if (!respuesta.data || respuesta.data.ok !== true) return { ok: false, error: "El servidor no confirmó la entrada de stock." };
+      return respuesta.data;
+    } catch (error) {
+      return { ok: false, error: `No se pudo confirmar la recepción en servidor: ${error?.message || "error desconocido"}` };
+    }
+  }
+  async function confirmarAlbaran(alb) {
     const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
     if (!contexto.ok) return contexto;
     if (!albaranEsDelLocalActivo(alb, true)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Albarán fuera del local activo.");
@@ -114435,10 +114476,17 @@ function crearLogicaAlbaranes({
     if (!resultadoRecepcionPM11 || !Array.isArray(resultadoRecepcionPM11.lineasResueltas)) {
       return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción del albarán.");
     }
-    const { lineasResueltas, avisos } = resultadoRecepcionPM11;
+    const { lineasResueltas, productosNuevos = [], avisos } = resultadoRecepcionPM11;
     const replayedRecepcionPM10 = !!resultadoRecepcionPM11.replayed || !!procesarRecepcion._pm10UltimoReplay;
-    if (replayedRecepcionPM10) {
-      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "La versión del pedido enlazado ya fue usada por otra recepción. Recarga antes de confirmar otro albarán.");
+    const recepcionServidorPM10 = await confirmarRecepcionServidorPM10({
+      lineasResueltas,
+      productosNuevos,
+      operationId: `pm10-recepcion-albaran:${albaranId}`,
+      documentoId: albaranId,
+      documentoNumero: alb.numero
+    });
+    if (!recepcionServidorPM10.ok) {
+      return errorValidacionPM10("conflicto_persistencia", "recepcion", recepcionServidorPM10.error);
     }
     if (pedidoLigado && !replayedRecepcionPM10) {
       setPedidos((prev) => prev.map((pe2) => pe2.id === alb.pedidoId ? aplicarRecepcionPedidoPM10(pe2, lineasResueltas) : pe2));
@@ -115132,7 +115180,7 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     registrarAuditoria("Crear factura directa", `${nuevo.concepto || nuevo.numeroFactura || id} \xB7 \u20AC${nuevo.importeTotal.toFixed(2)} \xB7 ${empresaId}/${localActivoId}`);
     return { ok: true, factura: nuevo };
   }
-  function confirmarFacturaConAlbaranes(data) {
+  async function confirmarFacturaConAlbaranes(data) {
     const facturaId = data?.id || uid();
     const operationId = data?.operationId || `factura-proveedor:${empresaId}:${localActivoId}:${facturaId}`;
     const yaConfirmada = (facturasDirectas || []).find((f22) => f22.operationId === operationId && f22.estado === "ACTIVA");
@@ -115174,7 +115222,7 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
       };
       const guardado = guardarAlbaran(documento);
       if (guardado === false) return { ok: false, error: `No se pudo preparar el albarán ${item.numeroAlbaran}.`, parcial: vinculos };
-      const recibido = confirmarAlbaran(documento);
+      const recibido = await confirmarAlbaran(documento);
       if (!recibido || recibido.ok === false) return { ok: false, error: recibido?.error || `No se pudo recepcionar el albarán ${item.numeroAlbaran}.`, parcial: vinculos };
       vinculos.push({ albaranId, numero: item.numeroAlbaran, accion: item.existenteId ? "COMPLETADO_Y_RECEPCIONADO" : "CREADO_Y_RECEPCIONADO", recepcionAplicada: true });
     }
@@ -119227,7 +119275,7 @@ function Albaranes({
     guardarAlbaran(limpio);
     setAlb(limpio);
   }
-  function darEntrada() {
+  async function darEntrada() {
     if (procesandoEntrada) return;
     const previoProveedor = asegurarProveedor(alb, { crear: false });
     if (!previoProveedor.ok) {
@@ -119253,7 +119301,7 @@ function Albaranes({
         ...asegurado.alb,
         lineas: candidatas.map((ln2) => ({ ...ln2, importe: ln2.importe !== "" ? Number(ln2.importe) : Number(importeCalculado(ln2).toFixed(4)) }))
       };
-      const resultado = confirmarAlbaran(limpio);
+      const resultado = await confirmarAlbaran(limpio);
       if (resultado && resultado.ok === false) {
         setError(resultado.error || "No se pudo registrar la recepción del pedido.");
         return;
@@ -119280,6 +119328,8 @@ function Albaranes({
       setModo("lista");
       setAlb(null);
       setFotoRevisionIA("");
+    } catch (error) {
+      setError(error?.message || "No se pudo registrar la recepción del pedido.");
     } finally {
       setProcesandoEntrada(false);
     }
@@ -121230,7 +121280,7 @@ function Facturas({ albaranes = [], facturasDirectas = [], pagosFacturas = [], p
       const r2 = addFacturaDirecta(candidata); if (!r2?.ok) return setError(r2?.error || "No se ha podido guardar el borrador.");
       resetForm(); setMostrarAlta(false); setMensaje("Borrador guardado. No ha movido stock ni creado deuda activa."); return;
     }
-    const r2 = confirmarFacturaConAlbaranes(candidata);
+    const r2 = await confirmarFacturaConAlbaranes(candidata);
     if (!r2?.ok) return setError(r2?.error || "No se ha podido confirmar la factura y sus albaranes.");
     const resumen = `Factura confirmada: ${r2.albaranesVinculados.filter((x3) => !x3.recepcionAplicada).length} albarán(es) vinculados y ${r2.albaranesVinculados.filter((x3) => x3.recepcionAplicada).length} recepcionado(s).`;
     resetForm(); setMostrarAlta(false); setMensaje(resumen);
