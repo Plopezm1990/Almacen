@@ -112,7 +112,7 @@ jobs:
           # forman parte del cambio mínimo verificable.
           notification_hotfix=$'.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/enviar-notificacion/index.ts'
           notification_removal=$'supabase/functions/enviar-notificacion/index.ts'
-          manifest_registry=$'.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/edge-security-manifest.json'
+          manifest_registry=$'.github/scripts/p2-edge-security/contract.mjs\n.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/edge-security-manifest.json'
           account_point1=$'.github/workflows/p2-edge-security-candidate.yml\nsupabase/functions/crear-cuenta-empleado/index.ts\nsupabase/functions/qa-crear-empleado/index.ts\nsupabase/migrations/20261016121308_pm11_read_account_state_no_cross_tenant_existence.sql\nsupabase/migrations/20261016122410_pm11_prepare_account_no_cross_tenant_existence.sql\ntests/pm10/p07-personal-contract.mjs\ntests/pm12/p11-create-account-behavior.mjs\ntests/pm12/p11-create-account-routing-contract.mjs\ntests/pm12/p12-account-enrichment-race-contract.mjs\ntests/pm12/p12-account-enrichment-runtime.mjs'
           if [ "$actual" = "$expected" ]; then
             scope='CANDIDATE'
