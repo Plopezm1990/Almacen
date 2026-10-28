@@ -95,9 +95,11 @@ test("movimiento remoto inmutable: contenido divergente se rechaza sin escritura
   assert.equal(c.rows.get("mov-1").datos.cantidad, 2);
 });
 
-test("alta sin empresa/local o con local TODOS se bloquea antes de escribir", async () => {
+test("alta sin contexto o con sentinels globales se bloquea antes de escribir", async () => {
   for (const data of [
     { ...nuevo(), empresaId: "" },
+    { ...nuevo(), empresaId: "TODOS" },
+    { ...nuevo(), empresaId: "TODAS LAS EMPRESAS" },
     { ...nuevo(), localId: "" },
     { ...nuevo(), localId: "TODOS" },
     { ...nuevo(), localId: "TODOS LOS LOCALES" },

@@ -668,7 +668,8 @@
           // El servidor vuelve a autorizar la pareja empresa/local mediante RLS.
           var empresaId = typeof datosServidor.empresaId === "string" ? datosServidor.empresaId.trim() : "";
           var localId = typeof datosServidor.localId === "string" ? datosServidor.localId.trim() : "";
-          if (!empresaId || !localId || localId.toUpperCase() === "TODOS" || localId.toUpperCase() === "TODOS LOS LOCALES") {
+          if (!empresaId || empresaId.toUpperCase() === "TODOS" || empresaId.toUpperCase() === "TODAS LAS EMPRESAS" ||
+              !localId || localId.toUpperCase() === "TODOS" || localId.toUpperCase() === "TODOS LOS LOCALES") {
             var sinContexto = new Error("movimiento_historico_sin_empresa_local");
             sinContexto.code = "MOVIMIENTO_HISTORICO_SIN_CONTEXTO";
             throw sinContexto;
