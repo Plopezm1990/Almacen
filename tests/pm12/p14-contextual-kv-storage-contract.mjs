@@ -10,6 +10,7 @@ assert.match(storage, /function contextoKvActual\(\)/, 'el bootstrap resuelve el
 assert.match(storage, /__empresaActivaIdParaContexto/, 'el bootstrap usa la empresa activa');
 assert.match(storage, /consultaKvPorClave\(key, "value"\)\.maybeSingle\(\)/, 'la lectura KV usa el helper contextual');
 assert.match(storage, /\.eq\("empresa_id", contexto\.empresaId\)/, 'la lectura KV queda acotada por empresa');
+assert.match(storage, /else consulta = consulta\.eq\("empresa_id", "__contexto_empresa_pendiente__"\)/, 'sin contexto la lectura KV no cae en una consulta global');
 assert.match(storage, /p_venta: ventaPendiente, p_empresa_id: contexto\.empresaId,\s*p_local_id: contexto\.localId/, 'la RPC de productos recibe empresa y local explícitos');
 assert.match(storage, /upsert\(\{\s*empresa_id: contexto\.empresaId,\s*key: key,\s*value: aSubir,\s*local_id: null\s*\}\)/s, 'la escritura KV incluye empresa_id y local_id');
 assert.doesNotMatch(storage, /upsert\(\{ key: key, value: aSubir \}\)/, 'no queda upsert KV global');

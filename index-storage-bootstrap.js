@@ -850,6 +850,7 @@
       .eq("key", key);
     var contexto = contextoKvActual();
     if (contexto.empresaId) consulta = consulta.eq("empresa_id", contexto.empresaId);
+    else consulta = consulta.eq("empresa_id", "__contexto_empresa_pendiente__");
     return consulta;
   }
 
@@ -1030,12 +1031,6 @@
           } else if (tablaEspecial) {
             lista = await conTiempoLimite(leerColeccionPorFila(tablaEspecial, key), ESPERA_NUBE_MS);
           } else {
-            var contextoLectura = contextoKvActual();
-            if (!contextoLectura.empresaId) {
-              var contextoAusente = new Error("No hay empresa activa para leer " + key + " en la nube");
-              contextoAusente.code = "ALMACEN_KV_EMPRESA_CONTEXTO_AUSENTE";
-              throw contextoAusente;
-            }
             var r = await conTiempoLimite(
               consultaKvPorClave(key, "value").maybeSingle(),
               ESPERA_NUBE_MS
