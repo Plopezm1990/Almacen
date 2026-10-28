@@ -62,6 +62,18 @@
     }
   };
 
+  // La marca de solo-local de productos procede de una versión anterior que
+  // no enviaba empresa/local a la RPC. Se invalida una sola vez al instalar la
+  // corrección PM10; no se borra ningún producto ni se toca la nube.
+  try {
+    var VERSION_REINTENTO_PRODUCTOS = "pm10-recepcion-20261028";
+    var versionAnteriorProductos = localStorage.getItem("almacen__productos_reintento_version");
+    if (versionAnteriorProductos !== VERSION_REINTENTO_PRODUCTOS) {
+      quitarDenegado("productos");
+      localStorage.setItem("almacen__productos_reintento_version", VERSION_REINTENTO_PRODUCTOS);
+    }
+  } catch (e) {}
+
   // Una clave que todavía no existe es un estado normal de primer arranque.
   // Solo se normaliza ese sentinel exacto; SecurityError/cuota/etc. se propagan.
   function leerLocalOpcional(key) {
