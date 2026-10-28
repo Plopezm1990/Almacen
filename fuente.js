@@ -125240,6 +125240,59 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const fiscal = await leerEstadoFiscalC07D(resultado.cuentaId);
     return { ...resultado, fiscal };
   }
+  function ticketCobroFiscalC07D() {
+    const estado = estadoCobroF4;
+    const fiscal = estado?.fiscal;
+    const documento = Array.isArray(fiscal?.documentos) ? fiscal.documentos[0] : null;
+    const qr = fiscal?.qr;
+    const pedido = pedidoOperativoA05;
+    if (!estado?.ok || !pedido?.cuentaId || !documento || !qr?.ok || typeof qr.qr_url !== "string" || !/^https:\/\//u.test(qr.qr_url)) return null;
+    const lineas = Array.isArray(pedido.lineas) ? pedido.lineas.map((linea, indice) => ({
+      id: linea.id || `checkout-linea-${indice}`,
+      productoId: linea.productoId || linea.producto_id,
+      cantidad: Number(linea.cantidad) || 0,
+      ingresoUnitario: Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario) || 0,
+      ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
+    })).filter((linea) => linea.productoId && linea.cantidad > 0) : [];
+    if (lineas.length === 0) return null;
+    const importe = Number(estado.total) || lineas.reduce((total, linea) => total + Math.abs(linea.cantidad * linea.ingresoUnitario) * (1 + linea.ivaVentaAplicado / 100), 0);
+    const numero = documento.numero == null ? "" : String(documento.numero).padStart(6, "0");
+    const fecha = String(qr.fecha_expedicion || new Date().toISOString().slice(0, 10));
+    return {
+      ventaId: documento.venta_fiscal_id || pedido.cuentaId,
+      referencia: `V-${fecha.replaceAll("-", "")}-${String(documento.documento_id || pedido.cuentaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
+      fecha,
+      marcaTiempo: pedido.completed_at || new Date().toISOString(),
+      lineas,
+      resumen: lineas.map((linea) => productos.find((producto) => producto.id === linea.productoId)?.nombre || "Producto").slice(0, 3).join(", "),
+      importe,
+      importeOriginal: importe,
+      importeNetoGestion: importe,
+      estado: "ACTIVA",
+      trazabilidad: [],
+      medioPago: "Efectivo",
+      detallePago: null,
+      usuario: "",
+      anulada: false,
+      mesa: "",
+      zona: "",
+      numeroFiscal: `${documento.codigo_serie || "TPV"}-${numero}`,
+      qrFiscal: {
+        url: qr.qr_url,
+        textLabel: "QR tributario:",
+        modalityLabel: "VERI*FACTU",
+        source: {
+          nif: qr.nif_emisor || "",
+          numserie: `${documento.codigo_serie || "TPV"}-${numero}`,
+          fecha,
+          importe: importe.toFixed(2)
+        },
+        production: false
+      },
+      entregado: importe,
+      cambio: 0
+    };
+  }
   async function refrescarCobroF4() {
     if (typeof leerEstadoCobroF4 !== "function" || !pedidoOperativoA05?.cuentaId) {
       setEstadoCobroF4(null);
@@ -125463,7 +125516,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-center mt-2", dangerouslySetInnerHTML: { __html: renderQrSvg(fiscal.qr.qr_url, { quietZone: 4 }) } }),
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[8.5px] break-all mt-2", style: { color: C2.inkSoft } }, fiscal.qr.qr_url),
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[9px] mt-1", style: { color: C2.inkSoft } }, "Matriz generada desde el payload verificable de QA; presentación AEAT real desactivada.")
-        ) : fiscal.qr?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.ink } }, "QR fiscal pendiente: ", fiscal.qr.error || "actualiza para reintentar.") : null
+        ) : fiscal.qr?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.ink } }, "QR fiscal pendiente: ", fiscal.qr.error || "actualiza para reintentar.") : null,
+        ticketCobroFiscalC07D() ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", className: "mt-2", "data-ticket-c07d-live": "qa", onClick: () => setTicketVenta(ticketCobroFiscalC07D()) }, "Ver ticket con QR") : null
       ) : fiscal?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "pending", style: { background: C2.amberSoft, color: C2.ink } }, "Cobro confirmado. Fiscalización C07-D pendiente: ", fiscal.error || "actualiza para reintentar.") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
