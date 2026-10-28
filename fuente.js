@@ -111533,6 +111533,32 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
   }
+  async function prepararTicketFiscalQa(cuentaId, fiscalEmitido, checkoutId) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, disponible: false, error: "El QR fiscal solo se prepara en QA." };
+    if (!localActivoId || !cuentaId || !checkoutId) return { ok: false, error: "Faltan datos del checkout para preparar el QR fiscal." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    const documento = Array.isArray(fiscalEmitido?.documentos) ? fiscalEmitido.documentos[0] : null;
+    const ventaFiscalId = String(documento?.venta_fiscal_id || "").trim();
+    if (!empresaId || !ventaFiscalId) return { ok: false, error: "La emisión fiscal no devolvió una venta fiscal para el QR." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "La preparación del QR fiscal necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const operationId = "f7.c07d.qr.prepare:" + String(cuentaId) + ":" + String(checkoutId);
+      const { data, error } = await supabase.rpc("abc_preparar_ticket_fiscal_qa", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_venta_fiscal_id: ventaFiscalId,
+        p_checkout_id: checkoutId,
+        p_fecha_expedicion: new Date().toISOString().slice(0, 10)
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, error: "El servidor no confirmó la preparación del QR fiscal." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
   async function leerConfiguracionEmisionC07D(tipoDocumento = "FACTURA") {
     if (!c07dActivoEnEntornoQa()) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
     if (!localActivoId) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
@@ -111741,11 +111767,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         const checkoutCompletado = Array.isArray(estadoFinal.checkouts)
           ? estadoFinal.checkouts.find((checkout) => String(checkout?.estado || "").toUpperCase() === "COMPLETADO")
           : null;
-        estadoFinal.fiscal = await emitirCheckoutFiscalC07D(recuperada.cuentaId, {
+        const fiscalEmitido = await emitirCheckoutFiscalC07D(recuperada.cuentaId, {
           checkoutId: checkoutCompletado?.id || "latest",
           tipoDocumento: opciones?.tipoDocumento || "FACTURA",
           codigoSerie: opciones?.codigoSerie || "TPV"
         });
+        estadoFinal.fiscal = fiscalEmitido;
+        if (fiscalEmitido?.ok && checkoutCompletado?.id) {
+          estadoFinal.fiscal = {
+            ...fiscalEmitido,
+            qr: await prepararTicketFiscalQa(recuperada.cuentaId, fiscalEmitido, checkoutCompletado.id)
+          };
+        }
       }
       if (medio === "EFECTIVO" && estadoFinal.ok) {
         estadoFinal.mensaje = Number(estadoFinal.saldo) > 0
@@ -125409,7 +125442,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       fiscal?.ok && Array.isArray(fiscal.documentos) && fiscal.documentos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "visible", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Fiscalización C07-D · QA"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Documento emitido en C05 y registrado en cadena. AEAT real desactivada; transporte simulado."),
-        fiscal.documentos.map((documento) => /* @__PURE__ */ import_react4.default.createElement("div", { key: documento.documento_id || documento.registro_id, className: "text-[11px] mt-1" }, `${documento.codigo_serie || "—"}-${documento.numero || "—"} · cola ${documento.cola_estado || "PENDIENTE"} · secuencia ${documento.secuencia || "—"}`))
+        fiscal.documentos.map((documento) => /* @__PURE__ */ import_react4.default.createElement("div", { key: documento.documento_id || documento.registro_id, className: "text-[11px] mt-1" }, `${documento.codigo_serie || "—"}-${documento.numero || "—"} · cola ${documento.cola_estado || "PENDIENTE"} · secuencia ${documento.secuencia || "—"}`)),
+        fiscal.qr?.ok && fiscal.qr.qr_url ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 pt-2 text-center", "data-qr-fiscal-live": "qa", style: { borderTop: `1px dashed ${C2.line}` } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold" }, "QR fiscal QA preparado"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-center mt-2", dangerouslySetInnerHTML: { __html: renderQrSvg(fiscal.qr.qr_url, { quietZone: 4 }) } }),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[8.5px] break-all mt-2", style: { color: C2.inkSoft } }, fiscal.qr.qr_url),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[9px] mt-1", style: { color: C2.inkSoft } }, "Matriz generada desde el payload verificable de QA; presentación AEAT real desactivada.")
+        ) : fiscal.qr?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.ink } }, "QR fiscal pendiente: ", fiscal.qr.error || "actualiza para reintentar.") : null
       ) : fiscal?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "pending", style: { background: C2.amberSoft, color: C2.ink } }, "Cobro confirmado. Fiscalización C07-D pendiente: ", fiscal.error || "actualiza para reintentar.") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
