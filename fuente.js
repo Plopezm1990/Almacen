@@ -124206,6 +124206,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }, [local?.id, configEmpresa?.id]);
   const modalidadActualA02 = modalidadesA02.includes(modalidadElegidaA02) ? modalidadElegidaA02 : modalidadesA02.includes("BARRA") ? "BARRA" : modalidadesA02[0] || "";
   const renderSelectorModalidadA02 = () => {
+    if (modoTPV === "RAPIDA") return renderCobroRapida();
     if (modalidadesA02.length < 2) return null;
     const h4 = import_react4.default.createElement;
     return h4(
@@ -124213,6 +124214,21 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       { className: "mb-3", "data-selector-modalidad": "1" },
       h4("div", { className: "text-[11px] mb-1", style: { color: C2.inkSoft } }, "Tipo de cuenta"),
       h4("div", { className: "flex gap-1.5 flex-wrap", role: "group", "aria-label": "Tipo de cuenta" }, modalidadesA02.map((m2) => h4("button", { key: m2, type: "button", "aria-pressed": m2 === modalidadActualA02, onClick: () => setModalidadElegidaA02(m2), disabled: enviandoVenta, className: "inline-flex items-center rounded-lg font-medium px-3 py-1.5 text-[12px]", style: { minHeight: 44, border: `1px solid ${C2.line}`, background: m2 === modalidadActualA02 ? C2.accentFill : "transparent", color: m2 === modalidadActualA02 ? C2.onAccent : C2.ink, opacity: enviandoVenta ? 0.45 : 1, cursor: enviandoVenta ? "not-allowed" : "pointer" } }, MODALIDADES_ETIQUETA_A02[m2] || m2)))
+    );
+  };
+  function renderCobroRapida() {
+    const h4 = import_react4.default.createElement;
+    return h4(
+      Card,
+      { className: "mb-4", "data-tpv-quick": "1", style: { border: `1px solid ${C2.accent}` } },
+      h4("div", { className: "text-[12.5px] font-semibold mb-2" }, "Cobro de venta rápida"),
+      h4("div", { className: "grid grid-cols-2 gap-2 mb-2", role: "group", "aria-label": "Medio de pago" },
+        h4("button", { type: "button", "aria-pressed": pagoRapida === "EFECTIVO", onClick: () => setPagoRapida("EFECTIVO"), className: "rounded-lg px-3 py-2 text-[12px] font-semibold", style: { minHeight: 44, background: pagoRapida === "EFECTIVO" ? C2.accentFill : "transparent", color: pagoRapida === "EFECTIVO" ? C2.onAccent : C2.ink, border: `1px solid ${pagoRapida === "EFECTIVO" ? C2.accentFill : C2.line}` } }, "Efectivo"),
+        h4("button", { type: "button", "aria-pressed": pagoRapida === "TARJETA", onClick: () => setPagoRapida("TARJETA"), className: "rounded-lg px-3 py-2 text-[12px] font-semibold", style: { minHeight: 44, background: pagoRapida === "TARJETA" ? C2.accentFill : "transparent", color: pagoRapida === "TARJETA" ? C2.onAccent : C2.ink, border: `1px solid ${pagoRapida === "TARJETA" ? C2.accentFill : C2.line}` } }, "Tarjeta")
+      ),
+      pagoRapida === "EFECTIVO" ? h4(Field, { label: "Efectivo recibido (€)" }, h4(Input, { type: "number", min: total, step: "0.01", value: efectivoRecibidoRapida, placeholder: fmt(total), onChange: (e2) => setEfectivoRecibidoRapida(e2.target.value) })) : h4("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "El pago con tarjeta se inicia en modo simulado hasta conectar el terminal físico."),
+      h4(Btn, { onClick: confirmarVentaRapida, disabled: procesandoVentaRapida || cargandoA04 }, procesandoVentaRapida ? "Procesando venta…" : `Cobrar ahora · €${fmt(total)}`),
+      h4("style", null, `[data-tpv-quick="1"] + button { display: none !important; }`)
     );
   };
   const [medioPago, setMedioPago] = (0, import_react4.useState)("Efectivo");
@@ -124267,6 +124283,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [motivoOperacionA05, setMotivoOperacionA05] = (0, import_react4.useState)("");
   const [accionEnCursoA05, setAccionEnCursoA05] = (0, import_react4.useState)("");
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
+  const [modoTPV, setModoTPV] = (0, import_react4.useState)("SALA");
+  const [pagoRapida, setPagoRapida] = (0, import_react4.useState)("EFECTIVO");
+  const [efectivoRecibidoRapida, setEfectivoRecibidoRapida] = (0, import_react4.useState)("");
+  const [procesandoVentaRapida, setProcesandoVentaRapida] = (0, import_react4.useState)(false);
+  const [resultadoVentaRapida, setResultadoVentaRapida] = (0, import_react4.useState)(null);
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
   const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
@@ -125573,6 +125594,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   }
   function renderCobroF4() {
+    if (modoTPV === "RAPIDA") return renderVentaRapidaStatus();
     if (!pedidoOperativoA05?.cuentaId) return renderCajaTPV();
     const pedidoListo = ["ENVIADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
     const estado = estadoCobroF4;
@@ -125866,6 +125888,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderSalaA07() {
+    if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
     const ubicacion = pedido.ubicacion || mapaSalaA07?.ubicacion || null;
@@ -125953,6 +125976,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
 
   function renderDescuentoCuentaA09() {
+    if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
     if (!descuentoAbiertoA09) {
@@ -126076,6 +126100,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderRepartoProductosA08() {
+    if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
     const lineas = lineasMoviblesA08();
@@ -126140,6 +126165,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderPedidoOperativoA05() {
+    if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido || !pedido.pedidoId) return null;
     const terminal = pedido.pedidoEstado === "CERRADO" || pedido.pedidoEstado === "CANCELADO";
@@ -126182,7 +126208,154 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   }
 
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02/A04 guardan la cuenta y el pedido con autoridad del servidor; A05 permite enviarlo y F4 inicia el cobro solo cuando el pedido está listo. Los productos configurables usan variantes y modificadores A04. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". El total definitivo lo confirma el servidor.")),
+  function renderSelectorModoTPV() {
+    const h3 = import_react4.default.createElement;
+    const esRapida = modoTPV === "RAPIDA";
+    return h3(
+      Card,
+      { className: "mb-4", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
+      h3("div", { className: "flex items-center justify-between gap-3 mb-2" },
+        h3("div", null,
+          h3("div", { className: "text-[12.5px] font-semibold" }, "Modo de venta"),
+          h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, esRapida
+            ? "Venta rápida de mostrador: producto, pago y ticket sin mesas ni cocina."
+            : "Sala y restaurante: cuentas abiertas, mesas, cocina y reparto.")
+        ),
+        h3("span", { className: "text-[10px] font-semibold uppercase tracking-wide", style: { color: C2.accent } }, esRapida ? "MOSTRADOR" : "SALA")
+      ),
+      h3("div", { className: "grid grid-cols-2 gap-2", role: "group", "aria-label": "Modo de venta" },
+        h3("button", {
+          type: "button",
+          "aria-pressed": esRapida,
+          onClick: () => setModoTPV("RAPIDA"),
+          className: "rounded-lg px-3 py-2 text-[12px] font-semibold",
+          style: { minHeight: 44, background: esRapida ? C2.accentFill : "transparent", color: esRapida ? C2.onAccent : C2.ink, border: `1px solid ${esRapida ? C2.accentFill : C2.line}` }
+        }, "Venta rápida"),
+        h3("button", {
+          type: "button",
+          "aria-pressed": !esRapida,
+          onClick: () => setModoTPV("SALA"),
+          className: "rounded-lg px-3 py-2 text-[12px] font-semibold",
+          style: { minHeight: 44, background: !esRapida ? C2.chrome : "transparent", color: !esRapida ? "#fff" : C2.ink, border: `1px solid ${!esRapida ? C2.chrome : C2.line}` }
+        }, "Sala / restaurante")
+      )
+    );
+  }
+
+  async function confirmarVentaRapida() {
+    if (procesandoVentaRapida || enviandoVenta || !carrito.length) return;
+    if (pedidoOperativoA05?.cuentaId && !["CERRADA", "CANCELADO"].includes(String(pedidoOperativoA05.pedidoEstado || ""))) {
+      setErrorVenta("Hay una cuenta abierta en este terminal. Continúa esa cuenta en Sala o ciérrala antes de iniciar otra venta rápida.");
+      return;
+    }
+    if (typeof venderCarrito !== "function" || typeof enviarPedidoA05 !== "function" || typeof accionPedidoA05 !== "function" || typeof iniciarCobroCuentaF4 !== "function") {
+      setErrorVenta("La venta rápida todavía no está disponible en este entorno.");
+      return;
+    }
+    const totalEsperado = Number(total);
+    const recibido = pagoRapida === "EFECTIVO"
+      ? (efectivoRecibidoRapida === "" ? totalEsperado : Number(efectivoRecibidoRapida))
+      : null;
+    if (pagoRapida === "EFECTIVO" && (!Number.isFinite(recibido) || recibido < totalEsperado)) {
+      setErrorVenta("El efectivo recibido debe cubrir el total de la venta.");
+      return;
+    }
+    setProcesandoVentaRapida(true);
+    setErrorVenta("");
+    setResultadoVentaRapida(null);
+    try {
+      const lineas = carrito.map((l22) => ({
+        productoId: l22.productoId,
+        cantidad: l22.cantidad,
+        nota: String(l22.nota || "").trim().slice(0, 500),
+        configuracionA04: l22.configuracionA04 || null
+      }));
+      const venderRapida = venderCarrito;
+      const guardada = await venderRapida(lineas, { modalidad: "BARRA" });
+      if (!guardada || guardada.ok === false) {
+        setErrorVenta(guardada?.error || "No se pudo preparar la venta rápida.");
+        return;
+      }
+      setPedidoOperativoA05(guardada);
+
+      const enviada = await enviarPedidoA05();
+      if (!enviada || enviada.ok === false) {
+        setErrorVenta(enviada?.error || "No se pudo confirmar la venta rápida.");
+        return;
+      }
+      setPedidoOperativoA05(enviada);
+
+      let estadoServidor = enviada;
+      for (const linea of Array.isArray(enviada.lineas) ? enviada.lineas : []) {
+        if (["SERVIDA", "CANCELADA"].includes(String(linea.estado || ""))) continue;
+        for (const accion of ["INICIAR_PREPARACION", "MARCAR_PREPARADA", "SERVIR"]) {
+          const actual = leerPedidoOperativoA05 ? await Promise.resolve(leerPedidoOperativoA05()) : estadoServidor;
+          const lineaActual = (actual?.lineas || []).find((l22) => String(l22.lineaId || "") === String(linea.lineaId || ""));
+          if (!lineaActual || ["SERVIDA", "CANCELADA"].includes(String(lineaActual.estado || ""))) break;
+          if ((accion === "INICIAR_PREPARACION" && lineaActual.estado !== "ENVIADA")
+              || (accion === "MARCAR_PREPARADA" && lineaActual.estado !== "EN_PREPARACION")
+              || (accion === "SERVIR" && lineaActual.estado !== "PREPARADA")) continue;
+          const paso = await accionPedidoA05(accion, linea.lineaId, "");
+          if (!paso || paso.ok === false) {
+            setErrorVenta(paso?.error || "No se pudo dejar la línea lista para cobrar.");
+            return;
+          }
+          estadoServidor = paso;
+          setPedidoOperativoA05(paso);
+        }
+      }
+
+      const importe = Number(guardada.totalServidor ?? totalEsperado);
+      const cobro = await iniciarCobroCuentaF4(pagoRapida, {
+        importeObjetivo: importe,
+        importeRecibido: pagoRapida === "EFECTIVO" ? recibido : null,
+        cambioEntregado: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
+        codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV"
+      });
+      if (!cobro || cobro.ok === false) {
+        setErrorVenta(cobro?.error || "La venta quedó preparada, pero no se pudo completar el cobro.");
+        return;
+      }
+      setEstadoCobroF4(cobro);
+      setMensajeCobroF4(cobro.mensaje || (pagoRapida === "EFECTIVO" ? "Pago confirmado y cuenta cerrada." : "Pago iniciado en modo simulado."));
+      setResultadoVentaRapida({
+        ok: true,
+        total: importe,
+        medio: pagoRapida,
+        cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
+        cuentaCerrada: String(cobro.cuentaEstado || "").toUpperCase() === "CERRADA" || cobro.cuentaCierre?.ok === true,
+        fiscal: cobro.fiscal || null
+      });
+      setCarrito([]);
+      setConfirmacion(null);
+      if (typeof leerPedidoOperativoA05 === "function") setPedidoOperativoA05(await Promise.resolve(leerPedidoOperativoA05()));
+      setEfectivoRecibidoRapida("");
+    } catch (error) {
+      setErrorVenta(String(error?.message || error || "No se pudo completar la venta rápida."));
+    } finally {
+      setProcesandoVentaRapida(false);
+    }
+  }
+
+  function renderVentaRapidaStatus() {
+    const h3 = import_react4.default.createElement;
+    const resultado = resultadoVentaRapida;
+    const cuentaAbierta = pedidoOperativoA05?.cuentaId && !["CERRADA", "CANCELADO"].includes(String(pedidoOperativoA05.pedidoEstado || ""));
+    if (!resultado && !cuentaAbierta) return null;
+    return h3(
+      Card,
+      { className: "mb-4", style: { background: resultado?.ok ? C2.accentSoft : C2.amberSoft, border: "none" } },
+      h3("div", { className: "flex items-center justify-between gap-2 mb-1" },
+        h3("div", { className: "text-[12.5px] font-semibold" }, resultado?.ok ? "Venta rápida completada" : "Venta rápida en curso"),
+        resultado?.ok ? h3(Pill2, { color: C2.accent }, "PAGADA") : null
+      ),
+      resultado?.ok ? h3("div", { className: "text-[12px]" }, "Total €", fmt(resultado.total), " · ", resultado.medio === "EFECTIVO" ? "efectivo" : "tarjeta", resultado.medio === "EFECTIVO" ? ` · cambio €${fmt(resultado.cambio)}` : "") : h3("div", { className: "text-[11.5px]" }, "La cuenta se conserva en el servidor para continuarla sin duplicar la venta."),
+      resultado?.fiscal?.ok === false ? h3("div", { className: "text-[11px] mt-2", style: { color: C2.amber } }, "Venta cerrada. Emisión fiscal pendiente de configuración C07-D.") : null,
+      cuentaAbierta ? h3("div", { className: "flex gap-2 mt-2" }, h3(Btn, { small: true, variant: "ghost", onClick: () => setModoTPV("SALA") }, "Continuar en Sala")) : null
+    );
+  }
+
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), renderSelectorModoTPV(), modoTPV === "SALA" ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02/A04 guardan la cuenta y el pedido con autoridad del servidor; A05 permite enviarlo y F4 inicia el cobro solo cuando el pedido está listo. Los productos configurables usan variantes y modificadores A04. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". El total definitivo lo confirma el servidor.")) : /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Venta rápida de mostrador. Añade productos, cobra y cierra la cuenta automáticamente. Las operaciones siguen validándose en el servidor.")),
   estadoBorradorA06?.estado === "ACTIVO" ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, "Borrador local activo"),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, carrito.length, " línea(s) · se conserva 24 h desde la última modificación · caduca ", estadoBorradorA06.expiresAtMs ? new Date(estadoBorradorA06.expiresAtMs).toLocaleString("es-ES") : "")
