@@ -582,11 +582,12 @@
   // movimiento 1001 el programa creía que la nube estaba medio vacía, así
   // que resubía miles de filas en cada guardado (lento, y se pasaba del
   // tiempo límite) y daba por inexistente lo que sí estaba.
-  async function leerFilasCompletas(tabla) {
+  async function leerFilasCompletas(tabla, incluirContextoMovimiento) {
     var todas = [];
     var desde = 0;
     for (;;) {
-      var r = await window.__nubeCliente.from(tabla).select("id, datos")
+      var columnas = incluirContextoMovimiento ? "id, datos, empresa_id, local_id" : "id, datos";
+      var r = await window.__nubeCliente.from(tabla).select(columnas)
         .order("creado_en", { ascending: false })
         .range(desde, desde + PAGINA_LECTURA - 1);
       if (r.error) throw r.error;
@@ -621,6 +622,43 @@
   function contenidoFilaIgual(a, b) {
     return JSON.stringify(contenidoSinMarcasLocales(a)) === JSON.stringify(contenidoSinMarcasLocales(b));
   }
+  function textoContextoMovimiento(valor) {
+    return typeof valor === "string" ? valor.trim() : "";
+  }
+  function contextoMovimientoHistoricoIgual(filaRemota, datosLocales) {
+    var datosRemotos = filaRemota && filaRemota.datos && typeof filaRemota.datos === "object"
+      ? filaRemota.datos : {};
+    var empresaSql = textoContextoMovimiento(filaRemota && filaRemota.empresa_id);
+    var localSql = textoContextoMovimiento(filaRemota && filaRemota.local_id);
+    var empresaRemota = textoContextoMovimiento(datosRemotos.empresaId);
+    var localRemoto = textoContextoMovimiento(datosRemotos.localId);
+    var empresaLocal = textoContextoMovimiento(datosLocales && datosLocales.empresaId);
+    var localLocal = textoContextoMovimiento(datosLocales && datosLocales.localId);
+
+    // La pareja SQL es la autoridad de aislamiento. Si existe en la fila,
+    // una caché de otro tenant/local no puede considerarse un replay válido.
+    if (empresaSql && empresaLocal && empresaSql !== empresaLocal) return false;
+    if (localSql && localLocal && localSql !== localLocal) return false;
+    // Detectar también una fila histórica internamente incoherente entre sus
+    // columnas SQL y su JSON, sin reparar ni sobrescribir desde el cliente.
+    if (empresaSql && empresaRemota && empresaSql !== empresaRemota) return false;
+    if (localSql && localRemoto && localSql !== localRemoto) return false;
+    // Cuando ambos JSON contienen contexto explícito, debe ser el mismo.
+    if (empresaRemota && empresaLocal && empresaRemota !== empresaLocal) return false;
+    if (localRemoto && localLocal && localRemoto !== localLocal) return false;
+
+    // Los registros anteriores a PM21 pueden no tener empresaId/localId en
+    // datos aunque la aplicación los infiera al arrancar. Esos dos campos no
+    // son contenido operativo del movimiento histórico y no deben convertir
+    // un replay inmutable en una falsa divergencia. Nunca se escribe la fila.
+    var remotoComparable = Object.assign({}, datosRemotos);
+    var localComparable = Object.assign({}, datosLocales || {});
+    delete remotoComparable.empresaId;
+    delete remotoComparable.localId;
+    delete localComparable.empresaId;
+    delete localComparable.localId;
+    return contenidoFilaIgual(remotoComparable, localComparable);
+  }
   function datosFilaParaServidor(valor, claveColeccion) {
     if (!valor || typeof valor !== "object") return valor;
     // Estos movimientos ya viven en movimientos_stock y solo se hidratan en
@@ -636,9 +674,11 @@
   async function sincronizarColeccionPorFila(tabla, listaLocal, claveColeccion) {
     var esMovimientoHistorico = claveColeccion === "movimientos" && tabla === "movimientos_registro";
     if (esMovimientoHistorico && !Array.isArray(listaLocal)) throw new Error("movimientos_historicos_lista_invalida");
-    var filasRemotas = await leerFilasCompletas(tabla);
+    var filasRemotas = await leerFilasCompletas(tabla, esMovimientoHistorico);
     var remotoPorId = {};
-    filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
+    filasRemotas.forEach(function (fila) {
+      remotoPorId[fila.id] = esMovimientoHistorico ? fila : fila.datos;
+    });
 
     var filasParaGuardar = [];
     listaLocal.forEach(function (x) {
@@ -650,7 +690,7 @@
       if (esMovimientoHistorico && existeRemoto) {
         // El historial confirmado es inmutable; ninguna caché desactualizada
         // puede reescribir una fila de este ledger heredado.
-        if (!contenidoFilaIgual(enNube, datosServidor)) {
+        if (!contextoMovimientoHistoricoIgual(enNube, datosServidor)) {
           var conflicto = new Error("movimiento_historico_divergente");
           conflicto.code = "MOVIMIENTO_HISTORICO_DIVERGENTE";
           throw conflicto;
@@ -721,9 +761,9 @@
               // Dos equipos pueden insertar simultáneamente el mismo id.
               // Solo se considera replay válido si la fila persistida coincide.
               var comprobacion = await window.__nubeCliente.from(tabla)
-                .select("id,datos").eq("id", filasParaGuardar[j].id).maybeSingle();
+                .select("id,datos,empresa_id,local_id").eq("id", filasParaGuardar[j].id).maybeSingle();
               if (!comprobacion.error && comprobacion.data &&
-                  contenidoFilaIgual(comprobacion.data.datos, filasParaGuardar[j].datos)) continue;
+                  contextoMovimientoHistoricoIgual(comprobacion.data, filasParaGuardar[j].datos)) continue;
             }
             if (rUp.error) throw rUp.error;
           } catch (e2) {

@@ -150,6 +150,40 @@ test("movimiento remoto inmutable: contenido divergente se rechaza sin escritura
   assert.equal(c.rows.get("mov-1").datos.cantidad, 2);
 });
 
+test("normalización de histórico heredado no provoca una falsa divergencia ni escritura", async () => {
+  const legacy = { ...nuevo() };
+  delete legacy.localId;
+  const normalizadoAlArrancar = { ...legacy, localId: "QA-A1" };
+  const c = contexto({ inicial: [{
+    id: "mov-1",
+    datos: legacy,
+    empresa_id: "QA-EMP-A",
+    local_id: "QA-A1",
+  }] });
+  await c.sync("movimientos_registro", [normalizadoAlArrancar], "movimientos");
+  assert.equal(c.op.insert, 0);
+  assert.equal(c.op.upsert, 0);
+  assert.equal(c.op.delete, 0);
+  assert.equal(c.rows.get("mov-1").datos.localId, undefined);
+});
+
+test("contexto SQL incompatible mantiene bloqueado el replay histórico", async () => {
+  const legacy = { ...nuevo(), localId: undefined };
+  delete legacy.localId;
+  const c = contexto({ inicial: [{
+    id: "mov-1",
+    datos: legacy,
+    empresa_id: "QA-EMP-A",
+    local_id: "QA-A1",
+  }] });
+  await assert.rejects(
+    c.sync("movimientos_registro", [{ ...legacy, localId: "QA-OTRO-LOCAL" }], "movimientos"),
+    /movimiento_historico_divergente/
+  );
+  assert.equal(c.op.upsert + c.op.insert + c.op.delete, 0);
+  assert.equal(c.rows.get("mov-1").local_id, "QA-A1");
+});
+
 test("alta sin contexto o con sentinels globales se bloquea antes de escribir", async () => {
   for (const data of [
     { ...nuevo(), empresaId: "" },
