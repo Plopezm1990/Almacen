@@ -275,7 +275,7 @@
       el.style.cssText = "position:fixed;bottom:8px;right:8px;padding:5px 11px;border-radius:14px;font-family:sans-serif;font-size:11px;z-index:9998;pointer-events:none;opacity:0.9;";
       document.body.appendChild(el);
     }
-    var sinSubir = pendientes().length;
+    var sinSubir = pendientes().filter(pendienteEsDelContexto).length;
     var soloLocal = clavesDenegadasVigentes().length;
     if (window.__nubeActiva && sinSubir === 0 && soloLocal === 0) {
       el.style.display = "none";
@@ -1186,7 +1186,8 @@
       if (esLedgerRpc && !esPagosFactura) {
         return { key: key, value: leerLocalOpcional(cacheKey), shared: false };
       }
-      if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1 && !tieneMarcaDenegado(key)) {
+      var pendienteActual = pendientes().indexOf(key) !== -1 && pendienteEsDelContexto(key);
+      if (window.__nubeActiva && window.__nubeCliente && !pendienteActual && !tieneMarcaDenegado(key)) {
         try {
           var lista;
           if (esPagosFactura) {
@@ -1329,7 +1330,7 @@
       return {
         key: key, value: value, shared: false,
         confirmadoServidor: confirmadoServidor,
-        pendienteSincronizacion: pendienteSincronizacion || pendientes().indexOf(key) !== -1,
+        pendienteSincronizacion: pendienteSincronizacion || (pendientes().indexOf(key) !== -1 && pendienteEsDelContexto(key)),
         catalogoYaSincronizado: !!(resultadoProductos && resultadoProductos.catalogoYaSincronizado),
         catalogoBloqueado: !!catalogoBloqueado,
         productosConfirmados: !!(resultadoProductos && resultadoProductos.productosConfirmados),

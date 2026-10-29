@@ -111897,6 +111897,15 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
             qr: await prepararTicketFiscalQa(recuperada.cuentaId, fiscalEmitido, checkoutCompletado.id)
           };
         }
+        // La venta rápida se cierra mediante A02/F4, no por el camino PM09
+        // directo. Refrescar aquí el ledger de stock hace que el historial del
+        // TPV muestre el ticket recién cobrado sin obligar a recargar la app.
+        try {
+          await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+        } catch {
+          // El cobro ya está confirmado; un fallo de refresco no debe hacer
+          // parecer que el pago falló. La siguiente hidratación lo recupera.
+        }
       }
       if (medio === "EFECTIVO" && estadoFinal.ok) {
         estadoFinal.mensaje = Number(estadoFinal.saldo) > 0
