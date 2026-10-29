@@ -49,6 +49,7 @@ from pg_trigger t
 join pg_class c on c.oid=t.tgrelid
 join pg_namespace n on n.oid=c.relnamespace
 where not t.tgisinternal
+  and c.relname='pedido_linea_transiciones'
   and t.tgname='a10_pedido_linea_transiciones_comandas';
 
 -- 5. Conteos de control; no modifica nada.

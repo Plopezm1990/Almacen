@@ -83,14 +83,16 @@ La comprobación se ejecutó contra producción en modo exclusivamente lector:
 |---|---:|
 | Columna `requiere_preparacion` presente | `false` |
 | Helper A10 nuevo presente | `false` |
-| Trigger A10 nuevo presente | `false` |
+| Trigger A10 existente presente | `true` |
 | Filas del producto afectado | `1` |
 | Comanda histórica `BLOQUEADA/SIN_RUTA` | `1` |
 | Efectos actuales en `ERROR` | `0` |
 
-El resultado es coherente con el diagnóstico: producción todavía no tiene la
-corrección de A10 y mantiene exactamente una comanda histórica que requiere
-decisión. El punto 10 queda **PREPARADO, CON NO-GO PARA APLICACIÓN AUTOMÁTICA**.
+El resultado es coherente con el diagnóstico: producción ya tiene la
+infraestructura base A10 y su trigger sobre `pedido_linea_transiciones`, pero
+todavía no tiene el helper de decisión por producto ni la columna nueva. La
+base mantiene exactamente una comanda histórica que requiere decisión. El
+punto 10 queda **PREPARADO, CON NO-GO PARA APLICACIÓN AUTOMÁTICA**.
 No se ejecutaron migraciones ni se modificaron filas productivas.
 
 ## Criterios de NO-GO
