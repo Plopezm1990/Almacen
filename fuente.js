@@ -123963,6 +123963,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const tieneNumeroFiscal = !!v22.numeroFiscal;
     const entregado = v22.entregado == null ? null : Number(v22.entregado);
     const cambioTicket = v22.cambio == null ? null : Number(v22.cambio);
+    const ticketEnQa = typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+    const identidadTicket = ticketEnQa && estadoNifEmpresa !== "sin_verificar" ? "Identificador fiscal de prueba · QA" : etiquetaEstadoIdentidadFiscalPM18(estadoNifEmpresa) + (nifOriginalEmpresa ? ` (${nifOriginalEmpresa})` : "");
     return h3(
       Modal,
       { onClose: () => setTicketVenta(null), title: `Ticket ${v22.referencia}`, claseImpresion: "modal-ticket-impresion" },
@@ -123980,7 +123982,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           "div",
           { className: "text-center text-[10.5px] leading-5 mb-3" },
           razonSocialEmpresa ? h3("div", { className: "font-bold" }, razonSocialEmpresa) : h3("div", { className: "font-bold" }, "Raz\xF3n social no configurada"),
-          nifEmpresa ? h3("div", null, `N.I.F.: ${nifEmpresa}`) : h3("div", null, etiquetaEstadoIdentidadFiscalPM18(estadoNifEmpresa) + (nifOriginalEmpresa ? ` (${nifOriginalEmpresa})` : "")),
+          nifEmpresa ? h3("div", null, `N.I.F.: ${nifEmpresa}`) : h3("div", null, identidadTicket),
           direccionLocal ? h3("div", null, direccionLocal) : null,
           telefonoLocal ? h3("div", null, `Tfno.: ${telefonoLocal}`) : null,
           emailLocal ? h3("div", null, emailLocal) : null,
