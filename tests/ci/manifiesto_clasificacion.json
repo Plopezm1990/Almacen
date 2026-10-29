@@ -1619,6 +1619,11 @@
       "path": "tests/pm21/legacy-movimientos-sync-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/f3/a02/a02-quick-sale-ticket-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
     }
   ]
 }
