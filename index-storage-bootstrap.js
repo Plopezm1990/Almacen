@@ -668,6 +668,33 @@
     return contenidoSinMarcasLocales(valor);
   }
 
+  function registrarRechazoMovimiento(rechazados, fila, error) {
+    rechazados.push({
+      id: fila && fila.id ? fila.id : null,
+      code: error && error.code ? error.code : "MOVIMIENTO_HISTORICO_RECHAZADO",
+      mensaje: error && error.message ? error.message : "movimiento_historico_rechazado"
+    });
+  }
+  function notificarResultadoParcialMovimientos(claveColeccion, rechazados, confirmadas) {
+    if (typeof window === "undefined" || typeof window.dispatchEvent !== "function" || typeof CustomEvent !== "function") return;
+    var resumen = rechazados.map(function (fila) {
+      return (fila.id || "sin-id") + " (" + fila.mensaje + ")";
+    }).join(", ");
+    window.dispatchEvent(new CustomEvent("movimientos-sync-parcial", { detail: {
+      key: claveColeccion,
+      filasRechazadas: rechazados,
+      filasConfirmadas: confirmadas
+    } }));
+    window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
+      key: claveColeccion,
+      pendiente: true,
+      parcial: true,
+      filasRechazadas: rechazados,
+      filasConfirmadas: confirmadas,
+      mensaje: "Hay movimientos pendientes de contexto o revisión (" + resumen + "); los demás se han confirmado sin sobrescribir el histórico."
+    } }));
+  }
+
   // Sube a la nube lo que ha cambiado en este equipo, y borra únicamente lo
   // que este equipo ha quitado a propósito (una venta anulada, un albarán
   // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
@@ -681,6 +708,9 @@
     });
 
     var filasParaGuardar = [];
+    var rechazados = [];
+    var confirmadas = [];
+    var primerError = null;
     listaLocal.forEach(function (x) {
       if (!x || !x.id) return;
       var datosServidor = datosFilaParaServidor(x, claveColeccion);
@@ -693,8 +723,10 @@
         if (!contextoMovimientoHistoricoIgual(enNube, datosServidor)) {
           var conflicto = new Error("movimiento_historico_divergente");
           conflicto.code = "MOVIMIENTO_HISTORICO_DIVERGENTE";
-          throw conflicto;
+          registrarRechazoMovimiento(rechazados, x, conflicto);
+          return;
         }
+        confirmadas.push(x.id);
         return;
       }
       if (!existeRemoto || !contenidoFilaIgual(enNube, datosServidor)) {
@@ -712,7 +744,8 @@
               !localId || localId.toUpperCase() === "TODOS" || localId.toUpperCase() === "TODOS LOS LOCALES") {
             var sinContexto = new Error("movimiento_historico_sin_empresa_local");
             sinContexto.code = "MOVIMIENTO_HISTORICO_SIN_CONTEXTO";
-            throw sinContexto;
+            registrarRechazoMovimiento(rechazados, x, sinContexto);
+            return;
           }
           nuevaFila.empresa_id = empresaId;
           nuevaFila.local_id = localId;
@@ -728,7 +761,6 @@
       return Object.prototype.hasOwnProperty.call(remotoPorId, id);
     });
 
-    var primerError = null;
     if (filasParaGuardar.length > 0) {
       if (tabla === "auditoria_registro") {
         // auditoria_registro no admite escritura directa a propósito — cada
@@ -742,8 +774,10 @@
               p_fecha: d.fecha, p_hora: d.hora, p_empresa_id: d.empresaId || null, p_local_id: d.localId || null,
             });
             if (rRpc.error) throw rRpc.error;
+            confirmadas.push(filasParaGuardar[i].id);
           } catch (e) {
             if (!primerError) primerError = e;
+            if (esMovimientoHistorico) registrarRechazoMovimiento(rechazados, filasParaGuardar[i], e);
           }
         }
       } else {
@@ -763,14 +797,29 @@
               var comprobacion = await window.__nubeCliente.from(tabla)
                 .select("id,datos,empresa_id,local_id").eq("id", filasParaGuardar[j].id).maybeSingle();
               if (!comprobacion.error && comprobacion.data &&
-                  contextoMovimientoHistoricoIgual(comprobacion.data, filasParaGuardar[j].datos)) continue;
+                  contextoMovimientoHistoricoIgual(comprobacion.data, filasParaGuardar[j].datos)) {
+                confirmadas.push(filasParaGuardar[j].id);
+                continue;
+              }
             }
             if (rUp.error) throw rUp.error;
+            confirmadas.push(filasParaGuardar[j].id);
           } catch (e2) {
             if (!primerError) primerError = e2;
+            if (esMovimientoHistorico) registrarRechazoMovimiento(rechazados, filasParaGuardar[j], e2);
           }
         }
       }
+    }
+    if (rechazados.length > 0) {
+      notificarResultadoParcialMovimientos(claveColeccion, rechazados, confirmadas);
+      var parcial = new Error("movimientos_historicos_rechazados: " + rechazados.map(function (fila) {
+        return (fila.id || "sin-id") + " (" + fila.mensaje + ")";
+      }).join(", "));
+      parcial.code = "MOVIMIENTOS_HISTORICOS_PARCIAL";
+      parcial.rechazados = rechazados;
+      parcial.confirmadas = confirmadas;
+      throw parcial;
     }
     if (primerError) throw primerError;
     if (!esMovimientoHistorico && idsParaBorrar.length > 0) {

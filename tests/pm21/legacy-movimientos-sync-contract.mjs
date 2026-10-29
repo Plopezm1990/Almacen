@@ -184,6 +184,23 @@ test("contexto SQL incompatible mantiene bloqueado el replay histórico", async 
   assert.equal(c.rows.get("mov-1").local_id, "QA-A1");
 });
 
+test("lote mixto: la fila válida se confirma y la inválida queda identificada para reintento", async () => {
+  const invalida = { ...nuevo("mov-invalido"), empresaId: "" };
+  const valida = nuevo("mov-valido");
+  const c = contexto();
+  await assert.rejects(
+    c.sync("movimientos_registro", [invalida, valida], "movimientos"),
+    /movimientos_historicos_rechazados:.*mov-invalido.*movimiento_historico_sin_empresa_local/
+  );
+  assert.equal(c.op.insert, 1);
+  assert.equal(c.op.upsert, 0);
+  assert.equal(c.rows.has("mov-valido"), true);
+  assert.equal(c.rows.has("mov-invalido"), false);
+
+  await assert.rejects(c.sync("movimientos_registro", [invalida, valida], "movimientos"), /mov-invalido/);
+  assert.equal(c.op.insert, 1, "el reintento no duplica la fila válida ya confirmada");
+});
+
 test("alta sin contexto o con sentinels globales se bloquea antes de escribir", async () => {
   for (const data of [
     { ...nuevo(), empresaId: "" },
