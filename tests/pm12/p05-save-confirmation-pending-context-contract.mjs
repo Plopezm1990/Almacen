@@ -14,7 +14,7 @@ assert.match(storage, /if \(!pendienteEsDelContexto\(key\)\) continue;/);
 assert.match(storage, /entradas\.push\(\{ key: key, empresaId: contexto\.empresaId, localId: contexto\.localId, cacheKey: cacheKey \|\| key, valor: valor \}\)/);
 assert.match(storage, /entradaPendienteActual\(key\)/);
 assert.match(storage, /confirmadoServidor: confirmadoServidor/);
-assert.match(storage, /pendienteSincronizacion: pendienteSincronizacion \|\| pendientes\(\)\.indexOf\(key\) !== -1/);
+assert.match(storage, /pendienteSincronizacion: pendienteSincronizacion \|\| \(pendientes\(\)\.indexOf\(key\) !== -1 && pendienteEsDelContexto\(key\)\)/);
 assert.match(storage, /marcarPendiente\(key, value, cacheKey\);\s*pendienteSincronizacion = true;/s);
 
 const saveInicio = fuente.indexOf('async function saveKey(key, value)');
