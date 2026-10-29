@@ -25307,13 +25307,25 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
             production: false
           }
         : null;
-      const lineasTicketRapida = (Array.isArray(guardada.lineas) && guardada.lineas.length ? guardada.lineas : lineas).map((linea, indice) => ({
-        id: linea.id || linea.lineaId || `venta-rapida-linea-${indice}`,
-        productoId: linea.productoId || linea.producto_id,
-        cantidad: Number(linea.cantidad) || 0,
-        ingresoUnitario: Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario) || 0,
-        ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
-      })).filter((linea) => linea.productoId && linea.cantidad > 0);
+      const lineasTicketRapida = (Array.isArray(guardada.lineas) && guardada.lineas.length ? guardada.lineas : lineas).map((linea, indice) => {
+        const productoId = linea.productoId || linea.producto_id;
+        const cantidad = Number(linea.cantidad) || 0;
+        const precioDeclarado = Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario);
+        const totalLineaRapida = Number(linea.total ?? linea.total_linea ?? linea.importe ?? linea.importeLinea);
+        const productoRapida = productos.find((producto) => producto.id === productoId);
+        const ingresoUnitario = Number.isFinite(precioDeclarado) && precioDeclarado > 0
+          ? precioDeclarado
+          : Number.isFinite(totalLineaRapida) && cantidad > 0 && totalLineaRapida > 0
+            ? totalLineaRapida / cantidad
+            : productoRapida ? precioNeto(productoRapida) : 0;
+        return {
+          id: linea.id || linea.lineaId || `venta-rapida-linea-${indice}`,
+          productoId,
+          cantidad,
+          ingresoUnitario,
+          ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
+        };
+      }).filter((linea) => linea.productoId && linea.cantidad > 0);
       const numeroFiscalRapida = documentoFiscalRapida
         ? `${documentoFiscalRapida.codigo_serie || "TPV"}-${String(documentoFiscalRapida.numero == null ? "" : documentoFiscalRapida.numero).padStart(6, "0")}`
         : "";
