@@ -16,6 +16,8 @@ for (const required of [
   "await iniciarCobroCuentaF4(pagoRapida",
   "setTicketVenta({",
   "lineasTicketRapida",
+  "totalLineaRapida",
+  "precioNeto(productoRapida)",
   "qrFiscalRapida",
   'production: false'
 ]) {
