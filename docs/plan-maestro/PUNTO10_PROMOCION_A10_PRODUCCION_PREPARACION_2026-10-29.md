@@ -75,6 +75,24 @@ salida. El resultado debe confirmar:
 - cero efectos nuevos en `ERROR`;
 - transporte fiscal real desactivado.
 
+### Resultado del preflight de producción — 29/10/2026
+
+La comprobación se ejecutó contra producción en modo exclusivamente lector:
+
+| Control | Resultado |
+|---|---:|
+| Columna `requiere_preparacion` presente | `false` |
+| Helper A10 nuevo presente | `false` |
+| Trigger A10 nuevo presente | `false` |
+| Filas del producto afectado | `1` |
+| Comanda histórica `BLOQUEADA/SIN_RUTA` | `1` |
+| Efectos actuales en `ERROR` | `0` |
+
+El resultado es coherente con el diagnóstico: producción todavía no tiene la
+corrección de A10 y mantiene exactamente una comanda histórica que requiere
+decisión. El punto 10 queda **PREPARADO, CON NO-GO PARA APLICACIÓN AUTOMÁTICA**.
+No se ejecutaron migraciones ni se modificaron filas productivas.
+
 ## Criterios de NO-GO
 
 Se detiene el punto 10 si ocurre cualquiera de estos casos:
