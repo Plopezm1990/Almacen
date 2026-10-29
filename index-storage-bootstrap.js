@@ -237,7 +237,7 @@
   // que "lo que ya no está en local" NO significa "borrado" — significa
   // "más antiguo de 500". Si se tratara como borrado, cada apunte nuevo
   // iría eliminando el histórico de la nube. Por eso se excluye.
-  var NUNCA_BORRAR = { auditoria: true };
+  var NUNCA_BORRAR = { auditoria: true, movimientos: true };
 
   function borradosDe(key) {
     if (NUNCA_BORRAR[key]) return [];
@@ -582,11 +582,12 @@
   // movimiento 1001 el programa creía que la nube estaba medio vacía, así
   // que resubía miles de filas en cada guardado (lento, y se pasaba del
   // tiempo límite) y daba por inexistente lo que sí estaba.
-  async function leerFilasCompletas(tabla) {
+  async function leerFilasCompletas(tabla, incluirContextoMovimiento) {
     var todas = [];
     var desde = 0;
     for (;;) {
-      var r = await window.__nubeCliente.from(tabla).select("id, datos")
+      var columnas = incluirContextoMovimiento ? "id, datos, empresa_id, local_id" : "id, datos";
+      var r = await window.__nubeCliente.from(tabla).select(columnas)
         .order("creado_en", { ascending: false })
         .range(desde, desde + PAGINA_LECTURA - 1);
       if (r.error) throw r.error;
@@ -621,6 +622,43 @@
   function contenidoFilaIgual(a, b) {
     return JSON.stringify(contenidoSinMarcasLocales(a)) === JSON.stringify(contenidoSinMarcasLocales(b));
   }
+  function textoContextoMovimiento(valor) {
+    return typeof valor === "string" ? valor.trim() : "";
+  }
+  function contextoMovimientoHistoricoIgual(filaRemota, datosLocales) {
+    var datosRemotos = filaRemota && filaRemota.datos && typeof filaRemota.datos === "object"
+      ? filaRemota.datos : {};
+    var empresaSql = textoContextoMovimiento(filaRemota && filaRemota.empresa_id);
+    var localSql = textoContextoMovimiento(filaRemota && filaRemota.local_id);
+    var empresaRemota = textoContextoMovimiento(datosRemotos.empresaId);
+    var localRemoto = textoContextoMovimiento(datosRemotos.localId);
+    var empresaLocal = textoContextoMovimiento(datosLocales && datosLocales.empresaId);
+    var localLocal = textoContextoMovimiento(datosLocales && datosLocales.localId);
+
+    // La pareja SQL es la autoridad de aislamiento. Si existe en la fila,
+    // una caché de otro tenant/local no puede considerarse un replay válido.
+    if (empresaSql && empresaLocal && empresaSql !== empresaLocal) return false;
+    if (localSql && localLocal && localSql !== localLocal) return false;
+    // Detectar también una fila histórica internamente incoherente entre sus
+    // columnas SQL y su JSON, sin reparar ni sobrescribir desde el cliente.
+    if (empresaSql && empresaRemota && empresaSql !== empresaRemota) return false;
+    if (localSql && localRemoto && localSql !== localRemoto) return false;
+    // Cuando ambos JSON contienen contexto explícito, debe ser el mismo.
+    if (empresaRemota && empresaLocal && empresaRemota !== empresaLocal) return false;
+    if (localRemoto && localLocal && localRemoto !== localLocal) return false;
+
+    // Los registros anteriores a PM21 pueden no tener empresaId/localId en
+    // datos aunque la aplicación los infiera al arrancar. Esos dos campos no
+    // son contenido operativo del movimiento histórico y no deben convertir
+    // un replay inmutable en una falsa divergencia. Nunca se escribe la fila.
+    var remotoComparable = Object.assign({}, datosRemotos);
+    var localComparable = Object.assign({}, datosLocales || {});
+    delete remotoComparable.empresaId;
+    delete remotoComparable.localId;
+    delete localComparable.empresaId;
+    delete localComparable.localId;
+    return contenidoFilaIgual(remotoComparable, localComparable);
+  }
   function datosFilaParaServidor(valor, claveColeccion) {
     if (!valor || typeof valor !== "object") return valor;
     // Estos movimientos ya viven en movimientos_stock y solo se hidratan en
@@ -630,26 +668,89 @@
     return contenidoSinMarcasLocales(valor);
   }
 
+  function registrarRechazoMovimiento(rechazados, fila, error) {
+    rechazados.push({
+      id: fila && fila.id ? fila.id : null,
+      code: error && error.code ? error.code : "MOVIMIENTO_HISTORICO_RECHAZADO",
+      mensaje: error && error.message ? error.message : "movimiento_historico_rechazado"
+    });
+  }
+  function notificarResultadoParcialMovimientos(claveColeccion, rechazados, confirmadas) {
+    if (typeof window === "undefined" || typeof window.dispatchEvent !== "function" || typeof CustomEvent !== "function") return;
+    var resumen = rechazados.map(function (fila) {
+      return (fila.id || "sin-id") + " (" + fila.mensaje + ")";
+    }).join(", ");
+    window.dispatchEvent(new CustomEvent("movimientos-sync-parcial", { detail: {
+      key: claveColeccion,
+      filasRechazadas: rechazados,
+      filasConfirmadas: confirmadas
+    } }));
+    window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
+      key: claveColeccion,
+      pendiente: true,
+      parcial: true,
+      filasRechazadas: rechazados,
+      filasConfirmadas: confirmadas,
+      mensaje: "Hay movimientos pendientes de contexto o revisión (" + resumen + "); los demás se han confirmado sin sobrescribir el histórico."
+    } }));
+  }
+
   // Sube a la nube lo que ha cambiado en este equipo, y borra únicamente lo
   // que este equipo ha quitado a propósito (una venta anulada, un albarán
   // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
   async function sincronizarColeccionPorFila(tabla, listaLocal, claveColeccion) {
-    var filasRemotas = await leerFilasCompletas(tabla);
+    var esMovimientoHistorico = claveColeccion === "movimientos" && tabla === "movimientos_registro";
+    if (esMovimientoHistorico && !Array.isArray(listaLocal)) throw new Error("movimientos_historicos_lista_invalida");
+    var filasRemotas = await leerFilasCompletas(tabla, esMovimientoHistorico);
     var remotoPorId = {};
-    filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
+    filasRemotas.forEach(function (fila) {
+      remotoPorId[fila.id] = esMovimientoHistorico ? fila : fila.datos;
+    });
 
     var filasParaGuardar = [];
+    var rechazados = [];
+    var confirmadas = [];
+    var primerError = null;
     listaLocal.forEach(function (x) {
       if (!x || !x.id) return;
       var datosServidor = datosFilaParaServidor(x, claveColeccion);
       if (datosServidor === null) return;
+      var existeRemoto = Object.prototype.hasOwnProperty.call(remotoPorId, x.id);
       var enNube = remotoPorId[x.id];
-      if (!enNube || !contenidoFilaIgual(enNube, datosServidor)) {
-        filasParaGuardar.push({
+      if (esMovimientoHistorico && existeRemoto) {
+        // El historial confirmado es inmutable; ninguna caché desactualizada
+        // puede reescribir una fila de este ledger heredado.
+        if (!contextoMovimientoHistoricoIgual(enNube, datosServidor)) {
+          var conflicto = new Error("movimiento_historico_divergente");
+          conflicto.code = "MOVIMIENTO_HISTORICO_DIVERGENTE";
+          registrarRechazoMovimiento(rechazados, x, conflicto);
+          return;
+        }
+        confirmadas.push(x.id);
+        return;
+      }
+      if (!existeRemoto || !contenidoFilaIgual(enNube, datosServidor)) {
+        var nuevaFila = {
           id: x.id,
           fecha: datosServidor.fecha || new Date().toISOString().slice(0, 10),
           datos: datosServidor,
-        });
+        };
+        if (esMovimientoHistorico) {
+          // No aceptar un tenant inferido silenciosamente por triggers.
+          // El servidor vuelve a autorizar la pareja empresa/local mediante RLS.
+          var empresaId = typeof datosServidor.empresaId === "string" ? datosServidor.empresaId.trim() : "";
+          var localId = typeof datosServidor.localId === "string" ? datosServidor.localId.trim() : "";
+          if (!empresaId || empresaId.toUpperCase() === "TODOS" || empresaId.toUpperCase() === "TODAS LAS EMPRESAS" ||
+              !localId || localId.toUpperCase() === "TODOS" || localId.toUpperCase() === "TODOS LOS LOCALES") {
+            var sinContexto = new Error("movimiento_historico_sin_empresa_local");
+            sinContexto.code = "MOVIMIENTO_HISTORICO_SIN_CONTEXTO";
+            registrarRechazoMovimiento(rechazados, x, sinContexto);
+            return;
+          }
+          nuevaFila.empresa_id = empresaId;
+          nuevaFila.local_id = localId;
+        }
+        filasParaGuardar.push(nuevaFila);
       }
     });
 
@@ -660,7 +761,6 @@
       return Object.prototype.hasOwnProperty.call(remotoPorId, id);
     });
 
-    var primerError = null;
     if (filasParaGuardar.length > 0) {
       if (tabla === "auditoria_registro") {
         // auditoria_registro no admite escritura directa a propósito — cada
@@ -674,8 +774,10 @@
               p_fecha: d.fecha, p_hora: d.hora, p_empresa_id: d.empresaId || null, p_local_id: d.localId || null,
             });
             if (rRpc.error) throw rRpc.error;
+            confirmadas.push(filasParaGuardar[i].id);
           } catch (e) {
             if (!primerError) primerError = e;
+            if (esMovimientoHistorico) registrarRechazoMovimiento(rechazados, filasParaGuardar[i], e);
           }
         }
       } else {
@@ -684,16 +786,43 @@
         // gracias a la comparación canónica anterior.
         for (var j = 0; j < filasParaGuardar.length; j++) {
           try {
-            var rUp = await window.__nubeCliente.from(tabla).upsert([filasParaGuardar[j]]);
+            // INSERT evita que el cliente haga UPDATE a movimientos ya confirmados.
+            // La tabla heredada no tiene una política de UPDATE por diseño.
+            var rUp = esMovimientoHistorico
+              ? await window.__nubeCliente.from(tabla).insert([filasParaGuardar[j]])
+              : await window.__nubeCliente.from(tabla).upsert([filasParaGuardar[j]]);
+            if (rUp.error && esMovimientoHistorico && rUp.error.code === "23505") {
+              // Dos equipos pueden insertar simultáneamente el mismo id.
+              // Solo se considera replay válido si la fila persistida coincide.
+              var comprobacion = await window.__nubeCliente.from(tabla)
+                .select("id,datos,empresa_id,local_id").eq("id", filasParaGuardar[j].id).maybeSingle();
+              if (!comprobacion.error && comprobacion.data &&
+                  contextoMovimientoHistoricoIgual(comprobacion.data, filasParaGuardar[j].datos)) {
+                confirmadas.push(filasParaGuardar[j].id);
+                continue;
+              }
+            }
             if (rUp.error) throw rUp.error;
+            confirmadas.push(filasParaGuardar[j].id);
           } catch (e2) {
             if (!primerError) primerError = e2;
+            if (esMovimientoHistorico) registrarRechazoMovimiento(rechazados, filasParaGuardar[j], e2);
           }
         }
       }
     }
+    if (rechazados.length > 0) {
+      notificarResultadoParcialMovimientos(claveColeccion, rechazados, confirmadas);
+      var parcial = new Error("movimientos_historicos_rechazados: " + rechazados.map(function (fila) {
+        return (fila.id || "sin-id") + " (" + fila.mensaje + ")";
+      }).join(", "));
+      parcial.code = "MOVIMIENTOS_HISTORICOS_PARCIAL";
+      parcial.rechazados = rechazados;
+      parcial.confirmadas = confirmadas;
+      throw parcial;
+    }
     if (primerError) throw primerError;
-    if (idsParaBorrar.length > 0) {
+    if (!esMovimientoHistorico && idsParaBorrar.length > 0) {
       var rDel = await window.__nubeCliente.from(tabla).delete().in("id", idsParaBorrar);
       if (rDel.error) throw rDel.error;
     }
@@ -1224,6 +1353,8 @@
           } else if (tablaEmpresaLocal) {
             var rFinDel = await conTiempoLimite(window.__nubeCliente.from(tablaEmpresaLocal).delete().neq("id", ""), ESPERA_NUBE_MS);
             if (rFinDel.error) throw rFinDel.error;
+          } else if (tablaEspecial && key === "movimientos") {
+            // Limpiar la caché local nunca borra el historial remoto.
           } else if (tablaEspecial) {
             await conTiempoLimite(window.__nubeCliente.from(tablaEspecial).delete().neq("id", ""), ESPERA_NUBE_MS);
           } else {

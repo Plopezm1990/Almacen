@@ -1,0 +1,24 @@
+name: PM21 legacy movement sync (isolated contracts)
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - index-storage-bootstrap.js
+      - tests/pm21/legacy-movimientos-sync-contract.mjs
+      - .github/workflows/pm21-legacy-movimientos-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-legacy-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify JavaScript syntax
+        run: node --check index-storage-bootstrap.js
+      - name: Execute sync contracts without credentials or remote databases
+        run: node --test tests/pm21/legacy-movimientos-sync-contract.mjs
