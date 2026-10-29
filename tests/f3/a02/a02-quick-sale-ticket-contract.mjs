@@ -18,6 +18,9 @@ for (const required of [
   "lineasTicketRapida",
   "totalLineaRapida",
   "precioNeto(productoRapida)",
+  "const cuentaCerradaRapida",
+  "Pago confirmado, pero la cuenta sigue abierta",
+  "const cuentaCerradaServidor",
   "qrFiscalRapida",
   'production: false'
 ]) {
