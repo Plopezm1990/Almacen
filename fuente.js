@@ -101763,6 +101763,18 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
       return { ...prod, stock: Number(st2.total) || 0, stockPisoVenta: Number(st2.piso) || 0, stockMinimo: Number(st2.minimo) || 0, _pm07BajoMinimo: !!st2.bajo_minimo, _pm07Servidor: true, _pm07LocalOperable: st2.local_operable !== false };
     }));
   }
+  const lineaIds = [...new Set(movs.map((m4) => m4?.datos?.linea_id).filter(Boolean))];
+  const lineasEconomicas = [];
+  for (let i33 = 0; i33 < lineaIds.length; i33 += 200) {
+    const lote = lineaIds.slice(i33, i33 + 200);
+    const rLineas = await supabase.from("pedido_lineas").select("id,precio_unitario,base,impuestos,total,snapshot_comercial").in("id", lote);
+    if (rLineas.error) {
+      console.warn("No se pudo recuperar el snapshot comercial de las ventas históricas:", rLineas.error);
+      break;
+    }
+    if (Array.isArray(rLineas.data)) lineasEconomicas.push(...rLineas.data);
+  }
+  const lineaEconomicaPorId = new Map(lineasEconomicas.map((linea) => [String(linea.id), linea]));
   if (typeof setMovimientos === "function") {
     const server = movs.map((m4) => {
       const d2 = m4.datos && typeof m4.datos === "object" ? m4.datos : {};
@@ -101771,6 +101783,13 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
       if (movimientoPM12.tipo === "INVENTARIO_PM12" || datosPM12.origen === "cancelarConteo") {
         return { ...(datosPM12.camposExtra || {}), ...datosPM12, id: datosPM12.movimientoId, operationId: movimientoPM12.operation_id, productoId: movimientoPM12.producto_id, localId: movimientoPM12.local_id, empresaId: movimientoPM12.empresa_id, cantidad: Number(datosPM12.cantidad), _pm07Servidor: true, fecha: String(movimientoPM12.created_at || "").slice(0, 10) };
       }
+      const lineaEconomica = d2.linea_id ? lineaEconomicaPorId.get(String(d2.linea_id)) : null;
+      const precioEnDatos = d2.ingresoUnitario !== void 0 && d2.ingresoUnitario !== null ? Number(d2.ingresoUnitario) : Number(lineaEconomica?.precio_unitario);
+      const baseLinea = d2.baseLinea !== void 0 && d2.baseLinea !== null ? Number(d2.baseLinea) : Number(lineaEconomica?.base);
+      const impuestosLinea = d2.impuestosLinea !== void 0 && d2.impuestosLinea !== null ? Number(d2.impuestosLinea) : Number(lineaEconomica?.impuestos);
+      const impuestoPctSnapshot = Number(lineaEconomica?.snapshot_comercial?.impuesto_pct);
+      const ivaEnDatos = d2.ivaVentaAplicado !== void 0 && d2.ivaVentaAplicado !== null ? Number(d2.ivaVentaAplicado) : Number.isFinite(impuestoPctSnapshot) ? impuestoPctSnapshot : Number.isFinite(baseLinea) && baseLinea !== 0 ? impuestosLinea / baseLinea * 100 : 0;
+      const importeLinea = d2.importeLinea !== void 0 && d2.importeLinea !== null ? Number(d2.importeLinea) : Number(lineaEconomica?.total);
       const delta = Number(m4.delta_total) || 0;
       const creado = String(m4.created_at || "");
       return {
@@ -101787,13 +101806,13 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
         motivo: d2.motivo || m4.tipo,
         referencia: d2.referencia || "PM-07",
         costoUnitario: Number(d2.costoUnitario) || 0,
-        ingresoUnitario: Number(d2.ingresoUnitario) || 0,
-        ivaVentaAplicado: Number(d2.ivaVentaAplicado) || 0,
+        ingresoUnitario: Number.isFinite(precioEnDatos) ? precioEnDatos : 0,
+        ivaVentaAplicado: Number.isFinite(ivaEnDatos) ? ivaEnDatos : 0,
         medioPago: d2.medioPago || null,
         detallePago: d2.detallePago || null,
         reembolso: d2.reembolso !== void 0 && d2.reembolso !== null ? Number(d2.reembolso) || 0 : null,
         medioReembolso: d2.medioReembolso || null,
-        datos: d2,
+        datos: lineaEconomica ? { ...d2, ingresoUnitario: Number.isFinite(precioEnDatos) ? precioEnDatos : 0, ivaVentaAplicado: Number.isFinite(ivaEnDatos) ? ivaEnDatos : 0, baseLinea: Number.isFinite(baseLinea) ? baseLinea : 0, impuestosLinea: Number.isFinite(impuestosLinea) ? impuestosLinea : 0, importeLinea: Number.isFinite(importeLinea) ? importeLinea : 0 } : d2,
         fecha: d2.fechaOperacion || (creado ? creado.slice(0, 10) : todayISO()),
         hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
         afectaStockTotal: delta !== 0,
