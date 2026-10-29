@@ -109175,6 +109175,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
           id: uid(),
           operationId: uid(),
           productoId: nuevo.id,
+          empresaId: nuevo.empresaId || null,
           localId: nuevo.localId || null,
           cantidad: stockInicial,
           tipo: "OTRO",

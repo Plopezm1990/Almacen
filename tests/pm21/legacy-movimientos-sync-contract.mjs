@@ -20,6 +20,61 @@ const nuevo = (id = "mov-1") => ({
   id, fecha: "2026-10-27", empresaId: "QA-EMP-A", localId: "QA-A1",
   tipo: "AJUSTE_TEST", cantidad: 2,
 });
+
+const appSource = fs.readFileSync(new URL("../../fuente.js", import.meta.url), "utf8")
+  .replace(/\r\n/g, "\n");
+function extraerFuncion(source, name) {
+  const start = source.indexOf(`  function ${name}(`);
+  assert.ok(start >= 0, `${name} localizado`);
+  const open = source.indexOf("{", start);
+  let depth = 0;
+  let quote = null;
+  let escaped = false;
+  for (let i = open; i < source.length; i += 1) {
+    const ch = source[i];
+    if (quote) {
+      if (escaped) escaped = false;
+      else if (ch === "\\") escaped = true;
+      else if (ch === quote) quote = null;
+      continue;
+    }
+    if (ch === "\"" || ch === "'" || ch === "`") {
+      quote = ch;
+      continue;
+    }
+    if (ch === "{") depth += 1;
+    if (ch === "}" && --depth === 0) return source.slice(start, i + 1);
+  }
+  throw new Error(`${name} no pudo extraerse`);
+}
+
+test("alta de producto con stock inicial propaga empresaId al movimiento", () => {
+  const start = appSource.indexOf("  function addProducto(data) {");
+  const end = appSource.indexOf("  function updateProducto(", start);
+  const addProducto = new Function(
+    "validarProductoPM10", "validarContextoEscrituraPM10", "localActivoId", "locales",
+    "empresaId", "uid", "setProductos", "setMovimientos", "todayISO",
+    `${extraerFuncion(appSource.slice(start, end), "addProducto")}; return addProducto;`
+  )(
+    data => ({ ok: true, datos: data }),
+    () => ({ ok: true }),
+    "QA-A1",
+    [],
+    "QA-EMP-A",
+    (() => { let n = 0; return () => `fixture-${++n}`; })(),
+    update => update([]),
+    update => { globalThis.__movimientos = update(globalThis.__movimientos || []); },
+    () => "2026-10-29"
+  );
+  globalThis.__movimientos = [];
+  const producto = addProducto({ nombre: "Fixture stock inicial", stock: 2 });
+  assert.equal(producto.empresaId, "QA-EMP-A");
+  assert.equal(globalThis.__movimientos.length, 1);
+  assert.equal(globalThis.__movimientos[0].empresaId, "QA-EMP-A");
+  assert.equal(globalThis.__movimientos[0].localId, "QA-A1");
+  delete globalThis.__movimientos;
+});
+
 function contexto({ inicial = [], borrados = [], denegar = false, carrera = null } = {}) {
   const rows = new Map(inicial.map(x => [x.id, structuredClone(x)]));
   const op = { insert: 0, upsert: 0, delete: 0, select: 0, writes: [] };
