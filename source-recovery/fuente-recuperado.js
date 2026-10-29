@@ -25219,7 +25219,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
   async function confirmarVentaRapida() {
     if (procesandoVentaRapida || enviandoVenta || !carrito.length) return;
-    if (pedidoOperativoA05?.cuentaId && !["CERRADA", "CANCELADO"].includes(String(pedidoOperativoA05.pedidoEstado || ""))) {
+    const cuentaCerradaServidor = String(estadoCobroF4?.cuentaEstado || "").toUpperCase() === "CERRADA";
+    if (pedidoOperativoA05?.cuentaId && !cuentaCerradaServidor && !["CERRADA", "CANCELADO"].includes(String(pedidoOperativoA05.pedidoEstado || ""))) {
       setErrorVenta("Hay una cuenta abierta en este terminal. Continúa esa cuenta en Sala o ciérrala antes de iniciar otra venta rápida.");
       return;
     }
@@ -25330,6 +25331,23 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         ? `${documentoFiscalRapida.codigo_serie || "TPV"}-${String(documentoFiscalRapida.numero == null ? "" : documentoFiscalRapida.numero).padStart(6, "0")}`
         : "";
       const fechaVentaRapida = fiscalRapida?.fecha_expedicion || new Date().toISOString().slice(0, 10);
+      const cuentaCerradaRapida = String(cobro.cuentaEstado || "").toUpperCase() === "CERRADA" || cobro.cuentaCierre?.ok === true;
+      if (!cuentaCerradaRapida) {
+        setEstadoCobroF4(cobro);
+        setMensajeCobroF4(cobro.mensaje || "Pago confirmado, pero la cuenta sigue abierta. No repitas el cobro: continúa en Sala para completar el cierre.");
+        setResultadoVentaRapida({
+          ok: false,
+          paid: true,
+          total: importe,
+          medio: pagoRapida,
+          cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
+          cuentaCerrada: false,
+          fiscal: cobro.fiscal || null
+        });
+        setErrorVenta("El cobro está confirmado, pero la cuenta no se ha cerrado formalmente. Continúa en Sala; no vuelvas a cobrar.");
+        setEfectivoRecibidoRapida("");
+        return;
+      }
       setTicketVenta({
         ventaId: documentoFiscalRapida?.venta_fiscal_id || guardada.cuentaId || guardada.pedidoId || `venta-rapida-${Date.now()}`,
         referencia: `V-${fechaVentaRapida.replaceAll("-", "")}-${String(guardada.cuentaId || guardada.pedidoId || "RAPIDA").replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
@@ -25360,7 +25378,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         total: importe,
         medio: pagoRapida,
         cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
-        cuentaCerrada: String(cobro.cuentaEstado || "").toUpperCase() === "CERRADA" || cobro.cuentaCierre?.ok === true,
+        cuentaCerrada: cuentaCerradaRapida,
         fiscal: cobro.fiscal || null
       });
       setCarrito([]);
@@ -25377,7 +25395,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   function renderVentaRapidaStatus() {
     const h3 = import_react4.default.createElement;
     const resultado = resultadoVentaRapida;
-    const cuentaAbierta = pedidoOperativoA05?.cuentaId && !["CERRADA", "CANCELADO"].includes(String(pedidoOperativoA05.pedidoEstado || ""));
+    const cuentaCerradaServidor = String(estadoCobroF4?.cuentaEstado || "").toUpperCase() === "CERRADA";
+    const cuentaAbierta = pedidoOperativoA05?.cuentaId && !cuentaCerradaServidor && !["CERRADA", "CANCELADO"].includes(String(pedidoOperativoA05.pedidoEstado || ""));
     if (!resultado && !cuentaAbierta) return null;
     return h3(
       Card,
@@ -25386,7 +25405,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h3("div", { className: "text-[12.5px] font-semibold" }, resultado?.ok ? "Venta rápida completada" : "Venta rápida en curso"),
         resultado?.ok ? h3(Pill2, { color: C2.accent }, "PAGADA") : null
       ),
-      resultado?.ok ? h3("div", { className: "text-[12px]" }, "Total €", fmt(resultado.total), " · ", resultado.medio === "EFECTIVO" ? "efectivo" : "tarjeta", resultado.medio === "EFECTIVO" ? ` · cambio €${fmt(resultado.cambio)}` : "") : h3("div", { className: "text-[11.5px]" }, "La cuenta se conserva en el servidor para continuarla sin duplicar la venta."),
+      resultado?.ok ? h3("div", { className: "text-[12px]" }, "Total €", fmt(resultado.total), " · ", resultado.medio === "EFECTIVO" ? "efectivo" : "tarjeta", resultado.medio === "EFECTIVO" ? ` · cambio €${fmt(resultado.cambio)}` : "") : h3("div", { className: "text-[11.5px]" }, resultado?.paid ? "Pago confirmado, pero la cuenta sigue abierta. No repitas el cobro; continúa en Sala para cerrar formalmente." : "La cuenta se conserva en el servidor para continuarla sin duplicar la venta."),
       resultado?.fiscal?.ok === false ? h3("div", { className: "text-[11px] mt-2", style: { color: C2.amber } }, "Venta cerrada. Emisión fiscal pendiente de configuración C07-D.") : null,
       resultado?.ok && ticketVenta ? h3("div", { className: "flex gap-2 mt-2" }, h3(Btn, { small: true, variant: "ghost", "data-ticket-quick": "1", onClick: () => setTicketVenta(ticketVenta) }, "Ver ticket")) : null,
       cuentaAbierta ? h3("div", { className: "flex gap-2 mt-2" }, h3(Btn, { small: true, variant: "ghost", onClick: () => setModoTPV("SALA") }, "Continuar en Sala")) : null
