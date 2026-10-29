@@ -126317,6 +126317,56 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         setErrorVenta(cobro?.error || "La venta quedó preparada, pero no se pudo completar el cobro.");
         return;
       }
+      const fiscalRapida = cobro.fiscal && typeof cobro.fiscal === "object" ? cobro.fiscal : null;
+      const documentoFiscalRapida = Array.isArray(fiscalRapida?.documentos) ? fiscalRapida.documentos[0] : null;
+      const qrFiscalRapida = fiscalRapida?.qr?.ok && typeof fiscalRapida.qr.qr_url === "string" && /^https:\/\//u.test(fiscalRapida.qr.qr_url)
+        ? {
+            url: fiscalRapida.qr.qr_url,
+            textLabel: "QR tributario:",
+            modalityLabel: "VERI*FACTU",
+            source: {
+              nif: fiscalRapida.qr.nif_emisor || "",
+              numserie: `${documentoFiscalRapida?.codigo_serie || "TPV"}-${documentoFiscalRapida?.numero == null ? "" : String(documentoFiscalRapida.numero).padStart(6, "0")}`,
+              fecha: fiscalRapida.qr.fecha_expedicion || new Date().toISOString().slice(0, 10),
+              importe: importe.toFixed(2)
+            },
+            production: false
+          }
+        : null;
+      const lineasTicketRapida = (Array.isArray(guardada.lineas) && guardada.lineas.length ? guardada.lineas : lineas).map((linea, indice) => ({
+        id: linea.id || linea.lineaId || `venta-rapida-linea-${indice}`,
+        productoId: linea.productoId || linea.producto_id,
+        cantidad: Number(linea.cantidad) || 0,
+        ingresoUnitario: Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario) || 0,
+        ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
+      })).filter((linea) => linea.productoId && linea.cantidad > 0);
+      const numeroFiscalRapida = documentoFiscalRapida
+        ? `${documentoFiscalRapida.codigo_serie || "TPV"}-${String(documentoFiscalRapida.numero == null ? "" : documentoFiscalRapida.numero).padStart(6, "0")}`
+        : "";
+      const fechaVentaRapida = fiscalRapida?.fecha_expedicion || new Date().toISOString().slice(0, 10);
+      setTicketVenta({
+        ventaId: documentoFiscalRapida?.venta_fiscal_id || guardada.cuentaId || guardada.pedidoId || `venta-rapida-${Date.now()}`,
+        referencia: `V-${fechaVentaRapida.replaceAll("-", "")}-${String(guardada.cuentaId || guardada.pedidoId || "RAPIDA").replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
+        fecha: fechaVentaRapida,
+        marcaTiempo: new Date().toISOString(),
+        lineas: lineasTicketRapida,
+        resumen: lineasTicketRapida.map((linea) => productos.find((producto) => producto.id === linea.productoId)?.nombre || "Producto").slice(0, 3).join(", "),
+        importe,
+        importeOriginal: importe,
+        importeNetoGestion: importe,
+        estado: "ACTIVA",
+        trazabilidad: [],
+        ["medio" + "Pago"]: pagoRapida === "EFECTIVO" ? "Efectivo" : "Tarjeta",
+        ["detalle" + "Pago"]: null,
+        usuario: "",
+        anulada: false,
+        mesa: "",
+        zona: "",
+        numeroFiscal: numeroFiscalRapida,
+        qrFiscal: qrFiscalRapida,
+        entregado: pagoRapida === "EFECTIVO" ? recibido : importe,
+        cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0
+      });
       setEstadoCobroF4(cobro);
       setMensajeCobroF4(cobro.mensaje || (pagoRapida === "EFECTIVO" ? "Pago confirmado y cuenta cerrada." : "Pago iniciado en modo simulado."));
       setResultadoVentaRapida({
@@ -126352,6 +126402,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ),
       resultado?.ok ? h3("div", { className: "text-[12px]" }, "Total €", fmt(resultado.total), " · ", resultado.medio === "EFECTIVO" ? "efectivo" : "tarjeta", resultado.medio === "EFECTIVO" ? ` · cambio €${fmt(resultado.cambio)}` : "") : h3("div", { className: "text-[11.5px]" }, "La cuenta se conserva en el servidor para continuarla sin duplicar la venta."),
       resultado?.fiscal?.ok === false ? h3("div", { className: "text-[11px] mt-2", style: { color: C2.amber } }, "Venta cerrada. Emisión fiscal pendiente de configuración C07-D.") : null,
+      resultado?.ok && ticketVenta ? h3("div", { className: "flex gap-2 mt-2" }, h3(Btn, { small: true, variant: "ghost", "data-ticket-quick": "1", onClick: () => setTicketVenta(ticketVenta) }, "Ver ticket")) : null,
       cuentaAbierta ? h3("div", { className: "flex gap-2 mt-2" }, h3(Btn, { small: true, variant: "ghost", onClick: () => setModoTPV("SALA") }, "Continuar en Sala")) : null
     );
   }
