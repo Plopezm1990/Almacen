@@ -104192,6 +104192,7 @@ function GestionAlmacen() {
   const [nominas, setNominas] = (0, import_react4.useState)([]);
   const [entrevistas, setEntrevistas] = (0, import_react4.useState)([]);
   const skipSaveRef = import_react4.default.useRef(true);
+  const ultimaFirmaProductosGuardadaRef = import_react4.default.useRef(null);
   const autoSnapshotRef = import_react4.default.useRef(false);
   const [proveedores, setProveedores] = (0, import_react4.useState)([]);
   const [productos, setProductos] = (0, import_react4.useState)([]);
@@ -104842,6 +104843,16 @@ function GestionAlmacen() {
       window.__localActivoIdParaContexto = typeof localActivoId === "string" && localActivoId ? localActivoId : null;
       window.__empresaActivaIdParaContexto = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : null;
     }
+    // Cambiar de empresa/local no es una edición del catálogo. El efecto
+    // mantiene las dependencias de contexto para publicar el contexto antes
+    // de una hidratación tardía, pero evita volver a guardar la misma lista
+    // cuando solo cambia ese contexto.
+    const empresaProductos = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : "";
+    const localProductos = typeof localActivoId === "string" && localActivoId ? localActivoId : "";
+    if (!empresaProductos || !localProductos) return;
+    const firmaProductos = JSON.stringify(productos);
+    if (ultimaFirmaProductosGuardadaRef.current === firmaProductos) return;
+    ultimaFirmaProductosGuardadaRef.current = firmaProductos;
     saveKey("productos", productos);
   }, [productos, ready, localActivoId, empresaDelLocalActivo?.id]);
   (0, import_react4.useEffect)(() => {
