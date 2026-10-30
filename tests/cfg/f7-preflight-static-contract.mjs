@@ -90,6 +90,8 @@ const EXCLUIDAS = new Set([
   '20261028190000_abc_f4_cuenta_cierre_pagada.sql',
   // Corrección contextual P3c aplicada en una ventana separada; no forma parte de la foto F7 histórica.
   '20261029200000_abc_p3c_contexto_productos_production_fix.sql',
+  // Autoridad del stock en la ruta contextual P3c; ventana separada de la foto F7 histórica.
+  '20261030130000_abc_p3c_stock_authority.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
