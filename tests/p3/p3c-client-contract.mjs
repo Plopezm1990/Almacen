@@ -9,12 +9,29 @@ const puente = await readFile("ui-context-bridge.js", "utf8");
 const bundle = await readFile("fuente.js", "utf8");
 const recuperado = await readFile("source-recovery/fuente-recuperado.js", "utf8");
 const migracionContextual = await readFile("supabase/migrations/20261029200000_abc_p3c_contexto_productos_production_fix.sql", "utf8");
+const migracionAutoridadStock = await readFile("supabase/migrations/20261030130000_abc_p3c_stock_authority.sql", "utf8");
+const migracionFastPath = await readFile("supabase/migrations/20261030143000_abc_p3c_stock_only_fast_path.sql", "utf8");
 const base = [{ id: "p1", empresaId: "QA-EMP-A", localId: "QA-A1", nombre: "Agua", precioVenta: 1, costo: 0.4 }];
 const textoBase = JSON.stringify(base);
 
 // El cliente contextual y la base de datos deben publicar la misma firma.
 assert.match(migracionContextual, /create or replace function public\.abc_productos_guardar_lista\([\s\S]*?p_venta jsonb,[\s\S]*?p_empresa_id text,[\s\S]*?p_local_id text/s);
 assert.match(migracionContextual, /pg_notify\('pgrst', 'reload schema'\)/);
+for (const campo of [
+  "stock",
+  "stockPisoVenta",
+  "stockMinimo",
+  "stockMinimoPisoVenta",
+  "_pm07BajoMinimo",
+  "_pm07Servidor",
+  "_pm07LocalOperable",
+  "deficitPendiente"
+]) {
+  assert.match(migracionAutoridadStock, new RegExp(`'${campo}'`), `falta normalizar el campo derivado ${campo}`);
+}
+assert.match(migracionFastPath, /v_base_operativa/);
+assert.match(migracionFastPath, /'empresaId', 'localId'/);
+assert.match(migracionFastPath, /coalesce\(p_venta, '\[\]'::jsonb\) = '\[\]'::jsonb/);
 
 function entorno(rpc, leerRemoto = () => base) {
   const datos = new Map([["almacen:productos", textoBase]]);
