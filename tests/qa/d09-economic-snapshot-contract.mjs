@@ -12,7 +12,7 @@ assert.match(migration, /'ivaVentaAplicado',v_iva/);
 assert.match(migration, /'importeLinea',coalesce\(p_linea\.total,0\)/);
 assert.match(fuente, /ingresoUnitario: Number\.isFinite\(precioEnDatos\) \? precioEnDatos : 0/);
 assert.match(fuente, /ivaVentaAplicado: Number\.isFinite\(ivaEnDatos\) \? ivaEnDatos : 0/);
-assert.match(fuente, /from\("pedido_lineas"\)\.select\("id,precio_unitario,base,impuestos,total,snapshot_comercial"\)/);
+assert.match(fuente, /from\("pedido_lineas"\)\.select\("id,(?:pedido_id,)?precio_unitario,base,impuestos,total,snapshot_comercial"\)/);
 assert.match(fuente, /lineaEconomicaPorId/);
 
 console.log('D09 economic snapshot contract: OK');
