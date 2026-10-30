@@ -101767,7 +101767,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
   const lineasEconomicas = [];
   for (let i33 = 0; i33 < lineaIds.length; i33 += 200) {
     const lote = lineaIds.slice(i33, i33 + 200);
-    const rLineas = await supabase.from("pedido_lineas").select("id,precio_unitario,base,impuestos,total,snapshot_comercial").in("id", lote);
+    const rLineas = await supabase.from("pedido_lineas").select("id,pedido_id,precio_unitario,base,impuestos,total,snapshot_comercial").in("id", lote);
     if (rLineas.error) {
       console.warn("No se pudo recuperar el snapshot comercial de las ventas históricas:", rLineas.error);
       break;
@@ -101775,6 +101775,100 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
     if (Array.isArray(rLineas.data)) lineasEconomicas.push(...rLineas.data);
   }
   const lineaEconomicaPorId = new Map(lineasEconomicas.map((linea) => [String(linea.id), linea]));
+  const pedidosTicketPorId = new Map();
+  const cuentasTicket = new Set();
+  if (lineasEconomicas.length > 0) {
+    const pedidoIds = [...new Set(lineasEconomicas.map((linea) => linea.pedido_id).filter(Boolean))];
+    if (pedidoIds.length > 0) {
+      const rPedidos = await supabase.from("pedidos_tpv").select("id,cuenta_id,modalidad").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("id", pedidoIds);
+      if (rPedidos.error) {
+        console.warn("No se pudo recuperar la cuenta de las ventas históricas:", rPedidos.error);
+      } else {
+        (rPedidos.data || []).forEach((pedido) => {
+          pedidosTicketPorId.set(String(pedido.id), pedido);
+          if (pedido.cuenta_id) cuentasTicket.add(String(pedido.cuenta_id));
+        });
+      }
+    }
+  }
+  const checkoutsTicketPorCuenta = new Map();
+  const checkoutIdsTicket = [];
+  if (cuentasTicket.size > 0) {
+    const rCheckouts = await supabase.from("checkouts").select("id,cuenta_id,estado,completed_at").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("estado", "COMPLETADO").in("cuenta_id", [...cuentasTicket]).order("completed_at", { ascending: false });
+    if (rCheckouts.error) {
+      console.warn("No se pudo recuperar el checkout de las ventas históricas:", rCheckouts.error);
+    } else {
+      (rCheckouts.data || []).forEach((checkout) => {
+        const cuentaId = String(checkout.cuenta_id || "");
+        if (!cuentaId || checkoutsTicketPorCuenta.has(cuentaId)) return;
+        checkoutsTicketPorCuenta.set(cuentaId, checkout);
+        checkoutIdsTicket.push(checkout.id);
+      });
+    }
+  }
+  const pagosTicketPorCheckout = new Map();
+  if (checkoutIdsTicket.length > 0) {
+    const rPagos = await supabase.from("pagos").select("checkout_id,medio,estado,importe_objetivo,importe_recibido,cambio_entregado,created_at").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("checkout_id", checkoutIdsTicket).order("created_at", { ascending: false });
+    if (rPagos.error) {
+      console.warn("No se pudo recuperar el pago de las ventas históricas:", rPagos.error);
+    } else {
+      (rPagos.data || []).forEach((pago) => {
+        const checkoutId = String(pago.checkout_id || "");
+        if (!checkoutId) return;
+        const lista = pagosTicketPorCheckout.get(checkoutId) || [];
+        lista.push(pago);
+        pagosTicketPorCheckout.set(checkoutId, lista);
+      });
+    }
+  }
+  const ventaFiscalPorCheckout = new Map();
+  if (checkoutIdsTicket.length > 0) {
+    const rCheckoutVentas = await supabase.from("checkout_ventas").select("checkout_id,venta_fiscal_id,importe_objetivo").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("checkout_id", checkoutIdsTicket);
+    if (rCheckoutVentas.error) {
+      console.warn("No se pudo recuperar la venta fiscal histórica:", rCheckoutVentas.error);
+    } else {
+      (rCheckoutVentas.data || []).forEach((fila) => {
+        if (fila.checkout_id && !ventaFiscalPorCheckout.has(String(fila.checkout_id))) ventaFiscalPorCheckout.set(String(fila.checkout_id), fila);
+      });
+    }
+  }
+  const humanizarMedioPagoTicket = (medio) => {
+    const valor = String(medio || "").toUpperCase();
+    if (valor === "EFECTIVO") return "Efectivo";
+    if (valor === "TARJETA") return "Tarjeta";
+    if (valor === "TRANSFERENCIA") return "Transferencia";
+    if (valor === "OTRO") return "Otro";
+    return medio || null;
+  };
+  const datosTicketHistorico = (datos) => {
+    const linea = datos?.linea_id ? lineaEconomicaPorId.get(String(datos.linea_id)) : null;
+    const pedido = linea?.pedido_id ? pedidosTicketPorId.get(String(linea.pedido_id)) : null;
+    const cuentaId = pedido?.cuenta_id || null;
+    const checkout = cuentaId ? checkoutsTicketPorCuenta.get(String(cuentaId)) : null;
+    const checkoutId = checkout?.id || null;
+    const pagos = checkoutId ? pagosTicketPorCheckout.get(String(checkoutId)) || [] : [];
+    const confirmados = pagos.filter((pago) => ["CONFIRMADO", "REEMBOLSADO"].includes(String(pago.estado || "").toUpperCase()));
+    const pagosValidos = confirmados.length ? confirmados : pagos;
+    const medios = [...new Set(pagosValidos.map((pago) => String(pago.medio || "").toUpperCase()).filter(Boolean))];
+    const pagoEfectivo = pagosValidos.find((pago) => String(pago.medio || "").toUpperCase() === "EFECTIVO") || null;
+    const ventaFiscal = checkoutId ? ventaFiscalPorCheckout.get(String(checkoutId)) : null;
+    const detallePago = medios.length > 1 ? pagosValidos.reduce((acc, pago) => {
+      const medio = String(pago.medio || "").toUpperCase();
+      if (medio === "EFECTIVO") acc.efectivo += Number(pago.importe_objetivo) || 0;
+      if (medio === "TARJETA") acc.tarjeta += Number(pago.importe_objetivo) || 0;
+      return acc;
+    }, { efectivo: 0, tarjeta: 0 }) : datos?.detallePago || null;
+    return {
+      cuentaId,
+      checkoutId,
+      ventaFiscalId: ventaFiscal?.venta_fiscal_id || null,
+      medioPago: datos?.medioPago || (medios.length > 1 ? "Mixto" : humanizarMedioPagoTicket(medios[0])) || null,
+      detallePago,
+      importeEntregado: datos?.importeEntregado ?? datos?.entregado ?? pagoEfectivo?.importe_recibido ?? null,
+      cambioEntregado: datos?.cambioEntregado ?? datos?.cambio ?? pagoEfectivo?.cambio_entregado ?? null,
+      importeVenta: ventaFiscal?.importe_objetivo ?? null
+    };
+  };
   if (typeof setMovimientos === "function") {
     const server = movs.map((m4) => {
       const d2 = m4.datos && typeof m4.datos === "object" ? m4.datos : {};
@@ -101792,10 +101886,22 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
       const importeLinea = d2.importeLinea !== void 0 && d2.importeLinea !== null ? Number(d2.importeLinea) : Number(lineaEconomica?.total);
       const delta = Number(m4.delta_total) || 0;
       const creado = String(m4.created_at || "");
+      const ticketHistorico = datosTicketHistorico(d2);
+      const datosEnriquecidos = {
+        ...d2,
+        ...(ticketHistorico.cuentaId ? { cuentaId: ticketHistorico.cuentaId } : {}),
+        ...(ticketHistorico.checkoutId ? { checkoutId: ticketHistorico.checkoutId } : {}),
+        ...(ticketHistorico.ventaFiscalId ? { ventaFiscalId: ticketHistorico.ventaFiscalId, ventaId: ticketHistorico.ventaFiscalId } : ticketHistorico.cuentaId ? { cuentaId: ticketHistorico.cuentaId, ventaId: ticketHistorico.cuentaId } : {}),
+        ...(ticketHistorico.medioPago ? { medioPago: ticketHistorico.medioPago } : {}),
+        ...(ticketHistorico.detallePago ? { detallePago: ticketHistorico.detallePago } : {}),
+        ...(ticketHistorico.importeEntregado != null ? { importeEntregado: Number(ticketHistorico.importeEntregado) } : {}),
+        ...(ticketHistorico.cambioEntregado != null ? { cambioEntregado: Number(ticketHistorico.cambioEntregado) } : {}),
+        ...(ticketHistorico.importeVenta != null ? { importeVenta: Number(ticketHistorico.importeVenta) } : {})
+      };
       return {
         id: `pm07-${m4.id}`,
         operationId: m4.operation_id,
-        ventaId: d2.ventaId || (m4.tipo === "VENTA" ? m4.operation_id : d2.anulaVentaId || null),
+        ventaId: datosEnriquecidos.ventaId || (m4.tipo === "VENTA" ? m4.operation_id : datosEnriquecidos.anulaVentaId || null),
         anulaVentaId: d2.anulaVentaId || null,
         productoId: m4.producto_id,
         localId: m4.local_id,
@@ -101808,11 +101914,16 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
         costoUnitario: Number(d2.costoUnitario) || 0,
         ingresoUnitario: Number.isFinite(precioEnDatos) ? precioEnDatos : 0,
         ivaVentaAplicado: Number.isFinite(ivaEnDatos) ? ivaEnDatos : 0,
-        medioPago: d2.medioPago || null,
-        detallePago: d2.detallePago || null,
+        medioPago: datosEnriquecidos.medioPago || null,
+        detallePago: datosEnriquecidos.detallePago || null,
+        cuentaId: datosEnriquecidos.cuentaId || null,
+        checkoutId: datosEnriquecidos.checkoutId || null,
+        ventaFiscalId: datosEnriquecidos.ventaFiscalId || null,
+        importeEntregado: datosEnriquecidos.importeEntregado ?? null,
+        cambioEntregado: datosEnriquecidos.cambioEntregado ?? null,
         reembolso: d2.reembolso !== void 0 && d2.reembolso !== null ? Number(d2.reembolso) || 0 : null,
         medioReembolso: d2.medioReembolso || null,
-        datos: lineaEconomica ? { ...d2, ingresoUnitario: Number.isFinite(precioEnDatos) ? precioEnDatos : 0, ivaVentaAplicado: Number.isFinite(ivaEnDatos) ? ivaEnDatos : 0, baseLinea: Number.isFinite(baseLinea) ? baseLinea : 0, impuestosLinea: Number.isFinite(impuestosLinea) ? impuestosLinea : 0, importeLinea: Number.isFinite(importeLinea) ? importeLinea : 0 } : d2,
+        datos: lineaEconomica ? { ...datosEnriquecidos, ingresoUnitario: Number.isFinite(precioEnDatos) ? precioEnDatos : 0, ivaVentaAplicado: Number.isFinite(ivaEnDatos) ? ivaEnDatos : 0, baseLinea: Number.isFinite(baseLinea) ? baseLinea : 0, impuestosLinea: Number.isFinite(impuestosLinea) ? impuestosLinea : 0, importeLinea: Number.isFinite(importeLinea) ? importeLinea : 0 } : datosEnriquecidos,
         fecha: d2.fechaOperacion || (creado ? creado.slice(0, 10) : todayISO()),
         hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
         afectaStockTotal: delta !== 0,
@@ -123870,10 +123981,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           importeAsociado: esDev ? Math.abs(Number(datoCorreccionHistorialPM09(m22, "ingresoUnitario")) || 0) * Math.abs(Number(m22.cantidad) || 0) * (1 + (Number(datoCorreccionHistorialPM09(m22, "ivaVentaAplicado")) || 0) / 100) : importeOriginal
         };
       }).sort((a22, b2) => `${a22.fecha} ${a22.operationId}`.localeCompare(`${b2.fecha} ${b2.operationId}`));
-      const medioPago2 = lineas[0]?.medioPago || "—";
+      const medioPago2 = lineas.find((l22) => l22.medioPago)?.medioPago || "—";
       const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
       const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
-      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", qrFiscal: lineas[0]?.qrFiscal || null, entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
+      const lineaConTicket = lineas.find((l22) => l22.numeroFiscal || l22.numeroFactura || l22.qrFiscal || l22.cuentaId || l22.ventaFiscalId) || lineas[0];
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineaConTicket?.mesa || lineaConTicket?.mesaNumero || "", zona: lineaConTicket?.zona || lineaConTicket?.sala || lineaConTicket?.ubicacion || "", cuentaId: lineaConTicket?.cuentaId || null, checkoutId: lineaConTicket?.checkoutId || null, ventaFiscalId: lineaConTicket?.ventaFiscalId || null, numeroFiscal: lineaConTicket?.numeroFiscal || lineaConTicket?.numeroFactura || "", qrFiscal: lineaConTicket?.qrFiscal || null, entregado: lineaConTicket?.importeEntregado ?? lineaConTicket?.entregado ?? null, cambio: lineaConTicket?.cambioEntregado ?? lineaConTicket?.cambio ?? null };
     }).sort((a22, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a22.fecha} ${a22.marcaTiempo}`));
   }, [movimientos, productos]);
   const ventasFiltradas = (0, import_react4.useMemo)(() => {
@@ -124144,6 +124256,41 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, v23.resumen)
       )))
     );
+    async function abrirTicketHistorial(v22) {
+      let ticket = { ...v22 };
+      if (typeof leerEstadoFiscalC07D === "function" && v22?.cuentaId) {
+        try {
+          const fiscal = await leerEstadoFiscalC07D(v22.cuentaId);
+          const documento = Array.isArray(fiscal?.documentos) ? fiscal.documentos[0] : null;
+          const qr = fiscal?.qr;
+          if (documento) {
+            const numero = documento.numero == null ? "" : String(documento.numero).padStart(6, "0");
+            const fechaFiscal = String(qr?.fecha_expedicion || v22.fecha || new Date().toISOString().slice(0, 10));
+            ticket = {
+              ...ticket,
+              ventaId: documento.venta_fiscal_id || ticket.ventaId,
+              numeroFiscal: `${documento.codigo_serie || "TPV"}-${numero}`,
+              qrFiscal: qr?.ok && typeof qr.qr_url === "string" && /^https:\/\//u.test(qr.qr_url) ? {
+                url: qr.qr_url,
+                textLabel: "QR tributario:",
+                modalityLabel: "VERI*FACTU",
+                source: {
+                  nif: qr.nif_emisor || "",
+                  numserie: `${documento.codigo_serie || "TPV"}-${numero}`,
+                  fecha: fechaFiscal,
+                  importe: Number(ticket.importeNetoGestion ?? ticket.importe ?? 0).toFixed(2)
+                },
+                production: false
+              } : ticket.qrFiscal
+            };
+          }
+        } catch (error) {
+          console.warn("No se pudo recuperar el QR fiscal de la venta histórica:", error);
+        }
+      }
+      setVentaDetalle(null);
+      setTicketVenta(ticket);
+    }
     if (!ventaDetalle) return h3(import_react4.default.Fragment, null, controles, renderTicketVenta());
     const v22 = ventaDetalle;
     const detalle = h3(
@@ -124171,10 +124318,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ) : null,
       v22.medioPago === "Mixto" && (v22.detallePago.efectivo > 0 || v22.detallePago.tarjeta > 0) ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta \u20AC${fmt(v22.detallePago.tarjeta)} + Efectivo \u20AC${fmt(v22.detallePago.efectivo)}`) : null,
       h3("div", { className: "text-[10px] mb-3 break-all", style: { color: C2.inkSoft } }, `ID interno: ${v22.ventaId}`),
-      h3("div", { className: "flex gap-2 flex-wrap mb-3" }, h3(Btn, { onClick: () => {
-        setVentaDetalle(null);
-        setTicketVenta(v22);
-      } }, "Ver ticket / reimprimir")),
+      h3("div", { className: "flex gap-2 flex-wrap mb-3" }, h3(Btn, { onClick: () => abrirTicketHistorial(v22) }, "Ver ticket / reimprimir")),
       v22.estado === "ACTIVA" && anularVenta ? h3(Btn, { variant: "danger", onClick: () => {
         setVentaDetalle(null);
         setConfirmAnular(v22);
