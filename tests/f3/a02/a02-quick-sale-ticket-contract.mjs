@@ -36,5 +36,7 @@ assert.ok(status.includes("Ver ticket"), "Falta el CTA visible del ticket");
 
 assert.ok(source.includes('data-tpv-quick'), "Falta el panel específico de cobro de mostrador");
 assert.ok(source.includes("Venta rápida completada"), "Falta el estado final de la venta rápida");
+assert.match(source, /const pedidoDirecto = datos\?\.pedido_id \? pedidosTicketPorId\.get\(String\(datos\.pedido_id\)\) : null;/, "El historial no recupera la cuenta por pedido_id cuando falta el snapshot de línea");
+assert.match(source, /const cuentaId = pedido\?\.cuenta_id \|\| pedidoDirecto\?\.cuenta_id \|\| datos\?\.cuenta_id \|\| datos\?\.cuentaId \|\| null;/, "El historial no aplica la cadena completa de identificadores de cuenta");
 
 console.log("A02_QUICK_SALE_TICKET_CONTRACT=PASS");

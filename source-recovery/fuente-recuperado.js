@@ -817,7 +817,13 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
   const datosTicketHistorico = (datos) => {
     const linea = datos?.linea_id ? lineaEconomicaPorId.get(String(datos.linea_id)) : null;
     const pedido = linea?.pedido_id ? pedidosTicketPorId.get(String(linea.pedido_id)) : null;
-    const cuentaId = pedido?.cuenta_id || null;
+    // Los movimientos de consumo de A02/F3 conservan el pedido en el payload
+    // aunque el snapshot comercial de la línea no esté disponible todavía.
+    // Resolver primero por línea y después por pedido evita que el historial
+    // caiga en operation_id y muestre una referencia distinta a la del ticket
+    // rápido, que usa guardada.cuentaId como identificador canónico.
+    const pedidoDirecto = datos?.pedido_id ? pedidosTicketPorId.get(String(datos.pedido_id)) : null;
+    const cuentaId = pedido?.cuenta_id || pedidoDirecto?.cuenta_id || datos?.cuenta_id || datos?.cuentaId || null;
     const checkout = cuentaId ? checkoutsTicketPorCuenta.get(String(cuentaId)) : null;
     const checkoutId = checkout?.id || null;
     const pagos = checkoutId ? pagosTicketPorCheckout.get(String(checkoutId)) || [] : [];
