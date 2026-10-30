@@ -737,7 +737,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
       return { ...prod, stock: Number(st2.total) || 0, stockPisoVenta: Number(st2.piso) || 0, stockMinimo: Number(st2.minimo) || 0, _pm07BajoMinimo: !!st2.bajo_minimo, _pm07Servidor: true, _pm07LocalOperable: st2.local_operable !== false };
     }));
   }
-  const lineaIds = [...new Set(movs.map((m4) => m4?.datos?.linea_id).filter(Boolean))];
+  const lineaIds = [...new Set(movs.map((m4) => m4?.datos?.linea_id || m4?.datos?.lineaId).filter(Boolean))];
   const lineasEconomicas = [];
   for (let i33 = 0; i33 < lineaIds.length; i33 += 200) {
     const lote = lineaIds.slice(i33, i33 + 200);
@@ -752,7 +752,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
   const pedidosTicketPorId = new Map();
   const cuentasTicket = new Set();
   if (lineasEconomicas.length > 0) {
-    const pedidoIds = [...new Set(lineasEconomicas.map((linea) => linea.pedido_id).filter(Boolean))];
+    const pedidoIds = [...new Set(lineasEconomicas.map((linea) => linea.pedido_id || linea.pedidoId).filter(Boolean))];
     if (pedidoIds.length > 0) {
       const rPedidos = await supabase.from("pedidos_tpv").select("id,cuenta_id").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("id", pedidoIds);
       if (rPedidos.error) {
@@ -815,14 +815,16 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
     return medio || null;
   };
   const datosTicketHistorico = (datos) => {
-    const linea = datos?.linea_id ? lineaEconomicaPorId.get(String(datos.linea_id)) : null;
-    const pedido = linea?.pedido_id ? pedidosTicketPorId.get(String(linea.pedido_id)) : null;
+    const lineaId = datos?.linea_id || datos?.lineaId || null;
+    const linea = lineaId ? lineaEconomicaPorId.get(String(lineaId)) : null;
+    const pedido = (linea?.pedido_id || linea?.pedidoId) ? pedidosTicketPorId.get(String(linea.pedido_id || linea.pedidoId)) : null;
     // Los movimientos de consumo de A02/F3 conservan el pedido en el payload
     // aunque el snapshot comercial de la línea no esté disponible todavía.
     // Resolver primero por línea y después por pedido evita que el historial
     // caiga en operation_id y muestre una referencia distinta a la del ticket
     // rápido, que usa guardada.cuentaId como identificador canónico.
-    const pedidoDirecto = datos?.pedido_id ? pedidosTicketPorId.get(String(datos.pedido_id)) : null;
+    const pedidoDirectoId = datos?.pedido_id || datos?.pedidoId || null;
+    const pedidoDirecto = pedidoDirectoId ? pedidosTicketPorId.get(String(pedidoDirectoId)) : null;
     const cuentaId = pedido?.cuenta_id || pedidoDirecto?.cuenta_id || datos?.cuenta_id || datos?.cuentaId || null;
     const checkout = cuentaId ? checkoutsTicketPorCuenta.get(String(cuentaId)) : null;
     const checkoutId = checkout?.id || null;
@@ -25509,6 +25511,18 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         ? `${documentoFiscalRapida.codigo_serie || "TPV"}-${String(documentoFiscalRapida.numero == null ? "" : documentoFiscalRapida.numero).padStart(6, "0")}`
         : "";
       const fechaVentaRapida = fiscalRapida?.fecha_expedicion || new Date().toISOString().slice(0, 10);
+      // D09/D11 consume cada línea con una operación determinista. El ticket
+      // inmediato debe usar esa misma operación que luego lee el historial,
+      // no una referencia alternativa derivada de la cuenta comercial.
+      const lineaCanonicaRapida = (Array.isArray(guardada.lineas) ? guardada.lineas : [])
+        .map((linea) => linea?.lineaId || linea?.linea_id || linea?.id)
+        .find(Boolean);
+      const ventaOperacionIdRapida = documentoFiscalRapida?.venta_fiscal_id
+        || cobro.ventaId
+        || (lineaCanonicaRapida ? `abc.stock.consume.${lineaCanonicaRapida}` : null)
+        || guardada.cuentaId
+        || guardada.pedidoId
+        || `venta-rapida-${Date.now()}`;
       const cuentaCerradaRapida = String(cobro.cuentaEstado || "").toUpperCase() === "CERRADA" || cobro.cuentaCierre?.ok === true;
       if (!cuentaCerradaRapida) {
         setEstadoCobroF4(cobro);
@@ -25527,8 +25541,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         return;
       }
       setTicketVenta({
-        ventaId: documentoFiscalRapida?.venta_fiscal_id || guardada.cuentaId || guardada.pedidoId || `venta-rapida-${Date.now()}`,
-        referencia: `V-${fechaVentaRapida.replaceAll("-", "")}-${String(guardada.cuentaId || guardada.pedidoId || "RAPIDA").replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
+        ventaId: ventaOperacionIdRapida,
+        referencia: `V-${fechaVentaRapida.replaceAll("-", "")}-${String(ventaOperacionIdRapida).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
         fecha: fechaVentaRapida,
         marcaTiempo: new Date().toISOString(),
         lineas: lineasTicketRapida,
