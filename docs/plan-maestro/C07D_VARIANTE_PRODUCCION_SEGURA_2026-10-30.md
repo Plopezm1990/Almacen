@@ -129,6 +129,8 @@ La variante no podrá considerarse lista hasta que se cumpla todo lo siguiente:
 
 - Diseño de variante segura: **PREPARADO**.
 - Manifest de promoción: **PREPARADO**.
+- Preflight SQL de destino, solo lectura: **PREPARADO Y EJECUTADO EN QA/PRODUCCIÓN**.
+- Contrato estático de solo lectura del preflight: **PASS**.
 - Contrato del manifest: **PASS**.
 - Migraciones aplicadas en producción: **NO**.
 - Configuración fiscal real: **NO**.
