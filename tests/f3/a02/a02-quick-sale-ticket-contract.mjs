@@ -36,7 +36,10 @@ assert.ok(status.includes("Ver ticket"), "Falta el CTA visible del ticket");
 
 assert.ok(source.includes('data-tpv-quick'), "Falta el panel específico de cobro de mostrador");
 assert.ok(source.includes("Venta rápida completada"), "Falta el estado final de la venta rápida");
-assert.match(source, /const pedidoDirecto = datos\?\.pedido_id \? pedidosTicketPorId\.get\(String\(datos\.pedido_id\)\) : null;/, "El historial no recupera la cuenta por pedido_id cuando falta el snapshot de línea");
+assert.match(source, /const pedidoDirectoId = datos\?\.pedido_id \|\| datos\?\.pedidoId \|\| null;/, "El historial no recupera la cuenta por pedido_id o pedidoId cuando falta el snapshot de línea");
 assert.match(source, /const cuentaId = pedido\?\.cuenta_id \|\| pedidoDirecto\?\.cuenta_id \|\| datos\?\.cuenta_id \|\| datos\?\.cuentaId \|\| null;/, "El historial no aplica la cadena completa de identificadores de cuenta");
+assert.match(quick, /const ventaOperacionIdRapida = documentoFiscalRapida\?\.venta_fiscal_id\s*\|\|\s*cobro\.ventaId\s*\|\|\s*\(lineaCanonicaRapida \? `abc\.stock\.consume\.\$\{lineaCanonicaRapida\}`/, "El ticket inmediato no usa la operación canónica de la venta");
+assert.match(quick, /referencia: `V-\$\{fechaVentaRapida\.replaceAll\("-", ""\)\}-\$\{String\(ventaOperacionIdRapida\)/, "La referencia inmediata no se deriva del identificador canónico de la venta");
+assert.match(source, /const lineaIds = \[\.\.\.new Set\(movs\.map\(\(m4\) => m4\?\.datos\?\.linea_id \|\| m4\?\.datos\?\.lineaId\)/, "La sincronización no acepta identificadores de línea históricos en snake_case y camelCase");
 
 console.log("A02_QUICK_SALE_TICKET_CONTRACT=PASS");
