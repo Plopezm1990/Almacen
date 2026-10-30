@@ -25,6 +25,7 @@ const EXCLUIDAS = new Set([
   '20261005060000_abc_p3c_titularidad_productos.sql',
   '20261005100000_abc_p3c_lista_confirmada.sql',
   '20261010150000_abc_d09_d11_stock_order_integration.sql',
+  '20261029210000_abc_d09_d11_economic_snapshot.sql',
   '20261010153000_abc_d10_legacy_refund_guard.sql',
   '20261009120000_plataforma_f1_administrador_y_empresas.sql',
   '20261009130000_plataforma_f2_eliminar_empresa.sql',
@@ -51,6 +52,48 @@ const EXCLUIDAS = new Set([
   '20261020120000_plataforma_password_inicial_bloqueo_almacen_alta_reconstruida.sql',
   // PM13 P05 de pantallas de roles fijos: se valida y aplica en QA por separado antes de decidir su promoción.
   '20261020140000_pm13_p05_roles_fijos_pantallas.sql',
+  // Paquete F5 de notas TPV y recuperación A10: ventana de promoción separada,
+  // con preflight propio y sin escritura PROD en esta etapa.
+  '20261022130000_abc_f5_tpv_line_notes.sql',
+  '20261022140000_abc_f3_a10_route_recovery.sql',
+  '20261022150000_abc_f3_a10_route_recovery_merge.sql',
+  // C07-A: borradores por emisor, con preflight propio. No forma parte de la ventana F7 del 3/10.
+  '20261026175245_abc_fiscal_multiempresa_borradores.sql',
+  // C07-B: panel configurable multiempresa, validación y promoción separadas del paquete F7 histórico.
+  '20261026182012_abc_fiscal_multiempresa_panel.sql',
+  // C07-C/D: ventanas QA separadas; no forman parte de la foto F7 histórica.
+  '20261027110000_abc_fiscal_multiempresa_delegacion.sql',
+  '20261027111500_abc_fiscal_multiempresa_delegacion_accept.sql',
+  '20261027113000_abc_fiscal_multiempresa_representacion_read.sql',
+  '20261027114500_abc_fiscal_multiempresa_delegacion_lifecycle_checks.sql',
+  '20261027130000_abc_f7_c07d_c05_reconcile.sql',
+  '20261027131500_abc_f7_c07d_fiscal_chain_queue.sql',
+  '20261027133000_abc_f7_c07d_chain_hardening.sql',
+  '20261027134500_abc_f7_c07d_fk_indexes.sql',
+  '20261027135000_abc_f7_c07d_entity_fk_index.sql',
+  '20261027143000_abc_f7_c07d_checkout_emit_qa.sql',
+  '20261027150000_abc_f7_c07d_d2_emission_config.sql',
+  '20261027150403_abc_f7_c07d_d3_pilot_sandbox.sql',
+  '20261027151000_abc_f7_c07d_d2_emission_config_fix.sql',
+  '20261027152000_abc_f7_c07d_d2_adapter_scope_fix.sql',
+  '20261027160000_abc_f7_c07d_d2_emission_wiring.sql',
+  '20261027161000_abc_f7_c07d_d2_emission_resolver_lock_fix.sql',
+  '20261027162000_abc_f7_c07d_d2_emission_config_indexes.sql',
+  '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
+  // F8 C04: alta de terminal/caja por propietario, con preflight propio.
+  '20261027200000_abc_f8_c04_terminal_caja_propietario.sql',
+  // Corrección posterior de F8 C04 aplicada primero en QA; no forma parte de la foto F7 histórica.
+  '20261028193000_abc_f8_c04_defer_terminal_fk.sql',
+  // Ventanas QA posteriores a F7: recepción, rutas bloqueadas y cierre de cuenta.
+  '20261028170000_pm10_recepcion_stock_atomica.sql',
+  '20261028180000_abc_f3_a10_requeue_blocked_routes.sql',
+  '20261028190000_abc_f4_cuenta_cierre_pagada.sql',
+  // Corrección contextual P3c aplicada en una ventana separada; no forma parte de la foto F7 histórica.
+  '20261029200000_abc_p3c_contexto_productos_production_fix.sql',
+  // Autoridad del stock en la ruta contextual P3c; ventana separada de la foto F7 histórica.
+  '20261030130000_abc_p3c_stock_authority.sql',
+  // Atajo seguro para cambios automáticos de stock/contexto; misma ventana separada.
+  '20261030143000_abc_p3c_stock_only_fast_path.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

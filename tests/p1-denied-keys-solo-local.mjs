@@ -24,7 +24,6 @@ function makeCloud(mode) {
     if (mode.value === "acepta") return null;
     if (mode.value === "rls") return { code: "42501", message: 'new row violates row-level security policy for table "almacen_kv"' };
     if (mode.value === "rls-sin-codigo") return { message: "new row violates row-level security policy" };
-    if (mode.value === "quota") return { message: "Upload payload exceeds 5242880 bytes" };
     if (mode.value === "jwt") return { code: "PGRST301", message: "JWT expired" };
     throw new Error("modo desconocido " + mode.value);
   };
@@ -75,7 +74,6 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
     Promise, JSON, Error, Date: RelojDate,
   };
   context.window = context;
-  context.location = { hostname: "deploy-preview-172--chic-entremet-9107cf.netlify.app" };
   context.globalThis = context;
   context.dispatchEvent = (e) => { events.push(e); return true; };
   vm.createContext(context);
@@ -93,34 +91,6 @@ function setup({ initial = {}, modo = "acepta" } = {}) {
 }
 
 const claveEvento = (events) => events.filter((e) => e.type === "clave-solo-local").map((e) => e.detail.key).sort();
-
-// Un respaldo puede estar correctamente guardado en este navegador y, aun
-// así, superar el límite de carga del servidor. No debe quedarse en la cola
-// junto con movimientos o ventas, porque bloquearía el diagnóstico de todo lo
-// demás. Se conserva localmente y queda identificado como solo local.
-{
-  const t = setup({ modo: "quota" });
-  await t.context.storage.set("historialRespaldos", JSON.stringify([{ id: "backup-grande" }]));
-  assert.deepEqual(t.pendientes(), [], "un respaldo demasiado grande no queda reintentándose");
-  assert.deepEqual(Object.keys(t.denegados()), ["historialRespaldos"]);
-  assert.deepEqual([...t.context.__clavesSoloLocal()], ["historialRespaldos"]);
-  assert.match(t.indicador().textContent, /1 colección solo en este equipo/);
-  assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "cuota");
-  const leido = await t.context.storage.get("historialRespaldos");
-  assert.equal(leido.value, JSON.stringify([{ id: "backup-grande" }]));
-}
-
-// En preview QA, un 401 de la autoridad no debe dejar el respaldo automático
-// bloqueando toda la cola; los datos operativos sí siguen siendo pendientes.
-{
-  const t = setup({ modo: "jwt" });
-  await t.context.storage.set("historialRespaldos", JSON.stringify([{ id: "backup-qa" }]));
-  assert.deepEqual(t.pendientes(), [], "el respaldo de QA no queda en cola tras un 401");
-  assert.deepEqual(Object.keys(t.denegados()), ["historialRespaldos"]);
-  assert.equal(t.events.find((e) => e.type === "clave-solo-local").detail.motivo, "respaldo-qa-solo-local");
-  await t.context.storage.set("conteos", JSON.stringify([]));
-  assert.deepEqual(t.pendientes(), ["conteos"], "los datos operativos sí conservan el reintento");
-}
 
 // Las preferencias de sesión del dispositivo no son datos de negocio: nunca
 // deben entrar en KV, pendientes o el aviso de sincronización.

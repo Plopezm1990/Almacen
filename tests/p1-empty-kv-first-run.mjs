@@ -72,15 +72,12 @@ function cloudClient({ data = null, error = null } = {}) {
   return {
     auth: { getSession: async () => ({ data: { session: { user: { id: "owner-test" } } } }) },
     from() {
-      return {
-        select() {
-          return {
-            eq() {
-              return { maybeSingle: async () => ({ data, error }) };
-            },
-          };
-        },
+      const query = {
+        select() { return query; },
+        eq() { return query; },
+        maybeSingle: async () => ({ data, error }),
       };
+      return query;
     },
   };
 }
@@ -112,6 +109,8 @@ function cloudClient({ data = null, error = null } = {}) {
   const local = makeLocalStorage();
   const { context, events } = makeContext(local);
   context.__nubeActiva = true;
+  context.__empresaActivaIdParaContexto = "E1";
+  context.__localActivoIdParaContexto = "L1";
   context.__nubeCliente = cloudClient({ data: { value: [{ id: "cloud" }] } });
   const loaded = await context.loadKey("productos", []);
   assert.deepEqual(JSON.parse(JSON.stringify(loaded)), [{ id: "cloud" }]);

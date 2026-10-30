@@ -70,6 +70,7 @@ async function rejects(promise, fragment) {
 
 const admin = new Client({ connectionString: databaseUrl, application_name: 'abc-f5-c07-bootstrap' });
 const first = new Client({ connectionString: databaseUrl, application_name: 'abc-f5-c07-fiscal-1' });
+const second = new Client({ connectionString: databaseUrl, application_name: 'abc-f5-c07-fiscal-2' });
 
 try {
   await admin.connect();
@@ -94,7 +95,40 @@ try {
   assert.equal(blocked.ok, false);
   assert.deepEqual(blocked.bloqueos, ['MODALIDAD_NO_ACTIVA']);
 
+  await admin.query(await readFile(resolve(root, 'supabase/migrations/20261026175245_abc_fiscal_multiempresa_borradores.sql'), 'utf8'));
+  await admin.query(await readFile(resolve(root, 'supabase/migrations/20261026182012_abc_fiscal_multiempresa_panel.sql'), 'utf8'));
+  const multiempresa = await admin.query(await readFile(resolve(root, 'tests/f5/c07/fiscal-config-multiempresa.sql'), 'utf8'));
+  const fiscalChecks = multiempresa.flatMap(r => r.rows).find(row => row.fiscal_config_checks !== undefined)?.fiscal_config_checks;
+  assert.ok(fiscalChecks >= 30, 'Contrato multiempresa completo');
+  console.log(`FISCAL_CONFIG_MULTIEMPRESA_CHECKS=${fiscalChecks}`);
+
+  // Dos conexiones contra el mismo emisor: una sola gana la versión 0.
+  const entity = '20000000-0000-0000-0000-000000000100';
+  await admin.query(`insert into public.membresias_usuario(user_id,empresa_id,rol,todos_locales,local_id)
+    values ($1,$2,'Propietario',true,null)`, [owner,empresa]);
+  await admin.query(`insert into public.entidades_fiscales(id,empresa_id,nombre_legal,country_code)
+    values ($1,$2,'Emisor sintético para concurrencia','ES')`, [entity,empresa]);
+  await admin.query(`insert into public.entidad_fiscal_locales(empresa_id,local_id,entidad_fiscal_id)
+    values ($1,$2,$3)`, [empresa,local,entity]);
+  await second.connect();
+  await context(second);
+  await first.query('set role authenticated');
+  await second.query('set role authenticated');
+  const saveDraft = (client,operation) => client.query(`select public.abc_fiscal_guardar_borrador(
+    $1,$2,$3,$4,0,'{}'::jsonb) as result`, [operation,empresa,local,entity]);
+  const race = await Promise.allSettled([
+    saveDraft(first,'30000000-0000-0000-0000-000000000100'),
+    saveDraft(second,'30000000-0000-0000-0000-000000000101'),
+  ]);
+  assert.equal(race.filter(r=>r.status==='fulfilled').length,1,'Una sola escritura concurrente');
+  const rejected = race.find(r=>r.status==='rejected');
+  assert.match(rejected.reason.message,/FISCAL_CONFIG_VERSION_OBSOLETA/);
+  assert.equal((await admin.query(`select count(*)::int as n from private.abc_fiscal_borrador_revisiones
+    where empresa_id=$1 and entidad_fiscal_id=$2`,[empresa,entity])).rows[0].n,1);
+  await first.query('reset role');
+  await second.query('reset role');
+  console.log('FISCAL_CONFIG_CONCURRENCIA=PASS');
   console.log('ABC_F5_C07_POSTGRES_CONTRACT=PASS');
 } finally {
-  await Promise.allSettled([first.end(), admin.end()]);
+  await Promise.allSettled([first.end(), second.end(), admin.end()]);
 }

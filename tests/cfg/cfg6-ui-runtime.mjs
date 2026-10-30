@@ -384,6 +384,56 @@ async function parte1() {
   const grupos = CONFIG_CAPACIDADES.flatMap((g3) => g3.items.map((i2) => i2[0]));
   ok('S7.3 las 31 capacidades de la pantalla coinciden con el catálogo de prueba', grupos.length === 31 && new Set(grupos).size === 31 && Object.keys(catalogoPlantilla).every((c) => grupos.includes(c)), grupos.length);
 
+  // S8: Fiscalidad y AEAT — aislamiento por empresa/emisor, borrador y concurrencia optimista.
+  const emisorA = '20000000-0000-0000-0000-000000000001';
+  const emisorB = '20000000-0000-0000-0000-000000000002';
+  const detalleFiscal = (id, nombre, nif, version = 0, configuracion = {}) => ({
+    empresa_id: id === emisorA ? 'EMP-1' : 'EMP-2', entidad_fiscal_id: id, version,
+    estado: 'BORRADOR', conexion: 'NO_CONFIGURADA', emision_habilitada: false,
+    emisor: { nombre_legal: nombre, nif, pais: 'ES', simulada: id === emisorB }, configuracion
+  });
+  respuestas = {
+    abc_obtener_ajustes: ajustes,
+    abc_fiscal_listar_emisores: { emisores: [{ id: emisorA, nombre_legal: 'Emisor Empresa Uno', nif: 'A12345678', pais: 'ES', simulada: false, version_borrador: 0 }] },
+    abc_fiscal_leer_borrador: () => detalleFiscal(emisorA, 'Emisor Empresa Uno', 'A12345678'),
+    abc_fiscal_guardar_borrador: (p) => detalleFiscal(emisorA, 'Emisor Empresa Uno', 'A12345678', 1, p.p_configuracion)
+  };
+  reset();
+  await montar(props);
+  await clic(boton('Fiscalidad y AEAT'));
+  await esperar(20);
+  ok('S8.1 Fiscalidad lista y lee solo el emisor del alcance', llamadas.some((c) => c.nombre === 'abc_fiscal_listar_emisores' && c.params.p_empresa_id === 'EMP-1' && c.params.p_local_id === 'LOC-1') && llamadas.some((c) => c.nombre === 'abc_fiscal_leer_borrador' && c.params.p_entidad_fiscal_id === emisorA) && texto().includes('Emisor Empresa Uno') && texto().includes('Emisión: deshabilitada'), { llamadas, texto: texto().slice(-900) });
+  await escribir(campoPorEtiqueta('Administración tributaria'), 'ES_AEAT');
+  await escribir(campoPorEtiqueta('Situación frente al RRSIF'), 'SUJETO_RRSIF');
+  await escribir(campoPorEtiqueta('Modalidad prevista'), 'VERIFACTU');
+  await escribir(campoPorEtiqueta('Canal previsto'), 'ASESORIA');
+  await escribir(campoPorEtiqueta('Acreditación prevista'), 'COLABORACION_SOCIAL');
+  await escribir(campoPorEtiqueta('Nombre de la asesoría'), 'Asesoría Uno');
+  await escribir(campoPorEtiqueta('Correo de contacto'), 'fiscal@example.test');
+  reset();
+  await clic(boton('Guardar borrador fiscal'));
+  await esperar(10);
+  const guardadoFiscal = llamadas.find((c) => c.nombre === 'abc_fiscal_guardar_borrador');
+  const clavesFiscales = guardadoFiscal ? Object.keys(guardadoFiscal.params.p_configuracion).sort() : [];
+  ok('S8.2 el borrador fiscal envía UUID, versión y configuración cerrada', !!guardadoFiscal && /^[0-9a-f]{8}-[0-9a-f-]{27}$/i.test(guardadoFiscal.params.p_operation_id) && guardadoFiscal.params.p_empresa_id === 'EMP-1' && guardadoFiscal.params.p_local_id === 'LOC-1' && guardadoFiscal.params.p_entidad_fiscal_id === emisorA && guardadoFiscal.params.p_version_esperada === 0 && clavesFiscales.join() === ['asesoria_email','asesoria_nombre','canal','jurisdiccion','modalidad','presentador_nif','representacion','sujecion','tipo_factura'].sort().join() && !('certificado' in guardadoFiscal.params.p_configuracion), guardadoFiscal);
+  ok('S8.3 confirma sin afirmar conexión ni emisión', texto().includes('Borrador fiscal guardado') && texto().includes('No se ha activado ninguna conexión ni envío a la AEAT') && texto().includes('Versión del borrador: 1'), texto().slice(-700));
+  respuestas.abc_fiscal_guardar_borrador = { __error: 'FISCAL_CONFIG_VERSION_OBSOLETA' };
+  respuestas.abc_fiscal_leer_borrador = () => detalleFiscal(emisorA, 'Emisor Empresa Uno', 'A12345678', 2, { canal: 'DIRECTO', representacion: 'PROPIO' });
+  reset();
+  await clic(boton('Guardar borrador fiscal'));
+  await esperar(10);
+  ok('S8.4 un conflicto de versión recarga y se explica', llamadas.filter((c) => c.nombre === 'abc_fiscal_leer_borrador').length === 1 && texto().includes('Otra sesión cambió este borrador') && texto().includes('Versión del borrador: 2'), { llamadas, texto: texto().slice(-700) });
+  respuestas = {
+    abc_obtener_ajustes: ajustes,
+    abc_fiscal_listar_emisores: { emisores: [{ id: emisorB, nombre_legal: 'Emisor Empresa Dos', nif: 'B12345678', pais: 'ES', simulada: true, version_borrador: 0 }] },
+    abc_fiscal_leer_borrador: () => detalleFiscal(emisorB, 'Emisor Empresa Dos', 'B12345678')
+  };
+  reset();
+  await montar({ ...props, empresa: { id: 'EMP-2', razonSocial: 'Empresa Dos' }, localId: 'LOC-2', localNombre: 'Local Dos' });
+  await clic(boton('Fiscalidad y AEAT'));
+  await esperar(20);
+  ok('S8.5 cambiar de empresa limpia los datos anteriores', llamadas.some((c) => c.nombre === 'abc_fiscal_listar_emisores' && c.params.p_empresa_id === 'EMP-2' && c.params.p_local_id === 'LOC-2') && texto().includes('Emisor Empresa Dos') && !texto().includes('Emisor Empresa Uno') && texto().includes('Entidad simulada'), { llamadas, texto: texto().slice(-700) });
+
 
   } catch (e) { errorFatal = String(e.message).slice(0, 600); }
 

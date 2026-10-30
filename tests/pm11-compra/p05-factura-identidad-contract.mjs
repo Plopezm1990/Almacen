@@ -95,7 +95,7 @@ assert.ok(firmaFactura.includes('2026-09-07'));
 assert.ok((src.match(/esFactura: false,/g) || []).length >= 4, 'flujos de alta nacen como albarán simple explícito');
 assert.doesNotMatch(src, /esFactura !== false/);
 
-const confirmarIni = src.indexOf('  function confirmarAlbaran(alb) {', albIni);
+const confirmarIni = Math.max(src.indexOf('  function confirmarAlbaran(alb) {', albIni), src.indexOf('  async function confirmarAlbaran(alb) {', albIni));
 const confirmarFin = src.indexOf('  function anularAlbaran(alb) {', confirmarIni);
 assert.ok(confirmarIni >= 0 && confirmarFin > confirmarIni);
 const confirmar = src.slice(confirmarIni, confirmarFin);

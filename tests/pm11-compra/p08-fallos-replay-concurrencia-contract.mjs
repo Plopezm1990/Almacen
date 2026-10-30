@@ -133,7 +133,7 @@ assert.equal(JSON.stringify(estado), JSON.stringify(antesFallo));
 // deduplicación de movimientos por la clave física.
 const albIni = src.indexOf('function crearLogicaAlbaranes({');
 const procIni = src.indexOf('  function procesarRecepcion({', albIni);
-const confIni = src.indexOf('  function confirmarAlbaran(alb) {', procIni);
+const confIni = Math.max(src.indexOf('  function confirmarAlbaran(alb) {', procIni), src.indexOf('  async function confirmarAlbaran(alb) {', procIni));
 assert.ok(albIni >= 0 && procIni > albIni && confIni > procIni);
 const proc = src.slice(procIni, confIni);
 for (const patron of [
@@ -153,8 +153,8 @@ const confFin = src.indexOf('  function anularAlbaran(alb) {', confIni);
 const confirmar = src.slice(confIni, confFin);
 assert.match(confirmar, /operationId: `pm10-recepcion-albaran:\$\{alb\.id\}`/);
 assert.match(confirmar, /concurrencyKey: pedidoLigado \? operationIdEfectoRecepcionPedidoPM11\(pedidoLigado\) : null/);
-assert.match(confirmar, /if \(replayedRecepcionPM10\)/);
-assert.match(confirmar, /versión del pedido enlazado ya fue usada por otra recepción/);
+assert.match(confirmar, /!replayedRecepcionPM10/);
+assert.match(src, /(?:versión del pedido enlazado ya fue usada por otra recepción|versión del pedido usada por esta recepción ya fue procesada)/);
 
 // Backend financiero heredado mantiene serialización real donde sí existe RPC.
 assert.match(g1, /24\/24 PASS/);

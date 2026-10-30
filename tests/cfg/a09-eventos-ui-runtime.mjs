@@ -16,7 +16,7 @@ import { SIN_ACCESO_QA } from './lib/tablas-sin-acceso-qa.mjs';
 
 const REPO = resolve(new URL('../../', import.meta.url).pathname);
 const origen = process.env.CFG_A09EV_FUENTE || join(REPO, 'source-recovery/fuente-recuperado.js');
-const fuente = readFileSync(origen, 'utf8');
+const fuente = readFileSync(origen, 'utf8').replace(/\r\n/g, '\n');
 
 // ---------- carga de las funciones reales ----------
 function trozo(inicio, fin) {
