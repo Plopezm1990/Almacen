@@ -92,6 +92,8 @@ const EXCLUIDAS = new Set([
   '20261029200000_abc_p3c_contexto_productos_production_fix.sql',
   // Autoridad del stock en la ruta contextual P3c; ventana separada de la foto F7 histórica.
   '20261030130000_abc_p3c_stock_authority.sql',
+  // Atajo seguro para cambios automáticos de stock/contexto; misma ventana separada.
+  '20261030143000_abc_p3c_stock_only_fast_path.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
