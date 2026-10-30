@@ -7,7 +7,7 @@ const recovered = readFileSync(new URL("../../../source-recovery/fuente-recupera
 for (const [name, source] of [["RUNTIME", runtime], ["RECOVERED", recovered]]) {
   for (const marker of [
     'select("id,pedido_id,precio_unitario,base,impuestos,total,snapshot_comercial")',
-    'from("pedidos_tpv").select("id,cuenta_id,modalidad")',
+    'from("pedidos_tpv").select("id,cuenta_id")',
     'from("checkouts").select("id,cuenta_id,estado,completed_at")',
     'from("pagos").select("checkout_id,medio,estado,importe_objetivo,importe_recibido,cambio_entregado,created_at")',
     'from("checkout_ventas").select("checkout_id,venta_fiscal_id,importe_objetivo")',

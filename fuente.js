@@ -101780,7 +101780,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
   if (lineasEconomicas.length > 0) {
     const pedidoIds = [...new Set(lineasEconomicas.map((linea) => linea.pedido_id).filter(Boolean))];
     if (pedidoIds.length > 0) {
-      const rPedidos = await supabase.from("pedidos_tpv").select("id,cuenta_id,modalidad").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("id", pedidoIds);
+      const rPedidos = await supabase.from("pedidos_tpv").select("id,cuenta_id").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("id", pedidoIds);
       if (rPedidos.error) {
         console.warn("No se pudo recuperar la cuenta de las ventas históricas:", rPedidos.error);
       } else {
