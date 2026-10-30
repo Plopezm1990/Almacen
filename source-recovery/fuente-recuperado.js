@@ -25518,8 +25518,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         .map((linea) => linea?.lineaId || linea?.linea_id || linea?.id)
         .find(Boolean);
       const ventaOperacionIdRapida = documentoFiscalRapida?.venta_fiscal_id
-        || cobro.ventaId
         || (lineaCanonicaRapida ? `abc.stock.consume.${lineaCanonicaRapida}` : null)
+        || cobro.ventaId
         || guardada.cuentaId
         || guardada.pedidoId
         || `venta-rapida-${Date.now()}`;
