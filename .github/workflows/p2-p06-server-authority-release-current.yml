@@ -54,10 +54,12 @@ jobs:
         run: |
           set -euo pipefail
           ACTUAL_HEAD="$(git rev-parse HEAD)"
-          git fetch origin release --quiet
-          BASE="$(git rev-parse origin/release)"
           if [ "$GITHUB_EVENT_NAME" = "pull_request" ]; then
             test "$ACTUAL_HEAD" = '${{ github.event.pull_request.head.sha }}'
+            BASE='${{ github.event.pull_request.base.sha }}'
+          else
+            git fetch origin release --quiet
+            BASE="$(git rev-parse origin/release)"
           fi
           git merge-base --is-ancestor "$BASE" "$ACTUAL_HEAD"
           mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)

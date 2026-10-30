@@ -221,7 +221,7 @@ const darFin = src.indexOf('if (modo === "lista")', darIni);
 const darTxt = src.slice(darIni, darFin);
 assert.match(darTxt, /const pobladas =/);
 assert.match(darTxt, /const candidatas = alb\.pedidoId \? pobladas : validas/);
-assert.match(darTxt, /const resultado = confirmarAlbaran\(limpio\)/);
+assert.match(darTxt, /const resultado = (?:await )?confirmarAlbaran\(limpio\)/);
 assert.match(darTxt, /resultado && resultado\.ok === false/);
 assert.ok(darTxt.indexOf('resultado && resultado.ok === false') < darTxt.indexOf('setModo("lista")'), 'albarán ligado conserva editor ante error');
 

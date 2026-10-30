@@ -8,6 +8,7 @@ import { jsPDF as E } from "jspdf";
 import autoTable from "jspdf-autotable";
 import * as XLSX from "xlsx";
 import { ArrowLeftRight, Bell, Boxes, Calculator, CalendarClock, CalendarDays, CalendarRange, Camera, ChartColumn, ChartLine, ChevronRight, CircleArrowDown, CircleArrowUp, CircleCheck, ClipboardList, Clock, Cog, Coins, Download, Droplet, Ellipsis, Eye, EyeOff, Factory, FileText, Files, LoaderCircle, LogIn, LogOut, Mail, MessageCircle, Minus, Package, Pencil, Phone, Plus, Receipt, RotateCcwClock, ScanBarcode, Search, ShieldCheck, ShoppingBag, ShoppingCart, Stethoscope, Tags, Trash2, TrendingUp, TriangleAlert, Truck, Upload, UserRound, Users, Wallet, X, Map as Map2 } from "lucide-react";
+import { renderQrSvg } from "../fiscal/qr/qr-matrix.mjs";
 const import_react4 = Object.assign({ default: React }, ReactNS);
 const import_client = { createRoot };
 const utils = XLSX.utils;
@@ -354,13 +355,6 @@ function valorCF(item) {
   return null;
 }
 var fmt = (n2) => (Number(n2) || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-function fmtPrecio(n2) {
-  const valor = Number(n2);
-  if (!Number.isFinite(valor)) return "0,00";
-  const mil = Math.round((Math.abs(valor) + Number.EPSILON) * 1e3);
-  const tieneTres = !String(mil).endsWith("0");
-  return valor.toLocaleString("es-ES", { minimumFractionDigits: tieneTres ? 3 : 2, maximumFractionDigits: 3 });
-}
 async function hashPin(pin) {
   if (!pin) return "";
   const datos = new TextEncoder().encode("chocoloyos-pin-v1-" + pin);
@@ -674,9 +668,10 @@ async function saveKey(key, value) {
   // confirmado por RPC y se vuelve a hidratar desde Supabase. No duplicamos
   // toda la colección en localStorage (límite aproximado de 5 MB), pero sí
   // mantenemos el guardado local en modo offline para no perder el borrador.
-  if (key === "devoluciones" && typeof window !== "undefined" && window.__nubeActiva && window.__nubeCliente) {
+  if (["pagosFacturas", "arqueos", "movimientosCaja", "devoluciones"].includes(key)
+      && typeof window !== "undefined" && window.__nubeActiva && window.__nubeCliente) {
     if (typeof window.dispatchEvent === "function") {
-      window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key, cacheLocalOmitida: true } }));
+      window.dispatchEvent(new CustomEvent("guardado-confirmado", { detail: { key, cacheLocalOmitida: true, ledgerServidor: true } }));
     }
     return;
   }
@@ -708,13 +703,10 @@ async function sincronizarConteosPm12({ setConteos, empresaId = null, localActiv
   const documentos = (r.data || []).map((op) => op.payload && op.payload.resultado && op.payload.resultado.conteo).filter(Boolean);
   if (!esContextoVigente()) return { ok: false, obsoleto: true };
   setConteos((cs) => {
-    const nuevos = [...cs];
-    for (const documento of documentos) {
-      const i = nuevos.findIndex((c) => c.id === documento.id && c.empresaId === documento.empresaId && c.localId === documento.localId);
-      if (i >= 0) nuevos[i] = { ...nuevos[i], ...documento, _pm12Servidor: true };
-      else if (!nuevos.some((c) => c.id === documento.id)) nuevos.push({ ...documento, _pm12Servidor: true });
-    }
-    return nuevos;
+    const idsServidor = new Set(documentos.map((documento) => documento.id));
+    const localesSinVersionServidor = (cs || []).filter((conteo) => !idsServidor.has(conteo.id));
+    const versionesServidor = documentos.map((documento) => ({ ...documento, _pm12Servidor: true }));
+    return [...localesSinVersionServidor, ...versionesServidor];
   });
 }
 async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = null, localActivoId = null, esContextoVigente = () => true }) {
@@ -745,6 +737,112 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
       return { ...prod, stock: Number(st2.total) || 0, stockPisoVenta: Number(st2.piso) || 0, stockMinimo: Number(st2.minimo) || 0, _pm07BajoMinimo: !!st2.bajo_minimo, _pm07Servidor: true, _pm07LocalOperable: st2.local_operable !== false };
     }));
   }
+  const lineaIds = [...new Set(movs.map((m4) => m4?.datos?.linea_id).filter(Boolean))];
+  const lineasEconomicas = [];
+  for (let i33 = 0; i33 < lineaIds.length; i33 += 200) {
+    const lote = lineaIds.slice(i33, i33 + 200);
+    const rLineas = await supabase.from("pedido_lineas").select("id,pedido_id,precio_unitario,base,impuestos,total,snapshot_comercial").in("id", lote);
+    if (rLineas.error) {
+      console.warn("No se pudo recuperar el snapshot comercial de las ventas históricas:", rLineas.error);
+      break;
+    }
+    if (Array.isArray(rLineas.data)) lineasEconomicas.push(...rLineas.data);
+  }
+  const lineaEconomicaPorId = new Map(lineasEconomicas.map((linea) => [String(linea.id), linea]));
+  const pedidosTicketPorId = new Map();
+  const cuentasTicket = new Set();
+  if (lineasEconomicas.length > 0) {
+    const pedidoIds = [...new Set(lineasEconomicas.map((linea) => linea.pedido_id).filter(Boolean))];
+    if (pedidoIds.length > 0) {
+      const rPedidos = await supabase.from("pedidos_tpv").select("id,cuenta_id").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("id", pedidoIds);
+      if (rPedidos.error) {
+        console.warn("No se pudo recuperar la cuenta de las ventas históricas:", rPedidos.error);
+      } else {
+        (rPedidos.data || []).forEach((pedido) => {
+          pedidosTicketPorId.set(String(pedido.id), pedido);
+          if (pedido.cuenta_id) cuentasTicket.add(String(pedido.cuenta_id));
+        });
+      }
+    }
+  }
+  const checkoutsTicketPorCuenta = new Map();
+  const checkoutIdsTicket = [];
+  if (cuentasTicket.size > 0) {
+    const rCheckouts = await supabase.from("checkouts").select("id,cuenta_id,estado,completed_at").eq("empresa_id", empresaId).eq("local_id", localActivoId).eq("estado", "COMPLETADO").in("cuenta_id", [...cuentasTicket]).order("completed_at", { ascending: false });
+    if (rCheckouts.error) {
+      console.warn("No se pudo recuperar el checkout de las ventas históricas:", rCheckouts.error);
+    } else {
+      (rCheckouts.data || []).forEach((checkout) => {
+        const cuentaId = String(checkout.cuenta_id || "");
+        if (!cuentaId || checkoutsTicketPorCuenta.has(cuentaId)) return;
+        checkoutsTicketPorCuenta.set(cuentaId, checkout);
+        checkoutIdsTicket.push(checkout.id);
+      });
+    }
+  }
+  const pagosTicketPorCheckout = new Map();
+  if (checkoutIdsTicket.length > 0) {
+    const rPagos = await supabase.from("pagos").select("checkout_id,medio,estado,importe_objetivo,importe_recibido,cambio_entregado,created_at").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("checkout_id", checkoutIdsTicket).order("created_at", { ascending: false });
+    if (rPagos.error) {
+      console.warn("No se pudo recuperar el pago de las ventas históricas:", rPagos.error);
+    } else {
+      (rPagos.data || []).forEach((pago) => {
+        const checkoutId = String(pago.checkout_id || "");
+        if (!checkoutId) return;
+        const lista = pagosTicketPorCheckout.get(checkoutId) || [];
+        lista.push(pago);
+        pagosTicketPorCheckout.set(checkoutId, lista);
+      });
+    }
+  }
+  const ventaFiscalPorCheckout = new Map();
+  if (checkoutIdsTicket.length > 0) {
+    const rCheckoutVentas = await supabase.from("checkout_ventas").select("checkout_id,venta_fiscal_id,importe_objetivo").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("checkout_id", checkoutIdsTicket);
+    if (rCheckoutVentas.error) {
+      console.warn("No se pudo recuperar la venta fiscal histórica:", rCheckoutVentas.error);
+    } else {
+      (rCheckoutVentas.data || []).forEach((fila) => {
+        if (fila.checkout_id && !ventaFiscalPorCheckout.has(String(fila.checkout_id))) ventaFiscalPorCheckout.set(String(fila.checkout_id), fila);
+      });
+    }
+  }
+  const humanizarMedioPagoTicket = (medio) => {
+    const valor = String(medio || "").toUpperCase();
+    if (valor === "EFECTIVO") return "Efectivo";
+    if (valor === "TARJETA") return "Tarjeta";
+    if (valor === "TRANSFERENCIA") return "Transferencia";
+    if (valor === "OTRO") return "Otro";
+    return medio || null;
+  };
+  const datosTicketHistorico = (datos) => {
+    const linea = datos?.linea_id ? lineaEconomicaPorId.get(String(datos.linea_id)) : null;
+    const pedido = linea?.pedido_id ? pedidosTicketPorId.get(String(linea.pedido_id)) : null;
+    const cuentaId = pedido?.cuenta_id || null;
+    const checkout = cuentaId ? checkoutsTicketPorCuenta.get(String(cuentaId)) : null;
+    const checkoutId = checkout?.id || null;
+    const pagos = checkoutId ? pagosTicketPorCheckout.get(String(checkoutId)) || [] : [];
+    const confirmados = pagos.filter((pago) => ["CONFIRMADO", "REEMBOLSADO"].includes(String(pago.estado || "").toUpperCase()));
+    const pagosValidos = confirmados.length ? confirmados : pagos;
+    const medios = [...new Set(pagosValidos.map((pago) => String(pago.medio || "").toUpperCase()).filter(Boolean))];
+    const pagoEfectivo = pagosValidos.find((pago) => String(pago.medio || "").toUpperCase() === "EFECTIVO") || null;
+    const ventaFiscal = checkoutId ? ventaFiscalPorCheckout.get(String(checkoutId)) : null;
+    const detallePago = medios.length > 1 ? pagosValidos.reduce((acc, pago) => {
+      const medio = String(pago.medio || "").toUpperCase();
+      if (medio === "EFECTIVO") acc.efectivo += Number(pago.importe_objetivo) || 0;
+      if (medio === "TARJETA") acc.tarjeta += Number(pago.importe_objetivo) || 0;
+      return acc;
+    }, { efectivo: 0, tarjeta: 0 }) : datos?.detallePago || null;
+    return {
+      cuentaId,
+      checkoutId,
+      ventaFiscalId: ventaFiscal?.venta_fiscal_id || null,
+      medioPago: datos?.medioPago || (medios.length > 1 ? "Mixto" : humanizarMedioPagoTicket(medios[0])) || null,
+      detallePago,
+      importeEntregado: datos?.importeEntregado ?? datos?.entregado ?? pagoEfectivo?.importe_recibido ?? null,
+      cambioEntregado: datos?.cambioEntregado ?? datos?.cambio ?? pagoEfectivo?.cambio_entregado ?? null,
+      importeVenta: ventaFiscal?.importe_objetivo ?? null
+    };
+  };
   if (typeof setMovimientos === "function") {
     const server = movs.map((m4) => {
       const d2 = m4.datos && typeof m4.datos === "object" ? m4.datos : {};
@@ -753,12 +851,31 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
       if (movimientoPM12.tipo === "INVENTARIO_PM12" || datosPM12.origen === "cancelarConteo") {
         return { ...(datosPM12.camposExtra || {}), ...datosPM12, id: datosPM12.movimientoId, operationId: movimientoPM12.operation_id, productoId: movimientoPM12.producto_id, localId: movimientoPM12.local_id, empresaId: movimientoPM12.empresa_id, cantidad: Number(datosPM12.cantidad), _pm07Servidor: true, fecha: String(movimientoPM12.created_at || "").slice(0, 10) };
       }
+      const lineaEconomica = d2.linea_id ? lineaEconomicaPorId.get(String(d2.linea_id)) : null;
+      const precioEnDatos = d2.ingresoUnitario !== void 0 && d2.ingresoUnitario !== null ? Number(d2.ingresoUnitario) : Number(lineaEconomica?.precio_unitario);
+      const baseLinea = d2.baseLinea !== void 0 && d2.baseLinea !== null ? Number(d2.baseLinea) : Number(lineaEconomica?.base);
+      const impuestosLinea = d2.impuestosLinea !== void 0 && d2.impuestosLinea !== null ? Number(d2.impuestosLinea) : Number(lineaEconomica?.impuestos);
+      const impuestoPctSnapshot = Number(lineaEconomica?.snapshot_comercial?.impuesto_pct);
+      const ivaEnDatos = d2.ivaVentaAplicado !== void 0 && d2.ivaVentaAplicado !== null ? Number(d2.ivaVentaAplicado) : Number.isFinite(impuestoPctSnapshot) ? impuestoPctSnapshot : Number.isFinite(baseLinea) && baseLinea !== 0 ? impuestosLinea / baseLinea * 100 : 0;
+      const importeLinea = d2.importeLinea !== void 0 && d2.importeLinea !== null ? Number(d2.importeLinea) : Number(lineaEconomica?.total);
       const delta = Number(m4.delta_total) || 0;
       const creado = String(m4.created_at || "");
+      const ticketHistorico = datosTicketHistorico(d2);
+      const datosEnriquecidos = {
+        ...d2,
+        ...(ticketHistorico.cuentaId ? { cuentaId: ticketHistorico.cuentaId } : {}),
+        ...(ticketHistorico.checkoutId ? { checkoutId: ticketHistorico.checkoutId } : {}),
+        ...(ticketHistorico.ventaFiscalId ? { ventaFiscalId: ticketHistorico.ventaFiscalId, ventaId: ticketHistorico.ventaFiscalId } : ticketHistorico.cuentaId ? { cuentaId: ticketHistorico.cuentaId, ventaId: ticketHistorico.cuentaId } : {}),
+        ...(ticketHistorico.medioPago ? { medioPago: ticketHistorico.medioPago } : {}),
+        ...(ticketHistorico.detallePago ? { detallePago: ticketHistorico.detallePago } : {}),
+        ...(ticketHistorico.importeEntregado != null ? { importeEntregado: Number(ticketHistorico.importeEntregado) } : {}),
+        ...(ticketHistorico.cambioEntregado != null ? { cambioEntregado: Number(ticketHistorico.cambioEntregado) } : {}),
+        ...(ticketHistorico.importeVenta != null ? { importeVenta: Number(ticketHistorico.importeVenta) } : {})
+      };
       return {
         id: `pm07-${m4.id}`,
         operationId: m4.operation_id,
-        ventaId: d2.ventaId || (m4.tipo === "VENTA" ? m4.operation_id : d2.anulaVentaId || null),
+        ventaId: datosEnriquecidos.ventaId || (m4.tipo === "VENTA" ? m4.operation_id : datosEnriquecidos.anulaVentaId || null),
         anulaVentaId: d2.anulaVentaId || null,
         productoId: m4.producto_id,
         localId: m4.local_id,
@@ -769,13 +886,18 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
         motivo: d2.motivo || m4.tipo,
         referencia: d2.referencia || "PM-07",
         costoUnitario: Number(d2.costoUnitario) || 0,
-        ingresoUnitario: Number(d2.ingresoUnitario) || 0,
-        ivaVentaAplicado: Number(d2.ivaVentaAplicado) || 0,
-        medioPago: d2.medioPago || null,
-        detallePago: d2.detallePago || null,
+        ingresoUnitario: Number.isFinite(precioEnDatos) ? precioEnDatos : 0,
+        ivaVentaAplicado: Number.isFinite(ivaEnDatos) ? ivaEnDatos : 0,
+        medioPago: datosEnriquecidos.medioPago || null,
+        detallePago: datosEnriquecidos.detallePago || null,
+        cuentaId: datosEnriquecidos.cuentaId || null,
+        checkoutId: datosEnriquecidos.checkoutId || null,
+        ventaFiscalId: datosEnriquecidos.ventaFiscalId || null,
+        importeEntregado: datosEnriquecidos.importeEntregado ?? null,
+        cambioEntregado: datosEnriquecidos.cambioEntregado ?? null,
         reembolso: d2.reembolso !== void 0 && d2.reembolso !== null ? Number(d2.reembolso) || 0 : null,
         medioReembolso: d2.medioReembolso || null,
-        datos: d2,
+        datos: lineaEconomica ? { ...datosEnriquecidos, ingresoUnitario: Number.isFinite(precioEnDatos) ? precioEnDatos : 0, ivaVentaAplicado: Number.isFinite(ivaEnDatos) ? ivaEnDatos : 0, baseLinea: Number.isFinite(baseLinea) ? baseLinea : 0, impuestosLinea: Number.isFinite(impuestosLinea) ? impuestosLinea : 0, importeLinea: Number.isFinite(importeLinea) ? importeLinea : 0 } : datosEnriquecidos,
         fecha: d2.fechaOperacion || (creado ? creado.slice(0, 10) : todayISO()),
         hora: creado ? creado.slice(11, 16) : (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5),
         afectaStockTotal: delta !== 0,
@@ -1013,13 +1135,14 @@ async function sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluci
   return { ok: true, movimientosCaja: caja.length, arqueos: arqueos.length, devoluciones: clientes.length + proveedores.length };
 }
 async function sincronizarContextoPm07(args) {
-  const { setProductos, esContextoVigente = () => true } = args || {};
+  const { setProductos, empresaId, localActivoId, esContextoVigente = () => true } = args || {};
   if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return { ok: false, offline: true };
+  if (!empresaId) return { ok: false, contexto_ausente: true };
   const supabase = await window.getSupabaseClient();
   // Empresas, locales y localActivoId ya vienen del contexto seguro sembrado
   // por ui-context-bridge. El bloque global de almacen_kv es legado y no debe
   // ampliar el contexto filtrado de una cuenta de empleado.
-  const r2 = await supabase.from("almacen_kv").select("key,value").in("key", ["productos"]);
+  const r2 = await supabase.from("almacen_kv").select("key,value").eq("empresa_id", String(empresaId)).in("key", ["productos"]);
   if (r2.error) throw r2.error;
   const porClave = new Map((r2.data || []).map((fila) => [fila.key, fila.value]));
   const productosNube = porClave.get("productos");
@@ -1134,6 +1257,23 @@ var CONFIG_ERRORES = {
   equipo_id_en_uso: "Ese equipo pertenece a otro local.",
   equipo_nombre_duplicado: "Ya hay un equipo con ese nombre en este local.",
   equipo_tipo_inmutable: "El tipo de un equipo no se puede cambiar; desactívalo y crea otro.",
+  terminal_id_requerido: "Falta el identificador del terminal.",
+  terminal_nombre_invalido: "Escribe un nombre de terminal de hasta 80 caracteres.",
+  terminal_device_key_invalida: "La identidad del dispositivo puede tener hasta 120 caracteres.",
+  terminal_capacidades_invalidas: "Las capacidades del terminal no tienen un formato válido.",
+  terminal_estado_requerido: "Indica si el terminal está activo.",
+  terminal_motivo_requerido: "Escribe el motivo del cambio.",
+  terminal_local_no_disponible: "El local no está disponible.",
+  terminal_id_en_uso: "Ese terminal pertenece a otro local.",
+  terminal_device_key_duplicada: "La identidad del dispositivo ya está vinculada a otro terminal de este local.",
+  terminal_sesion_abierta: "No se puede desactivar un terminal que está vinculado a una sesión de caja abierta.",
+  caja_id_requerido: "Falta el identificador de la caja.",
+  caja_nombre_invalido: "Escribe un nombre de caja de hasta 80 caracteres.",
+  caja_estado_requerido: "Indica si la caja está activa.",
+  caja_motivo_requerido: "Escribe el motivo del cambio.",
+  caja_local_no_disponible: "El local no está disponible.",
+  caja_id_en_uso: "Esa caja pertenece a otro local.",
+  caja_sesion_abierta: "No se puede desactivar una caja que tiene una sesión abierta.",
   capacidad_ambito_invalido: "Ámbito no válido.",
   capacidad_rol_invalido: "Ese rol no se puede configurar.",
   capacidad_invalida: "Permiso no válido.",
@@ -1152,7 +1292,28 @@ var CONFIG_ERRORES = {
   cargo_operation_id_requerido: "No se pudo identificar la operación. Recarga e inténtalo de nuevo.",
   cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
   cargo_nombre_reservado: "Ese nombre está reservado para un rol protegido del sistema.",
-  cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado."
+  cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado.",
+  FISCAL_CONFIG_NO_AUTORIZADO: "Necesitas acceso de Propietario a toda la empresa para configurar su emisor fiscal.",
+  FISCAL_CONFIG_VERSION_OBSOLETA: "Otra sesión cambió este borrador. Se han recargado los datos más recientes; revisa antes de volver a guardar.",
+  FISCAL_CONFIG_OPERATION_CONFLICT: "La operación fiscal ya se había usado con otros datos. Recarga e inténtalo de nuevo.",
+  FISCAL_CONFIG_FORMATO_INVALIDO: "La configuración fiscal no tiene un formato válido.",
+  FISCAL_CONFIG_CAMPO_NO_PERMITIDO: "La configuración contiene un campo que no se puede guardar.",
+  FISCAL_CONFIG_TIPO_INVALIDO: "Uno de los datos fiscales no tiene el tipo permitido.",
+  FISCAL_CONFIG_VALOR_INVALIDO: "Uno de los datos fiscales contiene un valor no permitido.",
+  FISCAL_CONFIG_OPCION_INVALIDA: "Selecciona una opción fiscal válida.",
+  FISCAL_CONFIG_EMAIL_INVALIDO: "Revisa el correo electrónico de la asesoría.",
+  FISCAL_CONFIG_NIF_FORMATO_INVALIDO: "El NIF del presentador debe tener nueve caracteres alfanuméricos.",
+  FISCAL_CONFIG_AMBITO_INCOMPATIBLE: "La modalidad VeriFactu o no VeriFactu solo puede elegirse para AEAT y una empresa sujeta al RRSIF.",
+  FISCAL_CONFIG_REPRESENTACION_INCOMPATIBLE: "El canal y la forma de representación elegidos no son compatibles.",
+  FISCAL_DELEGACION_NO_AUTORIZADO: "No tienes autorización para este emisor fiscal.",
+  FISCAL_DELEGACION_EMAIL_INVALIDO: "Revisa el correo de la invitación.",
+  FISCAL_DELEGACION_YA_INVITADA: "Ya existe una invitación pendiente para ese correo.",
+  FISCAL_DELEGACION_EXPIRACION_INVALIDA: "La caducidad de la invitación no es válida.",
+  FISCAL_DELEGACION_IDENTIDAD_NO_COINCIDE: "La cuenta conectada no coincide con el correo invitado.",
+  FISCAL_DELEGACION_CADUCADA: "La invitación ya ha caducado.",
+  FISCAL_DELEGACION_ESTADO_INVALIDO: "La invitación ya no está disponible.",
+  FISCAL_REPRESENTACION_EVIDENCIA_REQUERIDA: "Hace falta una referencia y la huella de la evidencia externa.",
+  FISCAL_REPRESENTACION_FECHAS_INVALIDAS: "Las fechas de vigencia no son coherentes."
 };
 function configUuid() {
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") return crypto.randomUUID();
@@ -1573,6 +1734,139 @@ function ConfigEquipos({ empresaId, localId }) {
         h(Btn, { small: true, variant: "ghost", onClick: () => setForm(null), disabled: ocupado }, "Cancelar")
       )
     ) : null,
+    cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
+  );
+}
+function ConfigTerminalesCajas({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const [terminales, setTerminales] = (0, import_react4.useState)([]);
+  const [cajas, setCajas] = (0, import_react4.useState)([]);
+  const [verInactivos, setVerInactivos] = (0, import_react4.useState)(false);
+  const [nombreTerminal, setNombreTerminal] = (0, import_react4.useState)("");
+  const [nombreCaja, setNombreCaja] = (0, import_react4.useState)("");
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [motivo, setMotivo] = (0, import_react4.useState)("");
+  const cargar = async (inactivos = verInactivos) => {
+    setCargando(true);
+    setError("");
+    try {
+      const datos = await configRpc("abc_listar_terminales_cajas_local", { p_empresa_id: empresaId, p_local_id: localId, p_incluir_inactivos: inactivos });
+      setTerminales(Array.isArray(datos?.terminales) ? datos.terminales : []);
+      setCajas(Array.isArray(datos?.cajas) ? datos.cajas : []);
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => {
+    setConfirmacion("");
+    setNombreTerminal("");
+    setNombreCaja("");
+    cargar();
+  }, [empresaId, localId]);
+  const guardarTerminal = async (existente = null) => {
+    setError("");
+    setConfirmacion("");
+    const nombre = String(existente?.nombre || nombreTerminal || "").trim();
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    if (!nombre) {
+      setError("Escribe el nombre del terminal.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const capacidades = existente?.capacidades || { operaciones: ["VENTA", "CAJA"] };
+      const r2 = await configRpc("abc_configurar_terminal_tpv", {
+        p_operation_id: configOperacion("terminal-tpv"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_terminal_id: existente?.id || configUuid(),
+        p_nombre: nombre,
+        p_device_key: null,
+        p_capacidades: capacidades,
+        p_activo: existente ? existente.activo !== true : true,
+        p_motivo: motivo.trim()
+      });
+      setNombreTerminal("");
+      setConfirmacion(r2?.creado ? "Terminal TPV creado en este local." : r2?.cambio === false ? "No había nada que cambiar." : "Terminal TPV actualizado.");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const guardarCaja = async (existente = null) => {
+    setError("");
+    setConfirmacion("");
+    const nombre = String(existente?.nombre || nombreCaja || "").trim();
+    if (!motivo.trim()) {
+      setError("Escribe el motivo del cambio.");
+      return;
+    }
+    if (!nombre) {
+      setError("Escribe el nombre de la caja.");
+      return;
+    }
+    setGuardando(true);
+    try {
+      const r2 = await configRpc("abc_configurar_caja_fisica", {
+        p_operation_id: configOperacion("caja-fisica"),
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_caja_id: existente?.id || configUuid(),
+        p_nombre: nombre,
+        p_activo: existente ? existente.activo !== true : true,
+        p_motivo: motivo.trim()
+      });
+      setNombreCaja("");
+      setConfirmacion(r2?.creado ? "Caja física creada en este local." : r2?.cambio === false ? "No había nada que cambiar." : "Caja física actualizada.");
+      await cargar();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const ocupado = cargando || guardando;
+  return h(
+    "div",
+    null,
+    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigMotivo, { valor: motivo, onCambio: setMotivo, deshabilitado: ocupado }),
+    h(Card, { className: "mb-3", style: { background: C2.amberSoft } },
+      h("div", { className: "font-semibold mb-1" }, "Terminales TPV y cajas físicas"),
+      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Esta pantalla solo está disponible para Propietario. El servidor comprueba tu sesión y tu rol; el PIN local no autoriza por sí solo. El terminal es la identidad operativa del navegador, no un datáfono ni una clave secreta.")),
+    h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: verInactivos, onChange: (e2) => {
+      setVerInactivos(e2.target.checked);
+      cargar(e2.target.checked);
+    }, disabled: ocupado }), "Ver también los desactivados"),
+    h(Card, { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Terminales TPV del local"),
+      h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, terminales.filter((t3) => t3.activo).length > 1 ? "Hay varios terminales activos: el TPV deberá seleccionar cuál usa." : "Con un único terminal activo, el TPV lo selecciona automáticamente."),
+      terminales.length ? terminales.map((t3) => h("div", { key: t3.id, className: "flex items-center justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: t3.activo ? 1 : 0.6 } },
+        h("div", { className: "text-[13px]" }, h("div", { className: "font-semibold" }, t3.nombre, t3.activo ? "" : " (desactivado)"), h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, t3.device_key_present ? "Identidad de dispositivo vinculada" : "Sin identidad de dispositivo; se puede vincular más adelante")),
+        h(Btn, { small: true, variant: t3.activo ? "danger" : "ghost", onClick: () => guardarTerminal(t3), disabled: ocupado }, t3.activo ? "Desactivar" : "Activar")
+      )) : h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ningún terminal TPV en este local."),
+      h(Field, { label: "Nombre del nuevo terminal" }, h(Input, { value: nombreTerminal, onChange: (e2) => setNombreTerminal(e2.target.value), maxLength: 80, disabled: ocupado, placeholder: "TPV mostrador" })),
+      h(Btn, { small: true, onClick: () => guardarTerminal(), disabled: ocupado }, guardando ? "Guardando…" : "Crear terminal TPV")
+    ),
+    h(Card, { className: "mb-3" },
+      h("div", { className: "font-semibold mb-2" }, "Cajas físicas del local"),
+      cajas.length ? cajas.map((c3) => h("div", { key: c3.id, className: "flex items-center justify-between gap-2 mb-2 pb-2", style: { borderBottom: `1px solid ${C2.divider}`, opacity: c3.activo ? 1 : 0.6 } },
+        h("div", { className: "text-[13px]" }, c3.nombre, c3.activo ? "" : " (desactivada)"),
+        h(Btn, { small: true, variant: c3.activo ? "danger" : "ghost", onClick: () => guardarCaja(c3), disabled: ocupado }, c3.activo ? "Desactivar" : "Activar")
+      )) : h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Todavía no hay ninguna caja física en este local."),
+      h(Field, { label: "Nombre de la nueva caja" }, h(Input, { value: nombreCaja, onChange: (e2) => setNombreCaja(e2.target.value), maxLength: 80, disabled: ocupado, placeholder: "Caja principal" })),
+      h(Btn, { small: true, onClick: () => guardarCaja(), disabled: ocupado }, guardando ? "Guardando…" : "Crear caja física")
+    ),
     cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando…") : null
   );
 }
@@ -2361,11 +2655,254 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     )
   );
 }
-function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [] }) {
+var FISCAL_CONFIG_INICIAL = {
+  jurisdiccion: "PENDIENTE", sujecion: "PENDIENTE", modalidad: "PENDIENTE",
+  canal: "PENDIENTE", representacion: "PENDIENTE", tipo_factura: "PENDIENTE",
+  asesoria_nombre: "", asesoria_email: "", presentador_nif: ""
+};
+var FISCAL_CONFIG_OPCIONES = {
+  jurisdiccion: [["PENDIENTE", "Pendiente de revisar"], ["ES_AEAT", "España · AEAT"], ["ES_FORAL", "España · Hacienda foral"], ["OTRA", "Otra jurisdicción"]],
+  sujecion: [["PENDIENTE", "Pendiente de revisar"], ["SUJETO_RRSIF", "Sujeta al RRSIF"], ["EXCLUIDO_SII", "Excluida por SII"], ["EXCLUIDO_OTRO", "Otra exclusión"]],
+  modalidad: [["PENDIENTE", "Pendiente de decidir"], ["VERIFACTU", "VeriFactu"], ["NO_VERIFACTU", "No VeriFactu"]],
+  canal: [["PENDIENTE", "Pendiente de decidir"], ["DIRECTO", "Conexión directa de la empresa"], ["ASESORIA", "A través de la asesoría"], ["PROVEEDOR", "A través de un proveedor fiscal"]],
+  representacion: [["PENDIENTE", "Pendiente de acreditar"], ["PROPIO", "Certificado propio"], ["APODERAMIENTO", "Apoderamiento"], ["COLABORACION_SOCIAL", "Colaboración social"]],
+  tipo_factura: [["PENDIENTE", "Pendiente de revisar"], ["SIMPLIFICADA", "Factura simplificada cuando proceda"], ["COMPLETA", "Factura completa"]]
+};
+var FISCAL_DELEGACION_PERMISOS = [["CONSULTAR", "Consultar"], ["PROPONER", "Proponer cambios"], ["VALIDAR_SITUACION", "Validar situación comunicada"]];
+var FISCAL_REPRESENTACION_TIPOS = [["PENDIENTE", "Pendiente de acreditar"], ["APODERAMIENTO", "Apoderamiento"], ["COLABORACION_SOCIAL", "Colaboración social"]];
+var FISCAL_REPRESENTACION_ESTADOS = [["PENDIENTE", "Pendiente"], ["ACREDITADA", "Acreditada externamente"], ["REVOCADA", "Revocada"], ["CADUCADA", "Caducada"]];
+function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
+  const h = import_react4.default.createElement;
+  return h(Field, { label: etiqueta }, h("select", {
+    value: form[clave] || "PENDIENTE", onChange: (e2) => onCambio(clave, e2.target.value), disabled,
+    className: "w-full rounded-lg px-3 py-2 text-[13px]",
+    style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 }
+  }, FISCAL_CONFIG_OPCIONES[clave].map(([valor, texto]) => h("option", { key: valor, value: valor }, texto))));
+}
+function ConfigFiscalidad({ empresaId, localId, localNombre = "", procesarColaFiscalQaC07D = null }) {
+  const h = import_react4.default.createElement;
+  const modoFiscalLocal = typeof window !== "undefined" && window.__nubeActiva === false;
+  const modoFiscalQa = typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+  const modoPilotoSandboxQa = modoFiscalQa;
+  const [emisores, setEmisores] = (0, import_react4.useState)([]);
+  const [emisorId, setEmisorId] = (0, import_react4.useState)("");
+  const [detalle, setDetalle] = (0, import_react4.useState)(null);
+  const [pilotoSandbox, setPilotoSandbox] = (0, import_react4.useState)(null);
+  const [form, setForm] = (0, import_react4.useState)({ ...FISCAL_CONFIG_INICIAL });
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [delegaciones, setDelegaciones] = (0, import_react4.useState)([]);
+  const [invitacion, setInvitacion] = (0, import_react4.useState)({ email: "", permiso: "CONSULTAR", dias: "30" });
+  const [representacion, setRepresentacion] = (0, import_react4.useState)({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" });
+  const [c07cDisponible, setC07cDisponible] = (0, import_react4.useState)(modoFiscalQa);
+  const [guardandoDelegacion, setGuardandoDelegacion] = (0, import_react4.useState)(false);
+  const [guardandoRepresentacion, setGuardandoRepresentacion] = (0, import_react4.useState)(false);
+  const [procesandoColaQa, setProcesandoColaQa] = (0, import_react4.useState)(false);
+  const [resultadoColaQa, setResultadoColaQa] = (0, import_react4.useState)(null);
+  const listaSolicitud = (0, import_react4.useRef)(0);
+  const detalleSolicitud = (0, import_react4.useRef)(0);
+  const reiniciarDetalle = () => { setDetalle(null); setForm({ ...FISCAL_CONFIG_INICIAL }); };
+  const cargarDetalle = async (id) => {
+    const solicitud = ++detalleSolicitud.current;
+    reiniciarDetalle();
+    if (!id) return;
+    setCargando(true); setError(""); setConfirmacion("");
+    try {
+      const r2 = await configRpc("abc_fiscal_leer_borrador", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: id });
+      if (solicitud !== detalleSolicitud.current) return;
+      setDetalle(r2 || null); setForm({ ...FISCAL_CONFIG_INICIAL, ...r2?.configuracion });
+    } catch (e2) { if (solicitud === detalleSolicitud.current) setError(configMensajeError(e2)); }
+    finally { if (solicitud === detalleSolicitud.current) setCargando(false); }
+  };
+  (0, import_react4.useEffect)(() => {
+    const solicitud = ++listaSolicitud.current;
+    ++detalleSolicitud.current;
+    setCargando(true); setError(""); setConfirmacion(""); setEmisores([]); setEmisorId(""); reiniciarDetalle();
+    if (modoFiscalLocal) {
+      setCargando(false);
+      return () => { ++listaSolicitud.current; ++detalleSolicitud.current; };
+    }
+    configRpc("abc_fiscal_listar_emisores", { p_empresa_id: empresaId, p_local_id: localId }).then((r2) => {
+      if (solicitud !== listaSolicitud.current) return;
+      const lista = Array.isArray(r2?.emisores) ? r2.emisores : [];
+      setEmisores(lista); setEmisorId(lista[0]?.id || "");
+    }).catch((e2) => { if (solicitud === listaSolicitud.current) setError(configMensajeError(e2));
+    }).finally(() => { if (solicitud === listaSolicitud.current) setCargando(false); });
+    return () => { ++listaSolicitud.current; ++detalleSolicitud.current; };
+  }, [empresaId, localId]);
+  (0, import_react4.useEffect)(() => { if (emisorId) cargarDetalle(emisorId); else reiniciarDetalle(); }, [empresaId, localId, emisorId]);
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    if (modoFiscalLocal || !emisorId || !modoFiscalQa) { setDelegaciones([]); setPilotoSandbox(null); setRepresentacion({ tipo: "PENDIENTE", estado: "PENDIENTE", referencia_opaca: "", evidencia_sha256: "", vigente_desde: "", vigente_hasta: "" }); setC07cDisponible(modoFiscalQa); return () => { activo = false; }; }
+    setC07cDisponible(true);
+    const leerPilotoSandbox = modoPilotoSandboxQa
+      ? configRpc("abc_c07d_leer_piloto_sandbox", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }).catch(() => null)
+      : Promise.resolve(null);
+    Promise.all([
+      configRpc("abc_fiscal_listar_delegaciones", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }),
+      configRpc("abc_fiscal_leer_representacion", { p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId }),
+      leerPilotoSandbox
+    ]).then(([r2, r3, r4]) => {
+      if (!activo) return;
+      setDelegaciones(Array.isArray(r2?.delegaciones) ? r2.delegaciones : []);
+      setPilotoSandbox(r4 || null);
+      setRepresentacion({ tipo: r3?.tipo || "PENDIENTE", estado: r3?.estado || "PENDIENTE", referencia_opaca: r3?.referencia_opaca || "", evidencia_sha256: r3?.evidencia_sha256 || "", vigente_desde: r3?.vigente_desde || "", vigente_hasta: r3?.vigente_hasta || "" });
+    }).catch(() => { if (activo) setC07cDisponible(false); });
+    return () => { activo = false; };
+  }, [empresaId, localId, emisorId]);
+  const campo = (clave, valor) => setForm((actual) => ({ ...actual, [clave]: valor }));
+  const guardar = async () => {
+    setError(""); setConfirmacion("");
+    if (!detalle || !emisorId) return setError("Selecciona un emisor fiscal disponible.");
+    if (form.modalidad !== "PENDIENTE" && (form.jurisdiccion !== "ES_AEAT" || form.sujecion !== "SUJETO_RRSIF")) return setError(CONFIG_ERRORES.FISCAL_CONFIG_AMBITO_INCOMPATIBLE);
+    if (form.canal === "DIRECTO" && !["PENDIENTE", "PROPIO"].includes(form.representacion) || ["ASESORIA", "PROVEEDOR"].includes(form.canal) && form.representacion === "PROPIO") return setError(CONFIG_ERRORES.FISCAL_CONFIG_REPRESENTACION_INCOMPATIBLE);
+    setGuardando(true);
+    try {
+      const configuracion = Object.fromEntries(Object.entries(form).map(([k, v]) => [k, typeof v === "string" && !v.trim() ? null : typeof v === "string" ? v.trim() : v]));
+      const r2 = await configRpc("abc_fiscal_guardar_borrador", { p_operation_id: configUuid(), p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId, p_version_esperada: Number(detalle.version || 0), p_configuracion: configuracion });
+      setDetalle(r2); setForm({ ...FISCAL_CONFIG_INICIAL, ...r2?.configuracion });
+      setEmisores((actual) => actual.map((e2) => e2.id === emisorId ? { ...e2, version_borrador: r2?.version || 0 } : e2));
+      setConfirmacion("Borrador fiscal guardado. No se ha activado ninguna conexión ni envío a la AEAT.");
+    } catch (e2) {
+      if (String(e2?.message || e2 || "").includes("FISCAL_CONFIG_VERSION_OBSOLETA")) await cargarDetalle(emisorId);
+      setError(configMensajeError(e2));
+    } finally { setGuardando(false); }
+  };
+  const invitarAsesoria = async () => {
+    const email = String(invitacion.email || "").trim().toLowerCase();
+    const dias = Number(invitacion.dias);
+    if (!/^\S+@\S+\.\S+$/.test(email)) return setError("Escribe un correo válido para la invitación.");
+    if (!Number.isInteger(dias) || dias < 1 || dias > 180) return setError("La invitación puede durar entre 1 y 180 días.");
+    setError(""); setConfirmacion(""); setGuardandoDelegacion(true);
+    try {
+      const r2 = await configRpc("abc_fiscal_invitar_asesoria", { p_operation_id: configUuid(), p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId, p_email: email, p_permiso: invitacion.permiso, p_expira_at: new Date(Date.now() + dias * 86400000).toISOString() });
+      setInvitacion((actual) => ({ ...actual, email: "" }));
+      setDelegaciones((actual) => [r2, ...actual]);
+      setConfirmacion("Invitación creada. El envío de correo queda pendiente y aceptar la invitación no acredita representación ante la AEAT.");
+    } catch (e2) { setError(configMensajeError(e2)); }
+    finally { setGuardandoDelegacion(false); }
+  };
+  const revocarAsesoria = async (delegacion) => {
+    setError(""); setConfirmacion(""); setGuardandoDelegacion(true);
+    try {
+      const r2 = await configRpc("abc_fiscal_revocar_delegacion", { p_operation_id: configUuid(), p_empresa_id: empresaId, p_local_id: localId, p_delegacion_id: delegacion.id });
+      setDelegaciones((actual) => actual.map((item) => item.id === delegacion.id ? { ...item, ...r2 } : item));
+      setConfirmacion("Acceso revocado. Esto no revoca por sí solo la representación tributaria externa.");
+    } catch (e2) { setError(configMensajeError(e2)); }
+    finally { setGuardandoDelegacion(false); }
+  };
+  const guardarRepresentacion = async () => {
+    const r2 = representacion;
+    if (r2.tipo !== "PENDIENTE" && (!r2.referencia_opaca.trim() || !/^[0-9a-f]{64}$/i.test(r2.evidencia_sha256.trim()))) return setError("Para registrar una representación hace falta una referencia opaca y una huella SHA-256 de 64 caracteres.");
+    setError(""); setConfirmacion(""); setGuardandoRepresentacion(true);
+    try {
+      await configRpc("abc_fiscal_guardar_representacion", { p_operation_id: configUuid(), p_empresa_id: empresaId, p_local_id: localId, p_entidad_fiscal_id: emisorId, p_tipo: r2.tipo, p_estado: r2.tipo === "PENDIENTE" ? "PENDIENTE" : r2.estado, p_referencia_opaca: r2.tipo === "PENDIENTE" ? null : r2.referencia_opaca.trim(), p_evidencia_sha256: r2.tipo === "PENDIENTE" ? null : r2.evidencia_sha256.trim().toLowerCase(), p_vigente_desde: r2.vigente_desde || null, p_vigente_hasta: r2.vigente_hasta || null });
+      setConfirmacion("Metadatos de representación guardados. No se ha activado ninguna emisión.");
+    } catch (e2) { setError(configMensajeError(e2)); }
+    finally { setGuardandoRepresentacion(false); }
+  };
+  const procesarColaQa = async () => {
+    if (typeof procesarColaFiscalQaC07D !== "function") {
+      setError("La acción del worker QA todavía no está disponible en esta versión.");
+      return;
+    }
+    setError(""); setConfirmacion(""); setResultadoColaQa(null); setProcesandoColaQa(true);
+    try {
+      const r2 = await procesarColaFiscalQaC07D(10);
+      if (!r2?.ok) throw new Error(r2?.error || "El worker QA no confirmó el procesamiento.");
+      setResultadoColaQa(r2);
+      setConfirmacion(`Worker QA ejecutado: ${Number(r2.reclamadas || 0)} reclamadas, ${Number(r2.resueltas || 0)} resueltas y ${Number(r2.fallidas || 0)} fallidas. No se ha contactado con la AEAT.`);
+    } catch (e2) {
+      setError(e2?.message || "No se pudo ejecutar el worker QA.");
+    } finally { setProcesandoColaQa(false); }
+  };
+  const ocupado = cargando || guardando;
+  const emisor = detalle?.emisor || emisores.find((e2) => e2.id === emisorId) || null;
+  const pilotoSandboxVisible = modoPilotoSandboxQa && !!emisorId;
+  const pilotoSandboxEstado = pilotoSandbox?.piloto?.estado || pilotoSandbox?.estado || "PENDIENTE_EMPRESA";
+  const pilotoSandboxConfigurado = pilotoSandbox?.configurado === true;
+  const selector = (clave, etiqueta) => h(ConfigFiscalSelect, { clave, etiqueta, form, onCambio: campo, disabled: ocupado });
+  return h("div", { "data-fiscal-config": "borrador" },
+    h(ConfigAviso, { error, confirmacion }),
+    pilotoSandboxVisible ? h(Card, { className: "mb-3", "data-c07d-d3-pilot": "readonly-qa", style: { background: C2.surface2, border: `1px solid ${C2.line}` } },
+      h("div", { className: "font-semibold text-[13px]" }, "Expediente de piloto sandbox"),
+      h("div", { className: "text-[12px] mt-1" }, `${pilotoSandboxConfigurado ? "Estado actual" : "Estado inicial"}: ${pilotoSandboxEstado}`),
+      h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, `Empresa ${empresaId || "—"} · Local ${localId || "—"} · Entorno SANDBOX`),
+      h("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Solo lectura en preview QA. Este panel no crea expedientes, no cambia estados, no utiliza secretos y no activa producción.")
+    ) : null,
+    modoFiscalQa ? h(Card, { className: "mb-3", "data-c07d-worker-qa": "manual" },
+      h("div", { className: "font-semibold mb-1" }, "Procesamiento fiscal QA"),
+      h("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Acción manual y controlada para este local. Reclama y resuelve hasta 10 elementos de la cola en modo QA_SIMULADOR; no envía datos a la AEAT ni modifica producción."),
+      h("div", { className: "flex flex-wrap items-center gap-2" },
+        h(Btn, { small: true, onClick: procesarColaQa, disabled: procesandoColaQa || !empresaId || !localId }, procesandoColaQa ? "Procesando…" : "Procesar cola QA"),
+        resultadoColaQa ? h("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, `Última ejecución: ${Number(resultadoColaQa.reclamadas || 0)} reclamadas · ${Number(resultadoColaQa.resueltas || 0)} resueltas · ${Number(resultadoColaQa.fallidas || 0)} fallidas`) : null
+      )
+    ) : null,
+    h(Card, { className: "mb-3", style: { background: C2.amberSoft } },
+      h("div", { className: "font-semibold text-[13px]" }, "Configuración fiscal en borrador"),
+      h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "Prepara la situación de cada empresa y emisor. No convierte el TPV en sistema fiscal, no envía a la AEAT y no admite certificados, claves privadas ni contraseñas.")),
+    h(Card, { className: "mb-3" },
+      h(Field, { label: "Emisor fiscal vinculado a " + (localNombre || "este local") }, h("select", {
+        value: emisorId, onChange: (e2) => { setError(""); setConfirmacion(""); setEmisorId(e2.target.value); },
+        disabled: ocupado || emisores.length < 2, className: "w-full rounded-lg px-3 py-2 text-[13px]",
+        style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 }
+      }, emisores.length ? emisores.map((e2) => h("option", { key: e2.id, value: e2.id }, `${e2.nombre_legal}${e2.nif ? " · " + e2.nif : " · NIF pendiente"}`)) : h("option", { value: "" }, cargando ? "Cargando emisores…" : "No hay emisores vinculados"))),
+      !cargando && emisores.length === 0 ? h("div", { className: "text-[12px]", style: { color: C2.red } }, "No hay una entidad fiscal activa vinculada a esta empresa y local. Debe crearla o vincularla un administrador.") : null,
+      emisor ? h("div", { className: "rounded-lg p-3 text-[12px]", style: { background: C2.bg, border: `1px solid ${C2.line}` } },
+        h("div", { className: "font-semibold" }, emisor.nombre_legal || "Emisor"),
+        h("div", { className: "mt-1", style: { color: C2.inkSoft } }, `NIF: ${emisor.nif || "pendiente"} · País: ${emisor.pais || "pendiente"}`),
+        h("div", { className: "mt-1", style: { color: emisor.simulada ? C2.amber : C2.inkSoft } }, emisor.simulada ? "Entidad simulada: nunca podrá activarse para emisión real." : "Entidad real: la activación sigue bloqueada hasta completar validación, credenciales y pruebas.")) : null),
+    detalle ? h(import_react4.default.Fragment, null,
+      h(Card, { className: "mb-3" }, h("div", { className: "font-semibold mb-2" }, "Ámbito y modalidad"),
+        h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-x-3" }, selector("jurisdiccion", "Administración tributaria"), selector("sujecion", "Situación frente al RRSIF"), selector("modalidad", "Modalidad prevista"), selector("tipo_factura", "Documento habitual previsto")),
+        h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Es una preferencia operativa: cada operación deberá cumplir sus requisitos legales y una venta no equivale por sí sola a una factura.")),
+      h(Card, { className: "mb-3" }, h("div", { className: "font-semibold mb-2" }, "Presentación y asesoría"),
+        h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-x-3" }, selector("canal", "Canal previsto"), selector("representacion", "Acreditación prevista"),
+          h(Field, { label: "Nombre de la asesoría o proveedor" }, h(Input, { value: form.asesoria_nombre || "", onChange: (e2) => campo("asesoria_nombre", e2.target.value), maxLength: 200, disabled: ocupado })),
+          h(Field, { label: "Correo de contacto" }, h(Input, { type: "email", value: form.asesoria_email || "", onChange: (e2) => campo("asesoria_email", e2.target.value), maxLength: 200, disabled: ocupado })),
+          h(Field, { label: "NIF del presentador" }, h(Input, { value: form.presentador_nif || "", onChange: (e2) => campo("presentador_nif", e2.target.value.toUpperCase()), maxLength: 9, disabled: ocupado, placeholder: "Solo identificador; nunca el certificado" }))),
+        h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Indicar una asesoría no le concede acceso ni acredita representación. Eso se validará por separado.")),
+      c07cDisponible ? h(import_react4.default.Fragment, null,
+        h(Card, { className: "mb-3", "data-fiscal-delegacion": "panel" },
+          h("div", { className: "font-semibold mb-1" }, "Acceso delegado al panel"),
+          h("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Invitar a una asesoría solo concede el permiso elegido dentro de L&A Suite. No acredita representación ante la AEAT, no entrega certificados y no activa emisión."),
+          h("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-x-3 items-end" },
+            h(Field, { label: "Correo de la asesoría" }, h(Input, { type: "email", value: invitacion.email, onChange: (e2) => setInvitacion((actual) => ({ ...actual, email: e2.target.value })), maxLength: 200, disabled: ocupado || guardandoDelegacion })),
+            h(Field, { label: "Permiso del panel" }, h("select", { value: invitacion.permiso, onChange: (e2) => setInvitacion((actual) => ({ ...actual, permiso: e2.target.value })), disabled: ocupado || guardandoDelegacion, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, FISCAL_DELEGACION_PERMISOS.map(([valor, texto]) => h("option", { key: valor, value: valor }, texto)))),
+            h(Field, { label: "Duración (días)" }, h(Input, { type: "number", min: 1, max: 180, value: invitacion.dias, onChange: (e2) => setInvitacion((actual) => ({ ...actual, dias: e2.target.value })), disabled: ocupado || guardandoDelegacion }))
+          ),
+          h(Btn, { small: true, onClick: invitarAsesoria, disabled: ocupado || guardandoDelegacion }, guardandoDelegacion ? "Guardando…" : "Crear invitación"),
+          delegaciones.length ? h("div", { className: "space-y-2 mt-3" }, delegaciones.map((item) => h("div", { key: item.id, className: "flex flex-wrap items-center justify-between gap-2 rounded-lg p-2", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
+            h("div", { className: "min-w-0 text-[11.5px]" }, h("div", { className: "font-medium" }, item.email), h("div", { style: { color: C2.inkSoft } }, `${item.permiso} · ${item.estado} · caduca ${item.expira_at ? new Date(item.expira_at).toLocaleDateString("es-ES") : "—"}`)),
+            item.estado !== "REVOCADA" && item.estado !== "CADUCADA" ? h(Btn, { small: true, variant: "ghost", onClick: () => revocarAsesoria(item), disabled: ocupado || guardandoDelegacion }, "Revocar") : null
+          ))) : h("div", { className: "text-[11px] mt-3", style: { color: C2.inkSoft } }, "Todavía no hay invitaciones para este emisor.")),
+        h(Card, { className: "mb-3", "data-fiscal-representacion": "metadatos" },
+          h("div", { className: "font-semibold mb-1" }, "Representación tributaria: solo metadatos"),
+          h("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Registra únicamente la referencia y la huella de una evidencia revisada externamente. No subas aquí escrituras, certificados, contraseñas ni claves privadas."),
+          h("div", { className: "grid grid-cols-1 md:grid-cols-2 gap-x-3" },
+            h(Field, { label: "Vía" }, h("select", { value: representacion.tipo, onChange: (e2) => setRepresentacion((actual) => ({ ...actual, tipo: e2.target.value, estado: e2.target.value === "PENDIENTE" ? "PENDIENTE" : actual.estado })), disabled: ocupado || guardandoRepresentacion, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, FISCAL_REPRESENTACION_TIPOS.map(([valor, texto]) => h("option", { key: valor, value: valor }, texto)))),
+            h(Field, { label: "Estado revisado" }, h("select", { value: representacion.estado, onChange: (e2) => setRepresentacion((actual) => ({ ...actual, estado: e2.target.value })), disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, FISCAL_REPRESENTACION_ESTADOS.map(([valor, texto]) => h("option", { key: valor, value: valor }, texto)))),
+            h(Field, { label: "Referencia externa opaca" }, h(Input, { value: representacion.referencia_opaca, onChange: (e2) => setRepresentacion((actual) => ({ ...actual, referencia_opaca: e2.target.value })), maxLength: 200, disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE", placeholder: "ID o referencia, no el documento" })),
+            h(Field, { label: "Huella SHA-256 de la evidencia" }, h(Input, { value: representacion.evidencia_sha256, onChange: (e2) => setRepresentacion((actual) => ({ ...actual, evidencia_sha256: e2.target.value.toLowerCase() })), maxLength: 64, disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE", placeholder: "64 caracteres hexadecimales" })),
+            h(Field, { label: "Vigente desde" }, h(Input, { type: "date", value: representacion.vigente_desde || "", onChange: (e2) => setRepresentacion((actual) => ({ ...actual, vigente_desde: e2.target.value })), disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE" })),
+            h(Field, { label: "Vigente hasta" }, h(Input, { type: "date", value: representacion.vigente_hasta || "", onChange: (e2) => setRepresentacion((actual) => ({ ...actual, vigente_hasta: e2.target.value })), disabled: ocupado || guardandoRepresentacion || representacion.tipo === "PENDIENTE" }))
+          ),
+          h(Btn, { small: true, onClick: guardarRepresentacion, disabled: ocupado || guardandoRepresentacion }, guardandoRepresentacion ? "Guardando…" : "Guardar metadatos")
+        )
+      ) : !modoFiscalQa ? h(Card, { className: "mb-3", "data-c07d-production-gate": "disabled" },
+        h("div", { className: "font-semibold mb-1" }, "Delegación y representación fiscal no activas en producción"),
+        h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Esta capacidad se valida en QA antes de su promoción. No se ha activado ninguna conexión ni emisión fiscal.")) : null,
+      h(Card, { className: "mb-3" }, h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
+        h("div", null, h("div", { className: "text-[12px] font-semibold" }, `Versión del borrador: ${detalle.version || 0}`), h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Conexión: no configurada · Emisión: deshabilitada")),
+        h(Btn, { onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar borrador fiscal")))) : null);
+}
+function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [], procesarColaFiscalQaC07D = null }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -2376,6 +2913,8 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
+    seccion === "terminales" ? h(ConfigTerminalesCajas, { empresaId, localId }) : null,
+    seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre, procesarColaFiscalQaC07D }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
     seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
   );
@@ -2831,6 +3370,8 @@ function GestionAlmacen() {
         if (sincronizarContextoCompleto) {
           await sincronizarContextoPm07({
             setProductos,
+            empresaId: empresaContexto,
+            localActivoId,
             esContextoVigente
           });
         }
@@ -3526,7 +4067,7 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("facturasDirectas", facturasDirectas);
   }, [facturasDirectas, ready]);
   (0, import_react4.useEffect)(() => {
-    if (ready) saveKey("pagosFacturas", pagosFacturas);
+    if (ready && !skipSaveRef.current) saveKey("pagosFacturas", pagosFacturas);
   }, [pagosFacturas, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("entrevistas", entrevistas);
@@ -3656,7 +4197,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -3711,7 +4252,11 @@ function GestionAlmacen() {
     }).ok === true;
   })();
   const { crearProductoEnConteo, iniciarConteo, actualizarConteoItem, actualizarResponsable, finalizarConteo, aplicarAjustes, eliminarConteo, revertirUltimaAplicacion } = crearLogicaConteos({ productos, setProductos, conteos, setConteos, movimientos, setMovimientos, registrarAuditoria, localActivoId, empresaActivaId: empresaDelLocalActivo && empresaDelLocalActivo.id || null, obtenerContextoActor: obtenerContextoAjusteConteo });
-  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => !c22.completado) || null, [conteosDelLocalActivo]);
+  const conteoAbierto = (0, import_react4.useMemo)(() => conteosDelLocalActivo.find((c22) => {
+    const estado = String(c22.estado || "").trim().toUpperCase();
+    const cerrado = c22.completado === true || c22.cancelado === true || ["CANCELADO", "ANULADO", "COMPLETADO", "FINALIZADO"].includes(estado);
+    return !cerrado;
+  }) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
   const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
@@ -4612,7 +5157,8 @@ function GestionAlmacen() {
       puedeAltaProveedorIA,
       addProveedorDesdeAlbaran,
       asignarNifProveedor,
-      completarProveedorConDatos: completarProveedorConDatosAlb
+      completarProveedorConDatos: completarProveedorConDatosAlb,
+      setTab: cambiarTabPM15
     }
   ), tab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
     CuentasPorPagar,
@@ -4688,7 +5234,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -4752,7 +5298,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -4795,7 +5341,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D }));
   // PM13-P04.2: claves estables de capacidad de consulta, separadas del texto visible y de la navegacion.
   const CAPACIDADES_CONSULTA_PANTALLA = Object.freeze({
     dashboard: "ABC_PANTALLA_DASHBOARD_CONSULTAR",
@@ -4988,35 +5534,47 @@ function GestionAlmacen() {
         .mono { font-family: 'IBM Plex Mono', ui-monospace, monospace; }
         input, select { font-family: inherit; }
         ::placeholder { color: #9AA5A0; }
-        .app-main-content { min-width: 0; }
-        .app-main-content > * { min-width: 0; max-width: 100%; }
-        .tpv-shell { min-width: 0; }
-        .tpv-toolbar, .tpv-keybar { display: flex; align-items: center; justify-content: space-between; gap: .5rem; flex-wrap: wrap; }
-        .tpv-toolbar { padding: .65rem .8rem; margin-bottom: .6rem; border: 1px solid var(--c-line); border-radius: .75rem; background: var(--c-surface); }
-        .tpv-keybar { justify-content: flex-start; margin-bottom: .75rem; }
-        .tpv-layout { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(300px, .85fr); gap: 1rem; align-items: start; }
-        .tpv-product-zone, .tpv-ticket-zone { min-width: 0; }
-        .tpv-ticket-zone { position: sticky; top: .5rem; }
-        .tpv-product-photo { width: 100%; height: 72px; object-fit: cover; border-radius: .65rem; margin-bottom: .5rem; }
-        .tpv-quick-quantity { min-height: 32px; padding: .25rem .5rem; border: 1px solid var(--c-line); border-radius: .45rem; background: var(--c-surface); color: var(--c-ink-soft); }
-        @media (max-width: 640px) {
-          .app-main-content { overflow-x: hidden; }
-          .app-main-content table { display: block; max-width: 100%; overflow-x: auto; }
-          .app-main-content input, .app-main-content select, .app-main-content textarea { min-width: 0; max-width: 100%; }
-          .app-main-content .flex.items-center.justify-between { flex-wrap: wrap; }
-        }
-        @media (max-width: 640px) {
-          .tpv-layout { grid-template-columns: minmax(0, 1fr); }
-          .tpv-ticket-zone { position: static; }
+        html.ticket-printing .modal-ticket-impresion [data-qr-fiscal-preview] svg {
+          width: 220px !important;
+          height: 220px !important;
+          max-width: 220px !important;
+          max-height: 220px !important;
         }
 
         @media print {
           @page { size: A4; margin: 12mm; }
+          html, body, #root { margin: 0 !important; padding: 0 !important; height: var(--ticket-print-height, auto) !important; max-height: var(--ticket-print-height, none) !important; overflow: hidden !important; background: #fff !important; }
           body * { visibility: hidden !important; }
           .zona-impresion, .zona-impresion * { visibility: visible !important; }
+          .modal-ticket-impresion {
+     position: absolute !important;
+            inset: auto !important;
+     left: 0 !important;
+     top: 0 !important;
+            display: block !important;
+     visibility: visible !important;
+            overflow: visible !important;
+            padding: 0 !important;
+            background: transparent !important;
+          }
+          .modal-ticket-impresion-dialog {
+            position: static !important;
+            width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+     visibility: visible !important;
+            overflow: visible !important;
+            margin: 0 !important;
+            padding: 0 !important;
+            background: #fff !important;
+          }
           .zona-impresion {
-            position: absolute !important;
-            left: 0; top: 0; width: 100%;
+            position: static !important;
+            left: auto !important; top: auto !important; width: 100% !important;
+            max-width: none !important;
+            max-height: none !important;
+            overflow: visible !important;
+            margin: 0 !important;
             background: #fff !important;
           }
           .no-imprimir { display: none !important; }
@@ -5057,7 +5615,7 @@ function GestionAlmacen() {
       mostrarEnlaceDevolucionProveedor,
       irADevolucionProveedor
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "app-main-content flex-1 min-w-0 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
     "textarea",
     {
       readOnly: true,
@@ -7640,13 +8198,6 @@ function validarProductoPM10(data, { parcial = false } = {}) {
     if (r.vacio) delete salida[campo];
     else salida[campo] = r.valor;
   }
-  if (Object.prototype.hasOwnProperty.call(entrada, "fotoUrl")) {
-    const fotoUrl = String(entrada.fotoUrl ?? "").trim();
-    if (fotoUrl && !/^https:\/\//i.test(fotoUrl)) return errorValidacionPM10("formato_invalido", "fotoUrl", "La foto debe usar una URL HTTPS.");
-    if (fotoUrl) salida.fotoUrl = fotoUrl;
-    else delete salida.fotoUrl;
-  }
-  if (Object.prototype.hasOwnProperty.call(entrada, "masVendido")) salida.masVendido = entrada.masVendido === true;
   return { ok: true, datos: salida };
 }
 function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales = [], empresaId = null }) {
@@ -7728,6 +8279,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
           id: uid(),
           operationId: uid(),
           productoId: nuevo.id,
+          empresaId: nuevo.empresaId || null,
           localId: nuevo.localId || null,
           cantidad: stockInicial,
           tipo: "OTRO",
@@ -9264,6 +9816,9 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
 var MODALIDADES_A02 = ["BARRA", "MESA", "TERRAZA", "TAKEAWAY", "OTRO"];
 var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza", TAKEAWAY: "Para llevar", OTRO: "Otro" };
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
+  function c07dActivoEnEntornoQa() {
+    return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+  }
   function productoEsDelLocalActivoVenta(prod) {
     if (!prod) return false;
     if (!localActivoId) return true;
@@ -9553,7 +10108,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return importe;
   }
   function uuidPersistidoA02(valor) {
-    return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
+    return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(valor);
   }
   function validarContextoCuentaA02(contexto, empresaId, localId) {
     if (!contexto || contexto.schemaVersion !== 1) throw new Error("contexto_cuenta_persistido_invalido");
@@ -9983,6 +10538,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("checkout_cuotas_importe_pendiente_b05")) return "Esta cuenta tiene un reparto por importe. Se cobrará cuando se implemente B05 para conservar el reparto exacto.";
     if (msg.includes("pedido_lineas_no_cobrables")) return "El pedido contiene líneas que todavía no están confirmadas para cobro.";
     if (msg.includes("cuenta_version_conflict")) return "La cuenta cambió en otro terminal. Recarga antes de cobrar.";
+    if (msg.includes("cuenta_saldo_pendiente")) return "La cuenta todavía tiene saldo pendiente según el servidor.";
+    if (msg.includes("cuenta_pago_no_resuelto") || msg.includes("cuenta_reserva_saldo_activa")) return "El servidor todavía tiene un pago o reserva sin resolver para esta cuenta.";
+    if (msg.includes("cuenta_incidencia_cobro_abierta")) return "La cuenta tiene una incidencia de cobro abierta y no se puede cerrar todavía.";
+    if (msg.includes("cuenta_pedido_no_cerrable")) return "La cuenta tiene un pedido que todavía no está servido o cerrado.";
+    if (msg.includes("cuenta_checkout_abierto")) return "La cuenta todavía tiene un checkout abierto.";
+    if (msg.includes("cuenta_ya_cerrada")) return "La cuenta ya estaba cerrada; se conserva el resultado anterior.";
+    if (msg.includes("cuenta_cierre_no_autorizado")) return "Tu usuario no tiene permiso para cerrar esta cuenta.";
     if (msg.includes("abc_cobro_no_autorizado") || msg.includes("abc_efectivo_no_autorizado") || msg.includes("abc_checkout_no_autorizado")) return "Tu usuario no tiene permiso para realizar este cobro.";
     if (msg.includes("abc_cobro_resolver_no_autorizado")) return "Solo un Propietario o Encargado puede resolver esta incidencia.";
     if (msg.includes("evidencia_datos_tarjeta_prohibidos")) return "La evidencia no puede contener PAN, CVV ni datos completos de tarjeta.";
@@ -10062,6 +10624,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         ok: true, disponible: true, cuentaId: contextoCuenta.cuentaId,
         currencyCode: String(contextoCuenta.currencyCode || "EUR"),
         estado: String(resumenServidor?.estado || "PENDIENTE"),
+        cuentaEstado: String(resumenServidor?.cuenta_estado || ""),
+        cuentaVersion: resumenServidor?.cuenta_version == null ? null : Number(resumenServidor.cuenta_version),
+        cuentaClosedAt: resumenServidor?.closed_at || null,
         total: Number(resumenServidor?.total) || 0,
         confirmado: Number(resumenServidor?.confirmado) || 0,
         saldo: Number(resumenServidor?.saldo) || 0,
@@ -10074,6 +10639,168 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       };
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function emitirCheckoutFiscalC07D(cuentaId, opciones = {}) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, disponible: false, error: "La fiscalización C07-D se valida en QA y todavía no está activa en producción." };
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para emitir el documento fiscal." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId || !cuentaId) return { ok: false, error: "No se pudo determinar la cuenta fiscal." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "La emisión fiscal necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const tipoDocumento = String(opciones?.tipoDocumento || "FACTURA").trim().toUpperCase();
+      const configuracion = await leerConfiguracionEmisionC07D(tipoDocumento);
+      const estadoConfiguracion = String(configuracion?.configuracion?.estado || configuracion?.estado || "").toUpperCase();
+      if (!configuracion?.ok) return { ok: false, error: configuracion?.error || "No se pudo comprobar la configuración fiscal." };
+      if (configuracion.configurada !== true || !["VALIDADA", "ACTIVA"].includes(estadoConfiguracion)) {
+        return { ok: false, error: "Emisión fiscal bloqueada: la configuración C07-D no está VALIDADA/ACTIVA para este local." };
+      }
+      const checkoutId = String(opciones?.checkoutId || "latest").trim();
+      const operationId = "f7.c07d.checkout.emit:" + String(cuentaId) + ":" + checkoutId;
+      const { data, error } = await supabase.rpc("abc_c07d_emitir_checkout", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: cuentaId,
+        p_tipo_documento: tipoDocumento,
+        p_codigo_serie: null
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, error: "El servidor no confirmó la emisión fiscal." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function cerrarCuentaPagadaF4(cuentaId, checkoutId, cuentaVersion, terminal = null) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para cerrar la cuenta." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId || !cuentaId || !checkoutId) return { ok: false, error: "Faltan datos para cerrar la cuenta pagada." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "El cierre de cuenta necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      const terminalActivo = terminal || await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationId = "f4.cuenta.close." + String(cuentaId) + "." + String(checkoutId) + "." + String(cuentaVersion);
+      const { data, error } = await supabase.rpc("abc_cerrar_cuenta_pagada", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: cuentaId,
+        p_checkout_id: checkoutId,
+        p_expected_cuenta_version: versionServidorA02(cuentaVersion, "f4.cuenta.close.version"),
+        p_terminal_id: terminalActivo.terminalId,
+        p_session_id: terminalActivo.sessionId,
+        p_operating_day: contexto?.operatingDay || terminalActivo.operatingDay
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, error: "El servidor no confirmó el cierre de la cuenta." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function prepararTicketFiscalQa(cuentaId, fiscalEmitido, checkoutId) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, disponible: false, error: "El QR fiscal solo se prepara en QA." };
+    if (!localActivoId || !cuentaId || !checkoutId) return { ok: false, error: "Faltan datos del checkout para preparar el QR fiscal." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    const documento = Array.isArray(fiscalEmitido?.documentos) ? fiscalEmitido.documentos[0] : null;
+    const ventaFiscalId = String(documento?.venta_fiscal_id || "").trim();
+    if (!empresaId || !ventaFiscalId) return { ok: false, error: "La emisión fiscal no devolvió una venta fiscal para el QR." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "La preparación del QR fiscal necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const operationId = "f7.c07d.qr.prepare:" + String(cuentaId) + ":" + String(checkoutId);
+      const { data, error } = await supabase.rpc("abc_preparar_ticket_fiscal_qa", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_venta_fiscal_id: ventaFiscalId,
+        p_checkout_id: checkoutId,
+        p_fecha_expedicion: new Date().toISOString().slice(0, 10)
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, error: "El servidor no confirmó la preparación del QR fiscal." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function leerConfiguracionEmisionC07D(tipoDocumento = "FACTURA") {
+    if (!c07dActivoEnEntornoQa()) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
+    if (!localActivoId) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "La configuración fiscal necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_c07d_estado_configuracion_emision", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_tipo_documento: String(tipoDocumento || "FACTURA").trim().toUpperCase()
+      });
+      if (error) throw error;
+      return data?.ok || data?.estado === "NO_CONFIGURADA" ? data : { ok: false, error: "El servidor no devolvió el estado de la configuración fiscal." };
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function leerEstadoFiscalC07D(cuentaId = null) {
+    if (!c07dActivoEnEntornoQa()) return { ok: true, disponible: false, documentos: [], estado: "NO_DISPONIBLE" };
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para consultar la cola fiscal." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    const contexto = empresaId ? leerContextoCuentaA02(empresaId, localActivoId) : null;
+    const cuenta = cuentaId || contexto?.cuentaId;
+    if (!empresaId || !cuenta) return { ok: true, disponible: false, documentos: [] };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "La cola fiscal necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_c07d_estado_cuenta", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_id: cuenta
+      });
+      if (error) throw error;
+      if (!data?.ok) return { ok: false, error: "El servidor no devolvió el estado fiscal." };
+      if (Array.isArray(data.documentos) && data.documentos.length > 0 && typeof prepararTicketFiscalQa === "function") {
+        const { data: checkouts, error: checkoutsError } = await supabase
+          .from("checkouts")
+          .select("id,estado,completed_at")
+          .eq("empresa_id", empresaId)
+          .eq("local_id", localActivoId)
+          .eq("cuenta_id", cuenta)
+          .eq("estado", "COMPLETADO")
+          .order("completed_at", { ascending: false })
+          .limit(1);
+        if (!checkoutsError && checkouts?.[0]?.id) {
+          data.qr = await prepararTicketFiscalQa(cuenta, data, checkouts[0].id);
+        }
+      }
+      return data;
+    } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  async function procesarColaFiscalQaC07D(limiteSolicitado = 10) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, qa: false, error: "El worker de cola fiscal solo está disponible en QA." };
+    if (!localActivoId) return { ok: false, qa: true, error: "Selecciona un local antes de procesar la cola fiscal QA." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, qa: true, error: "No hay una empresa activa para este local." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, qa: true, error: "El worker QA necesita una sesión sincronizada con el servidor." };
+    const limite = Math.max(1, Math.min(50, Number.isFinite(Number(limiteSolicitado)) ? Math.trunc(Number(limiteSolicitado)) : 10));
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.functions.invoke("c07d-worker-qa", {
+        body: { empresaId, localId: localActivoId, limite, modo: "QA_SIMULADOR" }
+      });
+      if (error) throw error;
+      return data?.ok ? data : { ok: false, qa: true, error: data?.error || "El worker QA no devolvió un resultado válido." };
+    } catch (error) {
+      return { ok: false, qa: true, error: mensajeErrorCobroF4(error) };
     }
   }
   async function abrirIncidenciaCobroF4({ intentoId = null, motivo = "", providerCode = null, providerReference = null, evidencia = {} } = {}) {
@@ -10143,8 +10870,21 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const estadoPrevio = await leerEstadoCobroF4();
       if (!estadoPrevio.ok) return estadoPrevio;
       const tuvoCheckout = Array.isArray(estadoPrevio.checkouts) && estadoPrevio.checkouts.length>0;
-      if (tuvoCheckout && Number(estadoPrevio.saldo) <= 0 && !estadoPrevio.cobroIncierto) return estadoPrevio;
+      if (tuvoCheckout && Number(estadoPrevio.saldo) <= 0 && !estadoPrevio.cobroIncierto) {
+        if (String(estadoPrevio.cuentaEstado || "").toUpperCase() === "CERRADA") return estadoPrevio;
+        const checkoutCompletado = estadoPrevio.checkouts.find((checkout) => String(checkout?.estado || "").toUpperCase() === "COMPLETADO");
+        if (!checkoutCompletado?.id) return estadoPrevio;
+        const cierreCuenta = await cerrarCuentaPagadaF4(recuperada.cuentaId, checkoutCompletado.id, recuperada.cuentaVersion, terminal);
+        const estadoCerrado = { ...estadoPrevio, cuentaCierre: cierreCuenta };
+        if (cierreCuenta?.ok) {
+          estadoCerrado.cuentaEstado = "CERRADA";
+          estadoCerrado.cuentaVersion = Number(cierreCuenta.cuenta_version);
+          estadoCerrado.mensaje = "Cuenta pagada cerrada formalmente por el servidor.";
+        }
+        return estadoCerrado;
+      }
       let pendiente = leerPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
+      const pendienteExistente = Boolean(pendiente);
       if (!pendiente && estadoPrevio.cobroIncierto) throw new Error("pago_estado_incierto_existente");
       if (pendiente && pendiente.medio !== medio) throw new Error("pago_estado_incierto_existente");
       if (pendiente && opciones?.importeObjetivo != null
@@ -10165,7 +10905,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         };
         guardarPendienteCobroF4(pendiente);
       }
-      const preparado = await rpcA02ConRecuperacion(supabase, "abc_preparar_checkout_cuenta", {
+      const checkoutYaConocido = pendienteExistente
+        && Array.isArray(estadoPrevio.checkouts)
+        && estadoPrevio.checkouts.some((checkout) => String(checkout.id) === String(pendiente.checkoutId));
+      const preparado = checkoutYaConocido ? null : await rpcA02ConRecuperacion(supabase, "abc_preparar_checkout_cuenta", {
         p_operation_id: pendiente.prepareOperationId,
         p_empresa_id: empresaId, p_local_id: localActivoId,
         p_checkout_id: pendiente.checkoutId, p_cuenta_id: recuperada.cuentaId,
@@ -10234,10 +10977,48 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
       }
       const estadoFinal = await leerEstadoCobroF4();
+      if (medio === "EFECTIVO" && estadoFinal.ok && Number(estadoFinal.saldo) <= 0) {
+        const checkoutCompletado = Array.isArray(estadoFinal.checkouts)
+          ? estadoFinal.checkouts.find((checkout) => String(checkout?.estado || "").toUpperCase() === "COMPLETADO")
+          : null;
+        const cierreCuenta = checkoutCompletado?.id
+          ? await cerrarCuentaPagadaF4(recuperada.cuentaId, checkoutCompletado.id, recuperada.cuentaVersion, terminal)
+          : { ok: false, error: "No se encontró el checkout completado para cerrar la cuenta." };
+        estadoFinal.cuentaCierre = cierreCuenta;
+        if (cierreCuenta?.ok) {
+          estadoFinal.cuentaEstado = "CERRADA";
+          estadoFinal.cuentaVersion = Number(cierreCuenta.cuenta_version);
+        }
+        const fiscalEmitido = await emitirCheckoutFiscalC07D(recuperada.cuentaId, {
+          checkoutId: checkoutCompletado?.id || "latest",
+          tipoDocumento: opciones?.tipoDocumento || "FACTURA",
+          codigoSerie: opciones?.codigoSerie || "TPV"
+        });
+        estadoFinal.fiscal = fiscalEmitido;
+        if (fiscalEmitido?.ok && checkoutCompletado?.id) {
+          estadoFinal.fiscal = {
+            ...fiscalEmitido,
+            qr: await prepararTicketFiscalQa(recuperada.cuentaId, fiscalEmitido, checkoutCompletado.id)
+          };
+        }
+        // La venta rápida se cierra mediante A02/F4, no por el camino PM09
+        // directo. Refrescar aquí el ledger de stock hace que el historial del
+        // TPV muestre el ticket recién cobrado sin obligar a recargar la app.
+        try {
+          await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+        } catch {
+          // El cobro ya está confirmado; un fallo de refresco no debe hacer
+          // parecer que el pago falló. La siguiente hidratación lo recupera.
+        }
+      }
       if (medio === "EFECTIVO" && estadoFinal.ok) {
         estadoFinal.mensaje = Number(estadoFinal.saldo) > 0
           ? `Efectivo confirmado. Saldo restante calculado por el servidor: €${Number(estadoFinal.saldo).toFixed(2)}. Puedes completar el pago con tarjeta.`
-          : "Efectivo confirmado y cuenta pagada.";
+          : estadoFinal.cuentaCierre?.ok === false
+            ? `Efectivo confirmado, pero la cuenta sigue abierta: ${estadoFinal.cuentaCierre.error || "el cierre requiere revisión"}`
+          : estadoFinal.fiscal?.ok === false
+            ? "Efectivo confirmado y cuenta cerrada. La fiscalización QA queda pendiente de reintento."
+            : "Efectivo confirmado, cuenta cerrada y documento fiscal QA encolado.";
       }
       if (medio === "TARJETA" && estadoFinal.ok) {
         estadoFinal.mensaje = "Tarjeta iniciada en modo simulado: el intento queda pendiente hasta que el adaptador de proveedor lo resuelva.";
@@ -10713,14 +11494,16 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (String(data.cuenta.id || "") !== String(contextoLocal.cuentaId)) {
         throw new Error("cuenta_recuperacion_id_distinto");
       }
-      if (data.requires_operating_day_resolution || data.reanudable === false) {
+      if (data.requires_operating_day_resolution || (data.reanudable === false && data.cuenta.estado !== "CERRADA")) {
         throw new Error("cuenta_recuperacion_otro_dia");
       }
 
       const pedidos = Array.isArray(data.pedidos) ? data.pedidos : [];
       const activos = pedidos.filter((p22) => !["CERRADO", "CANCELADO"].includes(String(p22?.estado || "")));
-      if (activos.length !== 1) throw new Error("cuenta_recuperacion_pedidos_ambigua");
-      const pedido = activos[0];
+      const pedido = pedidos.find((p22) => String(p22?.id || "") === String(contextoLocal.pedidoId || ""))
+        || (activos.length === 1 ? activos[0] : null)
+        || (data.cuenta.estado === "CERRADA" && pedidos.length === 1 ? pedidos[0] : null);
+      if (!pedido) throw new Error("cuenta_recuperacion_pedidos_ambigua");
       const lineasServidor = Array.isArray(pedido.lineas) ? pedido.lineas : [];
       if (lineasServidor.length === 0) throw new Error("cuenta_recuperacion_sin_lineas");
 
@@ -12182,7 +12965,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, cambiarResponsableCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -12728,6 +13511,7 @@ function crearLogicaAlbaranes({
     procesarRecepcion._pm10UltimoReplay = false;
     const avisos = [];
     const lineasResueltas = [];
+    const productosNuevosRecepcion = [];
     lineas.forEach((ln2, idxRecepcionPM10) => {
       const uds = Number(ln2.udsPorCaja) > 0 ? Number(ln2.udsPorCaja) : 1;
       const cantidad = Number(ln2.cantidad) || 0;
@@ -12783,6 +13567,7 @@ function crearLogicaAlbaranes({
         const nuevoYaCreadoPM10 = productos.find((p22) => p22.id === nuevoId);
         const nuevo = nuevoYaCreadoPM10 || {
           id: nuevoId,
+          empresaId: empresaId || null,
           localId: localActivoId || null,
           codigo: ln2.codigoProveedor || "",
           nombre: ln2.descripcion || "Sin descripci\xF3n",
@@ -12793,7 +13578,10 @@ function crearLogicaAlbaranes({
           udsPorCaja: uds,
           precioVenta: 0,
           ivaVenta: 10,
+          activo: true,
+          tipo: "materia_prima",
           stock: 0,
+          stockPisoVenta: 0,
           stockMinimo: 0,
           ubicacion: "",
           proveedorId,
@@ -12802,6 +13590,7 @@ function crearLogicaAlbaranes({
         };
         if (!nuevoYaCreadoPM10) {
           setProductos((s22) => s22.some((p22) => p22.id === nuevoId) ? s22 : [...s22, nuevo]);
+          productosNuevosRecepcion.push(nuevo);
           registrarProductoSnapshot(nuevo);
         }
         productosCreadosRecepcion.set(claveProductoRecepcion, nuevoId);
@@ -12822,6 +13611,18 @@ function crearLogicaAlbaranes({
       }
     });
     if (lineasResueltas.length !== lineas.length) return errorValidacionPM10("conflicto_movimiento_stock", "lineas", "No se pudieron aplicar todas las líneas de la recepción.");
+    // Reafirma las altas automáticas al final de la recepción. Esto evita que
+    // una hidratación de stock que llegue en paralelo publique una fotografía
+    // anterior del catálogo local y haga desaparecer el producto recién creado.
+    if (productosNuevosRecepcion.length) {
+      setProductos((actuales) => {
+        const porId = new Map((actuales || []).map((producto) => [producto.id, producto]));
+        productosNuevosRecepcion.forEach((producto) => {
+          if (!porId.has(producto.id)) porId.set(producto.id, producto);
+        });
+        return [...porId.values()];
+      });
+    }
     setCatalogoProv((prev) => {
       const copia = { ...prev };
       lineasResueltas.forEach((ln2) => {
@@ -12847,11 +13648,51 @@ function crearLogicaAlbaranes({
       });
       return copia;
     });
-    const resultadoRecepcionPM10 = { lineasResueltas, avisos, operationId: operationIdRecepcionPM10, concurrencyKey: claveEfectoRecepcionPM11, firmaEfectoPM11, replayed: false };
+    const resultadoRecepcionPM10 = { lineasResueltas, productosNuevos: productosNuevosRecepcion, avisos, operationId: operationIdRecepcionPM10, concurrencyKey: claveEfectoRecepcionPM11, firmaEfectoPM11, replayed: false };
     procesarRecepcion._pm10Resultados.set(claveEfectoRecepcionPM11, resultadoRecepcionPM10);
     return resultadoRecepcionPM10;
   }
-  function confirmarAlbaran(alb) {
+  async function confirmarRecepcionServidorPM10({ lineasResueltas, productosNuevos = [], operationId, documentoId, documentoNumero }) {
+    if (typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+      return { ok: false, error: "La recepción necesita una sesión sincronizada para confirmar productos y stock en el servidor." };
+    }
+    try {
+      const porId = new Map((productos || []).map((producto) => [producto.id, producto]));
+      (productosNuevos || []).forEach((producto) => porId.set(producto.id, producto));
+      const listaProductos = [...porId.values()];
+      if (productosNuevos.length && typeof window.storage?.set === "function") {
+        const guardadoProductos = await window.storage.set("productos", JSON.stringify(listaProductos), false, { forzarReintento: true });
+        if (!guardadoProductos?.confirmadoServidor) {
+          return { ok: false, error: "El producto se ha creado en este dispositivo, pero todavía no ha sido confirmado por el servidor. No se confirma el albarán." };
+        }
+      }
+      const cliente = await window.getSupabaseClient();
+      const lineasStock = (lineasResueltas || []).map((linea) => {
+        const producto = porId.get(linea.productoId) || {};
+        return {
+          productoId: linea.productoId,
+          cantidad: Number(linea.unidadesEntradas) || 0,
+          minimo: Number(producto.stockMinimo) || 0,
+          fraccionable: producto.fraccionable === true,
+          precisionCantidad: Number(producto.precisionCantidad) || 0,
+          unidad: producto.unidad || linea.unidad || "ud"
+        };
+      });
+      const respuesta = await cliente.rpc("registrar_entrada_stock", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_lineas: lineasStock,
+        p_datos: { origen: "albaran", documentoId, documentoNumero: documentoNumero || "", version: 1 }
+      });
+      if (respuesta.error) throw respuesta.error;
+      if (!respuesta.data || respuesta.data.ok !== true) return { ok: false, error: "El servidor no confirmó la entrada de stock." };
+      return respuesta.data;
+    } catch (error) {
+      return { ok: false, error: `No se pudo confirmar la recepción en servidor: ${error?.message || "error desconocido"}` };
+    }
+  }
+  async function confirmarAlbaran(alb) {
     const contexto = validarContextoEscrituraPM10({ localActivoId, locales, empresaId });
     if (!contexto.ok) return contexto;
     if (!albaranEsDelLocalActivo(alb, true)) return errorValidacionPM10("contexto_no_autorizado", "localId", "Albarán fuera del local activo.");
@@ -12903,10 +13744,17 @@ function crearLogicaAlbaranes({
     if (!resultadoRecepcionPM11 || !Array.isArray(resultadoRecepcionPM11.lineasResueltas)) {
       return errorValidacionPM10("conflicto_estado_previo", "recepcion", "No se pudo completar la recepción del albarán.");
     }
-    const { lineasResueltas, avisos } = resultadoRecepcionPM11;
+    const { lineasResueltas, productosNuevos = [], avisos } = resultadoRecepcionPM11;
     const replayedRecepcionPM10 = !!resultadoRecepcionPM11.replayed || !!procesarRecepcion._pm10UltimoReplay;
-    if (replayedRecepcionPM10) {
-      return errorValidacionPM10("conflicto_estado_previo", "recepcion", "La versión del pedido enlazado ya fue usada por otra recepción. Recarga antes de confirmar otro albarán.");
+    const recepcionServidorPM10 = await confirmarRecepcionServidorPM10({
+      lineasResueltas,
+      productosNuevos,
+      operationId: `pm10-recepcion-albaran:${albaranId}`,
+      documentoId: albaranId,
+      documentoNumero: alb.numero
+    });
+    if (!recepcionServidorPM10.ok) {
+      return errorValidacionPM10("conflicto_persistencia", "recepcion", recepcionServidorPM10.error);
     }
     if (pedidoLigado && !replayedRecepcionPM10) {
       setPedidos((prev) => prev.map((pe2) => pe2.id === alb.pedidoId ? aplicarRecepcionPedidoPM10(pe2, lineasResueltas) : pe2));
@@ -12957,6 +13805,7 @@ function crearLogicaAlbaranes({
     const salidaPM11 = Array.isArray(avisos) ? avisos : [];
     salidaPM11.replayed = replayedRecepcionPM10;
     salidaPM11.operationId = `pm11-albaran:${albaranId}`;
+    salidaPM11.lineasResueltas = lineasResueltas;
     return salidaPM11;
   }
   function anularAlbaran(alb) {
@@ -13599,7 +14448,7 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
     registrarAuditoria("Crear factura directa", `${nuevo.concepto || nuevo.numeroFactura || id} \xB7 \u20AC${nuevo.importeTotal.toFixed(2)} \xB7 ${empresaId}/${localActivoId}`);
     return { ok: true, factura: nuevo };
   }
-  function confirmarFacturaConAlbaranes(data) {
+  async function confirmarFacturaConAlbaranes(data) {
     const facturaId = data?.id || uid();
     const operationId = data?.operationId || `factura-proveedor:${empresaId}:${localActivoId}:${facturaId}`;
     const yaConfirmada = (facturasDirectas || []).find((f22) => f22.operationId === operationId && f22.estado === "ACTIVA");
@@ -13641,7 +14490,7 @@ function crearLogicaFacturasDirectas({ facturasDirectas, setFacturasDirectas, re
       };
       const guardado = guardarAlbaran(documento);
       if (guardado === false) return { ok: false, error: `No se pudo preparar el albarán ${item.numeroAlbaran}.`, parcial: vinculos };
-      const recibido = confirmarAlbaran(documento);
+      const recibido = await confirmarAlbaran(documento);
       if (!recibido || recibido.ok === false) return { ok: false, error: recibido?.error || `No se pudo recepcionar el albarán ${item.numeroAlbaran}.`, parcial: vinculos };
       vinculos.push({ albaranId, numero: item.numeroAlbaran, accion: item.existenteId ? "COMPLETADO_Y_RECEPCIONADO" : "CREADO_Y_RECEPCIONADO", recepcionAplicada: true });
     }
@@ -14154,11 +15003,7 @@ async function convertirPDFFacturaAImagenes(file) {
   return paginas;
 }
 function Field({ label, children }) {
-  const generatedId = (0, import_react4.useId)().replace(/:/g, "");
-  const fallbackId = `campo-${generatedId}`;
-  const control = import_react4.default.isValidElement(children) ? import_react4.default.cloneElement(children, { id: children.props.id || fallbackId }) : children;
-  const controlId = control?.props?.id || fallbackId;
-  return /* @__PURE__ */ import_react4.default.createElement("label", { htmlFor: controlId, className: "block mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, label), control);
+  return /* @__PURE__ */ import_react4.default.createElement("label", { className: "block mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, label), children);
 }
 var CATEGORIAS_GASTO = [
   "Alquiler",
@@ -14716,7 +15561,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     setCruce({ origenId: "", destinoId: "", cantOrigen: "", cantDestino: "", motivo: "" });
     setErrorCruce("");
   }
-  const blank = { codigo: "", codigoBarras: "", nombre: "", categoria: "", unidad: "unidad", tipo: "materia_prima", alergenos: [], fotoUrl: "", masVendido: false, costo: "", ivaCompra: 10, udsPorCaja: 1, nombreEmpaque: "caja", precioVenta: "", ivaVenta: 10, stock: "", stockMinimo: "", stockPisoVenta: 0, stockMinimoPisoVenta: "", zona: "", ubicacion: "", proveedorId: "", contenido: "", unidadContenido: "", departamento: "Obrador" };
+  const blank = { codigo: "", codigoBarras: "", nombre: "", categoria: "", unidad: "unidad", tipo: "materia_prima", alergenos: [], costo: "", ivaCompra: 10, udsPorCaja: 1, nombreEmpaque: "caja", precioVenta: "", ivaVenta: 10, stock: "", stockMinimo: "", stockPisoVenta: 0, stockMinimoPisoVenta: "", zona: "", ubicacion: "", proveedorId: "", contenido: "", unidadContenido: "", departamento: "Obrador" };
   const [form, setForm] = (0, import_react4.useState)(blank);
   const [salidaFor, setSalidaFor] = (0, import_react4.useState)(null);
   const [salidaCant, setSalidaCant] = (0, import_react4.useState)("");
@@ -14775,8 +15620,6 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
       categoria: p22.categoria || "",
       tipo: p22.tipo || "materia_prima",
       alergenos: p22.alergenos || [],
-      fotoUrl: p22.fotoUrl || p22.foto || p22.imagen || "",
-      masVendido: p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true,
       unidad: p22.unidad || "unidad",
       costo: p22.costo ?? "",
       ivaCompra: p22.ivaCompra ?? 10,
@@ -14857,14 +15700,14 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "utillaje" }, "Utillaje / menaje (jarra, bandeja: no se consume)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "limpieza" }, "Limpieza / qu\xEDmicos (no es mercanc\xEDa, no entra en recetas)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "elaborado" }, "Elaborado (lo que vendes al cliente)")
-  ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-4 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Foto del producto (URL HTTPS opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.fotoUrl, onChange: (e2) => setForm({ ...form, fotoUrl: e2.target.value }), placeholder: "https://.../producto.jpg" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[12.5px] mt-6 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: !!form.masVendido, onChange: (e2) => setForm({ ...form, masVendido: e2.target.checked }) }), "Más vendido") ), esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "No cuenta en el valor de mercanc\xEDa ni en el ABC, y no aparece como ingrediente en las fichas de costo. Su stock s\xED se sigue controlando, para poder reponerlo. Sigue teniendo stock y aviso de reposici\xF3n, para cuando se rompa algo.")), !esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "2 \xB7 Al\xE9rgenos" }, /* @__PURE__ */ import_react4.default.createElement(
+  ))), esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "No cuenta en el valor de mercanc\xEDa ni en el ABC, y no aparece como ingrediente en las fichas de costo. Su stock s\xED se sigue controlando, para poder reponerlo. Sigue teniendo stock y aviso de reposici\xF3n, para cuando se rompa algo.")), !esNoMercancia(form) && /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "2 \xB7 Al\xE9rgenos" }, /* @__PURE__ */ import_react4.default.createElement(
     SelectorAlergenos,
     {
       seleccionados: form.alergenos || [],
       onCambio: (lista) => setForm({ ...form, alergenos: lista }),
       nombreParaSugerir: form.nombre
     }
-  )), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "3 \xB7 Compra" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de compra de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.ivaCompra, onChange: (e2) => setForm({ ...form, ivaCompra: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%", t22 === 4 ? " \u2014 pan, harina, leche, huevos" : t22 === 10 ? " \u2014 resto de alimentos" : t22 === 21 ? " \u2014 general, limpieza" : "")))), /* @__PURE__ */ import_react4.default.createElement(CompraPorCaja, { form, setForm })), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "4 \xB7 Venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de venta de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.ivaVenta, onChange: (e2) => setForm({ ...form, ivaVenta: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta CON IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.001", value: form.precioVenta, onChange: (e2) => setForm({ ...form, precioVenta: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "D\xE9jalo vac\xEDo si es una materia prima que no vendes suelta.")), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "5 \xB7 Almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock inicial" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stock, onChange: (e2) => setForm({ ...form, stock: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo (reorden)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stockMinimo, onChange: (e2) => setForm({ ...form, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Zona del almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.zona, onChange: (e2) => setForm({ ...form, zona: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), ZONAS_ALMACEN.filter((z2) => z2 !== "Sin asignar").map((z2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: z2, value: z2 }, z2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n exacta (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.ubicacion, onChange: (e2) => setForm({ ...form, ubicacion: e2.target.value }), placeholder: "Estante 3, balda 2\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de barras (EAN, opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.codigoBarras, onChange: (e2) => setForm({ ...form, codigoBarras: e2.target.value }), placeholder: "Escanea o escribe el EAN" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.proveedorId, onChange: (e2) => setForm({ ...form, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), (form.tipo === "elaborado" || Number(form.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "M\xEDnimo en piso de venta (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stockMinimoPisoVenta, onChange: (e2) => setForm({ ...form, stockMinimoPisoVenta: e2.target.value }), placeholder: "Avisa cuando quede poco en el mostrador" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-1", style: { color: C2.inkSoft } }, "Si compras esto por bulto (bandeja, caja\u2026) pero lo usas por peso en las recetas, di aqu\xED cu\xE1nto trae cada bulto. As\xED en Fichas de costo podr\xE1s poner la cantidad directamente en gramos o kilos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contenido de cada bulto (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.contenido, onChange: (e2) => setForm({ ...form, contenido: e2.target.value }), placeholder: "Ej. 300" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad del contenido" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.unidadContenido, onChange: (e2) => setForm({ ...form, unidadContenido: e2.target.value }), placeholder: "Ej. g, kg, ml" }))))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, "Guardar producto"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  )), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "3 \xB7 Compra" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de compra de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.ivaCompra, onChange: (e2) => setForm({ ...form, ivaCompra: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%", t22 === 4 ? " \u2014 pan, harina, leche, huevos" : t22 === 10 ? " \u2014 resto de alimentos" : t22 === 21 ? " \u2014 general, limpieza" : "")))), /* @__PURE__ */ import_react4.default.createElement(CompraPorCaja, { form, setForm })), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "4 \xB7 Venta" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de venta de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.ivaVenta, onChange: (e2) => setForm({ ...form, ivaVenta: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta CON IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.precioVenta, onChange: (e2) => setForm({ ...form, precioVenta: e2.target.value }) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "D\xE9jalo vac\xEDo si es una materia prima que no vendes suelta.")), /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "5 \xB7 Almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock inicial" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stock, onChange: (e2) => setForm({ ...form, stock: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo (reorden)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stockMinimo, onChange: (e2) => setForm({ ...form, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Zona del almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.zona, onChange: (e2) => setForm({ ...form, zona: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), ZONAS_ALMACEN.filter((z2) => z2 !== "Sin asignar").map((z2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: z2, value: z2 }, z2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n exacta (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.ubicacion, onChange: (e2) => setForm({ ...form, ubicacion: e2.target.value }), placeholder: "Estante 3, balda 2\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de barras (EAN, opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.codigoBarras, onChange: (e2) => setForm({ ...form, codigoBarras: e2.target.value }), placeholder: "Escanea o escribe el EAN" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal (opcional)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.proveedorId, onChange: (e2) => setForm({ ...form, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), (form.tipo === "elaborado" || Number(form.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "M\xEDnimo en piso de venta (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.stockMinimoPisoVenta, onChange: (e2) => setForm({ ...form, stockMinimoPisoVenta: e2.target.value }), placeholder: "Avisa cuando quede poco en el mostrador" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-1", style: { color: C2.inkSoft } }, "Si compras esto por bulto (bandeja, caja\u2026) pero lo usas por peso en las recetas, di aqu\xED cu\xE1nto trae cada bulto. As\xED en Fichas de costo podr\xE1s poner la cantidad directamente en gramos o kilos."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contenido de cada bulto (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: form.contenido, onChange: (e2) => setForm({ ...form, contenido: e2.target.value }), placeholder: "Ej. 300" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad del contenido" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.unidadContenido, onChange: (e2) => setForm({ ...form, unidadContenido: e2.target.value }), placeholder: "Ej. g, kg, ml" }))))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit }, "Guardar producto"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setShowForm(false);
     setError("");
   } }, "Cancelar"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative flex-1" }, /* @__PURE__ */ import_react4.default.createElement(Search, { size: 15, color: C2.inkSoft, style: { position: "absolute", left: 10, top: 10 } }), /* @__PURE__ */ import_react4.default.createElement(
@@ -14927,7 +15770,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
   ), productosFiltrados.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: `Ning\xFAn producto coincide con "${busqueda}".` }) : /* @__PURE__ */ import_react4.default.createElement(Card, { style: { padding: 0 } }, /* @__PURE__ */ import_react4.default.createElement("table", { className: "w-full text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("thead", null, /* @__PURE__ */ import_react4.default.createElement("tr", { style: { color: C2.inkSoft, borderBottom: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Producto"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Stock"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Costo s/IVA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "PVP c/IVA"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }, "Margen"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-center font-medium py-2.5 px-3" }, "ABC"), /* @__PURE__ */ import_react4.default.createElement("th", { className: "text-left font-medium py-2.5 px-3" }))), /* @__PURE__ */ import_react4.default.createElement("tbody", null, productosFiltrados.map((p22) => {
     const margen = margenDe(p22);
     const bajo = p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0);
-    return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { borderBottom: `1px solid ${C2.line}`, opacity: p22.activo === false ? 0.55 : 1 } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium flex items-center gap-1.5" }, p22.nombre, p22.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "Eliminado"), esNoMercancia(p22) && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, p22.tipo), p22.tipo === "consumible" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "consumible"), p22.tipo === "elaborado" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "elaborado")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, [p22.codigo, p22.categoria, p22.ubicacion].filter(Boolean).join(" \xB7 "), p22.proveedorId && proveedorPorId(p22.proveedorId) ? ` \xB7 ${proveedorPorId(p22.proveedorId).nombre}` : "")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, p22.stock, " ", p22.unidad, bajo && /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "bajo m\xEDnimo")), (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, fmt(p22.stockPisoVenta || 0), " en piso \xB7 ", fmt((Number(p22.stock) || 0) - (Number(p22.stockPisoVenta) || 0)), " en almac\xE9n")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmtPrecio(p22.costo), Number(p22.costo) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "c/IVA \u20AC", fmtPrecio(costoConIva(p22)), " \xB7 ", ivaCompraDe(p22), "%", udsPorCaja(p22) > 1 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " \xB7 caja ", udsPorCaja(p22), " = \u20AC", fmt(costoCaja(p22))))), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmtPrecio(p22.precioVenta), Number(p22.precioVenta) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "neto \u20AC", fmtPrecio(precioNeto(p22)), " \xB7 IVA ", ivaDe(p22), "%")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono", style: { color: margen == null ? C2.inkSoft : margen < 15 ? C2.red : C2.accent } }, margen == null ? "\u2014" : margen < 15 ? [/* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { key: "mg1", size: 12, style: { display: "inline", verticalAlign: "-2px", marginRight: 3 } }), `${fmt(margen)}%`] : `${fmt(margen)}%`), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 text-center" }, esNoMercancia(p22) ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "\u2014") : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (clasificacionABC[p22.id] || "C") === "A" ? C2.red : (clasificacionABC[p22.id] || "C") === "B" ? C2.amber : C2.inkSoft }, clasificacionABC[p22.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setKardexId(p22.id) }, "Kardex"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(p22) }, "Editar"), !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(
+    return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { borderBottom: `1px solid ${C2.line}`, opacity: p22.activo === false ? 0.55 : 1 } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-medium flex items-center gap-1.5" }, p22.nombre, p22.activo === false && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.red }, "Eliminado"), esNoMercancia(p22) && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, p22.tipo), p22.tipo === "consumible" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.accent }, "consumible"), p22.tipo === "elaborado" && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "elaborado")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, [p22.codigo, p22.categoria, p22.ubicacion].filter(Boolean).join(" \xB7 "), p22.proveedorId && proveedorPorId(p22.proveedorId) ? ` \xB7 ${proveedorPorId(p22.proveedorId).nombre}` : "")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, p22.stock, " ", p22.unidad, bajo && /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.amber }, "bajo m\xEDnimo")), (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, fmt(p22.stockPisoVenta || 0), " en piso \xB7 ", fmt((Number(p22.stock) || 0) - (Number(p22.stockPisoVenta) || 0)), " en almac\xE9n")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p22.costo), Number(p22.costo) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "c/IVA \u20AC", fmt(costoConIva(p22)), " \xB7 ", ivaCompraDe(p22), "%", udsPorCaja(p22) > 1 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, " \xB7 caja ", udsPorCaja(p22), " = \u20AC", fmt(costoCaja(p22))))), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono" }, "\u20AC", fmt(p22.precioVenta), Number(p22.precioVenta) > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "neto \u20AC", fmt(precioNeto(p22)), " \xB7 IVA ", ivaDe(p22), "%")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 mono", style: { color: margen == null ? C2.inkSoft : margen < 15 ? C2.red : C2.accent } }, margen == null ? "\u2014" : margen < 15 ? [/* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { key: "mg1", size: 12, style: { display: "inline", verticalAlign: "-2px", marginRight: 3 } }), `${fmt(margen)}%`] : `${fmt(margen)}%`), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3 text-center" }, esNoMercancia(p22) ? /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "\u2014") : /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (clasificacionABC[p22.id] || "C") === "A" ? C2.red : (clasificacionABC[p22.id] || "C") === "B" ? C2.amber : C2.inkSoft }, clasificacionABC[p22.id] || "C")), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2.5 px-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 justify-end" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setKardexId(p22.id) }, "Kardex"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => openEdit(p22) }, "Editar"), !almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(
       Btn,
       {
         small: true,
@@ -14935,7 +15778,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
         onClick: () => {
           setSalidaFor(p22.id);
           setSalidaMotivo("Venta");
-          setSalidaPrecio(Number(p22.precioVenta) > 0 ? String(precioNeto(p22).toFixed(3)) : "");
+          setSalidaPrecio(Number(p22.precioVenta) > 0 ? String(precioNeto(p22).toFixed(2)) : "");
         }
       },
       "Registrar salida"
@@ -14965,7 +15808,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "Degustaci\xF3n" }, "Degustaci\xF3n"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "Producto defectuoso" }, "Producto defectuoso"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "Otro" }, "Otro")
-  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad a retirar" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: salidaCant, onChange: (e2) => setSalidaCant(e2.target.value), autoFocus: true })), salidaMotivo === "Venta" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta unitario, sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.001", value: salidaPrecio, onChange: (e2) => setSalidaPrecio(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: salidaMedioPago, onChange: (e2) => setSalidaMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")))), salidaMotivo !== "Venta" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Esto se contar\xE1 como p\xE9rdida al coste, no como venta, cuando mires Resultados."), /* @__PURE__ */ import_react4.default.createElement(
+  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad a retirar" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: salidaCant, onChange: (e2) => setSalidaCant(e2.target.value), autoFocus: true })), salidaMotivo === "Venta" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta unitario, sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: salidaPrecio, onChange: (e2) => setSalidaPrecio(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: salidaMedioPago, onChange: (e2) => setSalidaMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")))), salidaMotivo !== "Venta" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Esto se contar\xE1 como p\xE9rdida al coste, no como venta, cuando mires Resultados."), /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       onClick: () => {
@@ -14988,14 +15831,14 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "utillaje" }, "Utillaje / menaje (no se consume)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "limpieza" }, "Limpieza / qu\xEDmicos (no es mercanc\xEDa)"),
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "elaborado" }, "Elaborado (venta al cliente)")
-  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Foto del producto (URL HTTPS opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.fotoUrl, onChange: (e2) => setEditForm({ ...editForm, fotoUrl: e2.target.value }), placeholder: "https://.../producto.jpg" })), /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[12.5px] mt-6 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: !!editForm.masVendido, onChange: (e2) => setEditForm({ ...editForm, masVendido: e2.target.checked }) }), "Más vendido") ), !esNoMercancia(editForm) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement(
+  )), !esNoMercancia(editForm) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "Al\xE9rgenos"), /* @__PURE__ */ import_react4.default.createElement(
     SelectorAlergenos,
     {
       seleccionados: editForm.alergenos || [],
       onCambio: (lista) => setEditForm({ ...editForm, alergenos: lista }),
       nombreParaSugerir: editForm.nombre
     }
-  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de compra de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaCompra, onChange: (e2) => setEditForm({ ...editForm, ivaCompra: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%", t22 === 4 ? " \u2014 pan, harina, leche, huevos" : t22 === 10 ? " \u2014 resto de alimentos" : t22 === 21 ? " \u2014 general, limpieza" : "")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2" }, /* @__PURE__ */ import_react4.default.createElement(CompraPorCaja, { form: editForm, setForm: setEditForm })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de venta de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaVenta, onChange: (e2) => setEditForm({ ...editForm, ivaVenta: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta CON IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.001", value: editForm.precioVenta, onChange: (e2) => setEditForm({ ...editForm, precioVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock actual" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stock, onChange: (e2) => setEditForm({ ...editForm, stock: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimo, onChange: (e2) => setEditForm({ ...editForm, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Zona del almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.zona, onChange: (e2) => setEditForm({ ...editForm, zona: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), ZONAS_ALMACEN.filter((z2) => z2 !== "Sin asignar").map((z2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: z2, value: z2 }, z2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.ubicacion, onChange: (e2) => setEditForm({ ...editForm, ubicacion: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de barras (EAN)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.codigoBarras, onChange: (e2) => setEditForm({ ...editForm, codigoBarras: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.proveedorId, onChange: (e2) => setEditForm({ ...editForm, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((pv) => /* @__PURE__ */ import_react4.default.createElement("option", { key: pv.id, value: pv.id }, pv.nombre)))), (editForm.tipo === "elaborado" || Number(editForm.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "M\xEDnimo en piso de venta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimoPisoVenta, onChange: (e2) => setEditForm({ ...editForm, stockMinimoPisoVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contenido de cada bulto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: editForm.contenido, onChange: (e2) => setEditForm({ ...editForm, contenido: e2.target.value }), placeholder: "Ej. 300" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad del contenido" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.unidadContenido, onChange: (e2) => setEditForm({ ...editForm, unidadContenido: e2.target.value }), placeholder: "Ej. g, kg, ml" })))), editError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, editError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitEdit }, "Guardar cambios"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEditFor(null) }, "Cancelar"))), kardexId && (() => {
+  )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de compra de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaCompra, onChange: (e2) => setEditForm({ ...editForm, ivaCompra: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%", t22 === 4 ? " \u2014 pan, harina, leche, huevos" : t22 === 10 ? " \u2014 resto de alimentos" : t22 === 21 ? " \u2014 general, limpieza" : "")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "col-span-2" }, /* @__PURE__ */ import_react4.default.createElement(CompraPorCaja, { form: editForm, setForm: setEditForm })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "IVA de venta de ESTE producto (%)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.ivaVenta, onChange: (e2) => setEditForm({ ...editForm, ivaVenta: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, TIPOS_IVA.map((t22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: t22, value: t22 }, t22, "%")))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta CON IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: editForm.precioVenta, onChange: (e2) => setEditForm({ ...editForm, precioVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock actual" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stock, onChange: (e2) => setEditForm({ ...editForm, stock: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Stock m\xEDnimo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimo, onChange: (e2) => setEditForm({ ...editForm, stockMinimo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Zona del almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.zona, onChange: (e2) => setEditForm({ ...editForm, zona: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), ZONAS_ALMACEN.filter((z2) => z2 !== "Sin asignar").map((z2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: z2, value: z2 }, z2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Ubicaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.ubicacion, onChange: (e2) => setEditForm({ ...editForm, ubicacion: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo de barras (EAN)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.codigoBarras, onChange: (e2) => setEditForm({ ...editForm, codigoBarras: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor principal" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.proveedorId, onChange: (e2) => setEditForm({ ...editForm, proveedorId: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin asignar"), proveedores.map((pv) => /* @__PURE__ */ import_react4.default.createElement("option", { key: pv.id, value: pv.id }, pv.nombre)))), (editForm.tipo === "elaborado" || Number(editForm.precioVenta) > 0) && /* @__PURE__ */ import_react4.default.createElement(Field, { label: "M\xEDnimo en piso de venta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: editForm.stockMinimoPisoVenta, onChange: (e2) => setEditForm({ ...editForm, stockMinimoPisoVenta: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contenido de cada bulto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: editForm.contenido, onChange: (e2) => setEditForm({ ...editForm, contenido: e2.target.value }), placeholder: "Ej. 300" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad del contenido" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.unidadContenido, onChange: (e2) => setEditForm({ ...editForm, unidadContenido: e2.target.value }), placeholder: "Ej. g, kg, ml" })))), editError && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", style: { color: C2.red } }, editError), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-1" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submitEdit }, "Guardar cambios"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEditFor(null) }, "Cancelar"))), kardexId && (() => {
     const p22 = productos.find((x3) => x3.id === kardexId);
     if (!p22) return null;
     const suyos = [...movimientos.filter((m22) => m22.productoId === kardexId)].sort((a22, b2) => (a22.fecha + (a22.id || "")).localeCompare(b2.fecha + (b2.id || "")));
@@ -15084,9 +15927,9 @@ function CompraPorCaja({ form, setForm }) {
   const cajaNeta = costoUd > 0 ? costoUd * uds : "";
   const cajaBruta = costoUd > 0 ? costoUd * uds * (1 + iva / 100) : "";
   const unidadBruta = costoUd > 0 ? costoUd * (1 + iva / 100) : "";
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-lg p-3 mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "C\xF3mo te lo vende el proveedor"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Escribe en la casilla que traiga tu factura. Las dem\xE1s se calculan solas."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidades por caja (1 si lo compras suelto)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "1", value: form.udsPorCaja, onChange: (e2) => setForm({ ...form, udsPorCaja: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.001", valor: cajaNeta, decimales: 3, onEscribir: (v22) => desdeCaja(v22, false) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.001", valor: cajaBruta, decimales: 3, onEscribir: (v22) => desdeCaja(v22, true) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: form.costo, decimales: 4, onEscribir: (v22) => setForm({ ...form, costo: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: unidadBruta, decimales: 4, onEscribir: desdeUnidadBruta }))), uds > 1 && costoUd > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mono", style: { color: C2.accent } }, "Caja de ", uds, ": \u20AC", fmt(costoUd * uds), " sin IVA \xB7 \u20AC", fmt(costoUd * uds * (1 + iva / 100)), " con IVA \u2192 unidad \u20AC", fmtPrecio(costoUd)));
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-lg p-3 mb-3", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-1" }, "C\xF3mo te lo vende el proveedor"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Escribe en la casilla que traiga tu factura. Las dem\xE1s se calculan solas."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidades por caja (1 si lo compras suelto)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "1", value: form.udsPorCaja, onChange: (e2) => setForm({ ...form, udsPorCaja: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.01", valor: cajaNeta, decimales: 2, onEscribir: (v22) => desdeCaja(v22, false) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio CAJA con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.01", valor: cajaBruta, decimales: 2, onEscribir: (v22) => desdeCaja(v22, true) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: form.costo, decimales: 4, onEscribir: (v22) => setForm({ ...form, costo: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Costo UNIDAD con IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(InputCalc, { step: "0.0001", valor: unidadBruta, decimales: 4, onEscribir: desdeUnidadBruta }))), uds > 1 && costoUd > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mono", style: { color: C2.accent } }, "Caja de ", uds, ": \u20AC", fmt(costoUd * uds), " sin IVA \xB7 \u20AC", fmt(costoUd * uds * (1 + iva / 100)), " con IVA \u2192 unidad \u20AC", fmt(costoUd)));
 }
-function Modal({ children, onClose, title, ancho = "max-w-md" }) {
+function Modal({ children, onClose, title, ancho = "max-w-md", claseImpresion = "" }) {
   const cajaRef = (0, import_react4.useRef)(null);
   (0, import_react4.useEffect)(() => {
     const focoPrevio = document.activeElement;
@@ -15124,7 +15967,7 @@ function Modal({ children, onClose, title, ancho = "max-w-md" }) {
     document.addEventListener("keydown", alTecla);
     return () => document.removeEventListener("keydown", alTecla);
   }, []);
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto", style: { background: "rgba(20,32,28,0.45)" } }, /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: `fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto ${claseImpresion}`.trim(), style: { background: "rgba(20,32,28,0.45)" } }, /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       ref: cajaRef,
@@ -15132,7 +15975,7 @@ function Modal({ children, onClose, title, ancho = "max-w-md" }) {
       role: "dialog",
       "aria-modal": "true",
       "aria-label": title,
-      className: `rounded-xl p-5 w-full ${ancho} my-4`,
+      className: `rounded-xl p-5 w-full ${ancho} my-4 ${claseImpresion ? `${claseImpresion}-dialog` : ""}`.trim(),
       style: { background: C2.surface, outline: "none" }
     },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[15px]" }, title), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: onClose, "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 17 }))),
@@ -17183,7 +18026,7 @@ TOTAL: \u20AC${fmt(valorVista)}`;
         const importe = (Number(p22.stock) || 0) * (Number(p22.costo) || 0);
         n2 += 1;
         const i33 = n2;
-        return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { background: i33 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, i33), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p22.nombre, p22.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p22.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p22.unidad), vista === "saldo" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, p22.stock), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, "\u20AC", fmtPrecio(p22.costo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono font-semibold", style: { border: `1px solid ${C2.line}` } }, "\u20AC", fmt(importe)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, analisisABC && analisisABC.detalle[p22.id] ? analisisABC.detalle[p22.id].unidades : 0), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center mono font-semibold", style: { border: `1px solid ${C2.line}` } }, esNoMercancia(p22) ? "\u2014" : clasificacionABC[p22.id] || "C")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, height: 32, background: "#F0F4F1" } })));
+        return /* @__PURE__ */ import_react4.default.createElement("tr", { key: p22.id, style: { background: i33 % 2 ? C2.bg : "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 mono", style: { border: `1px solid ${C2.line}` } }, i33), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2", style: { border: `1px solid ${C2.line}` } }, p22.nombre, p22.codigo && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: C2.inkSoft } }, " \xB7 ", p22.codigo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center", style: { border: `1px solid ${C2.line}` } }, p22.unidad), vista === "saldo" ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, p22.stock), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, "\u20AC", fmt(p22.costo)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono font-semibold", style: { border: `1px solid ${C2.line}` } }, "\u20AC", fmt(importe)), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono", style: { border: `1px solid ${C2.line}` } }, analisisABC && analisisABC.detalle[p22.id] ? analisisABC.detalle[p22.id].unidades : 0), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-center mono font-semibold", style: { border: `1px solid ${C2.line}` } }, esNoMercancia(p22) ? "\u2014" : clasificacionABC[p22.id] || "C")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, height: 32, background: "#F0F4F1" } })));
       }));
     });
   })(), vista === "saldo" && /* @__PURE__ */ import_react4.default.createElement("tr", null, /* @__PURE__ */ import_react4.default.createElement("td", { colSpan: 5, className: "py-2 px-2 text-right font-semibold", style: { border: `1px solid ${C2.line}`, background: C2.accentSoft } }, "TOTAL VALOR \u2014 ", tituloUbicacion.toUpperCase()), /* @__PURE__ */ import_react4.default.createElement("td", { className: "py-2 px-2 text-right mono font-semibold", style: { border: `1px solid ${C2.line}`, background: C2.accentSoft } }, "\u20AC", fmt(valorVista)), /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, background: C2.accentSoft } }), /* @__PURE__ */ import_react4.default.createElement("td", { style: { border: `1px solid ${C2.line}`, background: C2.accentSoft } })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-6 text-[11px]", style: { color: C2.inkSoft } }, vista === "conteo" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-6" }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Contado por: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-6" }, /* @__PURE__ */ import_react4.default.createElement("div", null, "Responsable de almac\xE9n: _________________________"), /* @__PURE__ */ import_react4.default.createElement("div", null, "Fecha y firma: _________________________")))));
@@ -17300,12 +18143,14 @@ function Albaranes({
   puedeAltaProveedorIA = false,
   addProveedorDesdeAlbaran = null,
   asignarNifProveedor = null,
-  completarProveedorConDatos = null
+  completarProveedorConDatos = null,
+  setTab = null
 }) {
   const [modo, setModo] = (0, import_react4.useState)("lista");
   const [alb, setAlb] = (0, import_react4.useState)(null);
   const [error, setError] = (0, import_react4.useState)("");
   const [avisos, setAvisos] = (0, import_react4.useState)(null);
+  const [entradaResumen, setEntradaResumen] = (0, import_react4.useState)(null);
   const [filtroMes, setFiltroMes] = (0, import_react4.useState)("");
   const [mostrarPegar, setMostrarPegar] = (0, import_react4.useState)(false);
   const [textoPegado, setTextoPegado] = (0, import_react4.useState)("");
@@ -17589,6 +18434,7 @@ function Albaranes({
     setFotoRevisionIA("");
     setConfianzaIA(null);
     setAvisosIA([]);
+    setEntradaResumen(null);
     setModo("editor");
   }
   function abrir(a22) {
@@ -17597,6 +18443,7 @@ function Albaranes({
     setFotoRevisionIA("");
     setConfianzaIA(null);
     setAvisosIA([]);
+    setEntradaResumen(null);
     setModo("editor");
   }
   function setLinea(idx, campo, valor) {
@@ -17696,7 +18543,7 @@ function Albaranes({
     guardarAlbaran(limpio);
     setAlb(limpio);
   }
-  function darEntrada() {
+  async function darEntrada() {
     if (procesandoEntrada) return;
     const previoProveedor = asegurarProveedor(alb, { crear: false });
     if (!previoProveedor.ok) {
@@ -17722,18 +18569,35 @@ function Albaranes({
         ...asegurado.alb,
         lineas: candidatas.map((ln2) => ({ ...ln2, importe: ln2.importe !== "" ? Number(ln2.importe) : Number(importeCalculado(ln2).toFixed(4)) }))
       };
-      const resultado = confirmarAlbaran(limpio);
+      const resultado = await confirmarAlbaran(limpio);
       if (resultado && resultado.ok === false) {
         setError(resultado.error || "No se pudo registrar la recepción del pedido.");
         return;
       }
+      const lineasRecibidas = Array.isArray(resultado?.lineasResueltas) && resultado.lineasResueltas.length
+        ? resultado.lineasResueltas
+        : limpio.lineas;
+      setEntradaResumen({
+        albaranId: limpio.id,
+        fecha: limpio.fecha,
+        lineas: lineasRecibidas.map((ln2) => ({
+          productoId: ln2.productoId || "",
+          nombre: productos.find((producto) => producto.id === ln2.productoId)?.nombre || ln2.descripcion || "Producto recibido",
+          cantidad: Number(ln2.unidadesEntradas) || 0,
+          unidad: ln2.unidad || "unidad"
+        }))
+      });
       setAvisos(resultado && resultado.length ? resultado : []);
       if (asegurado.creado) {
         setAvisoAltaProveedor(`Se ha dado de alta el proveedor «${asegurado.creado.nombre}» a partir del albarán. Está en Proveedores marcado como «pendiente de revisar»: completa sus datos cuando puedas.`);
       }
+      const nombresRecibidos = lineasRecibidas.map((ln2) => ln2.descripcion || productos.find((producto) => producto.id === ln2.productoId)?.nombre || "producto").join(", ");
+      setAvisoAltaProveedor((actual) => `${actual ? actual + " " : ""}Entrada registrada: ${nombresRecibidos}. El stock queda en almacén. Para venderlo: configura el precio con IVA en Productos y después pásalo de Almacén a Piso de venta desde Traspasos. El TPV no muestra artículos sin precio ni sin stock en el piso.`);
       setModo("lista");
       setAlb(null);
       setFotoRevisionIA("");
+    } catch (error) {
+      setError(error?.message || "No se pudo registrar la recepción del pedido.");
     } finally {
       setProcesandoEntrada(false);
     }
@@ -18078,16 +18942,8 @@ function Resultados({ movimientos, productos, productoPorId, gastosGenerales, ad
     setHasta(ultimoDiaMes(/* @__PURE__ */ new Date()));
   }
   function irMesAnterior() {
-    const d2 = /^\d{4}-\d{2}-\d{2}$/.test(desde) ? /* @__PURE__ */ new Date(`${desde}T12:00:00`) : /* @__PURE__ */ new Date();
-    d2.setDate(1);
+    const d2 = /* @__PURE__ */ new Date();
     d2.setMonth(d2.getMonth() - 1);
-    setDesde(primerDiaMes(d2));
-    setHasta(ultimoDiaMes(d2));
-  }
-  function irMesSiguiente() {
-    const d2 = /^\d{4}-\d{2}-\d{2}$/.test(desde) ? /* @__PURE__ */ new Date(`${desde}T12:00:00`) : /* @__PURE__ */ new Date();
-    d2.setDate(1);
-    d2.setMonth(d2.getMonth() + 1);
     setDesde(primerDiaMes(d2));
     setHasta(ultimoDiaMes(d2));
   }
@@ -18236,7 +19092,7 @@ function Resultados({ movimientos, productos, productoPorId, gastosGenerales, ad
     setGastoForm({ concepto: "", importe: "", categoria: "" });
     setShowGasto(false);
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Resultados"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => window.print(), className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Imprimir / Guardar PDF")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesActual }, "Este mes"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesAnterior }, "Mes anterior"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesSiguiente }, "Mes siguiente")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-4 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Resultados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, "Del ", desde, " al ", hasta, " \xB7 generado el ", todayISO())), /* @__PURE__ */ import_react4.default.createElement("img", { src: (empresa && empresa.logo) || LOGO_PROYECTO, alt: "", style: { height: 56, width: "auto" } })), huboLegacy && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Algunas salidas registradas antes de esta actualizaci\xF3n no tienen motivo ni precio de venta, as\xED que no entran en este c\xE1lculo. A partir de ahora, cada salida que registres desde Productos s\xED alimentar\xE1 estos resultados.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Ingresos por ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(ingresos))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste de lo vendido"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(costeVentas)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Margen bruto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-bold mono" }, "\u20AC", fmt(margenBruto))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Sobre ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono", style: { color: margenPct == null ? C2.ink : margenPct < 15 ? C2.red : C2.accent } }, margenPct == null ? "\u2014" : margenPct < 15 ? [/* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { key: "mg3", size: 12, style: { display: "inline", verticalAlign: "-2px", marginRight: 3 } }), `${fmt(margenPct)}%`] : `${fmt(margenPct)}%`)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Lo que se ha perdido (a coste)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Mermas (caducidad, deterioro, roturas de proceso...)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorMermas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorMermas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Autoconsumo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1" }, "\u20AC", fmt(valorAutoconsumo))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Roturas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorRoturas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorRoturas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Aceite de freidoras"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorAceite > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorAceite)))), mermasPorProducto.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "D\xF3nde m\xE1s se pierde por mermas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, mermasPorProducto.map((x3, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, x3.producto.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: C2.red } }, "\u20AC", fmt(x3.valor)))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Gastos generales del negocio (mensuales)"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowGasto(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " A\xF1adir gasto")), gastosFijos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No has a\xF1adido gastos fijos (alquiler, luz, seguros\u2026)." })) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosFijos.map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe), "/mes"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => deleteGasto(g2.id), "aria-label": "Eliminar gasto", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 14, color: C2.inkSoft }))))))), gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2 no-imprimir", style: { color: C2.inkSoft } }, "Facturas pagadas y ajustes de este periodo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, g2.fecha)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe))))))), desgloseGastosPorCategoria.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Desglose de gastos por categor\xEDa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, desgloseGastosPorCategoria.map(({ categoria, importe }) => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Resultados"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => window.print(), className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(FileText, { size: 13 }), " Imprimir / Guardar PDF")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesActual }, "Este mes"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irMesAnterior }, "Mes anterior")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) })))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "zona-impresion", style: ESTILO_IMPRESION_CLARO }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-end justify-between mb-4 pb-3", style: { borderBottom: "2px solid #9C7A34" } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[17px] font-semibold" }, "Resultados"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: "#6B7A6E" } }, "Del ", desde, " al ", hasta, " \xB7 generado el ", todayISO())), /* @__PURE__ */ import_react4.default.createElement("img", { src: (empresa && empresa.logo) || LOGO_PROYECTO, alt: "", style: { height: 56, width: "auto" } })), huboLegacy && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4 no-imprimir", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Algunas salidas registradas antes de esta actualizaci\xF3n no tienen motivo ni precio de venta, as\xED que no entran en este c\xE1lculo. A partir de ahora, cada salida que registres desde Productos s\xED alimentar\xE1 estos resultados.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Ingresos por ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1", style: { color: C2.accent } }, "\u20AC", fmt(ingresos))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Coste de lo vendido"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono mt-1" }, "\u20AC", fmt(costeVentas)))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Margen bruto"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-bold mono" }, "\u20AC", fmt(margenBruto))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Sobre ventas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono", style: { color: margenPct == null ? C2.ink : margenPct < 15 ? C2.red : C2.accent } }, margenPct == null ? "\u2014" : margenPct < 15 ? [/* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { key: "mg3", size: 12, style: { display: "inline", verticalAlign: "-2px", marginRight: 3 } }), `${fmt(margenPct)}%`] : `${fmt(margenPct)}%`)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Lo que se ha perdido (a coste)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Mermas (caducidad, deterioro, roturas de proceso...)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorMermas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorMermas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Autoconsumo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1" }, "\u20AC", fmt(valorAutoconsumo))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Roturas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorRoturas > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorRoturas))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Aceite de freidoras"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-lg font-semibold mono mt-1", style: { color: valorAceite > 0 ? C2.red : C2.ink } }, "\u20AC", fmt(valorAceite)))), mermasPorProducto.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "D\xF3nde m\xE1s se pierde por mermas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, mermasPorProducto.map((x3, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, x3.producto.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold", style: { color: C2.red } }, "\u20AC", fmt(x3.valor)))))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Gastos generales del negocio (mensuales)"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setShowGasto(true) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 13 }), " A\xF1adir gasto")), gastosFijos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No has a\xF1adido gastos fijos (alquiler, luz, seguros\u2026)." })) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosFijos.map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-3" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe), "/mes"), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => deleteGasto(g2.id), "aria-label": "Eliminar gasto", className: "flex items-center justify-center shrink-0", style: { width: 44, height: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 14, color: C2.inkSoft }))))))), gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).length > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2 no-imprimir", style: { color: C2.inkSoft } }, "Facturas pagadas y ajustes de este periodo"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-4 no-imprimir" }, gastosPuntuales.filter((g2) => g2.fecha >= desde && g2.fecha <= hasta).map((g2) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: g2.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, g2.concepto), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, g2.fecha)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px]" }, "\u20AC", fmt(g2.importe))))))), desgloseGastosPorCategoria.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Desglose de gastos por categor\xEDa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, desgloseGastosPorCategoria.map(({ categoria, importe }) => {
     const totalDesglose = desgloseGastosPorCategoria.reduce((a22, x3) => a22 + x3.importe, 0);
     const pct = totalDesglose > 0 ? importe / totalDesglose * 100 : 0;
     return /* @__PURE__ */ import_react4.default.createElement("div", { key: categoria }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px] mb-0.5" }, /* @__PURE__ */ import_react4.default.createElement("span", null, categoria), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "\u20AC", fmt(importe), " ", /* @__PURE__ */ import_react4.default.createElement("span", { style: { color: C2.inkSoft } }, "(", fmt(pct), "%)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "w-full rounded-full overflow-hidden", style: { height: 5, background: C2.line } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "h-full rounded-full", style: { width: `${Math.min(100, pct)}%`, background: C2.accent } })));
@@ -19299,7 +20155,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
         if (i33 !== idx) return l22;
         if (campo === "productoId") {
           const p22 = productos.find((x3) => x3.id === valor);
-          return { ...l22, productoId: valor, descripcion: p22 ? p22.nombre : l22.descripcion, precioUnitario: p22 ? precioNeto(p22).toFixed(3) : l22.precioUnitario };
+          return { ...l22, productoId: valor, descripcion: p22 ? p22.nombre : l22.descripcion, precioUnitario: p22 ? precioNeto(p22).toFixed(2) : l22.precioUnitario };
         }
         return { ...l22, [campo]: valor };
       })
@@ -19692,7 +20548,7 @@ function Facturas({ albaranes = [], facturasDirectas = [], pagosFacturas = [], p
       const r2 = addFacturaDirecta(candidata); if (!r2?.ok) return setError(r2?.error || "No se ha podido guardar el borrador.");
       resetForm(); setMostrarAlta(false); setMensaje("Borrador guardado. No ha movido stock ni creado deuda activa."); return;
     }
-    const r2 = confirmarFacturaConAlbaranes(candidata);
+    const r2 = await confirmarFacturaConAlbaranes(candidata);
     if (!r2?.ok) return setError(r2?.error || "No se ha podido confirmar la factura y sus albaranes.");
     const resumen = `Factura confirmada: ${r2.albaranesVinculados.filter((x3) => !x3.recepcionAplicada).length} albarán(es) vinculados y ${r2.albaranesVinculados.filter((x3) => x3.recepcionAplicada).length} recepcionado(s).`;
     resetForm(); setMostrarAlta(false); setMensaje(resumen);
@@ -20918,7 +21774,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -20933,6 +21789,10 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const [motivoAnulacion, setMotivoAnulacion] = (0, import_react4.useState)("");
   const [mostrarAnulacion, setMostrarAnulacion] = (0, import_react4.useState)(false);
   const [anulando, setAnulando] = (0, import_react4.useState)(false);
+  const [fondoInicialSesion, setFondoInicialSesion] = (0, import_react4.useState)("0");
+  const [abriendoSesion, setAbriendoSesion] = (0, import_react4.useState)(false);
+  const [errorSesion, setErrorSesion] = (0, import_react4.useState)("");
+  const [exitoSesion, setExitoSesion] = (0, import_react4.useState)("");
   const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
   const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   encargos.forEach((e2) => {
@@ -20964,6 +21824,29 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const contadoNumero = hayDesglose ? totalDenominaciones : contado === "" ? NaN : redondearDineroPM08(contado);
   const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
+  async function abrirSesion() {
+    if (abriendoSesion || typeof abrirSesionCajaA10 !== "function") return;
+    setErrorSesion("");
+    setExitoSesion("");
+    const fondo = Number(fondoInicialSesion);
+    if (!Number.isFinite(fondo) || fondo < 0) {
+      setErrorSesion("El fondo inicial debe ser un número igual o mayor que cero.");
+      return;
+    }
+    setAbriendoSesion(true);
+    try {
+      const r2 = await abrirSesionCajaA10({ fondoInicial: fondo });
+      if (!r2?.ok) {
+        setErrorSesion(r2?.error || "No se pudo abrir la sesión de caja.");
+        return;
+      }
+      setExitoSesion(`Sesión de caja abierta${r2.caja_nombre ? ` en ${r2.caja_nombre}` : ""}. Ya puedes operar en el TPV.`);
+    } catch (e2) {
+      setErrorSesion(String(e2?.message || "No se pudo abrir la sesión de caja."));
+    } finally {
+      setAbriendoSesion(false);
+    }
+  }
   (0, import_react4.useEffect)(() => {
     setError("");
     setExito("");
@@ -21073,6 +21956,14 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     "div",
     null,
     h3(SectionTitle, null, "Arqueo de caja"),
+    typeof abrirSesionCajaA10 === "function" ? h3(Card, { className: "mb-4", "data-c01-apertura-sesion": "1", style: { background: C2.accentSoft, border: "none" } },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Apertura de sesión de caja"),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "La sesión es la caja operativa del turno. El arqueo que aparece debajo es el cierre y contado diario; son pasos distintos. Introduce el fondo inicial para abrir la sesión desde aquí."),
+      h3(Field, { label: "Fondo inicial (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicialSesion, disabled: abriendoSesion, onChange: (e2) => setFondoInicialSesion(e2.target.value) })),
+      h3(Btn, { small: true, onClick: abrirSesion, disabled: abriendoSesion || !String(fondoInicialSesion).trim() }, abriendoSesion ? "Abriendo…" : "Abrir sesión de caja"),
+      errorSesion ? h3("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesion) : null,
+      exitoSesion ? h3("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesion) : null
+    ) : null,
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
       Card,
@@ -21869,7 +22760,97 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+  function ticketQrQaFixtureInicial(listaProductos) {
+    try {
+      const host = window.location.hostname;
+      const qa = new URLSearchParams(window.location.search).get("qa");
+      const hostPermitido = host === "localhost" || host === "127.0.0.1" || /^deploy-preview-\d+--/u.test(host);
+      if (qa !== "qr-fiscal-ticket" || !hostPermitido) return null;
+      const productoId = listaProductos?.[0]?.id || "qa-fiscal-producto-a";
+      return {
+        ventaId: "qa-qr-fiscal-a-000001",
+        referencia: "V-27102026-QRA001",
+        fecha: "2026-10-27",
+        marcaTiempo: "2026-10-27T10:30:00.000Z",
+        lineas: [{ id: "qa-qr-fiscal-linea-a-000001", productoId, cantidad: 1, ingresoUnitario: 5, ivaVentaAplicado: 10 }],
+        resumen: "QA QR fiscal Empresa A",
+        importe: 5.5,
+        importeOriginal: 5.5,
+        importeNetoGestion: 5.5,
+        estado: "ACTIVA",
+        trazabilidad: [],
+        medioPago: "Efectivo",
+        detallePago: null,
+        usuario: "QA C07-A",
+        anulada: false,
+        mesa: "QA-1",
+        zona: "QA",
+        numeroFiscal: "QA-A-000001",
+        entregado: 10,
+        cambio: 4.5,
+        qrFiscal: {
+          url: "https://www2.agenciatributaria.gob.es/wlpl/TIKE-CONT/ValidarQR?nif=A12345674&numserie=QA-A-000001&fecha=27-10-2026&importe=5.50",
+          textLabel: "QR tributario:",
+          modalityLabel: "VERI*FACTU",
+          source: { nif: "A12345674", numserie: "QA-A-000001", fecha: "27-10-2026", importe: "5.50" },
+          production: false
+        }
+      };
+    } catch {
+      return null;
+    }
+  }
+  function c07dD24FixturePermitido() {
+    try {
+      const host = window.location.hostname;
+      const qa = new URLSearchParams(window.location.search).get("qa");
+      const hostPermitido = host === "localhost" || host === "127.0.0.1" || /^deploy-preview-\d+--/u.test(host);
+      return hostPermitido && ["c07d-d2-4-ready", "c07d-d2-4-blocked"].includes(qa) ? qa : null;
+    } catch {
+      return null;
+    }
+  }
+  function c07dD24TipoDocumentoFixture() {
+    return c07dD24FixturePermitido() === "c07d-d2-4-blocked" ? "RECTIFICATIVA" : "FACTURA";
+  }
+  function c07dD24PedidoFixtureInicial() {
+    if (!c07dD24FixturePermitido()) return null;
+    return {
+      ok: true,
+      pedidoId: "qa-c07d-d2-4-pedido",
+      cuentaId: "qa-c07d-d2-4-cuenta",
+      pedidoVersion: 1,
+      pedidoEstado: "ENVIADO",
+      estado: "ENVIADO",
+      total: 5.5,
+      totalServidor: 5.5,
+      lineas: [{ id: "qa-c07d-d2-4-linea", productoId: productos?.[0]?.id || "qa-fiscal-producto-a", cantidad: 1, total: 5.5, ingresoUnitario: 5, ivaVentaAplicado: 10 }],
+      currencyCode: "EUR",
+      modalidad: "MESA"
+    };
+  }
+  function c07dD24EstadoCobroFixtureInicial() {
+    if (!c07dD24FixturePermitido()) return null;
+    return {
+      ok: true,
+      disponible: true,
+      estado: "PENDIENTE",
+      total: 5.5,
+      confirmado: 0,
+      saldo: 5.5,
+      reservado: 0,
+      efectivoRecibido: 0,
+      cambioEntregado: 0,
+      checkouts: [{ id: "qa-c07d-d2-4-checkout", estado: "ABIERTO" }],
+      pagos: [],
+      intentos: [],
+      incidencias: [],
+      pendienteLocal: false,
+      cobroIncierto: false,
+      fiscal: null
+    };
+  }
   const [carrito, setCarrito] = (0, import_react4.useState)([]);
   const [categoria, setCategoria] = (0, import_react4.useState)("Todos");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
@@ -21879,7 +22860,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorAnular, setErrorAnular] = (0, import_react4.useState)("");
   const [procesandoAnulacion, setProcesandoAnulacion] = (0, import_react4.useState)(false);
   const [ventaDetalle, setVentaDetalle] = (0, import_react4.useState)(null);
-  const [ticketVenta, setTicketVenta] = (0, import_react4.useState)(null);
+  const [ticketVenta, setTicketVenta] = (0, import_react4.useState)(() => ticketQrQaFixtureInicial(productos));
+  const [fondoInicialTPV, setFondoInicialTPV] = (0, import_react4.useState)("0");
+  const [abriendoSesionTPV, setAbriendoSesionTPV] = (0, import_react4.useState)(false);
+  const [errorSesionTPV, setErrorSesionTPV] = (0, import_react4.useState)("");
+  const [exitoSesionTPV, setExitoSesionTPV] = (0, import_react4.useState)("");
   const [filtroVentasTexto, setFiltroVentasTexto] = (0, import_react4.useState)("");
   const [filtroVentasDesde, setFiltroVentasDesde] = (0, import_react4.useState)("");
   const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
@@ -21970,10 +22955,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           importeAsociado: esDev ? Math.abs(Number(datoCorreccionHistorialPM09(m22, "ingresoUnitario")) || 0) * Math.abs(Number(m22.cantidad) || 0) * (1 + (Number(datoCorreccionHistorialPM09(m22, "ivaVentaAplicado")) || 0) / 100) : importeOriginal
         };
       }).sort((a22, b2) => `${a22.fecha} ${a22.operationId}`.localeCompare(`${b2.fecha} ${b2.operationId}`));
-      const medioPago2 = lineas[0]?.medioPago || "—";
+      const medioPago2 = lineas.find((l22) => l22.medioPago)?.medioPago || "—";
       const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
       const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
-      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineas[0]?.mesa || lineas[0]?.mesaNumero || "", zona: lineas[0]?.zona || lineas[0]?.sala || lineas[0]?.ubicacion || "", numeroFiscal: lineas[0]?.numeroFiscal || lineas[0]?.numeroFactura || "", entregado: lineas[0]?.importeEntregado ?? lineas[0]?.entregado ?? null, cambio: lineas[0]?.cambioEntregado ?? lineas[0]?.cambio ?? null };
+      const lineaConTicket = lineas.find((l22) => l22.numeroFiscal || l22.numeroFactura || l22.qrFiscal || l22.cuentaId || l22.ventaFiscalId) || lineas[0];
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineaConTicket?.mesa || lineaConTicket?.mesaNumero || "", zona: lineaConTicket?.zona || lineaConTicket?.sala || lineaConTicket?.ubicacion || "", cuentaId: lineaConTicket?.cuentaId || null, checkoutId: lineaConTicket?.checkoutId || null, ventaFiscalId: lineaConTicket?.ventaFiscalId || null, numeroFiscal: lineaConTicket?.numeroFiscal || lineaConTicket?.numeroFactura || "", qrFiscal: lineaConTicket?.qrFiscal || null, entregado: lineaConTicket?.importeEntregado ?? lineaConTicket?.entregado ?? null, cambio: lineaConTicket?.cambioEntregado ?? lineaConTicket?.cambio ?? null };
     }).sort((a22, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a22.fecha} ${a22.marcaTiempo}`));
   }, [movimientos, productos]);
   const ventasFiltradas = (0, import_react4.useMemo)(() => {
@@ -22031,11 +23017,47 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     });
     return [...mapa.values()].sort((a22, b2) => a22.pct - b2.pct);
   }
+  function ticketQrFiscalVista(v22) {
+    const qr = v22 && v22.qrFiscal;
+    if (!qr || typeof qr !== "object" || Array.isArray(qr)) return null;
+    if (qr.production !== false || typeof qr.url !== "string" || !/^https:\/\//u.test(qr.url)) return null;
+    if (typeof renderQrSvg !== "function") return null;
+    let svg;
+    try {
+      svg = renderQrSvg(qr.url, { quietZone: 4 });
+    } catch {
+      return null;
+    }
+    return {
+      url: qr.url,
+      textLabel: qr.textLabel || "QR tributario:",
+      modalityLabel: qr.modalityLabel || "VERI*FACTU",
+      matrixRendered: true,
+      svg
+    };
+  }
+  function imprimirTicketVenta() {
+    const root = document.documentElement;
+    const limpiarAlturaImpresion = () => {
+      root.classList.remove("ticket-printing");
+      root.style.removeProperty("--ticket-print-height");
+      window.removeEventListener("afterprint", limpiarAlturaImpresion);
+    };
+    window.addEventListener("afterprint", limpiarAlturaImpresion, { once: true });
+    root.classList.add("ticket-printing");
+    window.requestAnimationFrame(() => {
+      const zona = document.querySelector(".modal-ticket-impresion .zona-impresion");
+      const altura = Math.ceil(zona?.scrollHeight || zona?.getBoundingClientRect().height || 0);
+      if (altura > 0) root.style.setProperty("--ticket-print-height", `${altura}px`);
+      window.print();
+    });
+  }
   function renderTicketVenta() {
     if (!ticketVenta) return null;
     const h3 = import_react4.default.createElement;
     const v22 = ticketVenta;
     const desglose = desgloseIvaTicketVista(v22);
+    const qrFiscalVista = ticketQrFiscalVista(v22);
     const subtotal = desglose.reduce((a22, r2) => a22 + r2.base, 0);
     const nombreLocal = local?.nombreComercial || local?.nombreComercialTicket || local?.nombre || "Local sin nombre";
     const direccionLocal = local?.direccion || local?.direccionTicket || "";
@@ -22057,7 +23079,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const cambioTicket = v22.cambio == null ? null : Number(v22.cambio);
     return h3(
       Modal,
-      { onClose: () => setTicketVenta(null), title: `Ticket ${v22.referencia}` },
+      { onClose: () => setTicketVenta(null), title: `Ticket ${v22.referencia}`, claseImpresion: "modal-ticket-impresion" },
       h3(
         "div",
         { className: "rounded-xl p-4 mono zona-impresion", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
@@ -22129,6 +23151,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           h3("div", { className: "flex justify-between gap-3" }, h3("span", null, "CAMBIO:"), h3("span", null, cambioTicket == null || !Number.isFinite(cambioTicket) ? "\u2014" : `\u20AC${fmt(cambioTicket)}`)),
           v22.medioPago === "Mixto" && v22.detallePago ? h3("div", { className: "mt-2 text-center" }, `TARJETA \u20AC${fmt(v22.detallePago.tarjeta || 0)} \xB7 EFECTIVO \u20AC${fmt(v22.detallePago.efectivo || 0)}`) : null
         ),
+        qrFiscalVista ? h3(
+          "div",
+          { className: "mt-3 pt-3 text-center", "data-qr-fiscal-preview": "qa", style: { borderTop: `1px dashed ${C2.line}` } },
+          h3("div", { className: "text-[11px] font-bold" }, qrFiscalVista.textLabel),
+          h3("div", { className: "text-[9px] font-semibold mt-1" }, `${qrFiscalVista.modalityLabel} \xB7 QA \xB7 EMISI\xD3N REAL DESACTIVADA`),
+          h3("div", { className: "flex justify-center mt-2", "data-qr-fiscal-matrix": "local-svg", dangerouslySetInnerHTML: { __html: qrFiscalVista.svg } }),
+          h3("div", { className: "text-[8.5px] break-all mt-2", style: { color: C2.inkSoft } }, qrFiscalVista.url),
+          h3("div", { className: "text-[9px] mt-2", style: { color: C2.inkSoft } }, "Matriz QR generada localmente a partir del payload verificable de QA.")
+        ) : null,
         h3(
           "div",
           { className: "text-center text-[10px] pt-3", style: { borderTop: `1px dashed ${C2.line}` } },
@@ -22145,7 +23176,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           !tieneNumeroFiscal ? h3("div", { className: "text-[8.5px] mt-1", style: { color: C2.inkSoft } }, "Documento interno del TPV \xB7 pendiente de numeraci\xF3n fiscal") : null
         )
       ),
-      h3("div", { className: "mt-3 flex gap-2 flex-wrap no-imprimir" }, h3(Btn, { onClick: () => window.print() }, "Imprimir / Guardar PDF"), h3(Btn, { variant: "ghost", onClick: () => setTicketVenta(null) }, "Cerrar ticket"))
+      h3("div", { className: "mt-3 flex gap-2 flex-wrap no-imprimir" }, h3(Btn, { onClick: imprimirTicketVenta }, "Imprimir / Guardar PDF"), h3(Btn, { variant: "ghost", onClick: () => setTicketVenta(null) }, "Cerrar ticket"))
     );
   }
   function renderHistorialVentas() {
@@ -22199,6 +23230,41 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, v23.resumen)
       )))
     );
+    async function abrirTicketHistorial(v22) {
+      let ticket = { ...v22 };
+      if (typeof leerEstadoFiscalC07D === "function" && v22?.cuentaId) {
+        try {
+          const fiscal = await leerEstadoFiscalC07D(v22.cuentaId);
+          const documento = Array.isArray(fiscal?.documentos) ? fiscal.documentos[0] : null;
+          const qr = fiscal?.qr;
+          if (documento) {
+            const numero = documento.numero == null ? "" : String(documento.numero).padStart(6, "0");
+            const fechaFiscal = String(qr?.fecha_expedicion || v22.fecha || new Date().toISOString().slice(0, 10));
+            ticket = {
+              ...ticket,
+              ventaId: documento.venta_fiscal_id || ticket.ventaId,
+              numeroFiscal: `${documento.codigo_serie || "TPV"}-${numero}`,
+              qrFiscal: qr?.ok && typeof qr.qr_url === "string" && /^https:\/\//u.test(qr.qr_url) ? {
+                url: qr.qr_url,
+                textLabel: "QR tributario:",
+                modalityLabel: "VERI*FACTU",
+                source: {
+                  nif: qr.nif_emisor || "",
+                  numserie: `${documento.codigo_serie || "TPV"}-${numero}`,
+                  fecha: fechaFiscal,
+                  importe: Number(ticket.importeNetoGestion ?? ticket.importe ?? 0).toFixed(2)
+                },
+                production: false
+              } : ticket.qrFiscal
+            };
+          }
+        } catch (error) {
+          console.warn("No se pudo recuperar el QR fiscal de la venta histórica:", error);
+        }
+      }
+      setVentaDetalle(null);
+      setTicketVenta(ticket);
+    }
     if (!ventaDetalle) return h3(import_react4.default.Fragment, null, controles, renderTicketVenta());
     const v22 = ventaDetalle;
     const detalle = h3(
@@ -22226,10 +23292,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ) : null,
       v22.medioPago === "Mixto" && (v22.detallePago.efectivo > 0 || v22.detallePago.tarjeta > 0) ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta \u20AC${fmt(v22.detallePago.tarjeta)} + Efectivo \u20AC${fmt(v22.detallePago.efectivo)}`) : null,
       h3("div", { className: "text-[10px] mb-3 break-all", style: { color: C2.inkSoft } }, `ID interno: ${v22.ventaId}`),
-      h3("div", { className: "flex gap-2 flex-wrap mb-3" }, h3(Btn, { onClick: () => {
-        setVentaDetalle(null);
-        setTicketVenta(v22);
-      } }, "Ver ticket / reimprimir")),
+      h3("div", { className: "flex gap-2 flex-wrap mb-3" }, h3(Btn, { onClick: () => abrirTicketHistorial(v22) }, "Ver ticket / reimprimir")),
       v22.estado === "ACTIVA" && anularVenta ? h3(Btn, { variant: "danger", onClick: () => {
         setVentaDetalle(null);
         setConfirmAnular(v22);
@@ -22261,8 +23324,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
   const inputEscaneoRef = (0, import_react4.useRef)(null);
-  const [estadoCobroF4, setEstadoCobroF4] = (0, import_react4.useState)(null);
+  const [estadoCobroF4, setEstadoCobroF4] = (0, import_react4.useState)(() => c07dD24EstadoCobroFixtureInicial());
   const [cargandoCobroF4, setCargandoCobroF4] = (0, import_react4.useState)(false);
+  const [configFiscalC07D, setConfigFiscalC07D] = (0, import_react4.useState)(null);
+  const [cargandoConfigFiscalC07D, setCargandoConfigFiscalC07D] = (0, import_react4.useState)(false);
   const [procesandoCobroF4, setProcesandoCobroF4] = (0, import_react4.useState)(false);
   const [errorCobroF4, setErrorCobroF4] = (0, import_react4.useState)("");
   const [mensajeCobroF4, setMensajeCobroF4] = (0, import_react4.useState)("");
@@ -22288,6 +23353,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }, [local?.id, configEmpresa?.id]);
   const modalidadActualA02 = modalidadesA02.includes(modalidadElegidaA02) ? modalidadElegidaA02 : modalidadesA02.includes("BARRA") ? "BARRA" : modalidadesA02[0] || "";
   const renderSelectorModalidadA02 = () => {
+    if (modoTPV === "RAPIDA") return renderCobroRapida();
     if (modalidadesA02.length < 2) return null;
     const h4 = import_react4.default.createElement;
     return h4(
@@ -22297,6 +23363,21 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       h4("div", { className: "flex gap-1.5 flex-wrap", role: "group", "aria-label": "Tipo de cuenta" }, modalidadesA02.map((m2) => h4("button", { key: m2, type: "button", "aria-pressed": m2 === modalidadActualA02, onClick: () => setModalidadElegidaA02(m2), disabled: enviandoVenta, className: "inline-flex items-center rounded-lg font-medium px-3 py-1.5 text-[12px]", style: { minHeight: 44, border: `1px solid ${C2.line}`, background: m2 === modalidadActualA02 ? C2.accentFill : "transparent", color: m2 === modalidadActualA02 ? C2.onAccent : C2.ink, opacity: enviandoVenta ? 0.45 : 1, cursor: enviandoVenta ? "not-allowed" : "pointer" } }, MODALIDADES_ETIQUETA_A02[m2] || m2)))
     );
   };
+  function renderCobroRapida() {
+    const h4 = import_react4.default.createElement;
+    return h4(
+      Card,
+      { className: "mb-4", "data-tpv-quick": "1", style: { border: `1px solid ${C2.accent}` } },
+      h4("div", { className: "text-[12.5px] font-semibold mb-2" }, "Cobro de venta rápida"),
+      h4("div", { className: "grid grid-cols-2 gap-2 mb-2", role: "group", "aria-label": "Medio de pago" },
+        h4("button", { type: "button", "aria-pressed": pagoRapida === "EFECTIVO", onClick: () => setPagoRapida("EFECTIVO"), className: "rounded-lg px-3 py-2 text-[12px] font-semibold", style: { minHeight: 44, background: pagoRapida === "EFECTIVO" ? C2.accentFill : "transparent", color: pagoRapida === "EFECTIVO" ? C2.onAccent : C2.ink, border: `1px solid ${pagoRapida === "EFECTIVO" ? C2.accentFill : C2.line}` } }, "Efectivo"),
+        h4("button", { type: "button", "aria-pressed": pagoRapida === "TARJETA", onClick: () => setPagoRapida("TARJETA"), className: "rounded-lg px-3 py-2 text-[12px] font-semibold", style: { minHeight: 44, background: pagoRapida === "TARJETA" ? C2.accentFill : "transparent", color: pagoRapida === "TARJETA" ? C2.onAccent : C2.ink, border: `1px solid ${pagoRapida === "TARJETA" ? C2.accentFill : C2.line}` } }, "Tarjeta")
+      ),
+      pagoRapida === "EFECTIVO" ? h4(Field, { label: "Efectivo recibido (€)" }, h4(Input, { type: "number", min: total, step: "0.01", value: efectivoRecibidoRapida, placeholder: fmt(total), onChange: (e2) => setEfectivoRecibidoRapida(e2.target.value) })) : h4("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "El pago con tarjeta se inicia en modo simulado hasta conectar el terminal físico."),
+      h4(Btn, { onClick: confirmarVentaRapida, disabled: procesandoVentaRapida || cargandoA04 }, procesandoVentaRapida ? "Procesando venta…" : `Cobrar ahora · €${fmt(total)}`),
+      h4("style", null, `[data-tpv-quick="1"] + button { display: none !important; }`)
+    );
+  };
   const [medioPago, setMedioPago] = (0, import_react4.useState)("Efectivo");
   const [efectivoRecibido, setEfectivoRecibido] = (0, import_react4.useState)("");
   const [importeTarjetaMixto, setImporteTarjetaMixto] = (0, import_react4.useState)("");
@@ -22304,7 +23385,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [enviandoVenta, setEnviandoVenta] = (0, import_react4.useState)(false);
   const [procesandoA05, setProcesandoA05] = (0, import_react4.useState)(false);
   const [errorA05, setErrorA05] = (0, import_react4.useState)("");
-  const [pedidoOperativoA05, setPedidoOperativoA05] = (0, import_react4.useState)(null);
+  const [pedidoOperativoA05, setPedidoOperativoA05] = (0, import_react4.useState)(() => c07dD24PedidoFixtureInicial());
   const [borradorCargadoA06, setBorradorCargadoA06] = (0, import_react4.useState)(false);
   const [estadoBorradorA06, setEstadoBorradorA06] = (0, import_react4.useState)({ estado: "VACIO", lineas: [] });
   const [conflictoA06, setConflictoA06] = (0, import_react4.useState)(null);
@@ -22349,12 +23430,17 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [motivoOperacionA05, setMotivoOperacionA05] = (0, import_react4.useState)("");
   const [accionEnCursoA05, setAccionEnCursoA05] = (0, import_react4.useState)("");
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
+  const [modoTPV, setModoTPV] = (0, import_react4.useState)("SALA");
+  const [pagoRapida, setPagoRapida] = (0, import_react4.useState)("EFECTIVO");
+  const [efectivoRecibidoRapida, setEfectivoRecibidoRapida] = (0, import_react4.useState)("");
+  const [procesandoVentaRapida, setProcesandoVentaRapida] = (0, import_react4.useState)(false);
+  const [resultadoVentaRapida, setResultadoVentaRapida] = (0, import_react4.useState)(null);
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
+  const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
   const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
-  const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
 
   (0, import_react4.useEffect)(() => {
     const empresaId = configEmpresa?.id || null;
@@ -22380,6 +23466,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
   (0, import_react4.useEffect)(() => {
     let activo = true;
+    const fixture = c07dD24PedidoFixtureInicial();
+    if (fixture) {
+      setPedidoOperativoA05(fixture);
+      return () => { activo = false; };
+    }
     const localPersistido = typeof leerPedidoOperativoA05 === "function" ? leerPedidoOperativoA05() : null;
     Promise.resolve(localPersistido).then((pedido) => {
       if (activo) setPedidoOperativoA05(pedido || null);
@@ -23053,7 +24144,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   const vendibles = (0, import_react4.useMemo)(
-    () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0)),
+    () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0) && (p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0) > 0),
     [productos]
   );
   const categorias = (0, import_react4.useMemo)(() => {
@@ -23097,10 +24188,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return [...s22, { claveCarrito, productoId: producto.id, cantidad: cantidadNormalizada, nota: String(nota || "").slice(0, 500), configuracionA04 }];
     });
   }
-  async function agregar(producto, cantidadSolicitada = 1) {
+  async function agregar(producto) {
     if (cargandoA04) return;
-    const cantidadNormalizada = Math.max(1, Number(cantidadSolicitada) || 1);
-    setCantidadRapidaPendienteA04(cantidadNormalizada);
     setErrorVenta("");
     setErrorA04("");
     const empresaId = configEmpresa?.id || producto?.empresaId || null;
@@ -23139,8 +24228,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         .order("orden", { ascending: true });
       if (enlacesError) throw enlacesError;
       if (!Array.isArray(enlaces) || enlaces.length === 0) {
-        agregarLineaCarritoA04(producto, null, cantidadNormalizada);
-        setCantidadRapidaPendienteA04(1);
+        agregarLineaCarritoA04(producto, null);
         return;
       }
       const idsGrupos = [...new Set(enlaces.map((x3) => x3.grupo_id).filter(Boolean))];
@@ -23199,7 +24287,6 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setSeleccionesA04(inicial);
       setConfigurandoA04({
         producto,
-        cantidadRapida: Math.max(1, Number(cantidadSolicitada) || 1),
         catalogo: {
           currencyCode: catalogo.currency_code,
           precioUnitario: Number(catalogo.precio_unitario) || 0,
@@ -23282,9 +24369,6 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setNotaA04("");
     setErrorA04("");
   }
-  async function agregarCantidadRapidaA04(producto, cantidad) {
-    await agregar(producto, cantidad);
-  }
   function cambiarCantidad(claveCarrito, delta) {
     setCarrito(
       (s22) => s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, cantidad: Math.max(1, (Number(l22.cantidad) || 0) + delta) } : l22).filter((l22) => l22.cantidad > 0)
@@ -23318,23 +24402,6 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return { ...l22, cantidadNum: cant, producto: p22, precioUnitario: precioConIva, subtotal: precioConIva * cant };
   }).filter(Boolean);
   const total = lineasCarrito.reduce((a22, l22) => a22 + l22.subtotal, 0);
-  (0, import_react4.useEffect)(() => {
-    function manejarAtajoTPV(e2) {
-      if (!["F2", "F4", "F9"].includes(e2.key)) return;
-      e2.preventDefault();
-      if (e2.key === "F2") {
-        inputEscaneoRef.current?.focus();
-        return;
-      }
-      if (e2.key === "F4") {
-        if (carrito.length > 0) vaciarCarrito();
-        return;
-      }
-      if (lineasCarrito.length > 0 && !enviandoVenta && !cargandoA04 && !configurandoA04) confirmarCobro();
-    }
-    window.addEventListener("keydown", manejarAtajoTPV);
-    return () => window.removeEventListener("keydown", manejarAtajoTPV);
-  }, [carrito.length, lineasCarrito.length, enviandoVenta, cargandoA04, configurandoA04]);
   const cantidadesProductoA04 = lineasCarrito.reduce((mapa, l22) => {
     mapa.set(l22.productoId, (mapa.get(l22.productoId) || 0) + l22.cantidadNum);
     return mapa;
@@ -23362,7 +24429,6 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       Modal,
       { onClose: () => {
         setConfigurandoA04(null);
-        setCantidadRapidaPendienteA04(1);
         setSeleccionesA04({});
         setNotaA04("");
         setErrorA04("");
@@ -23408,7 +24474,6 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h4(Btn, { onClick: confirmarConfiguracionA04 }, "Añadir al carrito"),
         h4(Btn, { variant: "ghost", onClick: () => {
           setConfigurandoA04(null);
-          setCantidadRapidaPendienteA04(1);
           setSeleccionesA04({});
           setNotaA04("");
           setErrorA04("");
@@ -23444,6 +24509,69 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
 
+  async function adjuntarEstadoFiscalC07D(resultado) {
+    if (!resultado?.ok || typeof leerEstadoFiscalC07D !== "function" || !resultado?.cuentaId) return resultado;
+    const fiscal = await leerEstadoFiscalC07D(resultado.cuentaId);
+    return { ...resultado, fiscal };
+  }
+  function ticketCobroFiscalC07D() {
+    const estado = estadoCobroF4;
+    const fiscal = estado?.fiscal;
+    const documento = Array.isArray(fiscal?.documentos) ? fiscal.documentos[0] : null;
+    const qr = fiscal?.qr;
+    const pedido = pedidoOperativoA05;
+    if (!pedido?.cuentaId || !documento || !qr?.ok || typeof qr.qr_url !== "string" || !/^https:\/\//u.test(qr.qr_url)) return null;
+    const lineas = Array.isArray(pedido.lineas) ? pedido.lineas.map((linea, indice) => {
+      const cantidad = Number(linea.cantidad) || 0;
+      const totalLinea = Number(linea.total) || 0;
+      const ingresoUnitario = Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario);
+      return {
+      id: linea.id || `checkout-linea-${indice}`,
+      productoId: linea.productoId || linea.producto_id,
+      cantidad,
+      ingresoUnitario: Number.isFinite(ingresoUnitario) && ingresoUnitario >= 0 ? ingresoUnitario : cantidad > 0 ? totalLinea / cantidad : 0,
+      ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
+      };
+    }).filter((linea) => linea.productoId && linea.cantidad > 0) : [];
+    if (lineas.length === 0) return null;
+    const importe = Number(estado.total) || lineas.reduce((total, linea) => total + Math.abs(linea.cantidad * linea.ingresoUnitario) * (1 + linea.ivaVentaAplicado / 100), 0);
+    const numero = documento.numero == null ? "" : String(documento.numero).padStart(6, "0");
+    const fecha = String(qr.fecha_expedicion || new Date().toISOString().slice(0, 10));
+    return {
+      ventaId: documento.venta_fiscal_id || pedido.cuentaId,
+      referencia: `V-${fecha.replaceAll("-", "")}-${String(documento.documento_id || pedido.cuentaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
+      fecha,
+      marcaTiempo: pedido.completed_at || new Date().toISOString(),
+      lineas,
+      resumen: lineas.map((linea) => productos.find((producto) => producto.id === linea.productoId)?.nombre || "Producto").slice(0, 3).join(", "),
+      importe,
+      importeOriginal: importe,
+      importeNetoGestion: importe,
+      estado: "ACTIVA",
+      trazabilidad: [],
+      medioPago: "Efectivo",
+      detallePago: null,
+      usuario: "",
+      anulada: false,
+      mesa: "",
+      zona: "",
+      numeroFiscal: `${documento.codigo_serie || "TPV"}-${numero}`,
+      qrFiscal: {
+        url: qr.qr_url,
+        textLabel: "QR tributario:",
+        modalityLabel: "VERI*FACTU",
+        source: {
+          nif: qr.nif_emisor || "",
+          numserie: `${documento.codigo_serie || "TPV"}-${numero}`,
+          fecha,
+          importe: importe.toFixed(2)
+        },
+        production: false
+      },
+      entregado: importe,
+      cambio: 0
+    };
+  }
   async function refrescarCobroF4() {
     if (typeof leerEstadoCobroF4 !== "function" || !pedidoOperativoA05?.cuentaId) {
       setEstadoCobroF4(null);
@@ -23456,22 +24584,28 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setErrorCobroF4(resultado?.error || "No se pudo consultar el estado del cobro.");
       return;
     }
-    setEstadoCobroF4(resultado);
+    setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
     setErrorCobroF4("");
   }
   async function ejecutarCobroF4(medio, opciones = {}) {
+    if (c07dD24FixturePermitido()) {
+      setErrorCobroF4("El fixture QA C07-D.2.4 es solo visual; no se permite iniciar cobros.");
+      return;
+    }
     if (procesandoCobroF4 || typeof iniciarCobroCuentaF4 !== "function") return;
     setProcesandoCobroF4(true);
     setErrorCobroF4("");
     setMensajeCobroF4("");
-    const resultado = await iniciarCobroCuentaF4(medio, opciones);
+    const opcionesServidor = { ...opciones };
+    delete opcionesServidor.codigoSerie;
+    const resultado = await iniciarCobroCuentaF4(medio, opcionesServidor);
     setProcesandoCobroF4(false);
     if (!resultado?.ok) {
       setErrorCobroF4(resultado?.error || "No se pudo iniciar el cobro.");
       await refrescarCobroF4();
       return;
     }
-    setEstadoCobroF4(resultado);
+    setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
     setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
   }
   async function recuperarCobroF4UI() {
@@ -23485,7 +24619,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setErrorCobroF4(resultado?.error || "No se pudo recuperar el cobro.");
       return;
     }
-    setEstadoCobroF4(resultado);
+    setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
     setMensajeCobroF4(resultado.mensaje || "Estado de cobro recuperado sin crear otro intento.");
   }
   function cambiarFormularioIncidenciaB04(campo, valor) {
@@ -23569,8 +24703,46 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     if (valor === "DESCONOCIDO") return "Resultado desconocido";
     return "Pendiente";
   }
+  async function abrirSesionDesdeTPV() {
+    if (abriendoSesionTPV || typeof abrirSesionCajaA10 !== "function") return;
+    setErrorSesionTPV("");
+    setExitoSesionTPV("");
+    const fondo = Number(fondoInicialTPV);
+    if (!Number.isFinite(fondo) || fondo < 0) {
+      setErrorSesionTPV("El fondo inicial debe ser un número igual o mayor que cero.");
+      return;
+    }
+    setAbriendoSesionTPV(true);
+    try {
+      const resultado = await abrirSesionCajaA10({ fondoInicial: fondo });
+      if (!resultado?.ok) {
+        setErrorSesionTPV(resultado?.error || "No se pudo abrir la sesión de caja.");
+        return;
+      }
+      setExitoSesionTPV(`Sesión abierta${resultado.caja_nombre ? ` en ${resultado.caja_nombre}` : ""}. Ya puedes cobrar en el TPV.`);
+    } catch (e2) {
+      setErrorSesionTPV(String(e2?.message || "No se pudo abrir la sesión de caja."));
+    } finally {
+      setAbriendoSesionTPV(false);
+    }
+  }
+  function renderCajaTPV() {
+    if (typeof abrirSesionCajaA10 !== "function") return null;
+    return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", "data-c01-tpv-caja": "1", style: { background: C2.accentSoft, border: "none" } },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Caja del TPV"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El fondo abre la sesión operativa de este terminal. El arqueo es el cierre y contado; puedes abrirlo desde aquí y entrar después en su pantalla completa."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-end flex-wrap" },
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Fondo inicial (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "0", step: "0.01", value: fondoInicialTPV, disabled: abriendoSesionTPV, onChange: (e2) => setFondoInicialTPV(e2.target.value) })),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirSesionDesdeTPV, disabled: abriendoSesionTPV || !String(fondoInicialTPV).trim() }, abriendoSesionTPV ? "Abriendo…" : "Abrir fondo"),
+        typeof irACaja === "function" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: irACaja }, "Ver arqueo y cierre") : null
+      ),
+      errorSesionTPV ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesionTPV) : null,
+      exitoSesionTPV ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesionTPV) : null
+    );
+  }
   function renderCobroF4() {
-    if (!pedidoOperativoA05?.cuentaId) return null;
+    if (modoTPV === "RAPIDA") return renderVentaRapidaStatus();
+    if (!pedidoOperativoA05?.cuentaId) return renderCajaTPV();
     const pedidoListo = ["ENVIADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
     const estado = estadoCobroF4;
     const tieneCheckout = Array.isArray(estado?.checkouts) && estado.checkouts.length>0;
@@ -23586,7 +24758,21 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ? recibidoVisible - importeVisible : null;
     const incidencias = Array.isArray(estado?.incidencias) ? estado.incidencias : [];
     const incidenciaActiva = incidencias.find((incidencia) => incidencia.estado === "ABIERTA") || null;
+    const fiscal = estado?.fiscal || null;
+    const estadoConfigFiscalC07D = String(configFiscalC07D?.configuracion?.estado || configFiscalC07D?.estado || "").toUpperCase();
+    const configFiscalLista = configFiscalC07D?.configurada === true && ["VALIDADA", "ACTIVA"].includes(estadoConfigFiscalC07D);
+    const configFiscalCargando = cargandoConfigFiscalC07D || configFiscalC07D === null;
+    const fixtureSoloLectura = !!c07dD24FixturePermitido();
     const form = formularioIncidenciaB04;
+    const configFiscalAviso = configFiscalCargando
+      ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "p-2 rounded-lg mb-2", "data-c07d-config-status": "loading", style: { background: C2.surface, border: `1px solid ${C2.line}` } }, "Comprobando configuración fiscal del servidor…")
+      : configFiscalLista
+        ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", "data-c07d-config-status": "ready", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Configuración fiscal lista"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, `${configFiscalC07D?.configuracion?.codigo_serie || "—"} · ${configFiscalC07D?.configuracion?.adapter_code || "—"} · entorno ${configFiscalC07D?.configuracion?.environment || "—"} · estado ${estadoConfigFiscalC07D}`))
+        : /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "p-2 rounded-lg mb-2", "data-c07d-config-status": "blocked", style: { background: C2.amberSoft, color: C2.ink } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Emisión fiscal bloqueada"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1" }, configFiscalC07D?.error || `No existe una configuración C07-D VALIDADA/ACTIVA para este local (${estadoConfigFiscalC07D || "NO DISPONIBLE"}). El cobro no se cancela, pero el documento fiscal no se emitirá hasta completar la configuración en el servidor.`));
     return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cobro · F4"),
@@ -23594,12 +24780,25 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "B05: el importe restante, el cambio y la caja se calculan y validan en servidor. Para un pago mixto, cobra una parte en efectivo y completa después con tarjeta."),
       !pedidoListo ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.amberSoft } }, "Envía el pedido antes de cobrar.") : null,
+      configFiscalAviso,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(totalVisible))),
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(confirmadoVisible))),
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Pendiente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(saldoVisible)))
       ),
-      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
+      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), estado?.cuentaEstado ? " · Cuenta comercial: " + estado.cuentaEstado : "", ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
+      fiscal?.ok && Array.isArray(fiscal.documentos) && fiscal.documentos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "visible", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Fiscalización C07-D · QA"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Documento emitido en C05 y registrado en cadena. AEAT real desactivada; transporte simulado."),
+        fiscal.documentos.map((documento) => /* @__PURE__ */ import_react4.default.createElement("div", { key: documento.documento_id || documento.registro_id, className: "text-[11px] mt-1" }, `${documento.codigo_serie || "—"}-${documento.numero || "—"} · cola ${documento.cola_estado || "PENDIENTE"} · secuencia ${documento.secuencia || "—"}`)),
+        fiscal.qr?.ok && fiscal.qr.qr_url ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 pt-2 text-center", "data-qr-fiscal-live": "qa", style: { borderTop: `1px dashed ${C2.line}` } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold" }, "QR fiscal QA preparado"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex justify-center mt-2", dangerouslySetInnerHTML: { __html: renderQrSvg(fiscal.qr.qr_url, { quietZone: 4 }) } }),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[8.5px] break-all mt-2", style: { color: C2.inkSoft } }, fiscal.qr.qr_url),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[9px] mt-1", style: { color: C2.inkSoft } }, "Matriz generada desde el payload verificable de QA; presentación AEAT real desactivada.")
+        ) : fiscal.qr?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.ink } }, "QR fiscal pendiente: ", fiscal.qr.error || "actualiza para reintentar.") : null,
+        ticketCobroFiscalC07D() ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", className: "mt-2", "data-ticket-c07d-live": "qa", onClick: () => setTicketVenta(ticketCobroFiscalC07D()) }, "Ver ticket con QR") : null
+      ) : fiscal?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "pending", style: { background: C2.amberSoft, color: C2.ink } }, "Cobro confirmado. Fiscalización C07-D pendiente: ", fiscal.error || "actualiza para reintentar.") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Abrir incidencia B04"),
@@ -23631,17 +24830,23 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       errorCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorCobroF4) : null,
       mensajeCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCobroF4) : null,
       pedidoListo && saldoVisible > 0 && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        fixtureSoloLectura ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[10.5px] mb-2", "data-c07d-fixture": "readonly", style: { color: C2.inkSoft } }, "Fixture QA C07-D.2.4 solo lectura: los botones de cobro están desactivados y no se crea ninguna operación.") : null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe de este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
         ),
         cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, cambioVisible < 0 ? `Faltan €${fmt(Math.abs(cambioVisible))}` : `Cambio a devolver: €${fmt(cambioVisible)}`) : null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
-          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
-          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
-          confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible }), disabled: procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible, codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV" }), disabled: fixtureSoloLectura || procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible, codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV" }), disabled: fixtureSoloLectura || procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
+          confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible, codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV" }), disabled: fixtureSoloLectura || procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
         ),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "El botón de completar mixto usa el saldo que devuelve el servidor, no el cálculo local del navegador.")
+      ) : null,
+      pedidoListo && saldoVisible <= 0 && String(estado?.cuentaEstado || "").toUpperCase() !== "CERRADA" && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Cierre de cuenta pagada"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "El saldo ya está confirmado. Ejecuta el cierre formal en el servidor para dejar la cuenta y sus pedidos cerrados."),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: 0, importeRecibido: 0, cambioEntregado: 0 }), disabled: fixtureSoloLectura || procesandoCobroF4 }, procesandoCobroF4 ? "Cerrando…" : "Cerrar cuenta pagada")
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
@@ -23651,6 +24856,33 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
   (0, import_react4.useEffect)(() => {
     let activo = true;
+    if (typeof leerConfiguracionEmisionC07D !== "function" || !local?.id || !configEmpresa?.id) {
+      setConfigFiscalC07D({ ok: true, disponible: false, configurada: false, estado: "NO_DISPONIBLE" });
+      setCargandoConfigFiscalC07D(false);
+      return () => { activo = false; };
+    }
+    setCargandoConfigFiscalC07D(true);
+    Promise.resolve(leerConfiguracionEmisionC07D(c07dD24TipoDocumentoFixture())).then((resultado) => {
+      if (!activo) return;
+      setConfigFiscalC07D(resultado || { ok: false, error: "No se pudo comprobar la configuración fiscal." });
+      setCargandoConfigFiscalC07D(false);
+    }).catch(() => {
+      if (!activo) return;
+      setConfigFiscalC07D({ ok: false, error: "No se pudo comprobar la configuración fiscal." });
+      setCargandoConfigFiscalC07D(false);
+    });
+    return () => { activo = false; };
+  }, [local?.id, configEmpresa?.id]);
+
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    const fixture = c07dD24EstadoCobroFixtureInicial();
+    if (fixture) {
+      setEstadoCobroF4(fixture);
+      setCargandoCobroF4(false);
+      setErrorCobroF4("");
+      return () => { activo = false; };
+    }
     if (!pedidoOperativoA05?.cuentaId || typeof leerEstadoCobroF4 !== "function") {
       setEstadoCobroF4(null);
       setErrorCobroF4("");
@@ -23664,7 +24896,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         setErrorCobroF4(resultado?.error || "No se pudo consultar el cobro.");
         return;
       }
-      setEstadoCobroF4(resultado);
+      adjuntarEstadoFiscalC07D(resultado).then((estadoConFiscal) => {
+        if (activo) setEstadoCobroF4(estadoConFiscal);
+      });
       setErrorCobroF4("");
     }).catch(() => {
       if (!activo) return;
@@ -23741,6 +24975,33 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setProcesandoA05(false);
     }
   }
+  async function enviarPedidoOperativoA05() {
+    if (procesandoA05 || !pedidoOperativoA05?.pedidoId || typeof enviarPedidoA05 !== "function") return;
+    setProcesandoA05(true);
+    setErrorA05("");
+    try {
+      const resultado = await enviarPedidoA05();
+      if (!resultado || resultado.ok === false) {
+        if (await gestionarConflictoA06(resultado, "ENVIAR_PEDIDO")) {
+          setErrorA05("");
+          return;
+        }
+        setErrorA05(resultado?.error || "No se pudo enviar el pedido.");
+        return;
+      }
+      setConflictoA06(null);
+      setPedidoOperativoA05(resultado);
+      setConfirmacion((actual) => actual && actual.pedidoId === resultado.pedidoId ? {
+        ...actual,
+        pedidoVersion: resultado.pedidoVersion,
+        pedidoEstado: resultado.pedidoEstado || "ENVIADO",
+        lineas: Array.isArray(resultado.lineas) ? resultado.lineas : actual.lineas
+      } : actual);
+      await refrescarCobroF4();
+    } finally {
+      setProcesandoA05(false);
+    }
+  }
   async function ejecutarAccionA05(accion, lineaId = null) {
     if (accionEnCursoA05 || typeof accionPedidoA05 !== "function") return;
     if ((accion === "CANCELAR_LINEA" || accion === "CANCELAR_PEDIDO") && !motivoOperacionA05.trim()) {
@@ -23774,6 +25035,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderSalaA07() {
+    if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
     const ubicacion = pedido.ubicacion || mapaSalaA07?.ubicacion || null;
@@ -23861,6 +25123,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
 
   function renderDescuentoCuentaA09() {
+    if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
     if (!descuentoAbiertoA09) {
@@ -23984,6 +25247,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderRepartoProductosA08() {
+    if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
     const lineas = lineasMoviblesA08();
@@ -24048,11 +25312,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderPedidoOperativoA05() {
+    if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido || !pedido.pedidoId) return null;
     const terminal = pedido.pedidoEstado === "CERRADO" || pedido.pedidoEstado === "CANCELADO";
     const tieneServidas = (pedido.lineas || []).some((l22) => l22.estado === "SERVIDA");
     const puedeCancelarPedido = !terminal && !tieneServidas;
+    const puedeEnviarPedido = pedido.pedidoEstado === "ABIERTO" && (pedido.lineas || []).some((l22) => !["CANCELADA", "ENVIADA", "EN_PREPARACION", "PREPARADA", "SERVIDA"].includes(l22.estado));
     return /* @__PURE__ */ import_react4.default.createElement(
       Card,
       { className: "mb-4" },
@@ -24061,6 +25327,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold", style: { color: pedido.pedidoEstado === "CANCELADO" ? C2.red : C2.accent } }, pedido.pedidoEstado || "ABIERTO")
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Los permisos se validan siempre en el servidor. Preparación, servido y cancelaciones no registran cobro ni documento fiscal."),
+      puedeEnviarPedido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { background: C2.accentSoft, border: "1px solid " + C2.line } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2" }, "Este pedido está guardado y todavía no se ha enviado a preparación."),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: enviarPedidoOperativoA05, disabled: procesandoA05 }, procesandoA05 ? "Enviando…" : "Enviar pedido a preparación")
+      ) : null,
       (pedido.lineas || []).map((linea) => {
         const producto = productos.find((p22) => p22.id === linea.productoId);
         const busy = !!accionEnCursoA05;
@@ -24085,7 +25355,236 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   }
 
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-shell" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-toolbar" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] uppercase tracking-wide", style: { color: C2.inkSoft } }, "Zona"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, local?.nombreComercial || local?.nombre || "Local")), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] uppercase tracking-wide", style: { color: C2.inkSoft } }, "Tarifa"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, configEmpresa?.tarifa || configEmpresa?.tarifaActiva || "General"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-keybar" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => inputEscaneoRef.current?.focus() }, "F2 Buscar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito, disabled: carrito.length === 0 }, "F4 Vaciar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: confirmarCobro, disabled: lineasCarrito.length === 0 || enviandoVenta || cargandoA04 }, "F9 Guardar")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Prepara la comanda con el ticket siempre visible. El total definitivo lo confirma el servidor al guardar. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "Ticket pendiente de confirmación"), ". El total definitivo lo confirma el servidor.")),
+  function renderSelectorModoTPV() {
+    const h3 = import_react4.default.createElement;
+    const esRapida = modoTPV === "RAPIDA";
+    return h3(
+      Card,
+      { className: "mb-4", style: { background: C2.surface, border: `1px solid ${C2.line}` } },
+      h3("div", { className: "flex items-center justify-between gap-3 mb-2" },
+        h3("div", null,
+          h3("div", { className: "text-[12.5px] font-semibold" }, "Modo de venta"),
+          h3("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, esRapida
+            ? "Venta rápida de mostrador: producto, pago y ticket sin mesas ni cocina."
+            : "Sala y restaurante: cuentas abiertas, mesas, cocina y reparto.")
+        ),
+        h3("span", { className: "text-[10px] font-semibold uppercase tracking-wide", style: { color: C2.accent } }, esRapida ? "MOSTRADOR" : "SALA")
+      ),
+      h3("div", { className: "grid grid-cols-2 gap-2", role: "group", "aria-label": "Modo de venta" },
+        h3("button", {
+          type: "button",
+          "aria-pressed": esRapida,
+          onClick: () => setModoTPV("RAPIDA"),
+          className: "rounded-lg px-3 py-2 text-[12px] font-semibold",
+          style: { minHeight: 44, background: esRapida ? C2.accentFill : "transparent", color: esRapida ? C2.onAccent : C2.ink, border: `1px solid ${esRapida ? C2.accentFill : C2.line}` }
+        }, "Venta rápida"),
+        h3("button", {
+          type: "button",
+          "aria-pressed": !esRapida,
+          onClick: () => setModoTPV("SALA"),
+          className: "rounded-lg px-3 py-2 text-[12px] font-semibold",
+          style: { minHeight: 44, background: !esRapida ? C2.chrome : "transparent", color: !esRapida ? "#fff" : C2.ink, border: `1px solid ${!esRapida ? C2.chrome : C2.line}` }
+        }, "Sala / restaurante")
+      )
+    );
+  }
+
+  async function confirmarVentaRapida() {
+    if (procesandoVentaRapida || enviandoVenta || !carrito.length) return;
+    const cuentaCerradaServidor = String(estadoCobroF4?.cuentaEstado || "").toUpperCase() === "CERRADA";
+    if (pedidoOperativoA05?.cuentaId && !cuentaCerradaServidor && !["CERRADA", "CANCELADO"].includes(String(pedidoOperativoA05.pedidoEstado || ""))) {
+      setErrorVenta("Hay una cuenta abierta en este terminal. Continúa esa cuenta en Sala o ciérrala antes de iniciar otra venta rápida.");
+      return;
+    }
+    if (typeof venderCarrito !== "function" || typeof enviarPedidoA05 !== "function" || typeof accionPedidoA05 !== "function" || typeof iniciarCobroCuentaF4 !== "function") {
+      setErrorVenta("La venta rápida todavía no está disponible en este entorno.");
+      return;
+    }
+    const totalEsperado = Number(total);
+    const recibido = pagoRapida === "EFECTIVO"
+      ? (efectivoRecibidoRapida === "" ? totalEsperado : Number(efectivoRecibidoRapida))
+      : null;
+    if (pagoRapida === "EFECTIVO" && (!Number.isFinite(recibido) || recibido < totalEsperado)) {
+      setErrorVenta("El efectivo recibido debe cubrir el total de la venta.");
+      return;
+    }
+    setProcesandoVentaRapida(true);
+    setErrorVenta("");
+    setResultadoVentaRapida(null);
+    try {
+      const lineas = carrito.map((l22) => ({
+        productoId: l22.productoId,
+        cantidad: l22.cantidad,
+        nota: String(l22.nota || "").trim().slice(0, 500),
+        configuracionA04: l22.configuracionA04 || null
+      }));
+      const venderRapida = venderCarrito;
+      const guardada = await venderRapida(lineas, { modalidad: "BARRA" });
+      if (!guardada || guardada.ok === false) {
+        setErrorVenta(guardada?.error || "No se pudo preparar la venta rápida.");
+        return;
+      }
+      setPedidoOperativoA05(guardada);
+
+      const enviada = await enviarPedidoA05();
+      if (!enviada || enviada.ok === false) {
+        setErrorVenta(enviada?.error || "No se pudo confirmar la venta rápida.");
+        return;
+      }
+      setPedidoOperativoA05(enviada);
+
+      let estadoServidor = enviada;
+      for (const linea of Array.isArray(enviada.lineas) ? enviada.lineas : []) {
+        if (["SERVIDA", "CANCELADA"].includes(String(linea.estado || ""))) continue;
+        for (const accion of ["INICIAR_PREPARACION", "MARCAR_PREPARADA", "SERVIR"]) {
+          const actual = leerPedidoOperativoA05 ? await Promise.resolve(leerPedidoOperativoA05()) : estadoServidor;
+          const lineaActual = (actual?.lineas || []).find((l22) => String(l22.lineaId || "") === String(linea.lineaId || ""));
+          if (!lineaActual || ["SERVIDA", "CANCELADA"].includes(String(lineaActual.estado || ""))) break;
+          if ((accion === "INICIAR_PREPARACION" && lineaActual.estado !== "ENVIADA")
+              || (accion === "MARCAR_PREPARADA" && lineaActual.estado !== "EN_PREPARACION")
+              || (accion === "SERVIR" && lineaActual.estado !== "PREPARADA")) continue;
+          const paso = await accionPedidoA05(accion, linea.lineaId, "");
+          if (!paso || paso.ok === false) {
+            setErrorVenta(paso?.error || "No se pudo dejar la línea lista para cobrar.");
+            return;
+          }
+          estadoServidor = paso;
+          setPedidoOperativoA05(paso);
+        }
+      }
+
+      const importe = Number(guardada.totalServidor ?? totalEsperado);
+      const cobro = await iniciarCobroCuentaF4(pagoRapida, {
+        importeObjetivo: importe,
+        importeRecibido: pagoRapida === "EFECTIVO" ? recibido : null,
+        cambioEntregado: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
+        codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV"
+      });
+      if (!cobro || cobro.ok === false) {
+        setErrorVenta(cobro?.error || "La venta quedó preparada, pero no se pudo completar el cobro.");
+        return;
+      }
+      const fiscalRapida = cobro.fiscal && typeof cobro.fiscal === "object" ? cobro.fiscal : null;
+      const documentoFiscalRapida = Array.isArray(fiscalRapida?.documentos) ? fiscalRapida.documentos[0] : null;
+      const qrFiscalRapida = fiscalRapida?.qr?.ok && typeof fiscalRapida.qr.qr_url === "string" && /^https:\/\//u.test(fiscalRapida.qr.qr_url)
+        ? {
+            url: fiscalRapida.qr.qr_url,
+            textLabel: "QR tributario:",
+            modalityLabel: "VERI*FACTU",
+            source: {
+              nif: fiscalRapida.qr.nif_emisor || "",
+              numserie: `${documentoFiscalRapida?.codigo_serie || "TPV"}-${documentoFiscalRapida?.numero == null ? "" : String(documentoFiscalRapida.numero).padStart(6, "0")}`,
+              fecha: fiscalRapida.qr.fecha_expedicion || new Date().toISOString().slice(0, 10),
+              importe: importe.toFixed(2)
+            },
+            production: false
+          }
+        : null;
+      const lineasTicketRapida = (Array.isArray(guardada.lineas) && guardada.lineas.length ? guardada.lineas : lineas).map((linea, indice) => {
+        const productoId = linea.productoId || linea.producto_id;
+        const cantidad = Number(linea.cantidad) || 0;
+        const precioDeclarado = Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario);
+        const totalLineaRapida = Number(linea.total ?? linea.total_linea ?? linea.importe ?? linea.importeLinea);
+        const productoRapida = productos.find((producto) => producto.id === productoId);
+        const ingresoUnitario = Number.isFinite(precioDeclarado) && precioDeclarado > 0
+          ? precioDeclarado
+          : Number.isFinite(totalLineaRapida) && cantidad > 0 && totalLineaRapida > 0
+            ? totalLineaRapida / cantidad
+            : productoRapida ? precioNeto(productoRapida) : 0;
+        return {
+          id: linea.id || linea.lineaId || `venta-rapida-linea-${indice}`,
+          productoId,
+          cantidad,
+          ingresoUnitario,
+          ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
+        };
+      }).filter((linea) => linea.productoId && linea.cantidad > 0);
+      const numeroFiscalRapida = documentoFiscalRapida
+        ? `${documentoFiscalRapida.codigo_serie || "TPV"}-${String(documentoFiscalRapida.numero == null ? "" : documentoFiscalRapida.numero).padStart(6, "0")}`
+        : "";
+      const fechaVentaRapida = fiscalRapida?.fecha_expedicion || new Date().toISOString().slice(0, 10);
+      const cuentaCerradaRapida = String(cobro.cuentaEstado || "").toUpperCase() === "CERRADA" || cobro.cuentaCierre?.ok === true;
+      if (!cuentaCerradaRapida) {
+        setEstadoCobroF4(cobro);
+        setMensajeCobroF4(cobro.mensaje || "Pago confirmado, pero la cuenta sigue abierta. No repitas el cobro: continúa en Sala para completar el cierre.");
+        setResultadoVentaRapida({
+          ok: false,
+          paid: true,
+          total: importe,
+          medio: pagoRapida,
+          cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
+          cuentaCerrada: false,
+          fiscal: cobro.fiscal || null
+        });
+        setErrorVenta("El cobro está confirmado, pero la cuenta no se ha cerrado formalmente. Continúa en Sala; no vuelvas a cobrar.");
+        setEfectivoRecibidoRapida("");
+        return;
+      }
+      setTicketVenta({
+        ventaId: documentoFiscalRapida?.venta_fiscal_id || guardada.cuentaId || guardada.pedidoId || `venta-rapida-${Date.now()}`,
+        referencia: `V-${fechaVentaRapida.replaceAll("-", "")}-${String(guardada.cuentaId || guardada.pedidoId || "RAPIDA").replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
+        fecha: fechaVentaRapida,
+        marcaTiempo: new Date().toISOString(),
+        lineas: lineasTicketRapida,
+        resumen: lineasTicketRapida.map((linea) => productos.find((producto) => producto.id === linea.productoId)?.nombre || "Producto").slice(0, 3).join(", "),
+        importe,
+        importeOriginal: importe,
+        importeNetoGestion: importe,
+        estado: "ACTIVA",
+        trazabilidad: [],
+        ["medio" + "Pago"]: pagoRapida === "EFECTIVO" ? "Efectivo" : "Tarjeta",
+        ["detalle" + "Pago"]: null,
+        usuario: "",
+        anulada: false,
+        mesa: "",
+        zona: "",
+        numeroFiscal: numeroFiscalRapida,
+        qrFiscal: qrFiscalRapida,
+        entregado: pagoRapida === "EFECTIVO" ? recibido : importe,
+        cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0
+      });
+      setEstadoCobroF4(cobro);
+      setMensajeCobroF4(cobro.mensaje || (pagoRapida === "EFECTIVO" ? "Pago confirmado y cuenta cerrada." : "Pago iniciado en modo simulado."));
+      setResultadoVentaRapida({
+        ok: true,
+        total: importe,
+        medio: pagoRapida,
+        cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
+        cuentaCerrada: cuentaCerradaRapida,
+        fiscal: cobro.fiscal || null
+      });
+      setCarrito([]);
+      setConfirmacion(null);
+      if (typeof leerPedidoOperativoA05 === "function") setPedidoOperativoA05(await Promise.resolve(leerPedidoOperativoA05()));
+      setEfectivoRecibidoRapida("");
+    } catch (error) {
+      setErrorVenta(String(error?.message || error || "No se pudo completar la venta rápida."));
+    } finally {
+      setProcesandoVentaRapida(false);
+    }
+  }
+
+  function renderVentaRapidaStatus() {
+    const h3 = import_react4.default.createElement;
+    const resultado = resultadoVentaRapida;
+    const cuentaCerradaServidor = String(estadoCobroF4?.cuentaEstado || "").toUpperCase() === "CERRADA";
+    const cuentaAbierta = pedidoOperativoA05?.cuentaId && !cuentaCerradaServidor && !["CERRADA", "CANCELADO"].includes(String(pedidoOperativoA05.pedidoEstado || ""));
+    if (!resultado && !cuentaAbierta) return null;
+    return h3(
+      Card,
+      { className: "mb-4", style: { background: resultado?.ok ? C2.accentSoft : C2.amberSoft, border: "none" } },
+      h3("div", { className: "flex items-center justify-between gap-2 mb-1" },
+        h3("div", { className: "text-[12.5px] font-semibold" }, resultado?.ok ? "Venta rápida completada" : "Venta rápida en curso"),
+        resultado?.ok ? h3(Pill2, { color: C2.accent }, "PAGADA") : null
+      ),
+      resultado?.ok ? h3("div", { className: "text-[12px]" }, "Total €", fmt(resultado.total), " · ", resultado.medio === "EFECTIVO" ? "efectivo" : "tarjeta", resultado.medio === "EFECTIVO" ? ` · cambio €${fmt(resultado.cambio)}` : "") : h3("div", { className: "text-[11.5px]" }, resultado?.paid ? "Pago confirmado, pero la cuenta sigue abierta. No repitas el cobro; continúa en Sala para cerrar formalmente." : "La cuenta se conserva en el servidor para continuarla sin duplicar la venta."),
+      resultado?.fiscal?.ok === false ? h3("div", { className: "text-[11px] mt-2", style: { color: C2.amber } }, "Venta cerrada. Emisión fiscal pendiente de configuración C07-D.") : null,
+      resultado?.ok && ticketVenta ? h3("div", { className: "flex gap-2 mt-2" }, h3(Btn, { small: true, variant: "ghost", "data-ticket-quick": "1", onClick: () => setTicketVenta(ticketVenta) }, "Ver ticket")) : null,
+      cuentaAbierta ? h3("div", { className: "flex gap-2 mt-2" }, h3(Btn, { small: true, variant: "ghost", onClick: () => setModoTPV("SALA") }, "Continuar en Sala")) : null
+    );
+  }
+
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito")), renderSelectorModoTPV(), modoTPV === "SALA" ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "A02/A04 guardan la cuenta y el pedido con autoridad del servidor; A05 permite enviarlo y F4 inicia el cobro solo cuando el pedido está listo. Los productos configurables usan variantes y modificadores A04. ", /* @__PURE__ */ import_react4.default.createElement("b", null, "No registra cobro, tique fiscal ni movimiento de stock"), ". El total definitivo lo confirma el servidor.")) : /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Venta rápida de mostrador. Añade productos, cobra y cierra la cuenta automáticamente. Las operaciones siguen validándose en el servidor.")),
   estadoBorradorA06?.estado === "ACTIVO" ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, "Borrador local activo"),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, carrito.length, " línea(s) · se conserva 24 h desde la última modificación · caduca ", estadoBorradorA06.expiresAtMs ? new Date(estadoBorradorA06.expiresAtMs).toLocaleString("es-ES") : "")
@@ -24098,7 +25597,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     conflictoA06.revisionServidor ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono text-[9.5px] mt-1", style: { color: C2.inkSoft } }, "Revisión servidor: ", conflictoA06.revisionServidor) : null,
     /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConflictoA06(null) }, "Entendido")
   ) : null,
-  renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-layout" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-product-zone" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
+  renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4(), vendibles.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay nada en el piso de venta ahora mismo. Ponle precio a un producto en Productos, o haz un traspaso desde el almac\xE9n en la pesta\xF1a Traspasos." }) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "relative mb-3" }, /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       ref: inputEscaneoRef,
@@ -24146,27 +25645,20 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-2 mb-4" }, visibles.map((p22) => {
     const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
     const cantidadEnCarrito = carrito.filter((l22) => l22.productoId === p22.id).reduce((acc, l22) => acc + (Number(l22.cantidad) || 0), 0);
-    const stockDisponible = p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0;
-    const sinStock = stockDisponible <= 0;
-    const fotoProducto = p22.foto || p22.imagen || p22.fotoUrl || "";
-    const masVendido = p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true;
-    const alergenosProducto = Array.isArray(p22.alergenos) ? p22.alergenos : [];
+    const sinStock = (Number(p22.stockPisoVenta) || 0) <= 0;
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
       {
         key: p22.id,
-        role: "button",
-        tabIndex: 0,
-        onClick: () => { if (!sinStock) agregar(p22); },
-        onKeyDown: (e2) => { if ((e2.key === "Enter" || e2.key === " ") && !sinStock) { e2.preventDefault(); agregar(p22); } },
-        disabled: sinStock || cargandoA04,
+        onClick: () => agregar(p22),
+        disabled: cargandoA04,
         className: "rounded-xl p-3 text-left relative",
-        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: sinStock || cargandoA04 ? 0.55 : 1 }
+        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: cargandoA04 ? 0.7 : 1 }
       },
-      fotoProducto ? /* @__PURE__ */ import_react4.default.createElement("img", { src: fotoProducto, alt: "", className: "tpv-product-photo" }) : null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre), masVendido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] font-semibold mb-1", style: { color: C2.amber } }, "Más vendido") : null, alergenosProducto.length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mb-1", "aria-label": "Alérgenos del producto", style: { color: C2.inkSoft } }, "Alérgenos: ", alergenosProducto.join(" · ")) : null,
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva)),
       sinStock && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: C2.red } }, "sin stock"),
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1 mt-2" }, [2, 3].map((cantidad) => /* @__PURE__ */ import_react4.default.createElement("button", { key: "quick-" + p22.id + "-" + cantidad, type: "button", className: "tpv-quick-quantity", onClick: (e2) => { e2.stopPropagation(); if (!sinStock) agregarCantidadRapidaA04(p22, cantidad); }, disabled: sinStock || cargandoA04 }, "+" + cantidad))),      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
+      cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
         "span",
         {
           className: "absolute -top-2 -right-2 rounded-full text-[11px] font-bold flex items-center justify-center",
@@ -24175,7 +25667,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         fmt(cantidadEnCarrito)
       )
     );
-  }))), ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-ticket-zone" }, lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Carrito"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3" }, lineasCarrito.map((l22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: l22.claveCarrito || l22.productoId, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "flex-1" }, /* @__PURE__ */ import_react4.default.createElement("div", null, l22.producto.nombre), l22.configuracionA04?.etiquetas?.length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, l22.configuracionA04.etiquetas.join(" · ")) : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, -1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Minus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement(
+  }))), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Carrito"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3" }, lineasCarrito.map((l22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: l22.claveCarrito || l22.productoId, className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "flex-1" }, /* @__PURE__ */ import_react4.default.createElement("div", null, l22.producto.nombre), l22.configuracionA04?.etiquetas?.length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: C2.inkSoft } }, l22.configuracionA04.etiquetas.join(" · ")) : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, -1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Minus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement(
     "input",
     {
       type: "number",
@@ -24189,7 +25681,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "mono text-center rounded-md py-1",
       style: { width: 54, border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, fontSize: 13, minHeight: 44 }
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `Guardar pedido \u20AC${fmt(total)}`), ), ), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `Guardar pedido \u20AC${fmt(total)}`), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       onClick: confirmarCobro,

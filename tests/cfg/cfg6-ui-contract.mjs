@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 
 // Contrato estático de pantalla de la capa de configuración, PIEZA 6 (sub-piezas 6a, 6b, 6c y 6f):
-//  - la pestaña «Configuración» (día y cajas, modalidades, equipos y permisos) y su cableado en el menú;
+//  - la pestaña «Configuración» (día y cajas, modalidades, equipos, fiscalidad y permisos) y su cableado en el menú;
 //  - los tres roles retirados fuera de la lista de alta de empleados;
 //  - el botón «Reabrir cierre provisional» según el permiso real (D14).
 // Lee `source-recovery/fuente-recuperado.js` y `fuente.js` (deben llevar exactamente lo mismo; la paridad completa de la
@@ -42,7 +42,7 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   const cuenta = (s) => t.split(s).length - 1;
   assert.equal(cuenta('{ id: "configuracion", label: "Configuraci\\xF3n", icon: Cog },'), 1, nombre + ": entrada de menú «Configuración»");
   assert.equal(cuenta('pick(["auditoria", "respaldos", "notificaciones", "locales", "configuracion", "errores_sistema"])'), 1, nombre + ": en el grupo Sistema");
-  assert.equal(cuenta('tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados })'), 1, nombre + ": montaje de la pestaña, con el perfil Propietario");
+  assert.equal(cuenta('tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D })'), 1, nombre + ": montaje de la pestaña, con el perfil Propietario y el worker QA");
   assert.equal(cuenta('tab === "configuracion"'), 1, nombre + ": una única pestaña «configuracion»");
   assert.equal(cuenta("function ConfiguracionLocal("), 1, nombre + ": una única pantalla");
   assert.ok(t.indexOf("function ConfiguracionLocal(") < t.indexOf("function PoliticasDescuentos("), nombre + ": el componente va junto a la pantalla modelo");
@@ -72,10 +72,13 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
 
 // 2. El componente solo habla con el servidor por las funciones previstas, con sus nombres y parámetros exactos.
 // La pantalla de permisos también consulta y configura la matriz de pantallas de PM13 P05.
-const migraciones = (await readdir(new URL("supabase/migrations/", root))).filter((n) => (/^2026100219|^2026100221|^2026100222|^2026100223|^2026100224/.test(n) && n.includes("_abc_config_pieza")) || n === "20261020140000_pm13_p05_roles_fijos_pantallas.sql").sort();
-assert.equal(migraciones.length, 6, "las migraciones de las piezas 1 a 5 y PM13 P05");
+const migraciones = (await readdir(new URL("supabase/migrations/", root))).filter((n) => (/^2026100219|^2026100221|^2026100222|^2026100223|^2026100224/.test(n) && n.includes("_abc_config_pieza")) || n === "20261020140000_pm13_p05_roles_fijos_pantallas.sql" || n === "20261027200000_abc_f8_c04_terminal_caja_propietario.sql").sort();
+assert.equal(migraciones.length, 7, "las migraciones de las piezas 1 a 5, PM13 P05 y F8 C04");
 const textoMig = {};
 for (const m of migraciones) textoMig[m] = lf(await read("supabase/migrations/" + m));
+const fixFk = lf(await read("supabase/migrations/20261028193000_abc_f8_c04_defer_terminal_fk.sql"));
+assert.match(fixFk, /drop constraint if exists abc_operacion_terminal_fk/, "la corrección reemplaza la FK anterior");
+assert.match(fixFk, /foreign key \(empresa_id,local_id,terminal_id\)[\s\S]*?references public\.terminales_tpv\(empresa_id,local_id,id\)[\s\S]*?on delete restrict[\s\S]*?deferrable initially deferred/, "la FK mantiene la integridad y permite el alta atómica");
 const firmas = new Map();
 for (const m of migraciones) {
   for (const x of textoMig[m].matchAll(/create (?:or replace )?function public\.([a-z_0-9]+)\(([\s\S]*?)\)\s*returns/g)) {
@@ -87,8 +90,8 @@ const llamadas = [...compCfg6.matchAll(/configRpc\("([a-z_0-9]+)",\s*\{([^}]*)\}
 assert.ok(llamadas.length >= 11, "se localizan las llamadas al servidor");
 const esperadas = ["abc_obtener_ajustes", "abc_configurar_ajuste", "abc_configurar_dia_operativo", "abc_obtener_modalidades_local", "abc_configurar_modalidad_local",
   "abc_listar_equipos_local", "abc_configurar_equipo_local", "abc_obtener_capacidades_rol", "abc_configurar_capacidad_rol", "abc_listar_roles_retirados",
-  "abc_obtener_pantallas_rol", "abc_configurar_pantalla_rol"];
-assert.deepEqual([...new Set(llamadas.map((l) => l.nombre))].sort(), esperadas.slice().sort(), "la pantalla usa exactamente estas 12 funciones (y nada más)");
+  "abc_obtener_pantallas_rol", "abc_configurar_pantalla_rol", "abc_listar_terminales_cajas_local", "abc_configurar_terminal_tpv", "abc_configurar_caja_fisica"];
+assert.deepEqual([...new Set(llamadas.map((l) => l.nombre))].sort(), esperadas.slice().sort(), "la pantalla usa exactamente estas 15 funciones (y nada más)");
 for (const l of llamadas) {
   const firma = firmas.get(l.nombre);
   assert.ok(firma, "existe la función " + l.nombre + " en las migraciones");
@@ -99,7 +102,7 @@ for (const l of llamadas) {
     assert.ok(l.claves.includes("p_motivo") && l.claves.includes("p_operation_id"), `${l.nombre}: todo cambio lleva motivo y operation_id`);
   }
 }
-assert.equal(llamadas.filter((l) => l.nombre.startsWith("abc_configurar_")).length, 7, "siete llamadas que cambian algo (cajas y umbral comparten función)");
+assert.equal(llamadas.filter((l) => l.nombre.startsWith("abc_configurar_")).length, 9, "nueve llamadas que cambian algo, incluyendo terminales y cajas físicas");
 assert.ok(!/\.supabase|supabase\.rpc\(/.test(comp.replace(/const \{ data, error \} = await supabase\.rpc\(nombre, parametros\);/, "")), "el componente solo llama al servidor a través de configRpc");
 const tablas = [...comp.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]);
 assert.deepEqual(tablas, ["terminales_tpv"], "la única lectura directa de una tabla es la de los terminales del local (como hace el resto de la aplicación)");
@@ -154,10 +157,10 @@ const ficha = comp.slice(comp.indexOf("function ConfiguracionLocal("));
 assert.match(ficha, /if \(!esPropietario\) contenido = h\(Card, \{ className: "mb-4" \}, "Solo un usuario con rol Propietario puede ver y cambiar la configuración\."\);\s+else if \(!empresaId \|\| !localId\) contenido = h\(Card, \{ className: "mb-4" \}, "Selecciona un local concreto para configurarlo\."\);\s+else contenido = h\(/,
   "sin perfil Propietario o sin local concreto no se monta ninguna sección (y por tanto no se llama al servidor)");
 assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), "las secciones solo se montan en la rama con permiso");
-assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
+assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["terminales", "Terminales y cajas"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
-assert.doesNotMatch(comp, /bloqueada/, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
+assert.doesNotMatch(comp, /Barra[^.\n]*bloquead/i, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
 assert.doesNotMatch(comp, /siempre en Barra/);
 assert.match(comp, /disabled: ocupado, onChange: \(e2\) => setElegidas\(\{ \.\.\.elegidas, \[m2\.modalidad\]: e2\.target\.checked \}\) \}\),/, "todas las casillas, también Barra, se pueden cambiar");
 assert.match(comp, /El TPV abre la cuenta en Barra si est\u00E1 habilitada y, si no, en la primera habilitada; si hay varias, el cajero elige\./, "la pantalla explica qué hace el TPV");
@@ -171,11 +174,51 @@ assert.match(comp, /p_cutoff_time: corte \+ ":00",/);
 assert.match(comp, /p_permitido: c3\.permitido,/, "heredar se envía como nulo");
 assert.match(comp, /await cargar\(true\);\s+\}\s+\};\s+const verRetirados/, "tras un fallo se recarga sin borrar el mensaje de error");
 
+// 5b. El panel fiscal es multiempresa, usa solo RPC y continúa siendo un borrador no activable.
+const fiscal = comp.slice(comp.indexOf("var FISCAL_CONFIG_INICIAL ="), comp.indexOf("function ConfiguracionLocal("));
+assert.ok(fiscal.length > 1000, "existe el panel Fiscalidad y AEAT");
+assert.deepEqual([...new Set([...fiscal.matchAll(/configRpc\("([a-z_0-9]+)"/g)].map((m) => m[1]))].sort(),
+  ["abc_c07d_leer_piloto_sandbox", "abc_fiscal_guardar_borrador", "abc_fiscal_guardar_representacion", "abc_fiscal_invitar_asesoria", "abc_fiscal_leer_borrador", "abc_fiscal_leer_representacion", "abc_fiscal_listar_delegaciones", "abc_fiscal_listar_emisores", "abc_fiscal_revocar_delegacion"], "el panel usa solo las RPC fiscales autorizadas");
+assert.doesNotMatch(fiscal, /\.from\(|\.insert\(|\.update\(|\.delete\(|\.upsert\(/, "el panel fiscal no accede a tablas directamente");
+assert.match(fiscal, /p_operation_id: configUuid\(\)/, "cada guardado fiscal usa un UUID nuevo");
+assert.match(fiscal, /p_version_esperada: Number\(detalle\.version \|\| 0\)/, "el guardado aplica control optimista de versión");
+assert.match(fiscal, /useRef\)\(0\)/, "las respuestas tardías se invalidan al cambiar de alcance");
+assert.match(fiscal, /\[empresaId, localId\]/, "la lista se reinicia al cambiar empresa o local");
+assert.match(fiscal, /\[empresaId, localId, emisorId\]/, "el detalle depende del emisor y del alcance");
+assert.match(fiscal, /No convierte el TPV en sistema fiscal, no envía a la AEAT y no admite certificados, claves privadas ni contraseñas\./);
+assert.match(fiscal, /Conexión: no configurada · Emisión: deshabilitada/);
+assert.doesNotMatch(fiscal, /p_(?:certificado|clave_privada|password|endpoint):/, "no existe ningún parámetro cliente para secretos o destinos");
+assert.match(fiscal, /data-fiscal-delegacion/, "el panel muestra el acceso delegado");
+assert.match(fiscal, /data-fiscal-representacion/, "el panel muestra los metadatos de representación");
+assert.match(fiscal, /envío de correo queda pendiente/, "la invitación no finge haber enviado un correo");
+assert.match(fiscal, /Emisión: deshabilitada/, "C07-C mantiene la emisión deshabilitada");
+const migPanel = lf(await read("supabase/migrations/20261026182012_abc_fiscal_multiempresa_panel.sql"));
+assert.match(migPanel, /create (?:or replace )?function public\.abc_fiscal_listar_emisores\(p_empresa_id text, p_local_id text\)/);
+assert.match(migPanel, /grant execute on function public\.abc_fiscal_listar_emisores\(text,text\) to authenticated;/);
+assert.match(migPanel, /revoke all on function public\.abc_fiscal_listar_emisores\(text,text\) from public,anon,authenticated,service_role;/);
+assert.match(migPanel, /'emision_habilitada',false/);
+assert.doesNotMatch(migPanel.slice(migPanel.indexOf("create function public.abc_fiscal_listar_emisores"), migPanel.indexOf("-- Las revisiones")), /b\.configuracion/, "el listado no devuelve la configuración ni secretos");
+const migDelegacion = lf(await read("supabase/migrations/20261027110000_abc_fiscal_multiempresa_delegacion.sql"));
+const migAceptacion = lf(await read("supabase/migrations/20261027111500_abc_fiscal_multiempresa_delegacion_accept.sql"));
+const migRepresentacionRead = lf(await read("supabase/migrations/20261027113000_abc_fiscal_multiempresa_representacion_read.sql"));
+const migLifecycle = lf(await read("supabase/migrations/20261027114500_abc_fiscal_multiempresa_delegacion_lifecycle_checks.sql"));
+assert.match(migDelegacion, /create table private\.abc_fiscal_delegaciones/);
+assert.match(migDelegacion, /create table private\.abc_fiscal_representaciones/);
+assert.match(migDelegacion, /alter table private\.abc_fiscal_delegaciones enable row level security/);
+assert.match(migDelegacion, /secret|clave privada|certificado/i, "la migración deja explícita la prohibición de secretos");
+assert.match(migAceptacion, /create function public\.abc_fiscal_aceptar_delegacion/);
+assert.match(migAceptacion, /FISCAL_DELEGACION_IDENTIDAD_NO_COINCIDE/);
+assert.match(migAceptacion, /abc_fiscal_config_puede_guardar/);
+assert.match(migRepresentacionRead, /create function public\.abc_fiscal_leer_representacion/);
+assert.match(migLifecycle, /abc_fiscal_delegaciones_accepted_data_check/);
+assert.match(migLifecycle, /abc_fiscal_delegaciones_revoked_data_check/);
+
 // 6. El contrato de ejecución existe y cubre los casos exigidos.
 const runtime = await read("tests/cfg/cfg6-ui-runtime.mjs");
 for (const marca of ["S1.1 sin perfil Propietario", "S2.1 sin local concreto", "S3.5 con motivo envía una sola operación", "S3.9 una hora de corte posterior", "S3.14 un rechazo del servidor se traduce",
   "S4.2 Barra se puede deshabilitar", "S4.6 con varios cambios se habilita antes de deshabilitar", "S5.5 el alta envía todos los parámetros", "S5.8 editar conserva el id", "S5.9 desactivar reenvía el equipo con activo=false",
   "S6.4 lo delicado no se puede dar", "S6.9 guarda cada cambio con ámbito LOCAL", "S6.12 se envía permitido nulo", "S6.13 con «Toda la empresa»", "S6.14 si falla el segundo", "S6.16 lista a las personas con roles retirados",
+  "S8.1 Fiscalidad lista y lee solo el emisor del alcance", "S8.2 el borrador fiscal envía UUID, versión y configuración cerrada", "S8.3 confirma sin afirmar conexión ni emisión", "S8.4 un conflicto de versión recarga y se explica", "S8.5 cambiar de empresa limpia los datos anteriores",
   "R1 los tres roles retirados no están en la lista de alta", "C1 el Propietario ve el motivo", "C4 el Cajero/a no ve el botón", "C6 si el Propietario autoriza al Encargado", "C7 si no se puede consultar el permiso", "C9 un rol que no está en la matriz"])
   assert.ok(runtime.includes(marca), "falta el caso de ejecución: " + marca);
 

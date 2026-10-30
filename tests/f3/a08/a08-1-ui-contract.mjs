@@ -123,7 +123,7 @@ for (const required of [
 
 // La selección del destino usa etiquetas humanas; nunca solicita un UUID al operador.
 const labelIni = src.indexOf("function etiquetaCuentaDestinoA08(");
-const labelFin = src.indexOf("\n\n  const vendibles", labelIni);
+const labelFin = src.indexOf("\n  async function listarDescuentosAplicadosA09", labelIni);
 assert.ok(labelIni >= 0 && labelFin > labelIni, "A08.1 etiqueta destino no localizable");
 const labelBlock = src.slice(labelIni, labelFin);
 assert.ok(labelBlock.includes("ubicacion.mesa_nombre"));

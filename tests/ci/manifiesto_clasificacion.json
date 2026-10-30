@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 294,
+  "total_inventory": 322,
   "expected_counts": {
-    "active_contract": 277,
+    "active_contract": 305,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 247,
+      "active_contract": 274,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "postgres": {
-      "active_contract": 26,
+      "active_contract": 27,
       "historical_expected_fail": 1,
       "utility": 0,
       "diagnostic": 0
@@ -300,6 +300,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/f3/a10/a10-route-recovery-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/f4/b04/b04-ui-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
@@ -525,6 +530,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/f5/f5-tpv-line-notes-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/f5/pm09/pm09-security-hardening-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
@@ -536,16 +546,6 @@
     },
     {
       "path": "tests/f5/pm09/pm09-service-role-caller-inventory.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/f5/f5-etapa3-ui-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/f5/f5-etapa4-t1-t4-ui-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1461,6 +1461,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/plan-maestro/documento2-revision-salida-recovery-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/pm33/db/contrato-vigente-contract.mjs",
       "classification": "active_contract",
       "environment": "postgres"
@@ -1512,6 +1517,131 @@
     },
     {
       "path": "tests/ui-context-bridge.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-checkout-emit-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-historical-ticket-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07c-delegacion-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-3-frontend-config-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-5-adapter-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-6-activation-dossier-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-7-visual-hardware-matrix-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-emission-config-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d2-emission-wiring-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d3-pilot-sandbox-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d3-pilot-sandbox-migration-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-d3-pilot-sandbox-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-migration-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-preflight-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-production-preflight-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-production-promotion-manifest.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/fiscal/aeat-qr-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/fiscal/qr-matrix-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/fiscal/qr-ticket-preview-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/fiscal/qr-ticket-ui-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/c07d-account-close-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/qa/recepcion-tpv-caja-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/pm21/legacy-movimientos-sync-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a02/a02-quick-sale-ticket-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/qa/d09-economic-snapshot-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     }

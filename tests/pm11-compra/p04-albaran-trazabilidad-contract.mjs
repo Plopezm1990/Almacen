@@ -88,7 +88,7 @@ assert.equal(replay.length, 1);
 assert.equal(replay.replayed, true);
 assert.equal(replay.operationId, 'pm11-albaran:alb-1');
 
-const confirmarIni = src.indexOf('  function confirmarAlbaran(alb) {', albIni);
+const confirmarIni = Math.max(src.indexOf('  function confirmarAlbaran(alb) {', albIni), src.indexOf('  async function confirmarAlbaran(alb) {', albIni));
 const confirmarFin = src.indexOf('  function anularAlbaran(alb) {', confirmarIni);
 assert.ok(confirmarIni >= 0 && confirmarFin > confirmarIni, 'confirmarAlbaran localizado');
 const confirmar = src.slice(confirmarIni, confirmarFin);
