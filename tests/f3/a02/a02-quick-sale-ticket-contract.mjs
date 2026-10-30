@@ -38,7 +38,7 @@ assert.ok(source.includes('data-tpv-quick'), "Falta el panel específico de cobr
 assert.ok(source.includes("Venta rápida completada"), "Falta el estado final de la venta rápida");
 assert.match(source, /const pedidoDirectoId = datos\?\.pedido_id \|\| datos\?\.pedidoId \|\| null;/, "El historial no recupera la cuenta por pedido_id o pedidoId cuando falta el snapshot de línea");
 assert.match(source, /const cuentaId = pedido\?\.cuenta_id \|\| pedidoDirecto\?\.cuenta_id \|\| datos\?\.cuenta_id \|\| datos\?\.cuentaId \|\| null;/, "El historial no aplica la cadena completa de identificadores de cuenta");
-assert.match(quick, /const ventaOperacionIdRapida = documentoFiscalRapida\?\.venta_fiscal_id\s*\|\|\s*cobro\.ventaId\s*\|\|\s*\(lineaCanonicaRapida \? `abc\.stock\.consume\.\$\{lineaCanonicaRapida\}`/, "El ticket inmediato no usa la operación canónica de la venta");
+assert.match(quick, /const ventaOperacionIdRapida = documentoFiscalRapida\?\.venta_fiscal_id\s*\|\|\s*\(lineaCanonicaRapida \? `abc\.stock\.consume\.\$\{lineaCanonicaRapida\}`\s*:\s*null\)\s*\|\|\s*cobro\.ventaId/, "El ticket inmediato no prioriza la operación canónica frente al identificador técnico del cobro");
 assert.match(quick, /referencia: `V-\$\{fechaVentaRapida\.replaceAll\("-", ""\)\}-\$\{String\(ventaOperacionIdRapida\)/, "La referencia inmediata no se deriva del identificador canónico de la venta");
 assert.match(source, /const lineaIds = \[\.\.\.new Set\(movs\.map\(\(m4\) => m4\?\.datos\?\.linea_id \|\| m4\?\.datos\?\.lineaId\)/, "La sincronización no acepta identificadores de línea históricos en snake_case y camelCase");
 
