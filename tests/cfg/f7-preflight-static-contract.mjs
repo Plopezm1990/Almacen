@@ -25,6 +25,7 @@ const EXCLUIDAS = new Set([
   '20261005060000_abc_p3c_titularidad_productos.sql',
   '20261005100000_abc_p3c_lista_confirmada.sql',
   '20261010150000_abc_d09_d11_stock_order_integration.sql',
+  '20261029210000_abc_d09_d11_economic_snapshot.sql',
   '20261010153000_abc_d10_legacy_refund_guard.sql',
   '20261009120000_plataforma_f1_administrador_y_empresas.sql',
   '20261009130000_plataforma_f2_eliminar_empresa.sql',
