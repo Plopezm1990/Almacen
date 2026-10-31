@@ -11564,7 +11564,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       });
       if (error) throw error;
       if (!data?.ok) throw new Error("categorias_tpv_respuesta_invalida");
-      return { ok: true, version: Number(data.version) || 0, categorias: Array.isArray(data.categorias) ? data.categorias : [] };
+      return { ok: true, version: Number(data.version) || 0, categorias: Array.isArray(data.categorias) ? data.categorias : [], puedeConfigurar: data.puede_configurar === true };
     } catch (error) {
       return { ok: false, error: errorRpcA02(error) };
     }
@@ -22535,7 +22535,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const [panelTpvAbierto, setPanelTpvAbierto] = (0, import_react4.useState)(null);
   const [multiplicadorTpv, setMultiplicadorTpv] = (0, import_react4.useState)(1);
-  const [presentacionCategoriasTpv, setPresentacionCategoriasTpv] = (0, import_react4.useState)({ version: 0, categorias: [] });
+  const [presentacionCategoriasTpv, setPresentacionCategoriasTpv] = (0, import_react4.useState)({ version: 0, categorias: [], puedeConfigurar: false });
   const [editorCategoriasTpv, setEditorCategoriasTpv] = (0, import_react4.useState)(null);
   const [errorCategoriasTpv, setErrorCategoriasTpv] = (0, import_react4.useState)("");
   const [guardandoCategoriasTpv, setGuardandoCategoriasTpv] = (0, import_react4.useState)(false);
@@ -23257,6 +23257,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     () => productos.filter((p22) => p22.activo !== false && (p22.tipo === "elaborado" || Number(p22.precioVenta) > 0)),
     [productos]
   );
+  // Quién puede configurar lo dice el servidor al leer, no una lista de roles
+  // escrita aquí: la capacidad es ajustable por empresa y local.
+  const puedeConfigurarCategoriasTpv = typeof configurarCategoriasTpv === "function" && presentacionCategoriasTpv?.puedeConfigurar === true;
   function claveColorCategoriaTpv(nombre) {
     const guardado = presentacionMapaTpv.get(String(nombre || ""));
     if (guardado?.clave && COLOR_CLAVE_CATEGORIA_TPV[guardado.clave]) return guardado.clave;
@@ -23298,21 +23301,21 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (resultado?.conflict) await refrescarCategoriasTpv();
       return;
     }
-    setPresentacionCategoriasTpv({ version: resultado.version, categorias: resultado.categorias });
+    setPresentacionCategoriasTpv((actual) => ({ version: resultado.version, categorias: resultado.categorias, puedeConfigurar: actual?.puedeConfigurar === true }));
     setEditorCategoriasTpv(null);
   }
   async function refrescarCategoriasTpv() {
     if (typeof listarCategoriasTpv !== "function") return;
     const resultado = await listarCategoriasTpv();
     if (!resultado?.ok) return;
-    setPresentacionCategoriasTpv({ version: resultado.version, categorias: resultado.categorias });
+    setPresentacionCategoriasTpv({ version: resultado.version, categorias: resultado.categorias, puedeConfigurar: resultado.puedeConfigurar === true });
   }
   (0, import_react4.useEffect)(() => {
     let vivo = true;
     if (typeof listarCategoriasTpv !== "function") return () => { vivo = false; };
     Promise.resolve(listarCategoriasTpv()).then((resultado) => {
       if (!vivo || !resultado?.ok) return;
-      setPresentacionCategoriasTpv({ version: resultado.version, categorias: resultado.categorias });
+      setPresentacionCategoriasTpv({ version: resultado.version, categorias: resultado.categorias, puedeConfigurar: resultado.puedeConfigurar === true });
     }).catch(() => {});
     return () => { vivo = false; };
   }, [local?.id, configEmpresa?.id]);
@@ -24472,7 +24475,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: confirmarCobro, disabled: lineasCarrito.length === 0 || enviandoVenta || cargandoA04 }, "F9 Guardar")
     )
   ),
-  panelesOperativosTpv.length > 0 || typeof configurarCategoriasTpv === "function" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-keybar" }, panelesOperativosTpv.map((panel) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: panel.id, small: true, variant: panelTpvAbierto === panel.id ? "primary" : "ghost", onClick: () => setPanelTpvAbierto(panelTpvAbierto === panel.id ? null : panel.id) }, panel.tecla ? panel.etiqueta + " · " + panel.tecla : panel.etiqueta)), typeof configurarCategoriasTpv === "function" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { key: "editor-categorias", small: true, variant: "ghost", onClick: abrirEditorCategoriasTpv }, "Categorías") : null) : null,
+  panelesOperativosTpv.length > 0 || puedeConfigurarCategoriasTpv ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-keybar" }, panelesOperativosTpv.map((panel) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: panel.id, small: true, variant: panelTpvAbierto === panel.id ? "primary" : "ghost", onClick: () => setPanelTpvAbierto(panelTpvAbierto === panel.id ? null : panel.id) }, panel.tecla ? panel.etiqueta + " · " + panel.tecla : panel.etiqueta)), puedeConfigurarCategoriasTpv ? /* @__PURE__ */ import_react4.default.createElement(Btn, { key: "editor-categorias", small: true, variant: "ghost", onClick: abrirEditorCategoriasTpv }, "Categorías") : null) : null,
   /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-tira tpv-tira-aviso" }, "Ticket pendiente de confirmación: el total definitivo lo confirma el servidor al guardar."),
   estadoBorradorA06?.estado === "ACTIVO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-tira" }, "Borrador local activo · ", carrito.length, " línea(s) · se conserva 24 h desde la última modificación · caduca ", estadoBorradorA06.expiresAtMs ? new Date(estadoBorradorA06.expiresAtMs).toLocaleString("es-ES") : "") : estadoBorradorA06?.estado === "CADUCADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-tira tpv-tira-aviso" }, "Borrador local caducado: se descartó porque superó la política de 24 h.") : estadoBorradorA06?.estado === "INVALIDO" || estadoBorradorA06?.estado === "NO_DISPONIBLE" ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "tpv-tira tpv-tira-error" }, estadoBorradorA06.error || "No se puede usar el borrador local.") : null,
   conflictoA06 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "tpv-tira tpv-tira-error" },

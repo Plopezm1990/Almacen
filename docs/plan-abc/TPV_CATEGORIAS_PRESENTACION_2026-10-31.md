@@ -41,6 +41,7 @@ comanderos y cualquier terminal nuevo vean lo mismo.
 | Pieza | Archivo |
 |---|---|
 | Tabla y funciones | `supabase/migrations/20261031120000_abc_tpv_categorias_presentacion.sql` |
+| La lectura dice si puedes configurar | `supabase/migrations/20261031150000_abc_tpv_categorias_puede_configurar.sql` |
 | Contrato de base de datos | `tests/cfg/tpv-categorias-presentacion-db-contract.mjs` |
 | Adaptadores, lectura, aplicación y editor | `fuente.js` y `source-recovery/fuente-recuperado.js` |
 
@@ -180,9 +181,31 @@ sin existir** y los eventos siguen en 114. No se escribió nada.
    que *«otra persona cambió las categorías mientras editabas»* y recargar la
    lista, **sin pisar** lo que guardó el primero.
 6. **Prueba del permiso:** con un usuario **Camarero/a**, el botón «Categorías»
-   aparece, pero al guardar el servidor debe responder que su cargo no puede
-   cambiarlas. Conviene decidir si ese botón debería ocultarse directamente para
-   quien no tiene el permiso.
+   **no debe aparecer**. Con Propietario o Encargado, sí.
 
 Si algo de esto no se comporta así, es cosa del código de pantalla, no del
 servidor: el servidor ya está verificado en QA.
+
+
+## El botón se esconde a quien no tiene el permiso (31/10/2026)
+
+Decidido tras la aplicación en QA: el botón «Categorías» solo aparece si el
+usuario puede configurarlas, en vez de dejarle abrir el editor y chocar con el
+error al guardar.
+
+**Quién lo decide: el servidor.** `abc_listar_categorias_tpv` devuelve ahora
+`puede_configurar`, calculado con `private.abc_tiene_capacidad`. No se ha escrito
+una lista de roles en el navegador a propósito: `ABC_SALA_CONFIGURAR` es
+ajustable por empresa y local desde el catálogo de capacidades, y una lista en el
+cliente se quedaría desfasada en cuanto alguien la ajustara.
+
+**Esto no relaja nada.** La escritura sigue comprobando la capacidad por su
+cuenta: esconder el botón es comodidad, no seguridad. La comprobación
+`CAMARERO_NO_CONFIGURA` del contrato sigue ahí y sigue pasando.
+
+Aplicado en QA y verificado: la función conserva `search_path=""`, sigue siendo
+`security definer`, la ejecuta `authenticated` y no `anon`, y la tabla sigue con
+0 filas y 0 eventos. Contrato: 14 comprobaciones en verde, con la nueva
+`LECTURA_DICE_SI_PUEDE_CONFIGURAR`.
+
+**Producción sigue sin tocar.**

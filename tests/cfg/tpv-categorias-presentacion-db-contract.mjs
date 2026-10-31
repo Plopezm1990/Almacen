@@ -10,7 +10,10 @@ const url = new URL(process.env.TPV_CAT_TEST_DATABASE_URL || 'postgresql://postg
 assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname), 'solo bases en loopback');
 assert.equal(url.pathname, '/tpv_cat_test', 'solo la base desechable tpv_cat_test');
 
-const MIGRACION = 'supabase/migrations/20261031120000_abc_tpv_categorias_presentacion.sql';
+const MIGRACIONES = [
+  'supabase/migrations/20261031120000_abc_tpv_categorias_presentacion.sql',
+  'supabase/migrations/20261031150000_abc_tpv_categorias_puede_configurar.sql'
+];
 const admin = new pg.Client({ connectionString: url.href });
 await admin.connect();
 const abiertos = [];
@@ -89,8 +92,8 @@ try {
     end $fn$;
   `);
 
-  await admin.query(fs.readFileSync(MIGRACION, 'utf8'));
-  console.log('MIGRACION_APLICADA=1');
+  for (const m of MIGRACIONES) await admin.query(fs.readFileSync(m, 'utf8'));
+  console.log('MIGRACIONES_APLICADAS=' + MIGRACIONES.length);
 
   const prop = await actor('Propietario');
   const cam = await actor('Camarero/a', '44444444-4444-4444-4444-444444444444');
@@ -113,6 +116,13 @@ try {
   assert.equal(Number(r.version), 1);
   assert.deepEqual(r.categorias.map(c => c.categoria), ['Bebidas', 'Tapas']);
   console.log('LECTURA_CONSERVA_ORDEN=PASS');
+
+  // 3b. La lectura dice si quien pregunta puede configurar, para que la
+  // pantalla esconda el botón en vez de dejar llegar al error.
+  assert.equal((await listar(prop)).puede_configurar, true, 'el Propietario sí puede');
+  assert.equal((await listar(cam)).puede_configurar, false, 'el Camarero/a no puede');
+  assert.equal((await listar(cam)).ok, true, 'pero sí puede leer el carril');
+  console.log('LECTURA_DICE_SI_PUEDE_CONFIGURAR=PASS');
 
   // 4. Versión obsoleta: falla cerrado, no pisa lo del otro terminal.
   await fallo(() => guardar(prop, [{ categoria: 'Tapas', color: 'ROJO' }], 0), 'tpv_categorias_version_conflict');
