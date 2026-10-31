@@ -23618,6 +23618,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setEstadoCobroF4(resultado.estado || estadoCobroF4);
     setMensajeCobroF4("Problema de pago resuelto. El estado del cobro se ha actualizado.");
   }
+  // Lo que no esté en la lista se deja tal cual: antes mostrar el valor
+  // del servidor que inventarle un nombre que no significa lo mismo.
+  function etiquetaEstadoCuentaF4(estado) {
+    const valor = String(estado || "");
+    if (valor === "ABIERTA" || valor === "ABIERTO") return "Abierta";
+    if (valor === "ACTIVA" || valor === "ACTIVO") return "Activa";
+    if (valor === "EN_PROCESO") return "En proceso";
+    if (valor === "COMPLETADO" || valor === "COMPLETADA") return "Completada";
+    if (valor === "CONFIRMADO" || valor === "CONFIRMADA") return "Confirmada";
+    if (valor === "CERRADO" || valor === "CERRADA") return "Cerrada";
+    if (valor === "CANCELADO" || valor === "CANCELADA") return "Cancelada";
+    return valor;
+  }
   function etiquetaEstadoIntentoF4(estado) {
     const valor = String(estado || "");
     if (valor === "CONFIRMADO") return "Confirmado";
@@ -23657,7 +23670,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(confirmadoVisible))),
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Pendiente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(saldoVisible)))
       ),
-      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "Lista para preparar"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
+      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? etiquetaEstadoCuentaF4(estado.estado) : "Lista para preparar"), ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Registrar un problema con el pago"),
@@ -23928,7 +23941,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
           /* @__PURE__ */ import_react4.default.createElement("div", null,
             /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Descuento / cortesía"),
-            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Aplica límites A09; las políticas de doble autorización requieren segunda firma y los excesos de rol se escalan.")
+            /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Se aplican los límites de tu cargo; las políticas de doble autorización requieren segunda firma y los excesos de rol se escalan.")
           ),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: abrirDescuentoCuentaA09 }, "Abrir")
         )
@@ -23963,7 +23976,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarDescuentoA09(), disabled: procesandoDescuentoA09 || !motivoDescuentoA09.trim() || (tipoDescuentoA09 !== "COURTESY" && !valorDescuentoA09) }, procesandoDescuentoA09 ? "Procesando…" : "Aplicar / solicitar"),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "Las políticas con doble autorización requieren que otra persona apruebe; la aprobación no aplica el descuento por sí sola."),
       descuentosAplicadosA09.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Stack aplicado · ", descuentosAplicadosA09.length, " operaciones"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Descuentos aplicados · ", descuentosAplicadosA09.length, " operaciones"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Cada operación se aplica sobre la base restante y el servidor vuelve a validar el límite acumulado."),
         descuentosAplicadosA09.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: row.operationId, className: "p-2 rounded-lg mb-2", style: { border: "1px solid " + C2.line } },
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, String(row.tipo || ""), " · €", fmt(row.importe), " · ", row.repartos, " reparto", row.repartos === 1 ? "" : "s"),
@@ -23971,7 +23984,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         ))
       ) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-3", style: { color: C2.inkSoft } }, "No hay descuentos aplicados en esta cuenta."),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3" },
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Auditoría A09 · historial"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Historial de descuentos"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Incluye solicitud, aprobación o rechazo, invalidación y aplicación. Los reversos económicos siguen el flujo transaccional correspondiente."),
         errorAuditoriaDescuentosA09 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorAuditoriaDescuentosA09) : null,
         auditoriaDescuentosA09.solicitudes.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
@@ -24003,11 +24016,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         ),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Stock · líneas · producto"),
-          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mb-1", style: { color: C2.inkSoft } }, "El descuento A09 conserva producto, cantidad y unidad; solo actualiza los importes comerciales de la línea y no genera movimientos de stock."),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mb-1", style: { color: C2.inkSoft } }, "El descuento conserva producto, cantidad y unidad: solo cambia los importes de la línea y no mueve stock."),
           auditoriaDescuentosA09.efectosStock.length > 0 ? auditoriaDescuentosA09.efectosStock.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-stock-" + row.id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, "Producto ", String(row?.producto_id || "sin producto"), " · cantidad ", fmt(row?.cantidad), " ", String(row?.unidad || ""), " · línea ", String(row?.id || "").slice(-16), row?.descuentos?.length ? " · descuentos " + row.descuentos.length : " · sin descuento registrado")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "No hay líneas comerciales asociadas a esta cuenta."),
         ),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" },
-          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Fiscalización · alcance A09"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold mb-1" }, "Líneas ya fiscalizadas"),
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mb-1", style: { color: C2.inkSoft } }, "Una línea con fiscalización activa bloquea el descuento; la fiscalización parcial no se aplica en este alcance y no se modifica desde el TPV."),
           auditoriaDescuentosA09.fiscalizacion.length > 0 ? auditoriaDescuentosA09.fiscalizacion.map((row) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "audit-fiscal-" + row.id, className: "text-[10px] p-2 rounded-lg mb-1", style: { border: "1px solid " + C2.line, color: C2.inkSoft } }, String(row?.venta?.estado || "VENTA FISCAL"), " · línea ", String(row?.source_line_id || "").slice(-16), " · cantidad ", fmt(row?.cantidad), " · total €", fmt(row?.total), " · ", row?.created_at || "sin fecha")) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Sin líneas fiscales activas asociadas a esta cuenta."),
         ),

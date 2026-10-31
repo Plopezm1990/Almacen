@@ -162,7 +162,7 @@ try {
     const tarjeta = tarjetaDescuento();
     ok('B1 el panel termina de cargar: ya no dice «Cargando autorizaciones…» (antes: se quedaba fijo)', !t.includes('Cargando autorizaciones…') && !!tarjeta, t.slice(-900));
     ok('B2 el botón de actualizar vuelve a «Actualizar» (antes: se quedaba en «Actualizando…»)', !!botonDe(tarjeta, 'Actualizar') && !botonDe(tarjeta, 'Actualizando…'), [...tarjeta.querySelectorAll('button')].map((b) => b.textContent));
-    ok('B3 sale el historial con su título', t.includes('Auditoría A09 · historial'), t.slice(-900));
+    ok('B3 sale el historial con su título', t.includes('Historial de descuentos'), t.slice(-900));
     ok('B4 sin cartel rojo de error', !tarjeta.querySelector('[role="alert"]'), tarjeta.querySelector('[role="alert"]')?.textContent);
     ok('B5 salen los eventos de descuento que da el servidor', t.includes('Eventos server-side · 1') && t.includes('CUENTA_DESCUENTO_APLICADO'), t.slice(-900));
     ok('B6 salen los efectos de caja del cobro (no «Sin movimientos de caja asociados»)', !t.includes('Sin movimientos de caja asociados'), t.slice(-900));

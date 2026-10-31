@@ -169,13 +169,13 @@ test('A09.2.2 muestra el stack aplicado separado de las autorizaciones', async (
   assert.match(source, /async function listarDescuentosAplicadosA09\(/);
   assert.match(source, /\.from\("abc_descuentos_aplicados"\)[\s\S]*?\.select\(/);
   assert.match(source, /function agruparDescuentosAplicadosA09\(/);
-  assert.match(source, /Stack aplicado/);
+  assert.match(source, /Descuentos aplicados/);
   assert.match(source, /Cada operación se aplica sobre la base restante/);
   assert.doesNotMatch(source, /\.from\("abc_descuentos_aplicados"\)\s*\.insert/);
   assert.doesNotMatch(source, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
   assert.match(runtime, /async function listarDescuentosAplicadosA09\(/);
   assert.match(runtime, /\.from\("abc_descuentos_aplicados"\)[\s\S]*?\.select\(/);
-  assert.match(runtime, /Stack aplicado/);
+  assert.match(runtime, /Descuentos aplicados/);
   assert.match(runtime, /Cada operación se aplica sobre la base restante/);
   assert.doesNotMatch(runtime, /\.from\("abc_descuentos_aplicados"\)\s*\.insert/);
   assert.doesNotMatch(runtime, /\.from\("abc_descuentos_aplicados"\)\s*\.update/);
@@ -206,7 +206,7 @@ test('A09.2.5 muestra la auditoría completa de descuentos sin DML desde el TPV'
     // 3/10/2026: los eventos de descuento ya no se leen de la tabla abc_eventos desde el navegador (no tiene permiso); los da una función del servidor
     assert.match(candidate, /supabase\.rpc\("abc_listar_eventos_descuento_cuenta", \{\s+p_empresa_id: empresaId,\s+p_local_id: localId,\s+p_cuenta_id: contexto\.cuentaId\s+\}\)/);
     assert.doesNotMatch(candidate, /\.from\("abc_eventos"\)/);
-    assert.match(candidate, /Auditoría A09 · historial/);
+    assert.match(candidate, /Historial de descuentos/);
     assert.match(candidate, /Solicitudes y estado final/);
     assert.match(candidate, /Intentos de aprobación/);
     assert.match(candidate, /Aplicaciones registradas/);
@@ -262,7 +262,7 @@ test('A09.2.8 muestra el alcance de fiscalización sin DML desde el TPV', async 
     assert.match(candidate, /async function listarFiscalizacionA09\(/);
     assert.match(candidate, /\.from\("ventas_fiscales"\)[\s\S]*?\.select\(/);
     assert.match(candidate, /\.from\("venta_fiscal_lineas"\)[\s\S]*?\.select\(/);
-    assert.match(candidate, /Fiscalización · alcance A09/);
+    assert.match(candidate, /Líneas ya fiscalizadas/);
     assert.match(candidate, /fiscalización activa bloquea el descuento/);
     assert.match(candidate, /fiscalización parcial no se aplica en este alcance/);
     assert.doesNotMatch(candidate, /\.from\("ventas_fiscales"\)\s*\.insert/);
