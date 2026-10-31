@@ -110658,9 +110658,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function fingerprintLineasA02(lineas) {
     return JSON.stringify((lineas || []).map((l22) => ({
-      productoId: String(l22.productoId || ""),
-      cantidad: Number(l22.cantidad),
-      nota: String(l22.nota || "").trim().slice(0, 500),
+        productoId: String(l22.productoId || ""),
+        cantidad: Number(l22.cantidad),
+        nota: String(l22.nota || "").trim().slice(0, 500),
       configuracionA04: l22.configuracionA04 ? {
         expectedProductVersion: Number(l22.configuracionA04.expectedProductVersion),
         selecciones: (l22.configuracionA04.selecciones || []).map((s22) => ({
@@ -115911,8 +115911,8 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
       categoria: p22.categoria || "",
       tipo: p22.tipo || "materia_prima",
       alergenos: p22.alergenos || [],
-       fotoUrl: p22.fotoUrl || p22.foto || p22.imagen || "",
-       masVendido: p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true,
+      fotoUrl: p22.fotoUrl || p22.foto || p22.imagen || "",
+      masVendido: p22.masVendido === true || p22.destacadoTPV === true || p22.destacado === true,
       unidad: p22.unidad || "unidad",
       costo: p22.costo ?? "",
       ivaCompra: p22.ivaCompra ?? 10,
@@ -123500,7 +123500,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }, [modoCajaTpv]);
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
-const [notaA04, setNotaA04] = (0, import_react4.useState)("");
+  const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   const [errorA04, setErrorA04] = (0, import_react4.useState)("");
   const [cargandoA04, setCargandoA04] = (0, import_react4.useState)(false);
   const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
@@ -124456,10 +124456,6 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   }
   function quitar(claveCarrito) {
     setCarrito((s22) => s22.filter((l22) => (l22.claveCarrito || l22.productoId) !== claveCarrito));
-  }
-  function cambiarNotaLineaA04(claveCarrito, nota) {
-    const texto = String(nota || "").slice(0, 500);
-    setCarrito((s22) => s22.map((l22) => (l22.claveCarrito || l22.productoId) === claveCarrito ? { ...l22, nota: texto } : l22));
   }
   function vaciarCarrito() {
     setCarrito([]);
