@@ -13,10 +13,20 @@ Rama: `ccr-e0f72ee0-mfjorr`. **Solo QA.** Producción no se toca.
 2. **Las dos migraciones ya están aplicadas en QA** (`20261031120000` y
    `20261031150000`). El preview apunta a QA, así que el editor de categorías
    funcionará. No hace falta tocar la base de datos.
-3. Entra tú en el preview con el usuario de QA (**Propietario**, local **QA-A1**)
-   y deja la sesión abierta. Cowork usa tu sesión.
-4. Para el paso 6 hace falta un empleado con cargo **Camarero/a** en QA-A1. Si no
-   existe, Cowork lo anotará y saltará ese paso; créalo antes si quieres cubrirlo.
+3. **NO uses `owner.a@qa.invalid`.** Tiene membresía activa en **tres** empresas
+   vigentes (`QA-EMP-A`, `QA-EMP-B` y `empresa-585082ee5fb25ad2`, de una prueba
+   de C05 del 27/10), y el servidor no puede decidir cuál es la suya: falla con
+   `almacen_kv_empresa_ambigua` (PGRST116, «Results contain 3 rows») y **el TPV
+   se queda sin productos**. No es cosa del rediseño; es el hueco conocido de la
+   fase 4 de empresas.
+   Usa uno de membresía única:
+   - `pm07.smoke@qa.invalid` — Propietario de QA-EMP-A, todos los locales.
+   - `pedroroger1990@gmail.com` — Encargado de QA-A1 (también tiene
+     `ABC_SALA_CONFIGURAR`, así que el botón «Categorías» le sale).
+4. Para el paso del permiso **no uses «modo empleado»**, que pide un PIN que
+   nadie tiene en claro. Cierra sesión y entra directamente con
+   `pm11.smoke.a1@la-suite.test`, que es **Camarero/a de QA-A1** y tiene
+   membresía única.
 
 Los textos entre « » son los que la aplicación debe mostrar. Si un texto difiere
 pero el comportamiento es el mismo, que lo anote y siga.
@@ -59,7 +69,7 @@ PASO 2 · Vender y ver el ticket por bloques (fases 1 y 2)
 PASO 3 · Teclas y paneles (fases 1, 2 y 3)
 3.1 Pulsa la tecla F3 del teclado. Debe abrirse la ventana «Mesa y sala» con un plano de mesas de colores y una leyenda (Libre, Ocupada, Reservada, Bloqueada, Fuera de servicio). FOTO. Ciérrala.
 3.2 Pulsa F8. Debe abrirse «Cobro de la cuenta». FOTO. Ciérrala.
-3.3 Pulsa F2. El cursor debe ir al buscador de productos.
+3.3 Pulsa F2. El cursor debe ir al buscador de productos. F2 NO abre ninguna ventana: solo pone el cursor en el buscador. Si no hay productos cargados, el buscador no existe y F2 no hace nada: eso es normal, no es un fallo.
 3.4 Comprueba que los botones de esa fila muestran su tecla: «Mesa y sala · F3» y «Cobro · F8».
 
 PASO 4 · La ventana de cobro (fase 3)
@@ -88,9 +98,9 @@ PASO 6 · Categorías: el conflicto entre dos terminales (ESTE ES EL IMPORTANTE)
 6.7 FOTO del aviso y del resultado final.
 
 PASO 7 · Categorías: el permiso
-7.1 Cambia a un empleado con cargo «Camarero/a» (menú de usuario → entrar como empleado). Si no hay ninguno, anótalo y salta al paso 8.
+7.1 CIERRA SESIÓN y entra con el usuario «pm11.smoke.a1@la-suite.test», que es Camarero/a del local QA-A1. NO uses «modo empleado»: pide un PIN y no hace falta.
 7.2 Entra en el TPV. El botón «Categorías» NO debe aparecer.
-7.3 Vuelve a tu usuario Propietario y comprueba que el botón «Categorías» vuelve a aparecer.
+7.3 Cierra sesión, vuelve a entrar con el usuario del principio y comprueba que el botón «Categorías» vuelve a aparecer.
 7.4 Anota si en algún momento viste el botón con el Camarero/a.
 
 PASO 8 · Modo caja y tema oscuro (fases 2 y 4)
