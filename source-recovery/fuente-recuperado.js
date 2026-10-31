@@ -9391,7 +9391,11 @@ function billetesSugeridosCobroF4(importe) {
 // la cuenta se puede cobrar. El servidor DERIVA este estado de las lineas,
 // asi que en cuanto cocina empieza pasa a EN_PREPARACION y sigue avanzando.
 // Una sola lista: antes habia dos copias y al arreglar una quedaba la otra.
-var ESTADOS_PEDIDO_COBRABLE_TPV = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO"];
+var ESTADOS_PEDIDO_COBRABLE_TPV = ["ENVIADO", "SERVIDO", "CERRADO"];
+// Ya salio hacia cocina, pero el servidor todavia no deja cobrarlo porque el
+// estado del pedido lo deriva de sus lineas. No es lo mismo que "sin enviar",
+// y decirle al camarero que lo envie seria mentirle.
+var ESTADOS_PEDIDO_EN_COCINA_TPV = ["EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO"];
 var ETIQUETA_ESTADO_MESA_TPV = { LIBRE: "Libre", OCUPADA: "Ocupada", RESERVADA: "Reservada", BLOQUEADA: "Bloqueada", FUERA_SERVICIO: "Fuera de servicio" };
 var CLASE_ESTADO_MESA_TPV = { LIBRE: "libre", OCUPADA: "ocupada", RESERVADA: "reservada", BLOQUEADA: "bloqueada", FUERA_SERVICIO: "bloqueada" };
 var LEYENDA_ESTADOS_MESA_TPV = ["LIBRE", "OCUPADA", "RESERVADA", "BLOQUEADA", "FUERA_SERVICIO"];
@@ -23936,7 +23940,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: refrescarCobroF4, disabled: cargandoCobroF4 || procesandoCobroF4 }, cargandoCobroF4 ? "Actualizando…" : "Actualizar")
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "El importe restante, el cambio y la caja los calcula el servidor. Para un pago mixto, cobra una parte en efectivo y completa después con tarjeta."),
-      !pedidoListo ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.amberSoft } }, "Envía el pedido antes de cobrar.") : null,
+      !pedidoListo ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg", style: { background: C2.amberSoft } }, ESTADOS_PEDIDO_EN_COCINA_TPV.includes(String(pedidoOperativoA05?.pedidoEstado || "")) ? "Cocina está preparando esta comanda. Se podrá cobrar cuando las líneas estén servidas." : "Envía el pedido antes de cobrar.") : null,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-3 gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(totalVisible))),
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(confirmadoVisible))),
@@ -24576,7 +24580,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   })))), ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-ticket-zone" }, (pedidoOperativoA05?.lineas || []).length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, ESTADOS_PEDIDO_COBRABLE_TPV.includes(String(pedidoOperativoA05?.pedidoEstado || "")) ? "Ya enviado a cocina" : "En la comanda · sin enviar"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, ESTADOS_PEDIDO_COBRABLE_TPV.concat(ESTADOS_PEDIDO_EN_COCINA_TPV).includes(String(pedidoOperativoA05?.pedidoEstado || "")) ? "Ya enviado a cocina" : "En la comanda · sin enviar"),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setPanelTpvAbierto("comanda") }, "Ver comanda")
     ),
     (pedidoOperativoA05.lineas || []).map((linea) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "tpv-enviada-" + linea.lineaId, className: "flex items-center justify-between gap-2 text-[12.5px] py-0.5" },
