@@ -9387,6 +9387,11 @@ function billetesSugeridosCobroF4(importe) {
   }
   return sugerencias;
 }
+// Estados del pedido en los que la comanda ya salio hacia cocina y por tanto
+// la cuenta se puede cobrar. El servidor DERIVA este estado de las lineas,
+// asi que en cuanto cocina empieza pasa a EN_PREPARACION y sigue avanzando.
+// Una sola lista: antes habia dos copias y al arreglar una quedaba la otra.
+var ESTADOS_PEDIDO_COBRABLE_TPV = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO"];
 var ETIQUETA_ESTADO_MESA_TPV = { LIBRE: "Libre", OCUPADA: "Ocupada", RESERVADA: "Reservada", BLOQUEADA: "Bloqueada", FUERA_SERVICIO: "Fuera de servicio" };
 var CLASE_ESTADO_MESA_TPV = { LIBRE: "libre", OCUPADA: "ocupada", RESERVADA: "reservada", BLOQUEADA: "bloqueada", FUERA_SERVICIO: "bloqueada" };
 var LEYENDA_ESTADOS_MESA_TPV = ["LIBRE", "OCUPADA", "RESERVADA", "BLOQUEADA", "FUERA_SERVICIO"];
@@ -10263,7 +10268,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       const recuperada = await recuperarCuentaA06();
       if (!recuperada?.ok || !recuperada.cuentaId) throw new Error(recuperada?.error || "cuenta_no_encontrada");
-      if (!["ENVIADO", "SERVIDO"].includes(String(recuperada.pedidoEstado || ""))) throw new Error("pago_pedido_no_listo");
+      if (!ESTADOS_PEDIDO_COBRABLE_TPV.includes(String(recuperada.pedidoEstado || ""))) throw new Error("pago_pedido_no_listo");
       if (String(recuperada.currencyCode || "EUR") !== "EUR") throw new Error("conversion_divisa_no_habilitada");
       const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
       if (!hayConexion) return { ok: false, error: "El cobro necesita conexión con el servidor." };
@@ -23909,7 +23914,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
   function renderCobroF4() {
     if (!pedidoOperativoA05?.cuentaId) return null;
-    const pedidoListo = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
+    const pedidoListo = ESTADOS_PEDIDO_COBRABLE_TPV.includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
     const estado = estadoCobroF4;
     const tieneCheckout = Array.isArray(estado?.checkouts) && estado.checkouts.length>0;
     const totalPedido = (pedidoOperativoA05.lineas || []).reduce((acc, linea) => acc + (Number(linea.total) || 0), 0);
@@ -24571,7 +24576,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   })))), ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-ticket-zone" }, (pedidoOperativoA05?.lineas || []).length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO"].includes(String(pedidoOperativoA05?.pedidoEstado || "")) ? "Ya enviado a cocina" : "En la comanda · sin enviar"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, ESTADOS_PEDIDO_COBRABLE_TPV.includes(String(pedidoOperativoA05?.pedidoEstado || "")) ? "Ya enviado a cocina" : "En la comanda · sin enviar"),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setPanelTpvAbierto("comanda") }, "Ver comanda")
     ),
     (pedidoOperativoA05.lineas || []).map((linea) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "tpv-enviada-" + linea.lineaId, className: "flex items-center justify-between gap-2 text-[12.5px] py-0.5" },
