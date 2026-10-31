@@ -106083,6 +106083,8 @@ function GestionAlmacen() {
         .tpv-categorias { display: flex; gap: .4rem; overflow-x: auto; }
         .tpv-categoria { flex-shrink: 0; padding: .45rem .8rem; border-radius: .6rem; border: 1px solid var(--c-line); border-left: 5px solid var(--tpv-cat, var(--c-line)); background: var(--c-surface); color: var(--c-ink); font-size: 13px; font-weight: 500; text-align: left; }
         .tpv-categoria-activa { background: var(--c-accent-fill); color: var(--c-on-accent); border-color: var(--c-accent-fill); border-left-color: var(--tpv-cat, var(--c-on-accent)); }
+        .tpv-paginador { grid-column: 1 / -1; display: flex; align-items: center; justify-content: center; gap: .6rem; margin-top: .5rem; }
+        .tpv-paginador-texto { font-size: 12px; font-weight: 600; color: var(--c-ink-soft); min-width: 110px; text-align: center; }
         .tpv-rejilla { display: grid; grid-template-columns: repeat(auto-fill, minmax(148px, 1fr)); gap: .5rem; align-content: start; }
         .tpv-producto { position: relative; overflow: hidden; display: flex; flex-direction: column; min-height: 104px; padding: .7rem .65rem .6rem; border: 1px solid var(--c-line); border-radius: .8rem; background: var(--c-surface); text-align: left; cursor: pointer; }
         .tpv-producto::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 5px; background: var(--tpv-cat, var(--c-line)); }
@@ -110380,6 +110382,8 @@ var PALETA_CATEGORIAS_TPV = ["#2A6FB0", "#C2410C", "#15803D", "#9D174D", "#6D28D
 // decide el tono exacto y puede tener su versión para el tema oscuro.
 var COLOR_CLAVE_CATEGORIA_TPV = { AZUL: "#2A6FB0", NARANJA: "#C2410C", VERDE: "#15803D", GRANATE: "#9D174D", MORADO: "#6D28D9", MARRON: "#6B4423", ROJO: "#B91C1C", TEAL: "#0F766E", AMBAR: "#9A6400" };
 var CLAVES_COLOR_CATEGORIA_TPV = ["AZUL", "NARANJA", "VERDE", "GRANATE", "MORADO", "MARRON", "ROJO", "TEAL", "AMBAR"];
+// Cuatro filas de producto: lo que cabe sin arrastrar en una pantalla de caja.
+var FILAS_REJILLA_TPV = 4;
 var CATEGORIA_FAVORITOS_TPV = "★ Favoritos";
 function esFavoritoTpv(producto) {
   return producto?.masVendido === true || producto?.destacadoTPV === true || producto?.destacado === true;
@@ -124384,6 +124388,29 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     if (!q2) return base;
     return base.filter((p22) => p22.nombre.toLowerCase().includes(q2) || (p22.codigoBarras || "").toLowerCase().includes(q2));
   }, [vendibles, categoria, busqueda]);
+  // Paginación: el catálogo no se arrastra, se pasa de página. Cuántos caben
+  // se mide de la propia rejilla, así que se adapta al ancho real en vez de
+  // adivinarlo por puntos de corte.
+  const [paginaTpv, setPaginaTpv] = (0, import_react4.useState)(0);
+  const [columnasTpv, setColumnasTpv] = (0, import_react4.useState)(4);
+  (0, import_react4.useEffect)(() => {
+    if (typeof window === "undefined" || typeof document === "undefined") return void 0;
+    function medir() {
+      const rejilla = document.querySelector(".tpv-rejilla");
+      if (!rejilla) return;
+      const columnas = window.getComputedStyle(rejilla).gridTemplateColumns.split(" ").filter(Boolean).length;
+      if (columnas > 0) setColumnasTpv(columnas);
+    }
+    medir();
+    window.addEventListener("resize", medir);
+    return () => window.removeEventListener("resize", medir);
+  }, [modoCajaTpv, categoria, busqueda]);
+  const porPaginaTpv = Math.max(1, columnasTpv * FILAS_REJILLA_TPV);
+  const totalPaginasTpv = Math.max(1, Math.ceil(visibles.length / porPaginaTpv));
+  const paginaActualTpv = Math.min(paginaTpv, totalPaginasTpv - 1);
+  const visiblesPaginaTpv = visibles.slice(paginaActualTpv * porPaginaTpv, (paginaActualTpv + 1) * porPaginaTpv);
+  // Al cambiar de categoría o buscar, se vuelve a la primera página.
+  (0, import_react4.useEffect)(() => { setPaginaTpv(0); }, [categoria, busqueda]);
   function manejarEnterEscaneo(e2) {
     if (e2.key !== "Enter") return;
     const q2 = busqueda.trim().toLowerCase();
@@ -125565,7 +125592,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       style: { "--tpv-cat": colorDeCategoriaTpv(c22) }
     },
     c22
-  ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla" }, visibles.map((p22) => {
+  ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla" }, visiblesPaginaTpv.map((p22) => {
     const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
     const cantidadEnCarrito = carrito.filter((l22) => l22.productoId === p22.id).reduce((acc, l22) => acc + (Number(l22.cantidad) || 0), 0);
     const stockDisponible = p22._pm07Servidor ? Number(p22.stock) || 0 : Number(p22.stockPisoVenta) || 0;
@@ -125600,7 +125627,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         fmt(cantidadEnCarrito)
       )
     );
-  })))), ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-ticket-zone" }, (pedidoOperativoA05?.lineas || []).length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" },
+  })),
+        totalPaginasTpv > 1 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-paginador" },
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setPaginaTpv((p22) => Math.max(0, p22 - 1)), disabled: paginaTpv <= 0 }, "\u2039 Anterior"),
+          /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-paginador-texto" }, "Página ", paginaTpv + 1, " de ", totalPaginasTpv),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setPaginaTpv((p22) => Math.min(totalPaginasTpv - 1, p22 + 1)), disabled: paginaTpv >= totalPaginasTpv - 1 }, "Siguiente \u203A")
+        ) : null)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-ticket-zone" }, (pedidoOperativoA05?.lineas || []).length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, ESTADOS_PEDIDO_COBRABLE_TPV.concat(ESTADOS_PEDIDO_EN_COCINA_TPV).includes(String(pedidoOperativoA05?.pedidoEstado || "")) ? "Ya enviado a cocina" : "En la comanda · sin enviar"),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setPanelTpvAbierto("comanda") }, "Ver comanda")
@@ -125623,7 +125655,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "mono text-center rounded-md py-1",
       style: { width: 54, border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, fontSize: 13, minHeight: 44 }
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-acciones" }, lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `Guardar pedido \u20AC${fmt(total)}`), nodoCobroF4 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: lineasCarrito.length > 0 ? "ghost" : "primary", onClick: () => setPanelTpvAbierto("cobro") }, "Cobrar la cuenta") : null), ), ), lineasCarrito.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-dock" },
+  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-acciones" }, lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `Guardar pedido \u20AC${fmt(total)}`), nodoCobroF4 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: lineasCarrito.length > 0 ? "ghost" : "primary", onClick: () => setPanelTpvAbierto("cobro") }, "Cobrar la cuenta") : null), )), ), lineasCarrito.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-dock" },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-dock-cifra" },
       /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-dock-rotulo" }, lineasCarrito.length, " línea(s) sin enviar"),
       /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-dock-total mono" }, "€", fmt(total))
