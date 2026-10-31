@@ -106028,6 +106028,40 @@ function GestionAlmacen() {
         .tpv-tira { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; padding: .4rem .7rem; margin-bottom: .5rem; border-radius: .5rem; font-size: 11.5px; color: var(--c-ink-soft); background: var(--c-accent-soft); }
         .tpv-tira-aviso { background: var(--c-amber-soft); color: var(--c-ink); }
         .tpv-tira-error { background: var(--c-red-soft); color: var(--c-red); font-weight: 600; }
+        .tpv-cobro { display: flex; flex-direction: column; gap: .6rem; padding: .7rem; border: 1px solid var(--c-line); border-radius: .7rem; background: var(--c-surface); }
+        .tpv-cobro-cifras { display: grid; grid-template-columns: 1fr 1fr; gap: .5rem; }
+        .tpv-cobro-cifra { display: flex; flex-direction: column; gap: .1rem; padding: .5rem .6rem; border-radius: .6rem; background: var(--c-bg); min-width: 0; }
+        .tpv-cobro-rotulo { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--c-ink-soft); }
+        .tpv-cobro-valor { font-size: 20px; font-weight: 600; }
+        .tpv-cobro-billetes { display: flex; gap: .35rem; flex-wrap: wrap; }
+        .tpv-cobro-billetes .tpv-quick-quantity { min-width: 64px; min-height: 40px; font-size: 13px; font-weight: 600; }
+        .tpv-teclado { display: grid; grid-template-columns: repeat(3, 1fr); gap: .35rem; }
+        .tpv-tecla { min-height: 48px; border: 1px solid var(--c-line); border-radius: .5rem; background: var(--c-surface); color: var(--c-ink); font-family: 'IBM Plex Mono', ui-monospace, monospace; font-size: 18px; font-weight: 600; }
+        .tpv-cambio { display: flex; align-items: baseline; justify-content: space-between; gap: .5rem; padding: .6rem .7rem; border-radius: .6rem; background: var(--c-accent-soft); color: var(--c-ink); }
+        .tpv-cambio-valor { font-size: 26px; font-weight: 700; }
+        .tpv-cambio-falta { background: var(--c-red-soft); color: var(--c-red); }
+        .tpv-cobro-acciones { display: flex; flex-direction: column; gap: .4rem; }
+        .tpv-cobro-acciones > button { width: 100%; justify-content: center; }
+        .tpv-sala-plano { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: .5rem; }
+        .tpv-mesa { display: flex; flex-direction: column; gap: .1rem; min-height: 96px; padding: .6rem .7rem; border-radius: .7rem; text-align: left; border: 2px solid var(--tpv-mesa-color, var(--c-line)); background: var(--tpv-mesa-fondo, var(--c-surface)); color: var(--c-ink); }
+        .tpv-mesa-nombre { font-size: 17px; font-weight: 700; line-height: 1.1; }
+        .tpv-mesa-estado { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: .04em; color: var(--tpv-mesa-color, var(--c-ink-soft)); }
+        .tpv-mesa-dato { font-size: 11px; color: var(--c-ink-soft); }
+        .tpv-mesa-aviso { font-size: 11px; font-weight: 600; color: var(--c-red); }
+        .tpv-mesa-aqui { font-size: 11px; font-weight: 700; color: var(--c-accent); }
+        .tpv-mesa-elegida { outline: 3px solid var(--c-accent); outline-offset: 1px; }
+        .tpv-mesa-actual { box-shadow: inset 0 0 0 2px var(--c-accent); }
+        .tpv-mesa-libre { --tpv-mesa-color: #1F7A4D; --tpv-mesa-fondo: #F2F9F5; }
+        .tpv-mesa-ocupada { --tpv-mesa-color: #9A6400; --tpv-mesa-fondo: #FBF2E0; }
+        .tpv-mesa-reservada { --tpv-mesa-color: #2A5C8A; --tpv-mesa-fondo: #EDF3FA; }
+        .tpv-mesa-bloqueada { --tpv-mesa-color: #6B6B6B; --tpv-mesa-fondo: #F0EEEA; border-style: dashed; }
+        [data-tema="oscuro"] .tpv-mesa-libre { --tpv-mesa-color: #7CD3A2; --tpv-mesa-fondo: #14301F; }
+        [data-tema="oscuro"] .tpv-mesa-ocupada { --tpv-mesa-color: #E9C372; --tpv-mesa-fondo: #2A2414; }
+        [data-tema="oscuro"] .tpv-mesa-reservada { --tpv-mesa-color: #8DB8E0; --tpv-mesa-fondo: #16283A; }
+        [data-tema="oscuro"] .tpv-mesa-bloqueada { --tpv-mesa-color: #9AA5A0; --tpv-mesa-fondo: #202A25; }
+        .tpv-sala-leyenda { display: flex; flex-wrap: wrap; gap: .7rem; margin-bottom: .6rem; font-size: 11px; color: var(--c-ink-soft); }
+        .tpv-sala-leyenda-item { display: inline-flex; align-items: center; gap: .3rem; }
+        .tpv-sala-punto { width: 12px; height: 12px; border: 0; border-radius: 4px; display: inline-block; background: var(--tpv-mesa-color, var(--c-line)); }
         .tpv-multiplicador { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; margin-bottom: .6rem; }
         .tpv-multiplicador-rotulo { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--c-ink-soft); margin-right: .15rem; }
         .tpv-multiplicador .tpv-quick-quantity { min-width: 46px; font-size: 13px; font-weight: 600; text-align: center; }
@@ -110334,6 +110368,24 @@ function colorCategoriaTpv(nombre) {
   for (let i = 0; i < texto.length; i += 1) suma = (suma * 31 + texto.charCodeAt(i)) % 1e5;
   return PALETA_CATEGORIAS_TPV[suma % PALETA_CATEGORIAS_TPV.length];
 }
+// Billetes que cubren el importe: el exacto y los redondeos de 5, 10 y 20
+// hacia arriba, más los billetes grandes que siguen siendo mayores.
+function billetesSugeridosCobroF4(importe) {
+  const objetivo = Math.round((Number(importe) || 0) * 100) / 100;
+  if (!(objetivo > 0)) return [];
+  const sugerencias = [{ clave: "exacto", etiqueta: "Exacto", valor: objetivo }];
+  const vistos = /* @__PURE__ */ new Set();
+  const candidatos = [Math.ceil(objetivo / 5) * 5, Math.ceil(objetivo / 10) * 10, Math.ceil(objetivo / 20) * 20, 50, 100];
+  for (const valor of candidatos.sort((a22, b22) => a22 - b22)) {
+    if (valor <= objetivo || vistos.has(valor) || sugerencias.length >= 5) continue;
+    vistos.add(valor);
+    sugerencias.push({ clave: String(valor), etiqueta: valor + " €", valor });
+  }
+  return sugerencias;
+}
+var ETIQUETA_ESTADO_MESA_TPV = { LIBRE: "Libre", OCUPADA: "Ocupada", RESERVADA: "Reservada", BLOQUEADA: "Bloqueada", FUERA_SERVICIO: "Fuera de servicio" };
+var CLASE_ESTADO_MESA_TPV = { LIBRE: "libre", OCUPADA: "ocupada", RESERVADA: "reservada", BLOQUEADA: "bloqueada", FUERA_SERVICIO: "bloqueada" };
+var LEYENDA_ESTADOS_MESA_TPV = ["LIBRE", "OCUPADA", "RESERVADA", "BLOQUEADA", "FUERA_SERVICIO"];
 var ETIQUETA_ESTADO_PEDIDO_TPV = { ABIERTO: "Abierta", ENVIADO: "Enviada a cocina", SERVIDO: "Servida", CERRADO: "Cerrada", CANCELADO: "Cancelada" };
 var ETIQUETA_ESTADO_LINEA_TPV = { PENDIENTE: "Pendiente", ENVIADA: "Enviada a cocina", EN_PREPARACION: "En preparación", PREPARADA: "Lista para servir", SERVIDA: "Servida", CANCELADA: "Cancelada" };
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
@@ -124671,6 +124723,20 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
   }
   // Lo que no esté en la lista se deja tal cual: antes mostrar el valor
   // del servidor que inventarle un nombre que no significa lo mismo.
+  // El teclado escribe sobre el mismo estado que antes llevaba el campo de
+  // número, así que el cálculo del cambio y lo que se manda al servidor no
+  // cambian: solo la forma de teclearlo.
+  function teclearEfectivoCobroF4(tecla) {
+    setEfectivoRecibidoCobroF4((actual) => {
+      const valor = String(actual == null ? "" : actual);
+      if (tecla === "BORRAR") return valor.slice(0, -1);
+      if (tecla === ",") return valor.includes(".") ? valor : (valor === "" ? "0." : valor + ".");
+      const decimales = valor.split(".")[1];
+      if (decimales !== void 0 && decimales.length >= 2) return valor;
+      if (valor === "0") return tecla;
+      return valor.length >= 9 ? valor : valor + tecla;
+    });
+  }
   function etiquetaEstadoCuentaF4(estado) {
     const valor = String(estado || "");
     if (valor === "ABIERTA" || valor === "ABIERTO") return "Abierta";
@@ -124752,16 +124818,42 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       ) : null,
       errorCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: "#FCE8E6", color: C2.red } }, errorCobroF4) : null,
       mensajeCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCobroF4) : null,
-      pedidoListo && saldoVisible > 0 && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
-          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe de este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
-          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
+      pedidoListo && saldoVisible > 0 && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-cobro" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-cobro-cifras" },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-cobro-cifra" },
+            /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-cobro-rotulo" }, "A cobrar"),
+            /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-cobro-valor mono" }, "€", fmt(importeVisible))
+          ),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-cobro-cifra" },
+            /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-cobro-rotulo" }, "Efectivo recibido (€)"),
+            /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-cobro-valor mono" }, recibidoVisible === null ? "—" : "€" + fmt(recibidoVisible))
+          )
         ),
-        cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, cambioVisible < 0 ? `Faltan €${fmt(Math.abs(cambioVisible))}` : `Cambio a devolver: €${fmt(cambioVisible)}`) : null,
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-cobro-billetes" }, billetesSugeridosCobroF4(importeVisible).map((billete) => /* @__PURE__ */ import_react4.default.createElement("button", {
+          key: "billete-" + billete.clave,
+          type: "button",
+          className: "tpv-quick-quantity",
+          onClick: () => setEfectivoRecibidoCobroF4(billete.valor.toFixed(2)),
+          disabled: procesandoCobroF4
+        }, billete.etiqueta))),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-teclado" }, ["7", "8", "9", "4", "5", "6", "1", "2", "3", ",", "0", "BORRAR"].map((tecla) => /* @__PURE__ */ import_react4.default.createElement("button", {
+          key: "tecla-" + tecla,
+          type: "button",
+          className: "tpv-tecla",
+          "aria-label": tecla === "BORRAR" ? "Borrar un dígito" : tecla,
+          onClick: () => teclearEfectivoCobroF4(tecla),
+          disabled: procesandoCobroF4
+        }, tecla === "BORRAR" ? "⌫" : tecla))),
+        cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: cambioVisible < 0 ? "tpv-cambio tpv-cambio-falta" : "tpv-cambio" },
+          /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-cobro-rotulo" }, cambioVisible < 0 ? "Faltan" : "Cambio a devolver"),
+          /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-cambio-valor mono" }, "€", fmt(Math.abs(cambioVisible)))
+        ) : null,
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe de este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-cobro-acciones" },
           /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible }), disabled: procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
-          confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible }), disabled: procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
+          confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible }), disabled: procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null,
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setPanelTpvAbierto("reparto"), disabled: procesandoCobroF4 }, "Dividir cuenta")
         ),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, "El botón de completar mixto usa el saldo que devuelve el servidor, no el cálculo local del navegador.")
       ) : null,
@@ -124918,13 +125010,19 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
       ) : null,
       errorSalaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorSalaA07) : null,
       !cargandoSalaA07 && zonas.length === 0 && !errorSalaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay zonas ni mesas configuradas para este local.") : null,
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-sala-leyenda" }, LEYENDA_ESTADOS_MESA_TPV.map((clave) => /* @__PURE__ */ import_react4.default.createElement("span", { key: "leyenda-" + clave, className: "tpv-sala-leyenda-item" },
+        /* @__PURE__ */ import_react4.default.createElement("i", { className: "tpv-sala-punto tpv-mesa-" + CLASE_ESTADO_MESA_TPV[clave] }),
+        ETIQUETA_ESTADO_MESA_TPV[clave]
+      ))),
       zonas.map((zona) => /* @__PURE__ */ import_react4.default.createElement("div", { key: zona.zona_id, className: "mb-3" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, zona.nombre || zona.codigo, " · ", zona.tipo),
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-sala-plano" },
           (zona.mesas || []).map((mesa) => {
             const seleccionada = mesaSeleccionadaA07?.mesa_id === mesa.mesa_id;
-            const noAsignable = ["BLOQUEADA", "RESERVADA", "FUERA_SERVICIO"].includes(String(mesa.estado_efectivo || ""));
+            const estadoMesa = String(mesa.estado_efectivo || "");
+            const noAsignable = ["BLOQUEADA", "RESERVADA", "FUERA_SERVICIO"].includes(estadoMesa);
             const esActual = ubicacion?.mesa_id && String(ubicacion.mesa_id) === String(mesa.mesa_id);
+            const cuentasMesa = (mesa.cuentas || []).length;
             return /* @__PURE__ */ import_react4.default.createElement("button", {
               key: mesa.mesa_id,
               type: "button",
@@ -124934,22 +125032,18 @@ const [notaA04, setNotaA04] = (0, import_react4.useState)("");
                 if (ubicacion?.comensales) setComensalesA07(String(ubicacion.comensales));
                 else if (Number(mesa.capacidad) > 0) setComensalesA07(String(Math.min(Number(mesa.capacidad), 2) || 1));
               },
-              className: "rounded-lg p-2 text-left",
-              style: {
-                border: "1px solid " + (esActual || seleccionada ? C2.accent : C2.line),
-                background: esActual ? C2.accentSoft : C2.surface,
-                opacity: noAsignable ? 0.6 : 1
-              }
+              className: "tpv-mesa tpv-mesa-" + (CLASE_ESTADO_MESA_TPV[estadoMesa] || "libre") + (esActual ? " tpv-mesa-actual" : "") + (seleccionada ? " tpv-mesa-elegida" : "")
             },
-              /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold" }, mesa.nombre || mesa.codigo),
-              /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, mesa.estado_efectivo, " · ", Number(mesa.ocupacion_comensales) || 0, "/", Number(mesa.capacidad) || 0, " personas"),
-              mesa.sobre_capacidad ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.red } }, "Sobre capacidad") : null,
-              (mesa.cuentas || []).length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-1", style: { color: C2.inkSoft } }, (mesa.cuentas || []).length, " cuenta(s) activa(s)") : null
+              /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-mesa-nombre" }, mesa.nombre || mesa.codigo),
+              /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-mesa-estado" }, ETIQUETA_ESTADO_MESA_TPV[estadoMesa] || mesa.estado_efectivo),
+              /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-mesa-dato" }, Number(mesa.ocupacion_comensales) || 0, "/", Number(mesa.capacidad) || 0, " personas"),
+              mesa.sobre_capacidad ? /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-mesa-aviso" }, "Sobre capacidad") : null,
+              cuentasMesa ? /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-mesa-dato" }, cuentasMesa, " cuenta(s) activa(s)") : null,
+              esActual ? /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-mesa-aqui" }, "Esta cuenta") : null
             );
           })
         )
-      )),
-      !ubicacion && mesaSeleccionadaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 p-2 rounded-lg", style: { border: "1px solid " + C2.line } },
+      )),      !ubicacion && mesaSeleccionadaA07 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 p-2 rounded-lg", style: { border: "1px solid " + C2.line } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Asignar ", mesaSeleccionadaA07.nombre || mesaSeleccionadaA07.codigo),
         /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Comensales" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", min: "1", max: "999", step: "1", value: comensalesA07, onChange: (e2) => setComensalesA07(e2.target.value) })),
         Number(comensalesA07) > Number(mesaSeleccionadaA07.capacidad) ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.amber || C2.inkSoft } }, "Aviso: supera la capacidad configurada de la mesa. El backend lo permite como advertencia, no como bloqueo.") : null,
