@@ -5006,6 +5006,11 @@ function GestionAlmacen() {
         .tpv-tira { display: flex; align-items: center; justify-content: space-between; gap: .6rem; flex-wrap: wrap; padding: .4rem .7rem; margin-bottom: .5rem; border-radius: .5rem; font-size: 11.5px; color: var(--c-ink-soft); background: var(--c-accent-soft); }
         .tpv-tira-aviso { background: var(--c-amber-soft); color: var(--c-ink); }
         .tpv-tira-error { background: var(--c-red-soft); color: var(--c-red); font-weight: 600; }
+        .tpv-multiplicador { display: flex; align-items: center; gap: .35rem; flex-wrap: wrap; margin-bottom: .6rem; }
+        .tpv-multiplicador-rotulo { font-size: 10px; text-transform: uppercase; letter-spacing: .05em; color: var(--c-ink-soft); margin-right: .15rem; }
+        .tpv-multiplicador .tpv-quick-quantity { min-width: 46px; font-size: 13px; font-weight: 600; text-align: center; }
+        .tpv-multiplicador-activo { background: var(--c-accent-fill); color: var(--c-on-accent); border-color: var(--c-accent-fill); }
+        .tpv-multiplicador-aviso { font-size: 11.5px; font-weight: 600; color: var(--c-amber); }
         .tpv-catalogo { display: grid; grid-template-columns: minmax(0, 1fr); gap: .6rem; margin-bottom: 1rem; }
         .tpv-categorias { display: flex; gap: .4rem; overflow-x: auto; }
         .tpv-categoria { flex-shrink: 0; padding: .45rem .8rem; border-radius: .6rem; border: 1px solid var(--c-line); border-left: 5px solid var(--tpv-cat, var(--c-line)); background: var(--c-surface); color: var(--c-ink); font-size: 13px; font-weight: 500; text-align: left; }
@@ -22396,6 +22401,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [accionEnCursoA05, setAccionEnCursoA05] = (0, import_react4.useState)("");
   const [errorVenta, setErrorVenta] = (0, import_react4.useState)("");
   const [panelTpvAbierto, setPanelTpvAbierto] = (0, import_react4.useState)(null);
+  const [multiplicadorTpv, setMultiplicadorTpv] = (0, import_react4.useState)(1);
   const [modoCajaTpv, setModoCajaTpv] = (0, import_react4.useState)(() => {
     try { return window.localStorage.getItem(CLAVE_MODO_CAJA_TPV) === "1"; } catch { return false; }
   });
@@ -23378,14 +23384,22 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const total = lineasCarrito.reduce((a22, l22) => a22 + l22.subtotal, 0);
   (0, import_react4.useEffect)(() => {
     function manejarAtajoTPV(e2) {
-      if (!["F2", "F4", "F9"].includes(e2.key)) return;
+      if (!["F2", "F3", "F4", "F8", "F9"].includes(e2.key)) return;
       e2.preventDefault();
       if (e2.key === "F2") {
         inputEscaneoRef.current?.focus();
         return;
       }
+      if (e2.key === "F3") {
+        setPanelTpvAbierto((abierto) => abierto === "sala" ? null : "sala");
+        return;
+      }
       if (e2.key === "F4") {
         if (carrito.length > 0) vaciarCarrito();
+        return;
+      }
+      if (e2.key === "F8") {
+        setPanelTpvAbierto((abierto) => abierto === "cobro" ? null : "cobro");
         return;
       }
       if (lineasCarrito.length > 0 && !enviandoVenta && !cargandoA04 && !configurandoA04) confirmarCobro();
@@ -23393,6 +23407,17 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     window.addEventListener("keydown", manejarAtajoTPV);
     return () => window.removeEventListener("keydown", manejarAtajoTPV);
   }, [carrito.length, lineasCarrito.length, enviandoVenta, cargandoA04, configurandoA04]);
+  // El multiplicador vale para un solo producto: en cuanto se usa vuelve a
+  // ×1, para que nadie cobre de más por haberlo dejado puesto.
+  function agregarConMultiplicadorTpv(producto) {
+    const veces = Number(multiplicadorTpv) || 1;
+    if (veces > 1) {
+      agregarCantidadRapidaA04(producto, veces);
+      setMultiplicadorTpv(1);
+      return;
+    }
+    agregar(producto);
+  }
   const cantidadesProductoA04 = lineasCarrito.reduce((mapa, l22) => {
     mapa.set(l22.productoId, (mapa.get(l22.productoId) || 0) + l22.cantidadNum);
     return mapa;
@@ -24158,11 +24183,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
   const [nodoSalaA07, nodoRepartoA08, nodoComandaA05, nodoDescuentoA09, nodoCobroF4] = [renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4()];
   const panelesOperativosTpv = [
-    { id: "sala", etiqueta: "Mesa y sala", titulo: "Mesa y sala", nodo: nodoSalaA07 },
+    { id: "sala", etiqueta: "Mesa y sala", tecla: "F3", titulo: "Mesa y sala", nodo: nodoSalaA07 },
     { id: "comanda", etiqueta: "Comanda", titulo: "Comanda en cocina", nodo: nodoComandaA05 },
     { id: "reparto", etiqueta: "Repartir", titulo: "Repartir productos", nodo: nodoRepartoA08 },
     { id: "descuento", etiqueta: "Descuento", titulo: "Descuento o cortesía", nodo: nodoDescuentoA09 },
-    { id: "cobro", etiqueta: "Cobro", titulo: "Cobro de la cuenta", nodo: nodoCobroF4 }
+    { id: "cobro", etiqueta: "Cobro", tecla: "F8", titulo: "Cobro de la cuenta", nodo: nodoCobroF4 }
   ].filter((panel) => panel.nodo);
   const panelTpvVisible = panelesOperativosTpv.find((panel) => panel.id === panelTpvAbierto) || null;
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-shell" },
@@ -24179,7 +24204,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: confirmarCobro, disabled: lineasCarrito.length === 0 || enviandoVenta || cargandoA04 }, "F9 Guardar")
     )
   ),
-  panelesOperativosTpv.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-keybar" }, panelesOperativosTpv.map((panel) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: panel.id, small: true, variant: panelTpvAbierto === panel.id ? "primary" : "ghost", onClick: () => setPanelTpvAbierto(panelTpvAbierto === panel.id ? null : panel.id) }, panel.etiqueta))) : null,
+  panelesOperativosTpv.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-keybar" }, panelesOperativosTpv.map((panel) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: panel.id, small: true, variant: panelTpvAbierto === panel.id ? "primary" : "ghost", onClick: () => setPanelTpvAbierto(panelTpvAbierto === panel.id ? null : panel.id) }, panel.tecla ? panel.etiqueta + " · " + panel.tecla : panel.etiqueta))) : null,
   /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-tira tpv-tira-aviso" }, "Ticket pendiente de confirmación: el total definitivo lo confirma el servidor al guardar."),
   estadoBorradorA06?.estado === "ACTIVO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-tira" }, "Borrador local activo · ", carrito.length, " línea(s) · se conserva 24 h desde la última modificación · caduca ", estadoBorradorA06.expiresAtMs ? new Date(estadoBorradorA06.expiresAtMs).toLocaleString("es-ES") : "") : estadoBorradorA06?.estado === "CADUCADO" ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-tira tpv-tira-aviso" }, "Borrador local caducado: se descartó porque superó la política de 24 h.") : estadoBorradorA06?.estado === "INVALIDO" || estadoBorradorA06?.estado === "NO_DISPONIBLE" ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "tpv-tira tpv-tira-error" }, estadoBorradorA06.error || "No se puede usar el borrador local.") : null,
   conflictoA06 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "tpv-tira tpv-tira-error" },
@@ -24218,7 +24243,17 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "absolute right-3 top-1/2 -translate-y-1/2"
     },
     /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft })
-  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-catalogo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-categorias" }, categorias.map((c22) => /* @__PURE__ */ import_react4.default.createElement(
+  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-multiplicador" },
+    /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-multiplicador-rotulo" }, "Cantidad"),
+    [1, 2, 3, 5].map((cantidad) => /* @__PURE__ */ import_react4.default.createElement("button", {
+      key: "multiplicador-" + cantidad,
+      type: "button",
+      className: multiplicadorTpv === cantidad ? "tpv-quick-quantity tpv-multiplicador-activo" : "tpv-quick-quantity",
+      "aria-pressed": multiplicadorTpv === cantidad,
+      onClick: () => setMultiplicadorTpv(cantidad)
+    }, "×" + cantidad)),
+    multiplicadorTpv > 1 ? /* @__PURE__ */ import_react4.default.createElement("span", { className: "tpv-multiplicador-aviso" }, "El siguiente producto se añade ×", multiplicadorTpv) : null
+  ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-catalogo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-categorias" }, categorias.map((c22) => /* @__PURE__ */ import_react4.default.createElement(
     "button",
     {
       key: c22,
@@ -24243,16 +24278,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         key: p22.id,
         role: "button",
         tabIndex: 0,
-        onClick: () => { if (!bloqueado) agregar(p22); },
-        onKeyDown: (e2) => { if ((e2.key === "Enter" || e2.key === " ") && !bloqueado) { e2.preventDefault(); agregar(p22); } },
+        onClick: () => { if (!bloqueado) agregarConMultiplicadorTpv(p22); },
+        onKeyDown: (e2) => { if ((e2.key === "Enter" || e2.key === " ") && !bloqueado) { e2.preventDefault(); agregarConMultiplicadorTpv(p22); } },
         "aria-disabled": bloqueado ? "true" : void 0,
         className: cantidadEnCarrito > 0 ? "tpv-producto tpv-producto-elegido" : "tpv-producto",
         style: { "--tpv-cat": colorCategoriaTpv(p22.categoria), opacity: bloqueado ? 0.55 : 1 }
       },
       fotoProducto ? /* @__PURE__ */ import_react4.default.createElement("img", { src: fotoProducto, alt: "", className: "tpv-product-photo" }) : null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-producto-nombre text-[14px] font-medium leading-tight mb-1" }, p22.nombre), masVendido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold mb-1", style: { color: C2.amber } }, "Más vendido") : null, alergenosProducto.length ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-1", "aria-label": "Alérgenos del producto", style: { color: C2.inkSoft } }, "Alérgenos: ", alergenosProducto.join(" · ")) : null,
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-producto-pie" },
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva)),
-        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1" }, [2, 3].map((cantidad) => /* @__PURE__ */ import_react4.default.createElement("button", { key: "quick-" + p22.id + "-" + cantidad, type: "button", className: "tpv-quick-quantity", onClick: (e2) => { e2.stopPropagation(); if (!bloqueado) agregarCantidadRapidaA04(p22, cantidad); }, disabled: bloqueado }, "+" + cantidad)))
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva))
       ),
       sinStock && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: C2.red } }, "sin stock"),
       cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(

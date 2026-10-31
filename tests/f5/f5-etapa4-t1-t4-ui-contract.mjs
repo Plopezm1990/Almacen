@@ -26,7 +26,7 @@ for (const [nombre, source] of fuentes) {
   assert.match(source, /Más vendido/);
   assert.match(source, /sin stock/);
   assert.match(source, /agregarCantidadRapidaA04/);
-  assert.match(source, /"\+" \+ cantidad/);
+  assert.match(source, /"×" \+ cantidad/);
 
   // T3/T4: la base existente de opciones y cocina sigue cableada.
   assert.match(source, /function confirmarConfiguracionA04\(\)/);
