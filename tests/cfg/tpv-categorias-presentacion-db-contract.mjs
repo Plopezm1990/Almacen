@@ -83,6 +83,7 @@ try {
     create function private.abc_resolver_operating_day_contexto(p_empresa_id text, p_local_id text, p_occurred_at timestamptz)
     returns jsonb language plpgsql stable security definer set search_path='' as $fn$
     begin
+      if p_local_id = 'SINREGLA' then raise exception 'operating_day_configuracion_ausente'; end if;
       if p_local_id <> 'L' then raise exception 'operating_day_local_no_disponible'; end if;
       return jsonb_build_object('operating_day', (p_occurred_at at time zone 'Europe/Madrid' - interval '4 hours')::date);
     end $fn$;
@@ -160,15 +161,27 @@ try {
   assert.ok(diaEvento, 'el evento queda con día operativo');
   console.log('DIA_OPERATIVO_DEL_SERVIDOR=PASS');
 
-  // 11. Queda rastro de quién lo cambió.
-  const ev = await admin.query("select event_type, aggregate_type, actor_user_id, payload from public.abc_eventos order by id");
+  // 11. Local sin regla de corte: no bloquea, pero el día queda marcado como
+  // estimado para que nadie lo confunda con un día operativo autoritativo.
+  const sinRegla = await actor('Propietario', '11111111-1111-1111-1111-111111111111', 'L,SINREGLA');
+  r = await guardar(sinRegla, [{ categoria: 'Bebidas', color: 'AZUL' }], 0, 'op-sin-regla', 'E', 'SINREGLA', null);
+  assert.equal(Number(r.version), 1);
+  assert.equal(r.operating_day_estimado, true, 'debe avisar de que el día es estimado');
+  const evSinRegla = (await admin.query("select payload from public.abc_eventos where local_id='SINREGLA'")).rows[0];
+  assert.equal(evSinRegla.payload.operating_day_estimado, true, 'el evento guarda que el día fue estimado');
+  // Con regla, el día no es estimado.
+  assert.equal((await listar(prop)).ok, true);
+  console.log('LOCAL_SIN_REGLA_NO_BLOQUEA=PASS');
+
+  // 12. Queda rastro de quién lo cambió.
+  const ev = await admin.query("select event_type, aggregate_type, actor_user_id, payload from public.abc_eventos where local_id='L' order by id");
   assert.equal(ev.rows.length, 4, 'un evento por cambio aplicado, ninguno por los rechazados');
   assert.equal(ev.rows[0].event_type, 'TPV_CATEGORIAS_PRESENTACION_CONFIGURADA');
   assert.equal(ev.rows[0].aggregate_type, 'TPV_CATEGORIAS_PRESENTACION');
   assert.equal(ev.rows[0].actor_user_id, '11111111-1111-1111-1111-111111111111');
   console.log('AUDITORIA=PASS');
 
-  // 12. La tabla no se toca directamente desde la sesión del usuario.
+  // 13. La tabla no se toca directamente desde la sesión del usuario.
   await fallo(() => prop.query('select * from public.tpv_categorias_presentacion'), 'permission denied');
   console.log('TABLA_SOLO_POR_FUNCION=PASS');
 

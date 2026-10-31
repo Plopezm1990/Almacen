@@ -53,6 +53,7 @@ create or replace function private.abc_tpv_categorias_normalizar(p_categorias js
 returns jsonb
 language plpgsql
 immutable
+set search_path=''
 as $$
 declare
   v_colores constant text[] := array['AZUL','NARANJA','VERDE','GRANATE','MORADO','MARRON','ROJO','TEAL','AMBAR'];
@@ -154,6 +155,7 @@ as $$
 declare
   v_fila public.tpv_categorias_presentacion%rowtype;
   v_operating_day date;
+  v_dia_estimado boolean := false;
   v_normalizadas jsonb;
   v_request jsonb;
   v_cmd jsonb;
@@ -170,9 +172,23 @@ begin
     raise exception 'tpv_categorias_parametros_requeridos';
   end if;
 
+  -- Día operativo: el del local si lo tiene configurado. Muchos locales aún no
+  -- tienen regla de corte, y un cambio de presentación no puede quedar
+  -- bloqueado por eso: se cae a la fecha del servidor y se marca como estimado,
+  -- para que nadie lo confunda después con un día operativo autoritativo.
+  -- Cualquier otro fallo del resolutor (local inactivo, regla ambigua) sí corta.
   v_operating_day := p_operating_day;
   if v_operating_day is null then
-    v_operating_day := (private.abc_resolver_operating_day_contexto(p_empresa_id, p_local_id, now())->>'operating_day')::date;
+    begin
+      v_operating_day := (private.abc_resolver_operating_day_contexto(p_empresa_id, p_local_id, now())->>'operating_day')::date;
+    exception when sqlstate 'P0001' then
+      if sqlerrm like '%operating_day_configuracion_ausente%' then
+        v_operating_day := current_date;
+        v_dia_estimado := true;
+      else
+        raise;
+      end if;
+    end;
   end if;
 
   v_normalizadas := private.abc_tpv_categorias_normalizar(p_categorias);
@@ -225,11 +241,11 @@ begin
   ) values (
     p_empresa_id, p_local_id, p_operation_id, 'TPV_CATEGORIAS_PRESENTACION', p_empresa_id || ':' || p_local_id,
     'TPV_CATEGORIAS_PRESENTACION_CONFIGURADA',
-    jsonb_build_object('categorias', v_normalizadas, 'version', v_version, 'session_id', p_session_id),
+    jsonb_build_object('categorias', v_normalizadas, 'version', v_version, 'session_id', p_session_id, 'operating_day_estimado', v_dia_estimado),
     auth.uid(), p_terminal_id, now(), v_operating_day
   );
 
-  v_result := jsonb_build_object('ok', true, 'version', v_version, 'categorias', v_normalizadas, 'operating_day', v_operating_day);
+  v_result := jsonb_build_object('ok', true, 'version', v_version, 'categorias', v_normalizadas, 'operating_day', v_operating_day, 'operating_day_estimado', v_dia_estimado);
   perform private.abc_operacion_completar(p_operation_id, v_result);
   return v_result;
 end $$;

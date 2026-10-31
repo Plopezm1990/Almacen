@@ -1,8 +1,9 @@
 # TPV — orden y color de categorías por local
 
 Fecha: 2026-10-31
-Alcance: carril de categorías del TPV. **Nada aplicado en QA ni en producción.**
-Estado: `IMPLEMENTADO_EN_RAMA_Y_PROBADO_EN_POSTGRES_LOCAL_PENDIENTE_DE_AUTORIZACION_PARA_QA`
+Alcance: carril de categorías del TPV. **Aplicado en QA (`qjqorixtkilwsndqayyx`) el 31/10/2026. Producción no tocada.**
+Estado: `APLICADO_Y_VERIFICADO_EN_QA_PENDIENTE_DE_PRUEBA_EN_PANTALLA`
+Autorización: «aplica la migración en QA» (Pedro, 31/10/2026).
 
 ## Qué se pidió
 
@@ -91,14 +92,49 @@ se ve en QA.
 Los 173 contratos que leen `fuente.js` y la fuente recuperada siguen en
 **158 PASS / 15 FAIL**, los mismos que antes de este trabajo.
 
-## Lo que hace falta antes de aplicar
+## Aplicación en QA (31/10/2026)
 
-1. **Autorización explícita** para aplicar la migración en QA.
-2. Comprobar en QA que los dos locales tienen regla de día operativo vigente: si
-   no la tienen, la escritura falla con `operating_day_configuracion_ausente`.
-3. Repasar en pantalla con dos terminales a la vez que el conflicto de versión se
-   explica bien y que el carril se recarga.
-4. Decidir si `ABC_SALA_CONFIGURAR` es el permiso definitivo o si la presentación
+El preflight de solo lectura encontró **un fallo de diseño antes de aplicar**: de
+los 14 locales de QA, **solo QA-A1 y QA-A2 tienen regla de día operativo
+vigente**. Los otros 12, incluidos los de aspecto real, tienen cero. Con la
+versión original la pantalla de ajustes habría fallado en 12 de 14 locales con
+`operating_day_configuracion_ausente`.
+
+Corregido antes de aplicar: si el local no tiene regla, el día operativo cae a la
+fecha del servidor y **se marca como estimado** (`operating_day_estimado`) en el
+evento y en la respuesta, para que nadie lo confunda después con un día operativo
+autoritativo. Cualquier otro fallo del resolutor (local inactivo, regla ambigua)
+sigue cortando. Se añadió la comprobación `LOCAL_SIN_REGLA_NO_BLOQUEA` al
+contrato: 13 comprobaciones en verde.
+
+Verificado ya aplicado en QA:
+
+| Comprobación | Resultado |
+|---|---|
+| Tabla creada, RLS activa, 0 políticas | Sí, como se diseñó |
+| Las tres funciones existen | Sí |
+| `authenticated` **no** puede leer la tabla | Correcto |
+| `authenticated` puede ejecutar las dos funciones | Correcto |
+| `anon` **no** puede configurar | Correcto |
+| Llamada sin sesión a leer y a escribir | Cortan con `abc_tpv_categorias_no_autorizada` |
+| Filas, eventos y operaciones creados por las pruebas | 0: QA queda limpio |
+
+Del linter de Supabase, dos avisos sobre estos objetos son los mismos que ya
+tienen el resto de tablas y funciones del proyecto (`rls_enabled_no_policy`, 61
+tablas; `authenticated_security_definer_function_executable`, 230 funciones).
+El tercero sí era propio: `private.abc_tpv_categorias_normalizar` era **la única
+función del proyecto** con `search_path` mutable. Corregido en la migración y en
+QA; las tres funciones quedan con `search_path=""`.
+
+## Lo que queda
+
+1. Probar en pantalla, con dos terminales a la vez, que el conflicto de versión
+   se explica bien y que el carril se recarga.
+2. Decidir si `ABC_SALA_CONFIGURAR` es el permiso definitivo o si la presentación
    del TPV merece el suyo propio cuando se aborde la tabla de capacidades por
    empresa y local (hueco «Permisos por rol», marcado como **Grande** en el
    inventario de la capa de configuración).
+3. **Producción sigue sin tocar.** Promocionarla requiere su propia autorización.
+4. Los 12 locales sin regla de día operativo son un hueco anterior a este
+   trabajo (D06 del inventario). Esta funcionalidad ya no se bloquea por ello,
+   pero el hueco sigue ahí.
