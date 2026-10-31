@@ -5,9 +5,11 @@ Rama: `ccr-e0f72ee0-mfjorr`. **Solo QA.** Producción no se toca.
 
 ## Antes de pegarle nada a Cowork
 
-1. **Hace falta un preview.** Esta rama todavía no tiene PR, así que no hay
-   dirección `deploy-preview-NNN--`. Abre el PR, espera a que Netlify publique el
-   preview y sustituye `NNN` en el guion por su número.
+1. **Preview listo:** PR [#205](https://github.com/Plopezm1990/Almacen/pull/205)
+   contra `release`, en borrador. La dirección es
+   `https://deploy-preview-205--chic-entremet-9107cf.netlify.app`.
+   Verificado el 31/10/2026: su `fuente.js` es **idéntico** al de la rama, así que
+   el preview lleva de verdad el rediseño.
 2. **Las dos migraciones ya están aplicadas en QA** (`20261031120000` y
    `20261031150000`). El preview apunta a QA, así que el editor de categorías
    funcionará. No hace falta tocar la base de datos.
@@ -25,7 +27,7 @@ pero el comportamiento es el mismo, que lo anote y siga.
 Eres un agente de pruebas. Vas a probar en el navegador la pantalla de TPV de una aplicación de restaurante, SOLO en el entorno de pruebas (QA). Sigue el guion en orden. Al final cuéntame, paso a paso, qué viste.
 
 REGLAS DE SEGURIDAD (obligatorias)
-- Trabaja SOLO en la dirección de la vista previa del PR NNN, que empieza por «deploy-preview-NNN--». Si la dirección NO empieza por «deploy-preview-», PARA y dímelo.
+- Trabaja SOLO en la dirección de la vista previa del PR 205: https://deploy-preview-205--chic-entremet-9107cf.netlify.app. Si la dirección NO empieza por «deploy-preview-205--», PARA y dímelo: cualquier otro preview NO lleva el rediseño.
 - Usa mi sesión ya iniciada (usuario de QA, Propietario, local QA-A1). No cierres sesión ni cambies de local salvo donde el guion lo pida.
 - Todo lo que hagas se guarda de verdad en QA. Haz SOLO lo que dice el guion.
 - NO pulses nada que diga «Cerrar caja», «Iniciar cierre» ni «Finalizar cierre». NO uses tarjeta en ningún cobro. No toques empleados, productos ni precios salvo donde se indique.
