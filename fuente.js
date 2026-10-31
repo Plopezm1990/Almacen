@@ -110412,8 +110412,8 @@ function billetesSugeridosCobroF4(importe) {
 var ETIQUETA_ESTADO_MESA_TPV = { LIBRE: "Libre", OCUPADA: "Ocupada", RESERVADA: "Reservada", BLOQUEADA: "Bloqueada", FUERA_SERVICIO: "Fuera de servicio" };
 var CLASE_ESTADO_MESA_TPV = { LIBRE: "libre", OCUPADA: "ocupada", RESERVADA: "reservada", BLOQUEADA: "bloqueada", FUERA_SERVICIO: "bloqueada" };
 var LEYENDA_ESTADOS_MESA_TPV = ["LIBRE", "OCUPADA", "RESERVADA", "BLOQUEADA", "FUERA_SERVICIO"];
-var ETIQUETA_ESTADO_PEDIDO_TPV = { ABIERTO: "Abierta", ENVIADO: "Enviada a cocina", SERVIDO: "Servida", CERRADO: "Cerrada", CANCELADO: "Cancelada" };
-var ETIQUETA_ESTADO_LINEA_TPV = { PENDIENTE: "Pendiente", ENVIADA: "Enviada a cocina", EN_PREPARACION: "En preparación", PREPARADA: "Lista para servir", SERVIDA: "Servida", CANCELADA: "Cancelada" };
+var ETIQUETA_ESTADO_PEDIDO_TPV = { BORRADOR: "Sin enviar", ABIERTO: "Abierta", ENVIADO: "Enviada a cocina", EN_PREPARACION: "En preparación", PARCIALMENTE_PREPARADO: "Preparada en parte", PREPARADO: "Lista para servir", SERVIDO: "Servida", CERRADO: "Cerrada", CANCELADO: "Cancelada" };
+var ETIQUETA_ESTADO_LINEA_TPV = { BORRADOR: "Sin enviar", PENDIENTE: "Pendiente", CONFIRMADA: "Confirmada", ENVIADA: "Enviada a cocina", EN_PREPARACION: "En preparación", PREPARADA: "Lista para servir", SERVIDA: "Servida", CANCELADA: "Cancelada" };
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
   function productoEsDelLocalActivoVenta(prod) {
     if (!prod) return false;
@@ -124931,7 +124931,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
   function renderCobroF4() {
     if (!pedidoOperativoA05?.cuentaId) return null;
-    const pedidoListo = ["ENVIADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
+    const pedidoListo = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
     const estado = estadoCobroF4;
     const tieneCheckout = Array.isArray(estado?.checkouts) && estado.checkouts.length>0;
     const totalPedido = (pedidoOperativoA05.lineas || []).reduce((acc, linea) => acc + (Number(linea.total) || 0), 0);
@@ -125593,7 +125593,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   })))), ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-ticket-zone" }, (pedidoOperativoA05?.lineas || []).length > 0 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
-      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Ya enviado a cocina"),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO"].includes(String(pedidoOperativoA05?.pedidoEstado || "")) ? "Ya enviado a cocina" : "En la comanda · sin enviar"),
       /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setPanelTpvAbierto("comanda") }, "Ver comanda")
     ),
     (pedidoOperativoA05.lineas || []).map((linea) => /* @__PURE__ */ import_react4.default.createElement("div", { key: "tpv-enviada-" + linea.lineaId, className: "flex items-center justify-between gap-2 text-[12.5px] py-0.5" },
