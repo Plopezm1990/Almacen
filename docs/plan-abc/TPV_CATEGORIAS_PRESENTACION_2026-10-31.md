@@ -134,7 +134,55 @@ QA; las tres funciones quedan con `search_path=""`.
    del TPV merece el suyo propio cuando se aborde la tabla de capacidades por
    empresa y local (hueco «Permisos por rol», marcado como **Grande** en el
    inventario de la capa de configuración).
-3. **Producción sigue sin tocar.** Promocionarla requiere su propia autorización.
+3. **Producción sigue sin tocar**, por decisión del 31/10/2026 (ver abajo).
 4. Los 12 locales sin regla de día operativo son un hueco anterior a este
    trabajo (D06 del inventario). Esta funcionalidad ya no se bloquea por ello,
    pero el hueco sigue ahí.
+
+
+## Producción: decisión del 31/10/2026
+
+Se planteó aplicarla también en producción (`flqercbgpgmmfaakrwkc`). Preflight de
+**solo lectura** sobre producción, sin escribir nada:
+
+- Las seis dependencias existen y la tabla no: la migración aplicaría limpia.
+- Es un sistema vivo: 3 empresas, 3 locales, 8 cuentas, 8 pedidos y 114 eventos,
+  el último del 30/10/2026.
+- **1 de los 3 locales** tiene regla de día operativo vigente. En los otros dos
+  entraría el camino del día estimado, que es justo el que nadie ha visto nunca
+  en pantalla.
+
+**Decisión: esperar.** El motivo de peso no es el riesgo técnico (la migración es
+aditiva: tabla y funciones nuevas, no toca nada existente), sino que **no aporta
+nada todavía**: el código de la aplicación que llama a estas funciones vive solo
+en la rama `ccr-e0f72ee0-mfjorr`, sin desplegar. Aplicarla hoy dejaría esquema
+sin nadie que lo use, y sin que la funcionalidad se haya ejecutado jamás en un
+navegador. Se aplicará junto con el despliegue del frontend, después de probarla
+en la pantalla de QA.
+
+Comprobado tras la decisión: en producción la tabla y las dos funciones **siguen
+sin existir** y los eventos siguen en 114. No se escribió nada.
+
+## Cómo probarlo en la pantalla de QA
+
+1. Entra en el TPV de QA con un usuario **Propietario** o **Encargado** del local
+   **QA-A1** o **QA-A2** (son los dos que tienen regla de día operativo; en los
+   demás se guardará igual, pero el día saldrá marcado como estimado).
+2. En la barra de botones del TPV, pulsa **«Categorías»**.
+3. Cambia el orden con las flechas ▲▼ y elige otro color en alguna categoría.
+   Pulsa **«Guardar para todo el local»**.
+4. **Qué tiene que pasar:** la ventana se cierra y el carril de la izquierda pasa
+   a mostrar ese orden y esos colores, y la franja de color de cada tarjeta de
+   producto cambia a juego.
+5. **Prueba del conflicto (la importante):** abre el TPV en dos terminales o dos
+   navegadores con el mismo local. En los dos, abre «Categorías». Guarda en el
+   primero. Después guarda en el segundo sin recargar. El segundo debe avisar de
+   que *«otra persona cambió las categorías mientras editabas»* y recargar la
+   lista, **sin pisar** lo que guardó el primero.
+6. **Prueba del permiso:** con un usuario **Camarero/a**, el botón «Categorías»
+   aparece, pero al guardar el servidor debe responder que su cargo no puede
+   cambiarlas. Conviene decidir si ese botón debería ocultarse directamente para
+   quien no tiene el permiso.
+
+Si algo de esto no se comporta así, es cosa del código de pantalla, no del
+servidor: el servidor ya está verificado en QA.
