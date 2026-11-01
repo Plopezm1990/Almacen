@@ -108363,17 +108363,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         if (pagosError) throw pagosError;
         pagos = pagosData || [];
       }
-      const pagoIds = pagos.map((x3) => x3.id);
-      let intentos = [];
-      if (pagoIds.length) {
-        const { data: intentosData, error: intentosError } = await supabase
-          .from("pago_intentos")
-          .select("id,pago_id,estado,provider_code,provider_reference,requested_amount,authorized_amount,captured_amount,settled_amount,authorization_status,capture_status,settlement_status,started_at,resolved_at")
-          .eq("empresa_id", empresaId).eq("local_id", localActivoId)
-          .in("pago_id", pagoIds).order("started_at", { ascending: false });
-      if (intentosError) throw intentosError;
-        intentos = intentosData || [];
-      }
+      // pago_intentos no es legible directamente por authenticated en QA/PROD.
+      // El detalle B05 es la única superficie autorizada para exponer intentos;
+      // consultar la tabla aquí convertía un estado válido en un error 42501.
+      let intentos = Array.isArray(detalleB05?.intentos) ? detalleB05.intentos : [];
       let incidencias = [];
       const { data: incidenciasData } = await supabase.rpc("abc_listar_incidencias_cobro", {
         p_empresa_id: empresaId,
@@ -120583,20 +120576,29 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return true;
   }
 
-
+  function sincronizarImporteCobroF4(resultado) {
+    const saldo = Number(resultado?.saldo);
+    setImporteCobroF4(Number.isFinite(saldo) && saldo > 0 ? saldo.toFixed(2) : "");
+    if (!Number.isFinite(saldo) || saldo <= 0) setEfectivoRecibidoCobroF4("");
+  }
   async function refrescarCobroF4() {
     if (typeof leerEstadoCobroF4 !== "function" || !pedidoOperativoA05?.cuentaId) {
       setEstadoCobroF4(null);
+      setImporteCobroF4("");
+      setEfectivoRecibidoCobroF4("");
       return;
     }
     setCargandoCobroF4(true);
     const resultado = await leerEstadoCobroF4();
     setCargandoCobroF4(false);
     if (!resultado?.ok) {
+      setImporteCobroF4("");
+      setEfectivoRecibidoCobroF4("");
       setErrorCobroF4(resultado?.error || "No se pudo consultar el estado del cobro.");
       return;
     }
     setEstadoCobroF4(resultado);
+    sincronizarImporteCobroF4(resultado);
     setErrorCobroF4("");
   }
   async function ejecutarCobroF4(medio, opciones = {}) {
@@ -120612,6 +120614,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return;
     }
     setEstadoCobroF4(resultado);
+    sincronizarImporteCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
   }
   async function recuperarCobroF4UI() {
@@ -120626,6 +120629,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return;
     }
     setEstadoCobroF4(resultado);
+    sincronizarImporteCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || "Estado de cobro recuperado sin crear otro intento.");
   }
   function cambiarFormularioIncidenciaB04(campo, valor) {
@@ -120772,7 +120776,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       mensajeCobroF4 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.accentSoft, color: C2.ink } }, mensajeCobroF4) : null,
       pedidoListo && saldoVisible > 0 && !bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
-          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe de este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Exacto para este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
         ),
         cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, cambioVisible < 0 ? `Faltan €${fmt(Math.abs(cambioVisible))}` : `Cambio a devolver: €${fmt(cambioVisible)}`) : null,
@@ -120793,6 +120797,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     let activo = true;
     if (!pedidoOperativoA05?.cuentaId || typeof leerEstadoCobroF4 !== "function") {
       setEstadoCobroF4(null);
+      setImporteCobroF4("");
+      setEfectivoRecibidoCobroF4("");
       setErrorCobroF4("");
       return () => { activo = false; };
     }
@@ -120801,10 +120807,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (!activo) return;
       setCargandoCobroF4(false);
       if (!resultado?.ok) {
+        setImporteCobroF4("");
+        setEfectivoRecibidoCobroF4("");
         setErrorCobroF4(resultado?.error || "No se pudo consultar el cobro.");
         return;
       }
       setEstadoCobroF4(resultado);
+      sincronizarImporteCobroF4(resultado);
       setErrorCobroF4("");
     }).catch(() => {
       if (!activo) return;
@@ -121483,7 +121492,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       setError(resultado?.error || "No se pudo asignar la ruta.");
       return;
     }
-    setMensaje("Ruta de producto actualizada por el contrato A10.");
+    setMensaje("Ruta de producto actualizada. Se aplicará a nuevas comandas; las comandas bloqueadas existentes no se reenvían automáticamente.");
     await refrescarEstaciones();
   }
 
@@ -121504,11 +121513,13 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
 
   function renderComanda(comanda) {
     const lineas = Array.isArray(comanda?.lineas) ? comanda.lineas : [];
+    const bloqueadaSinRuta = String(comanda?.estado || "") === "BLOQUEADA" && !comanda?.estacion_id;
     return h3(Card, { key: comanda.id, className: "mb-2" },
       h3("div", { className: "flex items-center justify-between gap-2 mb-2" },
         h3("div", { className: "text-[12.5px] font-semibold" }, String(comanda.tipo || "COMANDA"), " · ", nombreEstacion(comanda.estacion_id)),
         h3("span", { className: "text-[10.5px] font-semibold", style: { color: comanda.estado === "BLOQUEADA" ? C2.red : C2.accent } }, String(comanda.estado || "PENDIENTE"))
       ),
+      bloqueadaSinRuta ? h3("div", { role: "alert", className: "mb-2 p-2 rounded-lg text-[11.5px]", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } }, "Sin ruta de preparación: esta comanda está bloqueada y no se imprimirá. Asigna cada producto a una estación activa en «Estaciones y rutas». Esta asignación no reenvía automáticamente la comanda existente.") : null,
       h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Pedido ", String(comanda.pedido_id || "").slice(-12), " · ", comanda.created_at || "sin fecha"),
       lineas.map((linea) => {
         const nota = notas[linea.id] || "";
@@ -121527,8 +121538,8 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
             )
           ) : null,
           h3("div", { className: "flex gap-1.5 flex-wrap mt-2" },
-            h3(Btn, { small: true, onClick: () => ejecutarA10("reprint:" + comanda.id, () => reimprimirComandaA10(comanda.id)) }, "Reimprimir"),
-            version > 0 ? h3(Btn, { small: true, variant: "ghost", onClick: () => ejecutarA10("change:" + linea.id, () => enviarCambioComandaA10({ lineaId: linea.linea_id, nota, lineaVersion: version })), disabled: !nota.trim() }, "Enviar cambio") : null
+            bloqueadaSinRuta ? h3("span", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "No imprimible hasta asignar una ruta") : h3(Btn, { small: true, onClick: () => ejecutarA10("reprint:" + comanda.id, () => reimprimirComandaA10(comanda.id)) }, "Reimprimir"),
+            version > 0 && !bloqueadaSinRuta ? h3(Btn, { small: true, variant: "ghost", onClick: () => ejecutarA10("change:" + linea.id, () => enviarCambioComandaA10({ lineaId: linea.linea_id, nota, lineaVersion: version })), disabled: !nota.trim() }, "Enviar cambio") : null
           ),
           version > 0 ? h3(Input, { value: nota, onChange: (e2) => setNotas((prev) => ({ ...prev, [linea.id]: e2.target.value })), placeholder: "Nota operativa para cocina…", maxLength: 500 }) : null
         );
@@ -121577,7 +121588,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       ),
       h3(Btn, { small: true, onClick: guardarRuta, disabled: !!procesando || !productoId || !estacionId }, procesando === "ruta" ? "Guardando…" : "Guardar ruta")
     ),
-    h3(Card, { className: "mb-3" }, h3("div", { className: "flex items-center justify-between gap-2 mb-2" }, h3("div", { className: "text-[12.5px] font-semibold" }, "Comandas"), h3("select", { value: estacionId, onChange: (e2) => setEstacionId(e2.target.value), className: "rounded-lg px-2 py-1 text-[11px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Todas las estaciones"), estaciones.map((estacion) => h3("option", { key: estacion.id, value: estacion.id }, estacion.codigo)))), h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "La lista procede de abc_listar_comandas_estacion y respeta el local activo."), comandas.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay comandas para este filtro.") : comandas.map(renderComanda))
+    h3(Card, { className: "mb-3" }, h3("div", { className: "flex items-center justify-between gap-2 mb-2" }, h3("div", { className: "text-[12.5px] font-semibold" }, "Comandas"), h3("select", { value: estacionId, onChange: (e2) => setEstacionId(e2.target.value), className: "rounded-lg px-2 py-1 text-[11px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Todas las estaciones"), estaciones.map((estacion) => h3("option", { key: estacion.id, value: estacion.id }, estacion.codigo)))), h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "La lista procede de abc_listar_comandas_estacion y respeta el local activo."), comandas.some((comanda) => String(comanda?.estado || "") === "BLOQUEADA" && !comanda?.estacion_id) ? h3("div", { role: "status", className: "mb-2 p-2 rounded-lg text-[11.5px]", style: { background: C2.amberSoft, color: C2.ink } }, "Hay comandas sin ruta de preparación. Configura el producto y la estación activa arriba; no se imprimirán ni se reenviarán automáticamente hasta resolver el flujo operativo.") : null, comandas.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay comandas para este filtro.") : comandas.map(renderComanda))
   );
 }
 function Traspasos({ productos, productosEmpresa = [], locales = [], localActivoId, traspasos, traspasarStock, traspasarEntreLocales, pisoVentaBajo, fichasCosto = [] }) {
