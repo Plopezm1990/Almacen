@@ -106663,11 +106663,21 @@ function GestionAlmacen() {
         [data-tpv-caja="1"] main { padding: 12px !important; max-height: 100vh !important; }
         /* Barra inferior del comandero. Solo en movil: a partir de 1024px el
            ticket ya esta a la vista en la columna derecha y una barra fija ahi
-           solo taparia producto. Pegada al borde inferior de <main>, que es el
-           elemento con scroll, asi que queda por encima de su contenido y por
-           debajo de la navegacion inferior de la aplicacion. */
+           solo taparia producto. */
         .tpv-dock { position: sticky; bottom: 0; z-index: 5; }
         @media (min-width: 1024px) { .tpv-dock { display: none !important; } }
+        /* El <main> de la aplicacion lleva max-height:900px en linea, y un movil
+           mide menos que eso: en un telefono de 844px de alto, el borde inferior
+           de <main> cae 56px POR DEBAJO de la pantalla. Cualquier cosa pegada a
+           ese borde --como esta barra-- queda fuera de la vista para siempre, y
+           ademas los ultimos 56px de cualquier pantalla quedan siempre ocultos.
+           Aqui se limita <main> a lo que de verdad mide la ventana, y solo
+           mientras el TPV esta montado y solo por debajo de 1024px, para no
+           cambiarle el alto a las demas pantallas. Si el navegador no entiende
+           min() o dvh, la regla se descarta entera y queda el 900px de siempre. */
+        @media (max-width: 1023px) {
+          [data-tpv-activo="1"] main { max-height: min(900px, 100dvh) !important; }
+        }
       `), /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(BarraSuperiorMovil, { temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 }), /* @__PURE__ */ import_react4.default.createElement(
     SidebarGrupos,
     {
@@ -124698,6 +124708,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     // Salir del TPV con el modo puesto dejaria la aplicacion sin menu.
     return () => raiz.removeAttribute("data-tpv-caja");
   }, [modoCajaTpv]);
+  // Marca que el TPV esta en pantalla, para que la regla de arriba pueda
+  // limitar el alto de <main> solo aqui. Se quita al desmontar.
+  (0, import_react4.useEffect)(() => {
+    if (typeof document === "undefined") return;
+    const raiz = document.documentElement;
+    raiz.setAttribute("data-tpv-activo", "1");
+    return () => raiz.removeAttribute("data-tpv-activo");
+  }, []);
 
   const [pagoRapida, setPagoRapida] = (0, import_react4.useState)("EFECTIVO");
   const [efectivoRecibidoRapida, setEfectivoRecibidoRapida] = (0, import_react4.useState)("");
