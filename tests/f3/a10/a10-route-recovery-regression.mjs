@@ -19,9 +19,19 @@ test('A10 local canonical migrations no reencolan comandas históricas por trigg
   const migrations = await readLocalMigrations();
   const combined = migrations.map(({ source }) => source).join('\n');
 
-  assert.doesNotMatch(combined, /abc_a10_reencolar_bloqueadas_route/);
-  assert.doesNotMatch(combined, /abc_a10_reencolar_bloqueadas_por_producto/);
+  assert.doesNotMatch(combined, /create\s+(?:or\s+replace\s+)?function\s+private\.abc_a10_reencolar_bloqueadas_route/i);
+  assert.doesNotMatch(combined, /create\s+(?:or\s+replace\s+)?function\s+private\.abc_a10_reencolar_bloqueadas_por_producto/i);
+  assert.doesNotMatch(combined, /create\s+trigger\s+a10_requeue_blocked_routes/i);
   assert.doesNotMatch(combined, /min\(\s*private\.abc_a10_estacion_producto/);
+});
+
+test('A10 incluye la reparación idempotente del trigger heredado de QA', async () => {
+  const migrations = await readLocalMigrations();
+  const repair = migrations.find(({ name }) => name.includes('a10_disable_auto_route_requeue'));
+  assert.ok(repair, 'falta la migración correctiva del trigger remoto de QA');
+  assert.match(repair.source, /drop\s+trigger\s+if\s+exists\s+a10_requeue_blocked_routes/i);
+  assert.match(repair.source, /drop\s+function\s+if\s+exists\s+private\.abc_a10_reencolar_bloqueadas_route\(\)/i);
+  assert.match(repair.source, /drop\s+function\s+if\s+exists\s+private\.abc_a10_reencolar_bloqueadas_por_producto\(\s*text\s*,\s*text\s*,\s*text\s*\)/i);
 });
 
 test('A10 local conserva la política de no reenvío automático en las dos fuentes', async () => {

@@ -26,6 +26,7 @@ Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 - Antes de asignar estación, la comanda quedó observada como `BLOQUEADA`, `estacion_id=null`, `route_key=SIN_RUTA`; la UI y los contratos impiden tratarla como imprimible o reenviable automáticamente.
 - La asignación de estación no pudo certificarse en QA por una incidencia del esquema remoto: el trigger `a10_requeue_blocked_routes` invoca `private.abc_a10_reencolar_bloqueadas_por_producto`, cuya definición contiene `min(uuid)`. PostgreSQL devuelve `42883` y revierte la transacción antes de persistir la ruta. Tras el rechazo, la ruta siguió vacía y la comanda siguió `BLOQUEADA/SIN_RUTA`.
 - Esa función/trigger pertenece a migraciones posteriores existentes en QA (`abc_f3_a10_requeue_blocked_routes`) y no está presente en el árbol local revisado. No se corrigió remotamente porque la tarea prohíbe aplicar migraciones y la corrección implicaría decidir si se debe reencolar o no una comanda histórica.
+- Se ha elegido la política recomendada: asignar una ruta no reencola automáticamente comandas históricas. Queda preparada, pero no aplicada, la migración idempotente `20261101093000_abc_f3_a10_disable_auto_route_requeue.sql`, que retira el trigger y sus helpers heredados de QA.
 
 ## Pruebas ejecutadas
 
@@ -46,6 +47,8 @@ Los contratos SQL económicos de cobro, reembolso y concurrencia no se han ejecu
 La fase 1 no debe marcarse como aprobada hasta ejecutar esos contratos en un entorno efímero autorizado y comprobar los criterios VEN-003, VEN-010 y VEN-011 con resultados económicos reales del entorno de pruebas.
 
 Además, queda pendiente separar y resolver la deriva de QA del A10: la corrección de `min(uuid)` debe sustituirse por una selección determinista compatible con UUID (por ejemplo, `order by ... limit 1`) y debe definirse explícitamente si una asignación de ruta reencola comandas históricas. Esa decisión no se debe tomar mediante un trigger automático mientras el criterio de negocio de la fase 1 exige no reenviar silenciosamente una comanda ya bloqueada.
+
+La decisión ya tomada para esta rama es no reencolar automáticamente. Por tanto, el siguiente paso de entorno será aplicar la migración correctiva solo después de una revisión autorizada del esquema QA y repetir la prueba; no se aplicó durante esta tarea.
 
 ## Comprobación de entorno para la certificación
 
