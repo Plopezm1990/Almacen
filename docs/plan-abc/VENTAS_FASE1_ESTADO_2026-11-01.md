@@ -26,7 +26,10 @@ Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 - Antes de asignar estación, la comanda quedó observada como `BLOQUEADA`, `estacion_id=null`, `route_key=SIN_RUTA`; la UI y los contratos impiden tratarla como imprimible o reenviable automáticamente.
 - La asignación de estación no pudo certificarse en QA por una incidencia del esquema remoto: el trigger `a10_requeue_blocked_routes` invoca `private.abc_a10_reencolar_bloqueadas_por_producto`, cuya definición contiene `min(uuid)`. PostgreSQL devuelve `42883` y revierte la transacción antes de persistir la ruta. Tras el rechazo, la ruta siguió vacía y la comanda siguió `BLOQUEADA/SIN_RUTA`.
 - Esa función/trigger pertenece a migraciones posteriores existentes en QA (`abc_f3_a10_requeue_blocked_routes`) y no está presente en el árbol local revisado. No se corrigió remotamente porque la tarea prohíbe aplicar migraciones y la corrección implicaría decidir si se debe reencolar o no una comanda histórica.
-- Se ha elegido la política recomendada: asignar una ruta no reencola automáticamente comandas históricas. Queda preparada, pero no aplicada, la migración idempotente `20261101093000_abc_f3_a10_disable_auto_route_requeue.sql`, que retira el trigger y sus helpers heredados de QA.
+- Se ha elegido la política recomendada: asignar una ruta no reencola automáticamente comandas históricas. Inicialmente quedó preparada, pero no aplicada, la migración idempotente `20261101093000_abc_f3_a10_disable_auto_route_requeue.sql`, que retira el trigger y sus helpers heredados de QA.
+- Tras la autorización expresa, se aplicaron en QA las dos migraciones correctivas: retirada del trigger y sustitución de la RPC `abc_asignar_producto_estacion` por la versión sin reencolado. La verificación remota confirmó `route_trigger_count=0`, `helper_count=0` y que la RPC ya no menciona `abc_a10_reencolar_bloqueadas` ni devuelve `comandas_reencoladas`.
+- La primera prueba posterior a retirar solo el trigger reveló que la RPC heredada aún reencolaba siete comandas. Se restauraron esas siete filas QA a `BLOQUEADA/SIN_RUTA` y sus efectos de outbox se marcaron `ABANDONADO`, conservando las filas y sin tocar ningún pago. El pedido de referencia quedó finalmente en `BLOQUEADA`, sin estación y con `route_key=SIN_RUTA`.
+- La prueba final con `QA-CAT-A1-FLAN` confirmó la política: la RPC respondió solo `ok`, producto y estación; la ruta del producto quedó activa, pero la comanda histórica permaneció `BLOQUEADA`, `estacion_id=null`, `route_key=SIN_RUTA` y sin cambio funcional de estado.
 
 ## Pruebas ejecutadas
 
@@ -46,7 +49,7 @@ Los contratos SQL económicos de cobro, reembolso y concurrencia no se han ejecu
 
 La fase 1 no debe marcarse como aprobada hasta ejecutar esos contratos en un entorno efímero autorizado y comprobar los criterios VEN-003, VEN-010 y VEN-011 con resultados económicos reales del entorno de pruebas.
 
-Además, queda pendiente separar y resolver la deriva de QA del A10. La decisión de esta rama es no reencolar automáticamente comandas históricas; por tanto, no se debe sustituir `min(uuid)` para conservar ese trigger. La reparación correcta es retirar el mecanismo automático y, si el negocio necesita recuperar una comanda antigua, diseñar una acción explícita y auditada. La migración correctiva queda preparada, pero solo se aplicará después de una revisión autorizada del esquema QA; no se aplicó durante esta tarea.
+La deriva de QA del A10 queda corregida en el proyecto QA autorizado. La decisión de esta rama es no reencolar automáticamente comandas históricas; por tanto, no se sustituyó `min(uuid)` para conservar ese trigger. La reparación aplicada retira el mecanismo automático y deja cualquier recuperación histórica para una futura acción explícita y auditada.
 
 ## Comprobación de entorno para la certificación
 
