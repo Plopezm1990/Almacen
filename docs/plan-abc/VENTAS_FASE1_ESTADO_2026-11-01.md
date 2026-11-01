@@ -46,9 +46,7 @@ Los contratos SQL económicos de cobro, reembolso y concurrencia no se han ejecu
 
 La fase 1 no debe marcarse como aprobada hasta ejecutar esos contratos en un entorno efímero autorizado y comprobar los criterios VEN-003, VEN-010 y VEN-011 con resultados económicos reales del entorno de pruebas.
 
-Además, queda pendiente separar y resolver la deriva de QA del A10: la corrección de `min(uuid)` debe sustituirse por una selección determinista compatible con UUID (por ejemplo, `order by ... limit 1`) y debe definirse explícitamente si una asignación de ruta reencola comandas históricas. Esa decisión no se debe tomar mediante un trigger automático mientras el criterio de negocio de la fase 1 exige no reenviar silenciosamente una comanda ya bloqueada.
-
-La decisión ya tomada para esta rama es no reencolar automáticamente. Por tanto, el siguiente paso de entorno será aplicar la migración correctiva solo después de una revisión autorizada del esquema QA y repetir la prueba; no se aplicó durante esta tarea.
+Además, queda pendiente separar y resolver la deriva de QA del A10. La decisión de esta rama es no reencolar automáticamente comandas históricas; por tanto, no se debe sustituir `min(uuid)` para conservar ese trigger. La reparación correcta es retirar el mecanismo automático y, si el negocio necesita recuperar una comanda antigua, diseñar una acción explícita y auditada. La migración correctiva queda preparada, pero solo se aplicará después de una revisión autorizada del esquema QA; no se aplicó durante esta tarea.
 
 ## Comprobación de entorno para la certificación
 
