@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 
-const s = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
+const s = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8').replace(/\r\n/g, '\n');
 
 function functionBlock(name) {
   const re = new RegExp(`(?:async\\s+)?function\\s+${name}\\s*\\(`, 'g');

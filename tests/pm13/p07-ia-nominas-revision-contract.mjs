@@ -2,7 +2,7 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
-const source = fs.readFileSync('fuente.js', 'utf8');
+const source = fs.readFileSync('fuente.js', 'utf8').replace(/\r\n/g, '\n');
 const ini = source.indexOf('function crearLogicaNominas({ nominas, setNominas, registrarAuditoria, empleados, localActivoId }) {');
 const fin = source.indexOf('function crearLogicaEntrevistas', ini);
 assert.ok(ini >= 0 && fin > ini, 'motor de nóminas no localizado');

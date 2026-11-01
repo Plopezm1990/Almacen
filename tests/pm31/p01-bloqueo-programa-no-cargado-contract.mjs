@@ -74,12 +74,15 @@ const textoDe = (nodo) => {
 };
 const botonDe = (creados) => creados.find((n) => n.tagName === 'button') || null;
 
+// El bootstrap hace hasta 160 comprobaciones separadas por 25 ms. Dejamos
+// margen al planificador de CI para no convertir un arranque correcto en un
+// falso negativo por temporización.
 const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 
 // ---- 1. El programa no llego a cargarse: no se menciona al servidor. ----
 {
   const { recargas, creados, body } = montar({ defineGetSupabaseClient: false });
-  await esperar(5200);
+  await esperar(6500);
   const texto = textoDe(body);
 
   assert.ok(texto.includes('No se ha podido cargar el programa'),
@@ -106,7 +109,7 @@ const esperar = (ms) => new Promise((r) => setTimeout(r, ms));
 //         siempre, y el boton deja de ser decorativo. ----
 {
   const { recargas, creados, body } = montar({ defineGetSupabaseClient: true });
-  await esperar(5200);
+  await esperar(6500);
   const texto = textoDe(body);
 
   assert.ok(texto.includes('Cliente Supabase no disponible'),
