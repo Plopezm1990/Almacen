@@ -51,13 +51,22 @@ Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 - Contratos SQL B04 y B05, con sus migraciones B02/B03/B04/B05 cargadas en una base PGlite efímera aislada: PASS (`ECONOMIC_PGLITE_BATTERY=PASS`).
 - `tests/f4/b08/b08-ui-contract.mjs` y `tests/f4/b08/b08-refund-adapter-contract.mjs`: PASS.
 - `tests/f4/b09/b09-schema-contract.mjs` y `tests/f4/b09/b09-rpc-contract.mjs`: PASS.
-- `tests/g1/p07-concurrencia-replay-contract.mjs`: PASS como contrato estático; mantiene la marca explícita `G1_P07_GATE_STILL_PENDING=1` porque el gate vivo de 24/24 no se ejecuta desde esta máquina.
+- `tests/g1/p07-concurrencia-replay-contract.mjs`: PASS como contrato estático; la evidencia QA viva existente registra 24/24 PASS y la revalidación adicional de esta tarea confirmó replay exacto y conflicto por payload distinto.
 - `tests/f3/a10/a10-route-recovery-regression.mjs`: PASS.
 - Batería Node completa del workflow G1/P07/P08 (PM08, PM09, P02-P06 y LA-004): PASS, sin fallos.
 - Revalidación viva adicional en Supabase QA, dentro de `BEGIN ... ROLLBACK`: venta sintética `G1-P07-CODEX-VENTA-20261101`, replay exacto con `replayed=true` y payload distinto rechazado con `operation_id_conflict`: PASS.
 - Limpieza independiente posterior en QA: cero filas de la operación sintética en `stock_operaciones` y `movimientos_stock`, stock de `QA-PROD-A-AGUA` conservado en 20 unidades y lock `pg_advisory_xact_lock` presente en `private.pm08_bloquear_operation_id`.
 - Runner oficial PostgreSQL 16 (`tests/ci/preparar_postgres_local.sh`) sobre clúster portátil temporal: `POSTGRES_ACTIVE_TOTAL=10`, `POSTGRES_ACTIVE_PASS=10`, `POSTGRES_ACTIVE_FAIL=0`, `HISTORICAL_EXPECTED_FAIL=1`, `PREPARAR_POSTGRES_LOCAL_OK=1`.
 - Runner oficial PGlite (`tests/ci/ejecutar_pglite_local.sh`): `PGLITE_ACTIVE_TOTAL=1`, `PGLITE_ACTIVE_PASS=1`, `PGLITE_ACTIVE_FAIL=0`, `PGLITE_INFRA_FAIL=0`, `A09_PGLITE_RUNNER=PASS`.
+
+## Smoke visual del preview QA
+
+- La sesión autenticada del usuario QA cargó correctamente el dashboard, el módulo de Caja y el menú de navegación adicional en el preview de Netlify.
+- El acceso a TPV mostró correctamente el bloqueo previsto cuando el contexto era `Todos los locales`.
+- Al seleccionar `Local A1`, necesario para abrir TPV, el preview falló de forma reproducible con la pantalla global `Algo ha fallado` y el registro automático del error. Se hizo una recarga limpia y una única repetición controlada; el fallo volvió a producirse.
+- La consola del navegador identifica la causa: `ReferenceError: iniciarCobroCuentaF4 is not defined`, durante el render de `GestionAlmacen` en `fuente.js:103761`, con propagación desde `index-loader.js`.
+- El símbolo `iniciarCobroCuentaF4` sí existe en el `fuente.js` de esta rama (definición en torno a la línea 108455), pero el análisis de ámbito confirma que está anidado dentro de `crearLogicaVenta` (aprox. líneas 107610–110099), mientras `GestionAlmacen` lo consume fuera de ese ámbito (línea 103761). El artefacto remoto coincide con el archivo local; por tanto, el bloqueo es de código y no de caché, credenciales o conexión QA.
+- No se inició ni confirmó ningún cobro, no se creó otra venta, no se modificó el intento de pago pendiente y no se ejecutó ninguna operación destructiva. La pantalla de Cocina A10 no pudo certificarse visualmente porque el error aparece antes de completar el cambio de contexto del módulo.
 
 ## Pendiente de certificación
 
@@ -66,6 +75,8 @@ Los contratos SQL económicos de cobro y reembolso ya se ejecutaron en PGlite ef
 El documento de evidencia QA de G1.7 ya existente registra el resultado vivo completo de 24/24 PASS, con rollback y limpieza a cero; el contrato estático lo verifica y la revalidación adicional de esta tarea confirma el mismo mecanismo sobre el estado QA actual. El gate vivo P07 queda, por tanto, respaldado como PASS. La batería PostgreSQL 16 completa también ha pasado. El gate G1 global continúa sujeto a su cierre formal conjunto según la política del repositorio, pero ya no existe un bloqueo de infraestructura para la certificación económica de esta fase.
 
 La deriva de QA del A10 queda corregida en el proyecto QA autorizado. La decisión de esta rama es no reencolar automáticamente comandas históricas; por tanto, no se sustituyó `min(uuid)` para conservar ese trigger. La reparación aplicada retira el mecanismo automático y deja cualquier recuperación histórica para una futura acción explícita y auditada.
+
+El cierre visual de la fase 1 no se marca como aprobado: el preview QA tiene un bloqueo de runtime reproducible al seleccionar un local en TPV. La evidencia económica y los contratos automatizados quedan PASS, pero B05/A10 requieren repetir el smoke autenticado después de corregir o republicar el artefacto que expone `GestionAlmacen`.
 
 ## Comprobación de entorno para la certificación
 
