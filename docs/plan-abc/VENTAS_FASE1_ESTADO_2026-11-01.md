@@ -59,6 +59,8 @@ Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 - Runner oficial PostgreSQL 16 (`tests/ci/preparar_postgres_local.sh`) sobre clúster portátil temporal: `POSTGRES_ACTIVE_TOTAL=10`, `POSTGRES_ACTIVE_PASS=10`, `POSTGRES_ACTIVE_FAIL=0`, `HISTORICAL_EXPECTED_FAIL=1`, `PREPARAR_POSTGRES_LOCAL_OK=1`.
 - Runner oficial PGlite (`tests/ci/ejecutar_pglite_local.sh`): `PGLITE_ACTIVE_TOTAL=1`, `PGLITE_ACTIVE_PASS=1`, `PGLITE_ACTIVE_FAIL=0`, `PGLITE_INFRA_FAIL=0`, `A09_PGLITE_RUNNER=PASS`.
 - La ejecución actual de `tests/ci/ejecutar_bateria_no_db.sh` no llegó a ejecutar la batería porque el manifiesto declara 171 entradas pero descubre 173 y omite dos contratos existentes (`a10-route-recovery-regression.mjs` y `b05-phase1-regression.mjs`). Los contratos funcionales afectados se ejecutaron directamente y pasaron; el manifiesto queda como deuda independiente de CI y no se modificó para conservar cambios ajenos.
+- El inventario CI se corrigió en `46fbbe3`: ahora declara y valida 173 entradas, 159 contratos activos y 145 contratos Node. En un worktree limpio, la batería completa ejecutó 145 contratos Node, 5 utilidades y 5 diagnósticos; obtuvo `NODE_ACTIVE_PASS=140`, `NODE_ACTIVE_FAIL=5`, `INFRA_FAIL=0` y `ARBOL_LIMPIO_TRAS_EJECUCION=1`.
+- Los cinco fallos restantes son de áreas ajenas a esta fase y no se han maquillado como PASS: `tests/f3/a08/a08-1-ui-contract.mjs` (etiqueta destino), `tests/pm07/frontend-contract.mjs` (dos submits no async), `tests/pm13/p07-ia-nominas-revision-contract.mjs` (marcador de revisión humana), `tests/pm20/p06-errores-sistema-aislamiento-contract.mjs` (acotación de `registrarErrorSistema`) y `tests/pm31/p01-bloqueo-programa-no-cargado-contract.mjs` (mensaje de programa no cargado).
 
 ## Smoke visual del preview QA
 
