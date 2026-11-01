@@ -94,6 +94,10 @@ const EXCLUIDAS = new Set([
   '20261030130000_abc_p3c_stock_authority.sql',
   // Atajo seguro para cambios automáticos de stock/contexto; misma ventana separada.
   '20261030143000_abc_p3c_stock_only_fast_path.sql',
+  // Apertura del cobro con el pedido en cocina: se valida en QA y se promueve en su
+  // propia ventana, con el contrato tests/f4/b02-b03/cobro-pedido-en-cocina-contract.sql.
+  // No forma parte de la foto F7 histórica del 3/10.
+  '20261031170000_abc_f4_cobro_pedido_en_cocina.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

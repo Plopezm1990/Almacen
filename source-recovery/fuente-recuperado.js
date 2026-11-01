@@ -9823,6 +9823,14 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
 }
 var MODALIDADES_A02 = ["BARRA", "MESA", "TERRAZA", "TAKEAWAY", "OTRO"];
 var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza", TAKEAWAY: "Para llevar", OTRO: "Otro" };
+// Estados de pedido en los que el servidor admite preparar el cobro.
+// Es la misma lista que public.abc_preparar_checkout_cuenta: todos menos
+// BORRADOR, ABIERTO y CANCELADO. Los tres del medio los produce la cocina al
+// avanzar las lineas, asi que dejarlos fuera impedia cobrar una cuenta en
+// cuanto se empezaba a preparar la comanda. Una sola lista, para que la
+// pantalla no vuelva a prometer ni a negar algo distinto de lo que hace el
+// servidor.
+var ESTADOS_PEDIDO_COBRABLE_F4 = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO", "CERRADO"];
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
   function c07dActivoEnEntornoQa() {
     return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
@@ -10869,7 +10877,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       const recuperada = await recuperarCuentaA06();
       if (!recuperada?.ok || !recuperada.cuentaId) throw new Error(recuperada?.error || "cuenta_no_encontrada");
-      if (!["ENVIADO", "SERVIDO"].includes(String(recuperada.pedidoEstado || ""))) throw new Error("pago_pedido_no_listo");
+      if (!ESTADOS_PEDIDO_COBRABLE_F4.includes(String(recuperada.pedidoEstado || ""))) throw new Error("pago_pedido_no_listo");
       if (String(recuperada.currencyCode || "EUR") !== "EUR") throw new Error("conversion_divisa_no_habilitada");
       const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
       if (!hayConexion) return { ok: false, error: "El cobro necesita conexión con el servidor." };
@@ -24751,7 +24759,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   function renderCobroF4() {
     if (modoTPV === "RAPIDA") return renderVentaRapidaStatus();
     if (!pedidoOperativoA05?.cuentaId) return renderCajaTPV();
-    const pedidoListo = ["ENVIADO", "SERVIDO"].includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
+    const pedidoListo = ESTADOS_PEDIDO_COBRABLE_F4.includes(String(pedidoOperativoA05.pedidoEstado || pedidoOperativoA05.estado || ""));
     const estado = estadoCobroF4;
     const tieneCheckout = Array.isArray(estado?.checkouts) && estado.checkouts.length>0;
     const totalPedido = (pedidoOperativoA05.lineas || []).reduce((acc, linea) => acc + (Number(linea.total) || 0), 0);
