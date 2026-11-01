@@ -2,9 +2,19 @@
 // Levanta un Postgres desechable en loopback, deja las dependencias mínimas
 // (auth.uid, la_tiene_local, abc_tiene_capacidad, operaciones y eventos) y
 // ejecuta la migración real tal y como está en el repositorio.
-import pg from 'pg';
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
+import { createRequire } from 'node:module';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+
+// Igual que el resto de contratos de entorno postgres (a09, F5 c04-c12): el
+// cliente pg se resuelve por variable de entorno, porque el runner agregado lo
+// instala en un directorio temporal y un `import pg from 'pg'` suelto no lo
+// encontraria.
+const require = createRequire(import.meta.url);
+const pg = require(process.env.TPV_CAT_PG_CLIENT ??
+  join(tmpdir(), 'tpv-cat-pg-client', 'node_modules', 'pg'));
 
 const url = new URL(process.env.TPV_CAT_TEST_DATABASE_URL || 'postgresql://postgres:postgres@127.0.0.1:5432/tpv_cat_test');
 assert.ok(['127.0.0.1', 'localhost', '[::1]'].includes(url.hostname), 'solo bases en loopback');
