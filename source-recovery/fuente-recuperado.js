@@ -23662,29 +23662,6 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     // Salir del TPV con el modo puesto dejaria la aplicacion sin menu.
     return () => raiz.removeAttribute("data-tpv-caja");
   }, [modoCajaTpv]);
-  // Atajos de teclado. Antes no habia ninguno en el TPV: etiquetar teclas en
-  // los botones sin esto seria prometer algo que no ocurre. Se ignoran mientras
-  // se escribe en un campo, salvo F2, que es justamente para ir al buscador.
-  (0, import_react4.useEffect)(() => {
-    if (typeof window === "undefined") return;
-    function alPulsar(evento) {
-      if (evento.key === "F2") {
-        evento.preventDefault();
-        inputEscaneoRef.current?.focus();
-        inputEscaneoRef.current?.select?.();
-        return;
-      }
-      const destino = evento.target;
-      const escribiendo = destino && /^(INPUT|TEXTAREA|SELECT)$/.test(destino.tagName || "");
-      if (escribiendo) return;
-      if (evento.key === "F9") {
-        evento.preventDefault();
-        if (lineasCarrito.length > 0 && !enviandoVenta && !cargandoA04) confirmarCobro();
-      }
-    }
-    window.addEventListener("keydown", alPulsar);
-    return () => window.removeEventListener("keydown", alPulsar);
-  }, [lineasCarrito.length, enviandoVenta, cargandoA04, confirmarCobro]);
 
   const [pagoRapida, setPagoRapida] = (0, import_react4.useState)("EFECTIVO");
   const [efectivoRecibidoRapida, setEfectivoRecibidoRapida] = (0, import_react4.useState)("");
@@ -24781,6 +24758,34 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return { ...l22, cantidadNum: cant, producto: p22, precioUnitario: precioConIva, subtotal: precioConIva * cant };
   }).filter(Boolean);
   const total = lineasCarrito.reduce((a22, l22) => a22 + l22.subtotal, 0);
+  // OJO: este efecto va aqui y no arriba. Su array de dependencias lee
+  // lineasCarrito y cargandoA04, y los arrays de dependencias se evaluan al
+  // renderizar, no cuando el efecto corre. Colocado antes de esas dos
+  // declaraciones, el componente lanzaba
+  // "Cannot access 'lineasCarrito' before initialization" y el TPV no pintaba.
+  // Atajos de teclado. Antes no habia ninguno en el TPV: etiquetar teclas en
+  // los botones sin esto seria prometer algo que no ocurre. Se ignoran mientras
+  // se escribe en un campo, salvo F2, que es justamente para ir al buscador.
+  (0, import_react4.useEffect)(() => {
+    if (typeof window === "undefined") return;
+    function alPulsar(evento) {
+      if (evento.key === "F2") {
+        evento.preventDefault();
+        inputEscaneoRef.current?.focus();
+        inputEscaneoRef.current?.select?.();
+        return;
+      }
+      const destino = evento.target;
+      const escribiendo = destino && /^(INPUT|TEXTAREA|SELECT)$/.test(destino.tagName || "");
+      if (escribiendo) return;
+      if (evento.key === "F9") {
+        evento.preventDefault();
+        if (lineasCarrito.length > 0 && !enviandoVenta && !cargandoA04) confirmarCobro();
+      }
+    }
+    window.addEventListener("keydown", alPulsar);
+    return () => window.removeEventListener("keydown", alPulsar);
+  }, [lineasCarrito.length, enviandoVenta, cargandoA04, confirmarCobro]);
   const cantidadesProductoA04 = lineasCarrito.reduce((mapa, l22) => {
     mapa.set(l22.productoId, (mapa.get(l22.productoId) || 0) + l22.cantidadNum);
     return mapa;
