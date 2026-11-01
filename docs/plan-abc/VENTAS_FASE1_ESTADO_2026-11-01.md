@@ -56,15 +56,17 @@ Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 - Batería Node completa del workflow G1/P07/P08 (PM08, PM09, P02-P06 y LA-004): PASS, sin fallos.
 - Revalidación viva adicional en Supabase QA, dentro de `BEGIN ... ROLLBACK`: venta sintética `G1-P07-CODEX-VENTA-20261101`, replay exacto con `replayed=true` y payload distinto rechazado con `operation_id_conflict`: PASS.
 - Limpieza independiente posterior en QA: cero filas de la operación sintética en `stock_operaciones` y `movimientos_stock`, stock de `QA-PROD-A-AGUA` conservado en 20 unidades y lock `pg_advisory_xact_lock` presente en `private.pm08_bloquear_operation_id`.
+- Runner oficial PostgreSQL 16 (`tests/ci/preparar_postgres_local.sh`) sobre clúster portátil temporal: `POSTGRES_ACTIVE_TOTAL=10`, `POSTGRES_ACTIVE_PASS=10`, `POSTGRES_ACTIVE_FAIL=0`, `HISTORICAL_EXPECTED_FAIL=1`, `PREPARAR_POSTGRES_LOCAL_OK=1`.
+- Runner oficial PGlite (`tests/ci/ejecutar_pglite_local.sh`): `PGLITE_ACTIVE_TOTAL=1`, `PGLITE_ACTIVE_PASS=1`, `PGLITE_ACTIVE_FAIL=0`, `PGLITE_INFRA_FAIL=0`, `A09_PGLITE_RUNNER=PASS`.
 
 ## Pendiente de certificación
 
 Los contratos SQL económicos de cobro y reembolso ya se ejecutaron en PGlite efímero, aislado y desechable, con los resultados M03B PASS, M03C PASS, B04 PASS y B05 PASS. B05 comprobó saldo confirmado, saldo reservado, disponibilidad cero, cambio en efectivo, desglose de pagos/intentos/caja y rechazo de un cobro sobre saldo reservado.
 
-El documento de evidencia QA de G1.7 ya existente registra el resultado vivo completo de 24/24 PASS, con rollback y limpieza a cero; el contrato estático lo verifica y la revalidación adicional de esta tarea confirma el mismo mecanismo sobre el estado QA actual. El gate vivo P07 queda, por tanto, respaldado como PASS. El gate G1 global continúa pendiente de su cierre formal conjunto y la batería PostgreSQL 16 completa, que no se pudo ejecutar localmente.
+El documento de evidencia QA de G1.7 ya existente registra el resultado vivo completo de 24/24 PASS, con rollback y limpieza a cero; el contrato estático lo verifica y la revalidación adicional de esta tarea confirma el mismo mecanismo sobre el estado QA actual. El gate vivo P07 queda, por tanto, respaldado como PASS. La batería PostgreSQL 16 completa también ha pasado. El gate G1 global continúa sujeto a su cierre formal conjunto según la política del repositorio, pero ya no existe un bloqueo de infraestructura para la certificación económica de esta fase.
 
 La deriva de QA del A10 queda corregida en el proyecto QA autorizado. La decisión de esta rama es no reencolar automáticamente comandas históricas; por tanto, no se sustituyó `min(uuid)` para conservar ese trigger. La reparación aplicada retira el mecanismo automático y deja cualquier recuperación histórica para una futura acción explícita y auditada.
 
 ## Comprobación de entorno para la certificación
 
-Se revisó el repositorio y el equipo de trabajo: no están instalados `psql` ni `pg_isready` y Docker Desktop no quedó disponible como daemon local. El runner PGlite existente prepara A08; para esta certificación se usó una base PGlite nueva por batería, cargando únicamente en memoria las migraciones B02/B03/B04/B05 necesarias y cerrándola al terminar. No se aplicaron esas migraciones en QA ni producción. La ejecución PostgreSQL 16 completa sigue siendo una comprobación complementaria pendiente.
+Se revisó el repositorio y el equipo de trabajo. Docker Desktop no quedó disponible como daemon, por lo que se utilizó el ZIP portable oficial de PostgreSQL 16.15 para Windows, sin instalar un servicio ni conectar el servidor a QA. Se inicializó un clúster temporal local, se ejecutó el runner oficial en el puerto 5432 y se detuvo el servidor al terminar. Las cuatro bases creadas por el runner fueron exclusivamente de contrato y quedaron fuera del repositorio; no se aplicaron migraciones en QA ni producción.
