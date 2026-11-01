@@ -58,17 +58,19 @@ Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 - Limpieza independiente posterior en QA: cero filas de la operación sintética en `stock_operaciones` y `movimientos_stock`, stock de `QA-PROD-A-AGUA` conservado en 20 unidades y lock `pg_advisory_xact_lock` presente en `private.pm08_bloquear_operation_id`.
 - Runner oficial PostgreSQL 16 (`tests/ci/preparar_postgres_local.sh`) sobre clúster portátil temporal: `POSTGRES_ACTIVE_TOTAL=10`, `POSTGRES_ACTIVE_PASS=10`, `POSTGRES_ACTIVE_FAIL=0`, `HISTORICAL_EXPECTED_FAIL=1`, `PREPARAR_POSTGRES_LOCAL_OK=1`.
 - Runner oficial PGlite (`tests/ci/ejecutar_pglite_local.sh`): `PGLITE_ACTIVE_TOTAL=1`, `PGLITE_ACTIVE_PASS=1`, `PGLITE_ACTIVE_FAIL=0`, `PGLITE_INFRA_FAIL=0`, `A09_PGLITE_RUNNER=PASS`.
+- La ejecución actual de `tests/ci/ejecutar_bateria_no_db.sh` no llegó a ejecutar la batería porque el manifiesto declara 171 entradas pero descubre 173 y omite dos contratos existentes (`a10-route-recovery-regression.mjs` y `b05-phase1-regression.mjs`). Los contratos funcionales afectados se ejecutaron directamente y pasaron; el manifiesto queda como deuda independiente de CI y no se modificó para conservar cambios ajenos.
 
 ## Smoke visual del preview QA
 
 - La sesión autenticada del usuario QA cargó correctamente el dashboard, el módulo de Caja y el menú de navegación adicional en el preview de Netlify.
 - El acceso a TPV mostró correctamente el bloqueo previsto cuando el contexto era `Todos los locales`.
-- Al seleccionar `Local A1`, necesario para abrir TPV, el preview falló de forma reproducible con la pantalla global `Algo ha fallado` y el registro automático del error. Se hizo una recarga limpia y una única repetición controlada; el fallo volvió a producirse.
-- La consola del navegador identifica la causa: `ReferenceError: iniciarCobroCuentaF4 is not defined`, durante el render de `GestionAlmacen` en `fuente.js:103761`, con propagación desde `index-loader.js`.
-- El símbolo `iniciarCobroCuentaF4` sí existe en el `fuente.js` de esta rama (definición en torno a la línea 108455), pero el análisis de ámbito confirma que está anidado dentro de `crearLogicaVenta` (aprox. líneas 107610–110099), mientras `GestionAlmacen` lo consume fuera de ese ámbito (línea 103761). El artefacto remoto coincide con el archivo local; por tanto, el bloqueo es de código y no de caché, credenciales o conexión QA.
-- No se inició ni confirmó ningún cobro, no se creó otra venta, no se modificó el intento de pago pendiente y no se ejecutó ninguna operación destructiva. La pantalla de Cocina A10 no pudo certificarse visualmente porque el error aparece antes de completar el cambio de contexto del módulo.
+- El defecto se corrigió en `30d29e2`: `crearLogicaVenta` exporta las cinco funciones F4 y `GestionAlmacen` las recibe por destructuring. El materializador y el contrato B05 contienen ahora una aserción para evitar la regresión.
+- El nuevo preview QA `6ae7ae211e280889e8d08348` quedó `ready` en contexto `deploy-preview`. Tras autenticación limpia, la selección de `Local A1` abrió TPV correctamente, sin pantalla de error y sin errores de consola.
+- El TPV mostró el aviso de F4 y el catálogo operativo. No se generó una cuenta sintética ni se pulsaron botones de cobro; la cobertura económica sigue respaldada por los contratos PGlite y la evidencia QA previa.
+- Cocina A10 abrió correctamente en `Local A1`, mostró el encabezado, las secciones de estaciones/rutas y la lista de comandas, sin errores de consola. No se creó estación, ruta, comanda ni cierre de caja.
+- No se inició ni confirmó ningún cobro, no se creó otra venta, no se modificó el intento de pago pendiente y no se ejecutó ninguna operación destructiva.
 
-## Pendiente de certificación
+## Estado de certificación
 
 Los contratos SQL económicos de cobro y reembolso ya se ejecutaron en PGlite efímero, aislado y desechable, con los resultados M03B PASS, M03C PASS, B04 PASS y B05 PASS. B05 comprobó saldo confirmado, saldo reservado, disponibilidad cero, cambio en efectivo, desglose de pagos/intentos/caja y rechazo de un cobro sobre saldo reservado.
 
@@ -76,8 +78,8 @@ El documento de evidencia QA de G1.7 ya existente registra el resultado vivo com
 
 La deriva de QA del A10 queda corregida en el proyecto QA autorizado. La decisión de esta rama es no reencolar automáticamente comandas históricas; por tanto, no se sustituyó `min(uuid)` para conservar ese trigger. La reparación aplicada retira el mecanismo automático y deja cualquier recuperación histórica para una futura acción explícita y auditada.
 
-El cierre visual de la fase 1 no se marca como aprobado: el preview QA tiene un bloqueo de runtime reproducible al seleccionar un local en TPV. La evidencia económica y los contratos automatizados quedan PASS, pero B05/A10 requieren repetir el smoke autenticado después de corregir o republicar el artefacto que expone `GestionAlmacen`.
+Con el fix `30d29e2` y el preview QA `6ae7ae211e280889e8d08348`, el smoke autenticado de TPV/B05 y Cocina A10 queda PASS. La fase 1 queda cerrada en código, contratos, evidencia económica y comprobación visual QA. Producción no se ha desplegado y no se autoriza su promoción automática desde este resultado.
 
 ## Comprobación de entorno para la certificación
 
-Se revisó el repositorio y el equipo de trabajo. Docker Desktop no quedó disponible como daemon, por lo que se utilizó el ZIP portable oficial de PostgreSQL 16.15 para Windows, sin instalar un servicio ni conectar el servidor a QA. Se inicializó un clúster temporal local, se ejecutó el runner oficial en el puerto 5432 y se detuvo el servidor al terminar. Las cuatro bases creadas por el runner fueron exclusivamente de contrato y quedaron fuera del repositorio; no se aplicaron migraciones en QA ni producción.
+Se revisó el repositorio y el equipo de trabajo. Docker Desktop no quedó disponible como daemon, por lo que se utilizó el ZIP portable oficial de PostgreSQL 16.15 para Windows, sin instalar un servicio ni conectar el servidor a QA. Se inicializó un clúster temporal local, se ejecutó el runner oficial en el puerto 5432 y se detuvo el servidor al terminar. Las cuatro bases creadas por el runner fueron exclusivamente de contrato y quedaron fuera del repositorio. En esta corrección no se aplicaron migraciones; las migraciones A10 de QA habían sido aplicadas previamente con autorización expresa y no se tocó producción.
