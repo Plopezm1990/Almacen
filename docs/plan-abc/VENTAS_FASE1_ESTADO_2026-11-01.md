@@ -13,7 +13,10 @@ Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 - La etiqueta operativa pasó a ser `Exacto para este pago (€)`.
 - Las comandas `BLOQUEADA` sin estación (`SIN_RUTA`) ahora muestran un bloqueo explícito: no se imprimen, no ofrecen reimpresión operativa y la UI indica que asignar una ruta no reenvía automáticamente la comanda existente.
 - La confirmación de una ruta de producto informa de que se aplicará a nuevas comandas; la configuración sigue pasando por RPC y no hace DML directo desde el cliente.
-- No se modificaron migraciones ni datos remotos.
+- Se añadieron a la rama dos migraciones correctivas de A10 para QA, sin aplicarlas a producción:
+  `20261101093000_abc_f3_a10_disable_auto_route_requeue.sql` y
+  `20261101094000_abc_f3_a10_assignment_without_historical_requeue.sql`.
+- Tras la autorización expresa, esas migraciones se aplicaron únicamente en QA. La remediación de las siete comandas que se reencolaron durante la primera prueba se hizo conservando las filas, restaurando `BLOQUEADA/SIN_RUTA` y marcando sus efectos de outbox como `ABANDONADO`; no se borraron registros ni se tocaron pagos.
 
 ## Evidencia QA
 
@@ -42,15 +45,23 @@ Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 - Contratos B04, B07, B08 y B09: PASS
 - Contratos de permisos/aislamiento y replay/concurrencia G1: PASS
 - Contratos A02 y A05: PASS
+- `node tests/f3/a09/local-pglite-contract.mjs`: PASS (`A09_PGLITE_FUNCTIONAL=PASS`), incluyendo idempotencia y concurrencia.
+- Contrato SQL M03B en una base PGlite efímera aislada: PASS.
+- Contrato SQL M03C en una base PGlite efímera aislada: PASS.
+- Contratos SQL B04 y B05, con sus migraciones B02/B03/B04/B05 cargadas en una base PGlite efímera aislada: PASS (`ECONOMIC_PGLITE_BATTERY=PASS`).
+- `tests/f4/b08/b08-ui-contract.mjs` y `tests/f4/b08/b08-refund-adapter-contract.mjs`: PASS.
+- `tests/f4/b09/b09-schema-contract.mjs` y `tests/f4/b09/b09-rpc-contract.mjs`: PASS.
+- `tests/g1/p07-concurrencia-replay-contract.mjs`: PASS como contrato estático; mantiene la marca explícita `G1_P07_GATE_STILL_PENDING=1` porque el gate vivo de 24/24 no se ejecuta desde esta máquina.
+- `tests/f3/a10/a10-route-recovery-regression.mjs`: PASS.
 
 ## Pendiente de certificación
 
-Los contratos SQL económicos de cobro, reembolso y concurrencia no se han ejecutado en esta fase porque requieren una base PostgreSQL/PGlite con el esquema de pruebas. No se ha levantado una base ni se han aplicado migraciones para suplir esa dependencia.
+Los contratos SQL económicos de cobro y reembolso ya se ejecutaron en PGlite efímero, aislado y desechable, con los resultados M03B PASS, M03C PASS, B04 PASS y B05 PASS. B05 comprobó saldo confirmado, saldo reservado, disponibilidad cero, cambio en efectivo, desglose de pagos/intentos/caja y rechazo de un cobro sobre saldo reservado.
 
-La fase 1 no debe marcarse como aprobada hasta ejecutar esos contratos en un entorno efímero autorizado y comprobar los criterios VEN-003, VEN-010 y VEN-011 con resultados económicos reales del entorno de pruebas.
+La batería estática de concurrencia/replay también pasa, pero el gate vivo `G1_P07_GATE_STILL_PENDING=1` no se puede marcar como certificado: requiere el entorno de ejecución vivo previsto por el proyecto. Por tanto, VEN-003, VEN-010 y VEN-011 quedan respaldados por los contratos efímeros y QA sintético, pero el gate vivo de concurrencia permanece pendiente y no se presenta como aprobado.
 
 La deriva de QA del A10 queda corregida en el proyecto QA autorizado. La decisión de esta rama es no reencolar automáticamente comandas históricas; por tanto, no se sustituyó `min(uuid)` para conservar ese trigger. La reparación aplicada retira el mecanismo automático y deja cualquier recuperación histórica para una futura acción explícita y auditada.
 
 ## Comprobación de entorno para la certificación
 
-Se revisó el repositorio y el equipo de trabajo: no hay un dump/base preparada ni una imagen Docker local reutilizable para estos contratos; solo están disponibles fixtures y migraciones. Tampoco están instalados `psql` ni `pg_isready`. El runner local de PGlite existente prepara únicamente el alcance A08 y aplica migraciones propias, por lo que no se ejecutó para evitar incumplir la restricción de no aplicar migraciones.
+Se revisó el repositorio y el equipo de trabajo: no están instalados `psql` ni `pg_isready` y Docker Desktop no quedó disponible como daemon local. El runner PGlite existente prepara A08; para esta certificación se usó una base PGlite nueva por batería, cargando únicamente en memoria las migraciones B02/B03/B04/B05 necesarias y cerrándola al terminar. No se aplicaron esas migraciones en QA ni producción. La ejecución PostgreSQL 16 completa sigue siendo una comprobación complementaria pendiente.
