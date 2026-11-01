@@ -105231,7 +105231,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -106268,7 +106268,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -110949,6 +110949,31 @@ function claveModoTpv(empresaId, localId) {
   if (!empresaId || !localId) return null;
   return "la_suite_tpv_modo_v1:" + empresaId + ":" + localId;
 }
+// Los nueve colores son exactamente los que valida
+// private.abc_tpv_categorias_normalizar en 20261031120000. Si aqui apareciera
+// uno mas, el servidor rechazaria el guardado con tpv_categorias_color_invalido.
+var COLOR_CLAVE_CATEGORIA_TPV = { AZUL: "#2A6FB0", NARANJA: "#C2410C", VERDE: "#15803D", GRANATE: "#9D174D", MORADO: "#6D28D9", MARRON: "#6B4423", ROJO: "#B91C1C", TEAL: "#0F766E", AMBAR: "#9A6400" };
+var CLAVES_COLOR_CATEGORIA_TPV = Object.keys(COLOR_CLAVE_CATEGORIA_TPV);
+// Una categoria que nadie ha configurado todavia tambien necesita un color, y
+// tiene que ser el mismo en todos los terminales: se deriva del nombre, no se
+// sortea. Asi un local sin configurar ya ve el carril con color.
+function colorCategoriaTpv(nombre, configurados) {
+  const texto = String(nombre || "");
+  if (!texto || texto === "Todos") return "var(--c-accent-fill)";
+  const puesto = configurados && configurados[texto];
+  if (puesto && COLOR_CLAVE_CATEGORIA_TPV[puesto]) return COLOR_CLAVE_CATEGORIA_TPV[puesto];
+  let suma = 0;
+  for (let i = 0; i < texto.length; i += 1) suma = (suma * 31 + texto.charCodeAt(i)) % 1e5;
+  return COLOR_CLAVE_CATEGORIA_TPV[CLAVES_COLOR_CATEGORIA_TPV[suma % CLAVES_COLOR_CATEGORIA_TPV.length]];
+}
+// Clave de color derivada del nombre, con la misma cuenta que colorCategoriaTpv,
+// para que el editor arranque mostrando el color que ya se esta viendo.
+function claveColorDerivadaTpv(nombre) {
+  const texto = String(nombre || "");
+  let suma = 0;
+  for (let i = 0; i < texto.length; i += 1) suma = (suma * 31 + texto.charCodeAt(i)) % 1e5;
+  return CLAVES_COLOR_CATEGORIA_TPV[suma % CLAVES_COLOR_CATEGORIA_TPV.length];
+}
 var FILAS_REJILLA_TPV = 4;
 // Cuantas columnas esta pintando .tpv-rejilla ahora mismo. Se pregunta al
 // navegador en vez de medir el nodo: los cortes son los mismos que en el CSS de
@@ -112191,6 +112216,60 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  async function listarCategoriasTpv() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para ver sus categorías." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "Sin conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_listar_categorias_tpv", {
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error("categorias_tpv_respuesta_invalida");
+      return { ok: true, version: Number(data.version) || 0, categorias: Array.isArray(data.categorias) ? data.categorias : [], puedeConfigurar: data.puede_configurar === true };
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+  }
+
+  async function configurarCategoriasTpv(categorias, versionEsperada) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "Sin conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const { data, error } = await supabase.rpc("abc_configurar_categorias_tpv", {
+        p_operation_id: "tpv-categorias:" + empresaId + ":" + localActivoId + ":" + Date.now(),
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_categorias: categorias,
+        p_expected_version: versionEsperada,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        // Sin día operativo: lo resuelve el servidor con la regla del local.
+        p_operating_day: null
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error("categorias_tpv_respuesta_invalida");
+      return { ok: true, version: Number(data.version) || 0, categorias: Array.isArray(data.categorias) ? data.categorias : [] };
+    } catch (error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("tpv_categorias_version_conflict")) {
+        return { ok: false, conflict: true, error: "Otra persona cambió las categorías mientras editabas. Se ha recargado la lista." };
+      }
+      if (msg.includes("abc_tpv_categorias_no_autorizada")) {
+        return { ok: false, error: "Tu cargo no puede cambiar las categorías de este local." };
+      }
+      return { ok: false, error: errorRpcA02(error) };
+    }
+  }
   // Modalidad de la cuenta al abrirla (pieza 6e): la que se elige y, si no se elige, Barra si está habilitada en el local y, si no,
   // la primera habilitada. Si no se puede leer la lista, Barra (como antes) y decide el servidor.
   async function leerModalidadesHabilitadasA02(supabase, empresaId, localId) {
@@ -114113,7 +114192,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -123908,7 +123987,7 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
       const host = window.location.hostname;
@@ -125382,6 +125461,107 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     () => visibles.slice(paginaRejillaSegura * porPaginaRejilla, paginaRejillaSegura * porPaginaRejilla + porPaginaRejilla),
     [visibles, paginaRejillaSegura, porPaginaRejilla]
   );
+  // Presentacion de categorias: orden y color por local, del servidor.
+  const [presentacionCategorias, setPresentacionCategorias] = (0, import_react4.useState)({ version: 0, categorias: [], puedeConfigurar: false });
+  const [editorCategorias, setEditorCategorias] = (0, import_react4.useState)(null);
+  const [guardandoCategorias, setGuardandoCategorias] = (0, import_react4.useState)(false);
+  const [avisoCategorias, setAvisoCategorias] = (0, import_react4.useState)("");
+  const recargarPresentacionCategorias = (0, import_react4.useCallback)(async () => {
+    if (typeof listarCategoriasTpv !== "function") return null;
+    const leido = await listarCategoriasTpv();
+    if (!leido?.ok) return null;
+    const siguiente = {
+      version: Number(leido.version) || 0,
+      categorias: Array.isArray(leido.categorias) ? leido.categorias : [],
+      puedeConfigurar: leido.puedeConfigurar === true
+    };
+    setPresentacionCategorias(siguiente);
+    return siguiente;
+  }, [listarCategoriasTpv]);
+  (0, import_react4.useEffect)(() => {
+    let vivo = true;
+    (async () => {
+      const leido = await recargarPresentacionCategorias();
+      if (!vivo || !leido) return;
+    })();
+    return () => { vivo = false; };
+  }, [recargarPresentacionCategorias]);
+  // Color por categoria, en un objeto plano para no recalcular el hash por tarjeta.
+  const colorPorCategoriaTpv = (0, import_react4.useMemo)(() => {
+    const mapa = {};
+    for (const fila of presentacionCategorias.categorias) {
+      if (fila?.categoria) mapa[String(fila.categoria)] = String(fila.color || "");
+    }
+    return mapa;
+  }, [presentacionCategorias]);
+  // El orden del servidor manda; lo que no este configurado va detras, en el
+  // orden que ya traia, para que una categoria nueva no desaparezca del carril.
+  const categoriasTpvOrdenadas = (0, import_react4.useMemo)(() => {
+    const guardadas = presentacionCategorias.categorias.map((f2) => String(f2?.categoria || "")).filter(Boolean);
+    const disponibles = categorias.filter((c22) => c22 !== "Todos");
+    const puestas = guardadas.filter((c22) => disponibles.includes(c22));
+    const resto = disponibles.filter((c22) => !puestas.includes(c22));
+    return ["Todos", ...puestas, ...resto];
+  }, [categorias, presentacionCategorias]);
+  function abrirEditorCategorias() {
+    const guardadas = presentacionCategorias.categorias.map((f2) => String(f2?.categoria || "")).filter(Boolean);
+    const disponibles = categorias.filter((c22) => c22 !== "Todos");
+    const puestas = guardadas.filter((c22) => disponibles.includes(c22));
+    const resto = disponibles.filter((c22) => !puestas.includes(c22));
+    setAvisoCategorias("");
+    setEditorCategorias([...puestas, ...resto].map((c22) => ({
+      categoria: c22,
+      color: COLOR_CLAVE_CATEGORIA_TPV[colorPorCategoriaTpv[c22]] ? colorPorCategoriaTpv[c22] : claveColorDerivadaTpv(c22)
+    })));
+  }
+  function moverCategoriaEditor(indice, salto) {
+    setEditorCategorias((filas) => {
+      if (!Array.isArray(filas)) return filas;
+      const destino = indice + salto;
+      if (destino < 0 || destino >= filas.length) return filas;
+      const copia = filas.slice();
+      const [fila] = copia.splice(indice, 1);
+      copia.splice(destino, 0, fila);
+      return copia;
+    });
+  }
+  async function guardarCategoriasEditor() {
+    if (typeof configurarCategoriasTpv !== "function" || !Array.isArray(editorCategorias)) return;
+    setGuardandoCategorias(true);
+    setAvisoCategorias("");
+    try {
+      const guardado = await configurarCategoriasTpv(editorCategorias, presentacionCategorias.version);
+      if (guardado?.ok) {
+        setPresentacionCategorias((previo) => ({
+          version: Number(guardado.version) || previo.version,
+          categorias: Array.isArray(guardado.categorias) ? guardado.categorias : previo.categorias,
+          puedeConfigurar: previo.puedeConfigurar
+        }));
+        setEditorCategorias(null);
+        return;
+      }
+      // Conflicto: otro terminal guardo mientras editabamos. Se recarga lo del
+      // servidor y NO se guarda, para no pisar su cambio sin que nadie lo vea.
+      setAvisoCategorias(guardado?.error || "No se pudo guardar.");
+      if (guardado?.conflict) {
+        const leido = await recargarPresentacionCategorias();
+        if (leido) {
+          const disponibles = categorias.filter((c22) => c22 !== "Todos");
+          const guardadas = leido.categorias.map((f2) => String(f2?.categoria || "")).filter(Boolean);
+          const puestas = guardadas.filter((c22) => disponibles.includes(c22));
+          const resto = disponibles.filter((c22) => !puestas.includes(c22));
+          const mapa = {};
+          for (const fila of leido.categorias) if (fila?.categoria) mapa[String(fila.categoria)] = String(fila.color || "");
+          setEditorCategorias([...puestas, ...resto].map((c22) => ({
+            categoria: c22,
+            color: COLOR_CLAVE_CATEGORIA_TPV[mapa[c22]] ? mapa[c22] : claveColorDerivadaTpv(c22)
+          })));
+        }
+      }
+    } finally {
+      setGuardandoCategorias(false);
+    }
+  }
   function manejarEnterEscaneo(e2) {
     if (e2.key !== "Enter") return;
     const q2 = busqueda.trim().toLowerCase();
@@ -126260,6 +126440,29 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
   }
 
+  function renderEditorCategoriasTpv() {
+    if (!Array.isArray(editorCategorias)) return null;
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !guardandoCategorias && setEditorCategorias(null), title: "Orden y color de categor\u00edas" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Se guarda para todo el local: lo veran todos los terminales."),
+      avisoCategorias ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, avisoCategorias) : null,
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3" }, editorCategorias.map((fila, indice) => /* @__PURE__ */ import_react4.default.createElement("div", { key: fila.categoria, className: "flex items-center gap-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-col gap-0.5" },
+          /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", "aria-label": "Subir " + fila.categoria, disabled: indice === 0 || guardandoCategorias, onClick: () => moverCategoriaEditor(indice, -1), className: "text-[11px] px-1 rounded", style: { border: "1px solid " + C2.line, color: C2.ink } }, "\u25b2"),
+          /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", "aria-label": "Bajar " + fila.categoria, disabled: indice === editorCategorias.length - 1 || guardandoCategorias, onClick: () => moverCategoriaEditor(indice, 1), className: "text-[11px] px-1 rounded", style: { border: "1px solid " + C2.line, color: C2.ink } }, "\u25bc")),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] flex-1 truncate" }, fila.categoria),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1" }, CLAVES_COLOR_CATEGORIA_TPV.map((clave) => /* @__PURE__ */ import_react4.default.createElement("button", {
+          key: clave,
+          type: "button",
+          "aria-label": clave + " para " + fila.categoria,
+          "aria-pressed": fila.color === clave,
+          disabled: guardandoCategorias,
+          onClick: () => setEditorCategorias((filas) => filas.map((f2, i2) => i2 === indice ? { categoria: f2.categoria, color: clave } : f2)),
+          style: { width: 20, height: 20, borderRadius: 4, background: COLOR_CLAVE_CATEGORIA_TPV[clave], border: fila.color === clave ? "2px solid " + C2.ink : "1px solid " + C2.line }
+        })))))),
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" },
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: guardarCategoriasEditor, disabled: guardandoCategorias }, guardandoCategorias ? "Guardando\u2026" : "Guardar para todo el local"),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setEditorCategorias(null), disabled: guardandoCategorias }, "Cancelar")));
+  }
   function renderSalaA07() {
     if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
@@ -126868,20 +127071,21 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "absolute right-3 top-1/2 -translate-y-1/2"
     },
     /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft })
-  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-3 overflow-x-auto" }, categorias.map((c22) => /* @__PURE__ */ import_react4.default.createElement(
+  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mb-3 overflow-x-auto" }, categoriasTpvOrdenadas.map((c22) => /* @__PURE__ */ import_react4.default.createElement(
     "button",
     {
       key: c22,
       onClick: () => setCategoria(c22),
       className: "text-[12px] font-medium px-3 py-1.5 rounded-full whitespace-nowrap shrink-0",
       style: {
-        background: categoria === c22 ? C2.chrome : C2.surface,
+        background: categoria === c22 ? colorCategoriaTpv(c22, colorPorCategoriaTpv) : C2.surface,
         color: categoria === c22 ? "#fff" : C2.inkSoft,
-        border: `1px solid ${categoria === c22 ? C2.chrome : C2.line}`
+        border: `1px solid ${categoria === c22 ? colorCategoriaTpv(c22, colorPorCategoriaTpv) : C2.line}`,
+        borderLeft: `4px solid ${colorCategoriaTpv(c22, colorPorCategoriaTpv)}`
       }
     },
     c22
-  ))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla mb-3" }, visiblesPagina.map((p22) => {
+  )), presentacionCategorias.puedeConfigurar ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrirEditorCategorias }, "Categor\u00edas") : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla mb-3" }, visiblesPagina.map((p22) => {
     const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
     const cantidadEnCarrito = carrito.filter((l22) => l22.productoId === p22.id).reduce((acc, l22) => acc + (Number(l22.cantidad) || 0), 0);
     const sinStock = (Number(p22.stockPisoVenta) || 0) <= 0;
@@ -126892,7 +127096,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         onClick: () => agregar(p22),
         disabled: cargandoA04,
         className: "rounded-xl p-3 text-left relative",
-        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, minHeight: 104, opacity: cargandoA04 ? 0.7 : 1 }
+        style: { background: C2.surface, border: `1px solid ${cantidadEnCarrito > 0 ? C2.accent : C2.line}`, borderLeft: `4px solid ${colorCategoriaTpv(p22.categoria, colorPorCategoriaTpv)}`, minHeight: 104, opacity: cargandoA04 ? 0.7 : 1 }
       },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva)),
@@ -126920,7 +127124,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "mono text-center rounded-md py-1",
       style: { width: 54, border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, fontSize: 13, minHeight: 44 }
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `F9 · Guardar pedido \u20AC${fmt(total)}`), renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4())), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `F9 · Guardar pedido \u20AC${fmt(total)}`), renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4())), renderEditorCategoriasTpv(), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       onClick: confirmarCobro,
