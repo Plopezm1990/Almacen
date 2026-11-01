@@ -5,6 +5,7 @@ on:
     branches: [abc-f4-b02-b03-tpv-payment-core]
     paths:
       - "supabase/migrations/20260929040000_abc_f4_b02_b03_checkout_bridge.sql"
+      - "supabase/migrations/20261031170000_abc_f4_cobro_pedido_en_cocina.sql"
       - "tests/f4/b02-b03/**"
       - "scripts/f4/b02-b03-materialize.mjs"
       - "source-recovery/fuente-recuperado.js"
@@ -14,6 +15,7 @@ on:
     branches: [release]
     paths:
       - "supabase/migrations/20260929040000_abc_f4_b02_b03_checkout_bridge.sql"
+      - "supabase/migrations/20261031170000_abc_f4_cobro_pedido_en_cocina.sql"
       - "tests/f4/b02-b03/**"
       - "scripts/f4/b02-b03-materialize.mjs"
       - "source-recovery/fuente-recuperado.js"
@@ -128,6 +130,75 @@ jobs:
 
       - name: Ejecutar contrato F4 B02/B03
         run: psql -v ON_ERROR_STOP=1 -f tests/f4/b02-b03/b02-b03-contract.sql
+
+      - name: Aplicar F4 cobro con pedido en cocina
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261031170000_abc_f4_cobro_pedido_en_cocina.sql
+
+      - name: Ejecutar contrato F4 cobro en cocina
+        run: psql -v ON_ERROR_STOP=1 -f tests/f4/b02-b03/cobro-pedido-en-cocina-contract.sql
+
+      # Dos bases desechables más, porque el contrato deja su fixture insertado y no
+      # se puede repetir sobre la misma base:
+      #   f4_rojo      cadena SIN la migración -> el contrato tiene que FALLAR. Si
+      #                pasara, la puerta ya estaría abierta y el arreglo no haría nada.
+      #   f4_regresion cadena CON la migración -> el contrato B02/B03 de siempre tiene
+      #                que seguir pasando: abrir los estados de cocina no rompe el
+      #                cobro que ya funcionaba.
+      - name: Verificar el rojo sin migración y la no regresión con ella
+        shell: bash
+        env:
+          PGDATABASE: postgres
+        run: |
+          set -euo pipefail
+          cadena() {
+            psql -v ON_ERROR_STOP=1 -f tests/f3/a08/fixture-a08.sql > /dev/null
+            for m in \
+              20260923210000_abc_f2_m01_base_transaccional_caja \
+              20260923210100_abc_f2_m01b_acl_hardening \
+              20260923220000_abc_f2_m02a_core_comercial_fiscal \
+              20260923230000_abc_f2_m02b_pagos_reservas_reembolsos \
+              20260923233000_abc_f2_m03a_autoridad_transaccional \
+              20260923234500_abc_f2_m03b_checkout_cobro \
+              20260923235900_abc_f2_m03c_reembolsos_transaccionales \
+              20260924001000_abc_f2_m04a_caja_sesiones \
+              20260924002000_abc_f2_m04b_movimientos_caja \
+              20260924003000_abc_f2_m04c_outbox_persistente \
+              20260924004000_abc_f2_m04d_acl_parity \
+              20260924010000_abc_f3_a03_server_authority \
+              20260924020000_abc_f3_a04_variants_modifiers \
+              20260924030000_abc_f3_a05_order_state_machine \
+              20260924040000_abc_f3_a06_account_recovery \
+              20260924050000_abc_f3_a07_tables_zones \
+              20260924060000_abc_f3_a08_account_split_merge \
+              20260924160739_abc_f3_a09_descuentos_cortesias \
+              20260929040000_abc_f4_b02_b03_checkout_bridge ; do
+              psql -v ON_ERROR_STOP=1 -f "supabase/migrations/$m.sql" > /dev/null
+            done
+          }
+          nueva_base() {
+            PGDATABASE=postgres psql -v ON_ERROR_STOP=1 -c "drop database if exists $1" > /dev/null
+            PGDATABASE=postgres psql -v ON_ERROR_STOP=1 -c "create database $1" > /dev/null
+          }
+
+          nueva_base f4_rojo
+          export PGDATABASE=f4_rojo
+          cadena
+          if psql -v ON_ERROR_STOP=1 -f tests/f4/b02-b03/cobro-pedido-en-cocina-contract.sql \
+               > /tmp/cocina-sin-migracion.log 2>&1; then
+            echo "F4_COBRO_COCINA_FAIL: el contrato pasa sin la migración; ya no prueba nada" >&2
+            exit 1
+          fi
+          grep -q "F4_COBRO_COCINA_FAIL" /tmp/cocina-sin-migracion.log
+          grep -q "EN_PREPARACION" /tmp/cocina-sin-migracion.log
+          echo "F4_COBRO_COCINA_ROJO_SIN_MIGRACION=PASS"
+
+          nueva_base f4_regresion
+          export PGDATABASE=f4_regresion
+          cadena
+          psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261031170000_abc_f4_cobro_pedido_en_cocina.sql > /dev/null
+          psql -v ON_ERROR_STOP=1 -f tests/f4/b02-b03/b02-b03-contract.sql
+          psql -v ON_ERROR_STOP=1 -f tests/f4/b02-b03/cobro-pedido-en-cocina-contract.sql
+          echo "F4_B02_B03_SIN_REGRESION=PASS"
 
       - name: Build directo Source Recovery
         shell: bash

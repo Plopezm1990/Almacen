@@ -100,6 +100,10 @@ const EXCLUIDAS = new Set([
   // foto F7 histórica del 3/10.
   '20261031120000_abc_tpv_categorias_presentacion.sql',
   '20261031150000_abc_tpv_categorias_puede_configurar.sql',
+  // Apertura del cobro con el pedido en cocina: se valida en QA y se promueve en su
+  // propia ventana, con el contrato tests/f4/b02-b03/cobro-pedido-en-cocina-contract.sql.
+  // No forma parte de la foto F7 histórica del 3/10.
+  '20261031170000_abc_f4_cobro_pedido_en_cocina.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
