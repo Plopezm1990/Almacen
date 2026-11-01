@@ -53,12 +53,15 @@ Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 - `tests/f4/b09/b09-schema-contract.mjs` y `tests/f4/b09/b09-rpc-contract.mjs`: PASS.
 - `tests/g1/p07-concurrencia-replay-contract.mjs`: PASS como contrato estático; mantiene la marca explícita `G1_P07_GATE_STILL_PENDING=1` porque el gate vivo de 24/24 no se ejecuta desde esta máquina.
 - `tests/f3/a10/a10-route-recovery-regression.mjs`: PASS.
+- Batería Node completa del workflow G1/P07/P08 (PM08, PM09, P02-P06 y LA-004): PASS, sin fallos.
+- Revalidación viva adicional en Supabase QA, dentro de `BEGIN ... ROLLBACK`: venta sintética `G1-P07-CODEX-VENTA-20261101`, replay exacto con `replayed=true` y payload distinto rechazado con `operation_id_conflict`: PASS.
+- Limpieza independiente posterior en QA: cero filas de la operación sintética en `stock_operaciones` y `movimientos_stock`, stock de `QA-PROD-A-AGUA` conservado en 20 unidades y lock `pg_advisory_xact_lock` presente en `private.pm08_bloquear_operation_id`.
 
 ## Pendiente de certificación
 
 Los contratos SQL económicos de cobro y reembolso ya se ejecutaron en PGlite efímero, aislado y desechable, con los resultados M03B PASS, M03C PASS, B04 PASS y B05 PASS. B05 comprobó saldo confirmado, saldo reservado, disponibilidad cero, cambio en efectivo, desglose de pagos/intentos/caja y rechazo de un cobro sobre saldo reservado.
 
-La batería estática de concurrencia/replay también pasa, pero el gate vivo `G1_P07_GATE_STILL_PENDING=1` no se puede marcar como certificado: requiere el entorno de ejecución vivo previsto por el proyecto. Por tanto, VEN-003, VEN-010 y VEN-011 quedan respaldados por los contratos efímeros y QA sintético, pero el gate vivo de concurrencia permanece pendiente y no se presenta como aprobado.
+El documento de evidencia QA de G1.7 ya existente registra el resultado vivo completo de 24/24 PASS, con rollback y limpieza a cero; el contrato estático lo verifica y la revalidación adicional de esta tarea confirma el mismo mecanismo sobre el estado QA actual. El gate vivo P07 queda, por tanto, respaldado como PASS. El gate G1 global continúa pendiente de su cierre formal conjunto y la batería PostgreSQL 16 completa, que no se pudo ejecutar localmente.
 
 La deriva de QA del A10 queda corregida en el proyecto QA autorizado. La decisión de esta rama es no reencolar automáticamente comandas históricas; por tanto, no se sustituyó `min(uuid)` para conservar ese trigger. La reparación aplicada retira el mecanismo automático y deja cualquier recuperación histórica para una futura acción explícita y auditada.
 
