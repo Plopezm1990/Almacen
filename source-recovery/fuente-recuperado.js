@@ -9926,6 +9926,16 @@ var ETIQUETA_ESTADO_PEDIDO_TPV = {
   CERRADO: "Cerrado",
   CANCELADO: "Cancelado"
 };
+// Estado del COBRO de la cuenta, tal y como lo devuelve abc_estado_cobro_cuenta.
+// Es distinto del estado del pedido: aqui se habla de dinero, no de cocina.
+var ETIQUETA_ESTADO_COBRO_TPV = {
+  SIN_COBRO: "Sin cobrar",
+  PENDIENTE: "Pendiente de cobro",
+  PARCIALMENTE_PAGADO: "Pago parcial",
+  PAGADO: "Pagado",
+  CANCELADA: "Cancelado"
+};
+var ETIQUETA_ESTADO_CUENTA_TPV = { ABIERTA: "Abierta", CERRADA: "Cerrada" };
 var ETIQUETA_ESTADO_MESA_TPV = {
   LIBRE: "Libre",
   OCUPADA: "Ocupada",
@@ -25198,7 +25208,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Confirmado"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(confirmadoVisible))),
         /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Pendiente"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold text-[12px]" }, "€", fmt(saldoVisible)))
       ),
-      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? estado.estado : "LISTA PARA PREPARAR"), estado?.cuentaEstado ? " · Cuenta comercial: " + estado.cuentaEstado : "", ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
+      estado?.estado ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2" }, "Cuenta: ", /* @__PURE__ */ import_react4.default.createElement("b", null, tieneCheckout ? etiquetaEstadoTpv(ETIQUETA_ESTADO_COBRO_TPV, estado.estado) : "Lista para cobrar"), estado?.cuentaEstado ? " · Cuenta comercial: " + etiquetaEstadoTpv(ETIQUETA_ESTADO_CUENTA_TPV, estado.cuentaEstado) : "", ultimoIntento ? " · Último intento: " + etiquetaEstadoIntentoF4(ultimoIntento.estado) : "") : null,
       fiscal?.ok && Array.isArray(fiscal.documentos) && fiscal.documentos.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "visible", style: { background: C2.accentSoft, border: `1px solid ${C2.line}` } },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold" }, "Fiscalización C07-D · QA"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Documento emitido en C05 y registrado en cadena. AEAT real desactivada; transporte simulado."),
@@ -25762,7 +25772,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       { className: "mb-4" },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 mb-2" },
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Pedido operativo"),
-        /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold", style: { color: pedido.pedidoEstado === "CANCELADO" ? C2.red : C2.accent } }, pedido.pedidoEstado || "ABIERTO")
+        /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold", style: { color: pedido.pedidoEstado === "CANCELADO" ? C2.red : C2.accent } }, etiquetaEstadoTpv(ETIQUETA_ESTADO_PEDIDO_TPV, pedido.pedidoEstado || "ABIERTO"))
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Los permisos se validan siempre en el servidor. Preparación, servido y cancelaciones no registran cobro ni documento fiscal."),
       puedeEnviarPedido ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { background: C2.accentSoft, border: "1px solid " + C2.line } },
