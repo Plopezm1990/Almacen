@@ -94,6 +94,12 @@ const EXCLUIDAS = new Set([
   '20261030130000_abc_p3c_stock_authority.sql',
   // Atajo seguro para cambios automáticos de stock/contexto; misma ventana separada.
   '20261030143000_abc_p3c_stock_only_fast_path.sql',
+  // Presentación de categorías del TPV (orden y color por local): se valida en QA
+  // y se promueve en su propia ventana, con el contrato
+  // tests/cfg/tpv-categorias-presentacion-db-contract.mjs. No forma parte de la
+  // foto F7 histórica del 3/10.
+  '20261031120000_abc_tpv_categorias_presentacion.sql',
+  '20261031150000_abc_tpv_categorias_puede_configurar.sql',
   // Apertura del cobro con el pedido en cocina: se valida en QA y se promueve en su
   // propia ventana, con el contrato tests/f4/b02-b03/cobro-pedido-en-cocina-contract.sql.
   // No forma parte de la foto F7 histórica del 3/10.
