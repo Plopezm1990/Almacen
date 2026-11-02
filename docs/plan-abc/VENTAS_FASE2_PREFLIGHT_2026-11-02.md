@@ -313,3 +313,18 @@ Resultado observado: la UI mostró `Pedido guardado`, una cuenta `56c52ff4-e3a3-
 La consulta de solo lectura a `pago_intentos` para `QA-EMP-A` / `QA-A1` desde la hora de la prueba devolvió cero filas nuevas. Por tanto, esta prueba valida el guardado A02/A04 en QA y confirma que no crea un intento de pago. El pedido y la línea quedan como datos persistentes de prueba QA; no se borran ni se altera el histórico.
 
 Estado actualizado: **guardado de pedido A02/A04 en UI QA aprobado para este caso**. Sigue sin aprobarse la promoción a producción: falta completar los casos UI restantes, revisar el error independiente de `respuestaErrorA06` observado en descuentos/cortesías, y realizar la batería final de regresión antes de cualquier decisión de release.
+
+## 17. Prueba UI A05: bloqueo sin ruta y camino feliz con comanda
+
+Se completaron los dos casos UI pendientes sobre el preview `deploy-preview-208` del commit `0161362`, sin cobrar ninguno de los pedidos:
+
+| Caso | Resultado de interfaz | Verificación de solo lectura en QA | Estado |
+|---|---|---|---|
+| Enviar `Café con leche (QA)` sin ruta activa | A05 mostró `Hay un producto que requiere preparación pero no tiene una ruta activa a cocina. Configura la ruta y vuelve a intentarlo.`; el pedido permaneció `ABIERTO` y no se creó transición ni comanda | `pedido_transiciones = 0`, `comandas_preparacion = 0`, `pago_intentos nuevos = 0` | PASS |
+| Guardar y enviar `Croissant (QA)` con ruta activa | La UI mostró `Pedido guardado` y después `Pedido enviado`, con estado `ENVIADO` | Pedido `c9c5cbbf-9658-4047-a8b6-4fcbc6b3edda` en `ENVIADO`, línea `ENVIADA`, transición `ABIERTO → ENVIADO` con `operation_id = a05.2.send.c9c5cbbf-9658-4047-a8b6-4fcbc6b3edda` y comanda `PENDIENTE` en la estación QA | PASS |
+
+La comanda creada para el camino feliz quedó asociada a la ruta QA de cocina y a la misma operación A05; no se duplicó ningún envío. La consola del navegador terminó sin mensajes `warn` ni `error` durante ambos ensayos.
+
+Los dos pedidos son datos persistentes de prueba QA y no se eliminan. No se ejecutó F4, no se inició checkout, no se confirmó ningún pago y la consulta de `pago_intentos` siguió devolviendo cero registros nuevos desde el comienzo de estas pruebas.
+
+Con esto quedan aprobados en QA el guard visual de ruta y el camino UI `Guardar pedido → Enviar pedido` para una línea con ruta activa. La promoción a producción continúa bloqueada hasta resolver o clasificar el `ReferenceError: respuestaErrorA06 is not defined` del panel de descuentos/cortesías, ejecutar la batería final completa y revisar el PR en conjunto.
