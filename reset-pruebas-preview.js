@@ -23,7 +23,7 @@
     var CLAVE_GENERACION = "la_suite_installation_generation_v1";
     var CLAVE_ARRANQUE_VALIDADO = "la_suite_post_reset_boot_generation_v1";
     var CLAVE_CONTEXTO_SEGURO = "chocoloyos_contexto_operativo_seguro_v1";
-    var HOST_PREVIEW = /^(?:deploy-preview-\d+|[a-f0-9]{24})--chic-entremet-9107cf\.netlify\.app$/i;
+    var HOST_PREVIEW = /^(?:deploy-preview-\d+|[a-f0-9]{24}|[a-z0-9-]+)--chic-entremet-9107cf\.netlify\.app$/i;
     var esPreviewQA = !!(window.location && HOST_PREVIEW.test(window.location.hostname || ""));
     var lecturaLocalBloqueada = false;
     var escrituraLocalBloqueada = false;
@@ -369,7 +369,7 @@
 
   // QA de L&A Suite SOLO en Deploy Preview.
   // Producción y cualquier otro dominio quedan fuera por diseño.
-  var HOST_PREVIEW = /^(?:deploy-preview-\d+|[a-f0-9]{24})--chic-entremet-9107cf\.netlify\.app$/i;
+  var HOST_PREVIEW = /^(?:deploy-preview-\d+|[a-f0-9]{24}|[a-z0-9-]+)--chic-entremet-9107cf\.netlify\.app$/i;
   if (typeof window === "undefined" || !HOST_PREVIEW.test(window.location.hostname)) return;
 
   var SUPABASE_PROD_HOST = "flqercbgpgmmfaakrwkc.supabase.co";
