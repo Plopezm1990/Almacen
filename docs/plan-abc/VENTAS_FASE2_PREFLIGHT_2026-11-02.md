@@ -328,3 +328,27 @@ La comanda creada para el camino feliz quedó asociada a la ruta QA de cocina y 
 Los dos pedidos son datos persistentes de prueba QA y no se eliminan. No se ejecutó F4, no se inició checkout, no se confirmó ningún pago y la consulta de `pago_intentos` siguió devolviendo cero registros nuevos desde el comienzo de estas pruebas.
 
 Con esto quedan aprobados en QA el guard visual de ruta y el camino UI `Guardar pedido → Enviar pedido` para una línea con ruta activa. La promoción a producción continúa bloqueada hasta resolver o clasificar el `ReferenceError: respuestaErrorA06 is not defined` del panel de descuentos/cortesías, ejecutar la batería final completa y revisar el PR en conjunto.
+
+## 18. Corrección y verificación del panel de descuentos/cortesías
+
+El `ReferenceError: respuestaErrorA06 is not defined` queda confirmado como un error de alcance JavaScript, no como un fallo de autenticación ni de Supabase: `respuestaErrorA06()` vive dentro de `crearLogicaVenta()`, mientras que `PoliticasDescuentos` y las funciones A09 de `VentaRapida` se ejecutan fuera de ese alcance.
+
+En el commit `3431375` se añadió el formateador de errores A09 en alcance de módulo y se cambiaron sus usos externos para que utilicen `respuestaErrorA09()`. La fuente espejo `source-recovery/fuente-recuperado.js` quedó alineada. El flujo A06 conserva su formateador propio; no se modificaron migraciones, pagos ni datos.
+
+Regresiones ejecutadas después de la corrección:
+
+```text
+node --test tests/f3/a09/discount-command.test.mjs tests/f3/a09/discount-math.test.mjs tests/f3/a09/fiscal-cents.test.mjs  PASS (43/43)
+node tests/f3/a02/a02-1-contract.mjs                                                        PASS
+node tests/f3/a06/a06-1-ui-contract.mjs                                                     PASS
+node tests/f3/a06/a06-2-ui-contract.mjs                                                     PASS
+node tests/pm07/frontend-contract.mjs                                                       PASS
+node tests/f3/a10/a10-preparation-route-guard.mjs                                           PASS (4/4)
+node tests/f3/a10/a10-route-recovery-regression.mjs                                          PASS (4/4)
+node tests/f3/a10/a10-ui.test.mjs                                                          PASS (5/5)
+git diff --check                                                                           PASS
+```
+
+Netlify publicó correctamente el preview del commit `3431375` en `deploy-preview-208`. En una sesión QA autenticada se abrió `Más → Descuentos y cortesías`; la pantalla mostró las políticas de los seis roles, el botón `Guardar políticas` y el estado de carga sin lanzar excepciones. La consola del navegador terminó sin mensajes `error` ni `warn`.
+
+La comprobación fue sólo de lectura: no se guardó ninguna política, no se aplicó ningún descuento o cortesía, no se inició cobro y no se generó ningún intento de pago. Por tanto, el fallo observado en la sección 12 queda **corregido y verificado en QA para la apertura del panel**. La aprobación de producción sigue sin otorgarse hasta completar la revisión integral del PR y cualquier caso de negocio de descuentos que requiera escritura controlada.
