@@ -195,7 +195,17 @@ Además se ejecutó una prueba funcional de backend en QA con tres pedidos de fi
 | Producto de preparación con ruta (`QA-CAT-A1-CROISSANT`) | El pedido pasó a `ENVIADO` y se creó una comanda `PENDIENTE` con estación y ruta válidas | PASS |
 | Producto de entrega directa (`QA-CAT-A1-AGUA`) | El pedido pasó a `ENVIADO` sin crear comanda, aunque el producto tuviera una ruta disponible | PASS |
 
-La comprobación posterior al `ROLLBACK` devolvió cero filas residuales en pedidos, comandas, eventos y transiciones para la operación de prueba. Por tanto, la validación funcional demuestra el guard y el filtrado A10 sin dejar datos de fixture en QA. No demuestra todavía la experiencia de UI del nuevo mensaje, porque no se ha desplegado un preview nuevo con este build.
+La comprobación posterior al `ROLLBACK` devolvió cero filas residuales en pedidos, comandas, eventos y transiciones para la operación de prueba. Por tanto, la validación funcional demuestra el guard y el filtrado A10 sin dejar datos de fixture en QA.
+
+Después se ejecutó una segunda batería QA, también dentro de `BEGIN ... ROLLBACK`:
+
+| Caso adicional | Resultado observado | Estado |
+|---|---|---|
+| Pedido mixto: Croissant + Agua | Se enviaron las dos líneas, se creó una sola comanda para Croissant y no se creó comanda para Agua | PASS |
+| Reenvío con el mismo `operation_id` | La repetición no duplicó pedido, transiciones, comanda ni línea de comanda | PASS |
+| Ruta activada antes del envío | Se añadió temporalmente la ruta de `QA-CAT-A1-CANA`, el servidor la releyó y el envío creó una comanda con ruta válida | PASS |
+
+La comprobación posterior de esta segunda batería devolvió cero pedidos, comandas, eventos y transiciones residuales; la ruta temporal tampoco quedó creada. La UI del preview nuevo se probó hasta abrir sesión, seleccionar `Local A1` y abrir el TPV, sin enviar pedidos desde el navegador.
 
 Se verificaron también los permisos: las funciones auxiliares privadas no son ejecutables por `anon`, `authenticated` ni `service_role`; `public.abc_enviar_pedido` sólo quedó ejecutable por `authenticated` entre esas tres identidades comprobadas.
 
@@ -209,6 +219,6 @@ La primera publicación del alias no activaba el aislamiento QA porque `reset-pr
 
 Tras la corrección, la cuenta QA inició sesión correctamente, mostró `Local A1` y abrió el TPV del build nuevo. El TPV cargó categorías, productos QA e historial sin errores de consola. No se envió ningún pedido desde la UI para no crear operaciones persistentes; los tres comportamientos de envío siguen validados mediante las fixtures transaccionales revertidas del backend.
 
-La siguiente acción recomendada es completar, con fixtures QA aisladas y reversibles, la comprobación visual del resultado de envío y los casos todavía no ejecutados: pedido mixto, cambio de ruta entre lectura y envío, reintento idempotente, adición de línea y trazabilidad/recuperación del caso histórico.
+La siguiente acción recomendada es completar, con una estrategia reversible, la comprobación visual del resultado de envío, la adición de línea y la trazabilidad/recuperación del caso histórico. Los casos mixto, cambio de ruta y reintento idempotente ya están aprobados a nivel backend QA; todavía no se han pulsado desde la UI para no crear operaciones persistentes.
 
 No se debe usar el pedido histórico ni el intento de pago de la auditoría como fixture de escritura. La promoción a producción sólo podrá proponerse cuando la UI y esos casos restantes estén probados y documentados, con una revisión separada de la migración y un plan de rollback.
