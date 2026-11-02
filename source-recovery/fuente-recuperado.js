@@ -10243,7 +10243,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const grupoId = String(seleccion?.grupo_id || "");
       const opcionId = String(seleccion?.opcion_id || "");
       const cantidad = Number(seleccion?.cantidad);
-      if (!uuidPersistidoA02(grupoId) || !uuidPersistidoA02(opcionId) || !Number.isSafeInteger(cantidad) || cantidad < 1) {
+      if (!uuidTextoCatalogoA02(grupoId) || !uuidTextoCatalogoA02(opcionId) || !Number.isSafeInteger(cantidad) || cantidad < 1) {
         throw new Error("configuracion_a04_cliente_invalida");
       }
       const clave = `${grupoId}:${opcionId}`;
@@ -10294,6 +10294,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function uuidPersistidoA02(valor) {
     return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(valor);
+  }
+  function uuidTextoCatalogoA02(valor) {
+    return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
   }
   function validarContextoCuentaA02(contexto, empresaId, localId) {
     if (!contexto || contexto.schemaVersion !== 1) throw new Error("contexto_cuenta_persistido_invalido");
@@ -26059,6 +26062,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   ) : estadoBorradorA06?.estado === "CADUCADO" ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Borrador local caducado: se descartó porque superó la política de 24 h.")
   ) : estadoBorradorA06?.estado === "INVALIDO" || estadoBorradorA06?.estado === "NO_DISPONIBLE" ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-4 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, estadoBorradorA06.error || "No se puede usar el borrador local.") : null,
+  errorVenta ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-4 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorVenta) : null,
   conflictoA06 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: "#FCE8E6", border: "1px solid " + C2.red } },
     /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] font-semibold", style: { color: C2.red } }, "Conflicto de edición: otro terminal cambió esta cuenta."),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, conflictoA06.recuperado ? "Se ha recargado la versión del servidor. Tu borrador local no se ha borrado: revísalo antes de repetir la acción." : "No se ha sobrescrito el servidor. Tu borrador local se conserva; recarga la cuenta antes de repetir la acción."),
