@@ -373,3 +373,22 @@ regresión A02/A06/A10/PM07                                               PASS
 El diagnóstico de GitHub para el último commit (`ef527c6`) sólo muestra los checks de Netlify: preview correcto, reglas de cabeceras correctas y sin reglas de redirección que procesar. No hay anotaciones de CI ni revisiones formales. El PR 208 sigue abierto, en borrador, con base `release`, sin fusionar; GitHub lo mantiene en estado `dirty`, por lo que no se considera listo para merge.
 
 La rama continúa aislada (`codex/ventas-mejoras`). Los cambios locales no relacionados permanecen fuera de los commits. No se ha ejecutado el runner completo de Postgres/Supabase, no se han aplicado migraciones remotas, no se han utilizado cobros reales y no se ha tocado producción.
+
+## 20. Intento controlado de actualización contra `release`
+
+Para resolver el estado `dirty` del PR 208 se actualizaron las referencias remotas y se comprobó la divergencia real:
+
+```text
+origin/release                 e92527eabb4c01113ab2522d5d803f53a6c6e255
+origin/codex/ventas-mejoras    b11fa5ad800f1df585f70bde1210ffeccc9db5b7
+release...QA                  783 commits de release por delante / 45 de QA por delante
+```
+
+La integración se intentó en un checkout temporal separado, nunca sobre el checkout principal. El merge produjo conflictos sustanciales en:
+
+- `fuente.js` y `source-recovery/fuente-recuperado.js`, donde `release` incorpora la configuración y evoluciones posteriores y la rama QA aporta correcciones A02/A05/A09/F4 que deben combinarse semánticamente;
+- `.github/workflows/puerta-ci-release.yml` y el validador del manifiesto, que pasan de la puerta de 157 contratos a la de 306 contratos;
+- `tests/ci/manifiesto_clasificacion.json`, con inventarios incompatibles entre ambos lados;
+- contratos PM07/PM13 y una migración B09 con cambios funcionales de ambos lados.
+
+El merge temporal se abortó sin commit ni push. La rama QA permanece exactamente en `b11fa5a`; no se aceptó automáticamente ningún lado del conflicto y no se perdió ningún cambio del checkout principal. Por la cantidad y naturaleza de los conflictos, el PR no se marca como integrable hasta hacer una resolución dedicada por área, seguida de la batería completa de CI sobre la base real de `release`.
