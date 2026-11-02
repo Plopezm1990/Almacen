@@ -10555,6 +10555,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("pedido_enviar_no_autorizado")) return "Tu perfil no tiene permiso para enviar este pedido.";
     if (msg.includes("pedido_no_enviable")) return "El pedido ya no está en un estado que permita enviarlo.";
     if (msg.includes("pedido_lineas_no_confirmadas")) return "Hay líneas que todavía no están confirmadas y el pedido no puede enviarse.";
+    if (msg.includes("producto_preparacion_clasificacion_pendiente")) return "Hay productos sin clasificar como preparación o entrega directa. Completa su clasificación antes de enviarlos.";
+    if (msg.includes("producto_preparacion_sin_ruta")) return "Hay un producto que requiere preparación pero no tiene una ruta activa a cocina. Configura la ruta y vuelve a intentarlo.";
     if (msg.includes("transicion_linea_no_autorizada")) return "Tu perfil no tiene permiso para realizar esta transición del pedido.";
     if (msg.includes("linea_cancelar_no_autorizada")) return "Tu perfil no tiene permiso para cancelar esta línea.";
     if (msg.includes("cancelacion_sensible_no_autorizada")) return "Esta cancelación requiere autorización sensible de Encargado o Propietario.";
