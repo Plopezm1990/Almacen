@@ -431,12 +431,16 @@
     albaranes: true, facturasDirectas: true, gastosGenerales: true, pagosFacturas: true,
     arqueos: true, movimientosCaja: true, devoluciones: true
   };
-  // Preferencias de interfaz del dispositivo. No contienen datos de negocio
-  // ni deben viajar a Supabase: sincronizarlas provoca avisos al cambiar de
-  // usuario en una sesión abierta, aunque el cambio local se haya guardado.
+  // Preferencias y respaldos locales del dispositivo. El historial de copias
+  // contiene snapshots completos y no tiene una ruta de almacenamiento
+  // autoritativa en servidor; enviarlo al KV genérico provoca avisos de
+  // sincronización y no ofrece una garantía de recuperación entre equipos.
+  // La copia portátil sigue siendo el mecanismo explícito para sacarlo del
+  // navegador.
   var CLAVES_SOLO_DISPOSITIVO = {
     modoEmpleado: true,
-    usuarioActivoId: true
+    usuarioActivoId: true,
+    historialRespaldos: true
   };
   function esClaveSoloDispositivo(key) {
     return !!CLAVES_SOLO_DISPOSITIVO[key];
