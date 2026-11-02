@@ -352,3 +352,24 @@ git diff --check                                                                
 Netlify publicó correctamente el preview del commit `3431375` en `deploy-preview-208`. En una sesión QA autenticada se abrió `Más → Descuentos y cortesías`; la pantalla mostró las políticas de los seis roles, el botón `Guardar políticas` y el estado de carga sin lanzar excepciones. La consola del navegador terminó sin mensajes `error` ni `warn`.
 
 La comprobación fue sólo de lectura: no se guardó ninguna política, no se aplicó ningún descuento o cortesía, no se inició cobro y no se generó ningún intento de pago. Por tanto, el fallo observado en la sección 12 queda **corregido y verificado en QA para la apertura del panel**. La aprobación de producción sigue sin otorgarse hasta completar la revisión integral del PR y cualquier caso de negocio de descuentos que requiera escritura controlada.
+
+## 19. Revisión final de contratos locales y estado del PR
+
+Durante la revisión final se detectaron y corrigieron dos bloqueos de la puerta de CI que no correspondían a la lógica de descuentos:
+
+1. El manifiesto versionado declaraba 173 pruebas, pero el árbol actual contenía 175. Faltaban `tests/f3/a05/a05-ui-adapter-smoke.mjs` y `tests/f3/a10/a10-preparation-route-guard.mjs`. Se añadieron al inventario como contratos activos Node y se actualizaron las cantidades esperadas.
+2. El smoke local PGlite A09 reutilizaba el fixture A08 con la columna `requiere_preparacion`, pero el bootstrap no cargaba las migraciones locales A10 y A10c antes de ejecutar el contrato. Se corrigió únicamente el orden del bootstrap efímero; no se aplicó ninguna migración en QA ni en producción.
+
+Validación posterior:
+
+```text
+node .github/scripts/validar-manifiesto-ci.mjs                         PASS (175/175; 161 activos, 8 utilidades, 5 diagnósticos, 1 histórico)
+node .github/scripts/validar-manifiesto-ci.mjs --self-test              PASS (3 negativos rechazados)
+node tests/f3/a09/local-pglite-contract.mjs                             PASS (A09_PGLITE_FUNCTIONAL=PASS)
+node --test tests/f3/a09/*                                               PASS (46/46)
+regresión A02/A06/A10/PM07                                               PASS
+```
+
+El diagnóstico de GitHub para el último commit (`ef527c6`) sólo muestra los checks de Netlify: preview correcto, reglas de cabeceras correctas y sin reglas de redirección que procesar. No hay anotaciones de CI ni revisiones formales. El PR 208 sigue abierto, en borrador, con base `release`, sin fusionar; GitHub lo mantiene en estado `dirty`, por lo que no se considera listo para merge.
+
+La rama continúa aislada (`codex/ventas-mejoras`). Los cambios locales no relacionados permanecen fuera de los commits. No se ha ejecutado el runner completo de Postgres/Supabase, no se han aplicado migraciones remotas, no se han utilizado cobros reales y no se ha tocado producción.
