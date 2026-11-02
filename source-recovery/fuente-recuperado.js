@@ -843,6 +843,32 @@ function decidirCambioTabPM15(formularioAbierto, confirmar) {
   if (!formularioAbierto) return true;
   return !!confirmar();
 }
+function respuestaErrorA09(error) {
+  const msg = String(error?.message || error || "");
+  if (msg.includes("descuento_no_autorizado") || msg.includes("descuento_solicitar_no_autorizado") || msg.includes("descuento_aplicar_no_autorizado")) return "Tu perfil no tiene permiso para solicitar o aplicar este descuento.";
+  if (msg.includes("cortesia_no_autorizada")) return "La política de descuentos de este local no permite aplicar cortesías.";
+  if (msg.includes("descuento_parametros_invalidos")) return "Revisa el tipo, valor y motivo del descuento.";
+  if (msg.includes("descuento_cortesia_requerida")) return "Para dejar el importe al 100 % debes usar la opción Cortesía.";
+  if (msg.includes("descuento_importe_fuera_base") || msg.includes("descuento_base_no_positiva")) return "El descuento supera la base disponible de la cuenta.";
+  if (msg.includes("descuento_limite_acumulado_excedido")) return "El descuento acumulado supera el límite autorizado para este perfil.";
+  if (msg.includes("descuento_escalado_no_permitido")) return "Este perfil no puede escalar descuentos por encima de su límite.";
+  if (msg.includes("descuento_compromiso_financiero")) return "La cuenta ya tiene un compromiso de cobro o reparto por importe y no admite este descuento.";
+  if (msg.includes("descuento_reparto_iva_mixto_no_soportado") || msg.includes("descuento_tipo_iva_desconocido")) return "Esta cuenta tiene una combinación de IVA que A09 todavía no puede descontar de forma segura.";
+  if (msg.includes("descuento_linea_fiscalizada")) return "Hay líneas ya fiscalizadas; el descuento no puede modificarlas.";
+  if (msg.includes("descuento_operating_day_incompatible")) return "La cuenta pertenece a otro día operativo.";
+  if (msg.includes("descuento_cuenta_no_encontrada") || msg.includes("descuento_cuenta_no_abierta")) return "La cuenta ya no está abierta o no está disponible.";
+  if (msg.includes("descuento_cuenta_sin_lineas") || msg.includes("descuento_linea_no_apta")) return "La cuenta no tiene líneas aptas para aplicar el descuento.";
+  if (msg.includes("descuento_autorizacion_version_obsoleta") || msg.includes("descuento_autorizacion_contexto_cambiado") || msg.includes("descuento_autorizacion_configuracion_cambiada")) return "La autorización quedó obsoleta porque cambió la cuenta, la política o el contexto. Solicita una nueva.";
+  if (msg.includes("descuento_autoaprobacion_rechazada")) return "La misma persona que solicitó el descuento no puede aprobarlo.";
+  if (msg.includes("descuento_aprobador_sin_permiso")) return "Tu perfil no tiene capacidad suficiente para autorizar este descuento.";
+  if (msg.includes("descuento_aprobacion_snapshot_conflict")) return "La autorización no coincide con la solicitud original.";
+  if (msg.includes("descuento_aprobacion_attempt_id_conflict")) return "Este intento de autorización ya existe con otros datos.";
+  if (msg.includes("descuento_rechazado_por_autorizador")) return "El descuento fue rechazado por el autorizador.";
+  if (msg.includes("descuento_solicitud_no_encontrada")) return "No se encontró la solicitud de descuento pendiente.";
+  if (msg.includes("descuento_solicitud_cerrada")) return "La solicitud de descuento ya está cerrada.";
+  if (msg.includes("descuento_ya_aprobado")) return "La solicitud ya fue aprobada; el solicitante debe reintentar la aplicación.";
+  return msg || "No se pudo completar la operación de descuentos.";
+}
 function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", esPropietario = false }) {
   const empresaId = empresa?.id || "";
   const crearPoliticaVacia = (rol) => ({
@@ -8893,7 +8919,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (error) throw error;
       return { ok: true, solicitudes: Array.isArray(data) ? data : [] };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA09(error) };
     }
   }
 
@@ -9027,7 +9053,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       }
       return { ok: true, estado: String(data?.status || ""), resultado: data };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA09(error) };
     }
   }
 
@@ -18933,7 +18959,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (error) throw error;
       return { ok: true, descuentos: Array.isArray(data) ? data : [] };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA09(error) };
     }
   }
 
@@ -18987,7 +19013,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         eventos: Array.isArray(eventos.data) ? eventos.data : []
       };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA09(error) };
     }
   }
 
@@ -19047,7 +19073,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         })
       };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA09(error) };
     }
   }
 
@@ -19111,7 +19137,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         }))
       };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA09(error) };
     }
   }
 
@@ -19156,7 +19182,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         }))
       };
     } catch (error) {
-      return { ok: false, error: respuestaErrorA06(error) };
+      return { ok: false, error: respuestaErrorA09(error) };
     }
   }
 
