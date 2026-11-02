@@ -120841,7 +120841,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   async function confirmarCobro() {
     setErrorVenta("");
     setEnviandoVenta(true);
-    const resultado = await venderCarrito(
+    const resultado = await venderCarritoA02(
       carrito.map((l22) => ({ productoId: l22.productoId, cantidad: l22.cantidad, configuracionA04: l22.configuracionA04 || null }))
     );
     setEnviandoVenta(false);

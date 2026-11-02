@@ -87,6 +87,10 @@ En la continuación de esta revisión se amplió `tests/f3/a10/a10-preparation-r
 
 Como prueba aislada adicional se creó `tests/f3/a05/a05-ui-adapter-smoke.mjs`. Ejecuta la acción real `enviarPedidoGuardadoA05` de cada fuente con adaptadores y setters simulados, sin DOM, red ni datos persistentes. Sus tres casos pasan: bloqueo de ruta conserva `ABIERTO` y el borrador; respuesta correcta actualiza a `ENVIADO` sólo con `ok: true`; y un segundo intento reutiliza el mismo identificador lógico en el mock sin duplicar el flujo. Esta prueba valida la máquina de estado del adaptador, pero la comprobación visual en un navegador continúa pendiente.
 
+Se completó además la comprobación manual en el preview QA `qa-fase2-20261102--chic-entremet-9107cf.netlify.app`: con la cuenta QA autorizada se seleccionó `Local A1`, se abrió el TPV y se añadió `Croissant (QA)` sin pulsar `Guardar pedido`. La interfaz mostró `Borrador local activo`, `1 línea(s)` y el total local de `1,32 €`. Tras recargar y volver a abrir el TPV del local, el mismo borrador reapareció. Después de la confirmación explícita del usuario se creó una fixture local equivalente y se pulsó `Vaciar carrito`; el estado final no mostró borrador, carrito ni `Guardar pedido`. La consola del preview terminó sin mensajes `warn` o `error`. Esta prueba confirma la persistencia y limpieza del borrador local, pero no crea evidencia de envío A05 ni de operación en Supabase.
+
+Con autorización explícita adicional del usuario se completó una prueba E2E persistente en el mismo preview QA, sin cobro: `Local A1` → `Croissant (QA)` → `Guardar pedido` → `Enviar pedido`. La UI mostró primero `Pedido guardado`, cuenta `2a48ebbc-b5d6-4833-9206-25ac86ba80fc`, pedido `8f979658-3aac-4e99-95e0-ff37cb5fa2bf` y estado `ABIERTO`; después mostró `Pedido enviado`, estado `ENVIADO` y la línea en estado `ENVIADA`. La lectura posterior de QA confirmó: pedido `ENVIADO`, versión 4; línea `QA-CAT-A1-CROISSANT` cantidad 1, total 1,32 y versión 3; una transición `ABIERTO → ENVIADO` con `operation_id = a05.2.send.8f979658-3aac-4e99-95e0-ff37cb5fa2bf`; una única comanda `PENDIENTE` con ruta/estación `d861c045-bbe3-4464-926d-3d1e4c0fd333`; y una línea de comanda `CONFIRMADA → ENVIADA`. La consola del navegador terminó sin `warn` ni `error`. El pedido de prueba queda persistente en QA; no se canceló ni se borró, y no se tocó el histórico auditado ni el intento de pago pendiente.
+
 ## 5. Bloqueo funcional y decisión recomendada
 
 Antes de implementar la corrección hay que fijar una política de producto. La recomendación es:
@@ -223,8 +227,36 @@ La primera publicación del alias no activaba el aislamiento QA porque `reset-pr
 
 Tras la corrección, la cuenta QA inició sesión correctamente, mostró `Local A1` y abrió el TPV del build nuevo. El TPV cargó categorías, productos QA e historial sin errores de consola. No se envió ningún pedido desde la UI para no crear operaciones persistentes; los tres comportamientos de envío siguen validados mediante las fixtures transaccionales revertidas del backend.
 
-La siguiente acción recomendada es completar, con una estrategia reversible, la comprobación visual del resultado de envío, la adición de línea y la trazabilidad/recuperación del caso histórico. Los casos mixto, cambio de ruta y reintento idempotente ya están aprobados a nivel backend QA; el adaptador ya tiene prueba aislada de reintento, pero esos casos todavía no se han pulsado desde la UI para no crear operaciones persistentes.
+La siguiente acción recomendada es completar, con una estrategia reversible, la comprobación visual del error de ruta, la adición de línea posterior al guardado y la trazabilidad/recuperación del caso histórico. La adición y recuperación del borrador local y el camino feliz `Guardar pedido → Enviar pedido` ya quedaron comprobados en el preview; los casos mixto, cambio de ruta y reintento idempotente ya están aprobados a nivel backend QA; el adaptador ya tiene prueba aislada de reintento, pero esos casos todavía no se han pulsado desde la UI para no crear más operaciones persistentes.
 
 La revisión de recuperación deja el caso histórico en estado **pendiente de operación soportada**: A06 puede recuperar la misma cuenta/pedido sin crear identidades nuevas, pero la UI de A10 informa expresamente de que asignar una ruta sólo se aplicará a nuevas comandas y no reenvía la comanda bloqueada existente. Las pruebas locales tampoco encuentran una RPC canónica de reencolado histórico. No se ejecutó ninguna llamada de recuperación, reimpresión, asignación ni transición sobre el pedido/comanda del informe.
 
 No se debe usar el pedido histórico ni el intento de pago de la auditoría como fixture de escritura. La promoción a producción sólo podrá proponerse cuando la UI y esos casos restantes estén probados y documentados, con una revisión separada de la migración y un plan de rollback.
+
+## 11. Comprobación no destructiva posterior del caso sin ruta
+
+Se contrastó el catálogo QA mediante una consulta de solo lectura para `QA-EMP-A` / `QA-A1`. Se localizaron productos activos que requieren preparación (`requiere_preparacion = true`) pero no tienen ninguna ruta activa en `tpv_producto_estaciones`, entre ellos `Café con leche (QA)`, `Caña de cerveza (QA)`, `Capuchino (QA)`, `Napolitana de chocolate (QA)`, `Porción de tarta (QA)`, `Refresco en lata (QA)`, `Tostada con tomate (QA)`, `Zumo de naranja (QA)`, `Queso al corte, por kg (QA)`, `QUESO TIERNO PRUEBA 500G` y `QA Fixture E3 Foto MasVendido Alergenos`.
+
+En el preview QA se buscó y seleccionó `Café con leche (QA)`. El producto requiere una variante, por lo que se eligió localmente `Pequeño` y se añadió al carrito como borrador local. Se confirmó que antes de guardar sólo aparece `Guardar pedido` y no existe un envío operativo todavía. El carrito se vació inmediatamente después. No se creó pedido, comanda, transición, checkout ni intento de pago adicional.
+
+La comprobación no destructiva confirma que existe una fixture UI adecuada para probar el rechazo `producto_preparacion_sin_ruta`, pero no permite aprobar el mensaje visual completo sin pulsar `Guardar pedido` y después `Enviar pedido`, operaciones persistentes que requieren una autorización específica adicional. El pedido E2E ya enviado correctamente no se reutilizó.
+
+Regresiones de código ejecutadas tras esta comprobación:
+
+```text
+node tests/f3/a10/a10-preparation-route-guard.mjs    PASS (4/4)
+node tests/f3/a10/a10-route-recovery-regression.mjs   PASS (4/4)
+node tests/f3/a10/a10-ui.test.mjs                    PASS (5/5)
+```
+
+## 12. Intento autorizado de prueba visual sin ruta y bloqueo de guardado
+
+Con autorización explícita adicional se repitió en el navegador el caso UI con `Café con leche (QA)`, seleccionando la variante `Pequeño`, después de seleccionar correctamente `Local A1` (el TPV rechaza expresamente la apertura con `Todos los locales`). La sesión quedó confirmada en el proyecto Supabase QA: el contexto real de la página devolvió `window.__nubeActiva = true`, cliente Supabase disponible y URL `https://qjqorixtkilwsndqayyx.supabase.co`. También se observaron respuestas `200` de RPC y lecturas del proyecto QA.
+
+El carrito se preparó correctamente y mostró `Guardar pedido €1,32`, pero pulsar el botón no produjo una transición visible, no abrió cuenta/pedido ni generó una petición de creación. El botón permanece habilitado y el carrito conserva la línea. La consulta posterior, de solo lectura, devolvió cero filas nuevas en `pedidos_tpv` de `QA-EMP-A` / `QA-A1`; no se creó tampoco una comanda, transición, checkout ni intento de pago. El histórico auditado y el pedido E2E correcto no se tocaron.
+
+La inspección del código servido identifica además una divergencia funcional que debe resolverse antes de aprobar la UI: `confirmarCobro()` sigue llamando a `venderCarrito()` (flujo antiguo de venta/stock), mientras que el flujo A02/A04 preparado para cuenta, pedido, variantes y guard de rutas está implementado en `venderCarritoA02()` pero no está conectado a ese botón. El guard de servidor sí está validado por las pruebas transaccionales, pero la prueba visual de `Guardar pedido → Enviar pedido` queda **no aprobada** hasta corregir esta conexión y demostrar el resultado visible.
+
+Por tanto, el bloqueo ya no se clasifica como falta de conexión del preview; se clasifica como **flujo UI de guardado no conectado al camino A02/A04 esperado / respuesta visual no observable**. No se ha forzado una escritura directa en Supabase ni se ha utilizado el pedido histórico para sustituir la prueba de UI.
+
+Como observación independiente durante la navegación se registró también en consola un `ReferenceError: respuestaErrorA06 is not defined` al abrir el panel de descuentos/cortesías, además de un aviso de claves React duplicadas en `Dashboard`. No se utilizó ese panel para la prueba de ruta y no se modifica ni se clasifica aquí como resuelto.
