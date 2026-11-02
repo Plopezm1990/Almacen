@@ -278,3 +278,38 @@ Tras publicar `14b9985`, se abrió una sesión nueva del mismo preview. La fuent
 ## 15. Diagnóstico adicional del evento del botón
 
 Se comprobó que otros eventos de la misma interfaz sí funcionan: el selector de apariencia cambió temporalmente a modo oscuro y se restauró a modo claro. El botón `Guardar pedido` está habilitado y su prop React `onClick` es `confirmarCobro`; el componente montado recibe `venderCarritoA02` como función. Se ejecutó también el manejador React de forma diagnóstica dentro de la pestaña QA, sin observar cambios visuales ni peticiones de red. La lectura posterior de `pedidos_tpv` siguió devolviendo `[]`. No se aplicó ningún bypass ni escritura manual; el flujo queda no aprobado hasta reproducirlo con una interacción normal que produzca una respuesta visible y trazable.
+
+## 16. Corrección del bloqueo y prueba E2E de guardado en QA
+
+El diagnóstico del commit `c1f0093` identificó dos causas confirmadas:
+
+1. Las opciones de la fixture QA tienen UUID almacenados con formato hexadecimal `8-4-4-4-12`, pero algunos no cumplen los bits de variante RFC 4122. El cliente estaba usando la validación estricta de UUID operativos también para los identificadores externos del catálogo y rechazaba la selección `Pequeño` antes de llamar al servidor.
+2. `confirmarCobro()` recibía el error estructurado, pero `errorVenta` sólo se renderizaba dentro del modal de cobro heredado, bloqueado por `false && showCobro`; por eso el botón parecía no tener efecto.
+
+En el commit `0161362` se aplicó un arreglo acotado y reversible en `fuente.js` y `source-recovery/fuente-recuperado.js`:
+
+- los UUID del catálogo se validan por estructura textual, mientras que los IDs operativos persistidos por el cliente mantienen la validación RFC estricta;
+- el mensaje de error de guardado se muestra junto al flujo principal del TPV, fuera del modal de cobro desactivado;
+- no se modificaron migraciones ni datos de Supabase.
+
+Contratos ejecutados después del arreglo:
+
+```text
+node tests/f3/a02/a02-1-contract.mjs             PASS
+node tests/f3/a06/a06-1-ui-contract.mjs          PASS
+node tests/f3/a06/a06-2-ui-contract.mjs          PASS
+node tests/pm07/frontend-contract.mjs            PASS
+node tests/f3/a10/a10-preparation-route-guard.mjs PASS (4/4)
+node tests/f3/a10/a10-route-recovery-regression.mjs PASS (4/4)
+node tests/f3/a10/a10-ui.test.mjs                PASS (5/5)
+```
+
+Netlify publicó correctamente el preview del commit `0161362` en `deploy-preview-208`. En una sesión nueva de QA se repitió desde la interfaz, sin bypass:
+
+`Local A1 → TPV → Café con leche (QA) → Pequeño → Guardar pedido`
+
+Resultado observado: la UI mostró `Pedido guardado`, una cuenta `56c52ff4-e3a3-44d3-94d3-dc8a120714f5`, un pedido `85ca79ea-8bbb-443b-953f-a48d358fd561` y estado operativo `ABIERTO`. La consulta de solo lectura confirmó el pedido en `pedidos_tpv` y una línea en `pedido_lineas` con `1,32 EUR`, variante `Pequeño` y estado `BORRADOR`. No se pulsó `Enviar pedido` ni se inició cobro.
+
+La consulta de solo lectura a `pago_intentos` para `QA-EMP-A` / `QA-A1` desde la hora de la prueba devolvió cero filas nuevas. Por tanto, esta prueba valida el guardado A02/A04 en QA y confirma que no crea un intento de pago. El pedido y la línea quedan como datos persistentes de prueba QA; no se borran ni se altera el histórico.
+
+Estado actualizado: **guardado de pedido A02/A04 en UI QA aprobado para este caso**. Sigue sin aprobarse la promoción a producción: falta completar los casos UI restantes, revisar el error independiente de `respuestaErrorA06` observado en descuentos/cortesías, y realizar la batería final de regresión antes de cualquier decisión de release.
