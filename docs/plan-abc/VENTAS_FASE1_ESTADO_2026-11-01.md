@@ -4,6 +4,29 @@ Fecha: 2026-11-01
 Rama: `codex/ventas-mejoras`
 Base: `f8cf300bd86054ef376519823ec787dc99b3807`
 
+## Addendum 2026-11-02 — corrección y revalidación del contexto multilocal
+
+Después del cierre inicial de fase 1 se detectó en el smoke visual que la selección de `Local A2` podía ser sobrescrita por la hidratación remota de `localActivoId`, dejando el TPV bloqueado aunque el selector mostrase A2. La causa quedó localizada en el efecto que mezclaba la hidratación inicial de contexto con los refrescos dependientes del local.
+
+La corrección quedó implementada en `881e6d7` y documentada en `05a1844`/`bc3f640`:
+
+- el contexto remoto se hidrata una sola vez al iniciar;
+- stock, conteos y caja siguen refrescándose al cambiar de local;
+- se añadió contrato PM07 para impedir la regresión;
+- la fuente recuperada y `fuente.js` permanecen materializados.
+
+La revalidación se ejecutó en el preview QA `6ae81e0f970b2b780a97508a`, en estado `ready`:
+
+`https://6ae81e0f970b2b780a97508a--chic-entremet-9107cf.netlify.app`
+
+Resultado del smoke autenticado, sin pulsar productos ni iniciar operaciones económicas:
+
+- `Local A2`: encabezado correcto, contexto correcto y TPV con catálogo visible;
+- retorno a `Local A1`: encabezado correcto y TPV con catálogo e histórico visibles;
+- no se creó venta, pedido, cobro ni intento de pago.
+
+Este addendum mantiene la conclusión de fase 1: **cerrada en código, contratos, evidencia económica y comprobación visual QA para el alcance revisado**. El preview no es producción y no autoriza por sí mismo una promoción.
+
 ## Alcance ejecutado
 
 - Se eliminó la lectura directa de `pago_intentos` desde la UI de cobro.

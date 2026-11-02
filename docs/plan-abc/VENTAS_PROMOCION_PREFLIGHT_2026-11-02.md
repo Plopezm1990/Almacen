@@ -8,6 +8,19 @@ Commit verificado: `ddd69ce1f77b48c260c2c857ef689559bcaa6713`
 
 El código de fase 1 está listo para una revisión de promoción, pero esta hoja no autoriza ni ejecuta un despliegue de producción. El intento de tarjeta de QA se conserva pendiente y no se ha creado ningún cobro adicional.
 
+## Actualización posterior — preview QA de la corrección multilocal
+
+El sitio QA fue identificado de forma explícita mediante la conexión autorizada de Netlify: `chic-entremet-9107cf` (`472295da-601a-43df-a4bc-8171f2fc668b`). Se publicó un preview manual, sin `--prod`, usando el artefacto local ya validado:
+
+- Deploy: `6ae81e0f970b2b780a97508a`.
+- Estado: `ready`.
+- URL: `https://6ae81e0f970b2b780a97508a--chic-entremet-9107cf.netlify.app`.
+- Contexto: `deploy-preview`.
+
+El smoke autenticado confirmó el cambio de `Local A1` a `Local A2` y el retorno a A1 con TPV operativo y catálogo visible. No se pulsaron productos, no se creó otra venta y no se inició ningún cobro.
+
+La corrección se considera aprobada en QA para el defecto multilocal. Sigue sin autorizarse el despliegue de producción mientras no exista una decisión explícita sobre la promoción del candidato completo y el intento de tarjeta pendiente se mantiene intacto.
+
 ## Preflight ejecutado
 
 - El fix F4 está presente en `30d29e2` y quedó conectado entre `crearLogicaVenta` y `GestionAlmacen`.
@@ -39,10 +52,10 @@ No se debe confirmar, cancelar, reintentar ni resolver este intento sin una resp
 
 ## Bloqueos de promoción
 
-1. La CLI de Netlify no está instalada en el equipo actual.
-2. No existe `.netlify/state.json` en el repositorio, por lo que no hay un sitio de Netlify vinculado localmente que se pueda identificar sin riesgo de elegir el proyecto equivocado.
-3. La rama actual no es `main` ni `release`.
-4. El caso de QA conserva un pago de tarjeta pendiente; no es un motivo para modificarlo artificialmente, pero sí debe quedar fuera de cualquier prueba económica de producción.
+1. No se usó una instalación global de la CLI; el preview se publicó con `npx` contra el site ID identificado explícitamente.
+2. No existe `.netlify/state.json` en el repositorio; no se creó ni se vinculó ningún sitio local.
+3. La rama actual no es `main` ni `release`; el preview se mantuvo aislado.
+4. El caso de QA conserva un pago de tarjeta pendiente; no es un motivo para modificarlo artificialmente y queda fuera de cualquier prueba económica de producción.
 
 ## Criterios para autorizar la promoción
 
