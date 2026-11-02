@@ -496,6 +496,8 @@ assert.ok(
 );
 
 assert.ok(guardarPedidoHandler.includes("await venderCarrito("), "A02.1 P12: Guardar pedido no delega en el adaptador A02/A03");
+assert.ok(guardarPedidoHandler.includes("try {") && guardarPedidoHandler.includes("catch (error)") && guardarPedidoHandler.includes("finally {"), "A02.1 P12: un fallo inesperado del adaptador deja el botón bloqueado sin mensaje");
+assert.ok(guardarPedidoHandler.includes("No se ha cobrado nada"), "A02.1 P12: el fallo inesperado no aclara que Guardar pedido no inicia cobro");
 for (const forbidden of [
   "medioPago",
   "detallePago",

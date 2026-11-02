@@ -25426,11 +25426,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   async function confirmarCobro() {
     setErrorVenta("");
     setEnviandoVenta(true);
-    const resultado = await venderCarrito(
+    try {
+      const resultado = await venderCarrito(
       carrito.map((l22) => ({ productoId: l22.productoId, cantidad: l22.cantidad, nota: String(l22.nota || "").trim().slice(0, 500), configuracionA04: l22.configuracionA04 || null })),
       { modalidad: modalidadActualA02 || void 0 }
-    );
-    setEnviandoVenta(false);
+      );
     if (!resultado || resultado.ok === false) {
       if (resultado?.modalidadNoHabilitada) await cargarModalidadesA02();
       if (await gestionarConflictoA06(resultado, "GUARDAR_PEDIDO")) {
@@ -25462,7 +25462,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setPedidoOperativoA05(await Promise.resolve(leerPedidoOperativoA05()));
     }
     setCarrito([]);
-    setShowCobro(false);
+      setShowCobro(false);
+    } catch (error) {
+      const mensaje = String(error?.message || error || "");
+      setErrorVenta(mensaje.includes("persistencia_") || mensaje.includes("contexto_") ? "No se pudo recuperar el pedido pendiente de forma segura. No se ha cobrado nada; revisa el estado antes de reintentar." : "No se pudo guardar el pedido. No se ha cobrado nada; inténtalo de nuevo.");
+    } finally {
+      setEnviandoVenta(false);
+    }
   }
   async function enviarPedidoGuardadoA05() {
     if (procesandoA05 || !confirmacion || typeof enviarPedidoA05 !== "function") return;
