@@ -85,6 +85,8 @@ Estas pruebas validan la autoridad remota existente, el tratamiento seguro de `S
 
 En la continuación de esta revisión se amplió `tests/f3/a10/a10-preparation-route-guard.mjs` de 3/3 a 4/4: el nuevo caso ejecuta mediante mock el mapper de errores de ambas fuentes y comprueba los mensajes de `producto_preparacion_clasificacion_pendiente` y `producto_preparacion_sin_ruta`. También verifica estáticamente que la rama `ok === false` de `enviarPedidoGuardadoA05` muestra `role="alert"` y no actualiza la confirmación a `ENVIADO`. Esto confirma el contrato de respuesta y la protección contra falso éxito en el código, pero no sustituye un clic de envío en navegador.
 
+Como prueba aislada adicional se creó `tests/f3/a05/a05-ui-adapter-smoke.mjs`. Ejecuta la acción real `enviarPedidoGuardadoA05` de cada fuente con adaptadores y setters simulados, sin DOM, red ni datos persistentes. Sus tres casos pasan: bloqueo de ruta conserva `ABIERTO` y el borrador; respuesta correcta actualiza a `ENVIADO` sólo con `ok: true`; y un segundo intento reutiliza el mismo identificador lógico en el mock sin duplicar el flujo. Esta prueba valida la máquina de estado del adaptador, pero la comprobación visual en un navegador continúa pendiente.
+
 ## 5. Bloqueo funcional y decisión recomendada
 
 Antes de implementar la corrección hay que fijar una política de producto. La recomendación es:
@@ -221,7 +223,7 @@ La primera publicación del alias no activaba el aislamiento QA porque `reset-pr
 
 Tras la corrección, la cuenta QA inició sesión correctamente, mostró `Local A1` y abrió el TPV del build nuevo. El TPV cargó categorías, productos QA e historial sin errores de consola. No se envió ningún pedido desde la UI para no crear operaciones persistentes; los tres comportamientos de envío siguen validados mediante las fixtures transaccionales revertidas del backend.
 
-La siguiente acción recomendada es completar, con una estrategia reversible, la comprobación visual del resultado de envío, la adición de línea y la trazabilidad/recuperación del caso histórico. Los casos mixto, cambio de ruta y reintento idempotente ya están aprobados a nivel backend QA; todavía no se han pulsado desde la UI para no crear operaciones persistentes.
+La siguiente acción recomendada es completar, con una estrategia reversible, la comprobación visual del resultado de envío, la adición de línea y la trazabilidad/recuperación del caso histórico. Los casos mixto, cambio de ruta y reintento idempotente ya están aprobados a nivel backend QA; el adaptador ya tiene prueba aislada de reintento, pero esos casos todavía no se han pulsado desde la UI para no crear operaciones persistentes.
 
 La revisión de recuperación deja el caso histórico en estado **pendiente de operación soportada**: A06 puede recuperar la misma cuenta/pedido sin crear identidades nuevas, pero la UI de A10 informa expresamente de que asignar una ruta sólo se aplicará a nuevas comandas y no reenvía la comanda bloqueada existente. Las pruebas locales tampoco encuentran una RPC canónica de reencolado histórico. No se ejecutó ninguna llamada de recuperación, reimpresión, asignación ni transición sobre el pedido/comanda del informe.
 
