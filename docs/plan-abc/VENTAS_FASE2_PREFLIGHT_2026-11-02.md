@@ -2,8 +2,8 @@
 
 Fecha: 2026-11-02  
 Rama: `codex/ventas-mejoras`  
-Alcance: revisión de código, contratos estáticos, preparación de F2-01/F2-02 y comprobación QA de solo lectura.
-Estado: **F2-01/F2-02 preparados en la rama; migración no aplicada y validación QA funcional pendiente**.
+Alcance: revisión de código, contratos estáticos, preparación de F2-01/F2-02 y validación controlada en QA.
+Estado: **F2-01/F2-02 aplicados en QA y validados con fixture reversible; la fase 2 completa sigue pendiente de UI, casos mixtos, reintentos y recuperación**.
 
 ## 1. Resultado ejecutivo
 
@@ -13,7 +13,7 @@ El hallazgo original de VEN-002 sigue presente en el diseño actual:
 - El trigger A10 crea después una comanda. Cuando no encuentra estación, la comanda queda con `route_key = 'SIN_RUTA'` y `estado = 'BLOQUEADA'`.
 - La interfaz del TPV muestra un mensaje genérico de “Pedido enviado” y deja la incidencia para el panel de cocina. Por tanto, existe una ventana de falso éxito para el operador: el pedido parece enviado aunque una comanda haya quedado bloqueada.
 
-Esto confirma el problema de consistencia de estados descrito en la auditoría. La corrección debe hacerse en la autoridad de servidor y acompañarse de una decisión explícita sobre qué productos requieren preparación. No se ha aplicado ninguna migración ni se ha modificado ningún pedido.
+Esto confirma el problema de consistencia de estados descrito en la auditoría. La corrección se ha aplicado en la autoridad de servidor de QA y se acompaña de una decisión explícita sobre qué productos requieren preparación. La fixture funcional se ejecutó dentro de una transacción revertida; no se modificó ningún pedido real ni el histórico auditado.
 
 ## 2. Evidencia revisada
 
@@ -28,7 +28,7 @@ Esto confirma el problema de consistencia de estados descrito en la auditoría. 
 
 La propiedad existente `tipo` de producto usada en el frontend para distinguir productos elaborados no constituye, por sí sola, un contrato de cocina: no está definida en el catálogo remoto A03 como clasificación de preparación y no debe reutilizarse sin una decisión funcional.
 
-### QA preview
+### QA preview y esquema remoto
 
 En el deploy preview de QA ya publicado para la rama aislada:
 
@@ -39,7 +39,11 @@ En el deploy preview de QA ya publicado para la rama aislada:
 - no había comandas para el filtro actual;
 - los productos aparecían en el selector, pero la interfaz no mostraba una clasificación visible entre preparación y entrega directa.
 
-No se pulsó “Crear estación”, “Guardar ruta”, “Cerrar sesión de caja” ni ningún botón que cree o cambie datos. El pedido/comanda del informe y el intento de pago pendiente quedaron intactos.
+No se pulsó “Crear estación”, “Guardar ruta”, “Cerrar sesión de caja” ni ningún botón que cree o cambie datos durante esa comprobación de UI. El pedido/comanda del informe y el intento de pago pendiente quedaron intactos.
+
+En el preflight de Supabase QA se comprobó que el esquema remoto ya tenía `catalogo_tpv_productos.requiere_preparacion` como `NOT NULL DEFAULT true` y una columna adicional `precio_con_impuesto`, aunque esos elementos no aparecían en la misma forma en el árbol local de migraciones. Por seguridad, la migración se diseñó para ser idempotente y no reescribió la clasificación existente.
+
+La migración `abc_f3_a10c_preparation_route_guard` se aplicó únicamente al proyecto QA `qjqorixtkilwsndqayyx` mediante la vía de migraciones de Supabase. Supabase la registró con la versión remota `20261102063724`. No se aplicó en producción.
 
 ## 3. Qué está confirmado, qué es indicio y qué queda por probar
 
@@ -146,19 +150,21 @@ Ejecutar primero contratos locales y después una prueba en QA con datos de prue
 - `main`/`release`: no modificadas.
 - Merge/PR: no realizado.
 - Deploy de producción: no realizado.
-- Migraciones: no aplicadas.
+- Migraciones: `abc_f3_a10c_preparation_route_guard` aplicada únicamente en QA, versión remota `20261102063724`; no aplicada en producción.
 - Cobros, confirmación/cancelación del intento pendiente y operaciones reales: no realizadas.
 - Histórico de pruebas: conservado.
 
-## 9. Implementación preparada en la rama
+Tras la aplicación se volvieron a consultar los asesores de Supabase. Los avisos obtenidos son generales del proyecto y previos al alcance de A10: seguridad informa 61 tablas con RLS sin políticas, 230 funciones `SECURITY DEFINER` ejecutables por `authenticated` y la protección de contraseñas filtradas desactivada; rendimiento informa 176 claves foráneas sin índice cobertor, una tabla sin clave primaria y 19 índices no usados. No se observó un aviso específico nuevo atribuible a los dos helpers privados o al índice añadido en esta migración. Estos avisos quedan abiertos y no se consideran resueltos por esta fase.
 
-Se ha añadido, sin aplicar en ningún entorno, la migración:
+## 9. Implementación preparada y validada en la rama
+
+Se ha añadido la migración, aplicada de forma controlada únicamente en QA:
 
 `supabase/migrations/20261102100000_abc_f3_a10c_preparation_route_guard.sql`
 
 Incluye:
 
-- columna nullable `catalogo_tpv_productos.requiere_preparacion`;
+- creación idempotente de `catalogo_tpv_productos.requiere_preparacion` si no existe, respetando la clasificación remota ya existente;
 - bloqueo fail-closed de productos sin clasificación;
 - error específico para productos de preparación sin ruta activa;
 - validación dentro de `abc_enviar_pedido`, después de bloquear pedido/líneas y antes de insertar transiciones;
@@ -166,7 +172,7 @@ Incluye:
 - mensajes accionables en ambas fuentes del TPV;
 - contratos de prueba para preparación con ruta, preparación sin ruta y entrega directa.
 
-La columna permanece nullable deliberadamente: los productos existentes no se clasifican automáticamente. Si se aplica la migración sin clasificar el catálogo, el servidor bloqueará el envío con `producto_preparacion_clasificacion_pendiente`; esto evita convertir una suposición en una venta falsa.
+En QA la columna ya estaba definida como `NOT NULL DEFAULT true`, con 36 productos clasificados como preparación y 1 como entrega directa; la migración no cambió esos valores. El contrato sigue contemplando `producto_preparacion_clasificacion_pendiente` para entornos o datos donde la clasificación pueda ser nula.
 
 Pruebas ejecutadas después de preparar el cambio:
 
@@ -181,8 +187,20 @@ node .github/scripts/build-netlify-publish.mjs     PASS
 node tests/netlify-publish-boundary.mjs             PASS
 ```
 
-Estos resultados son de rama/build y no prueban la ejecución real de la nueva migración contra QA.
+Además se ejecutó una prueba funcional de backend en QA con tres pedidos de fixture, todos dentro de `BEGIN ... ROLLBACK`:
+
+| Caso | Resultado observado | Estado |
+|---|---|---|
+| Producto de preparación sin ruta (`QA-CAT-A1-CANA`) | Rechazo tipado `producto_preparacion_sin_ruta`; el pedido permaneció `ABIERTO` y no se creó transición ni comanda | PASS |
+| Producto de preparación con ruta (`QA-CAT-A1-CROISSANT`) | El pedido pasó a `ENVIADO` y se creó una comanda `PENDIENTE` con estación y ruta válidas | PASS |
+| Producto de entrega directa (`QA-CAT-A1-AGUA`) | El pedido pasó a `ENVIADO` sin crear comanda, aunque el producto tuviera una ruta disponible | PASS |
+
+La comprobación posterior al `ROLLBACK` devolvió cero filas residuales en pedidos, comandas, eventos y transiciones para la operación de prueba. Por tanto, la validación funcional demuestra el guard y el filtrado A10 sin dejar datos de fixture en QA. No demuestra todavía la experiencia de UI del nuevo mensaje, porque no se ha desplegado un preview nuevo con este build.
+
+Se verificaron también los permisos: las funciones auxiliares privadas no son ejecutables por `anon`, `authenticated` ni `service_role`; `public.abc_enviar_pedido` sólo quedó ejecutable por `authenticated` entre esas tres identidades comprobadas.
 
 ## 10. Próximo paso autorizado
 
-Para activar esta corrección en QA falta un paso separado y controlado: clasificar una fixture segura de QA, aplicar la migración en QA con autorización explícita y ejecutar las pruebas funcionales de envío. No se debe usar el pedido histórico ni el intento de pago de la auditoría como fixture.
+La siguiente acción recomendada es generar un build de esta rama y desplegarlo sólo como preview QA, sin tocar producción. Después hay que iniciar sesión en el preview y comprobar en el TPV los mensajes de `producto_preparacion_sin_ruta`, el envío de un producto directo y la recepción del producto con ruta. A continuación quedan los casos de aceptación todavía no ejecutados: pedido mixto, cambio de ruta entre lectura y envío, reintento idempotente, adición de línea y trazabilidad/recuperación del caso histórico.
+
+No se debe usar el pedido histórico ni el intento de pago de la auditoría como fixture de escritura. La promoción a producción sólo podrá proponerse cuando la UI y esos casos restantes estén probados y documentados, con una revisión separada de la migración y un plan de rollback.
