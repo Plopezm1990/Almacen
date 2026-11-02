@@ -8,7 +8,7 @@ const required = [
   "opciones?.importeObjetivo",
   "p_importe_recibido: medio === \"EFECTIVO\" ? pendiente.importeRecibido : null",
   "p_cambio_entregado: medio === \"EFECTIVO\" ? pendiente.cambioEntregado : null",
-  "Importe de este pago (€)",
+  "Exacto para este pago (€)",
   "Efectivo recibido (€)",
   "Cambio a devolver",
   "Completar pago mixto con tarjeta",
