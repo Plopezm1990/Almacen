@@ -201,6 +201,12 @@ Se verificaron también los permisos: las funciones auxiliares privadas no son e
 
 ## 10. Próximo paso autorizado
 
-La siguiente acción recomendada es generar un build de esta rama y desplegarlo sólo como preview QA, sin tocar producción. Después hay que iniciar sesión en el preview y comprobar en el TPV los mensajes de `producto_preparacion_sin_ruta`, el envío de un producto directo y la recepción del producto con ruta. A continuación quedan los casos de aceptación todavía no ejecutados: pedido mixto, cambio de ruta entre lectura y envío, reintento idempotente, adición de línea y trazabilidad/recuperación del caso histórico.
+Se generó el build de esta rama y se publicó sólo como preview manual de QA, sin tocar producción:
+
+`https://qa-fase2-20261102--chic-entremet-9107cf.netlify.app`
+
+El preview nuevo abre el frontend y el modo local carga el panel general sin errores de arranque. Sin embargo, la autenticación sincronizada en ese alias rechazó la cuenta QA proporcionada con “Correo o contraseña incorrectos”; por ello no se aprueba todavía el TPV autenticado en este despliegue. La sesión que ya estaba abierta en el preview anterior sí cargó `Local A1` y abrió el TPV, pero esa comprobación pertenece al despliegue anterior y no sustituye la prueba del build nuevo.
+
+La siguiente acción recomendada es resolver el acceso de la cuenta QA para este preview y comprobar en el TPV los mensajes de `producto_preparacion_sin_ruta`, el envío de un producto directo y la recepción del producto con ruta. A continuación quedan los casos de aceptación todavía no ejecutados: pedido mixto, cambio de ruta entre lectura y envío, reintento idempotente, adición de línea y trazabilidad/recuperación del caso histórico.
 
 No se debe usar el pedido histórico ni el intento de pago de la auditoría como fixture de escritura. La promoción a producción sólo podrá proponerse cuando la UI y esos casos restantes estén probados y documentados, con una revisión separada de la migración y un plan de rollback.
