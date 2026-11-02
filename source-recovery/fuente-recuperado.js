@@ -1238,11 +1238,24 @@ function GestionAlmacen() {
     (async () => {
       try {
         await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });
+      } catch (e2) {
+        if (activo) console.error("PM-08: no se pudo sincronizar el contexto autoritativo", e2);
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [ready]);
+  (0, import_react4.useEffect)(() => {
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
+    let activo = true;
+    (async () => {
+      try {
         await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
         await sincronizarConteosPm12({ setConteos, localActivoId });
         await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });
       } catch (e2) {
-        if (activo) console.error("PM-08: no se pudo sincronizar contexto, stock o caja autoritativos", e2);
+        if (activo) console.error("PM-08: no se pudo sincronizar stock, conteos o caja autoritativos", e2);
       }
     })();
     return () => {

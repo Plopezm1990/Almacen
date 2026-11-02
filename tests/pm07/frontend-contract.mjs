@@ -33,6 +33,14 @@ const anular = functionBlock('anularVenta');
 const interno = functionBlock('traspasarStock');
 const interlocal = functionBlock('traspasarEntreLocales');
 const contexto = functionBlock('sincronizarContextoPm07');
+const syncContextoEffectStart = s.indexOf('await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });');
+const syncContextoEffectEnd = s.indexOf('const empresaDelLocalActivo', syncContextoEffectStart);
+const contextSyncEffects = syncContextoEffectStart >= 0 && syncContextoEffectEnd > syncContextoEffectStart
+  ? s.slice(s.lastIndexOf('(0, import_react4.useEffect)(() => {', syncContextoEffectStart), syncContextoEffectEnd)
+  : '';
+const contextEffectBoundary = contextSyncEffects.indexOf('  }, [ready]);');
+const contextHydrationEffect = contextEffectBoundary >= 0 ? contextSyncEffects.slice(0, contextEffectBoundary + '  }, [ready]);'.length) : '';
+const localRefreshEffect = contextEffectBoundary >= 0 ? contextSyncEffects.slice(contextEffectBoundary + '  }, [ready]);'.length) : '';
 
 const checks = {
   sync_helper_unico: (s.match(/async function sincronizarStockPm07\(/g) || []).length === 1,
@@ -41,6 +49,9 @@ const checks = {
   contexto_cloud_hidrata_locales: contexto.includes('setLocales(localesNube.filter'),
   contexto_cloud_hidrata_local_activo: contexto.includes('setLocalActivoId(localActivoNube)'),
   contexto_cloud_se_ejecuta_tras_ready: s.includes('await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });'),
+  contexto_cloud_se_hidrata_una_vez: contextHydrationEffect.includes('}, [ready]);'),
+  contexto_cloud_no_rehidrata_al_cambiar_local: contextHydrationEffect.includes('await sincronizarContextoPm07({ setEmpresas, setLocales, setLocalActivoId, setProductos });') && !contextHydrationEffect.includes('localActivoId]);'),
+  contexto_local_cambio_refresca_datos: localRefreshEffect.includes('await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });') && localRefreshEffect.includes('await sincronizarConteosPm12({ setConteos, localActivoId });') && localRefreshEffect.includes('await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones });') && localRefreshEffect.includes('}, [ready, localActivoId]);'),
   // RPC con prefijo estable: el sufijo de versión (_pm07 en origen, _pm09
   // desde una ronda posterior que las renombró) puede volver a cambiar;
   // lo que importa es que sigue siendo la RPC atómica de venta/reverso de
