@@ -39,7 +39,7 @@ assert.equal(R, B, "leerEstadoCobroF4 es idéntica en el bundle y en el fuente r
 assert.doesNotMatch(R, /\.from\("pago_intentos"\)/, "leerEstadoCobroF4 no lee pago_intentos directamente");
 assert.doesNotMatch(R.replace(/\/\/[^\n]*/g, ""), /pago_intentos/, "leerEstadoCobroF4 no nombra pago_intentos más que en comentarios");
 assert.match(R, /await supabase\.rpc\("abc_estado_pago_mixto_cuenta", \{\s+p_empresa_id: empresaId,\s+p_local_id: localActivoId,\s+p_cuenta_id: contextoCuenta\.cuentaId\s+\}\);\s+if \(detalleB05Error\) throw detalleB05Error;/, "los intentos se piden a abc_estado_pago_mixto_cuenta y su error se propaga");
-assert.match(R, /let intentos = \[\];\s+let incidencias = \[\];/, "los intentos empiezan vacíos (sin consulta intermedia)");
+assert.match(R, /let intentos = Array\.isArray\(detalleB05\?\.intentos\) \? detalleB05\.intentos : \[\];\s+let incidencias = \[\];/, "los intentos se inicializan únicamente desde la respuesta autoritativa (sin consulta intermedia)");
 assert.match(R, /if \(Array\.isArray\(detalleB05\?\.intentos\)\) intentos = detalleB05\.intentos;/, "los intentos son los que manda el servidor");
 assert.match(R, /const resumenServidor = detalleB05 \|\| resumen;/, "el estado final sale de la función de pago mixto (con el resumen como respaldo)");
 assert.match(R, /cobroIncierto: intentos\.some\(\(x3\) => \["PENDIENTE", "AUTORIZADO", "DESCONOCIDO"\]\.includes\(String\(x3\.estado \|\| ""\)\)\)/, "cobro incierto = algún intento pendiente, autorizado o desconocido");
