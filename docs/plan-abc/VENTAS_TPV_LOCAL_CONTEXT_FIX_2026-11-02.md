@@ -35,14 +35,20 @@ La causa confirmada en código era que el efecto de sincronización dependía de
 
 ## Estado QA
 
-La URL QA utilizada para reproducir el defecto corresponde al preview anterior y todavía no contiene este commit. La build local no puede autenticar la cuenta QA porque el entorno local no recibe las variables/configuración de autenticación que Netlify inyecta en el preview. Por tanto, la corrección no se marca como verificada visualmente en QA hasta publicar un preview nuevo y repetir:
+Se publicó el preview aislado `6ae81e0f970b2b780a97508a` en estado `ready`:
 
-- entrar en QA;
-- abrir TPV con `Todos los locales` y confirmar el bloqueo esperado;
-- seleccionar `Local A2`;
-- comprobar que el encabezado, el contexto operativo y el catálogo pasan a `Local A2`;
-- volver a `Local A1` y comprobar el retorno;
-- no pulsar productos, enviar pedidos ni iniciar cobros.
+`https://6ae81e0f970b2b780a97508a--chic-entremet-9107cf.netlify.app`
+
+La URL anterior ya no se utiliza como evidencia de la corrección. En el preview nuevo, con la cuenta de smoke autorizada y sin crear ventas:
+
+- entrar en QA: correcto;
+- seleccionar `Local A2`: el encabezado pasó a `Local A2` y el selector mostró `Mostrando solo Local A2.`;
+- abrir TPV en `Local A2`: correcto; se mostró el catálogo y el histórico del local, sin bloqueo ni error;
+- volver a `Local A1`: el encabezado pasó a `Local A1`;
+- abrir TPV en `Local A1`: correcto; se mostró de nuevo el catálogo y el histórico existente;
+- no se pulsaron productos, no se enviaron pedidos y no se iniciaron cobros.
+
+La prueba QA se considera aprobada para este defecto concreto. La build local sigue sin poder autenticar por falta de configuración local, pero no es necesaria para esta conclusión porque el preview QA sí se verificó con la cuenta autorizada.
 
 ## Siguiente paso recomendado
 
