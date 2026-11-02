@@ -3,7 +3,7 @@ import fs from 'node:fs';
 
 const source = fs.readFileSync('fuente.js', 'utf8');
 const recovered = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
-const migration = fs.readFileSync('supabase/migrations/20261102120000_abc_f4_b08_separar_devolucion_reembolso.sql', 'utf8');
+const migration = fs.readFileSync('supabase/migrations/20261102204642_abc_f4_b08_separar_devolucion_reembolso.sql', 'utf8');
 
 for (const text of [source, recovered]) {
   assert.match(text, /Los reembolsos econ.{0,8}micos deben tramitarse desde la vista Reembolso econ.{0,8}mico con un pago confirmado/);
