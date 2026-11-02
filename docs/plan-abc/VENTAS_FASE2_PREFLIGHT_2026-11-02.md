@@ -81,7 +81,9 @@ node tests/f3/a05/a05-2-ui-contract.mjs                   PASS
 node tests/f3/a06/a06-2-ui-contract.mjs                   PASS
 ```
 
-Estas pruebas validan la autoridad remota existente, el tratamiento seguro de `SIN_RUTA` y la no reencolación automática de comandas históricas. No prueban todavía el guard previo al envío; por eso no se marca VEN-002 como corregido.
+Estas pruebas validan la autoridad remota existente, el tratamiento seguro de `SIN_RUTA` y la no reencolación automática de comandas históricas. Los contratos locales no sustituyen la prueba funcional remota; esa evidencia se recoge separadamente en la batería QA transaccional de las secciones siguientes.
+
+En la continuación de esta revisión se amplió `tests/f3/a10/a10-preparation-route-guard.mjs` de 3/3 a 4/4: el nuevo caso ejecuta mediante mock el mapper de errores de ambas fuentes y comprueba los mensajes de `producto_preparacion_clasificacion_pendiente` y `producto_preparacion_sin_ruta`. También verifica estáticamente que la rama `ok === false` de `enviarPedidoGuardadoA05` muestra `role="alert"` y no actualiza la confirmación a `ENVIADO`. Esto confirma el contrato de respuesta y la protección contra falso éxito en el código, pero no sustituye un clic de envío en navegador.
 
 ## 5. Bloqueo funcional y decisión recomendada
 
@@ -220,5 +222,7 @@ La primera publicación del alias no activaba el aislamiento QA porque `reset-pr
 Tras la corrección, la cuenta QA inició sesión correctamente, mostró `Local A1` y abrió el TPV del build nuevo. El TPV cargó categorías, productos QA e historial sin errores de consola. No se envió ningún pedido desde la UI para no crear operaciones persistentes; los tres comportamientos de envío siguen validados mediante las fixtures transaccionales revertidas del backend.
 
 La siguiente acción recomendada es completar, con una estrategia reversible, la comprobación visual del resultado de envío, la adición de línea y la trazabilidad/recuperación del caso histórico. Los casos mixto, cambio de ruta y reintento idempotente ya están aprobados a nivel backend QA; todavía no se han pulsado desde la UI para no crear operaciones persistentes.
+
+La revisión de recuperación deja el caso histórico en estado **pendiente de operación soportada**: A06 puede recuperar la misma cuenta/pedido sin crear identidades nuevas, pero la UI de A10 informa expresamente de que asignar una ruta sólo se aplicará a nuevas comandas y no reenvía la comanda bloqueada existente. Las pruebas locales tampoco encuentran una RPC canónica de reencolado histórico. No se ejecutó ninguna llamada de recuperación, reimpresión, asignación ni transición sobre el pedido/comanda del informe.
 
 No se debe usar el pedido histórico ni el intento de pago de la auditoría como fixture de escritura. La promoción a producción sólo podrá proponerse cuando la UI y esos casos restantes estén probados y documentados, con una revisión separada de la migración y un plan de rollback.
