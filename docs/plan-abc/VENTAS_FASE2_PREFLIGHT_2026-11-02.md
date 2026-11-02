@@ -260,3 +260,11 @@ La inspección del código servido identifica además una divergencia funcional 
 Por tanto, el bloqueo ya no se clasifica como falta de conexión del preview; se clasifica como **flujo UI de guardado no conectado al camino A02/A04 esperado / respuesta visual no observable**. No se ha forzado una escritura directa en Supabase ni se ha utilizado el pedido histórico para sustituir la prueba de UI.
 
 Como observación independiente durante la navegación se registró también en consola un `ReferenceError: respuestaErrorA06 is not defined` al abrir el panel de descuentos/cortesías, además de un aviso de claves React duplicadas en `Dashboard`. No se utilizó ese panel para la prueba de ruta y no se modifica ni se clasifica aquí como resuelto.
+
+## 13. Corrección preparada para QA
+
+Se corrigió en la rama aislada `codex/ventas-mejoras` el punto de entrada de `confirmarCobro()`: ahora llama a `venderCarritoA02()` y no al flujo antiguo `venderCarrito()`. El cambio queda registrado en el commit `971b065` (`fix(ventas): conectar guardado TPV al flujo A02`). No se modificaron los cambios locales no relacionados.
+
+La corrección pasa las regresiones A10 (4/4, 4/4 y 5/5), el contrato frontend PM07 y la generación del artefacto estático. El artefacto resultante está en `.netlify-dist/` y supera `tests/netlify-publish-boundary.mjs`.
+
+La publicación automática/manual del artefacto no se pudo completar en esta sesión: el panel web de Netlify disponible para el navegador devuelve `Page not found` sin una sesión web iniciada, y las herramientas conectadas de Netlify disponibles sólo permiten consultar proyecto/despliegues, no crear un despliegue. Por seguridad no se ha subido código por una vía no verificada ni se ha tocado producción. La corrección está preparada, pero el preview QA sigue ejecutando la versión anterior hasta publicar este artefacto.
