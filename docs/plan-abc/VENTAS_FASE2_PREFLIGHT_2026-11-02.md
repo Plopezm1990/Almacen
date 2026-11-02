@@ -205,8 +205,10 @@ Se generó el build de esta rama y se publicó sólo como preview manual de QA, 
 
 `https://qa-fase2-20261102--chic-entremet-9107cf.netlify.app`
 
-El preview nuevo abre el frontend y el modo local carga el panel general sin errores de arranque. Sin embargo, la autenticación sincronizada en ese alias rechazó la cuenta QA proporcionada con “Correo o contraseña incorrectos”; por ello no se aprueba todavía el TPV autenticado en este despliegue. La sesión que ya estaba abierta en el preview anterior sí cargó `Local A1` y abrió el TPV, pero esa comprobación pertenece al despliegue anterior y no sustituye la prueba del build nuevo.
+La primera publicación del alias no activaba el aislamiento QA porque `reset-pruebas-preview.js` sólo reconocía hosts `deploy-preview-*` y hashes de deploy. El alias manual `qa-fase2-20261102` quedaba fuera y apuntaba al host productivo compilado. Se corrigió la detección para ese formato, se regeneró el build y se actualizó el mismo alias.
 
-La siguiente acción recomendada es resolver el acceso de la cuenta QA para este preview y comprobar en el TPV los mensajes de `producto_preparacion_sin_ruta`, el envío de un producto directo y la recepción del producto con ruta. A continuación quedan los casos de aceptación todavía no ejecutados: pedido mixto, cambio de ruta entre lectura y envío, reintento idempotente, adición de línea y trazabilidad/recuperación del caso histórico.
+Tras la corrección, la cuenta QA inició sesión correctamente, mostró `Local A1` y abrió el TPV del build nuevo. El TPV cargó categorías, productos QA e historial sin errores de consola. No se envió ningún pedido desde la UI para no crear operaciones persistentes; los tres comportamientos de envío siguen validados mediante las fixtures transaccionales revertidas del backend.
+
+La siguiente acción recomendada es completar, con fixtures QA aisladas y reversibles, la comprobación visual del resultado de envío y los casos todavía no ejecutados: pedido mixto, cambio de ruta entre lectura y envío, reintento idempotente, adición de línea y trazabilidad/recuperación del caso histórico.
 
 No se debe usar el pedido histórico ni el intento de pago de la auditoría como fixture de escritura. La promoción a producción sólo podrá proponerse cuando la UI y esos casos restantes estén probados y documentados, con una revisión separada de la migración y un plan de rollback.

@@ -63,6 +63,12 @@ assert.ok(JSON.parse(preview.storage.getItem('almacen:productos')).length > 0);
 assert.equal(JSON.parse(preview.storage.getItem('almacen:localActivoId')), 'QA-A1');
 console.log('P10_PREVIEW_QA_BOOTSTRAP=PASS');
 
+const manualQaAlias = runReset('qa-fase2-20261102--chic-entremet-9107cf.netlify.app');
+assert.equal(manualQaAlias.window.__modoPruebasQA, true);
+assert.equal(manualQaAlias.window.__modoPruebasLocal, false);
+assert.equal(manualQaAlias.window.__qaFetchProduccionBloqueado, true);
+console.log('P10_MANUAL_QA_ALIAS_BOOTSTRAP=PASS');
+
 const prodHost = resetSource.match(/var SUPABASE_PROD_HOST = "([^"]+)";/)?.[1];
 const qaHost = resetSource.match(/var SUPABASE_QA_HOST = "([^"]+)";/)?.[1];
 assert.ok(prodHost && qaHost && prodHost !== qaHost);
