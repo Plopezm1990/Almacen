@@ -164,11 +164,11 @@ insert into public.caja_sesion_responsables(
 
 insert into public.catalogo_tpv_productos(
   empresa_id,local_id,producto_id,currency_code,entidad_fiscal_id,nombre,unidad,
-  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,version,snapshot_origen
+  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,requiere_preparacion,version,snapshot_origen
 ) values (
   'emp-d','loc-d1','prod-a06-chocolate','EUR',
   '10000000-0000-0000-0000-000000000004',
-  'Chocolate A06','ud',false,0,10,10,true,7,'{"origen":"A06"}'::jsonb
+  'Chocolate A06','ud',false,0,10,10,true,false,7,'{"origen":"A06"}'::jsonb
 );
 
 insert into public.catalogo_tpv_grupos_opciones(

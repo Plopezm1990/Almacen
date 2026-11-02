@@ -21,6 +21,18 @@ declare
     'public.abc_listar_comandas_estacion(text,text,uuid,integer)'
   ];
 begin
+  if not exists(
+    select 1 from information_schema.columns
+     where table_schema='public'
+       and table_name='catalogo_tpv_productos'
+       and column_name='requiere_preparacion'
+  ) then
+    raise exception 'A10_FAIL: clasificación de preparación ausente';
+  end if;
+  if to_regprocedure('private.abc_a10_validar_rutas_envio(text,text,uuid,text)') is null then
+    raise exception 'A10_FAIL: guard de rutas ausente';
+  end if;
+
   foreach v_table in array v_tables loop
     if to_regclass('public.'||v_table) is null then
       raise exception 'A10_FAIL: tabla ausente %',v_table;
@@ -167,19 +179,23 @@ insert into public.caja_sesion_responsables(
 
 insert into public.catalogo_tpv_productos(
   empresa_id,local_id,producto_id,currency_code,entidad_fiscal_id,nombre,unidad,
-  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,version,snapshot_origen
+  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,requiere_preparacion,version,snapshot_origen
 ) values
 (
   'emp-g','loc-g1','prod-cafe-g','EUR','10000000-0000-0000-0000-000000000010',
-  'Café G','ud',false,0,2,10,true,1,'{}'::jsonb
+  'Café G','ud',false,0,2,10,true,true,1,'{}'::jsonb
 ),
 (
   'emp-g','loc-g1','prod-churro-g','EUR','10000000-0000-0000-0000-000000000010',
-  'Churro G','ud',false,0,1,10,true,1,'{}'::jsonb
+  'Churro G','ud',false,0,1,10,true,true,1,'{}'::jsonb
 ),
 (
   'emp-g','loc-g1','prod-sin-ruta-g','EUR','10000000-0000-0000-0000-000000000010',
-  'Sin ruta G','ud',false,0,3,10,true,1,'{}'::jsonb
+  'Sin ruta G','ud',false,0,3,10,true,true,1,'{}'::jsonb
+),
+(
+  'emp-g','loc-g1','prod-directo-g','EUR','10000000-0000-0000-0000-000000000010',
+  'Directo G','ud',false,0,4,10,true,false,1,'{}'::jsonb
 );
 
 -- Configurar Cocina y Churrería.
@@ -459,23 +475,87 @@ select public.abc_confirmar_linea_pedido(
   '20000000-0000-0000-0000-000000000020',
   '40000000-0000-0000-0000-000000000010',date '2026-09-26'
 );
+do $$
+declare
+  v_bloqueado boolean:=false;
+begin
+  begin
+    perform public.abc_enviar_pedido(
+      'a10.unrouted.send','emp-g','loc-g1',
+      '60000000-0000-0000-0000-000000000021',3,
+      '20000000-0000-0000-0000-000000000020',
+      '40000000-0000-0000-0000-000000000010',date '2026-09-26'
+    );
+  exception when others then
+    if sqlerrm like '%producto_preparacion_sin_ruta%' then
+      v_bloqueado:=true;
+    else
+      raise;
+    end if;
+  end;
+
+  if not v_bloqueado then
+    raise exception 'A10_FAIL: producto sin ruta se pudo enviar';
+  end if;
+  if exists(
+    select 1 from public.pedido_linea_transiciones
+     where operation_id='a10.unrouted.send'
+  ) then raise exception 'A10_FAIL: producto sin ruta dejó transición'; end if;
+  if exists(
+    select 1 from public.comandas_preparacion
+     where operation_id='a10.unrouted.send'
+  ) then raise exception 'A10_FAIL: producto sin ruta creó comanda'; end if;
+  if (select estado from public.pedidos_tpv
+       where id='60000000-0000-0000-0000-000000000021')<>'BORRADOR' then
+    raise exception 'A10_FAIL: pedido sin ruta cambió de estado';
+  end if;
+end $$;
+
+-- Producto de entrega directa: se puede enviar sin crear una comanda de cocina.
+select public.abc_abrir_cuenta(
+  'a10.direct.account','emp-g','loc-g1',
+  '50000000-0000-0000-0000-000000000022','TAKEAWAY','EUR',
+  '00000000-0000-0000-0000-000000000031',
+  '20000000-0000-0000-0000-000000000020',
+  '40000000-0000-0000-0000-000000000010',date '2026-09-26'
+);
+select public.abc_crear_pedido(
+  'a10.direct.order','emp-g','loc-g1',
+  '60000000-0000-0000-0000-000000000022',
+  '50000000-0000-0000-0000-000000000022',1,
+  '20000000-0000-0000-0000-000000000020',
+  '40000000-0000-0000-0000-000000000010',date '2026-09-26'
+);
+select public.abc_agregar_linea_pedido(
+  'a10.direct.line','emp-g','loc-g1',
+  '70000000-0000-0000-0000-000000000023',
+  '60000000-0000-0000-0000-000000000022','prod-directo-g',1,1,
+  '20000000-0000-0000-0000-000000000020',
+  '40000000-0000-0000-0000-000000000010',date '2026-09-26'
+);
+select public.abc_confirmar_linea_pedido(
+  'a10.direct.confirm','emp-g','loc-g1',
+  '70000000-0000-0000-0000-000000000023',1,2,
+  '20000000-0000-0000-0000-000000000020',
+  '40000000-0000-0000-0000-000000000010',date '2026-09-26'
+);
 select public.abc_enviar_pedido(
-  'a10.unrouted.send','emp-g','loc-g1',
-  '60000000-0000-0000-0000-000000000021',3,
+  'a10.direct.send','emp-g','loc-g1',
+  '60000000-0000-0000-0000-000000000022',3,
   '20000000-0000-0000-0000-000000000020',
   '40000000-0000-0000-0000-000000000010',date '2026-09-26'
 );
 
 do $$
 begin
-  if not exists(
-    select 1 from public.comandas_preparacion
-     where operation_id='a10.unrouted.send' and estado='BLOQUEADA' and estacion_id is null
-  ) then raise exception 'A10_FAIL: producto sin ruta no quedo bloqueado'; end if;
+  if (select estado from public.pedidos_tpv
+       where id='60000000-0000-0000-0000-000000000022')<>'ENVIADO' then
+    raise exception 'A10_FAIL: producto directo no se pudo enviar';
+  end if;
   if exists(
-    select 1 from public.efectos_pendientes
-     where abc_command_id='a10.unrouted.send' and tipo like 'KITCHEN%'
-  ) then raise exception 'A10_FAIL: producto sin ruta fue enviado'; end if;
+    select 1 from public.comandas_preparacion
+     where operation_id='a10.direct.send'
+  ) then raise exception 'A10_FAIL: producto directo creó comanda'; end if;
 end $$;
 
 -- Aislamiento cross-local y fail-closed sin membresía del local.

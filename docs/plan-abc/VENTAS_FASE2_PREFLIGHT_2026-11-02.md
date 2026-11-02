@@ -2,8 +2,8 @@
 
 Fecha: 2026-11-02  
 Rama: `codex/ventas-mejoras`  
-Alcance: revisión de código, contratos estáticos y comprobación QA de solo lectura.  
-Estado: **preflight completado; implementación de Fase 2 todavía no iniciada**.
+Alcance: revisión de código, contratos estáticos, preparación de F2-01/F2-02 y comprobación QA de solo lectura.
+Estado: **F2-01/F2-02 preparados en la rama; migración no aplicada y validación QA funcional pendiente**.
 
 ## 1. Resultado ejecutivo
 
@@ -150,6 +150,39 @@ Ejecutar primero contratos locales y después una prueba en QA con datos de prue
 - Cobros, confirmación/cancelación del intento pendiente y operaciones reales: no realizadas.
 - Histórico de pruebas: conservado.
 
-## 9. Próximo paso autorizado
+## 9. Implementación preparada en la rama
 
-Para continuar con implementación, confirmar únicamente la política recomendada del apartado 5 y autorizar la preparación de los cambios F2-01/F2-02 en la rama aislada. La migración se podrá dejar preparada y probada localmente, pero no aplicarla en QA hasta que se autorice expresamente y exista una fixture segura.
+Se ha añadido, sin aplicar en ningún entorno, la migración:
+
+`supabase/migrations/20261102100000_abc_f3_a10c_preparation_route_guard.sql`
+
+Incluye:
+
+- columna nullable `catalogo_tpv_productos.requiere_preparacion`;
+- bloqueo fail-closed de productos sin clasificación;
+- error específico para productos de preparación sin ruta activa;
+- validación dentro de `abc_enviar_pedido`, después de bloquear pedido/líneas y antes de insertar transiciones;
+- filtro del trigger A10 para que los productos directos no generen comandas artificiales;
+- mensajes accionables en ambas fuentes del TPV;
+- contratos de prueba para preparación con ruta, preparación sin ruta y entrega directa.
+
+La columna permanece nullable deliberadamente: los productos existentes no se clasifican automáticamente. Si se aplica la migración sin clasificar el catálogo, el servidor bloqueará el envío con `producto_preparacion_clasificacion_pendiente`; esto evita convertir una suposición en una venta falsa.
+
+Pruebas ejecutadas después de preparar el cambio:
+
+```text
+node tests/f3/a10/a10-preparation-route-guard.mjs  PASS (3/3)
+node tests/f3/a10/a10-ui.test.mjs                  PASS (5/5)
+node tests/f3/a10/a10-route-recovery-regression.mjs PASS (4/4)
+node tests/f3/a05/a05-2-ui-contract.mjs            PASS
+node tests/f3/a06/a06-2-ui-contract.mjs            PASS
+node tests/pm07/frontend-contract.mjs              PASS
+node .github/scripts/build-netlify-publish.mjs     PASS
+node tests/netlify-publish-boundary.mjs             PASS
+```
+
+Estos resultados son de rama/build y no prueban la ejecución real de la nueva migración contra QA.
+
+## 10. Próximo paso autorizado
+
+Para activar esta corrección en QA falta un paso separado y controlado: clasificar una fixture segura de QA, aplicar la migración en QA con autorización explícita y ejecutar las pruebas funcionales de envío. No se debe usar el pedido histórico ni el intento de pago de la auditoría como fixture.

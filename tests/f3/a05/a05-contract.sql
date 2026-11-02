@@ -182,17 +182,17 @@ insert into public.caja_sesion_responsables(
 
 insert into public.catalogo_tpv_productos(
   empresa_id,local_id,producto_id,currency_code,entidad_fiscal_id,nombre,unidad,
-  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,version,snapshot_origen
+  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,requiere_preparacion,version,snapshot_origen
 ) values
 (
   'emp-c','loc-c1','prod-cafe','EUR',
   '10000000-0000-0000-0000-000000000003',
-  'Café ficticio','ud',false,0,2,10,true,1,'{"origen":"fixture-a05"}'
+  'Café ficticio','ud',false,0,2,10,true,false,1,'{"origen":"fixture-a05"}'
 ),
 (
   'emp-c','loc-c1','prod-churro','EUR',
   '10000000-0000-0000-0000-000000000003',
-  'Churro ficticio','ud',false,0,1,10,true,1,'{"origen":"fixture-a05"}'
+  'Churro ficticio','ud',false,0,1,10,true,false,1,'{"origen":"fixture-a05"}'
 );
 
 -- Flujo principal de dos líneas.
