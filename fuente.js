@@ -124627,8 +124627,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         try {
           let cuentaFiscalId = v22?.cuentaId || null;
           const ventaFiscalIdHistorial = v22?.ventaFiscalId || v22?.ventaId || null;
+          let supabase = null;
+          if (typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function") {
+            supabase = await window.getSupabaseClient();
+          }
           if (!cuentaFiscalId && ventaFiscalIdHistorial && typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function") {
-            const supabase = await window.getSupabaseClient();
             const { data: ventaFiscal, error: ventaFiscalError } = await supabase
               .from("ventas_fiscales")
               .select("cuenta_id")
@@ -124641,7 +124644,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           if (!cuentaFiscalId) throw new Error("venta_historial_sin_cuenta_fiscal");
           const fiscal = await leerEstadoFiscalC07D(cuentaFiscalId);
           const documento = Array.isArray(fiscal?.documentos) ? fiscal.documentos[0] : null;
-          const qr = fiscal?.qr;
+          let qr = fiscal?.qr;
+          if ((!qr || qr.ok !== true || typeof qr.qr_url !== "string") && documento?.venta_fiscal_id && supabase) {
+            const { data: qrExistente, error: qrError } = await supabase
+              .from("abc_fiscal_qr_documentos")
+              .select("qr_url,nif_emisor,codigo_serie,numero,fecha_expedicion,importe_total,modo,estado,created_at")
+              .eq("empresa_id", configEmpresa?.id || "")
+              .eq("local_id", local?.id || "")
+              .eq("venta_fiscal_id", documento.venta_fiscal_id)
+              .order("created_at", { ascending: false })
+              .limit(1)
+              .maybeSingle();
+            if (!qrError && qrExistente?.qr_url) qr = { ...qrExistente, ok: true };
+          }
           if (documento) {
             const numero = documento.numero == null ? "" : String(documento.numero).padStart(6, "0");
             const fechaFiscal = String(qr?.fecha_expedicion || v22.fecha || new Date().toISOString().slice(0, 10));

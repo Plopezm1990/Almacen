@@ -47,5 +47,8 @@ test("el historial recupera el contexto fiscal por venta cuando falta cuentaId l
   assert.match(source, /ventaFiscalIdHistorial = v22\?\.ventaFiscalId \|\| v22\?\.ventaId \|\| null/);
   assert.match(source, /from\("ventas_fiscales"\)/);
   assert.match(source, /\.select\("cuenta_id"\)/);
+  assert.match(source, /from\("abc_fiscal_qr_documentos"\)/);
+  assert.match(source, /\.select\("qr_url,nif_emisor,codigo_serie,numero,fecha_expedicion,importe_total,modo,estado,created_at"\)/);
+  assert.match(source, /qrExistente\?\.qr_url/);
   assert.match(source, /leerEstadoFiscalC07D\(cuentaFiscalId\)/);
 });
