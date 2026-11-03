@@ -2690,7 +2690,7 @@ function ConfigFiscalSelect({ clave, etiqueta, form, onCambio, disabled }) {
 function ConfigFiscalidad({ empresaId, localId, localNombre = "", procesarColaFiscalQaC07D = null }) {
   const h = import_react4.default.createElement;
   const modoFiscalLocal = typeof window !== "undefined" && window.__nubeActiva === false;
-  const modoFiscalQa = typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+  const modoFiscalQa = typeof window !== "undefined" && (window.__modoPruebasQA === true || /^(?:deploy-preview-\d+|[a-f0-9]{24}|codex-ventas-release-integration)--chic-entremet-9107cf\.netlify\.app$/iu.test(window.location.hostname || "")) && window.__nubeActiva !== false;
   const modoPilotoSandboxQa = modoFiscalQa;
   const [emisores, setEmisores] = (0, import_react4.useState)([]);
   const [emisorId, setEmisorId] = (0, import_react4.useState)("");
@@ -10029,7 +10029,10 @@ var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza
 var ESTADOS_PEDIDO_COBRABLE_F4 = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO", "CERRADO"];
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
   function c07dActivoEnEntornoQa() {
-    return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+    const host = typeof window !== "undefined" ? window.location.hostname || "" : "";
+    const esPreviewQa = /^(?:deploy-preview-\d+|[a-f0-9]{24}|codex-ventas-release-integration)--chic-entremet-9107cf\.netlify\.app$/iu.test(host);
+    const esQaLocal = /^(?:localhost|127\.0\.0\.1)$/iu.test(host) && window.__modoPruebasQA === true;
+    return typeof window !== "undefined" && (window.__modoPruebasQA === true || esPreviewQa || esQaLocal) && window.__nubeActiva !== false;
   }
   function tarjetaQaSimuladaActiva() {
     const host = typeof window !== "undefined" ? window.location.hostname || "" : "";
