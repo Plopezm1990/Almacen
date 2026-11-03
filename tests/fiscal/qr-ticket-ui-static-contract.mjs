@@ -41,3 +41,10 @@ test("el ticket rechaza payloads sin HTTPS o marcados como producción", () => {
   assert.equal(source.includes("qr.production !== false"), true);
   assert.equal(source.includes("https:\\/\\//u.test(qr.url)"), true);
 });
+
+test("el historial recupera el contexto fiscal por venta cuando falta cuentaId local", () => {
+  assert.match(source, /venta_historial_sin_cuenta_fiscal/);
+  assert.match(source, /from\("ventas_fiscales"\)/);
+  assert.match(source, /\.select\("cuenta_id"\)/);
+  assert.match(source, /leerEstadoFiscalC07D\(cuentaFiscalId\)/);
+});

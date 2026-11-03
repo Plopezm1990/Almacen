@@ -2709,6 +2709,7 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "", procesarColaFi
   const [guardandoRepresentacion, setGuardandoRepresentacion] = (0, import_react4.useState)(false);
   const [procesandoColaQa, setProcesandoColaQa] = (0, import_react4.useState)(false);
   const [resultadoColaQa, setResultadoColaQa] = (0, import_react4.useState)(null);
+  const procesandoColaQaRef = (0, import_react4.useRef)(false);
   const listaSolicitud = (0, import_react4.useRef)(0);
   const detalleSolicitud = (0, import_react4.useRef)(0);
   const reiniciarDetalle = () => { setDetalle(null); setForm({ ...FISCAL_CONFIG_INICIAL }); };
@@ -2812,8 +2813,11 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "", procesarColaFi
     finally { setGuardandoRepresentacion(false); }
   };
   const procesarColaQa = async () => {
+    if (procesandoColaQaRef.current) return;
+    procesandoColaQaRef.current = true;
     if (typeof procesarColaFiscalQaC07D !== "function") {
       setError("La acción del worker QA todavía no está disponible en esta versión.");
+      procesandoColaQaRef.current = false;
       return;
     }
     setError(""); setConfirmacion(""); setResultadoColaQa(null); setProcesandoColaQa(true);
@@ -2824,7 +2828,10 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "", procesarColaFi
       setConfirmacion(`Worker QA ejecutado: ${Number(r2.reclamadas || 0)} reclamadas, ${Number(r2.resueltas || 0)} resueltas y ${Number(r2.fallidas || 0)} fallidas. No se ha contactado con la AEAT.`);
     } catch (e2) {
       setError(e2?.message || "No se pudo ejecutar el worker QA.");
-    } finally { setProcesandoColaQa(false); }
+    } finally {
+      setProcesandoColaQa(false);
+      procesandoColaQaRef.current = false;
+    }
   };
   const ocupado = cargando || guardando;
   const emisor = detalle?.emisor || emisores.find((e2) => e2.id === emisorId) || null;
@@ -2844,7 +2851,7 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "", procesarColaFi
       h("div", { className: "font-semibold mb-1" }, "Procesamiento fiscal QA"),
       h("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Acción manual y controlada para este local. Reclama y resuelve hasta 10 elementos de la cola en modo QA_SIMULADOR; no envía datos a la AEAT ni modifica producción."),
       h("div", { className: "flex flex-wrap items-center gap-2" },
-        h(Btn, { small: true, onClick: procesarColaQa, disabled: procesandoColaQa || !empresaId || !localId }, procesandoColaQa ? "Procesando…" : "Procesar cola QA"),
+        h("button", { type: "button", "data-c07d-process-queue": "qa", onClick: procesarColaQa, disabled: procesandoColaQa || !empresaId || !localId, className: "inline-flex items-center gap-1.5 rounded-lg font-medium px-2.5 py-1.5 text-[12px]", style: { background: C2.accentFill, color: C2.onAccent, opacity: procesandoColaQa || !empresaId || !localId ? 0.45 : 1, cursor: procesandoColaQa || !empresaId || !localId ? "not-allowed" : "pointer" } }, procesandoColaQa ? "Procesando…" : "Procesar cola QA"),
         resultadoColaQa ? h("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, `Última ejecución: ${Number(resultadoColaQa.reclamadas || 0)} reclamadas · ${Number(resultadoColaQa.resueltas || 0)} resueltas · ${Number(resultadoColaQa.fallidas || 0)} fallidas`) : null
       )
     ) : null,
@@ -23590,9 +23597,22 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
     async function abrirTicketHistorial(v22) {
       let ticket = { ...v22 };
-      if (typeof leerEstadoFiscalC07D === "function" && v22?.cuentaId) {
+      if (typeof leerEstadoFiscalC07D === "function") {
         try {
-          const fiscal = await leerEstadoFiscalC07D(v22.cuentaId);
+          let cuentaFiscalId = v22?.cuentaId || null;
+          if (!cuentaFiscalId && v22?.ventaFiscalId && typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function") {
+            const supabase = await window.getSupabaseClient();
+            const { data: ventaFiscal, error: ventaFiscalError } = await supabase
+              .from("ventas_fiscales")
+              .select("cuenta_id")
+              .eq("id", v22.ventaFiscalId)
+              .eq("empresa_id", configEmpresa?.id || "")
+              .eq("local_id", local?.id || "")
+              .maybeSingle();
+            if (!ventaFiscalError) cuentaFiscalId = ventaFiscal?.cuenta_id || null;
+          }
+          if (!cuentaFiscalId) throw new Error("venta_historial_sin_cuenta_fiscal");
+          const fiscal = await leerEstadoFiscalC07D(cuentaFiscalId);
           const documento = Array.isArray(fiscal?.documentos) ? fiscal.documentos[0] : null;
           const qr = fiscal?.qr;
           if (documento) {
@@ -23600,6 +23620,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
             const fechaFiscal = String(qr?.fecha_expedicion || v22.fecha || new Date().toISOString().slice(0, 10));
             ticket = {
               ...ticket,
+              cuentaId: cuentaFiscalId,
               ventaId: documento.venta_fiscal_id || ticket.ventaId,
               numeroFiscal: `${documento.codigo_serie || "TPV"}-${numero}`,
               qrFiscal: qr?.ok && typeof qr.qr_url === "string" && /^https:\/\//u.test(qr.qr_url) ? {
