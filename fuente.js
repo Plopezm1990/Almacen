@@ -111057,6 +111057,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   function c07dActivoEnEntornoQa() {
     return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
   }
+  function tarjetaQaSimuladaActiva() {
+    const host = typeof window !== "undefined" ? window.location.hostname || "" : "";
+    return typeof window !== "undefined" && window.__modoPruebasQA === true
+      && host !== "chic-entremet-9107cf.netlify.app"
+      && /(?:^|--)chic-entremet-9107cf\.netlify\.app$/iu.test(host);
+  }
   function productoEsDelLocalActivoVenta(prod) {
     if (!prod) return false;
     if (!localActivoId) return true;
@@ -112280,6 +112286,47 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (!contexto?.cuentaId) return { ok: false, error: "No hay una cuenta operativa para recuperar." };
       const pendiente = leerPendienteCobroF4(empresaId, localActivoId, contexto.cuentaId);
       if (!pendiente?.medio) return await leerEstadoCobroF4();
+      if (pendiente.medio === "TARJETA" && tarjetaQaSimuladaActiva()) {
+        const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+        if (!hayConexion) return { ok: false, error: "La recuperación de la tarjeta QA necesita conexión con el servidor." };
+        const supabase = await window.getSupabaseClient();
+        const { data: resolucion, error: resolucionError } = await supabase.functions.invoke("qa-card-worker", {
+          body: {
+            empresaId,
+            localId: localActivoId,
+            cuentaId: pendiente.cuentaId,
+            intentoId: pendiente.intentoId,
+            importe: Number(pendiente.importeObjetivo),
+            modo: "QA_SIMULADOR"
+          }
+        });
+        if (resolucionError) throw resolucionError;
+        if (!resolucion?.ok) return { ok: false, error: resolucion?.error || "El adaptador QA no confirmó la tarjeta." };
+        limpiarPendienteCobroF4(empresaId, localActivoId, pendiente.cuentaId);
+        const estadoFinal = await leerEstadoCobroF4();
+        if (!estadoFinal.ok || Number(estadoFinal.saldo) > 0) return estadoFinal;
+        const checkoutCompletado = Array.isArray(estadoFinal.checkouts)
+          ? estadoFinal.checkouts.find((checkout) => String(checkout?.estado || "").toUpperCase() === "COMPLETADO")
+          : null;
+        const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+        const cierreCuenta = checkoutCompletado?.id
+          ? await cerrarCuentaPagadaF4(pendiente.cuentaId, checkoutCompletado.id, estadoFinal.cuentaVersion, terminal)
+          : { ok: false, error: "No se encontró el checkout completado para cerrar la cuenta." };
+        estadoFinal.cuentaCierre = cierreCuenta;
+        if (cierreCuenta?.ok) {
+          estadoFinal.cuentaEstado = "CERRADA";
+          estadoFinal.cuentaVersion = Number(cierreCuenta.cuenta_version);
+        }
+        estadoFinal.fiscal = await emitirCheckoutFiscalC07D(pendiente.cuentaId, {
+          checkoutId: checkoutCompletado?.id || "latest",
+          tipoDocumento: "FACTURA",
+          codigoSerie: "TPV"
+        });
+        estadoFinal.mensaje = cierreCuenta?.ok
+          ? "Tarjeta simulada confirmada, cuenta cerrada y saldo restante cero."
+          : "Tarjeta simulada confirmada, pero la cuenta requiere cierre formal.";
+        return estadoFinal;
+      }
       return await iniciarCobroCuentaF4(pendiente.medio);
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
