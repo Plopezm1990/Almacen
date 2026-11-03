@@ -10982,7 +10982,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
   }
-  async function leerEstadoFiscalC07D(cuentaId = null) {
+  async function leerEstadoFiscalC07D(cuentaId = null, opciones = {}) {
     if (!c07dActivoEnEntornoQa()) return { ok: true, disponible: false, documentos: [], estado: "NO_DISPONIBLE" };
     if (!localActivoId) return { ok: false, error: "Selecciona un local para consultar la cola fiscal." };
     const empresaId = empresaDelLocalActivo?.id || null;
@@ -11000,7 +11000,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       });
       if (error) throw error;
       if (!data?.ok) return { ok: false, error: "El servidor no devolvió el estado fiscal." };
-      if (Array.isArray(data.documentos) && data.documentos.length > 0 && typeof prepararTicketFiscalQa === "function") {
+      if (!opciones.omitirPreparacionQr && Array.isArray(data.documentos) && data.documentos.length > 0 && typeof prepararTicketFiscalQa === "function") {
         const { data: checkouts, error: checkoutsError } = await supabase
           .from("checkouts")
           .select("id,estado,completed_at")
@@ -23616,7 +23616,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
             if (!ventaFiscalError) cuentaFiscalId = ventaFiscal?.cuenta_id || null;
           }
           if (!cuentaFiscalId) throw new Error("venta_historial_sin_cuenta_fiscal");
-          const fiscal = await leerEstadoFiscalC07D(cuentaFiscalId);
+          const fiscal = await leerEstadoFiscalC07D(cuentaFiscalId, { omitirPreparacionQr: true });
           const documento = Array.isArray(fiscal?.documentos) ? fiscal.documentos[0] : null;
           let qr = fiscal?.qr;
           if ((!qr || qr.ok !== true || typeof qr.qr_url !== "string") && documento?.venta_fiscal_id && supabase) {

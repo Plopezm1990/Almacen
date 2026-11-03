@@ -50,5 +50,6 @@ test("el historial recupera el contexto fiscal por venta cuando falta cuentaId l
   assert.match(source, /from\("abc_fiscal_qr_documentos"\)/);
   assert.match(source, /\.select\("qr_url,nif_emisor,codigo_serie,numero,fecha_expedicion,importe_total,modo,estado,created_at"\)/);
   assert.match(source, /qrExistente\?\.qr_url/);
-  assert.match(source, /leerEstadoFiscalC07D\(cuentaFiscalId\)/);
+  assert.match(source, /leerEstadoFiscalC07D\(cuentaFiscalId, \{ omitirPreparacionQr: true \}\)/);
+  assert.match(source, /!opciones\.omitirPreparacionQr && Array\.isArray\(data\.documentos\)/);
 });
