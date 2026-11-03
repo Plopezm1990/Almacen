@@ -111059,9 +111059,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function tarjetaQaSimuladaActiva() {
     const host = typeof window !== "undefined" ? window.location.hostname || "" : "";
-    return typeof window !== "undefined" && window.__modoPruebasQA === true
-      && host !== "chic-entremet-9107cf.netlify.app"
-      && /(?:^|--)chic-entremet-9107cf\.netlify\.app$/iu.test(host);
+    const esPreviewQa = /^(?:deploy-preview-\d+|[a-f0-9]{24}|codex-ventas-release-integration)--chic-entremet-9107cf\.netlify\.app$/iu.test(host);
+    // El bootstrap QA puede no haber expuesto la bandera global todavía en un
+    // preview recién creado. El host de preview sigue siendo la barrera de
+    // seguridad; el dominio QA principal y producción quedan fuera.
+    return typeof window !== "undefined" && esPreviewQa && window.__nubeActiva !== false;
   }
   function productoEsDelLocalActivoVenta(prod) {
     if (!prod) return false;
