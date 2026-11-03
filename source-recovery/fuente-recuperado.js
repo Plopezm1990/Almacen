@@ -23600,12 +23600,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (typeof leerEstadoFiscalC07D === "function") {
         try {
           let cuentaFiscalId = v22?.cuentaId || null;
-          if (!cuentaFiscalId && v22?.ventaFiscalId && typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function") {
+          const ventaFiscalIdHistorial = v22?.ventaFiscalId || v22?.ventaId || null;
+          if (!cuentaFiscalId && ventaFiscalIdHistorial && typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function") {
             const supabase = await window.getSupabaseClient();
             const { data: ventaFiscal, error: ventaFiscalError } = await supabase
               .from("ventas_fiscales")
               .select("cuenta_id")
-              .eq("id", v22.ventaFiscalId)
+              .eq("id", ventaFiscalIdHistorial)
               .eq("empresa_id", configEmpresa?.id || "")
               .eq("local_id", local?.id || "")
               .maybeSingle();

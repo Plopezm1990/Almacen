@@ -44,6 +44,7 @@ test("el ticket rechaza payloads sin HTTPS o marcados como producción", () => {
 
 test("el historial recupera el contexto fiscal por venta cuando falta cuentaId local", () => {
   assert.match(source, /venta_historial_sin_cuenta_fiscal/);
+  assert.match(source, /ventaFiscalIdHistorial = v22\?\.ventaFiscalId \|\| v22\?\.ventaId \|\| null/);
   assert.match(source, /from\("ventas_fiscales"\)/);
   assert.match(source, /\.select\("cuenta_id"\)/);
   assert.match(source, /leerEstadoFiscalC07D\(cuentaFiscalId\)/);
