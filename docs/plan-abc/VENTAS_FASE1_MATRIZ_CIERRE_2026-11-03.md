@@ -715,3 +715,40 @@ git diff --check=PASS
 
 Resultado: **el rechazo de tarjeta y el replay del mismo intento quedan aprobados en QA controlado, sin duplicar cobros**. El escenario de timeout todavía no queda aprobado: para cerrarlo hace falta una simulación de red/worker reproducible que demuestre que el primer clic deja un único intento, que la consulta posterior conserva el mismo identificador y que una confirmación tardía no crea otro pago. La Fase 1 completa sigue abierta por los escenarios restantes de 1A, por 1C/1D y por el gate 6A separado.
 
+## 29. Punto 1A: timeout de red y confirmación tardía del mismo intento — resultado integrado — 2026-11-04
+
+Se amplió el fixture de rechazo del punto 28 únicamente mediante un reintento legítimo posterior al rechazo. No se tocó la cuenta histórica del intento de `0,32 €`, no se confirmó el pendiente independiente `a7d6a4af-9a52-4eb2-a163-06403a82b7ce` y no se generó ningún cobro real. La prueba se ejecutó en el branch deploy QA con la red del navegador emulada temporalmente como desconectada solo durante la recuperación.
+
+El segundo intento quedó identificado así:
+
+- Cuenta: `ce399682-fcec-4496-b942-f47bb981a3de`.
+- Checkout: `f495678f-8fd7-4b33-af25-5a7958e96e75`.
+- Pago de la recuperación: `733bab56-69a7-4044-a256-c88b941e2c61`.
+- Intento recuperado: `76e182f1-1394-4c46-a735-b4b9fdc5d37c`.
+- Importe: `1,32 €`.
+
+Secuencia observada:
+
+1. La interfaz inició el segundo intento como `TARJETA` simulada y dejó el pago/intent en `PENDIENTE`.
+2. Se pulsó una sola vez `Recuperar/reintentar mismo intento` con la conexión emulada como caída. El navegador mostró `Failed to send a request to the Edge Function`; no hubo confirmación local ni se creó un tercer pago.
+3. Se restauró la conexión inmediatamente. La consulta de servidor confirmó que el pago `733bab56…` y el intento `76e182f1…` seguían `PENDIENTE`.
+4. Se pulsó una sola vez la misma acción de recuperación. El worker QA confirmó el mismo `intentoId`; el servidor dejó el pago e intento `CONFIRMADO`, con autorización `AUTORIZADO`, captura `CONFIRMADO` y liquidación `LIQUIDADO` por `1,32 €`.
+5. La interfaz mostró `Confirmado €1,32 · Pendiente €0,00 · Último intento: Confirmado` y preparó el documento/QR fiscal QA con AEAT real desactivada.
+
+La comprobación final de servidor confirmó dos pagos y dos intentos en el checkout: el primero es el rechazo documentado en el punto 28 y el segundo es el reintento confirmado de esta prueba. No hay un pago o intento adicional producido por el timeout ni por la confirmación tardía. El reintento de cierre formal de cuenta no quedó confirmado: no apareció una operación `abc_cerrar_cuenta_pagada` y la consulta posterior mantiene la cuenta `ABIERTA`, aunque el checkout está `COMPLETADO` y el saldo es cero. La UI dejó el botón `Cerrar cuenta pagada` disponible y mostró el texto `Cobro en efectivo confirmado por el servidor`, que no describe correctamente el flujo de tarjeta; esto queda como defecto/indicio confirmado para la siguiente corrección.
+
+| Criterio | Estado | Evidencia |
+|---|---|---|
+| Corte de red durante la recuperación | PASS QA controlado | Error visible de Edge Function; la recuperación no confirmó ni creó un tercer pago |
+| Conservación del estado pendiente tras el corte | PASS QA controlado | Pago `733bab56…` e intento `76e182f1…` permanecen `PENDIENTE` antes de restaurar la red |
+| Confirmación tardía del mismo intento | PASS QA controlado | El mismo `intentoId` pasa a `CONFIRMADO` tras restaurar red; no se crea otro intento |
+| Idempotencia/no duplicación causada por recuperación | PASS QA controlado | El checkout termina con dos pagos/dos intentos: uno rechazado previo y un único reintento confirmado |
+| Liquidación simulada de tarjeta | PASS QA controlado | `AUTORIZADO`, `CONFIRMADO`, `LIQUIDADO`; `provider_code=SIMULATOR` |
+| Estado visible posterior | PASS QA controlado | `Confirmado €1,32`, `Pendiente €0,00`, último intento confirmado y QR fiscal QA |
+| Cierre formal de la cuenta | BLOQUEADO / NO APROBADO | Servidor mantiene `cuenta ABIERTA`; no se registró `abc_cerrar_cuenta_pagada` |
+| Semántica del mensaje de cierre | INCIDENCIA CONFIRMADA | Se muestra un mensaje de efectivo para una tarjeta y se mantiene la acción de cierre |
+
+Resultado: **timeout de red, conservación del mismo intento y confirmación tardía quedan aprobados en QA controlado; el cierre formal de la cuenta queda abierto**. La cuenta de prueba no debe utilizarse como fixture de “un único pago” sin filtrar el reintento añadido: el estado temporal de un único pago/intent del punto 28 sigue siendo válido como evidencia histórica de esa ejecución, y el estado actual es dos pagos/dos intentos, con uno rechazado y uno confirmado.
+
+La red emulada se restauró al terminar. No se aplicaron migraciones, no se modificó `main` ni `release`, no se desplegó producción y no se borró histórico. La Fase 1 global sigue abierta por el cierre formal pendiente, los escenarios restantes de 1A (fuera de orden, intento desconocido, concurrencia y terminal/sandbox), 1C/1D y el gate 6A separado.
+
