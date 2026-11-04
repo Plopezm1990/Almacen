@@ -548,7 +548,7 @@ La revisión consolidada distingue tres niveles de evidencia: **PASS QA** para u
 
 | Punto | Estado consolidado | Qué está probado | Qué falta |
 |---|---|---|---|
-| 1A — Cobro incierto y simulador | PARCIAL | Lectura autoritativa de intentos 25/25; contratos de reintento e idempotencia; no lectura directa prohibida de `pago_intentos` | Timeout, rechazo, confirmación tardía, replay persistente, respuesta fuera de orden e intento desconocido en QA |
+| 1A — Cobro incierto y simulador | PARCIAL | Lectura autoritativa de intentos 25/25; creación y recuperación del mismo intento; rechazo simulado y replay idempotente verificados en QA; contratos de reintento e idempotencia; no lectura directa prohibida de `pago_intentos` | Timeout determinista, confirmación tardía, respuesta fuera de orden, intento desconocido, concurrencia y terminal/adquirente real o sandbox autorizado |
 | 1B — Pago parcial, saldo y cambio | PASS QA del recorrido ejecutado; bloque aún no cerrado | Cuenta de 1,32 €, pago de 1,00 €, saldo de 0,32 €, segundo pago de 0,32 €, efectivo recibido de 1,00 €, cambio confirmado de 0,68 €, saldo 0,00 € y ausencia de duplicados | Concurrencia con dos terminales; observación UX del rechazo de sobrepago; formalizar si el cierre de cuenta operativa es requisito separado |
 | 1C — Devoluciones y reembolsos | PASS técnico; QA pendiente | D13 estático/runtime 50/50; B08 separa devolución económica de reposición de stock; contratos de máximo, permisos y caja presentes | Fixture persistente de devolución sobre dinero confirmado, reembolso superior, repetición, concurrencia, caja y stock |
 | 1D — Aislamiento y concurrencia | PASS técnico; integración pendiente | Contratos de permisos, ACL, replay y serialización pasan; P07 identifica las protecciones y mantiene el gate de evidencia integrada pendiente | Dos empresas/locales, roles reales, sesión/terminal no operativos, dos terminales sobre saldo y dos devoluciones concurrentes en QA |
@@ -667,4 +667,51 @@ La consulta posterior, realizada únicamente con `SELECT`, confirmó en Supabase
 Resultado del criterio 1A para este recorrido: **PASS QA controlado** para creación idempotente, conservación del mismo intento, recuperación, confirmación, liquidación simulada, cierre de cuenta y ausencia de duplicados. Esto no aprueba todavía el proveedor físico ni un adquirente real: siguen pendientes los escenarios de timeout, rechazo, confirmación tardía, respuesta fuera de orden, intento desconocido, concurrencia y prueba con terminal real/sandbox autorizado.
 
 La corrección semántica documentada en el punto 26 queda también validada en el recorrido completo: mientras el servidor estuvo pendiente, la interfaz mostró saldo pendiente y recomendó no repetir el cobro; después de recuperar el mismo intento, mostró confirmado, saldo cero y cuenta cerrada. No se aplicaron migraciones, no se tocó `main` o `release`, no se desplegó producción y no se modificó el histórico anterior de `0,32 €`.
+
+## 28. Punto 1A: rechazo de tarjeta y replay del mismo intento — resultado integrado — 2026-11-04
+
+Se creó un fixture QA nuevo desde el branch deploy, sin reutilizar la cuenta histórica ni el intento pendiente de `0,32 €`. Se inició una única venta rápida de tarjeta de `1,32 €` y se dejó el intento en `PENDIENTE` antes de resolverlo mediante el simulador QA autorizado. No se pulsó de nuevo el cobro desde la interfaz y no se generó un segundo pago.
+
+Identificadores del fixture:
+
+- Cuenta: `ce399682-fcec-4496-b942-f47bb981a3de`.
+- Pedido: `a3dd7a90-8096-41b4-bfdf-db0dc2565487`.
+- Checkout: `f495678f-8fd7-4b33-af25-5a7958e96e75`.
+- Pago: `1209d8a4-fa59-403c-adf0-71baffb65c15`.
+- Intento: `7f0cdea4-ac63-401b-8cf6-39e682d54f91`.
+- Importe: `1,32 €`.
+
+La primera resolución del intento usó el estado QA `RECHAZADO`, con una operación de simulador identificada. Se repitió exactamente la misma solicitud con el mismo `operation_id` y el mismo `intentoId` para probar replay/idempotencia. Las dos respuestas fueron coherentes: `ok=true`, `estado=RECHAZADO`, `aplicado=0` y `liberado=1,32 €`.
+
+La consulta posterior, solo lectora, confirmó:
+
+`Cuenta ABIERTA · checkout EN_COBRO · pago TARJETA RECHAZADO · intento RECHAZADO · autorizada/capturada/liquidada nulas · 1 pago · 1 intento · 1 operación de replay`.
+
+La cuenta permanece abierta y con saldo pendiente porque el rechazo no es un cobro confirmado. La consulta de soporte del propio TPV mostró `Estado: PENDIENTE` para el saldo comercial, `Pagos: TARJETA RECHAZADO €1,32`, `Intentos: RECHAZADO €1,32` e `Incidencias: ninguna`; el panel F4 mostró `Último intento: Rechazado`, `Confirmado €0,00` y `Pendiente €1,32`. Después de recargar el TPV no quedó la clave local de “pago pendiente” asociada a este fixture. No se inició un nuevo intento tras el rechazo.
+
+| Criterio | Estado | Evidencia |
+|---|---|---|
+| Rechazo de tarjeta sin confirmación económica | PASS QA controlado | Pago e intento `RECHAZADO`; autorizado, capturado y liquidado nulos |
+| Liberación del importe tras el rechazo | PASS QA controlado | Respuesta del simulador `liberado=1,32 €`; saldo comercial sigue pendiente |
+| Replay exacto del mismo intento | PASS QA controlado | Misma operación y mismo `intentoId`; segunda respuesta idempotente, sin aplicar importe |
+| Ausencia de duplicados | PASS QA controlado | 1 checkout, 1 pago, 1 intento y 1 operación registrada para el replay |
+| Mensaje y estado visible en TPV | PASS QA controlado | Soporte y F4 reflejan rechazo, confirmado `0,00 €` y pendiente `1,32 €` |
+| Timeout real o determinista de red | NO EJECUTADO | El flujo pendiente inicial queda registrado; falta un harness de timeout reproducible |
+
+Pruebas locales ejecutadas en esta revisión:
+
+```text
+F4_B12_QA_CARD_WORKER_CONTRACT=PASS
+ABC_F4_B12_PAYMENT_TRIAL_MATRIX=PASS
+A02_QUICK_SALE_TICKET_CONTRACT=PASS
+ABC_F4_B05_CASH_RETRY=PASS
+ABC_F4_B05_UI=PASS
+ABC_F4_B05_NEW_ACCOUNT_UI=PASS
+ABC_F4_PHASE1_REGRESSION=PASS
+node --check fuente.js=PASS
+node --check source-recovery/fuente-recuperado.js=PASS
+git diff --check=PASS
+```
+
+Resultado: **el rechazo de tarjeta y el replay del mismo intento quedan aprobados en QA controlado, sin duplicar cobros**. El escenario de timeout todavía no queda aprobado: para cerrarlo hace falta una simulación de red/worker reproducible que demuestre que el primer clic deja un único intento, que la consulta posterior conserva el mismo identificador y que una confirmación tardía no crea otro pago. La Fase 1 completa sigue abierta por los escenarios restantes de 1A, por 1C/1D y por el gate 6A separado.
 
