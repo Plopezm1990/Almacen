@@ -19,6 +19,9 @@ for (const required of [
   "totalLineaRapida",
   "precioNeto(productoRapida)",
   "const cuentaCerradaRapida",
+  "const pagoConfirmadoRapida",
+  "!cuentaCerradaRapida && !pagoConfirmadoRapida",
+  "pending: true",
   "Pago confirmado, pero la cuenta sigue abierta",
   "const cuentaCerradaServidor",
   "qrFiscalRapida",
@@ -33,6 +36,7 @@ assert.ok(statusStart >= 0 && statusEnd > statusStart, "No se pudo aislar el est
 const status = source.slice(statusStart, statusEnd);
 assert.ok(status.includes('"data-ticket-quick": "1"'), "La venta rápida no ofrece ver el ticket");
 assert.ok(status.includes("Ver ticket"), "Falta el CTA visible del ticket");
+assert.ok(status.includes("Intento de pago pendiente"), "La venta rápida no diferencia un intento pendiente de un pago confirmado");
 
 assert.ok(source.includes('data-tpv-quick'), "Falta el panel específico de cobro de mostrador");
 assert.ok(source.includes("Venta rápida completada"), "Falta el estado final de la venta rápida");

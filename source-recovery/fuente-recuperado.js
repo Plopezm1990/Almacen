@@ -4238,7 +4238,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, iniciarNuevaCuentaA02, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -5275,7 +5275,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, iniciarNuevaCuentaA02, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -10257,6 +10257,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   function claveUltimaCuentaA02(empresaId, localId) {
     return `la_suite_a02_1_ultima_cuenta_v1:${empresaId}:${localId}`;
   }
+  function claveArchivoCuentasA02(empresaId, localId) {
+    return `la_suite_a02_1_archivo_cuentas_v1:${empresaId}:${localId}`;
+  }
   function leerJsonLocalA02(clave) {
     let raw = null;
     try {
@@ -10751,6 +10754,10 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (!clave) return;
     try { localStorage.removeItem(clave); } catch (error) {}
   }
+  function normalizarImporteF4(valor) {
+    const numero = Number(valor);
+    return Number.isFinite(numero) ? Number(numero.toFixed(2)) : NaN;
+  }
   function evidenciaCobroF4(valor) {
     if (valor && typeof valor === "object" && !Array.isArray(valor)) return valor;
     const texto = String(valor || "").trim();
@@ -11166,23 +11173,35 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       }
       if (pendiente.importeObjetivo == null) {
         pendiente.importeObjetivo = opciones?.importeObjetivo == null || opciones.importeObjetivo === ""
-          ? saldo : Number(opciones.importeObjetivo);
+          ? normalizarImporteF4(saldo) : normalizarImporteF4(opciones.importeObjetivo);
       }
-      const importe = Number(pendiente.importeObjetivo);
+      const importe = normalizarImporteF4(pendiente.importeObjetivo);
       if (!Number.isFinite(importe) || importe <= 0 || importe > saldo) throw new Error("saldo_insuficiente");
+      const hayIntentoServidor = Boolean(
+        estadoPrevio.cobroIncierto
+        || (Array.isArray(estadoPrevio.intentos) && estadoPrevio.intentos.some((intento) => String(intento?.id || "") === String(pendiente.intentoId || "")))
+      );
       if (medio === "EFECTIVO") {
-        const recibido = pendiente.importeRecibido == null
-          ? (opciones?.importeRecibido == null || opciones.importeRecibido === "" ? importe : Number(opciones.importeRecibido))
-          : Number(pendiente.importeRecibido);
-        const cambio = pendiente.cambioEntregado == null
-          ? (opciones?.cambioEntregado == null || opciones.cambioEntregado === "" ? 0 : Number(opciones.cambioEntregado))
-          : Number(pendiente.cambioEntregado);
+        // Un borrador local creado antes de validar puede no tener todavía los
+        // importes de efectivo. Si el servidor aún no conoce el intento,
+        // permitimos completar esos datos desde la pantalla de recuperación.
+        // Cuando ya existe un intento servidor, conservamos su payload original
+        // para que el reintento sea idempotente y no cambie el cobro.
+        const recibidoOpcion = opciones?.importeRecibido == null || opciones.importeRecibido === "" ? null : normalizarImporteF4(opciones.importeRecibido);
+        const cambioOpcion = opciones?.cambioEntregado == null || opciones.cambioEntregado === "" ? null : normalizarImporteF4(opciones.cambioEntregado);
+        const recibido = !hayIntentoServidor && recibidoOpcion !== null
+          ? recibidoOpcion
+          : pendiente.importeRecibido == null ? (recibidoOpcion === null ? importe : recibidoOpcion) : Number(pendiente.importeRecibido);
+        const cambio = !hayIntentoServidor && cambioOpcion !== null
+          ? cambioOpcion
+          : pendiente.cambioEntregado == null ? (cambioOpcion === null ? 0 : cambioOpcion) : Number(pendiente.cambioEntregado);
         if (!Number.isFinite(recibido) || !Number.isFinite(cambio) || recibido < importe || cambio < 0
             || Math.abs((recibido - cambio) - importe) > 0.000001) {
+          if (!hayIntentoServidor) limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
           throw new Error("efectivo_recibido_cambio_inconsistente");
         }
-        pendiente.importeRecibido = recibido;
-        pendiente.cambioEntregado = cambio;
+        pendiente.importeRecibido = normalizarImporteF4(recibido);
+        pendiente.cambioEntregado = normalizarImporteF4(cambio);
       }
       guardarPendienteCobroF4(pendiente);
       await rpcA02ConRecuperacion(supabase, "abc_iniciar_cobro", {
@@ -11263,7 +11282,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
   }
-  async function reintentarCobroF4() {
+  async function reintentarCobroF4(opciones = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para recuperar el cobro." };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
@@ -11313,7 +11332,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           : "Tarjeta simulada confirmada, pero la cuenta requiere cierre formal.";
         return estadoFinal;
       }
-      return await iniciarCobroCuentaF4(pendiente.medio);
+      return await iniciarCobroCuentaF4(pendiente.medio, opciones);
     } catch (error) {
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
@@ -11779,10 +11798,17 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
 
       return {
         ok: true,
+        cuentaId: guardado.cuentaId || contexto.cuentaId,
+        cuentaVersion: guardado.cuentaVersion || contexto.cuentaVersion,
         pedidoId: guardado.pedidoId,
         pedidoVersion: guardado.pedidoVersion,
         pedidoEstado: guardado.pedidoEstado,
         lineas: guardado.lineas,
+        currencyCode: guardado.currencyCode || contexto.currencyCode || "EUR",
+        responsableActual: guardado.responsableActual || contexto.responsableActual || null,
+        ubicacion: guardado.ubicacion || contexto.ubicacion || null,
+        modalidad: guardado.modalidad || contexto.modalidad || null,
+        ventaId: guardado.ventaId || contexto.cuentaId,
         lineasEnviadas: Number(enviado?.lineas_enviadas) || guardado.lineas.filter((l22) => l22.estado === "ENVIADA").length
       };
     } catch (error) {
@@ -11922,6 +11948,62 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     } catch (e2) {
       return null;
     }
+  }
+
+  async function iniciarNuevaCuentaA02() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de abrir una cuenta nueva." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    let contexto = null;
+    try {
+      contexto = leerContextoCuentaA02(empresaId, localActivoId);
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+    if (!contexto?.cuentaId) return { ok: true, nueva: true, anteriorArchivada: false };
+
+    let pendiente = null;
+    try {
+      pendiente = leerJsonLocalA02(clavePendienteA02(empresaId, localActivoId));
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+    if (pendiente) {
+      return { ok: false, error: "Hay una operación de cuenta pendiente. Recupérala o resuélvela antes de abrir otra cuenta." };
+    }
+
+    const estadoCobro = await leerEstadoCobroF4();
+    if (!estadoCobro?.ok || estadoCobro.disponible === false) {
+      return { ok: false, error: "No se pudo verificar el estado de cobro de la cuenta actual. No se ha cambiado nada." };
+    }
+    const estadosFinalesPago = new Set(["CONFIRMADO", "RECHAZADO", "CANCELADO", "REEMBOLSADO", "ANULADO", "FALLIDO", "EXPIRADO"]);
+    const intentosActivos = (estadoCobro.intentos || []).some((intento) => !["FALLIDO", "RECHAZADO", "CANCELADO", "EXPIRADO"].includes(String(intento?.estado || "").toUpperCase()));
+    const pagosActivos = (estadoCobro.pagos || []).some((pago) => !estadosFinalesPago.has(String(pago?.estado || "").toUpperCase()));
+    const checkoutsActivos = (estadoCobro.checkouts || []).some((checkout) => !["COMPLETADO", "CANCELADO", "CERRADO"].includes(String(checkout?.estado || "").toUpperCase()));
+    const cuentaCerradaServidor = String(estadoCobro.cuentaEstado || "").toUpperCase() === "CERRADA";
+    const saldoPendiente = Number(estadoCobro.saldo) || 0;
+    if ((Number(estadoCobro.confirmado) > 0 && (!cuentaCerradaServidor || saldoPendiente > 0)) || estadoCobro.cobroIncierto || intentosActivos || pagosActivos || checkoutsActivos) {
+      return { ok: false, error: "La cuenta actual tiene un cobro o intento pendiente. Resuélvelo o cancélalo antes de abrir una cuenta nueva." };
+    }
+
+    const archivado = { ...contexto, archivadoAt: (/* @__PURE__ */ new Date()).toISOString(), motivoArchivo: "NUEVA_CUENTA" };
+    let archivo = [];
+    try {
+      archivo = leerJsonLocalA02(claveArchivoCuentasA02(empresaId, localActivoId)) || [];
+    } catch (error) {
+      return { ok: false, error: errorRpcA02(error) };
+    }
+    if (!Array.isArray(archivo)) archivo = [];
+    archivo = [archivado, ...archivo.filter((item) => String(item?.cuentaId || "") !== String(contexto.cuentaId))].slice(0, 20);
+    if (!guardarJsonLocalA02(claveArchivoCuentasA02(empresaId, localActivoId), archivo)) {
+      return { ok: false, error: "No se pudo guardar el histórico local de la cuenta actual. No se ha cambiado nada." };
+    }
+    try {
+      localStorage.removeItem(claveUltimaCuentaA02(empresaId, localActivoId));
+    } catch (error) {
+      return { ok: false, error: "No se pudo cambiar de cuenta de forma segura. La cuenta actual se conserva." };
+    }
+    return { ok: true, nueva: true, anteriorArchivada: true, cuentaAnteriorId: contexto.cuentaId, archivadoAt: archivado.archivadoAt };
   }
 
   async function accionPedidoA05(accion, lineaId = null, motivo = "") {
@@ -13295,7 +13377,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, iniciarNuevaCuentaA02, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -23125,7 +23207,7 @@ function PanelSoporteCobroQa({ empresaId = "", localId = "" }) {
     ) : null
   );
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, iniciarNuevaCuentaA02, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
       const host = window.location.hostname;
@@ -23869,6 +23951,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [efectivoRecibidoRapida, setEfectivoRecibidoRapida] = (0, import_react4.useState)("");
   const [procesandoVentaRapida, setProcesandoVentaRapida] = (0, import_react4.useState)(false);
   const [resultadoVentaRapida, setResultadoVentaRapida] = (0, import_react4.useState)(null);
+  const [nuevaCuentaA02Abierta, setNuevaCuentaA02Abierta] = (0, import_react4.useState)(false);
+  const [procesandoNuevaCuentaA02, setProcesandoNuevaCuentaA02] = (0, import_react4.useState)(false);
+  const [errorNuevaCuentaA02, setErrorNuevaCuentaA02] = (0, import_react4.useState)("");
+  const [mensajeNuevaCuentaA02, setMensajeNuevaCuentaA02] = (0, import_react4.useState)("");
   const [configurandoA04, setConfigurandoA04] = (0, import_react4.useState)(null);
   const [seleccionesA04, setSeleccionesA04] = (0, import_react4.useState)({});
   const [cantidadRapidaPendienteA04, setCantidadRapidaPendienteA04] = (0, import_react4.useState)(1);
@@ -25210,7 +25296,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setProcesandoCobroF4(true);
     setErrorCobroF4("");
     setMensajeCobroF4("");
-    const resultado = await reintentarCobroF4();
+    const importe = Number(importeCobroF4);
+    const recibido = Number(efectivoRecibidoCobroF4);
+    const opciones = {};
+    if (Number.isFinite(importe) && importe > 0) opciones.importeObjetivo = importe;
+    if (Number.isFinite(recibido) && recibido >= 0) {
+      opciones.importeRecibido = Number(recibido.toFixed(2));
+      if (Number.isFinite(importe)) opciones.cambioEntregado = Number((recibido - importe).toFixed(2));
+    }
+    const resultado = await reintentarCobroF4(opciones);
     setProcesandoCobroF4(false);
     if (!resultado?.ok) {
       setErrorCobroF4(resultado?.error || "No se pudo recuperar el cobro.");
@@ -25353,7 +25447,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const importeVisible = importeCobroF4 === "" ? saldoVisible : Number(importeCobroF4);
     const recibidoVisible = efectivoRecibidoCobroF4 === "" ? null : Number(efectivoRecibidoCobroF4);
     const cambioVisible = recibidoVisible !== null && Number.isFinite(recibidoVisible) && Number.isFinite(importeVisible)
-      ? recibidoVisible - importeVisible : null;
+      ? Number((recibidoVisible - importeVisible).toFixed(2)) : null;
     const incidencias = Array.isArray(estado?.incidencias) ? estado.incidencias : [];
     const incidenciaActiva = incidencias.find((incidencia) => incidencia.estado === "ABIERTA") || null;
     const fiscal = estado?.fiscal || null;
@@ -26003,6 +26097,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
             ? "Venta rápida de mostrador: producto, pago y ticket sin mesas ni cocina."
             : "Sala y restaurante: cuentas abiertas, mesas, cocina y reparto.")
         ),
+        !esRapida && pedidoOperativoA05?.cuentaId ? h3(Btn, { small: true, variant: "ghost", onClick: () => { setErrorNuevaCuentaA02(""); setMensajeNuevaCuentaA02(""); setNuevaCuentaA02Abierta(true); } }, "Nueva cuenta") : null,
         h3("span", { className: "text-[10px] font-semibold uppercase tracking-wide", style: { color: C2.accent } }, esRapida ? "MOSTRADOR" : "SALA")
       ),
       h3("div", { className: "grid grid-cols-2 gap-2", role: "group", "aria-label": "Modo de venta" },
@@ -26020,8 +26115,49 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           className: "rounded-lg px-3 py-2 text-[12px] font-semibold",
           style: { minHeight: 44, background: !esRapida ? C2.chrome : "transparent", color: !esRapida ? "#fff" : C2.ink, border: `1px solid ${!esRapida ? C2.chrome : C2.line}` }
         }, "Sala / restaurante")
-      )
+      ),
+      nuevaCuentaA02Abierta ? h3(Modal, { onClose: () => !procesandoNuevaCuentaA02 && setNuevaCuentaA02Abierta(false), title: "Abrir cuenta nueva" },
+        h3("div", { className: "text-[12px] mb-3" }, "La cuenta actual se conservará en el servidor y en el histórico local. Esta acción no cancela el pedido ni inicia ningún cobro."),
+        h3("div", { className: "text-[11px] mb-3", style: { color: C2.inkSoft } }, "Antes de cambiar, el sistema comprobará que no haya pagos confirmados, intentos inciertos, operaciones pendientes ni un checkout abierto."),
+        errorNuevaCuentaA02 ? h3("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorNuevaCuentaA02) : null,
+        h3("div", { className: "flex gap-2" },
+          h3(Btn, { onClick: confirmarNuevaCuentaA02, disabled: procesandoNuevaCuentaA02 }, procesandoNuevaCuentaA02 ? "Comprobando…" : "Abrir cuenta nueva"),
+          h3(Btn, { variant: "ghost", onClick: () => setNuevaCuentaA02Abierta(false), disabled: procesandoNuevaCuentaA02 }, "Cancelar")
+        )
+      ) : null,
+      mensajeNuevaCuentaA02 && !nuevaCuentaA02Abierta ? h3("div", { role: "status", className: "text-[11.5px] mt-2 p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.ink } }, mensajeNuevaCuentaA02) : null
     );
+  }
+
+  async function confirmarNuevaCuentaA02() {
+    if (procesandoNuevaCuentaA02 || typeof iniciarNuevaCuentaA02 !== "function") return;
+    setProcesandoNuevaCuentaA02(true);
+    setErrorVenta("");
+    setErrorNuevaCuentaA02("");
+    setMensajeNuevaCuentaA02("");
+    try {
+      const resultado = await iniciarNuevaCuentaA02();
+      if (!resultado || resultado.ok === false) {
+        setErrorNuevaCuentaA02(resultado?.error || "No se pudo abrir una cuenta nueva. La cuenta actual se conserva.");
+        return;
+      }
+      setNuevaCuentaA02Abierta(false);
+      setPedidoOperativoA05(null);
+      setConfirmacion(null);
+      setConflictoA06(null);
+      setMapaSalaA07(null);
+      setEstadoCobroF4(null);
+      setImporteCobroF4("");
+      setEfectivoRecibidoCobroF4("");
+      setResultadoVentaRapida(null);
+      setTicketVenta(null);
+      setCarrito([]);
+      setMensajeNuevaCuentaA02(resultado.anteriorArchivada ? "Cuenta nueva preparada. La cuenta anterior se conserva en el servidor y en el histórico local; no se ha cancelado ni cobrado." : "Cuenta nueva preparada.");
+    } catch (error) {
+      setErrorNuevaCuentaA02(String(error?.message || error || "No se pudo abrir una cuenta nueva. La cuenta actual se conserva."));
+    } finally {
+      setProcesandoNuevaCuentaA02(false);
+    }
   }
 
   async function confirmarVentaRapida() {
@@ -26151,6 +26287,30 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         || guardada.pedidoId
         || `venta-rapida-${Date.now()}`;
       const cuentaCerradaRapida = String(cobro.cuentaEstado || "").toUpperCase() === "CERRADA" || cobro.cuentaCierre?.ok === true;
+      const pagoConfirmadoRapida = Number(cobro.confirmado) >= importe
+        && Number(cobro.saldo) <= 0
+        && cobro.cobroIncierto !== true;
+      if (!cuentaCerradaRapida && !pagoConfirmadoRapida) {
+        setEstadoCobroF4(cobro);
+        setMensajeCobroF4(cobro.mensaje || (pagoRapida === "TARJETA"
+          ? "Intento de tarjeta pendiente: no repitas el cobro; espera la resolución del proveedor o recupera el mismo intento."
+          : "La venta quedó preparada, pero el servidor todavía no confirma el pago."));
+        setResultadoVentaRapida({
+          ok: false,
+          paid: false,
+          pending: true,
+          total: importe,
+          medio: pagoRapida,
+          cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
+          cuentaCerrada: false,
+          fiscal: cobro.fiscal || null
+        });
+        setErrorVenta(pagoRapida === "TARJETA"
+          ? "El intento de tarjeta sigue pendiente en el servidor. No vuelvas a cobrar; continúa en Sala o recupera el mismo intento."
+          : "La venta quedó preparada, pero el servidor todavía no confirma el pago.");
+        setEfectivoRecibidoRapida("");
+        return;
+      }
       if (!cuentaCerradaRapida) {
         setEstadoCobroF4(cobro);
         setMensajeCobroF4(cobro.mensaje || "Pago confirmado, pero la cuenta sigue abierta. No repitas el cobro: continúa en Sala para completar el cierre.");
@@ -26224,7 +26384,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h3("div", { className: "text-[12.5px] font-semibold" }, resultado?.ok ? "Venta rápida completada" : "Venta rápida en curso"),
         resultado?.ok ? h3(Pill2, { color: C2.accent }, "PAGADA") : null
       ),
-      resultado?.ok ? h3("div", { className: "text-[12px]" }, "Total €", fmt(resultado.total), " · ", resultado.medio === "EFECTIVO" ? "efectivo" : "tarjeta", resultado.medio === "EFECTIVO" ? ` · cambio €${fmt(resultado.cambio)}` : "") : h3("div", { className: "text-[11.5px]" }, resultado?.paid ? "Pago confirmado, pero la cuenta sigue abierta. No repitas el cobro; continúa en Sala para cerrar formalmente." : "La cuenta se conserva en el servidor para continuarla sin duplicar la venta."),
+      resultado?.ok ? h3("div", { className: "text-[12px]" }, "Total €", fmt(resultado.total), " · ", resultado.medio === "EFECTIVO" ? "efectivo" : "tarjeta", resultado.medio === "EFECTIVO" ? ` · cambio €${fmt(resultado.cambio)}` : "") : h3("div", { className: "text-[11.5px]" }, resultado?.paid ? "Pago confirmado, pero la cuenta sigue abierta. No repitas el cobro; continúa en Sala para cerrar formalmente." : resultado?.pending ? "Intento de pago pendiente. No repitas el cobro; conserva el mismo intento para consultarlo o recuperarlo." : "La cuenta se conserva en el servidor para continuarla sin duplicar la venta."),
       resultado?.fiscal?.ok === false ? h3("div", { className: "text-[11px] mt-2", style: { color: C2.amber } }, "Venta cerrada. Emisión fiscal pendiente de configuración C07-D.") : null,
       resultado?.ok && ticketVenta ? h3("div", { className: "flex gap-2 mt-2" }, h3(Btn, { small: true, variant: "ghost", "data-ticket-quick": "1", onClick: () => setTicketVenta(ticketVenta) }, "Ver ticket")) : null,
       cuentaAbierta ? h3("div", { className: "flex gap-2 mt-2" }, h3(Btn, { small: true, variant: "ghost", onClick: () => setModoTPV("SALA") }, "Continuar en Sala")) : null
