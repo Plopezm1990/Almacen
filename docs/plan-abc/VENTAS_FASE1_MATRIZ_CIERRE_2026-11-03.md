@@ -644,3 +644,27 @@ El artefacto `.netlify-dist` se regeneró correctamente en local. La corrección
 
 En la comprobación visual de solo lectura, el TPV mostró `Confirmado €0,00 · Pendiente €1,32` y la acción independiente `Iniciar tarjeta simulada`. No se pulsó la acción financiera en este segundo preview, por lo que no se generó otro pago ni otro intento. La corrección queda **verificada en el branch deploy a nivel de código, contrato, artefacto y estado QA visible**; la confirmación final del texto posterior a un nuevo clic no se repite por protección contra duplicados.
 
+## 27. Recuperación del mismo intento de tarjeta — resultado integrado — 2026-11-04
+
+Con autorización expresa, se recuperó **una sola vez el mismo `intentoId`** de la cuenta QA limpia del punto 25. La operación se ejecutó desde el branch deploy QA y no creó otro pago, otro intento ni un cobro compensatorio. La preparación local del navegador solo restauró el contexto de la cuenta objetivo; se conservaron copias reversibles del almacenamiento local y no se borró ningún registro del servidor.
+
+La evidencia final visible en el TPV fue:
+
+`Total €1,32 · Confirmado €1,32 · Pendiente €0,00 · Cuenta: Pagado · Cuenta comercial: Cerrada · Último intento: Confirmado · QR fiscal QA preparado`.
+
+El documento quedó identificado como `Fiscalización C07-D · QA`, con transporte simulado y AEAT real desactivada. La pantalla confirmó además: `Tarjeta simulada confirmada, cuenta cerrada y saldo restante cero.`
+
+La consulta posterior, realizada únicamente con `SELECT`, confirmó en Supabase QA:
+
+| Objeto | Estado final | Evidencia adicional |
+|---|---|---|
+| Cuenta comercial `c1de2cdb…` | `CERRADA` | `closed_at` informado; versión 3 |
+| Checkout `b0af396a…` | `COMPLETADO` | `completed_at` informado; `cancelled_at` nulo |
+| Pago `67e76f80…` | `CONFIRMADO` | Tarjeta; objetivo `1,32 €`; resuelto |
+| Intento `b66aa89c…` | `CONFIRMADO` | `SIMULATOR`; autorizado, capturado y liquidado por `1,32 €` |
+| Duplicados | No existen | `1` pago para el checkout y `1` intento para el pago |
+
+Resultado del criterio 1A para este recorrido: **PASS QA controlado** para creación idempotente, conservación del mismo intento, recuperación, confirmación, liquidación simulada, cierre de cuenta y ausencia de duplicados. Esto no aprueba todavía el proveedor físico ni un adquirente real: siguen pendientes los escenarios de timeout, rechazo, confirmación tardía, respuesta fuera de orden, intento desconocido, concurrencia y prueba con terminal real/sandbox autorizado.
+
+La corrección semántica documentada en el punto 26 queda también validada en el recorrido completo: mientras el servidor estuvo pendiente, la interfaz mostró saldo pendiente y recomendó no repetir el cobro; después de recuperar el mismo intento, mostró confirmado, saldo cero y cuenta cerrada. No se aplicaron migraciones, no se tocó `main` o `release`, no se desplegó producción y no se modificó el histórico anterior de `0,32 €`.
+
