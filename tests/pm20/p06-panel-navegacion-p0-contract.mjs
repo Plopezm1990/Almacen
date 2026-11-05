@@ -36,5 +36,10 @@ assert.ok(!source.includes("#/panel/\${empresa"), "la ruta no debe incluir datos
 assert.match(source, /No hay espacio suficiente en el navegador para guardar este respaldo/, "el aviso debe distinguir el agotamiento de cuota local");
 assert.match(source, /Cerrar aviso de guardado sin resolverlo/, "cerrar el aviso no debe presentarse como resolver el fallo");
 assert.match(source, /Ir a Respaldos/, "el aviso debe ofrecer acceso al módulo de respaldos");
+const storageBootstrap = fs.readFileSync(path.join(repo, "index-storage-bootstrap.js"), "utf8");
+assert.match(storageBootstrap, /HISTORIAL_RESPALDOS_IDB/, "el historial de respaldos debe tener almacenamiento local separado");
+assert.match(storageBootstrap, /guardarHistorialRespaldosIndexedDb\(value\)/, "el guardado del historial debe intentar IndexedDB");
+assert.match(storageBootstrap, /if \(key === "historialRespaldos"\)/, "el almacenamiento debe tratar el historial como clave especial");
+assert.match(storageBootstrap, /localStorage\.removeItem\("almacen:" \+ key\)/, "la migración solo debe retirar la copia antigua después de guardarla fuera de localStorage");
 
 console.log("P0/P1 panel/navegación: contrato estático OK");

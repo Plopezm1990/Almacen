@@ -62,6 +62,65 @@
     }
   };
 
+  // El historial de respaldos contiene snapshots completos y puede superar
+  // con facilidad el límite de localStorage. Se mantiene local al dispositivo,
+  // pero se guarda en IndexedDB para no competir con la caché operativa. La
+  // migración es conservadora: primero escribe y verifica IndexedDB, y solo
+  // después retira la copia antigua de localStorage.
+  var HISTORIAL_RESPALDOS_IDB = "la_suite_respaldos_v1";
+  function abrirIndexedDbRespaldos() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error("indexedDB_no_disponible"));
+        return;
+      }
+      var solicitud;
+      try { solicitud = window.indexedDB.open(HISTORIAL_RESPALDOS_IDB, 1); }
+      catch (e) { reject(e); return; }
+      solicitud.onupgradeneeded = function () {
+        var db = solicitud.result;
+        if (!db.objectStoreNames.contains("estado")) db.createObjectStore("estado");
+      };
+      solicitud.onsuccess = function () { resolve(solicitud.result); };
+      solicitud.onerror = function () { reject(solicitud.error || new Error("indexedDB_error")); };
+      solicitud.onblocked = function () { reject(new Error("indexedDB_bloqueada")); };
+    });
+  }
+  function leerHistorialRespaldosIndexedDb() {
+    return abrirIndexedDbRespaldos().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction("estado", "readonly");
+        var req = tx.objectStore("estado").get("historial");
+        req.onsuccess = function () { resolve(req.result == null ? null : String(req.result)); };
+        req.onerror = function () { reject(req.error || new Error("indexedDB_lectura_error")); };
+        tx.oncomplete = function () { try { db.close(); } catch (e) {} };
+        tx.onerror = function () { reject(tx.error || new Error("indexedDB_transaccion_error")); };
+      });
+    });
+  }
+  function guardarHistorialRespaldosIndexedDb(value) {
+    return abrirIndexedDbRespaldos().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction("estado", "readwrite");
+        tx.objectStore("estado").put(String(value), "historial");
+        tx.oncomplete = function () { try { db.close(); } catch (e) {} resolve(true); };
+        tx.onerror = function () { reject(tx.error || new Error("indexedDB_escritura_error")); };
+        tx.onabort = function () { reject(tx.error || new Error("indexedDB_abortada")); };
+      });
+    });
+  }
+  function borrarHistorialRespaldosIndexedDb() {
+    return abrirIndexedDbRespaldos().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction("estado", "readwrite");
+        tx.objectStore("estado").delete("historial");
+        tx.oncomplete = function () { try { db.close(); } catch (e) {} resolve(true); };
+        tx.onerror = function () { reject(tx.error || new Error("indexedDB_borrado_error")); };
+        tx.onabort = function () { reject(tx.error || new Error("indexedDB_abortada")); };
+      });
+    });
+  }
+
   // La marca de solo-local de productos procede de una versión anterior que
   // no enviaba empresa/local a la RPC. Se invalida una sola vez al instalar la
   // corrección PM10; no se borra ningún producto ni se toca la nube.
@@ -1179,6 +1238,21 @@
     // Leer: si hay nube, se prefiere (trae lo que hayan hecho en otro
     // dispositivo) y se deja copia local. Si no, se lee de local.
     async get(key) {
+      if (key === "historialRespaldos") {
+        try {
+          var historialIndexedDb = await leerHistorialRespaldosIndexedDb();
+          if (historialIndexedDb !== null) return { key: key, value: historialIndexedDb, shared: false };
+          var historialLocal = leerLocalOpcional(key);
+          if (historialLocal !== null) {
+            await guardarHistorialRespaldosIndexedDb(historialLocal);
+            try { localStorage.removeItem("almacen:" + key); } catch (e) {}
+          }
+          return { key: key, value: historialLocal, shared: false };
+        } catch (e) {
+          // Navegadores sin IndexedDB siguen usando el mecanismo anterior.
+          // El error de cuota se tratará como antes y no se oculta.
+        }
+      }
       var tablaEmpresa = TABLAS_EMPRESA[key];
       var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
@@ -1234,6 +1308,15 @@
     // Guardar: primero en el dispositivo (instantáneo y sin fallo posible),
     // y después se intenta subir. Si no sube, queda en la cola de pendientes.
     async set(key, value, _shared, opcionesP3c) {
+      if (key === "historialRespaldos") {
+        try {
+          await guardarHistorialRespaldosIndexedDb(value);
+          try { localStorage.removeItem("almacen:" + key); } catch (e) {}
+          return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
+        } catch (e) {
+          // Se continúa con localStorage como fallback explícito.
+        }
+      }
       var tablaEmpresa = TABLAS_EMPRESA[key];
       var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
@@ -1345,6 +1428,11 @@
     },
 
     async delete(key) {
+      if (key === "historialRespaldos") {
+        try { await borrarHistorialRespaldosIndexedDb(); } catch (e) {}
+        try { localStorage.removeItem("almacen:" + key); } catch (e) {}
+        return { key: key, deleted: true, shared: false };
+      }
       var cacheKey = await claveCacheLocal(key);
       LOCAL.delete(cacheKey);
       if (window.__nubeActiva && window.__nubeCliente) {
