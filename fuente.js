@@ -104305,18 +104305,48 @@ function GestionAlmacen() {
     window.addEventListener("conflicto-fusion", onConflictoFusion);
     return () => window.removeEventListener("conflicto-fusion", onConflictoFusion);
   }, []);
-  const [tab, setTab] = (0, import_react4.useState)("dashboard");
+  const [tab, setTab] = (0, import_react4.useState)(() => leerRutaPanelLA() || "dashboard");
+  const [navegacionObjetivoPM15, setNavegacionObjetivoPM15] = (0, import_react4.useState)(null);
   const formularioAbiertoPM15Ref = import_react4.default.useRef(false);
   function marcarFormularioAbiertoPM15(abierto) {
     formularioAbiertoPM15Ref.current = !!abierto;
   }
-  function cambiarTabPM15(nuevaTab) {
+  function cambiarTabPM15(nuevaTab, objetivo = null) {
     if (!puedeConsultarPantallaPM13(nuevaTab)) return;
     const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de pantalla se perder\xE1. \xBFQuieres continuar sin guardar?") : true;
     if (!decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar)) return;
     formularioAbiertoPM15Ref.current = false;
+    setNavegacionObjetivoPM15(objetivo && objetivo.id ? objetivo : null);
+    escribirRutaPanelLA(nuevaTab, false);
     setTab(nuevaTab);
   }
+  (0, import_react4.useEffect)(() => {
+    const aplicarRutaDesdeHistorial = () => {
+      const ruta = leerRutaPanelLA();
+      const nuevaTab = ruta || "dashboard";
+      if (nuevaTab === tab) return;
+      if (!puedeConsultarPantallaPM13(nuevaTab)) {
+        escribirRutaPanelLA("dashboard", true);
+        setTab("dashboard");
+        return;
+      }
+      const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de pantalla se perderá. ¿Quieres continuar sin guardar?") : true;
+      if (!decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar)) {
+        escribirRutaPanelLA(tab, true);
+        return;
+      }
+      formularioAbiertoPM15Ref.current = false;
+      setNavegacionObjetivoPM15(null);
+      setTab(nuevaTab);
+    };
+    window.addEventListener("popstate", aplicarRutaDesdeHistorial);
+    window.addEventListener("hashchange", aplicarRutaDesdeHistorial);
+    if (leerRutaPanelLA() !== tab) escribirRutaPanelLA(tab, true);
+    return () => {
+      window.removeEventListener("popstate", aplicarRutaDesdeHistorial);
+      window.removeEventListener("hashchange", aplicarRutaDesdeHistorial);
+    };
+  }, [tab]);
   const [saltoDevolucionProveedor, setSaltoDevolucionProveedor] = (0, import_react4.useState)(0);
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
@@ -105162,6 +105192,17 @@ function GestionAlmacen() {
     return activo?.rol && ROLES_EMPLEADO[activo.rol] ? activo.rol : "Est\xE1ndar";
   }, [usuarioActivoId, empleados, miPerfil]);
   const rolNavegacionMovil = modoEmpleado ? rolEfectivoEmpleadoNav : "Propietario";
+  const contextoNavegacionPM15 = (0, import_react4.useMemo)(() => crearContextoNavegacionLA({
+    empresa: empresaDelLocalActivo,
+    local: locales.find((l22) => l22.id === localActivoId) || null,
+    localId: localActivoId,
+    rol: rolEfectivoEmpleadoNav,
+    capacidades: itemsPermitidosEmpleado,
+    estadoDeSincronizacion: fallosGuardado.length > 0 ? "pendiente" : ready ? "sincronizado" : "cargando"
+  }), [empresaDelLocalActivo, locales, localActivoId, rolEfectivoEmpleadoNav, itemsPermitidosEmpleado, fallosGuardado.length, ready]);
+  (0, import_react4.useEffect)(() => {
+    if (typeof window !== "undefined") window.__contextoNavegacionPM15 = contextoNavegacionPM15;
+  }, [contextoNavegacionPM15]);
   const esPropietarioPM29 = miPerfil && miPerfil.rol ? miPerfil.rol === "Propietario" : !modoEmpleado;
   const empleadoActivoResuelto = (0, import_react4.useMemo)(() => usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) || null : null, [usuarioActivoId, empleados]);
   const nombreActivoEmpleado = miPerfil && miPerfil.nombre ? miPerfil.nombre : empleadoActivoResuelto ? empleadoActivoResuelto.nombre : "";
@@ -106042,7 +106083,7 @@ function GestionAlmacen() {
   const diagnosticoStockInforme = localInformeId ? diagnosticoStock.filter((d2) => localPorProductoInforme.get(d2.productoId) === localInformeId) : diagnosticoStock.filter((d2) => localEsDeEmpresaInforme(localPorProductoInforme.get(d2.productoId)));
   const addGastoInforme = (data) => addGasto({ ...data, localId: localInformeId || localActivoId || null });
   const deleteGastoInforme = (id) => deleteGasto(id, localInformeId || localActivoId || null);
-  const contextoActivoPM15 = etiquetaContextoPM15(locales.find((l22) => l22.id === localActivoId) || null, empresaDelLocalActivo);
+  const contextoActivoPM15 = contextoNavegacionPM15.localNombre && contextoNavegacionPM15.empresaNombre ? `${contextoNavegacionPM15.localNombre} · ${contextoNavegacionPM15.empresaNombre}` : contextoNavegacionPM15.localNombre || contextoNavegacionPM15.empresaNombre || "";
   const diagnosticoLegadosPM10 = diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas });
   const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }), tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, modoEmpleado && /* @__PURE__ */ import_react4.default.createElement(InicioEmpleado, { nombre: nombreActivoEmpleado, rol: rolEfectivoEmpleadoNav, contextoLocal: contextoActivoPM15, empleadoIdResuelto: empleadoActivoResuelto ? empleadoActivoResuelto.id : null, turnoHoy: empleadoActivoResuelto ? turnosDelLocalActivo.find((t22) => t22.empleadoId === empleadoActivoResuelto.id && t22.fecha === todayISO()) : void 0, fichajesHoyEmpleado: empleadoActivoResuelto ? fichajesDelLocalActivo.filter((f22) => f22.empleadoId === empleadoActivoResuelto.id && f22.fecha === todayISO() && f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true") : [], fichar, itemsPermitidos: itemsPermitidosEmpleado, setTab: cambiarTabPM15 }), /* @__PURE__ */ import_react4.default.createElement(
     Dashboard,
@@ -106102,7 +106143,9 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       fichasCosto: fichasCostoDelLocalActivo,
       updateFichaCosto,
-      ajustarProductoPorOtro
+      ajustarProductoPorOtro,
+      navegacionObjetivoId: navegacionObjetivoPM15?.tipo === "productos" ? navegacionObjetivoPM15.id : null,
+      onConsumirNavegacionObjetivo: () => setNavegacionObjetivoPM15(null)
     }
   ), tab === "historial_producto" && /* @__PURE__ */ import_react4.default.createElement(
     HistorialProducto,
@@ -116257,7 +116300,7 @@ function BotonModoEmpleado({ modoEmpleado, salirModoEmpleado, empleados = [], us
   ), confirmarLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !cerrandoSesionPropietarioPM17 && setConfirmarLogoutPropietarioPM17(false), title: "Cerrar sesi\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-4" }, "Vas a cerrar la sesi\xF3n de Propietario solo en este dispositivo. Los datos del negocio no se modificar\xE1n."), errorLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", role: "alert", style: { color: C2.red } }, errorLogoutPropietarioPM17), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: cerrarSesionPropietarioPM17, disabled: cerrandoSesionPropietarioPM17 }, cerrandoSesionPropietarioPM17 ? "Cerrando…" : "Cerrar sesi\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarLogoutPropietarioPM17(false), disabled: cerrandoSesionPropietarioPM17 }, "Cancelar")))));
 }
 function SidebarGrupos({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "", mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor }) {
-  return /* @__PURE__ */ import_react4.default.createElement("aside", { style: { background: C2.chrome, color: "#fff" }, className: "hidden md:flex md:w-64 shrink-0 p-4 md:p-5 md:flex-col gap-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-xl px-3 py-3.5 mb-2.5", style: { background: "rgba(184,139,69,0.07)", border: "1px solid rgba(184,139,69,0.24)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "", style: { width: "100%", height: "auto", display: "block" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-widest uppercase mb-3", style: { color: "#9CB6A9" } }, LEMA_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-3", style: { color: "#E2D3B8" } }, contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))), grupos.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-1" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold uppercase tracking-wide mt-3 mb-1 px-3", style: { color: "#7E9186" } }, g2.titulo), g2.items.map((it2) => {
+  return /* @__PURE__ */ import_react4.default.createElement("aside", { role: "navigation", "aria-label": "Navegación principal", style: { background: C2.chrome, color: "#fff" }, className: "hidden md:flex md:w-64 shrink-0 p-4 md:p-5 md:flex-col gap-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-xl px-3 py-3.5 mb-2.5", style: { background: "rgba(184,139,69,0.07)", border: "1px solid rgba(184,139,69,0.24)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "", style: { width: "100%", height: "auto", display: "block" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-widest uppercase mb-3", style: { color: "#9CB6A9" } }, LEMA_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-3", style: { color: "#E2D3B8" } }, contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))), grupos.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-1" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold uppercase tracking-wide mt-3 mb-1 px-3", style: { color: "#7E9186" } }, g2.titulo), g2.items.map((it2) => {
     const Icon2 = it2.icon;
     const active = tab === it2.id;
     return /* @__PURE__ */ import_react4.default.createElement(
@@ -116265,6 +116308,8 @@ function SidebarGrupos({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmp
       {
         key: it2.id,
         onClick: () => setTab(it2.id),
+        "aria-current": active ? "page" : void 0,
+        "aria-label": it2.label,
         className: "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left w-full",
         style: {
           background: active ? "rgba(255,255,255,0.12)" : "transparent",
@@ -116286,6 +116331,8 @@ function SidebarGrupos({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmp
     "button",
     {
       onClick: irADevolucionProveedor,
+      "aria-current": tab === "devoluciones" ? "page" : void 0,
+      "aria-label": "Devoluciones a proveedor",
       className: "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left w-full",
       style: {
         background: tab === "devoluciones" ? "rgba(255,255,255,0.12)" : "transparent",
@@ -116306,6 +116353,8 @@ function BotonItemSheet({ it: it2, tab, onPick }) {
     "button",
     {
       onClick: onPick,
+      "aria-current": active ? "page" : void 0,
+      "aria-label": it2.label,
       className: "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1",
       style: { background: active ? C2.accentSoft : C2.bg, color: C2.ink }
     },
@@ -116320,12 +116369,12 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
   const ETIQUETA_PESTANA = { dashboard: "Inicio", fichaje: "Fichaje" };
   const otros = grupos.map((g2) => ({ titulo: g2.titulo, items: g2.items.filter((it2) => !idsFijos.has(it2.id)) })).filter((g2) => g2.items.length > 0 || g2.titulo === "Compras" && mostrarEnlaceDevolucionProveedor);
   const hayBadgeEnOtros = otros.some((g2) => g2.items.some((it2) => it2.badge > 0));
-  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden flex shrink-0", style: { background: C2.surface, borderTop: `1px solid ${C2.line}` } }, pestanasFijas.map((it2) => {
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("nav", { role: "navigation", "aria-label": "Navegación móvil", className: "md:hidden flex shrink-0", style: { background: C2.surface, borderTop: `1px solid ${C2.line}` } }, pestanasFijas.map((it2) => {
     const Icon2 = it2.icon;
     const active = tab === it2.id;
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
-      { key: it2.id, onClick: () => setTab(it2.id), className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
+      { key: it2.id, onClick: () => setTab(it2.id), "aria-current": active ? "page" : void 0, "aria-label": it2.label, className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
       active && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-0 left-1/2 -translate-x-1/2 rounded-b", style: { width: 22, height: 2.5, background: C2.accentFill } }),
       /* @__PURE__ */ import_react4.default.createElement(Icon2, { size: 20, color: active ? C2.accent : C2.inkSoft }),
       /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: active ? C2.accent : C2.inkSoft } }, ETIQUETA_PESTANA[it2.id] || it2.label),
@@ -116333,7 +116382,7 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
     );
   }), /* @__PURE__ */ import_react4.default.createElement(
     "button",
-    { onClick: () => setAbierto(true), className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
+    { onClick: () => setAbierto(true), "aria-label": "Más opciones de navegación", className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
     /* @__PURE__ */ import_react4.default.createElement(Ellipsis, { size: 20, color: C2.inkSoft }),
     /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: C2.inkSoft } }, "M\xE1s"),
     hayBadgeEnOtros && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-1.5 right-[28%] w-2 h-2 rounded-full", style: { background: C2.red } })
@@ -116347,6 +116396,8 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
         irADevolucionProveedor();
         setAbierto(false);
       },
+      "aria-current": tab === "devoluciones" ? "page" : void 0,
+      "aria-label": "Devoluciones a proveedor",
       className: "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1",
       style: { background: tab === "devoluciones" ? C2.accentSoft : C2.bg, color: C2.ink }
     },
@@ -116959,7 +117010,7 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
     setConfirmDeleteId(null);
   } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
 }
-function Productos({ productos, proveedores, proveedorPorId, addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, clasificacionABC, almacenCongelado, movimientos = [], fichasCosto = [], updateFichaCosto, ajustarProductoPorOtro }) {
+function Productos({ productos, proveedores, proveedorPorId, addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, clasificacionABC, almacenCongelado, movimientos = [], fichasCosto = [], updateFichaCosto, ajustarProductoPorOtro, navegacionObjetivoId = null, onConsumirNavegacionObjetivo }) {
   const submitBloqueadoProductoPM10 = import_react4.default.useRef(false);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
   const [showAjusteCruce, setShowAjusteCruce] = (0, import_react4.useState)(false);
@@ -117081,6 +117132,18 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     });
     setEditError("");
   }
+  (0, import_react4.useEffect)(() => {
+    if (!navegacionObjetivoId) return;
+    const objetivo = productos.find((p22) => p22.id === navegacionObjetivoId);
+    if (objetivo) {
+      setBusqueda(objetivo.nombre || objetivo.codigo || "");
+      setVerEliminados(objetivo.activo === false);
+      setFiltroTipo("todos");
+      setFiltroDepartamento("todos");
+      openEdit(objetivo);
+    }
+    if (typeof onConsumirNavegacionObjetivo === "function") onConsumirNavegacionObjetivo();
+  }, [navegacionObjetivoId, productos]);
   const [avisoContenido, setAvisoContenido] = (0, import_react4.useState)(null);
   function fichasQueUsan(productoId) {
     return (fichasCosto || []).filter((f22) => (f22.componentes || []).some((c22) => c22.productoId === productoId));
@@ -120832,6 +120895,39 @@ function etiquetaContextoPM15(local, empresa) {
   const nombreEmpresa = empresa && (empresa.razonSocial || empresa.marca) ? empresa.razonSocial || empresa.marca : "";
   if (nombreLocal && nombreEmpresa) return `${nombreLocal} \xB7 ${nombreEmpresa}`;
   return nombreLocal || nombreEmpresa || "";
+}
+function crearContextoNavegacionLA({ empresa = null, local = null, localId = null, rol = "", capacidades = [], estadoDeSincronizacion = "desconocido" } = {}) {
+  const empresaId = empresa?.id ? String(empresa.id) : null;
+  const contextoLocalId = localId ? String(localId) : null;
+  return {
+    empresaId,
+    empresaNombre: empresa && (empresa.razonSocial || empresa.marca) || "",
+    localId: contextoLocalId,
+    localNombre: local?.nombre || "",
+    alcance: contextoLocalId ? "local" : "empresa",
+    rol: rol || "",
+    capacidades: Array.isArray(capacidades) ? [...capacidades] : [],
+    fechaDeCarga: new Date().toISOString(),
+    estadoDeSincronizacion: estadoDeSincronizacion || "desconocido"
+  };
+}
+function leerRutaPanelLA() {
+  if (typeof window === "undefined") return null;
+  const match = /^#\/panel\/([^/?#]+)$/.exec(window.location.hash || "");
+  if (!match) return null;
+  try {
+    return decodeURIComponent(match[1]);
+  } catch {
+    return null;
+  }
+}
+function escribirRutaPanelLA(tab, reemplazar = false) {
+  if (typeof window === "undefined" || !tab || /^#\/prefiltro\//.test(window.location.hash || "")) return;
+  const hash = `#/panel/${encodeURIComponent(tab)}`;
+  if (window.location.hash === hash) return;
+  const url = `${window.location.pathname}${window.location.search}${hash}`;
+  if (reemplazar) window.history.replaceState(window.history.state, "", url);
+  else window.history.pushState({ ...(window.history.state || {}), laSuitePanel: tab }, "", url);
 }
 function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null, localId = "" }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
@@ -128800,17 +128896,20 @@ function HistorialProducto({ productos, movimientos, pedidos: pedidos2, albarane
     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: m22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("b", { style: { color: esPositivo ? C2.accent : C2.red } }, esPositivo ? "+" : "\u2212", fmt(Math.abs(efecto))), " ", m22.motivo || m22.referencia || "\u2014", m22.tipo === "ajuste" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-1 text-[10.5px]", style: { color: C2.inkSoft } }, "(ajuste de inventario)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, m22.fecha, m22.usuario ? ` \xB7 ${m22.usuario}` : "", m22.stockAnterior != null && m22.stockPosterior != null ? ` \xB7 saldo ${fmt(m22.stockAnterior)} \u2192 ${fmt(m22.stockPosterior)}` : "")), (m22.costoUnitario || m22.ingresoUnitario) && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[11.5px]", style: { color: C2.inkSoft } }, "\u20AC", fmt(m22.tipo === "entrada" ? m22.costoUnitario : m22.ingresoUnitario), "/", producto.unidad)));
   }))), seccion === "pedidos" && (pedidosDelProducto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Este producto no est\xE1 en ning\xFAn pedido a proveedor." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, pedidosDelProducto.map(({ pedido, item }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: pedido.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px] font-medium" }, (proveedorPorId(pedido.proveedorId) || {}).nombre || "Proveedor eliminado"), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: pedido.estado === "Recibido" ? C2.inkSoft : pedido.estado === "Parcial" ? C2.amber : C2.accent }, pedido.estado)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, pedido.fecha, " \xB7 pedidas ", fmt(item.cantidad), " ", producto.unidad, " \xB7 recibidas ", fmt(item.cantidadRecibida || 0)))))), seccion === "compras" && (comprasDelProducto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin compras confirmadas de este producto." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, comprasDelProducto.map(({ albaran, linea, unidades, precioUnitario }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: albaran.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px] font-medium" }, (proveedorPorId(albaran.proveedorId) || {}).nombre || "Proveedor eliminado"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Albar\xE1n ", albaran.numero || "s/n")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, albaran.fecha, " \xB7 ", fmt(unidades), " ", producto.unidad, " a \u20AC", fmt(precioUnitario), "/", producto.unidad, linea.lote && ` \xB7 lote ${linea.lote}`, linea.caducidad && ` \xB7 caduca ${linea.caducidad}`))))), seccion === "traspasos" && (traspasosDelProducto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin traspasos registrados para este producto." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, traspasosDelProducto.map((t22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: t22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, t22.tipo === "ENTRE_LOCALES" ? `${t22.origenLocalNombre || "Origen"} \u2192 ${t22.destinoLocalNombre || "Destino"}` : t22.direccion === "a_piso" ? "Almac\xE9n \u2192 Piso de venta" : "Piso de venta \u2192 Almac\xE9n"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px] font-semibold" }, fmt(t22.cantidad), " ", producto.unidad)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, t22.fecha, " ", t22.hora)))))));
 }
+function normalizarTextoBusquedaLA(texto) {
+  return String(texto ?? "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLocaleLowerCase("es-ES").trim();
+}
 function BusquedaGlobal({ productos, proveedores, clientes, fichasCosto, empleados, setTab }) {
   const [q2, setQ] = (0, import_react4.useState)("");
   const resultados = (0, import_react4.useMemo)(() => {
-    const texto = q2.trim().toLowerCase();
+    const texto = normalizarTextoBusquedaLA(q2);
     if (texto.length < 2) return null;
     return {
-      productos: productos.filter((p22) => p22.nombre.toLowerCase().includes(texto) || (p22.codigoBarras || "").toLowerCase().includes(texto)).slice(0, 8),
-      proveedores: proveedores.filter((p22) => p22.nombre.toLowerCase().includes(texto)).slice(0, 8),
-      clientes: clientes.filter((c22) => c22.nombre.toLowerCase().includes(texto)).slice(0, 8),
-      fichasCosto: fichasCosto.filter((f22) => f22.nombre.toLowerCase().includes(texto)).slice(0, 8),
-      empleados: empleados.filter((e2) => e2.nombre.toLowerCase().includes(texto)).slice(0, 8)
+      productos: productos.filter((p22) => normalizarTextoBusquedaLA(p22.nombre).includes(texto) || normalizarTextoBusquedaLA(p22.codigoBarras).includes(texto)).slice(0, 8),
+      proveedores: proveedores.filter((p22) => normalizarTextoBusquedaLA(p22.nombre).includes(texto)).slice(0, 8),
+      clientes: clientes.filter((c22) => normalizarTextoBusquedaLA(c22.nombre).includes(texto)).slice(0, 8),
+      fichasCosto: fichasCosto.filter((f22) => normalizarTextoBusquedaLA(f22.nombre).includes(texto)).slice(0, 8),
+      empleados: empleados.filter((e2) => normalizarTextoBusquedaLA(e2.nombre).includes(texto)).slice(0, 8)
     };
   }, [q2, productos, proveedores, clientes, fichasCosto, empleados]);
   const totalResultados = resultados ? Object.values(resultados).reduce((a22, lista) => a22 + lista.length, 0) : 0;
@@ -128826,6 +128925,7 @@ function BusquedaGlobal({ productos, proveedores, clientes, fichasCosto, emplead
     {
       value: q2,
       onChange: (e2) => setQ(e2.target.value),
+      "aria-label": "Buscar productos, proveedores, clientes, fichas de costo y personal",
       placeholder: "Escribe un nombre\u2026 (productos, proveedores, clientes, fichas, personal)",
       autoFocus: true
     }
@@ -128837,7 +128937,7 @@ function BusquedaGlobal({ productos, proveedores, clientes, fichasCosto, emplead
       "button",
       {
         key: item.id,
-        onClick: () => setTab(g2.tab),
+        onClick: () => setTab(g2.tab, { tipo: g2.clave, id: item.id }),
         className: "w-full text-left flex items-center justify-between px-3 py-2.5 rounded-lg",
         style: { border: `1px solid ${C2.line}`, background: C2.surface }
       },
