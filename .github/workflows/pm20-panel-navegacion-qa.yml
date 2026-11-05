@@ -40,6 +40,7 @@ jobs:
         run: |
           set -euo pipefail
           node tests/pm20/p10-sync-banner-ui-runtime.mjs
+          node tests/pm20/p11-panel-navigation-e2e-runtime.mjs
           node tests/plataforma/p08c-copia-historial-cuota-runtime.mjs
           node tests/plataforma/p05-panel-ui-runtime.mjs
 

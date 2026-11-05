@@ -54,6 +54,7 @@ Se ejecutaron sin escrituras externas:
 - `tests/plataforma/p05-panel-ui-runtime.mjs`: **PASS 95/95**. El panel de plataforma, sus estados, validaciones, reintentos, cierre de sesión y protección frente a nombres HTML se comportan conforme al contrato del arnés.
 - `tests/pm20/p09-sync-events-runtime.mjs`: **PASS 4/4**. `saveKey` emite estado pendiente, confirmación, clasificación de cuota y confirmación de ledger sin duplicar caché local, según el resultado del adaptador.
 - `tests/pm20/p10-sync-banner-ui-runtime.mjs`: **PASS**. El bundle real, montado en `jsdom` con nube desactivada, muestra el aviso con `role=alert` y `aria-live=assertive`, conserva la clave `historialRespaldos`, invoca `Reintentar` y retira el aviso al recibir confirmación.
+- `tests/pm20/p11-panel-navigation-e2e-runtime.mjs`: **PASS**. El bundle real, en DOM aislado y sin red, recorre navegación principal, hash de pantalla, `aria-current`, atrás, menú móvil «Más» y recarga de una ruta profunda sin crear ni modificar operaciones.
 
 En la aplicación QA desplegada, con una sesión de propietario y datos sintéticos ya existentes, se comprobó visualmente:
 
