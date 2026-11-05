@@ -10,6 +10,8 @@ assert.match(source, /function normalizarTextoBusquedaLA\(texto\)/, "debe existi
 assert.match(source, /normalize\("NFD"\)/, "la búsqueda debe descomponer caracteres Unicode");
 assert.ok(source.includes('replace(/[\\u0300-\\u036f]/g, "")'), "la búsqueda debe eliminar diacríticos");
 assert.match(source, /toLocaleLowerCase\("es-ES"\)/, "la búsqueda debe normalizar mayúsculas con locale español");
+assert.match(source, /const q2 = normalizarTextoBusquedaLA\(busqueda\)/, "el buscador interno de Productos debe usar la normalización común");
+assert.match(source, /some\(\(campo\) => normalizarTextoBusquedaLA\(campo\)\.includes\(q2\)\)/, "los campos de Producto deben compararse sin sensibilidad a acentos");
 assert.match(source, /aria-label": "Buscar productos, proveedores, clientes, fichas de costo y personal"/, "la búsqueda debe tener etiqueta accesible");
 assert.match(source, /setTab\(g2\.tab, \{ tipo: g2\.clave, id: item\.id \}\)/, "el resultado debe transportar el identificador del registro");
 assert.match(source, /navegacionObjetivoId: navegacionObjetivoPM15\?\.tipo === "productos"/, "Productos debe recibir el destino de navegación");

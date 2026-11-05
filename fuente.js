@@ -117097,9 +117097,9 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     if (!verEliminados && p22.activo === false) return false;
     if (filtroTipo !== "todos" && (p22.tipo || "materia_prima") !== filtroTipo) return false;
     if (filtroDepartamento !== "todos" && (p22.departamento || "Sin asignar") !== filtroDepartamento) return false;
-    const q2 = busqueda.trim().toLowerCase();
+    const q2 = normalizarTextoBusquedaLA(busqueda);
     if (!q2) return true;
-    return [p22.nombre, p22.codigo, p22.codigoBarras, p22.categoria, p22.ubicacion, p22.zona].filter(Boolean).some((campo) => String(campo).toLowerCase().includes(q2));
+    return [p22.nombre, p22.codigo, p22.codigoBarras, p22.categoria, p22.ubicacion, p22.zona].filter(Boolean).some((campo) => normalizarTextoBusquedaLA(campo).includes(q2));
   });
   const numEliminados = (0, import_react4.useMemo)(() => productos.filter((p22) => p22.activo === false).length, [productos]);
   function submit() {
