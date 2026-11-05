@@ -53,6 +53,7 @@ Se ejecutaron sin escrituras externas:
 - `tests/plataforma/p08c-copia-historial-cuota-runtime.mjs`: **PASS**. El traslado de un historial grande a la copia por cuenta conserva el contenido y elimina la copia global aun con una cuota local ajustada.
 - `tests/plataforma/p05-panel-ui-runtime.mjs`: **PASS 95/95**. El panel de plataforma, sus estados, validaciones, reintentos, cierre de sesión y protección frente a nombres HTML se comportan conforme al contrato del arnés.
 - `tests/pm20/p09-sync-events-runtime.mjs`: **PASS 4/4**. `saveKey` emite estado pendiente, confirmación, clasificación de cuota y confirmación de ledger sin duplicar caché local, según el resultado del adaptador.
+- `tests/pm20/p10-sync-banner-ui-runtime.mjs`: **PASS**. El bundle real, montado en `jsdom` con nube desactivada, muestra el aviso con `role=alert` y `aria-live=assertive`, conserva la clave `historialRespaldos`, invoca `Reintentar` y retira el aviso al recibir confirmación.
 
 En la aplicación QA desplegada, con una sesión de propietario y datos sintéticos ya existentes, se comprobó visualmente:
 
@@ -61,11 +62,11 @@ En la aplicación QA desplegada, con una sesión de propietario y datos sintéti
 - `qa` devuelve un cliente y personal sintético; sus resultados abren `#/panel/clientes` y `#/panel/personal`, respectivamente; no se guardó ningún cambio.
 - El encabezado conserva el ámbito visible `Local A1 · QA Empresa A, S.L.` durante el recorrido.
 
-La prueba manual del aviso rojo de sincronización no se forzó en la cuenta QA porque no existe un control de inyección de fallo y provocarlo llenando el almacenamiento o interrumpiendo una escritura podría alterar el estado del entorno. Se considera cubierto por el contrato de eventos y por el runtime aislado, pero la interacción visible **queda pendiente de verificación directa**.
+La prueba manual del aviso rojo de sincronización no se forzó en la cuenta QA porque no existe un control de inyección de fallo y provocarlo llenando el almacenamiento o interrumpiendo una escritura podría alterar el estado del entorno. La interacción visible sí queda verificada en el bundle real mediante el runtime aislado; lo que no se ha probado es la misma inyección sobre una sesión de navegador conectada a QA.
 
 ## Pendiente para cerrar la matriz
 
 1. Repetir los mismos casos desde sesiones JWT reales en el navegador para cada rol, sin crear cuentas nuevas en esta fase.
 2. Probar PostgREST, Edge Functions, Storage/KV y Realtime con identidades de cada rol.
 3. Añadir casos de usuario de otra empresa, revocación durante sesión y dos pestañas con contextos distintos.
-4. Añadir un mecanismo de prueba aislado o una sesión controlada que permita verificar la interfaz del fallo de sincronización y el reintento visible, sin llenar el almacenamiento ni provocar una escritura real fallida.
+4. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
