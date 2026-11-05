@@ -46,9 +46,26 @@ También pasaron los contratos de sincronización y respaldos:
 - fallos transitorios y reintentos;
 - comunicación honesta de estado no confirmado.
 
+## Verificación adicional de ejecución — rama QA
+
+Se ejecutaron sin escrituras externas:
+
+- `tests/plataforma/p08c-copia-historial-cuota-runtime.mjs`: **PASS**. El traslado de un historial grande a la copia por cuenta conserva el contenido y elimina la copia global aun con una cuota local ajustada.
+- `tests/plataforma/p05-panel-ui-runtime.mjs`: **PASS 95/95**. El panel de plataforma, sus estados, validaciones, reintentos, cierre de sesión y protección frente a nombres HTML se comportan conforme al contrato del arnés.
+- `tests/pm20/p09-sync-events-runtime.mjs`: **PASS 4/4**. `saveKey` emite estado pendiente, confirmación, clasificación de cuota y confirmación de ledger sin duplicar caché local, según el resultado del adaptador.
+
+En la aplicación QA desplegada, con una sesión de propietario y datos sintéticos ya existentes, se comprobó visualmente:
+
+- `cafe` devuelve `Café con leche (QA)` y `Café solo (QA)`; la búsqueda no exige escribir el acento.
+- `queseria` devuelve el proveedor sintético y abre `#/panel/proveedores`; se cerró la ficha sin guardar.
+- `qa` devuelve un cliente y personal sintético; sus resultados abren `#/panel/clientes` y `#/panel/personal`, respectivamente; no se guardó ningún cambio.
+- El encabezado conserva el ámbito visible `Local A1 · QA Empresa A, S.L.` durante el recorrido.
+
+La prueba manual del aviso rojo de sincronización no se forzó en la cuenta QA porque no existe un control de inyección de fallo y provocarlo llenando el almacenamiento o interrumpiendo una escritura podría alterar el estado del entorno. Se considera cubierto por el contrato de eventos y por el runtime aislado, pero la interacción visible **queda pendiente de verificación directa**.
+
 ## Pendiente para cerrar la matriz
 
-1. Repetir los mismos casos desde sesiones JWT reales en el navegador.
+1. Repetir los mismos casos desde sesiones JWT reales en el navegador para cada rol, sin crear cuentas nuevas en esta fase.
 2. Probar PostgREST, Edge Functions, Storage/KV y Realtime con identidades de cada rol.
 3. Añadir casos de usuario de otra empresa, revocación durante sesión y dos pestañas con contextos distintos.
-4. Ejecutar la prueba sintética de fallo de sincronización desde la interfaz y verificar el reintento visible.
+4. Añadir un mecanismo de prueba aislado o una sesión controlada que permita verificar la interfaz del fallo de sincronización y el reintento visible, sin llenar el almacenamiento ni provocar una escritura real fallida.
