@@ -74,7 +74,15 @@ Se añadió `.github/workflows/pm20-panel-navegacion-qa.yml` en el commit `c0d6d
 - regresión de contexto empresa/local, permisos, roles y protección de borradores;
 - comprobación de que las pruebas nuevas no contienen claves privilegiadas.
 
-La automatización está configurada para la rama `codex/ventas-release-integration` y para ejecución manual. La configuración y la publicación de QA están verificadas; el resultado de una ejecución GitHub Actions concreta queda pendiente de observar y no se considera aprobado por la mera existencia del workflow.
+La automatización está configurada para la rama `codex/ventas-release-integration` y para ejecución manual. La configuración, la publicación de QA y una ejecución concreta de GitHub Actions están verificadas; la ejecución CI no sustituye la matriz de sesiones reales ni las pruebas de los servicios con JWT.
+
+Posteriormente se observó la ejecución de GitHub Actions asociada al commit `c0d6d7b`: terminó con conclusión **success** en el evento `push` de la rama QA. El resultado confirma la automatización de contratos y runtime descrita arriba, pero no sustituye la matriz de sesiones reales ni las pruebas de los servicios con JWT.
+
+## Sesión de navegador QA y límite de roles
+
+En la aplicación desplegada en el branch deploy se verificó una sesión de propietario ya disponible, sin escribir datos ni activar operaciones económicas. El encabezado mostró el contexto `Local A1 · QA Empresa A, S.L.` y el panel permitió observar la navegación general, el selector de local y el acceso a modo empleado.
+
+El modo empleado mostró los perfiles sintéticos disponibles, pero solicita un código de acceso antes de entrar en cualquiera de ellos. No se adivinó ni se reutilizó ningún código no documentado. Por tanto, la evidencia de navegador directo queda confirmada para propietario y la prueba de cada rol operativo mediante interfaz sigue pendiente; las denegaciones de servidor de la tabla anterior sí están verificadas mediante simulación controlada de identidad.
 
 ## Pendiente para cerrar la matriz
 
