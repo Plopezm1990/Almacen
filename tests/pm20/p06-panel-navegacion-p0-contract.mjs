@@ -30,5 +30,8 @@ assert.match(source, /addEventListener\("popstate", aplicarRutaDesdeHistorial\)/
 assert.match(source, /addEventListener\("hashchange", aplicarRutaDesdeHistorial\)/, "los cambios de hash deben resolver el panel");
 assert.match(source, /!puedeConsultarPantallaPM13\(nuevaTab\)/, "la ruta profunda debe validar la capacidad de consulta");
 assert.ok(!source.includes("#/panel/\${empresa"), "la ruta no debe incluir datos de empresa por interpolación");
+assert.match(source, /No hay espacio suficiente en el navegador para guardar este respaldo/, "el aviso debe distinguir el agotamiento de cuota local");
+assert.match(source, /Cerrar aviso de guardado sin resolverlo/, "cerrar el aviso no debe presentarse como resolver el fallo");
+assert.match(source, /Ir a Respaldos/, "el aviso debe ofrecer acceso al módulo de respaldos");
 
 console.log("P0/P1 panel/navegación: contrato estático OK");

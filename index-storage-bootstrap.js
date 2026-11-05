@@ -210,6 +210,7 @@
           window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
             key: key,
             soloLocal: true,
+            categoria: "permisos",
             mensaje: "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora."
           } }));
         }
@@ -693,6 +694,7 @@
       key: claveColeccion,
       pendiente: true,
       parcial: true,
+      categoria: "parcial",
       filasRechazadas: rechazados,
       filasConfirmadas: confirmadas,
       mensaje: "Hay movimientos pendientes de contexto o revisión (" + resumen + "); los demás se han confirmado sin sobrescribir el histórico."

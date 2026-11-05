@@ -101711,7 +101711,8 @@ async function saveKey(key, value) {
   } catch (e2) {
     console.error("Error guardando", key, e2);
     if (typeof window !== "undefined" && window.dispatchEvent) {
-      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, mensaje: e2 && e2.message } }));
+      const mensaje = e2 && e2.message || "";
+      window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: { key, mensaje, categoria: /quota|storage/i.test(mensaje) ? "cuota" : "error" } }));
     }
   }
 }
@@ -104260,10 +104261,15 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
 function GestionAlmacen() {
   const [ready, setReady] = (0, import_react4.useState)(false);
   const [fallosGuardado, setFallosGuardado] = (0, import_react4.useState)([]);
+  const [avisoGuardadoCerrado, setAvisoGuardadoCerrado] = (0, import_react4.useState)(false);
   (0, import_react4.useEffect)(() => {
     function onFalloGuardado(e2) {
+      const detalle = e2.detail || {};
+      const mensaje = detalle.mensaje || "";
+      const motivo = detalle.categoria || (/(quota|storage)/i.test(mensaje) ? "cuota" : detalle.soloLocal ? "permisos" : detalle.pendiente ? "pendiente" : detalle.parcial ? "parcial" : "error");
+      setAvisoGuardadoCerrado(false);
       setFallosGuardado((s22) => [
-        { id: uid(), key: e2.detail.key, mensaje: e2.detail.mensaje || "", fecha: (/* @__PURE__ */ new Date()).toISOString() },
+        { id: uid(), key: detalle.key, mensaje, motivo, pendiente: !!detalle.pendiente, soloLocal: !!detalle.soloLocal, parcial: !!detalle.parcial, fecha: (/* @__PURE__ */ new Date()).toISOString() },
         ...s22
       ].slice(0, 20));
     }
@@ -106569,19 +106575,24 @@ function GestionAlmacen() {
     cambiarTabPM15("devoluciones");
   };
   const pestanasFijasMovil = pick(TAB_PRIORITIES_MOVIL[rolNavegacionMovil] || ["dashboard"]);
-  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
+  const falloGuardadoVisiblePM15 = !avisoGuardadoCerrado ? fallosGuardado[0] || null : null;
+  const etiquetaFalloGuardadoPM15 = falloGuardadoVisiblePM15?.motivo === "cuota" ? "No hay espacio suficiente en el navegador para guardar este respaldo" : falloGuardadoVisiblePM15?.motivo === "permisos" ? "El servidor no ha autorizado este guardado" : falloGuardadoVisiblePM15?.motivo === "pendiente" ? "El guardado está pendiente de confirmación del servidor" : falloGuardadoVisiblePM15?.motivo === "parcial" ? "La sincronización se ha completado solo parcialmente" : "No se ha podido guardar este cambio";
+  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, falloGuardadoVisiblePM15 && /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
+      role: falloGuardadoVisiblePM15.motivo === "cuota" || falloGuardadoVisiblePM15.motivo === "permisos" ? "alert" : "status",
+      "aria-live": falloGuardadoVisiblePM15.motivo === "cuota" || falloGuardadoVisiblePM15.motivo === "permisos" ? "assertive" : "polite",
       className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
       style: { background: C2.red, color: "#fff", position: "sticky", top: 0, zIndex: 40 }
     },
-    /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 Un cambio no se ha podido guardar (", fallosGuardado[0].key, "). Comprueba tu conexi\xF3n o reintenta ahora; mientras tanto queda guardado en este equipo."),
-    /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-center" },
+    /* @__PURE__ */ import_react4.default.createElement("span", null, "\u26A0 ", etiquetaFalloGuardadoPM15, " (", falloGuardadoVisiblePM15.key, "). ", falloGuardadoVisiblePM15.mensaje || "Revisa Respaldos y reintenta cuando corresponda.", " ", falloGuardadoVisiblePM15.fecha ? `\xB7 ${new Date(falloGuardadoVisiblePM15.fecha).toLocaleString("es-ES")}` : ""),
+    /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 items-center shrink-0" },
       /* @__PURE__ */ import_react4.default.createElement("button", { onClick: async () => {
-        const key = fallosGuardado[0] && fallosGuardado[0].key;
+        const key = falloGuardadoVisiblePM15 && falloGuardadoVisiblePM15.key;
         if (typeof window.reintentarSincronizacion === "function") await window.reintentarSincronizacion(key);
       }, style: { color: "#fff", fontWeight: 600 } }, "Reintentar"),
-      /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setFallosGuardado([]), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
+      puedeConsultarPantallaPM13("respaldos") && /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarTabPM15("respaldos"), style: { color: "#fff", fontWeight: 600 } }, "Ir a Respaldos"),
+      /* @__PURE__ */ import_react4.default.createElement("button", { "aria-label": "Cerrar aviso de guardado sin resolverlo", title: "Cerrar aviso sin resolverlo", onClick: () => setAvisoGuardadoCerrado(true), style: { color: "#fff", fontWeight: 600 } }, "\u2715")
     )
   ), fallosCarga.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
     "div",
