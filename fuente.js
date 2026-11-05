@@ -106134,7 +106134,7 @@ function GestionAlmacen() {
       stockBajo,
       descuadresStock: diagnosticoStock.filter((d2) => !d2.coincide)
     }
-  ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, marcarProveedorRevisado, pedidos: pedidos2 }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "proveedores" && /* @__PURE__ */ import_react4.default.createElement(Proveedores, { proveedores, addProveedor, updateProveedor, deleteProveedor, marcarProveedorRevisado, pedidos: pedidos2, navegacionObjetivoId: navegacionObjetivoPM15?.tipo === "proveedores" ? navegacionObjetivoPM15.id : null, onConsumirNavegacionObjetivo: () => setNavegacionObjetivoPM15(null) }), tab === "productos" && /* @__PURE__ */ import_react4.default.createElement(
     Productos,
     {
       productos: productosDelLocalActivo,
@@ -106247,7 +106247,9 @@ function GestionAlmacen() {
       addProducto,
       ordenesProduccion: ordenesProduccionDelLocalActivo,
       nominas,
-      fichajes
+      fichajes,
+      navegacionObjetivoId: navegacionObjetivoPM15?.tipo === "fichasCosto" ? navegacionObjetivoPM15.id : null,
+      onConsumirNavegacionObjetivo: () => setNavegacionObjetivoPM15(null)
     }
   ), tab === "produccion" && /* @__PURE__ */ import_react4.default.createElement(Produccion, { fichasCosto: fichasCostoDelLocalActivo, productos: productosDelLocalActivo, ordenesProduccion: ordenesProduccionDelLocalActivo, producir, anularProduccion, traspasarStock }), tab === "mermas" && /* @__PURE__ */ import_react4.default.createElement(Mermas, { productos: productosDelLocalActivo, movimientos: movimientosDelLocalActivo, registrarSalida, almacenCongelado }), tab === "etiquetas" && /* @__PURE__ */ import_react4.default.createElement(EtiquetasCatalogo, { empresa: empresaDelLocalActivo, productos: productosDelLocalActivo, fichasCosto: fichasCostoDelLocalActivo, alergenosDeFicha }), tab === "albaranes" && /* @__PURE__ */ import_react4.default.createElement(
     Albaranes,
@@ -106321,7 +106323,9 @@ function GestionAlmacen() {
       pendienteSincronizacion: estadoCargaDatosPM12.pendienteEmpleados,
       contextoActivoPM15,
       marcarFormularioAbiertoPM15,
-      localId: localActivoId
+      localId: localActivoId,
+      navegacionObjetivoId: navegacionObjetivoPM15?.tipo === "empleados" ? navegacionObjetivoPM15.id : null,
+      onConsumirNavegacionObjetivo: () => setNavegacionObjetivoPM15(null)
     }
   ), tab === "fichaje" && /* @__PURE__ */ import_react4.default.createElement(
     RegistroHorario,
@@ -106368,7 +106372,9 @@ function GestionAlmacen() {
       revertirAnticipoEncargo,
       addCliente,
       contextoActivoPM15,
-      marcarFormularioAbiertoPM15
+      marcarFormularioAbiertoPM15,
+      navegacionObjetivoId: navegacionObjetivoPM15?.tipo === "clientes" ? navegacionObjetivoPM15.id : null,
+      onConsumirNavegacionObjetivo: () => setNavegacionObjetivoPM15(null)
     }
   ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
     Clientes,
@@ -116928,7 +116934,7 @@ var DIAS_REPARTO = [
   { valor: 6, corta: "S", nombre: "S\xE1bado" },
   { valor: 0, corta: "D", nombre: "Domingo" }
 ];
-function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveedor, marcarProveedorRevisado = null, pedidos: pedidos2 }) {
+function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveedor, marcarProveedorRevisado = null, pedidos: pedidos2, navegacionObjetivoId = null, onConsumirNavegacionObjetivo }) {
   const blankProv = { nombre: "", nif: "", direccion: "", web: "", contacto: "", telefono: "", email: "", condiciones: "", leadTime: "", diasPago: "", diasReparto: [] };
   const pendientesRevisionAlb = proveedores.filter((x3) => x3 && x3.pendienteRevision).length;
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
@@ -116981,6 +116987,12 @@ function Proveedores({ proveedores, addProveedor, updateProveedor, deleteProveed
     }
     setEditFor(null);
   }
+  import_react4.default.useEffect(() => {
+    if (!navegacionObjetivoId) return;
+    const objetivo = proveedores.find((pv) => pv.id === navegacionObjetivoId);
+    if (objetivo) openEdit(objetivo);
+    if (typeof onConsumirNavegacionObjetivo === "function") onConsumirNavegacionObjetivo();
+  }, [navegacionObjetivoId, proveedores]);
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo proveedor") }, "Proveedores"), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre del proveedor" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }), placeholder: "Distribuidora del Norte" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF / CIF (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nif, onChange: (e2) => setForm({ ...form, nif: e2.target.value }), placeholder: "B12345678" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Direcci\xF3n (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.direccion, onChange: (e2) => setForm({ ...form, direccion: e2.target.value }), placeholder: "C/ Mayor 1, 28001 Madrid" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Web (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.web, onChange: (e2) => setForm({ ...form, web: e2.target.value }), placeholder: "www.proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Persona de contacto" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.contacto, onChange: (e2) => setForm({ ...form, contacto: e2.target.value }), placeholder: "Nombre" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tel\xE9fono (WhatsApp)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.telefono, onChange: (e2) => setForm({ ...form, telefono: e2.target.value }), placeholder: "+34 600 000 000" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo electr\xF3nico" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: form.email, onChange: (e2) => setForm({ ...form, email: e2.target.value }), placeholder: "pedidos@proveedor.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Condiciones de pago (texto libre)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.condiciones, onChange: (e2) => setForm({ ...form, condiciones: e2.target.value }), placeholder: "Transferencia 45 d\xEDas F/F" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "D\xEDas de pago (para calcular vencimientos)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.diasPago, onChange: (e2) => setForm({ ...form, diasPago: e2.target.value }), placeholder: "45" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tiempo de entrega (d\xEDas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: form.leadTime, onChange: (e2) => setForm({ ...form, leadTime: e2.target.value }), placeholder: "5" }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, "\xBFQu\xE9 d\xEDas reparte? (opcional)"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5" }, DIAS_REPARTO.map((d2) => {
     const activo = (form.diasReparto || []).includes(d2.valor);
     return /* @__PURE__ */ import_react4.default.createElement(
@@ -118303,7 +118315,7 @@ function fichaVacia() {
     conservacion: ""
   };
 }
-function FichasCosto({ fichasCosto, productos, addFichaCosto, updateFichaCosto, deleteFichaCosto, updateProducto, addProducto, ordenesProduccion = [], nominas = [], fichajes = [] }) {
+function FichasCosto({ fichasCosto, productos, addFichaCosto, updateFichaCosto, deleteFichaCosto, updateProducto, addProducto, ordenesProduccion = [], nominas = [], fichajes = [], navegacionObjetivoId = null, onConsumirNavegacionObjetivo }) {
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
   const [filtroSeccion, setFiltroSeccion] = (0, import_react4.useState)("todas");
   const [form, setForm] = (0, import_react4.useState)(fichaVacia());
@@ -118413,6 +118425,12 @@ function FichasCosto({ fichasCosto, productos, addFichaCosto, updateFichaCosto, 
     setError("");
     setShowForm(true);
   }
+  import_react4.default.useEffect(() => {
+    if (!navegacionObjetivoId) return;
+    const objetivo = fichasCosto.find((f22) => f22.id === navegacionObjetivoId);
+    if (objetivo) openEdit(objetivo);
+    if (typeof onConsumirNavegacionObjetivo === "function") onConsumirNavegacionObjetivo();
+  }, [navegacionObjetivoId, fichasCosto]);
   function crearProductoDeVenta() {
     if (!form.nombre.trim()) {
       setError("Escribe primero el nombre de la receta.");
@@ -120945,7 +120963,7 @@ function escribirRutaPanelLA(tab, reemplazar = false) {
   if (reemplazar) window.history.replaceState(window.history.state, "", url);
   else window.history.pushState({ ...(window.history.state || {}), laSuitePanel: tab }, "", url);
 }
-function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null, localId = "" }) {
+function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null, localId = "", navegacionObjetivoId = null, onConsumirNavegacionObjetivo }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
   const [permisosAusenciasPM13, setPermisosAusenciasPM13] = (0, import_react4.useState)(null);
   import_react4.default.useEffect(() => {
@@ -121044,6 +121062,12 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     setError("");
     setShowForm(true);
   }
+  import_react4.default.useEffect(() => {
+    if (!navegacionObjetivoId) return;
+    const objetivo = empleados.find((e2) => e2.id === navegacionObjetivoId);
+    if (objetivo) openEdit(objetivo);
+    if (typeof onConsumirNavegacionObjetivo === "function") onConsumirNavegacionObjetivo();
+  }, [navegacionObjetivoId, empleados]);
   function addDocumento() {
     setForm((f22) => ({ ...f22, documentos: [...f22.documentos, { id: uid(), nombre: "", fechaCaducidad: "" }] }));
   }
@@ -121908,7 +121932,7 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     } }, "S\xED, cancelar encargo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Volver")));
   })());
 }
-function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
+function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, navegacionObjetivoId = null, onConsumirNavegacionObjetivo }) {
   const blank = { nombre: "", telefono: "", email: "", notas: "" };
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
   import_react4.default.useEffect(() => {
@@ -121940,6 +121964,12 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
     setError("");
     setShowForm(true);
   }
+  import_react4.default.useEffect(() => {
+    if (!navegacionObjetivoId) return;
+    const objetivo = analisisClientes.find((c22) => c22.id === navegacionObjetivoId);
+    if (objetivo) abrirEdicion(objetivo);
+    if (typeof onConsumirNavegacionObjetivo === "function") onConsumirNavegacionObjetivo();
+  }, [navegacionObjetivoId, analisisClientes]);
   function exportarDatosCliente(c22) {
     const lineas = [
       `DATOS GUARDADOS SOBRE: ${c22.nombre}`,
