@@ -1241,7 +1241,10 @@
       if (key === "historialRespaldos") {
         try {
           var historialIndexedDb = await leerHistorialRespaldosIndexedDb();
-          if (historialIndexedDb !== null) return { key: key, value: historialIndexedDb, shared: false };
+          if (historialIndexedDb !== null) {
+            try { localStorage.removeItem("almacen:" + key); } catch (e) {}
+            return { key: key, value: historialIndexedDb, shared: false };
+          }
           var historialLocal = leerLocalOpcional(key);
           if (historialLocal !== null) {
             await guardarHistorialRespaldosIndexedDb(historialLocal);
