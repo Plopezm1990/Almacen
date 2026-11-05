@@ -29,6 +29,7 @@ assert.match(source, /history\.pushState\(\{.*laSuitePanel: tab/s, "los cambios 
 assert.match(source, /addEventListener\("popstate", aplicarRutaDesdeHistorial\)/, "atrás y adelante deben resolver el panel");
 assert.match(source, /addEventListener\("hashchange", aplicarRutaDesdeHistorial\)/, "los cambios de hash deben resolver el panel");
 assert.match(source, /!puedeConsultarPantallaPM13\(nuevaTab\)/, "la ruta profunda debe validar la capacidad de consulta");
+assert.match(source, /modoEmpleado && Array\.isArray\(itemsPermitidosEmpleado\) && !itemsPermitidosEmpleado\.includes\(id\)/, "la ruta debe respetar el catálogo efectivo del rol empleado");
 assert.ok(!source.includes("#/panel/\${empresa"), "la ruta no debe incluir datos de empresa por interpolación");
 assert.match(source, /No hay espacio suficiente en el navegador para guardar este respaldo/, "el aviso debe distinguir el agotamiento de cuota local");
 assert.match(source, /Cerrar aviso de guardado sin resolverlo/, "cerrar el aviso no debe presentarse como resolver el fallo");

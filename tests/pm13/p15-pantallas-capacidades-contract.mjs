@@ -30,7 +30,8 @@ for (const { id, capacidad } of capacidades) {
   assert.ok(documentation.includes(`\`${id}\` | \`${capacidad}\``), `documentación sin ${id}`);
 }
 
-assert.match(source, /capacidadConsulta: CAPACIDADES_CONSULTA_PANTALLA\[item\.id\]/);
+assert.match(source, /var CATALOGO_PANTALLAS_LA = Object\.freeze\(PM13_PANTALLAS_EDITOR\.map\(/);
+assert.match(source, /capacidadConsulta/);
 assert.match(source, /label: "Panel general"/);
 assert.match(documentation, /no persiste selecciones/);
 

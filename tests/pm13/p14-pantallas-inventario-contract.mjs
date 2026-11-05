@@ -18,9 +18,9 @@ const expectedIds = [
   "errores_sistema",
 ];
 
-const start = source.indexOf("const itemsMeta = [");
+const start = source.indexOf("const itemsMetaBase = [");
 const end = source.indexOf("  const porId =", start);
-assert.ok(start >= 0 && end > start, "itemsMeta no encontrado");
+assert.ok(start >= 0 && end > start, "itemsMetaBase no encontrado");
 const block = source.slice(start, end);
 const actualIds = [...block.matchAll(/\{ id: "([^"]+)"/g)].map((match) => match[1]);
 
@@ -29,6 +29,11 @@ assert.deepEqual([...actualIds].sort(), [...expectedIds].sort());
 assert.equal(new Set(actualIds).size, actualIds.length);
 for (const id of expectedIds) assert.ok(inventory.includes(`\u0060${id}\u0060`), `inventario sin ${id}`);
 
+assert.match(source, /var CATALOGO_PANTALLAS_LA = Object\.freeze\(PM13_PANTALLAS_EDITOR\.map\(/, "debe existir un catálogo operativo común");
+for (const field of ["alcancePermitido", "requiereLocalConcreto", "soporteMovil", "destino"]) {
+  assert.match(source, new RegExp(`\\b${field}\\b`), `el catálogo debe declarar ${field}`);
+}
+assert.match(source, /const itemsMeta = CATALOGO_PANTALLAS_LA\.map\(/, "el menú debe derivarse del catálogo operativo común");
 assert.match(source, /const GRUPOS = \[/);
 assert.ok(source.includes("var matchPrefiltro = /^#\\/prefiltro\\/(.+)$/.exec(rutaHash);"));
 assert.match(inventory, /45 pantallas privadas/);

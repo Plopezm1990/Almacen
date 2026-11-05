@@ -39,7 +39,12 @@ for (const file of ["fuente.js", "source-recovery/fuente-recuperado.js"]) {
 
 const main = fs.readFileSync("fuente.js", "utf8");
 const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
-const catalog = (text) => [...text.matchAll(/\["(ABC_PANTALLA_[A-Z0-9_]+_CONSULTAR)",/g)].map((m) => m[1]);
+const catalog = (text) => {
+  const start = text.indexOf("var PM13_PANTALLAS_EDITOR = Object.freeze([");
+  const end = text.indexOf("var PM13_CARGO_PERMISOS_LABELS", start);
+  const block = text.slice(start, end);
+  return [...block.matchAll(/\["[^\"]+", "[a-z0-9_]+", "[^\"]+", "(ABC_PANTALLA_[A-Z0-9_]+_CONSULTAR)"\]/g)].map((m) => m[1]);
+};
 assert.deepEqual(catalog(recovered), catalog(main), "el espejo debe conservar el catálogo de pantallas");
 
 console.log("PM13 P21 Pantallas configurables para roles fijos: contrato SQL, auditoría, UI y espejo OK");

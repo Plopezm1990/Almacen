@@ -101221,6 +101221,16 @@ var PM13_PANTALLAS_EDITOR = Object.freeze([
   ["Calidad", "appcc", "Control sanitario", "ABC_PANTALLA_APPCC_CONSULTAR"], ["Calidad", "aceite", "Aceite de freidoras", "ABC_PANTALLA_ACEITE_CONSULTAR"],
   ["Sistema", "auditoria", "Auditoría", "ABC_PANTALLA_AUDITORIA_CONSULTAR"], ["Sistema", "respaldos", "Respaldos", "ABC_PANTALLA_RESPALDOS_CONSULTAR"], ["Sistema", "notificaciones", "Notificaciones", "ABC_PANTALLA_NOTIFICACIONES_CONSULTAR"], ["Sistema", "locales", "Locales", "ABC_PANTALLA_LOCALES_CONSULTAR"], ["Sistema", "configuracion", "Configuración", "ABC_PANTALLA_CONFIGURACION_CONSULTAR"], ["Sistema", "errores_sistema", "Errores del sistema", "ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR"]
 ].map(([grupo, id, label, capacidadConsulta]) => Object.freeze({ grupo, id, label, capacidadConsulta, descripcion: `Consulta de ${label}`, moduloActivo: true })));
+// Catálogo operativo único para resolver navegación y contexto. El editor PM13
+// conserva la compatibilidad histórica; esta vista añade los metadatos que
+// necesitan el menú, las rutas privadas y las pruebas de alcance.
+var CATALOGO_PANTALLAS_LA = Object.freeze(PM13_PANTALLAS_EDITOR.map((pantalla) => Object.freeze({
+  ...pantalla,
+  alcancePermitido: "contexto_actual",
+  requiereLocalConcreto: ["venta", "cocina", "caja", "fichaje", "recepcion", "conteo", "traspasos"].includes(pantalla.id),
+  soporteMovil: true,
+  destino: `#/panel/${pantalla.id}`
+})));
 var PM13_CARGO_PERMISOS_LABELS = Object.freeze({
   PM13_AUSENCIA_ANULAR: "Anular ausencias",
   PM13_AUSENCIA_CONSULTAR: "Consultar ausencias",
@@ -101234,17 +101244,7 @@ var PM13_CARGO_PERMISOS_LABELS = Object.freeze({
   PM13_PERSONAL_CREAR: "Crear empleados",
   PM13_PERSONAL_EDITAR: "Editar empleados"
 });
-var CONFIG_PANTALLAS_ROL = [
-  ["ABC_PANTALLA_DASHBOARD_CONSULTAR", "Panel general"], ["ABC_PANTALLA_DIRECCION_CONSULTAR", "Panel de dirección"], ["ABC_PANTALLA_BUSCAR_CONSULTAR", "Buscar"],
-  ["ABC_PANTALLA_PROVEEDORES_CONSULTAR", "Proveedores"], ["ABC_PANTALLA_PEDIDOS_CONSULTAR", "Pedidos"], ["ABC_PANTALLA_RECEPCION_CONSULTAR", "Recepción"], ["ABC_PANTALLA_ALBARANES_CONSULTAR", "Albaranes"], ["ABC_PANTALLA_FACTURAS_CONSULTAR", "Facturas"],
-  ["ABC_PANTALLA_RESUMEN_ALMACEN_CONSULTAR", "Resumen de almacén"], ["ABC_PANTALLA_PRODUCTOS_CONSULTAR", "Productos"], ["ABC_PANTALLA_HISTORIAL_PRODUCTO_CONSULTAR", "Historial de producto"], ["ABC_PANTALLA_CONTEO_CONSULTAR", "Inventario ciego"], ["ABC_PANTALLA_SALDO_CONSULTAR", "Saldo de almacén"], ["ABC_PANTALLA_MAPA_CONSULTAR", "Mapa de almacén"], ["ABC_PANTALLA_TRASPASOS_CONSULTAR", "Traspasos"], ["ABC_PANTALLA_DIAGNOSTICO_CONSULTAR", "Reconciliación de stock"], ["ABC_PANTALLA_ETIQUETAS_CONSULTAR", "Etiquetas y catálogo"],
-  ["ABC_PANTALLA_VENTA_CONSULTAR", "TPV"], ["ABC_PANTALLA_COCINA_CONSULTAR", "Cocina"], ["ABC_PANTALLA_ENCARGOS_CONSULTAR", "Encargos"], ["ABC_PANTALLA_CLIENTES_CONSULTAR", "Clientes"], ["ABC_PANTALLA_DEVOLUCIONES_CONSULTAR", "Devoluciones"], ["ABC_PANTALLA_DESCUENTOS_CONSULTAR", "Descuentos y cortesías"],
-  ["ABC_PANTALLA_FICHAS_CONSULTAR", "Fichas de costo"], ["ABC_PANTALLA_PRODUCCION_CONSULTAR", "Producción"], ["ABC_PANTALLA_MERMAS_CONSULTAR", "Mermas"],
-  ["ABC_PANTALLA_PAGOS_CONSULTAR", "Cuentas por pagar"], ["ABC_PANTALLA_RESULTADOS_CONSULTAR", "Resultados"], ["ABC_PANTALLA_REPORTES_CONSULTAR", "Reportes y rotación"], ["ABC_PANTALLA_LIBROIVA_CONSULTAR", "Libro de IVA"], ["ABC_PANTALLA_CAJA_CONSULTAR", "Arqueo de caja"], ["ABC_PANTALLA_TESORERIA_CONSULTAR", "Tesorería"], ["ABC_PANTALLA_ESTACIONALIDAD_CONSULTAR", "Estacionalidad"],
-  ["ABC_PANTALLA_PERSONAL_CONSULTAR", "Personal"], ["ABC_PANTALLA_FICHAJE_CONSULTAR", "Registro horario"], ["ABC_PANTALLA_TURNOS_CONSULTAR", "Cuadrante de turnos"], ["ABC_PANTALLA_NOMINAS_CONSULTAR", "Coste de personal"],
-  ["ABC_PANTALLA_APPCC_CONSULTAR", "Control sanitario"], ["ABC_PANTALLA_ACEITE_CONSULTAR", "Aceite de freidoras"],
-  ["ABC_PANTALLA_AUDITORIA_CONSULTAR", "Auditoría"], ["ABC_PANTALLA_RESPALDOS_CONSULTAR", "Respaldos"], ["ABC_PANTALLA_NOTIFICACIONES_CONSULTAR", "Notificaciones"], ["ABC_PANTALLA_LOCALES_CONSULTAR", "Locales"], ["ABC_PANTALLA_CONFIGURACION_CONSULTAR", "Configuración"], ["ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR", "Errores del sistema"]
-];
+var CONFIG_PANTALLAS_ROL = CATALOGO_PANTALLAS_LA.map((pantalla) => [pantalla.capacidadConsulta, pantalla.label]);
 var TAB_PRIORITIES_MOVIL = {
   "Propietario": ["dashboard", "resultados", "caja"],
   "Encargado": ["dashboard", "venta", "cocina", "fichaje"],
@@ -104382,13 +104382,14 @@ function GestionAlmacen() {
   }, [ready]);
   function puedeConsultarPantallaPM13(id) {
     if (typeof window === "undefined" || !window.__nubeActiva || miPerfil?.rol === "Propietario") return true;
+    if (modoEmpleado && Array.isArray(itemsPermitidosEmpleado) && !itemsPermitidosEmpleado.includes(id)) return false;
     if (id === "personal") return permisosConsultaPM13.personal === true;
     if (id === "fichaje") return permisosConsultaPM13.fichaje === true;
     return true;
   }
   (0, import_react4.useEffect)(() => {
     if (tab !== "dashboard" && !puedeConsultarPantallaPM13(tab)) setTab("dashboard");
-  }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol]);
+  }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol, modoEmpleado, itemsPermitidosEmpleado]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
   const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
   const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
@@ -106506,7 +106507,7 @@ function GestionAlmacen() {
     configuracion: "ABC_PANTALLA_CONFIGURACION_CONSULTAR",
     errores_sistema: "ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR"
   });
-  const itemsMeta = [
+  const itemsMetaBase = [
     { id: "dashboard", label: "Panel general", icon: ChartColumn },
     { id: "direccion", label: "Panel de direcci\xF3n", icon: TrendingUp },
     { id: "proveedores", label: "Proveedores", icon: Truck },
@@ -106552,7 +106553,11 @@ function GestionAlmacen() {
     { id: "locales", label: "Locales", icon: Map2 },
     { id: "configuracion", label: "Configuraci\xF3n", icon: Cog },
     { id: "errores_sistema", label: "Errores del sistema", icon: TriangleAlert }
-  ].map((item) => ({ ...item, capacidadConsulta: CAPACIDADES_CONSULTA_PANTALLA[item.id] }));
+  ];
+  const itemsMeta = CATALOGO_PANTALLAS_LA.map((item) => {
+    const base = itemsMetaBase.find((candidate) => candidate.id === item.id) || {};
+    return { ...base, ...item, icon: base.icon };
+  });
   const porId = (id) => itemsMeta.find((x3) => x3.id === id);
   const pick = (ids) => {
     const filtrados = ids.filter((id) => (!modoEmpleado || itemsPermitidosEmpleado.includes(id)) && puedeConsultarPantallaPM13(id));
