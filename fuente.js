@@ -104389,7 +104389,7 @@ function GestionAlmacen() {
   }
   (0, import_react4.useEffect)(() => {
     if (tab !== "dashboard" && !puedeConsultarPantallaPM13(tab)) setTab("dashboard");
-  }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol, modoEmpleado, itemsPermitidosEmpleado]);
+  }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol, modoEmpleado]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
   const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
   const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
