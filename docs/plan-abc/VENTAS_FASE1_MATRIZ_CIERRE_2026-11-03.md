@@ -752,3 +752,48 @@ Resultado: **timeout de red, conservación del mismo intento y confirmación tar
 
 La red emulada se restauró al terminar. No se aplicaron migraciones, no se modificó `main` ni `release`, no se desplegó producción y no se borró histórico. La Fase 1 global sigue abierta por el cierre formal pendiente, los escenarios restantes de 1A (fuera de orden, intento desconocido, concurrencia y terminal/sandbox), 1C/1D y el gate 6A separado.
 
+## 30. Punto 1A: corrección del cierre con versión actual — verificación QA bloqueada por día operativo — 2026-11-05
+
+Se implementó y publicó en el branch deploy QA la corrección detectada en el punto 29. La causa del fallo era que la rama de saldo cero de `iniciarCobroCuentaF4` usaba la versión de cuenta recuperada antes de la confirmación del pago, en vez de la versión actual devuelta por el servidor. Además, cuando el cierre no era confirmado, la interfaz podía presentar el mensaje genérico de efectivo aunque el flujo fuese de tarjeta.
+
+La corrección quedó en el commit `d1d1a02` y en el despliegue Netlify `6aec09c1dbb6eadf86d7d121`, estado `ready`, correspondiente exclusivamente a `codex/ventas-release-integration`. El cambio:
+
+- usa `estadoPrevio.cuentaVersion` como primera opción para el cierre de tarjeta con saldo cero;
+- usa también `estadoFinal.cuentaVersion` en el cierre posterior al cobro en efectivo;
+- muestra `No se pudo cerrar la cuenta pagada: ...` cuando el servidor no confirma el cierre, evitando atribuirlo falsamente a efectivo;
+- mantiene sincronizado `fuente.js` con `source-recovery/fuente-recuperado.js`.
+
+La verificación manual se realizó sobre el fixture `ce399682-fcec-4496-b942-f47bb981a3de`, sin iniciar otro cobro. El TPV mostró correctamente `Confirmado €1,32`, `Pendiente €0,00`, `Cuenta: Pagado` y `Último intento: Confirmado`, y presentó la acción independiente `Cerrar cuenta pagada`. Al ejecutarla, la interfaz no confirmó el cierre y mantuvo la cuenta abierta porque el propio servidor la bloquea por diferencia de día operativo: la cuenta se abrió con `opened_operating_day=2026-11-04` y la pantalla identifica el día actual como `2026-11-05`.
+
+La consulta posterior, solo lectora, confirmó:
+
+| Objeto | Estado observado | Evidencia adicional |
+|---|---|---|
+| Cuenta `ce399682…` | `ABIERTA` | `closed_at` nulo; versión 2; día de apertura `2026-11-04` |
+| Checkout `f495678f…` | `COMPLETADO` | saldo comercial cero |
+| Pago `1209d8a4…` | `RECHAZADO` | fixture original; no alterado |
+| Pago `733bab56…` | `CONFIRMADO` | reintento válido; no alterado |
+| Intentos | 1 rechazado + 1 confirmado | no se creó un tercero |
+| Operación de cierre | no registrada | no apareció `abc_cerrar_cuenta_pagada` |
+
+No se considera un fallo de la corrección de versión: la prueba integrada queda **BLOQUEADA / NO APROBADA** por la regla de día operativo y no permite aislar el cierre formal sin modificar datos de negocio. El fixture cerrado `c1de2cdb…` sigue aportando la evidencia anterior de cierre correcto en el mismo día operativo; el nuevo escenario no puede reutilizarse para probarlo sin resolver primero el día de operación de forma autorizada y controlada.
+
+Pruebas locales y del artefacto ejecutadas antes de publicar:
+
+```text
+F4_B12_CARD_CLOSE_VERSION_CONTRACT=PASS
+F4_B12_QA_CARD_WORKER_CONTRACT=PASS
+ABC_F4_B12_PAYMENT_TRIAL_MATRIX=PASS
+A02_QUICK_SALE_TICKET_CONTRACT=PASS
+ABC_F4_B05_CASH_RETRY=PASS
+ABC_F4_B05_NEW_ACCOUNT_UI=PASS
+ABC_F4_PHASE1_REGRESSION=PASS
+node --check fuente.js=PASS
+node --check source-recovery/fuente-recuperado.js=PASS
+node --check .netlify-dist/fuente.js=PASS
+git diff --check=PASS
+build-netlify-publish.mjs=PASS
+```
+
+No se aplicaron migraciones, no se tocó `main` o `release`, no se desplegó producción, no se confirmó ni canceló el pago pendiente de `0,32 €`, no se tocó el pendiente independiente y no se borró histórico. La Fase 1 global sigue abierta: falta una prueba de cierre formal en una cuenta del día operativo vigente, además de los escenarios 1A fuera de orden/intento desconocido/concurrencia/terminal-sandbox, 1C/1D y el gate 6A.
+
