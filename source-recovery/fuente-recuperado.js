@@ -11116,12 +11116,15 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         if (String(estadoPrevio.cuentaEstado || "").toUpperCase() === "CERRADA") return estadoPrevio;
         const checkoutCompletado = estadoPrevio.checkouts.find((checkout) => String(checkout?.estado || "").toUpperCase() === "COMPLETADO");
         if (!checkoutCompletado?.id) return estadoPrevio;
-        const cierreCuenta = await cerrarCuentaPagadaF4(recuperada.cuentaId, checkoutCompletado.id, recuperada.cuentaVersion, terminal);
+        const versionCierre = estadoPrevio.cuentaVersion ?? recuperada.cuentaVersion;
+        const cierreCuenta = await cerrarCuentaPagadaF4(recuperada.cuentaId, checkoutCompletado.id, versionCierre, terminal);
         const estadoCerrado = { ...estadoPrevio, cuentaCierre: cierreCuenta };
         if (cierreCuenta?.ok) {
           estadoCerrado.cuentaEstado = "CERRADA";
           estadoCerrado.cuentaVersion = Number(cierreCuenta.cuenta_version);
           estadoCerrado.mensaje = "Cuenta pagada cerrada formalmente por el servidor.";
+        } else {
+          estadoCerrado.mensaje = `No se pudo cerrar la cuenta pagada: ${cierreCuenta?.error || "el servidor no confirmó el cierre"}`;
         }
         return estadoCerrado;
       }
@@ -11236,7 +11239,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           ? estadoFinal.checkouts.find((checkout) => String(checkout?.estado || "").toUpperCase() === "COMPLETADO")
           : null;
         const cierreCuenta = checkoutCompletado?.id
-          ? await cerrarCuentaPagadaF4(recuperada.cuentaId, checkoutCompletado.id, recuperada.cuentaVersion, terminal)
+          ? await cerrarCuentaPagadaF4(recuperada.cuentaId, checkoutCompletado.id, estadoFinal.cuentaVersion ?? recuperada.cuentaVersion, terminal)
           : { ok: false, error: "No se encontró el checkout completado para cerrar la cuenta." };
         estadoFinal.cuentaCierre = cierreCuenta;
         if (cierreCuenta?.ok) {
