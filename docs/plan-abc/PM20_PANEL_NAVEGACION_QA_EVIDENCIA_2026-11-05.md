@@ -64,6 +64,18 @@ En la aplicación QA desplegada, con una sesión de propietario y datos sintéti
 
 La prueba manual del aviso rojo de sincronización no se forzó en la cuenta QA porque no existe un control de inyección de fallo y provocarlo llenando el almacenamiento o interrumpiendo una escritura podría alterar el estado del entorno. La interacción visible sí queda verificada en el bundle real mediante el runtime aislado; lo que no se ha probado es la misma inyección sobre una sesión de navegador conectada a QA.
 
+## Automatización añadida para la rama QA
+
+Se añadió `.github/workflows/pm20-panel-navegacion-qa.yml` en el commit `c0d6d7b` para ejecutar en GitHub Actions, de forma aislada:
+
+- sintaxis y contratos P0/P1 de panel, navegación, búsqueda y sincronización;
+- runtime `jsdom` del aviso de sincronización y del panel de plataforma;
+- runtime de la migración del historial de respaldos;
+- regresión de contexto empresa/local, permisos, roles y protección de borradores;
+- comprobación de que las pruebas nuevas no contienen claves privilegiadas.
+
+La automatización está configurada para la rama `codex/ventas-release-integration` y para ejecución manual. La configuración y la publicación de QA están verificadas; el resultado de una ejecución GitHub Actions concreta queda pendiente de observar y no se considera aprobado por la mera existencia del workflow.
+
 ## Pendiente para cerrar la matriz
 
 1. Repetir los mismos casos desde sesiones JWT reales en el navegador para cada rol, sin crear cuentas nuevas en esta fase.
