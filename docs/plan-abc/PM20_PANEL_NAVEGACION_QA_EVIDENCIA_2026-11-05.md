@@ -140,9 +140,32 @@ Resultados observados con la aplicación desplegada en el branch de QA:
 
 Esta evidencia eleva la verificación de PN-011 desde el modo empleado a una prueba de interfaz con identidades Auth reales para los dos roles. No demuestra todavía que una llamada PostgREST/RPC, Storage, Realtime o Edge Function deniegue por sí misma un identificador alterado. Tampoco prueba el aislamiento frente a una segunda empresa o a un local adicional, porque esa matriz requiere identidades y datos de ámbito preparados específicamente.
 
+### Pruebas PostgREST/RPC con JWT real — 2026-11-06
+
+Tras solicitar acceso de red únicamente para esta comprobación, se repitieron consultas HTTP de solo lectura contra el proyecto Supabase QA usando las dos cuentas sintéticas. La clave publicada se utilizó solo como identificador de cliente y los tokens de sesión no se conservaron ni se incluyeron en la evidencia.
+
+| Comprobación | Cajero/a | Camarero/a | Interpretación |
+|---|---:|---:|---|
+| Inicio de sesión Auth | HTTP 200 | HTTP 200 | Identidad y contraseña sintéticas aceptadas |
+| Lectura del propio contexto en `perfiles` | HTTP 200, 1 fila | HTTP 200, 1 fila | El perfil propio es accesible |
+| Lectura de `membresias_usuario` | HTTP 200, 1 fila | HTTP 200, 1 fila | La membresía propia devuelve empresa/local/rol |
+| Lectura directa de `empresas` | HTTP 403 | HTTP 403 | No hay acceso directo de tabla para estos roles |
+| Lectura directa de `locales` | HTTP 403 | HTTP 403 | No hay acceso directo de tabla para estos roles |
+| Lectura directa de `abc_cargos` | HTTP 403 | HTTP 403 | Catálogo de cargos no expuesto por PostgREST |
+| Lectura directa de `abc_pantallas_rol` | HTTP 403 | HTTP 403 | Catálogo de pantallas no expuesto por PostgREST |
+| Lectura de `almacen_kv` | HTTP 200, 5 filas | HTTP 200, 5 filas | Permitida por la política existente; ninguna fila observada pertenecía a otra empresa/local. Hay filas globales, por lo que la regla de claves permitidas debe seguir revisándose |
+| RPC `abc_obtener_pantallas_rol` en el propio contexto | HTTP 200 | HTTP 200 | Lectura de navegación por función autorizada |
+| RPC `pm13_resolver_cargo_permiso` en el propio contexto | HTTP 200 | HTTP 200 | Resolución de permiso por función autorizada |
+| `abc_obtener_pantallas_rol` con `QA-EMP-B/QA-B1` | HTTP 400 | HTTP 400 | Contexto de otra empresa/local rechazado |
+| `pm13_listar_cargo_permisos` con cargo UUID inexistente | HTTP 400 | HTTP 400 | Identificador de cargo no válido rechazado |
+| `pm13_listar_excepciones_empleado` con empleado inexistente | HTTP 200 con JSON de decisión `ok/codigo` | HTTP 200 con JSON de decisión `ok/codigo` | La función usa respuesta de negocio; queda pendiente fijar en contrato el valor de `ok` y su semántica exacta |
+| Enumeración de buckets de Storage | HTTP 200, 0 buckets visibles | HTTP 200, 0 buckets visibles | No se expusieron buckets a estas identidades en la consulta realizada |
+
+La prueba aporta evidencia positiva de RLS/RPC para dos roles operativos y evidencia negativa directa para tablas y contexto ajeno. No se ejecutaron `INSERT`, `UPDATE`, `DELETE`, confirmaciones de pago, devoluciones, notificaciones, invocaciones de IA ni funciones Edge con efectos. Realtime no se probó porque requeriría abrir una suscripción y observar eventos; ese recorrido sigue pendiente.
+
 ## Pendiente para cerrar la matriz
 
-1. Probar PostgREST, RPC, Edge Functions, Storage/KV y Realtime con las dos identidades Auth sintéticas y con la identidad de Encargado, usando únicamente lecturas y llamadas negativas que no produzcan efectos.
+1. Completar la matriz con la identidad de Encargado y fijar en contratos el valor de negocio devuelto por `pm13_listar_excepciones_empleado` cuando el empleado no existe.
 2. Añadir casos de usuario de otra empresa, local no autorizado, revocación durante sesión y dos pestañas con contextos distintos. Las cuentas creadas aquí solo cubren QA Empresa A / Local principal.
 3. Revisar individualmente las funciones `SECURITY DEFINER` expuestas a `authenticated`, especialmente las relacionadas con cargos, capacidades, ámbito y operaciones QA. La consulta de solo lectura confirmó que `abc_qa_confirmar_pago_simulado` valida identidad, membresía y propietario, pero no se invocó porque puede producir un efecto económico de prueba.
 4. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
