@@ -20,6 +20,11 @@ for (const [name, codigo] of [['fuente.js', source], ['source-recovery/fuente-re
     /tab === "configuracion"[\s\S]{0,500}esPropietario: esPropietarioPM29/,
     `${name}: Configuración recibe el guard efectivo`
   );
+  assert.match(codigo, /function Respaldos\([\s\S]{0,260}esPropietario = true/, `${name}: Respaldos tiene guard de propietario`);
+  assert.match(codigo, /tab === "respaldos"[\s\S]{0,500}esPropietario: esPropietarioPM29/, `${name}: Respaldos recibe el guard efectivo`);
+  assert.match(codigo, /function FichaEmpresaBasica\([\s\S]{0,180}esPropietario = true/, `${name}: ficha de empresa tiene guard de propietario`);
+  assert.match(codigo, /function FichaDatosLocal\([\s\S]{0,180}esPropietario = true/, `${name}: ficha de local tiene guard de propietario`);
+  assert.match(codigo, /window\.__modoEmpleadoActivo = modoEmpleado === true;/, `${name}: publica el modo empleado efectivo para guardas auxiliares`);
 }
 
 console.log('PM20 P12 guard de propietario efectivo en modo empleado: PASS');
