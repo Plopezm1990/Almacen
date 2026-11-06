@@ -117,3 +117,11 @@ La consulta de solo lectura sobre las funciones relevantes confirmó lo siguient
 - Las funciones privadas de validación de contexto consultadas no son ejecutables por `authenticated` directamente.
 
 Esta evidencia confirma la presencia de barreras en el código SQL de las funciones, pero no sustituye la ejecución de llamadas PostgREST con JWT reales de cada rol ni la verificación de Storage, KV, Realtime y Edge Functions. El uso de `SECURITY DEFINER` sigue requiriendo revisión específica de cada función expuesta antes de operar con datos reales.
+
+### Cobertura RLS de las tablas usadas por el contexto
+
+La consulta de `pg_policies` mostró políticas directas para `almacen_kv`, `empleados`, `membresias_usuario` y `perfiles`. Las tablas de capacidades y cargos consultadas (`abc_cargos`, `abc_cargo_permisos`, `abc_cargo_asignaciones`, `abc_cargo_pantallas`, `abc_pantallas_rol` y `abc_permiso_excepciones`) no devolvieron políticas RLS directas en esta consulta; su acceso previsto para el cliente se realiza mediante funciones expuestas que deben validar el contexto.
+
+Las políticas observadas son coherentes con ese diseño: `empleados` delega la lectura en `pm13_resolver_cargo_permiso`, `membresias_usuario` limita la lectura a la propia membresía activa, `perfiles` limita lectura/gestión a la propia identidad o a un propietario autorizado y `almacen_kv` delega lectura/escritura/borrado en `private.plataforma_kv_permitido`.
+
+Esto no permite cerrar por sí solo el aislamiento. La ausencia de políticas directas en las tablas de cargos exige probar que no exista un camino alternativo de lectura o escritura mediante PostgREST, RPC, funciones Edge, Storage/KV o Realtime con cada rol.
