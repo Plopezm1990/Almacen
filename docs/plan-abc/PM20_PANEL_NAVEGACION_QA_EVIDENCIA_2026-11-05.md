@@ -95,7 +95,7 @@ La pantalla de Configuración decía que solo el Propietario podía cambiar los 
 
 La causa está confirmada en `fuente.js`: `esPropietarioPM29` consultaba el rol del perfil Auth propietario antes que el estado `modoEmpleado`. En un dispositivo del propietario, el empleado podía heredar ese booleano aunque el rol efectivo visible fuera Encargado. Se corrigió en `fuente.js` y `source-recovery/fuente-recuperado.js` para que `modoEmpleado` fuerce `esPropietarioPM29=false`, manteniendo el comportamiento legado propietario cuando no hay modo empleado.
 
-Se añadió `tests/pm20/p12-employee-owner-guard-contract.mjs` y se incorporó al workflow PM20. La prueba local del contrato pasa. La corrección todavía requiere despliegue de la rama QA y repetir la comprobación visual con la misma sesión de Encargado; hasta entonces, el hallazgo queda como **corregido en código, pendiente de verificación desplegada**.
+Se añadió `tests/pm20/p12-employee-owner-guard-contract.mjs` y se incorporó al workflow PM20. La prueba local del contrato pasa. El commit `8dc290a` ya está desplegado y en estado `ready` en el branch-deploy de QA. La comprobación visual posterior no se marca como aprobada: al recargar la ruta profunda, la pestaña volvió al modo propietario y la aplicación solicitó de nuevo el código del empleado para reactivar `QA Encargado`. No se han adivinado códigos ni se han pulsado controles de escritura. Falta repetir la comprobación con esa sesión activa y confirmar también Cajero y Camarero.
 
 ### Criterio de aceptación
 
