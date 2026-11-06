@@ -113,9 +113,24 @@ El modo empleado mostró los perfiles sintéticos disponibles y, tras crear expr
 
 La documentación histórica del repositorio menciona además una identidad sintética de Camarero utilizada en otro smoke test, pero no proporciona su contraseña ni una sesión reutilizable. Esa referencia no se empleó para iniciar sesión ni se considera acceso disponible para esta matriz.
 
+### Verificación independiente de Cajero y Camarero — 2026-11-06
+
+Para cerrar la comprobación visual de roles se crearon desde la pantalla **Personal** dos perfiles sintéticos en QA, ambos en `Local A1 · QA Empresa A, S.L.`:
+
+- `QA Panel Navegacion Cajero 20261106`, rol Cajero/a, código de acceso sintético no incluido en esta documentación.
+- `QA Panel Navegacion Camarero 20261106`, rol Camarero/a, código de acceso sintético no incluido en esta documentación.
+
+Son perfiles de modo empleado guardados en el estado de QA; no son cuentas Auth, no tienen correo asociado, no se enviaron comunicaciones y no se realizaron cobros, reembolsos, cambios de caja ni operaciones de negocio. Se conservaron identificados para mantener la trazabilidad de la prueba y no se borraron durante esta sesión.
+
+Con el perfil Cajero/a se verificó el acceso correcto al contexto activo, el nombre del perfil en el encabezado, el rol visible y la navegación filtrada. El menú adicional solo mostró opciones operativas permitidas para ese rol; no mostró Configuración, Locales ni Respaldos. No se pulsaron acciones de fichaje, caja, TPV, guardado, exportación ni restauración.
+
+Con el perfil Camarero/a se verificó el mismo contexto, el nombre del perfil, el rol visible y la navegación filtrada. La navegación operativa mostró TPV, Cocina, Registro horario y el acceso a Más; el diálogo Más no ofreció controles ni rutas de propietario. No se pulsaron acciones económicas ni de modificación.
+
+La comprobación de la denegación por ruta directa para estos dos roles queda **no reproducida en esta sesión**, porque al entrar en modo empleado la aplicación vuelve al panel general y las rutas de propietario dejan de estar disponibles en el menú; no se considera equivalente a haber probado manualmente una URL profunda con JWT de cada rol. El contrato de código y la verificación visual de Encargado siguen aportando evidencia, pero la matriz de ruta directa para Cajero/a y Camarero/a debe mantenerse como pendiente hasta disponer de un mecanismo de navegación profunda que conserve la sesión o de una prueba automatizada equivalente.
+
 ## Pendiente para cerrar la matriz
 
-1. Repetir los mismos casos desde sesiones JWT reales en el navegador para cada rol, sin crear cuentas nuevas en esta fase.
+1. Repetir los mismos casos desde sesiones JWT reales en el navegador para cada rol, incluyendo una navegación profunda controlada que conserve la sesión; los perfiles sintéticos de Cajero/a y Camarero/a ya están disponibles en QA para esa prueba.
 2. Probar PostgREST, Edge Functions, Storage/KV y Realtime con identidades de cada rol.
 3. Añadir casos de usuario de otra empresa, revocación durante sesión y dos pestañas con contextos distintos.
 4. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
