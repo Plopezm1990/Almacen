@@ -163,9 +163,23 @@ Tras solicitar acceso de red únicamente para esta comprobación, se repitieron 
 
 La prueba aporta evidencia positiva de RLS/RPC para dos roles operativos y evidencia negativa directa para tablas y contexto ajeno. No se ejecutaron `INSERT`, `UPDATE`, `DELETE`, confirmaciones de pago, devoluciones, notificaciones, invocaciones de IA ni funciones Edge con efectos. Realtime no se probó porque requeriría abrir una suscripción y observar eventos; ese recorrido sigue pendiente.
 
+### Matriz API consolidada con Encargado/a — 2026-11-06
+
+Se añadió una tercera cuenta Auth sintética para el perfil Encargado/a y se repitió la misma matriz de lectura. Los tres inicios de sesión devolvieron HTTP 200 y los tres perfiles/membresías propias fueron accesibles. En los tres casos, las tablas directas `empresas`, `locales`, `abc_cargos` y `abc_pantallas_rol` devolvieron HTTP 403; la RPC de pantallas del contexto propio devolvió HTTP 200; y la misma RPC apuntando a `QA-EMP-B/QA-B1` devolvió HTTP 400.
+
+La respuesta de capacidades de `abc_obtener_pantallas_rol` devolvió los siguientes valores, sin exponer el listado de pantallas ni datos de negocio:
+
+| Rol | `puede_configurar_local` | `puede_configurar_empresa` | `PM13_PERSONAL_CONSULTAR` (`permitido`) |
+|---|---:|---:|---:|
+| Encargado/a | `false` | `false` | `false` |
+| Cajero/a | `false` | `false` | `false` |
+| Camarero/a | `false` | `false` | `false` |
+
+Esto alinea la respuesta del backend con la ocultación de controles y la redirección de rutas observadas en la interfaz. El permiso concreto elegido para la lectura comparativa (`PM13_PERSONAL_CONSULTAR`) no se presenta como una matriz completa de permisos: solo demuestra que la RPC devuelve una decisión negativa para esa capacidad en los tres perfiles sintéticos.
+
 ## Pendiente para cerrar la matriz
 
-1. Completar la matriz con la identidad de Encargado y fijar en contratos el valor de negocio devuelto por `pm13_listar_excepciones_empleado` cuando el empleado no existe.
+1. Fijar en contratos el valor de negocio devuelto por `pm13_listar_excepciones_empleado` cuando el empleado no existe.
 2. Añadir casos de usuario de otra empresa, local no autorizado, revocación durante sesión y dos pestañas con contextos distintos. Las cuentas creadas aquí solo cubren QA Empresa A / Local principal.
 3. Revisar individualmente las funciones `SECURITY DEFINER` expuestas a `authenticated`, especialmente las relacionadas con cargos, capacidades, ámbito y operaciones QA. La consulta de solo lectura confirmó que `abc_qa_confirmar_pago_simulado` valida identidad, membresía y propietario, pero no se invocó porque puede producir un efecto económico de prueba.
 4. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
