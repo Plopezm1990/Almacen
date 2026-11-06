@@ -85,6 +85,8 @@ En la aplicación desplegada en el branch deploy se verificó una sesión de pro
 
 El modo empleado mostró los perfiles sintéticos disponibles, pero solicita un código de acceso antes de entrar en cualquiera de ellos. No se adivinó ni se reutilizó ningún código no documentado. Por tanto, la evidencia de navegador directo queda confirmada para propietario y la prueba de cada rol operativo mediante interfaz sigue pendiente; las denegaciones de servidor de la tabla anterior sí están verificadas mediante simulación controlada de identidad.
 
+La documentación histórica del repositorio menciona además una identidad sintética de Camarero utilizada en otro smoke test, pero no proporciona su contraseña ni una sesión reutilizable. Esa referencia no se empleó para iniciar sesión ni se considera acceso disponible para esta matriz.
+
 ## Pendiente para cerrar la matriz
 
 1. Repetir los mismos casos desde sesiones JWT reales en el navegador para cada rol, sin crear cuentas nuevas en esta fase.
