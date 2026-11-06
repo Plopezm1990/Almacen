@@ -77,6 +77,8 @@ Se añadió `.github/workflows/pm20-panel-navegacion-qa.yml` en el commit `c0d6d
 
 La automatización está configurada para la rama `codex/ventas-release-integration` y para ejecución manual. La configuración, la publicación de QA y una ejecución concreta de GitHub Actions están verificadas; la ejecución CI no sustituye la matriz de sesiones reales ni las pruebas de los servicios con JWT.
 
+En la comprobación local del 2026-11-06 se ejecutó la batería completa definida por ese workflow, con resultado `PM20_FULL_LOCAL_REGRESSION=PASS`. Incluyó sintaxis de `fuente.js`, contratos P0/P1 de panel, búsqueda y sincronización, runtimes de aviso y navegación, copia de historial, panel de plataforma, contexto empresa/local, almacenamiento KV contextual, roles y capacidades, resolución y guardas de permisos, RLS de empleados, protección de borradores y selector de empresa/local.
+
 Posteriormente se observaron ejecuciones de GitHub Actions asociadas a los commits `c0d6d7b` y `a1b6027`: ambas terminaron con conclusión **success** en el evento `push` de la rama QA. La ejecución del segundo commit, que ya incluye la batería E2E aislada, está registrada en [GitHub Actions](https://github.com/Plopezm1990/Almacen/actions/runs/42121179322). El resultado confirma la automatización de contratos y runtime descrita arriba, pero no sustituye la matriz de sesiones reales ni las pruebas de los servicios con JWT.
 
 ## Sesión de navegador QA y límite de roles
