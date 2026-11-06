@@ -93,3 +93,15 @@ La documentación histórica del repositorio menciona además una identidad sint
 2. Probar PostgREST, Edge Functions, Storage/KV y Realtime con identidades de cada rol.
 3. Añadir casos de usuario de otra empresa, revocación durante sesión y dos pestañas con contextos distintos.
 4. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
+
+## Revisión de seguridad del proyecto Supabase QA — 2026-11-06
+
+La comprobación fue de lectura mediante los asesores de Supabase; no se aplicaron migraciones, cambios de permisos ni cambios de configuración.
+
+- El proyecto QA aparece en estado `ACTIVE_HEALTHY`.
+- El asesor de seguridad informa de 61 tablas con RLS activado pero sin políticas declaradas. El resultado es un aviso de configuración que debe revisarse por tabla y por esquema; no demuestra por sí solo que todas sean accesibles, porque algunas pueden ser tablas privadas o estar protegidas exclusivamente mediante funciones/RPC.
+- El asesor informa de 229 funciones `SECURITY DEFINER` ejecutables por el rol `authenticated`. Entre los ejemplos aparecen funciones de cuentas, caja, pedidos, resolución de permisos y operaciones de stock. La existencia de `SECURITY DEFINER` no es automáticamente un fallo, pero obliga a verificar `EXECUTE`, validación de ámbito y controles internos con sesiones JWT reales.
+- El asesor informa de que la protección de contraseñas filtradas de Supabase Auth está desactivada.
+- No se encontró ningún aviso de salud del proyecto en esta consulta.
+
+Estos avisos se incorporan como bloqueo de cierre de PN-008 hasta revisar el alcance de cada función y completar pruebas con identidades reales. No se deben interpretar como vulnerabilidades explotables confirmadas sin una prueba autorizada y reproducible de acceso indebido.
