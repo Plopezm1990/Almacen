@@ -105,3 +105,15 @@ La comprobación fue de lectura mediante los asesores de Supabase; no se aplicar
 - No se encontró ningún aviso de salud del proyecto en esta consulta.
 
 Estos avisos se incorporan como bloqueo de cierre de PN-008 hasta revisar el alcance de cada función y completar pruebas con identidades reales. No se deben interpretar como vulnerabilidades explotables confirmadas sin una prueba autorizada y reproducible de acceso indebido.
+
+### Comprobación de funciones de autorización y navegación
+
+La consulta de solo lectura sobre las funciones relevantes confirmó lo siguiente:
+
+- `public.abc_obtener_pantallas_rol` es `SECURITY DEFINER`, permite ejecución a `authenticated` y valida `auth.uid()`, empresa y local mediante `private.la_tiene_local` antes de devolver capacidades.
+- `public.pm13_resolver_cargo_permiso` es `SECURITY DEFINER`, permite ejecución a `authenticated` y aplica, en el código publicado, catálogo de acciones, alcance permitido, membresía activa, local activo, techo técnico, empleado vinculado y activo, dependencia de consulta, excepciones y denegación por defecto.
+- `public.pm13_listar_cargo_permisos` valida el contexto mediante `private.pm13_cargo_validar_contexto` y limita el cargo a la empresa solicitada.
+- `public.pm13_listar_excepciones_empleado` exige propietario activo de la empresa/local y empleado activo del mismo ámbito.
+- Las funciones privadas de validación de contexto consultadas no son ejecutables por `authenticated` directamente.
+
+Esta evidencia confirma la presencia de barreras en el código SQL de las funciones, pero no sustituye la ejecución de llamadas PostgREST con JWT reales de cada rol ni la verificación de Storage, KV, Realtime y Edge Functions. El uso de `SECURITY DEFINER` sigue requiriendo revisión específica de cada función expuesta antes de operar con datos reales.
