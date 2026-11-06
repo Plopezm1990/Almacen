@@ -4136,7 +4136,10 @@ function GestionAlmacen() {
     return activo?.rol && ROLES_EMPLEADO[activo.rol] ? activo.rol : "Est\xE1ndar";
   }, [usuarioActivoId, empleados, miPerfil]);
   const rolNavegacionMovil = modoEmpleado ? rolEfectivoEmpleadoNav : "Propietario";
-  const esPropietarioPM29 = miPerfil && miPerfil.rol ? miPerfil.rol === "Propietario" : !modoEmpleado;
+  // En modo empleado el perfil Auth puede seguir siendo el del propietario
+  // que abrió el dispositivo. El rol efectivo del empleado debe prevalecer
+  // para no exponer controles de propietario mediante una ruta directa.
+  const esPropietarioPM29 = modoEmpleado ? false : miPerfil && miPerfil.rol ? miPerfil.rol === "Propietario" : true;
   const empleadoActivoResuelto = (0, import_react4.useMemo)(() => usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) || null : null, [usuarioActivoId, empleados]);
   const nombreActivoEmpleado = miPerfil && miPerfil.nombre ? miPerfil.nombre : empleadoActivoResuelto ? empleadoActivoResuelto.nombre : "";
   const productoPorId = (id) => productos.find((p22) => p22.id === id);

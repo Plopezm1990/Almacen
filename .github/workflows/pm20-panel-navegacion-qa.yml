@@ -33,6 +33,7 @@ jobs:
           node tests/pm20/p07-panel-search-target-contract.mjs
           node tests/pm20/p08-sync-banner-contract.mjs
           node tests/pm20/p09-sync-events-runtime.mjs
+          node tests/pm20/p12-employee-owner-guard-contract.mjs
 
       - name: Runtime aislado del panel y sincronización
         env:

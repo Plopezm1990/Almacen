@@ -79,6 +79,28 @@ La automatización está configurada para la rama `codex/ventas-release-integrat
 
 En la comprobación local del 2026-11-06 se ejecutó la batería completa definida por ese workflow, con resultado `PM20_FULL_LOCAL_REGRESSION=PASS`. Incluyó sintaxis de `fuente.js`, contratos P0/P1 de panel, búsqueda y sincronización, runtimes de aviso y navegación, copia de historial, panel de plataforma, contexto empresa/local, almacenamiento KV contextual, roles y capacidades, resolución y guardas de permisos, RLS de empleados, protección de borradores y selector de empresa/local.
 
+## Hallazgo PN-011 — modo Encargado exponía controles de propietario por ruta directa
+
+### Estado antes de la corrección
+
+**Confirmado en QA mediante sesión real de Encargado, sin pulsar acciones de escritura.** Con la sesión `PM07 Smoke QA` en `Local A1 · QA Empresa A, S.L.`, el menú filtrado no mostraba Configuración ni Locales, pero al abrir directamente estas rutas se observó:
+
+- `#/panel/configuracion`: controles activos de «Guardar corte del día», «Guardar número de cajas» y «Guardar umbral».
+- `#/panel/locales`: «Ficha del local», «Desactivar» y «+ Añadir local nuevo» activos en la vista.
+- `#/panel/respaldos`: «Guardar copia», «Restaurar esta copia», «Restaurar desde texto», «Exportar datos a Excel» y gestión del PIN de propietario visibles y activos.
+
+La pantalla de Configuración decía que solo el Propietario podía cambiar los ajustes, pero no ocultaba los controles en esta sesión. No se pulsó ninguno y no se intentó demostrar un bypass de servidor; por tanto, la escritura no autorizada no está confirmada.
+
+### Causa y corrección
+
+La causa está confirmada en `fuente.js`: `esPropietarioPM29` consultaba el rol del perfil Auth propietario antes que el estado `modoEmpleado`. En un dispositivo del propietario, el empleado podía heredar ese booleano aunque el rol efectivo visible fuera Encargado. Se corrigió en `fuente.js` y `source-recovery/fuente-recuperado.js` para que `modoEmpleado` fuerce `esPropietarioPM29=false`, manteniendo el comportamiento legado propietario cuando no hay modo empleado.
+
+Se añadió `tests/pm20/p12-employee-owner-guard-contract.mjs` y se incorporó al workflow PM20. La prueba local del contrato pasa. La corrección todavía requiere despliegue de la rama QA y repetir la comprobación visual con la misma sesión de Encargado; hasta entonces, el hallazgo queda como **corregido en código, pendiente de verificación desplegada**.
+
+### Criterio de aceptación
+
+Desde una sesión Encargado, Cajero y Camarero, una navegación directa a Configuración, Locales y Respaldos debe mostrar solo el estado no autorizado o una vista de consulta expresamente permitida, sin controles de propietario activos. Las RPC y funciones de servidor deben seguir denegando cualquier escritura fuera del rol, empresa y local autorizados.
+
 Posteriormente se observaron ejecuciones de GitHub Actions asociadas a los commits `c0d6d7b` y `a1b6027`: ambas terminaron con conclusión **success** en el evento `push` de la rama QA. La ejecución del segundo commit, que ya incluye la batería E2E aislada, está registrada en [GitHub Actions](https://github.com/Plopezm1990/Almacen/actions/runs/42121179322). El resultado confirma la automatización de contratos y runtime descrita arriba, pero no sustituye la matriz de sesiones reales ni las pruebas de los servicios con JWT.
 
 ## Sesión de navegador QA y límite de roles
