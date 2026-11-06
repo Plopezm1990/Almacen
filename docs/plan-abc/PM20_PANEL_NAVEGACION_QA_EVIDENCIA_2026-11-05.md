@@ -177,10 +177,27 @@ La respuesta de capacidades de `abc_obtener_pantallas_rol` devolvió los siguien
 
 Esto alinea la respuesta del backend con la ocultación de controles y la redirección de rutas observadas en la interfaz. El permiso concreto elegido para la lectura comparativa (`PM13_PERSONAL_CONSULTAR`) no se presenta como una matriz completa de permisos: solo demuestra que la RPC devuelve una decisión negativa para esa capacidad en los tres perfiles sintéticos.
 
+### Punto 1 — segundo local/empresa sintética real — TERMINADO COMPLETAMENTE — 2026-11-06
+
+QA ya disponía de un segundo ámbito real y activo, por lo que no fue necesario crear otra empresa, local ni cuenta adicional:
+
+- `QA-EMP-A` está activa.
+- `QA-A1` está activo y es el ámbito de las tres cuentas operativas sintéticas.
+- `QA-A2` está activo y pertenece a `QA-EMP-A`.
+- `QA-EMP-B` y `QA-B1` también existen como fixtures sintéticos separados.
+
+Pruebas seguras realizadas:
+
+1. Con la cuenta propietaria de QA, `abc_obtener_pantallas_rol` devolvió HTTP 200 para A1 y HTTP 200 para A2. En ambos casos, la respuesta devolvió el `empresa_id` y `local_id` solicitados, confirmando que se probó un segundo local real y no solo una cadena inventada.
+2. Con las cuentas Auth sintéticas de Encargado/a, Cajero/a y Camarero/a, vinculadas a A1, se solicitó la misma RPC para A2. Las tres devolvieron HTTP 400 y quedaron clasificadas como denegadas.
+3. No se realizaron escrituras, no se cambiaron membresías, no se crearon empresas/locales, no se ejecutaron cobros y no se tocaron datos de producción.
+
+Conclusión: el propietario puede resolver el contexto de los dos locales de su empresa; los tres roles operativos de A1 no pueden resolver el contexto real A2. El aislamiento entre empresa/local queda verificado para este escenario QA. La comprobación adicional de una empresa B con un usuario operativo de B sigue siendo una mejora de cobertura, no un bloqueo del punto 1.
+
 ## Pendiente para cerrar la matriz
 
 1. Fijar en contratos el valor de negocio devuelto por `pm13_listar_excepciones_empleado` cuando el empleado no existe.
-2. Añadir casos de usuario de otra empresa, local no autorizado, revocación durante sesión y dos pestañas con contextos distintos. Las cuentas creadas aquí solo cubren QA Empresa A / Local principal.
+2. Añadir casos de revocación durante sesión y dos pestañas con contextos distintos. El caso de segundo local real queda cerrado en el punto 1; una empresa B con usuario operativo propio sería una ampliación de cobertura.
 3. Revisar individualmente las funciones `SECURITY DEFINER` expuestas a `authenticated`, especialmente las relacionadas con cargos, capacidades, ámbito y operaciones QA. La consulta de solo lectura confirmó que `abc_qa_confirmar_pago_simulado` valida identidad, membresía y propietario, pero no se invocó porque puede producir un efecto económico de prueba.
 4. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
 
