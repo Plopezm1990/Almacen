@@ -126,14 +126,13 @@ Con el perfil Cajero/a se verificó el acceso correcto al contexto activo, el no
 
 Con el perfil Camarero/a se verificó el mismo contexto, el nombre del perfil, el rol visible y la navegación filtrada. La navegación operativa mostró TPV, Cocina, Registro horario y el acceso a Más; el diálogo Más no ofreció controles ni rutas de propietario. No se pulsaron acciones económicas ni de modificación.
 
-La comprobación de la denegación por ruta directa para estos dos roles queda **no reproducida en esta sesión**, porque al entrar en modo empleado la aplicación vuelve al panel general y las rutas de propietario dejan de estar disponibles en el menú; no se considera equivalente a haber probado manualmente una URL profunda con JWT de cada rol. El contrato de código y la verificación visual de Encargado siguen aportando evidencia, pero la matriz de ruta directa para Cajero/a y Camarero/a debe mantenerse como pendiente hasta disponer de un mecanismo de navegación profunda que conserve la sesión o de una prueba automatizada equivalente.
+La comprobación de ruta directa se repitió en esta sesión con ambas identidades. Para cada rol se solicitaron `#/panel/configuracion`, `#/panel/locales` y `#/panel/respaldos` en una pestaña con la sesión ya activa. En los seis casos la aplicación volvió al panel general, mantuvo el encabezado del rol y no mostró ningún control de propietario, formulario de empresa/local ni acción de guardar, restaurar, exportar o gestionar PIN. El resultado observado es una **denegación efectiva por redirección al panel general**, no una simple ausencia del enlace en el menú. No se considera una prueba de bypass de API o RPC: esas comprobaciones con JWT, Storage/KV, Realtime y Edge Functions siguen separadas y pendientes.
 
 ## Pendiente para cerrar la matriz
 
-1. Repetir los mismos casos desde sesiones JWT reales en el navegador para cada rol, incluyendo una navegación profunda controlada que conserve la sesión; los perfiles sintéticos de Cajero/a y Camarero/a ya están disponibles en QA para esa prueba.
-2. Probar PostgREST, Edge Functions, Storage/KV y Realtime con identidades de cada rol.
-3. Añadir casos de usuario de otra empresa, revocación durante sesión y dos pestañas con contextos distintos.
-4. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
+1. Probar PostgREST, Edge Functions, Storage/KV y Realtime con identidades de cada rol.
+2. Añadir casos de usuario de otra empresa, revocación durante sesión y dos pestañas con contextos distintos.
+3. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
 
 ## Revisión de seguridad del proyecto Supabase QA — 2026-11-06
 
