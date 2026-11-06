@@ -125,3 +125,14 @@ La consulta de `pg_policies` mostró políticas directas para `almacen_kv`, `emp
 Las políticas observadas son coherentes con ese diseño: `empleados` delega la lectura en `pm13_resolver_cargo_permiso`, `membresias_usuario` limita la lectura a la propia membresía activa, `perfiles` limita lectura/gestión a la propia identidad o a un propietario autorizado y `almacen_kv` delega lectura/escritura/borrado en `private.plataforma_kv_permitido`.
 
 Esto no permite cerrar por sí solo el aislamiento. La ausencia de políticas directas en las tablas de cargos exige probar que no exista un camino alternativo de lectura o escritura mediante PostgREST, RPC, funciones Edge, Storage/KV o Realtime con cada rol.
+
+### Edge Functions con `verify_jwt=false`
+
+La lista actual de Edge Functions QA contiene cuatro funciones activas con la verificación JWT del gateway desactivada. Se revisó su código publicado en modo lectura:
+
+- `importar-albaran`: simulador exclusivo de QA; devuelve datos sintéticos, no invoca IA, no usa claves y no escribe en la base de datos.
+- `importar-nomina`: simulador QA que devuelve `503` y no procesa datos.
+- `prefiltro-candidato`: endpoint basado en token temporal de 64 caracteres hexadecimales, fecha de caducidad y rate limit; usa una clave de servicio internamente y puede actualizar el registro del candidato, invocar IA y solicitar una notificación. No se ejecutó porque produciría efectos y podría generar consumo.
+- `enviar-notificacion`: no depende de la verificación JWT del gateway, pero implementa autenticación propia mediante secreto interno o Bearer, comprueba perfil activo, membresía activa, empresa/local, roles para avisos de caja y origen permitido. No se ejecutó porque enviaría notificaciones push.
+
+La configuración `verify_jwt=false` no se clasifica por sí sola como vulnerabilidad confirmada. En los dos simuladores de QA es coherente con su finalidad; en las otras dos funciones exige pruebas negativas y revisión de secretos, rate limit, caducidad, alcance y efectos antes de cerrar el bloque de seguridad. Estas pruebas quedan expresamente pendientes para no modificar candidatos, invocar IA, enviar comunicaciones ni generar costes.
