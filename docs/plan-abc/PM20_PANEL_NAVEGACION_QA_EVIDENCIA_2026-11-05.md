@@ -194,12 +194,36 @@ Pruebas seguras realizadas:
 
 Conclusión: el propietario puede resolver el contexto de los dos locales de su empresa; los tres roles operativos de A1 no pueden resolver el contexto real A2. El aislamiento entre empresa/local queda verificado para este escenario QA. La comprobación adicional de una empresa B con un usuario operativo de B sigue siendo una mejora de cobertura, no un bloqueo del punto 1.
 
+### Punto 2 — revocación durante sesión y dos pestañas — TERMINADO COMPLETAMENTE — 2026-11-06
+
+#### Revocación durante una sesión Auth activa
+
+Se utilizó la cuenta sintética de Encargado/a, vinculada exclusivamente a `QA-EMP-A / QA-A1`:
+
+1. Se obtuvo un JWT válido mediante login Auth: HTTP 200.
+2. Se desactivó temporalmente únicamente su membresía sintética de QA en `membresias_usuario`.
+3. Se llamó a `abc_obtener_pantallas_rol` con el mismo JWT y el mismo contexto A1: HTTP 400, denegado.
+4. Se restauró inmediatamente la membresía a `activo=true`.
+5. Se repitió la misma RPC con el mismo JWT: HTTP 200, permitido.
+
+La operación se limitó a una fila sintética de QA, se restauró en la misma actuación y no afectó a la contraseña, a Auth, a otros usuarios, a la caja ni a ninguna operación económica. Esto confirma que una sesión que conserve un JWT no mantiene autorización efectiva cuando la membresía de servidor deja de estar activa.
+
+#### Dos pestañas con contextos distintos
+
+Se utilizaron dos pestañas del navegador integrado con la misma sesión propietaria de QA, que es el caso apropiado para comprobar la separación del contexto local en el mismo dispositivo:
+
+- Pestaña 1: `Local A1`.
+- Pestaña 2: se cambió a `Local A2`.
+
+Después del cambio, la primera pestaña continuó mostrando `Mostrando solo Local A1.` y la segunda mostró `Mostrando solo Local A2.`. Se recargaron ambas pestañas y cada una conservó su contexto independiente. Finalmente se restauró la segunda pestaña a A1 y se cerraron las sesiones de prueba.
+
+Conclusión: la revocación de membresía se aplica a una sesión ya iniciada y el selector de local no mezcló el contexto entre dos pestañas. Esta prueba no pretende sustituir una prueba de dos usuarios distintos en paralelo; valida la independencia de contexto dentro del mismo usuario y navegador.
+
 ## Pendiente para cerrar la matriz
 
 1. Fijar en contratos el valor de negocio devuelto por `pm13_listar_excepciones_empleado` cuando el empleado no existe.
-2. Añadir casos de revocación durante sesión y dos pestañas con contextos distintos. El caso de segundo local real queda cerrado en el punto 1; una empresa B con usuario operativo propio sería una ampliación de cobertura.
-3. Revisar individualmente las funciones `SECURITY DEFINER` expuestas a `authenticated`, especialmente las relacionadas con cargos, capacidades, ámbito y operaciones QA. La consulta de solo lectura confirmó que `abc_qa_confirmar_pago_simulado` valida identidad, membresía y propietario, pero no se invocó porque puede producir un efecto económico de prueba.
-4. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
+2. Revisar individualmente las funciones `SECURITY DEFINER` expuestas a `authenticated`, especialmente las relacionadas con cargos, capacidades, ámbito y operaciones QA. La consulta de solo lectura confirmó que `abc_qa_confirmar_pago_simulado` valida identidad, membresía y propietario, pero no se invocó porque puede producir un efecto económico de prueba.
+3. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
 
 ## Revisión de seguridad del proyecto Supabase QA — 2026-11-06
 
