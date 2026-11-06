@@ -97,7 +97,7 @@ La causa está confirmada en `fuente.js`: `esPropietarioPM29` consultaba el rol 
 
 Se añadió `tests/pm20/p12-employee-owner-guard-contract.mjs` y se incorporó al workflow PM20. La prueba local del contrato pasa. Tras la primera corrección se creó en QA el empleado sintético `QA Panel Navegacion 20261106`, con rol Encargado y código temporal no documentado en claro. El registro se conserva identificado para estas pruebas; no se creó una cuenta Auth, no se envió ninguna comunicación y no se realizó ninguna operación económica.
 
-La corrección final quedó desplegada en los commits `34ce66b` y `371e930`, ambos en estado `ready` en el branch-deploy de QA. Con una pestaña nueva y la sesión `QA Panel Navegacion 20261106 · Encargado` se repitieron las rutas directas sin usar el caché anterior: Configuración mostró solo el aviso de acceso exclusivo del Propietario; Locales mostró únicamente una vista informativa de los locales activos, sin fichas editables, desactivación ni alta; y Respaldos mostró solo el aviso de acceso exclusivo del Propietario. No se pulsaron controles de guardado, restauración, exportación, PIN o cambio de contexto. El hallazgo queda **corregido y verificado en QA para Encargado**. Cajero y Camarero siguen pendientes de verificación visual independiente.
+La corrección final quedó desplegada en los commits `34ce66b` y `371e930`, ambos en estado `ready` en el branch-deploy de QA. Con una pestaña nueva y la sesión `QA Panel Navegacion 20261106 · Encargado` se repitieron las rutas directas sin usar el caché anterior: Configuración mostró solo el aviso de acceso exclusivo del Propietario; Locales mostró únicamente una vista informativa de los locales activos, sin fichas editables, desactivación ni alta; y Respaldos mostró solo el aviso de acceso exclusivo del Propietario. No se pulsaron controles de guardado, restauración, exportación, PIN o cambio de contexto. El hallazgo queda **corregido y verificado en QA para Encargado**. La comprobación independiente de Cajero y Camarero se completó posteriormente con sesiones Auth reales, en la sección específica de esta evidencia.
 
 ### Criterio de aceptación
 
@@ -120,19 +120,32 @@ Para cerrar la comprobación visual de roles se crearon desde la pantalla **Pers
 - `QA Panel Navegacion Cajero 20261106`, rol Cajero/a, código de acceso sintético no incluido en esta documentación.
 - `QA Panel Navegacion Camarero 20261106`, rol Camarero/a, código de acceso sintético no incluido en esta documentación.
 
-Son perfiles de modo empleado guardados en el estado de QA; no son cuentas Auth, no tienen correo asociado, no se enviaron comunicaciones y no se realizaron cobros, reembolsos, cambios de caja ni operaciones de negocio. Se conservaron identificados para mantener la trazabilidad de la prueba y no se borraron durante esta sesión.
+Inicialmente fueron perfiles de modo empleado guardados en el estado de QA; después se vincularon a cuentas Auth sintéticas para poder repetir la prueba con JWT real. No se enviaron comunicaciones y no se realizaron cobros, reembolsos, cambios de caja ni operaciones de negocio. Se conservaron identificados para mantener la trazabilidad de la prueba y no se borraron durante esta sesión.
 
 Con el perfil Cajero/a se verificó el acceso correcto al contexto activo, el nombre del perfil en el encabezado, el rol visible y la navegación filtrada. El menú adicional solo mostró opciones operativas permitidas para ese rol; no mostró Configuración, Locales ni Respaldos. No se pulsaron acciones de fichaje, caja, TPV, guardado, exportación ni restauración.
 
 Con el perfil Camarero/a se verificó el mismo contexto, el nombre del perfil, el rol visible y la navegación filtrada. La navegación operativa mostró TPV, Cocina, Registro horario y el acceso a Más; el diálogo Más no ofreció controles ni rutas de propietario. No se pulsaron acciones económicas ni de modificación.
 
-La comprobación de ruta directa se repitió en esta sesión con ambas identidades. Para cada rol se solicitaron `#/panel/configuracion`, `#/panel/locales` y `#/panel/respaldos` en una pestaña con la sesión ya activa. En los seis casos la aplicación volvió al panel general, mantuvo el encabezado del rol y no mostró ningún control de propietario, formulario de empresa/local ni acción de guardar, restaurar, exportar o gestionar PIN. El resultado observado es una **denegación efectiva por redirección al panel general**, no una simple ausencia del enlace en el menú. No se considera una prueba de bypass de API o RPC: esas comprobaciones con JWT, Storage/KV, Realtime y Edge Functions siguen separadas y pendientes.
+La comprobación de ruta directa se repitió en esta sesión con ambas identidades. Para cada rol se solicitaron `#/panel/configuracion`, `#/panel/locales` y `#/panel/respaldos` en una pestaña con la sesión ya activa. En los seis casos la aplicación volvió al panel general, mantuvo el encabezado del rol y no mostró ningún control de propietario, formulario de empresa/local ni acción de guardar, restaurar, exportar o gestionar PIN. El resultado observado es una **denegación efectiva por redirección al panel general**, no una simple ausencia del enlace en el menú.
+
+### Sesiones Auth reales de Cajero/a y Camarero/a — 2026-11-06
+
+Para superar la limitación del modo empleado se crearon desde la misma pantalla de Personal dos cuentas Auth sintéticas en QA, vinculadas a los perfiles anteriores. Se usaron correos del dominio reservado `qa.invalid`; no se enviaron correos de alta, no se compartieron las contraseñas en la documentación y las sesiones se cerraron al terminar. Las cuentas se conservan en QA con finalidad exclusiva de prueba y no se utilizaron para cobros, caja, devoluciones, fichajes, exportaciones ni cambios de configuración.
+
+Resultados observados con la aplicación desplegada en el branch de QA:
+
+- **Cajero/a:** inicio de sesión Auth correcto; el encabezado mostró el perfil sintético, el rol Cajero/a y `Local principal · QA Empresa A, S.L.`. La navegación operativa quedó limitada al contexto visible. Las rutas directas de Configuración, Locales y Respaldos redirigieron a `#/panel/dashboard` en los tres casos.
+- **Camarero/a:** inicio de sesión Auth correcto; el encabezado mostró el perfil sintético, el rol Camarero/a y el mismo contexto de empresa/local. La navegación visible incluyó la operación de TPV/Cocina y no mostró textos de Configuración, Locales o Respaldos. Las tres rutas directas volvieron igualmente a `#/panel/dashboard`.
+- **Limpieza de sesión:** ambas sesiones Auth se cerraron desde la interfaz; la pestaña terminó en la pantalla de acceso sin una sesión sintética activa.
+
+Esta evidencia eleva la verificación de PN-011 desde el modo empleado a una prueba de interfaz con identidades Auth reales para los dos roles. No demuestra todavía que una llamada PostgREST/RPC, Storage, Realtime o Edge Function deniegue por sí misma un identificador alterado. Tampoco prueba el aislamiento frente a una segunda empresa o a un local adicional, porque esa matriz requiere identidades y datos de ámbito preparados específicamente.
 
 ## Pendiente para cerrar la matriz
 
-1. Probar PostgREST, Edge Functions, Storage/KV y Realtime con identidades de cada rol.
-2. Añadir casos de usuario de otra empresa, revocación durante sesión y dos pestañas con contextos distintos.
-3. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
+1. Probar PostgREST, RPC, Edge Functions, Storage/KV y Realtime con las dos identidades Auth sintéticas y con la identidad de Encargado, usando únicamente lecturas y llamadas negativas que no produzcan efectos.
+2. Añadir casos de usuario de otra empresa, local no autorizado, revocación durante sesión y dos pestañas con contextos distintos. Las cuentas creadas aquí solo cubren QA Empresa A / Local principal.
+3. Revisar individualmente las funciones `SECURITY DEFINER` expuestas a `authenticated`, especialmente las relacionadas con cargos, capacidades, ámbito y operaciones QA. La consulta de solo lectura confirmó que `abc_qa_confirmar_pago_simulado` valida identidad, membresía y propietario, pero no se invocó porque puede producir un efecto económico de prueba.
+4. Si se necesita cerrar también la matriz de entorno conectado, añadir un mecanismo de prueba aislado o una sesión controlada que permita inyectar el fallo de sincronización sin llenar el almacenamiento ni provocar una escritura real fallida.
 
 ## Revisión de seguridad del proyecto Supabase QA — 2026-11-06
 
@@ -157,6 +170,8 @@ La consulta de solo lectura sobre las funciones relevantes confirmó lo siguient
 - Las funciones privadas de validación de contexto consultadas no son ejecutables por `authenticated` directamente.
 
 Esta evidencia confirma la presencia de barreras en el código SQL de las funciones, pero no sustituye la ejecución de llamadas PostgREST con JWT reales de cada rol ni la verificación de Storage, KV, Realtime y Edge Functions. El uso de `SECURITY DEFINER` sigue requiriendo revisión específica de cada función expuesta antes de operar con datos reales.
+
+La comprobación adicional de solo lectura sobre funciones relevantes observó estos indicadores: `abc_iniciar_cobro` contiene una comprobación de capacidad; `abc_qa_confirmar_pago_simulado` exige identidad, membresía y condición de propietario; y las funciones de consulta de permisos/ámbitos exigen identidad y contexto según su definición publicada. Estos indicadores describen el código inspeccionado, no constituyen una prueba de ejecución con JWT de cada rol. No se llamó a ninguna función de cobro, confirmación, devolución, notificación o escritura durante esta revisión.
 
 ### Cobertura RLS de las tablas usadas por el contexto
 
