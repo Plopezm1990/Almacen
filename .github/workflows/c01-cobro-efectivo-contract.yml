@@ -1,0 +1,25 @@
+name: C01 cash payment rounding (isolated contract)
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - fuente.js
+      - source-recovery/fuente-recuperado.js
+      - tests/c01/cobro-efectivo-redondeo-contract.mjs
+      - .github/workflows/c01-cobro-efectivo-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-cobro-efectivo:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify JavaScript syntax
+        run: node --check fuente.js
+      - name: Execute cash rounding contracts without credentials or remote databases
+        run: node --test tests/c01/cobro-efectivo-redondeo-contract.mjs

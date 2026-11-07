@@ -112153,12 +112153,19 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         const cambio = pendiente.cambioEntregado == null
           ? (opciones?.cambioEntregado == null || opciones.cambioEntregado === "" ? 0 : Number(opciones.cambioEntregado))
           : Number(pendiente.cambioEntregado);
-        if (!Number.isFinite(recibido) || !Number.isFinite(cambio) || recibido < importe || cambio < 0
-            || Math.abs((recibido - cambio) - importe) > 0.000001) {
+        // C-01: el cambio se calcula en coma flotante y arrastra un resto
+        // imperceptible (2 - 1.1 = 0.8999999999999999). El servidor exige
+        // igualdad exacta sobre numeric, asi que hay que redondear a centimos
+        // antes de enviar y comparar en enteros, no con una tolerancia.
+        const aCentimos = (n) => Math.round(Number(n) * 100);
+        const cambioCentimos = aCentimos(cambio);
+        const cambioRedondeado = cambioCentimos / 100;
+        if (!Number.isFinite(recibido) || !Number.isFinite(cambioRedondeado) || recibido < importe || cambioRedondeado < 0
+            || aCentimos(recibido) - cambioCentimos !== aCentimos(importe)) {
           throw new Error("efectivo_recibido_cambio_inconsistente");
         }
-        pendiente.importeRecibido = recibido;
-        pendiente.cambioEntregado = cambio;
+        pendiente.importeRecibido = aCentimos(recibido) / 100;
+        pendiente.cambioEntregado = cambioRedondeado;
       }
       guardarPendienteCobroF4(pendiente);
       await rpcA02ConRecuperacion(supabase, "abc_iniciar_cobro", {
