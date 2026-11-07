@@ -104,6 +104,8 @@ const EXCLUIDAS = new Set([
   // propia ventana, con el contrato tests/f4/b02-b03/cobro-pedido-en-cocina-contract.sql.
   // No forma parte de la foto F7 histórica del 3/10.
   '20261031170000_abc_f4_cobro_pedido_en_cocina.sql',
+  // Corrección de aislamiento Storage de Issue #190, exclusiva de QA; no forma parte de la foto F7 histórica.
+  '20261107220000_issue190_qa_storage_local_isolation.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
