@@ -33,6 +33,10 @@ begin
     execute 'drop policy if exists qa_storage_empresa_insert on storage.objects';
     execute 'drop policy if exists qa_storage_empresa_update on storage.objects';
     execute 'drop policy if exists qa_storage_empresa_delete on storage.objects';
+    execute 'drop policy if exists qa_storage_empresa_local_select on storage.objects';
+    execute 'drop policy if exists qa_storage_empresa_local_insert on storage.objects';
+    execute 'drop policy if exists qa_storage_empresa_local_update on storage.objects';
+    execute 'drop policy if exists qa_storage_empresa_local_delete on storage.objects';
 
     execute $policy$
       create policy qa_storage_empresa_local_select
