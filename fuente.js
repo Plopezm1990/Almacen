@@ -107215,7 +107215,7 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
       return { ok: false, error: "No se ha podido conectar: " + (e2?.message || "error de red") };
     }
   }
-  async function updateEmpleado(id, data) {
+  function updateEmpleado(id, data) {
     const actual = empleados.find((e2) => e2.id === id);
     if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "El empleado no pertenece al local activo.");
     if (motorPersonalRemotoDisponiblePM13() && !empresaId) return errorValidacionPM10("contexto_no_autorizado", "empresaId", "El motor remoto de Personal requiere empresa y local concretos.");
