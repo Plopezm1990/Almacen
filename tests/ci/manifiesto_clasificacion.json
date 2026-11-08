@@ -1,8 +1,8 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 331,
+  "total_inventory": 332,
   "expected_counts": {
-    "active_contract": 314,
+    "active_contract": 315,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "postgres": {
-      "active_contract": 28,
+      "active_contract": 29,
       "historical_expected_fail": 1,
       "utility": 0,
       "diagnostic": 0
@@ -1689,6 +1689,11 @@
       "path": "tests/c07d/iva-ticket-desglose-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/pm11/db/a01-baja-revoca-acceso-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
     }
   ]
 }
