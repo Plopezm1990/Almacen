@@ -5,7 +5,7 @@ name: "Puerta de CI general -- candidato a release (308/308 contratos activos)"
 # repositorio, basada en el manifiesto versionado
 # (tests/ci/manifiesto_clasificacion.json, 325 entradas: 308 activas)
 # exacto evaluado, en 5 jobs:
-#   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (275
+#   - node-y-postgres: ejecuta tests/ci/ejecutar_bateria_no_db.sh (276
 #     activos Node), ejecutar_pglite_local.sh (1 activo más su bootstrap)
 #     y preparar_postgres_local.sh (28 activos Postgres 16 + 1 histórico
 #     esperado en rojo), contra motores desechables.
@@ -483,7 +483,7 @@ jobs:
           echo "CALCULO_ACTIVE_FAIL=$active_fail"
 
           if [ "$total_activos" -ne 308 ]; then
-            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_306: $total_activos" >&2
+            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_308: $total_activos" >&2
             exit 1
           fi
           if [ "$active_pass" -ne 308 ] || [ "$active_fail" -ne 0 ]; then

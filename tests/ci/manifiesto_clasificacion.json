@@ -1126,6 +1126,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/pm12/p16-product-context-save-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/pm12/supabase-full/p08-auth-postgrest-rls-contract.mjs",
       "classification": "active_contract",
       "environment": "supabase_full_stack"
