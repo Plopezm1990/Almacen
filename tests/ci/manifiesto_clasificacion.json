@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 329,
+  "total_inventory": 330,
   "expected_counts": {
-    "active_contract": 312,
+    "active_contract": 313,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 280,
+      "active_contract": 281,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -331,6 +331,11 @@
     },
     {
       "path": "tests/f4/b05/b05-phase1-regression.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a10/a10-preparation-mode-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },

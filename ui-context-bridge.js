@@ -165,7 +165,7 @@
 // a otro (en QA, además, la política de almacen_kv rechaza las listas). Este puente
 // observa los guardados de `productos`, calcula qué productos cambiaron en lo que
 // afecta a la venta (nombre, unidad, fraccionable, precisión, precio con IVA, IVA,
-// activo, tipo, local) y los envía a la RPC transaccional abc_catalogo_guardar_productos.
+// activo, tipo, preparación y local) y los envía a la RPC transaccional abc_catalogo_guardar_productos.
 //
 // Reglas de seguridad:
 //  - No sustituye ni retrasa el guardado heredado: se ejecuta después de él y en
@@ -284,6 +284,9 @@
       boolNorm(p.activo, true),
       // La pantalla trata un tipo vacío como «materia_prima» (p.tipo || "materia_prima").
       textoNorm(p.tipo).toLowerCase() || "materia_prima",
+      // Compatibilidad conservadora: si una lista antigua no trae el campo,
+      // el servidor mantiene la ruta de preparación activa.
+      boolNorm(p.requierePreparacion, true),
       textoNorm(p.localId)
     ]);
   }
