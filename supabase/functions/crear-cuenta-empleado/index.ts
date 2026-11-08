@@ -1,5 +1,4 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
-import { userHasTenantScope } from "../_shared/tenant-scope.js";
 
 const SITE_HOST = "chic-entremet-9107cf.netlify.app";
 const ROLES_VALIDOS = new Set([
@@ -42,6 +41,19 @@ function clean(v: unknown, max: number) {
   return typeof v === "string" ? v.trim().slice(0, max) : "";
 }
 
+async function neutralizarCuentaNueva(admin: ReturnType<typeof createClient>, nuevoUserId: string) {
+  try {
+    const { error } = await admin.auth.admin.deleteUser(nuevoUserId);
+    if (!error) return "eliminada";
+  } catch { /* intentar el bloqueo aunque falle la eliminación */ }
+  try {
+    const { data, error } = await admin.auth.admin.updateUserById(nuevoUserId, { ban_duration: "876000h" });
+    if (!error && data?.user?.banned_until && Date.parse(data.user.banned_until) > Date.now()) return "bloqueada";
+  } catch { /* no presentar un bloqueo que no se haya confirmado */ }
+  console.error("PM11_COMPENSACION_NO_CONFIRMADA", { nuevoUserId });
+  return "no_confirmada";
+}
+
 Deno.serve(async (req: Request) => {
   const origen = req.headers.get("Origin") || "";
 
@@ -70,6 +82,8 @@ Deno.serve(async (req: Request) => {
     auth: { persistSession: false, autoRefreshToken: false },
   });
 
+  let nuevoUserId = "";
+  let altaConfirmada = false;
   try {
     const { data: datosUsuario, error: errorUsuario } = await caller.auth.getUser();
     const actor = datosUsuario?.user;
@@ -93,57 +107,33 @@ Deno.serve(async (req: Request) => {
     }
     if (!ROLES_VALIDOS.has(rol)) return json(req, { ok: false, error: "Ese rol de acceso no está permitido." }, 400);
 
-    // La identidad empresarial/local se obtiene del empleado guardado por el servidor.
-    // Nunca se acepta empresaId/localId del cliente para decidir el alcance.
-    const { data: empleado, error: errorEmpleado } = await admin
-      .from("empleados")
-      .select("id,empresa_id,local_id,estado,nombre")
-      .eq("id", empleadoId)
-      .maybeSingle();
-
-    if (errorEmpleado || !empleado) return json(req, { ok: false, error: "Empleado no encontrado." }, 404);
-    if (empleado.estado !== "activo") return json(req, { ok: false, error: "Solo se puede crear cuenta a un empleado activo." }, 409);
-
-    const { data: perfilActor, error: errorPerfilActor } = await admin
-      .from("perfiles")
-      .select("activo")
-      .eq("user_id", actor.id)
-      .maybeSingle();
-    if (errorPerfilActor || perfilActor?.activo !== true) {
-      return json(req, { ok: false, error: "El perfil del usuario no está activo." }, 403);
+    // La identidad empresarial/local se obtiene mediante una RPC SECURITY
+    // DEFINER. En producción service_role no tiene SELECT directo sobre estas
+    // tablas; abrirlo aquí volvería a exponer todo el tenant al backend.
+    const { data: preflight, error: errorPreflight } = await admin.rpc(
+      "pm11_preparar_cuenta_empleado",
+      { p_actor_user_id: actor.id, p_empleado_id: empleadoId },
+    );
+    if (errorPreflight || !preflight?.ok) {
+      const codigo = preflight?.codigo || "";
+      if (["empleado_no_disponible", "empleado_no_encontrado", "sin_alcance"].includes(codigo)) {
+        return json(req, { ok: false, error: "Empleado no disponible en tu ámbito." }, 404);
+      }
+      if (codigo === "empleado_no_activo") return json(req, { ok: false, error: "Solo se puede crear cuenta a un empleado activo." }, 409);
+      if (codigo === "perfil_no_activo") return json(req, { ok: false, error: "El perfil del usuario no está activo." }, 403);
+      if (codigo === "local_inactivo") return json(req, { ok: false, error: "El local del empleado no está activo." }, 409);
+      return json(req, { ok: false, error: "No se pudo comprobar el empleado." }, errorPreflight ? 500 : 403);
     }
 
-    const { data: membresiasActor, error: errorMembresias } = await admin
-      .from("membresias_usuario")
-      .select("user_id,empresa_id,local_id,todos_locales,rol,activo")
-      .eq("user_id", actor.id)
-      .eq("activo", true)
-      .eq("empresa_id", empleado.empresa_id);
-
-    if (errorMembresias || !userHasTenantScope({
-      memberships: membresiasActor || [],
-      userId: actor.id,
-      empresaId: empleado.empresa_id,
-      localId: empleado.local_id,
-      roles: ["Propietario"],
-    })) {
-      return json(req, { ok: false, error: "No tienes alcance de Propietario sobre este empleado." }, 403);
-    }
-
-    const { data: perfilExistente } = await admin
-      .from("perfiles")
-      .select("user_id,rol,activo,empleado_id")
-      .eq("empleado_id", empleadoId)
-      .maybeSingle();
-
-    if (perfilExistente?.user_id) {
-      const { data: usuarioExistente } = await admin.auth.admin.getUserById(perfilExistente.user_id);
-      const mismoEmail = usuarioExistente?.user?.email?.toLowerCase() === email;
+    const empleado = preflight.empleado;
+    const perfilExistente = preflight.cuenta || null;
+    if (perfilExistente?.userId) {
+      const mismoEmail = String(perfilExistente.email || "").toLowerCase() === email;
       if (mismoEmail && perfilExistente.activo === true && perfilExistente.rol === rol) {
         return json(req, {
           ok: true,
           yaCreada: true,
-          userId: perfilExistente.user_id,
+          userId: perfilExistente.userId,
           empleadoId,
           rol,
         });
@@ -162,7 +152,7 @@ Deno.serve(async (req: Request) => {
       return json(req, { ok: false, error: duplicado ? "Ya existe una cuenta con ese correo." : "No se pudo crear la cuenta." }, 409);
     }
 
-    const nuevoUserId = nuevoUsuario.user.id;
+    nuevoUserId = nuevoUsuario.user.id;
     const { data: finalizado, error: errorFinalizar } = await admin.rpc(
       "pm11_finalizar_creacion_cuenta_empleado",
       {
@@ -177,14 +167,13 @@ Deno.serve(async (req: Request) => {
     );
 
     if (errorFinalizar || !finalizado?.ok) {
-      const { error: errorBorrar } = await admin.auth.admin.deleteUser(nuevoUserId);
-      if (errorBorrar) {
-        await admin.auth.admin.updateUserById(nuevoUserId, { ban_duration: "876000h" }).catch(() => undefined);
-        return json(req, { ok: false, error: "Falló la configuración y la cuenta se ha intentado bloquear." }, 500);
-      }
+      const compensacion = await neutralizarCuentaNueva(admin, nuevoUserId);
+      if (compensacion === "no_confirmada") return json(req, { ok: false, error: "No se pudo confirmar el bloqueo de la cuenta; requiere revisión de seguridad." }, 500);
+      if (compensacion === "bloqueada") return json(req, { ok: false, error: "No se completó la cuenta; quedó bloqueada para revisión." }, 500);
       return json(req, { ok: false, error: "No se pudo completar la cuenta; no se dejó un acceso parcial." }, 409);
     }
 
+    altaConfirmada = true;
     return json(req, {
       ok: true,
       yaCreada: finalizado.yaCreada === true,
@@ -193,6 +182,10 @@ Deno.serve(async (req: Request) => {
       rol,
     });
   } catch {
+    if (nuevoUserId && !altaConfirmada) {
+      const compensacion = await neutralizarCuentaNueva(admin, nuevoUserId);
+      if (compensacion === "no_confirmada") return json(req, { ok: false, error: "No se pudo confirmar el bloqueo de la cuenta; requiere revisión de seguridad." }, 500);
+    }
     return json(req, { ok: false, error: "Error inesperado creando la cuenta." }, 500);
   }
 });

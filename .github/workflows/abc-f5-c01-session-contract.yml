@@ -1,0 +1,31 @@
+name: "ABC F5 C01 -- sesiones, responsables y terminales"
+
+on:
+  push:
+    branches: [codex/f7-b06-b07-qa-20261008]
+    paths:
+      - "tests/f5/c01/**"
+      - "supabase/migrations/20261009054351_c01_listar_responsables_caja.sql"
+      - "supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql"
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
+      - ".github/workflows/abc-f5-c01-session-contract.yml"
+  pull_request:
+    paths:
+      - "tests/f5/c01/**"
+      - "supabase/migrations/20261009054351_c01_listar_responsables_caja.sql"
+      - "supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql"
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
+      - ".github/workflows/abc-f5-c01-session-contract.yml"
+
+jobs:
+  c01-session-contract:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validar contrato C01 de interfaz y permisos
+        run: node tests/f5/c01/c01-ui-contract.mjs

@@ -1,6 +1,6 @@
 # Punto 9 — Índices / Performance Advisor
 
-**Estado:** candidato preparado; **NO aplicado** a QA ni PROD.  
+**Estado:** **CERRADO en PROD por preexistencia verificada** (19/10/2026). La aplicación propuesta no se ejecutó porque ambos índices ya estaban creados, válidos y listos.
 **Baseline Git:** `release@3e1e2558951e630a021f970c023e4731499de189`.  
 **Regla:** no usar `db push`, `migration repair` ni reconciliar historial de migraciones para este paquete.
 
@@ -19,6 +19,15 @@ Performance Advisor, observado el 21/09/2026:
   - `idx_fichajes_fecha`
   - `clientes_empresa_empresa_idx`
   - `gastos_empresa_scope_idx`
+
+## Actualización de cierre — 19/10/2026
+
+El preflight de la ventana PM13/P3 encontró la primera diferencia esperada: los dos índices candidatos ya existen en PROD y no constan como migración registrada:
+
+- `idx_locales_empresa_id ON public.locales USING btree (empresa_id)` — válido y listo.
+- `idx_movimientos_stock_operation_id ON public.movimientos_stock USING btree (operation_id)` — válido y listo.
+
+Por seguridad no se ejecutó ningún `CREATE INDEX` ni ningún rollback. El Performance Advisor actual (observado el 19/10/2026 a las 21:24:50 UTC) muestra `unindexed_foreign_keys=146` y `unused_index=8`; esa foto ya no es comparable con la línea base histórica 4→2 porque incluye el esquema posterior y las migraciones PM13. El criterio de P3 queda cerrado por verificación de los dos índices objetivo, no por una nueva reducción global del Advisor.
 
 Ventana de estadísticas observada:
 - `pg_stat_user_indexes`: desde 24/07/2026.

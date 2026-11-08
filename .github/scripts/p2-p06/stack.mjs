@@ -25,7 +25,8 @@ assert.match(edge,/var getOriginal = window\.storage\.get\.bind\(window\.storage
 assert.match(edge,/var setOriginal = window\.storage\.set\.bind\(window\.storage\)/);
 assert.match(edge,/if \(rol === "Propietario"\) return getOriginal\(key, shared\)/);
 assert.match(edge,/if \(key === "empleados"\)[\s\S]{0,200}contexto\.empleadosFichaje/);
-assert.match(edge,/if \(key === "fichajes" && rol !== "Encargado"\)[\s\S]{0,100}fichajesDelPropioEmpleado/);
+assert.match(edge,/if \(key === "fichajes" && rol !== "Encargado"\)/, 'fichajes queda restringido por rol');
+assert.match(edge,/if \(key === "fichajes" && rol !== "Encargado"\)[\s\S]{0,240}permisoConsultaPM13\(contexto, "PM13_FICHAJE_CONSULTAR"\)[\s\S]{0,160}fichajesDelPropioEmpleado/, 'el acceso de fichajes propios conserva la capacidad PM13 y el filtrado por empleado');
 
 assert.match(bridge,/var originalGet = storage\.get\.bind\(storage\)/);
 assert.match(bridge,/var originalSet = storage\.set\.bind\(storage\)/);

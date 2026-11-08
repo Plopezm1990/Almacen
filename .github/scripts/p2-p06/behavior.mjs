@@ -43,7 +43,7 @@ function makeScenario({capability=true,tables={},pending=['empleados','fichajes'
     async getSupabaseClient(){return client;},
     actualizarIndicador(){}
   };
-  const context={window,localStorage,Object,Array,String,Promise,JSON,Error,setInterval(){throw new Error('unexpected retry');},clearInterval(){}};
+  const context={window,localStorage,Object,Array,String,Promise,JSON,Error,setTimeout(fn){fn();},setInterval(){throw new Error('unexpected retry');},clearInterval(){}};
   vm.createContext(context);
   vm.runInContext(source,context,{filename:'server-authority-storage-bridge.js'});
   return {window,calls,localStorage};
@@ -155,7 +155,7 @@ function makeScenario({capability=true,tables={},pending=['empleados','fichajes'
     storage:legacy,
     async getSupabaseClient(){return current;}
   };
-  const context={window,localStorage,Object,Array,String,Promise,JSON,Error,setInterval(){throw new Error('unexpected retry');},clearInterval(){}};
+  const context={window,localStorage,Object,Array,String,Promise,JSON,Error,setTimeout(fn){fn();},setInterval(){throw new Error('unexpected retry');},clearInterval(){}};
   vm.createContext(context);
   vm.runInContext(source,context,{filename:'server-authority-storage-bridge.js'});
 

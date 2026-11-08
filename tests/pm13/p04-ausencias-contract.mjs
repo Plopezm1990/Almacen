@@ -29,7 +29,12 @@ const ctx = {
   Math,
   errorValidacionPM10: (codigo, campo, error) => ({ ok: false, codigo, campo, error }),
   uid: (() => { let n = 0; return () => `u-${++n}`; })(),
-  todayISO: () => '2026-09-07'
+  todayISO: () => '2026-09-07',
+  window: {
+    getSupabaseClient: async () => ({
+      rpc: async () => ({ data: null, error: null })
+    })
+  }
 };
 vm.createContext(ctx);
 vm.runInContext(logicSrc, ctx);
@@ -61,7 +66,7 @@ assert.equal(r.ok, false); assert.equal(r.codigo, 'fecha_invalida'); assert.equa
 r = l.registrarAusencia('e1', { tipo: 'Otro', fechaInicio: '2026-09-12', fechaFin: '2026-09-10' });
 assert.equal(r.ok, false); assert.equal(r.codigo, 'rango_fechas_invalido'); assert.equal(h.mutaciones(), 0);
 
-r = l.registrarAusencia('e1', { tipo: 'Baja medica', fechaInicio: '2026-09-10', fechaFin: '2026-09-12' });
+r = await l.registrarAusencia('e1', { tipo: 'Baja medica', fechaInicio: '2026-09-10', fechaFin: '2026-09-12' });
 assert.equal(r.ok, true, JSON.stringify(r));
 assert.equal(h.estado()[0].ausencias.length, 1);
 assert.equal(h.estado()[0].ausencias[0].tipo, 'Baja médica');
@@ -69,19 +74,19 @@ assert.equal(h.estado()[0].ausencias[0].dias, 3);
 assert.equal(h.estado()[0].ausencias[0].estado, 'ACTIVA');
 
 // La misma interacción no puede duplicar: en fallback se rechaza por solape/pending; en remoto se coalesce por operationId.
-r = l.registrarAusencia('e1', { tipo: 'Baja medica', fechaInicio: '2026-09-10', fechaFin: '2026-09-12' });
+r = await l.registrarAusencia('e1', { tipo: 'Baja medica', fechaInicio: '2026-09-10', fechaFin: '2026-09-12' });
 assert.equal(r.ok, false);
 assert.equal(h.estado()[0].ausencias.length, 1);
 
 // Un nuevo render ve la ausencia persistida y bloquea cualquier solape.
 l = h.crear();
-r = l.registrarAusencia('e1', { tipo: 'Otro', fechaInicio: '2026-09-11', fechaFin: '2026-09-13' });
+r = await l.registrarAusencia('e1', { tipo: 'Otro', fechaInicio: '2026-09-11', fechaFin: '2026-09-13' });
 assert.equal(r.ok, false); assert.equal(r.codigo, 'ausencia_solapada');
 assert.equal(h.estado()[0].ausencias.length, 1);
 
 // Anular conserva el elemento y su identidad: no hay borrado físico.
 const ausenciaId = h.estado()[0].ausencias[0].id;
-r = l.eliminarAusencia('e1', ausenciaId);
+r = await l.eliminarAusencia('e1', ausenciaId);
 assert.equal(r.ok, true);
 assert.equal(h.estado()[0].ausencias.length, 1);
 assert.equal(h.estado()[0].ausencias[0].estado, 'ANULADA');
@@ -89,7 +94,7 @@ assert.ok(h.estado()[0].ausencias[0].motivoAnulacion);
 
 // Tras anular, un intervalo antes solapado puede registrarse como una nueva ausencia.
 l = h.crear();
-r = l.registrarAusencia('e1', { tipo: 'Otro', fechaInicio: '2026-09-11', fechaFin: '2026-09-13' });
+r = await l.registrarAusencia('e1', { tipo: 'Otro', fechaInicio: '2026-09-11', fechaFin: '2026-09-13' });
 assert.equal(r.ok, true, JSON.stringify(r));
 assert.equal(h.estado()[0].ausencias.length, 2);
 
@@ -102,6 +107,13 @@ h = harness([{ ...emp, localId: 'L2' }]);
 l = h.crear();
 r = l.registrarAusencia('e1', { tipo: 'Otro', fechaInicio: '2026-09-10', fechaFin: '2026-09-10' });
 assert.equal(r.ok, false); assert.equal(r.codigo, 'contexto_no_autorizado');
+
+// Sin motor remoto, las acciones con efectos no pueden caer a una mutación local.
+delete ctx.window;
+h = harness([emp]);
+l = h.crear();
+r = l.registrarAusencia('e1', { tipo: 'Otro', fechaInicio: '2026-09-10', fechaFin: '2026-09-10' });
+assert.equal(r.ok, false); assert.equal(r.codigo, 'contexto_no_autorizado'); assert.equal(h.mutaciones(), 0);
 
 const uiIni = src.indexOf('function Personal({');
 const uiFin = src.indexOf('function Turnos({', uiIni);
@@ -116,6 +128,11 @@ assert.match(ui, /"aria-label": "Anular ausencia"/);
 assert.match(ui, /estado \|\| "ACTIVA"/);
 assert.match(ui, /ANULADA/);
 assert.doesNotMatch(ui, /"aria-label": "Eliminar ausencia"/);
+assert.match(ui, /pm13_resolver_cargo_permiso/);
+assert.match(ui, /PM13_AUSENCIA_REGISTRAR/);
+assert.match(ui, /PM13_AUSENCIA_ANULAR/);
+assert.match(ui, /puedeRegistrarAusenciaPM13 &&/);
+assert.match(ui, /puedeAnularAusenciaPM13 &&/);
 
 console.log('PM13_P04_AUSENCIAS_FRONTEND=PASS');
 console.log('VALIDACION_FECHAS_TIPO_SCOPE=1');

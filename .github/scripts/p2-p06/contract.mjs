@@ -7,9 +7,9 @@ const index=fs.readFileSync('index.html','utf8');
 
 assert.equal((bridge.match(/TARGETS\s*=\s*Object\.freeze\(\{\s*empleados:\s*true,\s*fichajes:\s*true\s*\}\)/s)||[]).length,1);
 assert.match(bridge,/p2_server_authority_capabilities/);
-assert.match(bridge,/data\.personal\s*===\s*"pm11"/);
-assert.match(bridge,/data\.fichajes\s*===\s*"pm13"/);
-assert.match(bridge,/data\.legacyPersistence\s*===\s*false/);
+assert.match(bridge,/value\.personal\s*===\s*"pm11"/);
+assert.match(bridge,/value\.fichajes\s*===\s*"pm13"/);
+assert.match(bridge,/value\.legacyPersistence\s*===\s*false/);
 assert.match(bridge,/return\s+\{\s*key:\s*key,\s*value:\s*value,\s*shared:/s);
 assert.match(bridge,/\.from\("empleados"\)[\s\S]{0,300}\.select\("id,empresa_id,local_id,estado,nombre,datos,created_at,updated_at,baja_at,reactivado_at,anonimizado_at"\)/);
 assert.match(bridge,/\.from\("fichajes_registro"\)[\s\S]{0,200}\.select\("id,fecha,datos,creado_en"\)/);

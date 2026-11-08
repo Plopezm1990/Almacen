@@ -1,0 +1,68 @@
+# F7 · Preparación del paquete P3/P3b/P3c
+
+Fecha: 2026-10-04
+Estado: `P3C_QA_VERIFICADO_TITULARIDAD_PRODUCTIVA_DETECTADA_NO_APTO_PARA_PRODUCCION`
+
+## Alcance y evidencia actual
+
+- P3 (`20261002150000_abc_p3_catalogo_autoritativo.sql`) y P3b (`20261002170000_abc_p3b_espejo_lista_nube.sql`) ya están en `release`, pero no figuran como aplicadas en producción según la ventana del 4/10. La lectura de QA del 4/10 confirma ambas por **nombre** en su registro; allí hay 30 productos del TPV con `precio_con_impuesto` informado.
+- P3 añade el precio de carta con IVA incluido (D31), sin reescribir automáticamente los precios existentes. El precio de un producto cambia de interpretación cuando la pantalla lo sincroniza mediante `abc_catalogo_guardar_productos`. P3b refleja los campos de venta aceptados en la lista heredada `almacen_kv.productos`.
+- El puente de pantalla ya está publicado. Esta rama corrige el aviso desactualizado de «Día y cajas» sobre el cierre con diferencia, manteniendo la paridad entre `fuente.js` y `source-recovery/fuente-recuperado.js`.
+- En QA se documentaron 51 comprobaciones de P3, 3.960 cálculos de redondeo, 56 comprobaciones de P3b con `ROLLBACK` y una edición observada por Pedro que sobrevivió a la recarga. El contrato estático de P3b también pasa en Windows tras normalizar los saltos de línea; no cambia el SQL de las migraciones.
+
+## Condición que impide promoverlo ahora
+
+El informe `F5_ANALISIS_CLAVES_PENDIENTES_QA_2026-10-02.md` registra una lectura autorizada de producción: allí el navegador **sí puede escribir** la lista completa `almacen_kv.productos`. El código actual hace ese `upsert` y después llama a la RPC de P3; P3b modifica la misma fila desde la RPC. En un dispositivo, el orden de las dos llamadas evita la carrera habitual. Entre dos dispositivos, una subida de lista basada en una lectura antigua puede sobrescribir el espejo de P3b. El contrato de QA no prueba esa combinación porque allí la política PM05 rechaza las subidas de la lista desde el navegador.
+
+La rama incorpora el candidato P3c `20261004201358_abc_p3c_concurrencia_productos.sql`. Su RPC bloquea la fila `almacen_kv.productos`, fusiona por producto y campo frente a la base confirmada del dispositivo, y llama a P3 dentro de la misma transacción para los cambios comerciales iniciados por una persona. Un disparador impide que una pestaña antigua con rol `authenticated` o `anon` reemplace directamente la lista. Los conflictos sobre el mismo campo se rechazan y quedan pendientes en el dispositivo. El navegador conserva la base y el cambio comercial hasta recibir confirmación; la RPC P3 antigua se omite cuando P3c confirma lista y catálogo juntos.
+
+En QA se ensayó la migración más `tests/p3/p3c-concurrencia-contract.sql` dentro de `BEGIN`/`ROLLBACK`: dos dispositivos con la misma base conservaron un precio y un coste distintos; una edición de nombre con precio antiguo mantuvo el precio nuevo en la lista y en el TPV; un precio en conflicto fue rechazado; un alta sobrevivió y llegó al TPV; un usuario de otra empresa y un `UPDATE` directo con política temporal permisiva fueron rechazados. Con P3c cargado de forma transitoria, el contrato P3b obtuvo 56/56 resultados esperados (50 positivos y seis rechazos previstos). `tests/p3/p3c-client-contract.mjs` prueba la cola, la base confirmada, el reintento tras corte de red, la ausencia de `upsert` en errores y el puente de pantalla.
+
+Pedro autorizó después la prueba integrada en QA. El 4/10/2026 se aplicó P3c **solo en QA**, con registro de migración `20261004211239 abc_p3c_concurrencia_productos`; SHA-256 del archivo candidato `2a2c66872f9eb2b75ae124dd5c44261f8172f1ea2f1087da7be91fc9818d610f`. Antes y después: `almacen_kv.productos` conserva MD5 `837c71d67bfad41dbf12320bfede73b4` y el catálogo tiene 30 filas. La RPC existe, el disparador está activo, `authenticated` puede ejecutarla y `anon` no. Ya instalada la migración, el contrato P3c volvió a pasar con `ROLLBACK` y P3b obtuvo 56/56 resultados esperados con `ROLLBACK`. El asesor de seguridad señala la RPC `SECURITY DEFINER` ejecutable por `authenticated`: es deliberado por la serialización y está protegida por `auth.uid()` más permisos de empresa/local; [aviso del asesor](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable).
+
+Para la comprobación de pantalla se construyó el artefacto local de la rama y se modificó **solo la copia generada e ignorada por Git** para que `localhost` use el modo QA ya existente. La copia local bloquea peticiones al Supabase productivo. Pedro inició sesión como Propietario QA. En el primer intento, el formulario mostró un cambio de precio que no llegó a la lista ni al TPV: `server-authority-storage-bridge.js` y `edge-auth-patch.js` descartaban el cuarto argumento con la intención comercial P3c. Se corrigieron ambas capas y se añadió una prueba de regresión de la transmisión de ese argumento.
+
+El 5/10/2026, desde Productos en esa copia local corregida, se cambió «Agua 50 cl (QA)» de 1,00 € a 1,05 €. La lectura de QA confirmó `almacen_kv.productos.precioVenta = 1.05` y `catalogo_tpv_productos.precio_con_impuesto = 1.05000000`; la pantalla conservó 1,05 € tras recargar. Se restauró 1,00 € desde el mismo formulario y se volvió a comprobar: lista `1`, TPV `1.00000000`, pantalla 1,00 € después de otra recarga, 30 productos y 30 filas TPV. El indicador de cambios sin confirmar quedó en cero. No hubo despliegue de Netlify.
+
+El 5/10 Pedro autorizó continuar con la lectura de titularidad y la preparación de la autorización. La lectura de producción encontró **una fila `productos` con `empresa_id = NULL`** y dos artículos que sí declaran la misma empresa y un mismo local activo dentro del JSON; ambos IDs son distintos. El artículo del TPV coincide con uno de la lista. P3b busca la fila por `empresa_id`, de modo que P3c fallaría con `lista_nube=sin_fila` si se aplicase el paquete sin corregir esta diferencia. Se preparó la migración adicional `20261005060000_abc_p3c_titularidad_productos.sql`: valida la identidad y los locales bajo bloqueo de fila y rellena solo `empresa_id` cuando está vacío. En QA se reprodujo la forma productiva, se ejecutó esa normalización y pasó el contrato P3c completo en `BEGIN`/`ROLLBACK`; al terminar, QA conservaba su fila original, 30 artículos y 30 filas del TPV. La consulta reutilizable está en `F7_P3C_TITULARIDAD_SOLO_LECTURA_2026-10-05.sql`.
+
+P3c sigue en revisión. Las lecturas productivas del 5/10 no autorizan normalizar la fila, aplicar migraciones, fusionar el PR ni publicar. La hoja específica `F7_HOJA_AUTORIZACION_P3_2026-10-05.md` prepara esos pasos para una ventana posterior con copia manual nueva y autorización exacta.
+
+## Comprobación previa y puerta de producción
+
+`F7_P3_P3B_PREFLIGHT_SOLO_LECTURA_2026-10-04.sql` contiene nueve consultas `SELECT`/`WITH`. Primero se validó su sintaxis en QA. Pedro autorizó por separado la opción 1 de lectura de producción y las nueve se ejecutaron allí el 4/10/2026 a las 19:44 UTC. No se ejecutó ningún SQL de escritura ni se desplegó la aplicación. La consulta de QA posterior solo repitió P5 para comparar huellas. El preflight no devuelve contenido de productos ni datos de personas.
+
+### Resultado de la lectura de producción (9/9)
+
+| Bloque | Resultado |
+| --- | --- |
+| P0 | Cero filas registradas por nombre para P3 y P3b. |
+| P1 | Existen las 13 dependencias exigidas (7 tablas y 6 funciones). |
+| P2 | No existen `precio_con_impuesto`, las dos funciones auxiliares P3 ni la RPC P3; están las tres columnas esperadas de `almacen_kv`. |
+| P3 | Un producto en el catálogo TPV y una fila `productos` con una lista JSON válida. Solo se leyeron recuentos. |
+| P4 | Un contexto fiscal activo para el único local y EUR. Se omiten aquí los identificadores productivos. |
+| P5 | `abc_calcular_linea_tpv`: `1a3ff32669ae46d5e65520afb4b8782b`; variante configurada: `e1e935e1ec1bee56be265326b8dfe565`. Ambas son `SECURITY DEFINER` con `search_path` fijado. QA, donde P3 ya está aplicado, devuelve respectivamente `35c8f1fb38850c92f38e600981437ab1` y `336123cdb9a826977cbe9ed32feacb39`. La diferencia es coherente con los estados anterior y posterior a P3, pero no demuestra por sí sola que los cuerpos coincidan con el candidato: eso queda pendiente para una promoción. |
+| P6 | `authenticated` tiene privilegios de lectura, inserción y actualización. La política RLS de `INSERT`/`UPDATE` incluye expresamente `productos` para cualquier perfil activo. Queda confirmada la carrera del `upsert` del navegador contra el espejo P3b. |
+| P7 | Dos disparadores habilitados: actualización de fecha y creación inicial de stock desde `productos`. No existe uno que proteja los campos de venta ante la sustitución de la lista. |
+
+La lectura cumple las condiciones de ausencia y dependencias, pero **no levanta el bloqueo de concurrencia**. El PR de preparación permanece como borrador y no debe fusionarse.
+
+Para abrir una ventana de producción harán falta, en este orden:
+
+1. Revisar el resultado de P3c y de la prueba de pantalla completada en QA. La CI del commit `1ca253e` pasó la puerta general (225/225 contratos); el workflow heredado P2-P06 falla por exigir que este PR cambie solo los nueve archivos de su candidato antiguo, y los otros 15 workflows pasaron. La corrección del texto de «Día y cajas» se agrupa en el futuro despliegue de aplicación.
+2. Las lecturas específicas de producción se completaron el 4 y el 5/10 (resultados arriba). Refrescarlas si se abre otra ventana y contrastar las huellas del cuerpo exacto del candidato. No asumir que la foto de hoy sigue vigente entonces.
+3. Pedro hace y comprueba una copia manual fuera del repositorio. Congelar commit, `sha256` de `fuente.js`, condiciones de parada y una hoja de autorización **nueva para este paquete**. La autorización del primer paquete no cubre P3/P3b.
+4. Solo tras esa autorización: aplicar P3 y verificar; aplicar P3b y verificar; aplicar P3c y verificar; normalizar la titularidad de la lista y comprobar que su JSON no cambió; aplicar la migración que devuelve la lista fusionada y comprobar permisos; hacer humo con `ROLLBACK` sin dejar filas; publicar una vez la aplicación, comprobar el archivo servido y pedir a Pedro la aceptación del recorrido acordado. Parar ante la primera diferencia.
+
+La revisión del PR del 5/10 añadió `20261005100000_abc_p3c_lista_confirmada.sql`:
+la RPC devuelve la lista realmente fusionada para que el cliente actualice
+su caché y la pantalla, sin reemplazar otro borrador local pendiente. La
+migración se aplicó solo en QA; allí se actualizó la función durante la prueba
+para cerrar la lectura vacía de otra empresa y leer la fila final tras el espejo
+P3b. El contrato P3c pasó allí otra vez dentro de
+`BEGIN`/`ROLLBACK`, incluida la igualdad entre la respuesta y la fila
+confirmada y el rechazo de esa lectura ajena. Después: 30 artículos, 30 filas TPV; `authenticated` conserva
+`EXECUTE` y `anon` no. El contrato del cliente cubre dos dispositivos, una
+edición durante la subida y la ruta de lectura de la RPC anterior.
+
+No se aplica SQL ni se despliega producción desde esta rama. P3/P3b siguen fuera de «verificado» hasta la aceptación de Pedro (D05).

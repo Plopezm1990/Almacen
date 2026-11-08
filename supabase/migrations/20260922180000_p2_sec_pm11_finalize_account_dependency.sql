@@ -48,6 +48,80 @@ begin
 end
 $preflight$;
 
+do $prepare_preflight$
+declare
+  v_missing text[] := array[]::text[];
+  v_other_overloads integer := 0;
+begin
+  if to_regclass('public.empleados') is null then v_missing := array_append(v_missing,'public.empleados'); end if;
+  if to_regclass('public.perfiles') is null then v_missing := array_append(v_missing,'public.perfiles'); end if;
+  if to_regclass('public.membresias_usuario') is null then v_missing := array_append(v_missing,'public.membresias_usuario'); end if;
+  if to_regclass('auth.users') is null then v_missing := array_append(v_missing,'auth.users'); end if;
+  if to_regprocedure('private.pm11_local_activo(text,text)') is null then v_missing := array_append(v_missing,'private.pm11_local_activo(text,text)'); end if;
+  select count(*) into v_other_overloads
+    from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+   where n.nspname='public'
+     and p.proname='pm11_preparar_cuenta_empleado'
+     and p.oid <> coalesce(to_regprocedure('public.pm11_preparar_cuenta_empleado(uuid,text)')::oid,0);
+  if v_other_overloads <> 0 then v_missing := array_append(v_missing,'pm11_preparar_cuenta_empleado_overload_conflict'); end if;
+  if cardinality(v_missing)>0 then
+    raise exception 'P2_SEC_PM11_PREPARE_PREFLIGHT_FALLO:%',array_to_string(v_missing,',');
+  end if;
+end
+$prepare_preflight$;
+
+create or replace function public.pm11_preparar_cuenta_empleado(
+  p_actor_user_id uuid,
+  p_empleado_id text
+)
+returns jsonb
+language plpgsql
+security definer
+set search_path to 'public', 'auth', 'private', 'pg_temp'
+as $prepare_function$
+declare
+  v_empleado record;
+  v_cuenta record;
+  v_email text;
+begin
+  if p_actor_user_id is null or nullif(btrim(p_empleado_id),'') is null then
+    return jsonb_build_object('ok',false,'codigo','datos_invalidos');
+  end if;
+  if not exists (select 1 from public.perfiles p where p.user_id=p_actor_user_id and p.activo=true) then
+    return jsonb_build_object('ok',false,'codigo','perfil_no_activo');
+  end if;
+  select e.id,e.empresa_id,e.local_id,e.estado,e.nombre into v_empleado
+    from public.empleados e where e.id=btrim(p_empleado_id);
+  if not found then return jsonb_build_object('ok',false,'codigo','empleado_no_encontrado'); end if;
+  if not exists (
+    select 1 from public.membresias_usuario m
+     where m.user_id=p_actor_user_id and m.activo=true
+       and m.empresa_id=v_empleado.empresa_id and m.rol='Propietario'
+       and (m.todos_locales=true or (m.todos_locales=false and m.local_id=v_empleado.local_id))
+  ) then return jsonb_build_object('ok',false,'codigo','sin_alcance'); end if;
+  if not private.pm11_local_activo(v_empleado.empresa_id,v_empleado.local_id) then
+    return jsonb_build_object('ok',false,'codigo','local_inactivo');
+  end if;
+  if v_empleado.estado <> 'activo' then return jsonb_build_object('ok',false,'codigo','empleado_no_activo'); end if;
+  select p.user_id,p.rol,p.activo into v_cuenta
+    from public.perfiles p where p.empleado_id=v_empleado.id limit 1;
+  if not found or v_cuenta.user_id is null then
+    return jsonb_build_object('ok',true,'estado','disponible','empleado',jsonb_build_object(
+      'id',v_empleado.id,'empresa_id',v_empleado.empresa_id,'local_id',v_empleado.local_id,
+      'estado',v_empleado.estado,'nombre',v_empleado.nombre));
+  end if;
+  select u.email into v_email from auth.users u where u.id=v_cuenta.user_id;
+  return jsonb_build_object('ok',true,'estado','vinculado','empleado',jsonb_build_object(
+    'id',v_empleado.id,'empresa_id',v_empleado.empresa_id,'local_id',v_empleado.local_id,
+    'estado',v_empleado.estado,'nombre',v_empleado.nombre),'cuenta',jsonb_build_object(
+    'userId',v_cuenta.user_id,'rol',v_cuenta.rol,'activo',v_cuenta.activo,'email',coalesce(v_email,'')));
+end;
+$prepare_function$;
+
+revoke all on function public.pm11_preparar_cuenta_empleado(uuid,text)
+  from public,anon,authenticated,service_role;
+grant execute on function public.pm11_preparar_cuenta_empleado(uuid,text) to service_role;
+
 CREATE OR REPLACE FUNCTION public.pm11_finalizar_creacion_cuenta_empleado(p_actor_user_id uuid, p_user_id uuid, p_empresa_id text, p_local_id text, p_empleado_id text, p_nombre text, p_rol text)
  RETURNS jsonb
  LANGUAGE plpgsql

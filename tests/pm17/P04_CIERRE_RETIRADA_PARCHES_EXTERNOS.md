@@ -8,11 +8,11 @@ Prefiltros/Entrevistas, auth UX nativa) — cumpliendo el punto 5 pedido explíc
 
 ## Revisión de compatibilidad (antes de retirar)
 
-- **Nada más referenciaba estos dos archivos.** Único punto de carga:
-  el bloque de inyección dinámica en `fuente.js` (heredado de `edge-auth-patch.js`,
-  L43871-L43888). `index.html`, `dashboard-premium-v2.js`, `pm11-compra-mobile-p10-v1.js`
-  y el resto de scripts cargados no los mencionan — confirmado por búsqueda en todo el
-  repositorio antes de tocar nada.
+- **La revisión del runtime encontró un segundo cabo de carga.** Además del bloque que
+  ya se había retirado de `fuente.js`, `edge-auth-patch.js` se carga desde `index.html`
+  y todavía inyectaba ambos archivos retirados. P04 elimina también esas dos IIFE para
+  que el preview no genere peticiones 404. `dashboard-premium-v2.js`,
+  `pm11-compra-mobile-p10-v1.js` y el resto de scripts cargados no los mencionan.
 - **Todo lo que aportaban ya tiene equivalente nativo, cerrado y con gate verde:**
   - Rollback de suscripción push → `activarSuscripcionPushPM17` (lote 1).
   - Neutralización de Prefiltros/Entrevistas → `InformeEntrevistaNeutralPM17` /
@@ -26,18 +26,15 @@ Prefiltros/Entrevistas, auth UX nativa) — cumpliendo el punto 5 pedido explíc
 
 ## Cambio
 
-- **`fuente.js`**: se retira el bloque de dos IIFE (L43871-L43888) que inyectaban en
+- **`fuente.js`**: el bloque de dos IIFE (L43871-L43888) que inyectaba en
   runtime `<script src="./seleccion-neutral-patch.js?v=2">` y
-  `<script src="./auth-ux-patch.js?v=1">`. El resto del bloque heredado de
-  `edge-auth-patch.js` (líneas anteriores) no se toca.
+  `<script src="./auth-ux-patch.js?v=1">` ya no existe.
+- **`edge-auth-patch.js`**: se retiran sus dos IIFE de inyección externa; el archivo
+  permanece cargado porque conserva la lógica nativa de auth/rol.
 - **Repositorio**: se eliminan `seleccion-neutral-patch.js` y `auth-ux-patch.js` — ya no
   los carga nadie.
-- **`edge-auth-patch.js` no se retira en este lote** (fuera del alcance acordado): sigue
-  presente en el repositorio como archivo histórico/fuente, nunca cargado directamente
-  por `index.html` ni por nada más — su contenido real y vigente vive inlineado en
-  `fuente.js`. Queda como cabo suelto cosmético (sus dos últimas líneas de inyección
-  ahora apuntan a archivos que ya no existen) para una limpieza futura fuera de PM17, sin
-  ningún efecto en la app servida.
+- **`_headers`**: se elimina la regla de caché huérfana de
+  `seleccion-neutral-patch.js`.
 
 ## Consecuencia práctica
 
@@ -49,11 +46,13 @@ de React y sin punto único de fallo silencioso si un archivo no se despliega o 
 ## Archivos
 
 - `fuente.js`: bloque de inyección dinámica retirado.
+- `edge-auth-patch.js`: inyección externa retirada, lógica nativa conservada.
+- `_headers`: regla de caché huérfana retirada.
 - `seleccion-neutral-patch.js`, `auth-ux-patch.js`: eliminados.
 - `tests/pm17/p04-retirar-parches-externos-contract.mjs` (nuevo): confirma que no queda
-  ninguna referencia a los dos archivos en `fuente.js`, que ambos han desaparecido del
-  repositorio, y que el resto del bloque nativo heredado de `edge-auth-patch.js` sigue
-  intacto.
+  ninguna referencia a los dos archivos en `fuente.js`, `edge-auth-patch.js` ni
+  `_headers`, que ambos han desaparecido del repositorio, y que el resto del bloque
+  nativo heredado de `edge-auth-patch.js` sigue intacto.
 
 ## Regresión
 

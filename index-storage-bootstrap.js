@@ -62,6 +62,18 @@
     }
   };
 
+  // La marca de solo-local de productos procede de una versión anterior que
+  // no enviaba empresa/local a la RPC. Se invalida una sola vez al instalar la
+  // corrección PM10; no se borra ningún producto ni se toca la nube.
+  try {
+    var VERSION_REINTENTO_PRODUCTOS = "pm10-recepcion-20261028";
+    var versionAnteriorProductos = localStorage.getItem("almacen__productos_reintento_version");
+    if (versionAnteriorProductos !== VERSION_REINTENTO_PRODUCTOS) {
+      quitarDenegado("productos");
+      localStorage.setItem("almacen__productos_reintento_version", VERSION_REINTENTO_PRODUCTOS);
+    }
+  } catch (e) {}
+
   // Una clave que todavía no existe es un estado normal de primer arranque.
   // Solo se normaliza ese sentinel exacto; SecurityError/cuota/etc. se propagan.
   function leerLocalOpcional(key) {
@@ -77,19 +89,134 @@
     try { return JSON.parse(localStorage.getItem("almacen__pendientes") || "[]"); }
     catch (e) { return []; }
   }
-  function marcarPendiente(key) {
+  function pendientesContexto() {
+    try {
+      var lista = JSON.parse(localStorage.getItem("almacen__pendientes_contexto") || "[]");
+      return Array.isArray(lista) ? lista : [];
+    } catch (e) { return []; }
+  }
+  function contextoPendienteActual() {
+    var contexto = typeof contextoKvActual === "function" ? contextoKvActual() : {};
+    return { empresaId: contexto.empresaId || null, localId: contexto.localId || null };
+  }
+  function pendienteEsDelContexto(key) {
+    var entradas = pendientesContexto().filter(function (entrada) { return entrada && entrada.key === key; });
+    // Las colas antiguas no tenían contexto; se conservan reintentables para
+    // no perder una escritura histórica, pero toda escritura nueva queda
+    // etiquetada y no puede cruzar empresa/local.
+    if (!entradas.length) return true;
+    var actual = contextoPendienteActual();
+    return entradas.some(function (guardado) { return guardado.empresaId === actual.empresaId && guardado.localId === actual.localId; });
+  }
+  function entradaPendienteActual(key) {
+    var actual = contextoPendienteActual();
+    return pendientesContexto().find(function (entrada) {
+      return entrada && entrada.key === key && entrada.empresaId === actual.empresaId && entrada.localId === actual.localId;
+    }) || null;
+  }
+  function marcarPendiente(key, valor, cacheKey) {
     var lista = pendientes();
     if (lista.indexOf(key) === -1) {
       lista.push(key);
       localStorage.setItem("almacen__pendientes", JSON.stringify(lista));
     }
+    var contexto = contextoPendienteActual();
+    var entradas = pendientesContexto().filter(function (entrada) {
+      return !(entrada && entrada.key === key && entrada.empresaId === contexto.empresaId && entrada.localId === contexto.localId);
+    });
+    entradas.push({ key: key, empresaId: contexto.empresaId, localId: contexto.localId, cacheKey: cacheKey || key, valor: valor });
+    try { localStorage.setItem("almacen__pendientes_contexto", JSON.stringify(entradas)); } catch (e) {}
     actualizarIndicador();
   }
   function quitarPendiente(key) {
-    var lista = pendientes().filter(function (k) { return k !== key; });
+    var contexto = contextoPendienteActual();
+    var entradas = pendientesContexto().filter(function (entrada) {
+      return !(entrada && entrada.key === key && entrada.empresaId === contexto.empresaId && entrada.localId === contexto.localId);
+    });
+    var conservaOtra = entradas.some(function (entrada) { return entrada && entrada.key === key; });
+    var lista = pendientes().filter(function (k) { return k !== key || conservaOtra; });
     localStorage.setItem("almacen__pendientes", JSON.stringify(lista));
+    try { localStorage.setItem("almacen__pendientes_contexto", JSON.stringify(entradas)); } catch (e) {}
     actualizarIndicador();
   }
+
+  /* ----------------------------------------------------------
+     CLAVES QUE EL SERVIDOR RECHAZA POR PERMISOS
+     ------------------------------------------------------------
+     Un fallo de red o de tiempo se arregla reintentando, así que
+     la clave queda en la cola de pendientes. Un rechazo por
+     permisos (RLS, código 42501) no se arregla reintentando: el
+     servidor seguirá diciendo que no hasta que cambien sus reglas.
+     Si esa clave se dejara en la cola, el aviso "Subiendo N…" no
+     desaparecería nunca y cada carga repetiría la misma subida
+     rechazada.
+
+     Por eso, ante un rechazo por permisos la clave se anota aparte
+     (almacen__denegados): sigue guardándose y leyéndose en este
+     equipo, deja de reintentarse durante unas horas y el aviso lo
+     dice con claridad en lugar de aparentar que está subiendo.
+     Pasado el plazo se vuelve a intentar una vez, por si las
+     reglas del servidor han cambiado. En cuanto una subida
+     funciona, la marca se retira. Mientras la marca exista, la
+     clave se lee de este equipo y no de la nube, igual que las
+     pendientes: así una copia antigua de la nube no pisa lo que
+     aquí no se ha podido subir.
+
+     No depende de qué claves sean: si el servidor las acepta
+     (como hace producción hoy), nada de esto se activa.
+     ---------------------------------------------------------- */
+  var VIGENCIA_DENEGADO_MS = 6 * 60 * 60 * 1000;
+  function denegados() {
+    try {
+      var o = JSON.parse(localStorage.getItem("almacen__denegados") || "{}");
+      return o && typeof o === "object" && !Array.isArray(o) ? o : {};
+    } catch (e) { return {}; }
+  }
+  function tieneMarcaDenegado(key) {
+    return Object.prototype.hasOwnProperty.call(denegados(), key);
+  }
+  function denegadoVigente(key) {
+    var t = denegados()[key];
+    return typeof t === "number" && (Date.now() - t) < VIGENCIA_DENEGADO_MS;
+  }
+  function clavesDenegadasVigentes() {
+    return Object.keys(denegados()).filter(function (k) { return denegadoVigente(k); });
+  }
+  function quitarDenegado(key) {
+    var o = denegados();
+    if (!Object.prototype.hasOwnProperty.call(o, key)) return;
+    delete o[key];
+    try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
+    actualizarIndicador();
+  }
+  function esRechazoPorPermisos(e) {
+    if (!e) return false;
+    if (e.code === "42501") return true;
+    return /row-level security|permission denied/i.test(String(e.message || ""));
+  }
+  function marcarDenegado(key, error) {
+    var yaVigente = denegadoVigente(key);
+    var o = denegados();
+    o[key] = Date.now();
+    try { localStorage.setItem("almacen__denegados", JSON.stringify(o)); } catch (e) {}
+    quitarPendiente(key);
+    if (!yaVigente) {
+      try {
+        console.warn("[almacén] El servidor no permite guardar «" + key + "» en la nube; se conserva solo en este equipo.", error && error.message);
+      } catch (e) {}
+      try {
+        if (typeof window.dispatchEvent === "function" && typeof CustomEvent === "function") {
+          window.dispatchEvent(new CustomEvent("clave-solo-local", { detail: { key: key, mensaje: error && error.message } }));
+          window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
+            key: key,
+            soloLocal: true,
+            mensaje: "Guardado en este equipo; el servidor no permite confirmar este cambio. Puedes reintentarlo ahora."
+          } }));
+        }
+      } catch (e) {}
+    }
+  }
+  window.__clavesSoloLocal = clavesDenegadasVigentes;
 
   /* ----------------------------------------------------------
      REGISTRO DE BORRADOS DE ESTE DISPOSITIVO
@@ -110,7 +237,7 @@
   // que "lo que ya no está en local" NO significa "borrado" — significa
   // "más antiguo de 500". Si se tratara como borrado, cada apunte nuevo
   // iría eliminando el histórico de la nube. Por eso se excluye.
-  var NUNCA_BORRAR = { auditoria: true };
+  var NUNCA_BORRAR = { auditoria: true, movimientos: true };
 
   function borradosDe(key) {
     if (NUNCA_BORRAR[key]) return [];
@@ -148,8 +275,9 @@
       el.style.cssText = "position:fixed;bottom:8px;right:8px;padding:5px 11px;border-radius:14px;font-family:sans-serif;font-size:11px;z-index:9998;pointer-events:none;opacity:0.9;";
       document.body.appendChild(el);
     }
-    var sinSubir = pendientes().length;
-    if (window.__nubeActiva && sinSubir === 0) {
+    var sinSubir = pendientes().filter(pendienteEsDelContexto).length;
+    var soloLocal = clavesDenegadasVigentes().length;
+    if (window.__nubeActiva && sinSubir === 0 && soloLocal === 0) {
       el.style.display = "none";
       return;
     }
@@ -160,10 +288,17 @@
       el.textContent = sinSubir > 0
         ? "Guardado en este equipo · " + sinSubir + " sin subir"
         : "Guardado en este equipo";
-    } else {
+    } else if (sinSubir > 0) {
       el.style.background = "#B08228";
       el.style.color = "#fff";
-      el.textContent = "Subiendo " + sinSubir + "…";
+      el.textContent = "Subiendo " + sinSubir + "…" +
+        (soloLocal > 0 ? " · " + soloLocal + " solo en este equipo" : "");
+    } else {
+      el.style.background = "#4B5A54";
+      el.style.color = "#fff";
+      el.textContent = soloLocal === 1
+        ? "1 colección solo en este equipo (el servidor no permite guardarla)"
+        : soloLocal + " colecciones solo en este equipo (el servidor no permite guardarlas)";
     }
   }
   window.actualizarIndicador = actualizarIndicador;
@@ -188,9 +323,19 @@
     var lista = pendientes();
     for (var i = 0; i < lista.length; i++) {
       var key = lista[i];
+      if (esClaveSoloDispositivo(key)) {
+        quitarPendiente(key);
+        quitarDenegado(key);
+        continue;
+      }
+      if (!pendienteEsDelContexto(key)) continue;
+      var entrada = entradaPendienteActual(key);
+      // El servidor rechazó esta clave por permisos hace poco: reintentar solo
+      // repetiría la misma subida rechazada. Se retira de la cola.
+      if (denegadoVigente(key)) { quitarPendiente(key); continue; }
       try {
-        var cacheKey = await claveCacheLocal(key);
-        var valor = LOCAL.get(cacheKey);
+        var cacheKey = entrada && entrada.cacheKey ? entrada.cacheKey : await claveCacheLocal(key);
+        var valor = entrada && entrada.valor !== void 0 ? entrada.valor : LOCAL.get(cacheKey);
         var tablaEmpresa = TABLAS_EMPRESA[key];
         var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
         var tablaEspecial = TABLAS_POR_FILA[key];
@@ -206,11 +351,38 @@
         } else {
           // Sin referencia de "lo que había antes" no se puede saber qué quitó
           // este equipo, así que no se borra nada: solo se añade y se corrige.
-          await encolarPorClave(key, function () { return guardarBloque(key, null, valor); });
+          await encolarKv(key, function () {
+            return conTiempoLimite(encolarPorClave(key, function () { return guardarBloque(key, null, valor); }), ESPERA_NUBE_MS);
+          });
         }
         quitarPendiente(key);
-      } catch (e) { /* se reintenta la próxima vez */ }
+        quitarDenegado(key);
+      } catch (e) {
+        // Rechazo por permisos: no se arregla reintentando (ver arriba).
+        // Cualquier otro fallo (red, tiempo) se reintenta la próxima vez.
+        if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+      }
     }
+    actualizarIndicador();
+  };
+
+  // Permite recuperar un navegador que quedó marcado como solo local sin
+  // esperar seis horas: vuelve a encolar el valor local y usa el mismo camino
+  // de sincronización que un guardado normal.
+  window.reintentarSincronizacion = async function (key) {
+    var claves = key ? [key] : clavesDenegadasVigentes();
+    for (var i = 0; i < claves.length; i++) {
+      var clave = claves[i];
+      quitarDenegado(clave);
+      try {
+        var cacheKey = await claveCacheLocal(clave);
+        var valor = LOCAL.get(cacheKey);
+        marcarPendiente(clave, valor, cacheKey);
+      } catch (e) {
+        console.warn("[almacén] No se pudo preparar el reintento de «" + clave + "».", e && e.message);
+      }
+    }
+    await window.subirPendientes();
     actualizarIndicador();
   };
 
@@ -259,6 +431,16 @@
     albaranes: true, facturasDirectas: true, gastosGenerales: true, pagosFacturas: true,
     arqueos: true, movimientosCaja: true, devoluciones: true
   };
+  // Preferencias de interfaz del dispositivo. No contienen datos de negocio
+  // ni deben viajar a Supabase: sincronizarlas provoca avisos al cambiar de
+  // usuario en una sesión abierta, aunque el cambio local se haya guardado.
+  var CLAVES_SOLO_DISPOSITIVO = {
+    modoEmpleado: true,
+    usuarioActivoId: true
+  };
+  function esClaveSoloDispositivo(key) {
+    return !!CLAVES_SOLO_DISPOSITIVO[key];
+  }
 
   async function claveCacheLocal(key) {
     if (!CLAVES_CACHE_POR_USUARIO[key] || !window.__nubeCliente) return key;
@@ -400,11 +582,12 @@
   // movimiento 1001 el programa creía que la nube estaba medio vacía, así
   // que resubía miles de filas en cada guardado (lento, y se pasaba del
   // tiempo límite) y daba por inexistente lo que sí estaba.
-  async function leerFilasCompletas(tabla) {
+  async function leerFilasCompletas(tabla, incluirContextoMovimiento) {
     var todas = [];
     var desde = 0;
     for (;;) {
-      var r = await window.__nubeCliente.from(tabla).select("id, datos")
+      var columnas = incluirContextoMovimiento ? "id, datos, empresa_id, local_id" : "id, datos";
+      var r = await window.__nubeCliente.from(tabla).select(columnas)
         .order("creado_en", { ascending: false })
         .range(desde, desde + PAGINA_LECTURA - 1);
       if (r.error) throw r.error;
@@ -416,24 +599,158 @@
     return todas;
   }
 
+  // Las filas que llegan de los servicios de stock llevan marcas de control
+  // locales. No forman parte del contenido del movimiento y no deben hacer
+  // que una fila ya confirmada parezca nueva en cada guardado.
+  var CAMPOS_SINCRONIZACION_SOLO_LOCAL = {
+    _pm07Servidor: true,
+    _pm07BajoMinimo: true,
+    _pm07LocalOperable: true,
+    _pm08Servidor: true,
+    _pm12Servidor: true,
+  };
+  function contenidoSinMarcasLocales(valor) {
+    if (Array.isArray(valor)) return valor.map(contenidoSinMarcasLocales);
+    if (!valor || typeof valor !== "object") return valor;
+    var salida = {};
+    Object.keys(valor).sort().forEach(function (clave) {
+      if (CAMPOS_SINCRONIZACION_SOLO_LOCAL[clave]) return;
+      salida[clave] = contenidoSinMarcasLocales(valor[clave]);
+    });
+    return salida;
+  }
+  function contenidoFilaIgual(a, b) {
+    return JSON.stringify(contenidoSinMarcasLocales(a)) === JSON.stringify(contenidoSinMarcasLocales(b));
+  }
+  function textoContextoMovimiento(valor) {
+    return typeof valor === "string" ? valor.trim() : "";
+  }
+  function contextoMovimientoHistoricoIgual(filaRemota, datosLocales) {
+    var datosRemotos = filaRemota && filaRemota.datos && typeof filaRemota.datos === "object"
+      ? filaRemota.datos : {};
+    var empresaSql = textoContextoMovimiento(filaRemota && filaRemota.empresa_id);
+    var localSql = textoContextoMovimiento(filaRemota && filaRemota.local_id);
+    var empresaRemota = textoContextoMovimiento(datosRemotos.empresaId);
+    var localRemoto = textoContextoMovimiento(datosRemotos.localId);
+    var empresaLocal = textoContextoMovimiento(datosLocales && datosLocales.empresaId);
+    var localLocal = textoContextoMovimiento(datosLocales && datosLocales.localId);
+
+    // La pareja SQL es la autoridad de aislamiento. Si existe en la fila,
+    // una caché de otro tenant/local no puede considerarse un replay válido.
+    if (empresaSql && empresaLocal && empresaSql !== empresaLocal) return false;
+    if (localSql && localLocal && localSql !== localLocal) return false;
+    // Detectar también una fila histórica internamente incoherente entre sus
+    // columnas SQL y su JSON, sin reparar ni sobrescribir desde el cliente.
+    if (empresaSql && empresaRemota && empresaSql !== empresaRemota) return false;
+    if (localSql && localRemoto && localSql !== localRemoto) return false;
+    // Cuando ambos JSON contienen contexto explícito, debe ser el mismo.
+    if (empresaRemota && empresaLocal && empresaRemota !== empresaLocal) return false;
+    if (localRemoto && localLocal && localRemoto !== localLocal) return false;
+
+    // Los registros anteriores a PM21 pueden no tener empresaId/localId en
+    // datos aunque la aplicación los infiera al arrancar. Esos dos campos no
+    // son contenido operativo del movimiento histórico y no deben convertir
+    // un replay inmutable en una falsa divergencia. Nunca se escribe la fila.
+    var remotoComparable = Object.assign({}, datosRemotos);
+    var localComparable = Object.assign({}, datosLocales || {});
+    delete remotoComparable.empresaId;
+    delete remotoComparable.localId;
+    delete localComparable.empresaId;
+    delete localComparable.localId;
+    return contenidoFilaIgual(remotoComparable, localComparable);
+  }
+  function datosFilaParaServidor(valor, claveColeccion) {
+    if (!valor || typeof valor !== "object") return valor;
+    // Estos movimientos ya viven en movimientos_stock y solo se hidratan en
+    // la colección local como referencia autoritativa. No se duplican en la
+    // tabla histórica heredada movimientos_registro.
+    if (claveColeccion === "movimientos" && valor._pm07Servidor) return null;
+    return contenidoSinMarcasLocales(valor);
+  }
+
+  function registrarRechazoMovimiento(rechazados, fila, error) {
+    rechazados.push({
+      id: fila && fila.id ? fila.id : null,
+      code: error && error.code ? error.code : "MOVIMIENTO_HISTORICO_RECHAZADO",
+      mensaje: error && error.message ? error.message : "movimiento_historico_rechazado"
+    });
+  }
+  function notificarResultadoParcialMovimientos(claveColeccion, rechazados, confirmadas) {
+    if (typeof window === "undefined" || typeof window.dispatchEvent !== "function" || typeof CustomEvent !== "function") return;
+    var resumen = rechazados.map(function (fila) {
+      return (fila.id || "sin-id") + " (" + fila.mensaje + ")";
+    }).join(", ");
+    window.dispatchEvent(new CustomEvent("movimientos-sync-parcial", { detail: {
+      key: claveColeccion,
+      filasRechazadas: rechazados,
+      filasConfirmadas: confirmadas
+    } }));
+    window.dispatchEvent(new CustomEvent("fallo-guardado", { detail: {
+      key: claveColeccion,
+      pendiente: true,
+      parcial: true,
+      filasRechazadas: rechazados,
+      filasConfirmadas: confirmadas,
+      mensaje: "Hay movimientos pendientes de contexto o revisión (" + resumen + "); los demás se han confirmado sin sobrescribir el histórico."
+    } }));
+  }
+
   // Sube a la nube lo que ha cambiado en este equipo, y borra únicamente lo
   // que este equipo ha quitado a propósito (una venta anulada, un albarán
   // anulado). Lo que no conoce, no lo toca: puede venir del otro dispositivo.
   async function sincronizarColeccionPorFila(tabla, listaLocal, claveColeccion) {
-    var filasRemotas = await leerFilasCompletas(tabla);
+    var esMovimientoHistorico = claveColeccion === "movimientos" && tabla === "movimientos_registro";
+    if (esMovimientoHistorico && !Array.isArray(listaLocal)) throw new Error("movimientos_historicos_lista_invalida");
+    var filasRemotas = await leerFilasCompletas(tabla, esMovimientoHistorico);
     var remotoPorId = {};
-    filasRemotas.forEach(function (fila) { remotoPorId[fila.id] = fila.datos; });
+    filasRemotas.forEach(function (fila) {
+      remotoPorId[fila.id] = esMovimientoHistorico ? fila : fila.datos;
+    });
 
     var filasParaGuardar = [];
+    var rechazados = [];
+    var confirmadas = [];
+    var primerError = null;
     listaLocal.forEach(function (x) {
       if (!x || !x.id) return;
+      var datosServidor = datosFilaParaServidor(x, claveColeccion);
+      if (datosServidor === null) return;
+      var existeRemoto = Object.prototype.hasOwnProperty.call(remotoPorId, x.id);
       var enNube = remotoPorId[x.id];
-      if (!enNube || JSON.stringify(enNube) !== JSON.stringify(x)) {
-        filasParaGuardar.push({
+      if (esMovimientoHistorico && existeRemoto) {
+        // El historial confirmado es inmutable; ninguna caché desactualizada
+        // puede reescribir una fila de este ledger heredado.
+        if (!contextoMovimientoHistoricoIgual(enNube, datosServidor)) {
+          var conflicto = new Error("movimiento_historico_divergente");
+          conflicto.code = "MOVIMIENTO_HISTORICO_DIVERGENTE";
+          registrarRechazoMovimiento(rechazados, x, conflicto);
+          return;
+        }
+        confirmadas.push(x.id);
+        return;
+      }
+      if (!existeRemoto || !contenidoFilaIgual(enNube, datosServidor)) {
+        var nuevaFila = {
           id: x.id,
-          fecha: x.fecha || new Date().toISOString().slice(0, 10),
-          datos: x,
-        });
+          fecha: datosServidor.fecha || new Date().toISOString().slice(0, 10),
+          datos: datosServidor,
+        };
+        if (esMovimientoHistorico) {
+          // No aceptar un tenant inferido silenciosamente por triggers.
+          // El servidor vuelve a autorizar la pareja empresa/local mediante RLS.
+          var empresaId = typeof datosServidor.empresaId === "string" ? datosServidor.empresaId.trim() : "";
+          var localId = typeof datosServidor.localId === "string" ? datosServidor.localId.trim() : "";
+          if (!empresaId || empresaId.toUpperCase() === "TODOS" || empresaId.toUpperCase() === "TODAS LAS EMPRESAS" ||
+              !localId || localId.toUpperCase() === "TODOS" || localId.toUpperCase() === "TODOS LOS LOCALES") {
+            var sinContexto = new Error("movimiento_historico_sin_empresa_local");
+            sinContexto.code = "MOVIMIENTO_HISTORICO_SIN_CONTEXTO";
+            registrarRechazoMovimiento(rechazados, x, sinContexto);
+            return;
+          }
+          nuevaFila.empresa_id = empresaId;
+          nuevaFila.local_id = localId;
+        }
+        filasParaGuardar.push(nuevaFila);
       }
     });
 
@@ -450,19 +767,62 @@
         // fila nueva tiene que pasar por la RPC controlada, una por una,
         // para que ninguna entrada pueda fabricarse sin pasar por ahí.
         for (var i = 0; i < filasParaGuardar.length; i++) {
-          var d = filasParaGuardar[i].datos;
-          var rRpc = await window.__nubeCliente.rpc("registrar_auditoria", {
-            p_id: d.id, p_usuario: d.usuario, p_accion: d.accion, p_detalle: d.detalle,
-            p_fecha: d.fecha, p_hora: d.hora, p_empresa_id: d.empresaId || null, p_local_id: d.localId || null,
-          });
-          if (rRpc.error) throw rRpc.error;
+          try {
+            var d = filasParaGuardar[i].datos;
+            var rRpc = await window.__nubeCliente.rpc("registrar_auditoria", {
+              p_id: d.id, p_usuario: d.usuario, p_accion: d.accion, p_detalle: d.detalle,
+              p_fecha: d.fecha, p_hora: d.hora, p_empresa_id: d.empresaId || null, p_local_id: d.localId || null,
+            });
+            if (rRpc.error) throw rRpc.error;
+            confirmadas.push(filasParaGuardar[i].id);
+          } catch (e) {
+            if (!primerError) primerError = e;
+            if (esMovimientoHistorico) registrarRechazoMovimiento(rechazados, filasParaGuardar[i], e);
+          }
         }
       } else {
-        var rUp = await window.__nubeCliente.from(tabla).upsert(filasParaGuardar);
-        if (rUp.error) throw rUp.error;
+        // Una fila fallida no puede impedir que las demás lleguen. En el
+        // siguiente intento, las ya confirmadas desaparecerán de la lista
+        // gracias a la comparación canónica anterior.
+        for (var j = 0; j < filasParaGuardar.length; j++) {
+          try {
+            // INSERT evita que el cliente haga UPDATE a movimientos ya confirmados.
+            // La tabla heredada no tiene una política de UPDATE por diseño.
+            var rUp = esMovimientoHistorico
+              ? await window.__nubeCliente.from(tabla).insert([filasParaGuardar[j]])
+              : await window.__nubeCliente.from(tabla).upsert([filasParaGuardar[j]]);
+            if (rUp.error && esMovimientoHistorico && rUp.error.code === "23505") {
+              // Dos equipos pueden insertar simultáneamente el mismo id.
+              // Solo se considera replay válido si la fila persistida coincide.
+              var comprobacion = await window.__nubeCliente.from(tabla)
+                .select("id,datos,empresa_id,local_id").eq("id", filasParaGuardar[j].id).maybeSingle();
+              if (!comprobacion.error && comprobacion.data &&
+                  contextoMovimientoHistoricoIgual(comprobacion.data, filasParaGuardar[j].datos)) {
+                confirmadas.push(filasParaGuardar[j].id);
+                continue;
+              }
+            }
+            if (rUp.error) throw rUp.error;
+            confirmadas.push(filasParaGuardar[j].id);
+          } catch (e2) {
+            if (!primerError) primerError = e2;
+            if (esMovimientoHistorico) registrarRechazoMovimiento(rechazados, filasParaGuardar[j], e2);
+          }
+        }
       }
     }
-    if (idsParaBorrar.length > 0) {
+    if (rechazados.length > 0) {
+      notificarResultadoParcialMovimientos(claveColeccion, rechazados, confirmadas);
+      var parcial = new Error("movimientos_historicos_rechazados: " + rechazados.map(function (fila) {
+        return (fila.id || "sin-id") + " (" + fila.mensaje + ")";
+      }).join(", "));
+      parcial.code = "MOVIMIENTOS_HISTORICOS_PARCIAL";
+      parcial.rechazados = rechazados;
+      parcial.confirmadas = confirmadas;
+      throw parcial;
+    }
+    if (primerError) throw primerError;
+    if (!esMovimientoHistorico && idsParaBorrar.length > 0) {
       var rDel = await window.__nubeCliente.from(tabla).delete().in("id", idsParaBorrar);
       if (rDel.error) throw rDel.error;
     }
@@ -568,13 +928,155 @@
     return { resultado: ahora, conflictos: [] }; // números, textos y preferencias del propio equipo
   }
 
+  function normalizarListaProductosParaRpc(lista) {
+    if (!Array.isArray(lista)) return lista;
+    var porId = {};
+    lista.forEach(function (producto) {
+      if (producto && producto.id) porId[String(producto.id)] = producto;
+    });
+    return Object.keys(porId).sort().map(function (id) { return porId[id]; });
+  }
+
+  // La referencia de productos se conserva hasta que el servidor confirma el
+  // guardado. Si hay varios set seguidos u ocurre un corte de red, el siguiente
+  // intento compara contra la última lista confirmada, no contra otro borrador
+  // local. Se guarda fuera de LOCAL para que no aparezca como colección de la app.
+  var BASE_PRODUCTOS_PENDIENTE = "almacen__productos_base_pendiente_p3c";
+  var VENTA_PRODUCTOS_PENDIENTE = "almacen__productos_venta_pendiente_p3c";
+  function leerVentaProductos() {
+    try {
+      var v = JSON.parse(localStorage.getItem(VENTA_PRODUCTOS_PENDIENTE) || "{}");
+      return v && typeof v === "object" && !Array.isArray(v) ? v : {};
+    } catch (e) { return {}; }
+  }
+  function recordarVentaProductos(lista) {
+    if (!Array.isArray(lista) || !lista.length) return;
+    var mapa = leerVentaProductos();
+    lista.forEach(function (p) { if (p && p.id) mapa[String(p.id)] = p; });
+    localStorage.setItem(VENTA_PRODUCTOS_PENDIENTE, JSON.stringify(mapa));
+  }
+  function confirmarVentaProductos(enviados) {
+    var mapa = leerVentaProductos();
+    enviados.forEach(function (p) {
+      if (p && p.id && JSON.stringify(mapa[String(p.id)]) === JSON.stringify(p)) delete mapa[String(p.id)];
+    });
+    if (Object.keys(mapa).length) localStorage.setItem(VENTA_PRODUCTOS_PENDIENTE, JSON.stringify(mapa));
+    else localStorage.removeItem(VENTA_PRODUCTOS_PENDIENTE);
+  }
+  function recordarBaseProductos(anterior) {
+    if (localStorage.getItem(BASE_PRODUCTOS_PENDIENTE) === null) {
+      localStorage.setItem(BASE_PRODUCTOS_PENDIENTE, anterior === null ? "[]" : anterior);
+    }
+  }
+  function confirmarBaseProductos(valorConfirmado) {
+    var actual = null;
+    try { actual = LOCAL.get("productos"); } catch (e) {}
+    if (actual === valorConfirmado) localStorage.removeItem(BASE_PRODUCTOS_PENDIENTE);
+    else localStorage.setItem(BASE_PRODUCTOS_PENDIENTE, valorConfirmado);
+  }
+  function nuevaOperacionProductos() {
+    var id = "";
+    try { if (window.crypto && window.crypto.randomUUID) id = window.crypto.randomUUID(); } catch (e) {}
+    if (!id) id = Date.now().toString(36) + "." + Math.random().toString(36).slice(2);
+    return "p3c.lista." + id;
+  }
+
+  // Las filas de almacen_kv están segregadas por empresa. El contexto lo
+  // publica fuente.js cuando ya se ha resuelto el local activo; nunca se
+  // inventa una empresa ni se escribe una fila global sin empresa_id.
+  function contextoKvActual() {
+    var empresaId = typeof window.__empresaActivaIdParaContexto === "string"
+      ? window.__empresaActivaIdParaContexto.trim()
+      : "";
+    var localId = typeof window.__localActivoIdParaContexto === "string"
+      ? window.__localActivoIdParaContexto.trim()
+      : "";
+    return { empresaId: empresaId || null, localId: localId || null };
+  }
+
+  function consultaKvPorClave(key, columnas) {
+    var consulta = window.__nubeCliente.from("almacen_kv")
+      .select(columnas)
+      .eq("key", key);
+    var contexto = contextoKvActual();
+    if (contexto.empresaId) consulta = consulta.eq("empresa_id", contexto.empresaId);
+    else consulta = consulta.eq("empresa_id", "__contexto_empresa_pendiente__");
+    return consulta;
+  }
+
   async function guardarBloque(key, textoAnterior, textoNuevo) {
     var nuevo = JSON.parse(textoNuevo);
+    if (key === "productos") nuevo = normalizarListaProductosParaRpc(nuevo);
     var aSubir = nuevo;
+    var contexto = contextoKvActual();
+    if (!contexto.empresaId) throw new Error("No hay empresa activa para guardar " + key + " en la nube");
+
+    if (key === "productos") {
+      var textoBase = localStorage.getItem(BASE_PRODUCTOS_PENDIENTE);
+      if (textoBase === null) textoBase = textoAnterior;
+      var base = textoBase === null ? [] : JSON.parse(textoBase);
+      base = normalizarListaProductosParaRpc(base);
+      // Recupera una base antigua que quedó vacía tras un corte o una
+      // primera carga incompleta. Sin esta lectura, la RPC interpreta todos
+      // los productos ya existentes como altas nuevas y rechaza el reintento.
+      if (Array.isArray(base) && base.length === 0 && nuevo.length > 0 &&
+          (textoBase === null || textoBase === "[]")) {
+        var rBaseActual = await consultaKvPorClave("productos", "value").maybeSingle();
+        if (rBaseActual.error) throw rBaseActual.error;
+        if (rBaseActual.data && Array.isArray(rBaseActual.data.value)) {
+          base = normalizarListaProductosParaRpc(rBaseActual.data.value);
+        }
+      }
+      var mapaVenta = leerVentaProductos();
+      var idsNuevo = {};
+      nuevo.forEach(function (producto) { if (producto && producto.id) idsNuevo[String(producto.id)] = true; });
+      var ventaPendiente = Object.keys(mapaVenta).sort().map(function (id) { return mapaVenta[id]; }).filter(function (producto) {
+        return producto && producto.id && idsNuevo[String(producto.id)];
+      });
+      var rProductos = await window.__nubeCliente.rpc("abc_productos_guardar_lista", {
+        p_operation_id: nuevaOperacionProductos(), p_base: base, p_nuevo: nuevo,
+        p_venta: ventaPendiente, p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId
+      });
+      if (!rProductos.error) {
+        if (!rProductos.data || rProductos.data.ok !== true) throw new Error("Respuesta inesperada al guardar productos");
+        var listaConfirmada = rProductos.data.lista_confirmada;
+        if (!Array.isArray(listaConfirmada)) {
+          // Compatibilidad con instalaciones que aún tengan la primera RPC:
+          // una lectura posterior al COMMIT obtiene la lista final en nube.
+          var rConfirmada = await consultaKvPorClave("productos", "value").maybeSingle();
+          if (rConfirmada.error) throw rConfirmada.error;
+          listaConfirmada = rConfirmada.data && rConfirmada.data.value;
+        }
+        if (!Array.isArray(listaConfirmada)) throw new Error("Lista confirmada de productos no disponible");
+        var textoConfirmado = JSON.stringify(listaConfirmada);
+        var actualProductos = LOCAL.get("productos");
+        var productosConfirmados = actualProductos === textoNuevo;
+        if (productosConfirmados) {
+          LOCAL.set("productos", textoConfirmado);
+          confirmarBaseProductos(textoConfirmado);
+          try {
+            window.dispatchEvent(new CustomEvent("productos-servidor-confirmados", {
+              detail: { enviados: nuevo, confirmados: listaConfirmada }
+            }));
+          } catch (e) {}
+        }
+        // Si hay un borrador más reciente, conserva su base original. La
+        // siguiente subida compara contra ella y detecta conflictos reales.
+        confirmarVentaProductos(ventaPendiente);
+        return {
+          catalogoYaSincronizado: rProductos.data.catalogo_ya_sincronizado === true,
+          productosConfirmados: productosConfirmados,
+          listaConfirmada: productosConfirmados ? listaConfirmada : null
+        };
+      }
+      // Antes de desplegar P3c, producción sigue por el camino heredado.
+      // Un rechazo real de la RPC no debe acabar en un upsert inseguro.
+      if (rProductos.error.code !== "PGRST202" && rProductos.error.code !== "42883") throw rProductos.error;
+    }
 
     if (!SIN_FUSION[key]) {
-      var rLee = await window.__nubeCliente.from("almacen_kv")
-        .select("value").eq("key", key).maybeSingle();
+      var rLee = await consultaKvPorClave(key, "value").maybeSingle();
       if (rLee.error) throw rLee.error;
       var enNube = rLee.data ? rLee.data.value : null;
       var antes = null;
@@ -591,8 +1093,17 @@
       }
     }
 
-    var rSube = await window.__nubeCliente.from("almacen_kv").upsert({ key: key, value: aSubir });
+    var rSube = await window.__nubeCliente.from("almacen_kv").upsert({
+      empresa_id: contexto.empresaId,
+      key: key,
+      value: aSubir,
+      local_id: null
+    });
     if (rSube.error) throw rSube.error;
+    if (key === "productos") {
+      confirmarBaseProductos(textoNuevo);
+      localStorage.removeItem(VENTA_PRODUCTOS_PENDIENTE);
+    }
   }
 
   // --- Cola de subidas por clave ---
@@ -616,6 +1127,48 @@
     return actual;
   }
 
+  // Las escrituras de almacen_kv comparten una misma tabla y sus políticas
+  // RLS/triggers. Durante el arranque había un saveKey por cada estado de
+  // React, todos a la vez; esa ráfaga dejaba el upsert de localActivoId
+  // esperando hasta que conTiempoLimite lo cancelaba. Se mantiene la cola
+  // por clave para fusionar cambios consecutivos, pero las claves KV se
+  // sirven además por una cola global: localActivoId tiene prioridad y cada
+  // tarea lleva su propio límite para que un fallo no bloquee las siguientes.
+  var colaSubidaKv = [];
+  var subiendoKv = false;
+  var drenajeKvProgramado = false;
+  function drenarColaKv() {
+    if (subiendoKv) return;
+    subiendoKv = true;
+    (async function () {
+      while (colaSubidaKv.length) {
+        var item = colaSubidaKv.shift();
+        try {
+          item.resolve(await item.tarea());
+        } catch (e) {
+          item.reject(e);
+        }
+      }
+      subiendoKv = false;
+    })();
+  }
+  function programarDrenajeKv() {
+    if (drenajeKvProgramado) return;
+    drenajeKvProgramado = true;
+    setTimeout(function () {
+      drenajeKvProgramado = false;
+      drenarColaKv();
+    }, 0);
+  }
+  function encolarKv(key, tarea) {
+    return new Promise(function (resolve, reject) {
+      var item = { key: key, tarea: tarea, resolve: resolve, reject: reject };
+      if (key === "localActivoId") colaSubidaKv.unshift(item);
+      else colaSubidaKv.push(item);
+      programarDrenajeKv();
+    });
+  }
+
   window.storage = {
     // Leer: si hay nube, se prefiere (trae lo que hayan hecho en otro
     // dispositivo) y se deja copia local. Si no, se lee de local.
@@ -633,7 +1186,8 @@
       if (esLedgerRpc && !esPagosFactura) {
         return { key: key, value: leerLocalOpcional(cacheKey), shared: false };
       }
-      if (window.__nubeActiva && window.__nubeCliente && pendientes().indexOf(key) === -1) {
+      var pendienteActual = pendientes().indexOf(key) !== -1 && pendienteEsDelContexto(key);
+      if (window.__nubeActiva && window.__nubeCliente && !pendienteActual && !tieneMarcaDenegado(key)) {
         try {
           var lista;
           if (esPagosFactura) {
@@ -646,7 +1200,7 @@
             lista = await conTiempoLimite(leerColeccionPorFila(tablaEspecial, key), ESPERA_NUBE_MS);
           } else {
             var r = await conTiempoLimite(
-              window.__nubeCliente.from("almacen_kv").select("value").eq("key", key).maybeSingle(),
+              consultaKvPorClave(key, "value").maybeSingle(),
               ESPERA_NUBE_MS
             );
             if (r.error) throw r.error;
@@ -673,17 +1227,22 @@
 
     // Guardar: primero en el dispositivo (instantáneo y sin fallo posible),
     // y después se intenta subir. Si no sube, queda en la cola de pendientes.
-    async set(key, value) {
+    async set(key, value, _shared, opcionesP3c) {
       var tablaEmpresa = TABLAS_EMPRESA[key];
       var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
       var esLedgerRpc = !!LEDGERS_RPC[key];
       var cacheKey = await claveCacheLocal(key);
+      var confirmadoServidor = false;
+      var pendienteSincronizacion = false;
 
       // Qué había guardado antes en este equipo. Sirve para saber qué se ha
       // quitado y para poder dejarlo como estaba si el guardado no cabe.
       var anterior = null;
       try { anterior = LOCAL.get(cacheKey); } catch (e) { anterior = null; }
+
+      if (key === "productos" && anterior !== value) recordarBaseProductos(anterior);
+      if (key === "productos" && opcionesP3c && opcionesP3c.venta) recordarVentaProductos(opcionesP3c.venta);
 
       // El almacenamiento del navegador tiene un tope (unos 5 MB en total).
       // Antes se daba por hecho que guardar en local "no puede fallar"; si
@@ -699,43 +1258,65 @@
 
       if (tablaEspecial && !falloLocal) anotarBorradosLocales(key, anterior, value);
 
+      // Estas preferencias solo viven en este navegador. Se limpian también
+      // de colas antiguas para que una versión previa no vuelva a intentar
+      // subirlas ni muestre un aviso de sincronización pendiente.
+      if (esClaveSoloDispositivo(key)) {
+        quitarPendiente(key);
+        quitarDenegado(key);
+        if (falloLocal) throw falloLocal;
+        return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
+      }
+
       // Los ledgers remotos solo se escriben mediante RPC transaccional. El set
       // reactivo conserva la copia local; nunca hace upsert directo ni fallback.
       if (esLedgerRpc) {
         quitarPendiente(key);
         if (falloLocal) throw falloLocal;
-        return { key: key, value: value, shared: false };
+        return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
       }
 
+      if (key === "productos" && opcionesP3c && opcionesP3c.forzarReintento) quitarDenegado(key);
       if (window.__nubeActiva && window.__nubeCliente) {
-        try {
-          if (tablaEmpresa) {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(value)); }),
-              ESPERA_NUBE_MS
-            );
-          } else if (tablaEmpresaLocal) {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return sincronizarColeccionEmpresaLocal(tablaEmpresaLocal, JSON.parse(value), key); }),
-              ESPERA_NUBE_MS
-            );
-          } else if (tablaEspecial) {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(value), key); }),
-              ESPERA_NUBE_MS
-            );
-          } else {
-            await conTiempoLimite(
-              encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }),
-              ESPERA_NUBE_MS
-            );
+        var resultadoProductos = null;
+        var catalogoBloqueado = false;
+        // Si el servidor rechazó esta clave por permisos hace poco no se insiste:
+        // queda guardada en este equipo y se reintenta pasado el plazo.
+        if (key === "productos" && denegadoVigente(key)) catalogoBloqueado = true;
+        if (!denegadoVigente(key)) {
+          try {
+            if (tablaEmpresa) {
+              await conTiempoLimite(
+                encolarPorClave(key, function () { return sincronizarColeccionEmpresa(tablaEmpresa, JSON.parse(value)); }),
+                ESPERA_NUBE_MS
+              );
+            } else if (tablaEmpresaLocal) {
+              await conTiempoLimite(
+                encolarPorClave(key, function () { return sincronizarColeccionEmpresaLocal(tablaEmpresaLocal, JSON.parse(value), key); }),
+                ESPERA_NUBE_MS
+              );
+            } else if (tablaEspecial) {
+              await conTiempoLimite(
+                encolarPorClave(key, function () { return sincronizarColeccionPorFila(tablaEspecial, JSON.parse(value), key); }),
+                ESPERA_NUBE_MS
+              );
+            } else {
+              resultadoProductos = await encolarKv(key, function () {
+                return conTiempoLimite(encolarPorClave(key, function () { return guardarBloque(key, anterior, value); }), ESPERA_NUBE_MS);
+              });
+            }
+            quitarPendiente(key);
+            quitarDenegado(key);
+            confirmadoServidor = true;
+          } catch (e) {
+            if (key === "productos") catalogoBloqueado = true;
+            if (esRechazoPorPermisos(e)) marcarDenegado(key, e);
+            else { marcarPendiente(key, value, cacheKey); pendienteSincronizacion = true; }
           }
-          quitarPendiente(key);
-        } catch (e) {
-          marcarPendiente(key);
         }
       } else if (!window.__modoPruebasLocal) {
-        marcarPendiente(key);
+        marcarPendiente(key, value, cacheKey);
+        pendienteSincronizacion = true;
       }
 
       // Si no cupo en el equipo, se avisa AHORA — pero después de haber
@@ -746,7 +1327,15 @@
           "Suele significar que hay algo muy grande guardado, como una foto."
         );
       }
-      return { key: key, value: value, shared: false };
+      return {
+        key: key, value: value, shared: false,
+        confirmadoServidor: confirmadoServidor,
+        pendienteSincronizacion: pendienteSincronizacion || (pendientes().indexOf(key) !== -1 && pendienteEsDelContexto(key)),
+        catalogoYaSincronizado: !!(resultadoProductos && resultadoProductos.catalogoYaSincronizado),
+        catalogoBloqueado: !!catalogoBloqueado,
+        productosConfirmados: !!(resultadoProductos && resultadoProductos.productosConfirmados),
+        listaConfirmada: resultadoProductos && resultadoProductos.listaConfirmada
+      };
     },
 
     async delete(key) {
@@ -765,10 +1354,19 @@
           } else if (tablaEmpresaLocal) {
             var rFinDel = await conTiempoLimite(window.__nubeCliente.from(tablaEmpresaLocal).delete().neq("id", ""), ESPERA_NUBE_MS);
             if (rFinDel.error) throw rFinDel.error;
+          } else if (tablaEspecial && key === "movimientos") {
+            // Limpiar la caché local nunca borra el historial remoto.
           } else if (tablaEspecial) {
             await conTiempoLimite(window.__nubeCliente.from(tablaEspecial).delete().neq("id", ""), ESPERA_NUBE_MS);
           } else {
-            await conTiempoLimite(window.__nubeCliente.from("almacen_kv").delete().eq("key", key), ESPERA_NUBE_MS);
+            var contextoBorrado = contextoKvActual();
+            if (contextoBorrado.empresaId) {
+              await conTiempoLimite(
+                window.__nubeCliente.from("almacen_kv")
+                  .delete().eq("empresa_id", contextoBorrado.empresaId).eq("key", key),
+                ESPERA_NUBE_MS
+              );
+            }
           }
         } catch (e) { /* el borrado local ya está hecho */ }
       }

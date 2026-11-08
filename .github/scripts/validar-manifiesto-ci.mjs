@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const INVENTORY = 175;
+const INVENTORY = 328;
 const CLASSES = ['active_contract', 'historical_expected_fail', 'utility', 'diagnostic'];
 const ENVIRONMENTS = ['node', 'postgres', 'pglite', 'supabase_full_stack'];
 const PAIRS = {
@@ -12,10 +12,10 @@ const PAIRS = {
   pglite: ['active_contract', 'utility'],
   supabase_full_stack: ['active_contract'],
 };
-const COUNTS = { active_contract: 161, historical_expected_fail: 1, utility: 8, diagnostic: 5 };
+const COUNTS = { active_contract: 311, historical_expected_fail: 1, utility: 11, diagnostic: 5 };
 const ENVIRONMENT_COUNTS = {
-  node: { active_contract: 147, historical_expected_fail: 0, utility: 7, diagnostic: 5 },
-  postgres: { active_contract: 10, historical_expected_fail: 1, utility: 0, diagnostic: 0 },
+  node: { active_contract: 279, historical_expected_fail: 0, utility: 10, diagnostic: 5 },
+  postgres: { active_contract: 28, historical_expected_fail: 1, utility: 0, diagnostic: 0 },
   pglite: { active_contract: 1, historical_expected_fail: 0, utility: 1, diagnostic: 0 },
   supabase_full_stack: { active_contract: 3, historical_expected_fail: 0, utility: 0, diagnostic: 0 },
 };
@@ -31,6 +31,7 @@ const A09 = {
   'tests/f3/a09/local-postgres-contract.mjs': ['active_contract', 'postgres'],
   'tests/f3/a09/snapshot-jcs.mjs': ['utility', 'node'],
   'tests/f3/a09/snapshot-jcs.test.mjs': ['active_contract', 'node'],
+  'tests/f3/a09/stage1-aud009-aud003-contract.mjs': ['active_contract', 'node'],
 };
 const A10 = {
   'tests/f3/a10/a10-ui.test.mjs': ['active_contract', 'node'],
@@ -173,7 +174,7 @@ function selfTest(manifest, realPaths) {
   spoofed.push({ ...duplicate, environment: 'unknown_environment' });
   const spoofedActive = spoofed.filter((entry) => entry.classification === 'active_contract').length;
   if (spoofed.length !== INVENTORY || spoofedActive !== COUNTS.active_contract) {
-    throw new Error('El caso combinado no conserva 173 entradas y 159 contratos activos.');
+    throw new Error('El caso combinado no conserva 328 entradas y 311 contratos activos.');
   }
   const spoofedCodes = new Set(validate({ ...manifest, entries: spoofed }, realPaths).issues.map((issue) => issue.code));
   if (!['invalid_environment', 'duplicate_path', 'missing_path'].every((code) => spoofedCodes.has(code))) {

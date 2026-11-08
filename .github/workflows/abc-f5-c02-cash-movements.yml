@@ -1,0 +1,33 @@
+name: "ABC F5 C02 -- movimientos de caja trazables"
+
+on:
+  push:
+    branches: [codex/f7-b06-b07-qa-20261008]
+    paths:
+      - "tests/f5/c02/**"
+      - "tests/pm08/frontend-contract.mjs"
+      - "supabase/migrations/20260924002000_abc_f2_m04b_movimientos_caja.sql"
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
+      - ".github/workflows/abc-f5-c02-cash-movements.yml"
+  pull_request:
+    paths:
+      - "tests/f5/c02/**"
+      - "tests/pm08/frontend-contract.mjs"
+      - "supabase/migrations/20260924002000_abc_f2_m04b_movimientos_caja.sql"
+      - "source-recovery/fuente-recuperado.js"
+      - "fuente.js"
+      - ".github/workflows/abc-f5-c02-cash-movements.yml"
+
+jobs:
+  c02-cash-movements:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - name: Validar contrato PM08 y C02
+        run: |
+          node tests/pm08/frontend-contract.mjs
+          node tests/f5/c02/c02-ui-contract.mjs

@@ -1,0 +1,56 @@
+{
+  "marker": "C05_RECONCILIACION_LIMPIA",
+  "environment": "QA",
+  "qa_only": true,
+  "queue_errors": 0,
+  "documents": [
+    {
+      "number": 1,
+      "status": "EMITIDO",
+      "currency_code": "EUR",
+      "subtotal": 10,
+      "tax": 2.1,
+      "total": 12.1,
+      "source": {
+        "exists": true,
+        "status": "ABIERTA",
+        "line_count": 1,
+        "subtotal": 10,
+        "tax": 2.1,
+        "total": 12.1
+      }
+    },
+    {
+      "number": 2,
+      "status": "EMITIDO",
+      "currency_code": "EUR",
+      "subtotal": 20,
+      "tax": 4.2,
+      "total": 24.2,
+      "source": {
+        "exists": true,
+        "status": "ABIERTA",
+        "line_count": 1,
+        "subtotal": 20,
+        "tax": 4.2,
+        "total": 24.2
+      }
+    },
+    {
+      "number": 3,
+      "status": "EMITIDO",
+      "currency_code": "EUR",
+      "subtotal": 30,
+      "tax": 6.3,
+      "total": 36.3,
+      "source": {
+        "exists": true,
+        "status": "ABIERTA",
+        "line_count": 1,
+        "subtotal": 30,
+        "tax": 6.3,
+        "total": 36.3
+      }
+    }
+  ]
+}

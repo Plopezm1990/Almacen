@@ -53,7 +53,10 @@ for (const marker of [
   const src = fs.readFileSync('fuente.js', 'utf8');
   const ini = src.indexOf('function crearLogicaProveedores(');
   assert.ok(ini >= 0, 'crearLogicaProveedores no encontrada');
-  const fin = src.indexOf('function validarEmpleadoPM10(', ini);
+  // ALB-PROV: el baseline se refiere a addProveedor/updateProveedor/deleteProveedor (las funciones de siempre); las funciones nuevas de alta
+  // automática desde la foto del albarán, que van detrás, sí manejan correo y días de pago (limpiados y validados por validarProveedorPM10).
+  const finNuevas = src.indexOf('function addProveedorDesdeAlbaran(', ini);
+  const fin = finNuevas > ini ? finNuevas : src.indexOf('function validarEmpleadoPM10(', ini);
   const cuerpo = src.slice(ini, fin);
   assert.doesNotMatch(cuerpo, /email/i, 'baseline LA-016: hoy no hay ninguna validación de email en addProveedor/updateProveedor');
   assert.doesNotMatch(cuerpo, /leadTime|diasPago/, 'baseline LA-016: hoy no hay ninguna validación de días en addProveedor/updateProveedor');

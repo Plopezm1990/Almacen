@@ -86,7 +86,13 @@
           clave.indexOf("almacen:") === 0 ||
           clave.indexOf("almacen__pendientes") === 0 ||
           clave.indexOf("almacen__borrados:") === 0 ||
-          clave === CLAVE_CONTEXTO_SEGURO
+          // Con una generación nueva no debe sobrevivir nada de la copia anterior (marcas de rechazo, semilla del contexto...).
+          clave.indexOf("almacen__") === 0 ||
+          clave === CLAVE_CONTEXTO_SEGURO ||
+          // Las copias apartadas de otras cuentas pertenecen a la instalación anterior: tampoco pueden volver.
+          clave.indexOf("la_suite_copia_cuenta_v1:") === 0 ||
+          clave === "la_suite_copia_cuenta_dueno_v1" ||
+          clave === "la_suite_copia_cuenta_indice_v1"
         ) {
           claves.push(clave);
         }
@@ -136,11 +142,24 @@
       guardarGeneracionLocal(valor);
     }
 
+    // Copia local por cuenta (D01): la copia viva del navegador pasa a ser solo de esta cuenta. Si era de otra, se
+    // aparta entera (no se borra) y se devuelve la de esta cuenta si la tenía. Si algo cambió, quien llama recarga
+    // la página (igual que con un cambio de generación) para que el programa arranque con la copia correcta, y la
+    // barrera de sincronización no se abre en esta pasada.
+    var copiaCambiada = false;
+    if (typeof window.__laOwnerBootstrapSepararCopiaLocal === "function") {
+      copiaCambiada = window.__laOwnerBootstrapSepararCopiaLocal(sesion.user.id).cambio === true;
+    }
+
     // Este punto solo decide si la copia local pertenece a la instalación
     // vigente. La autorización de la cuenta continúa en el guard existente.
     // No recreamos perfiles ni promovemos cuentas en esta fase.
-    window.__instalacionSyncPermitida = true;
-    return { estado: "generacion_validada", generacionCambiada: generacionCambiada };
+    if (!copiaCambiada) window.__instalacionSyncPermitida = true;
+    return {
+      estado: "generacion_validada",
+      generacionCambiada: generacionCambiada || copiaCambiada,
+      copiaLocalCambiada: copiaCambiada
+    };
   }
 
   window.__prepararSesionPostReset = prepararSesionPostReset;
@@ -208,7 +227,11 @@
   var contextoCache = null;
   var contextoUsuarioId = null;
   var contextoFecha = 0;
+  var contextoLocalIdUsado = null;
+  var permisosConsultaCache = Object.create(null);
+  var permisosConsultaEnVuelo = Object.create(null);
   var CONTEXTO_TTL_MS = 30000;
+  var PERMISOS_CONSULTA_TTL_MS = 5000;
   var CACHE_LOCAL = "chocoloyos_contexto_operativo_seguro_v1";
 
   var CLAVES_COMUNES = [
@@ -287,6 +310,48 @@
     throw new Error("Cliente Supabase no disponible");
   }
 
+  function clavePermisoConsultaPM13(contexto, clave) {
+    return [
+      contexto && contexto.empresaId || "",
+      contexto && contexto.localId || "",
+      contexto && contexto.empleado && contexto.empleado.id || "",
+      clave
+    ].join("|");
+  }
+
+  async function permisoConsultaPM13(contexto, clave) {
+    if (!contexto || contexto.rol === "Propietario") return true;
+    if (!window.__nubeActiva || !contexto.empresaId || !contexto.localId) return false;
+    var cacheKey = clavePermisoConsultaPM13(contexto, clave);
+    var ahora = Date.now();
+    var cacheado = permisosConsultaCache[cacheKey];
+    if (cacheado && ahora - cacheado.fecha < PERMISOS_CONSULTA_TTL_MS) return cacheado.permitido;
+    if (permisosConsultaEnVuelo[cacheKey]) return permisosConsultaEnVuelo[cacheKey];
+    var promesa = (async function () {
+      try {
+        var supabase = await clienteSupabase();
+        var respuesta = await supabase.rpc("pm13_resolver_cargo_permiso", {
+          p_empresa_id: contexto.empresaId,
+          p_local_id: contexto.localId,
+          p_clave: clave,
+          p_accion: "CONSULTAR",
+          p_alcance: "LOCAL",
+          p_empleado_id: contexto.empleado && contexto.empleado.id || null
+        });
+        var permitido = !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
+        permisosConsultaCache[cacheKey] = { permitido: permitido, fecha: Date.now() };
+        return permitido;
+      } catch (e) {
+        permisosConsultaCache[cacheKey] = { permitido: false, fecha: Date.now() };
+        return false;
+      } finally {
+        delete permisosConsultaEnVuelo[cacheKey];
+      }
+    })();
+    permisosConsultaEnVuelo[cacheKey] = promesa;
+    return promesa;
+  }
+
   function guardarContextoLocal(userId, contexto) {
     if (!userId || !contexto || !contexto.rol) return;
     try {
@@ -298,11 +363,12 @@
     } catch (e) {}
   }
 
-  function leerContextoLocal(userId) {
+  function leerContextoLocal(userId, localIdSolicitado) {
     if (!userId) return null;
     try {
       var guardado = JSON.parse(localStorage.getItem(CACHE_LOCAL) || "null");
       if (!guardado || guardado.userId !== userId || !guardado.contexto || !guardado.contexto.rol) return null;
+      if (localIdSolicitado && String(guardado.contexto.localId || "") !== String(localIdSolicitado)) return null;
       return guardado.contexto;
     } catch (e) {
       return null;
@@ -344,9 +410,12 @@ function modoLocalNoReclamado() {
     var userId = sesion && sesion.user ? sesion.user.id : null;
     if (!userId) return null;
 
+    var localIdSolicitado = typeof window.__localActivoIdParaContexto === "string" && window.__localActivoIdParaContexto
+      ? window.__localActivoIdParaContexto : null;
     var ahora = Date.now();
     if (
       !forzar && contextoCache && contextoUsuarioId === userId &&
+      contextoLocalIdUsado === localIdSolicitado &&
       ahora - contextoFecha < CONTEXTO_TTL_MS
     ) {
       return contextoCache;
@@ -354,11 +423,14 @@ function modoLocalNoReclamado() {
 
     if (window.__nubeActiva) {
       try {
-        var respuesta = await supabase.rpc("obtener_contexto_operativo");
+        var respuesta = localIdSolicitado
+          ? await supabase.rpc("obtener_contexto_operativo", { p_local_id: localIdSolicitado })
+          : await supabase.rpc("obtener_contexto_operativo");
         if (!respuesta.error && respuesta.data && respuesta.data.rol) {
           contextoCache = respuesta.data;
           contextoUsuarioId = userId;
           contextoFecha = ahora;
+          contextoLocalIdUsado = localIdSolicitado;
           guardarContextoLocal(userId, contextoCache);
           return contextoCache;
         }
@@ -368,11 +440,12 @@ function modoLocalNoReclamado() {
     // Sin red o ante un fallo transitorio se usa únicamente el contexto
     // REDUCIDO que ya fue verificado para esta misma cuenta. Nunca se recupera
     // aquí un blob empresarial completo.
-    var local = leerContextoLocal(userId);
+    var local = leerContextoLocal(userId, localIdSolicitado);
     if (local) {
       contextoCache = local;
       contextoUsuarioId = userId;
       contextoFecha = ahora;
+      contextoLocalIdUsado = local.localId || null;
       return local;
     }
     return null;
@@ -415,6 +488,25 @@ function modoLocalNoReclamado() {
     }
   }
 
+  function filtrarListaAlLocal(lista, contexto) {
+    var localId = contexto && contexto.localId ? String(contexto.localId) : "";
+    if (!Array.isArray(lista) || !localId) return [];
+    return lista.filter(function (item) {
+      var itemLocalId = item && (item.localId || item.local_id);
+      return itemLocalId && String(itemLocalId) === localId;
+    });
+  }
+
+  async function coleccionDelLocal(key, contexto, shared) {
+    try {
+      var original = await getOriginal(key, shared);
+      if (!original || !original.value) return original || respuestaVacia(key);
+      return respuestaStorage(key, filtrarListaAlLocal(JSON.parse(original.value), contexto));
+    } catch (e) {
+      return respuestaStorage(key, []);
+    }
+  }
+
   window.storage.get = async function (key, shared) {
     if (!CLAVES_CONTROLADAS[key]) return getOriginal(key, shared);
 
@@ -434,7 +526,11 @@ function modoLocalNoReclamado() {
 
     // Sustituciones de mínimo privilegio: el empleado recibe únicamente la
     // parte necesaria para ejecutar su tarea.
+    if (key === "productos") {
+      return coleccionDelLocal(key, contexto, shared);
+    }
     if (key === "empleados") {
+      if (!(await permisoConsultaPM13(contexto, "PM13_PERSONAL_CONSULTAR"))) return respuestaStorage(key, []);
       return respuestaStorage(key, Array.isArray(contexto.empleadosFichaje) ? contexto.empleadosFichaje : []);
     }
     if (key === "proveedores" && (rol === "Cajero/a" || rol === "Churrero/a")) {
@@ -447,21 +543,25 @@ function modoLocalNoReclamado() {
       return respuestaStorage(key, encargosSoloCaja(contexto.cobrosEncargos));
     }
     if (key === "fichajes" && rol !== "Encargado") {
+      if (!(await permisoConsultaPM13(contexto, "PM13_FICHAJE_CONSULTAR"))) return respuestaStorage(key, []);
       return fichajesDelPropioEmpleado(key, contexto, shared);
     }
 
+    if (key === "fichajes" && rol === "Encargado" && !(await permisoConsultaPM13(contexto, "PM13_FICHAJE_CONSULTAR"))) {
+      return respuestaStorage(key, []);
+    }
     if (!puedeLeer(rol, key)) return respuestaVacia(key);
     return getOriginal(key, shared);
   };
 
-  window.storage.set = async function (key, value, shared) {
-    if (!CLAVES_CONTROLADAS[key]) return setOriginal(key, value, shared);
+  window.storage.set = async function (key, value, shared, opcionesP3c) {
+    if (!CLAVES_CONTROLADAS[key]) return setOriginal(key, value, shared, opcionesP3c);
 
     var contexto = null;
     try { contexto = await obtenerContexto(false); } catch (e) {}
     var rol = contexto && contexto.rol;
     if (!rol) {
-    if (modoLocalNoReclamado()) return setOriginal(key, value, shared);
+    if (modoLocalNoReclamado()) return setOriginal(key, value, shared, opcionesP3c);
     return { key: key, value: value, shared: false };
   }
 
@@ -476,7 +576,7 @@ function modoLocalNoReclamado() {
       }
     }
 
-    return setOriginal(key, value, shared);
+    return setOriginal(key, value, shared, opcionesP3c);
   };
 
   if (deleteOriginal) {
@@ -496,6 +596,9 @@ function modoLocalNoReclamado() {
     contextoCache = null;
     contextoUsuarioId = null;
     contextoFecha = 0;
+    contextoLocalIdUsado = null;
+    permisosConsultaCache = Object.create(null);
+    permisosConsultaEnVuelo = Object.create(null);
     return obtenerContexto(true);
   };
 })();
@@ -540,28 +643,5 @@ function modoLocalNoReclamado() {
   setTimeout(comprobarPerfilActivo, 1000);
 })();
 
-// Capa visual temporal para que Prefiltros y Entrevistas no muestren
-// puntuaciones ni recomendaciones automáticas mientras se adapta el bundle
-// principal. No guarda ni modifica datos.
-(function () {
-  "use strict";
-  if (document.querySelector('script[data-seleccion-neutral="1"]')) return;
-  var script = document.createElement("script");
-  script.src = "./seleccion-neutral-patch.js?v=2";
-  script.defer = true;
-  script.setAttribute("data-seleccion-neutral", "1");
-  (document.head || document.documentElement).appendChild(script);
-})();
-
-// UX de autenticación: recuperación de contraseña y cierre de sesión visible
-// para Propietario. Se carga como un parche separado para mantener esta capa
-// de seguridad pequeña y reversible.
-(function () {
-  "use strict";
-  if (document.querySelector('script[data-auth-ux="1"]')) return;
-  var script = document.createElement("script");
-  script.src = "./auth-ux-patch.js?v=1";
-  script.defer = true;
-  script.setAttribute("data-auth-ux", "1");
-  (document.head || document.documentElement).appendChild(script);
-})();
+// PM17 P04: la neutralización de selección y la UX de autenticación ya viven
+// en fuente.js. No se inyectan parches externos desde este runtime.

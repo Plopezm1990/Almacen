@@ -14,8 +14,11 @@ const m03a = readText("supabase/migrations/20260923233000_abc_f2_m03a_autoridad_
 const m04a = readText("supabase/migrations/20260924001000_abc_f2_m04a_caja_sesiones.sql");
 const a11 = readText("supabase/migrations/20260926203000_abc_f3_a02_operating_day_a11.sql");
 
-const headerLines = 14;
-const recoveredBody = recovered.split("\n").slice(headerLines).join("\n");
+// La frontera estable es el inicio del cuerpo de aplicación, no un número
+// fijo de líneas: el encabezado puede crecer al incorporar dependencias del bundle.
+const cuerpoInicio = recovered.indexOf("var C2 = {");
+assert.ok(cuerpoInicio >= 0, "A02.1: falta la frontera var C2 del cuerpo recuperado");
+const recoveredBody = recovered.slice(cuerpoInicio);
 assert.ok(runtime.endsWith(recoveredBody), "A02.1: runtime y fuente recuperada perdieron paridad de cuerpo");
 
 assert.ok(recovered.includes("A02.1 UI -> A03 server authority"), "A02.1: falta marcador del adaptador");
@@ -164,7 +167,13 @@ const forbiddenPrimaryA02 = [
   "checkout_ventas"
 ];
 
-assert.ok(adapter.includes('modalidad: "BARRA"'), "A02.1: VentaRapida debe mapearse explícitamente a BARRA");
+// Pieza 6e (D02, 2/10/2026): la modalidad ya no es una constante «BARRA». La decide resolverModalidadAperturaA02 al crear el registro
+// pendiente: la que elige el cajero y, si no elige, BARRA cuando el local la tiene habilitada (y, si no, la primera habilitada).
+// Si no se puede leer la lista de modalidades, se mantiene el comportamiento anterior: BARRA.
+assert.ok(adapter.includes("modalidad: modalidadApertura,"), "A02.1: el registro pendiente debe llevar la modalidad decidida al crearlo");
+assert.ok(adapter.includes("resolverModalidadAperturaA02(supabase, empresaId, localActivoId, opciones?.modalidad)"), "A02.1: la modalidad se decide con resolverModalidadAperturaA02");
+assert.ok(recovered.includes('if (!habilitadas) return pedida || "BARRA";'), "A02.1: sin lista de modalidades, VentaRapida abre en BARRA como antes");
+assert.ok(recovered.includes('return habilitadas.includes("BARRA") ? "BARRA" : habilitadas[0];'), "A02.1: por defecto BARRA cuando está habilitada");
 assert.ok(adapter.includes("totalServidor"), "A02.1: la confirmación debe usar total devuelto por servidor");
 assert.ok(adapter.includes("pedido_a02_pendiente_distinto"), "A02.1: falta fail-closed ante carrito distinto con operación pendiente");
 const recoveryStart = recovered.indexOf("async function rpcA02ConRecuperacion");
@@ -519,7 +528,7 @@ assert.ok(!guardarPedidoHandler.includes("setShowCobro(true)"), "A02.1 P13: Guar
 const rpcPrimariosA02 = [...adapter.matchAll(/rpcA02ConRecuperacion\(supabase, "([^"]+)"/g)].map((m) => m[1]);
 assert.deepEqual(
   rpcPrimariosA02,
-  ["abc_abrir_cuenta", "abc_crear_pedido", "abc_agregar_linea_pedido", "abc_agregar_linea_pedido_configurada"],
+  ["abc_abrir_cuenta", "abc_crear_pedido", "abc_actualizar_nota_linea", "abc_agregar_linea_pedido", "abc_agregar_linea_pedido_configurada", "abc_actualizar_nota_linea"],
   "A02.1/A04.2 P14: el adaptador contiene RPCs adicionales, ausentes o fuera de orden"
 );
 

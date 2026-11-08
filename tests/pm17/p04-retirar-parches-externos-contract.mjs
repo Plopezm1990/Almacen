@@ -14,6 +14,8 @@ import assert from 'node:assert/strict';
 // intentando descargar y ejecutar el parche por encima.
 
 const src = fs.readFileSync('fuente.js', 'utf8');
+const edgeAuth = fs.readFileSync('edge-auth-patch.js', 'utf8');
+const headers = fs.readFileSync('_headers', 'utf8');
 
 // ---- fuente.js ya no inyecta ningún <script> en runtime hacia estos dos archivos. ----
 {
@@ -29,6 +31,20 @@ const src = fs.readFileSync('fuente.js', 'utf8');
   assert.equal(fs.existsSync('seleccion-neutral-patch.js'), false, 'seleccion-neutral-patch.js debe estar retirado');
   assert.equal(fs.existsSync('auth-ux-patch.js'), false, 'auth-ux-patch.js debe estar retirado');
   console.log('P04_PM17_ARCHIVOS_EXTERNOS_RETIRADOS=PASS');
+}
+
+// ---- Ningún runtime cargado por la app debe intentar pedir los archivos ya
+// retirados. edge-auth-patch.js sigue cargándose porque conserva la lógica nativa
+// de auth, pero ya no puede inyectar parches inexistentes; _headers tampoco debe
+// conservar una regla huérfana para ellos. ----
+{
+  for (const [name, source] of [
+    ['edge-auth-patch.js', edgeAuth],
+    ['_headers', headers],
+  ]) {
+    assert.doesNotMatch(source, /seleccion-neutral-patch\.js|auth-ux-patch\.js|data-seleccion-neutral|data-auth-ux/, `${name} no debe referenciar parches externos retirados`);
+  }
+  console.log('P04_PM17_SIN_REFERENCIAS_RUNTIME_HUERFANAS=PASS');
 }
 
 // ---- El resto del bloque nativo heredado de edge-auth-patch.js (aislamiento de

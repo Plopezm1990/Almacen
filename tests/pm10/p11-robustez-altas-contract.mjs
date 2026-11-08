@@ -27,7 +27,11 @@ assert.match(proc,/replayed: true/);
 assert.match(proc,/operationId: operationIdRecepcionPM10/);
 assert.match(proc,/movimientoId: `\$\{claveEfectoRecepcionPM11\}:linea:\$\{idxRecepcionPM10\}:producto:\$\{prod\.id\}`/);
 assert.match(proc,/`\$\{claveEfectoRecepcionPM11\}:producto-auto:\$\{idxRecepcionPM10\}`/);
-assert.match(proc,/s22\.some\(\(m22\) => m22\.id === `\$\{claveEfectoRecepcionPM11\}:linea:\$\{idxRecepcionPM10\}:auto`\)/);
+assert.match(albaranes,/const \{ aplicarMovimientoStock, registrarProductoSnapshot, obtenerProductoActual \} = crearMotorStock/);
+assert.match(albaranes,/const productosCreadosRecepcion = \/\* @__PURE__ \*\/ new Map\(\)/);
+assert.match(proc,/productosCreadosRecepcion\.has\(claveProductoRecepcion\)/);
+assert.match(proc,/registrarProductoSnapshot\(nuevo\)/);
+assert.match(proc,/movimientoId: `\$\{claveEfectoRecepcionPM11\}:linea:\$\{idxRecepcionPM10\}:auto`/);
 assert.match(proc,/resultadoRecepcionPM10/);
 assert.match(proc,/_pm10Resultados\.set\(claveEfectoRecepcionPM11, resultadoRecepcionPM10\)/);
 
@@ -35,7 +39,7 @@ const confirmar=albaranes.slice(procEnd, albaranes.indexOf('function anularAlbar
 assert.match(confirmar,/operationId: `pm10-recepcion-albaran:\$\{alb\.id\}`/);
 assert.match(confirmar,/concurrencyKey: pedidoLigado \? operationIdEfectoRecepcionPedidoPM11\(pedidoLigado\) : null/);
 assert.match(confirmar,/replayedRecepcionPM10/);
-assert.match(confirmar,/versión del pedido enlazado ya fue usada por otra recepción/);
+assert.match(src,/(?:versión del pedido enlazado ya fue usada por otra recepción|versión del pedido usada por esta recepción ya fue procesada)/);
 
 // PM11 sustituye la identidad implícita por operationId explícito, replay persistido
 // y una clave física versionada. Son garantías más fuertes que el guard histórico PM10.

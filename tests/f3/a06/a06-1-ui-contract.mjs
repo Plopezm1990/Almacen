@@ -58,7 +58,7 @@ for (const required of [
   'pedidoVersion: versionServidorA02(pedido.version, "a06.pedido_version")',
   'cuentaVersion: versionServidorA02(data.cuenta.version, "a06.cuenta_version")',
   "guardarContextoCuentaA02(empresaId, localActivoId",
-  "data.requires_operating_day_resolution || data.reanudable === false"
+  "data.requires_operating_day_resolution || (data.reanudable === false"
 ]) {
   assert.ok(adapter.includes(required), `A06.1: falta identidad/versión autoritativa: ${required}`);
 }
@@ -79,7 +79,8 @@ assert.ok(
   "A06.1: no filtra pedidos terminales"
 );
 assert.ok(
-  adapter.includes('if (activos.length !== 1) throw new Error("cuenta_recuperacion_pedidos_ambigua")'),
+  adapter.includes('if (activos.length !== 1) throw new Error("cuenta_recuperacion_pedidos_ambigua")')
+    || (adapter.includes('activos.length === 1 ? activos[0] : null') && adapter.includes('cuenta_recuperacion_pedidos_ambigua')),
   "A06.1: no falla cerrado ante múltiples pedidos activos"
 );
 

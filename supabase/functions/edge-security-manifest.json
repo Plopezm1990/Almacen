@@ -22,6 +22,13 @@
       "exposure": "public-token",
       "service_role": true,
       "tenant_boundary": "opaque token row carries empresa_id/local_id; HMAC rate limit"
+    },
+    {
+      "slug": "c07d-worker-qa",
+      "verify_jwt": true,
+      "exposure": "qa-authenticated-only",
+      "service_role": false,
+      "tenant_boundary": "authenticated ABC_EMISOR_CAMBIAR capability + empresa/local parameters; QA_SIMULADOR only"
     }
   ]
 }

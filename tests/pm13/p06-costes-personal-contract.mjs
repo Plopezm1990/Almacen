@@ -61,3 +61,50 @@ console.log('ALTAS_BAJAS_TEMPORALES=1');
 console.log('EXACTO_VS_ESTIMADO=1');
 console.log('LEGADOS_INCOMPLETOS_HONESTOS=1');
 console.log('RESULTADOS_PERIODO=1');
+
+function loadTemporalEngine(path) {
+  const temporalSrc = fs.readFileSync(path, 'utf8');
+  const temporalStart = temporalSrc.indexOf('const MINUTOS_DIA_PM13 = 24 * 60;');
+  const temporalEnd = temporalSrc.indexOf('function costePorHoraEquipoEnMes', temporalStart);
+  assert.ok(temporalStart >= 0 && temporalEnd > temporalStart, `${path} debe exponer el motor temporal PM13`);
+  const temporalSnippet = temporalSrc.slice(temporalStart, temporalEnd) + '\nresultadoTemporal = { parseFechaHoraFichajePM13, intervaloFichajePM13, horasDeEmpleadoEnMes };';
+  const temporalContext = { Date, String, Number, Math, resultadoTemporal: null };
+  vm.runInNewContext(temporalSnippet, temporalContext);
+  return { src: temporalSrc, ...temporalContext.resultadoTemporal };
+}
+
+for (const path of ['fuente.js', 'source-recovery/fuente-recuperado.js']) {
+  const { src: temporalSrc, parseFechaHoraFichajePM13, intervaloFichajePM13, horasDeEmpleadoEnMes } = loadTemporalEngine(path);
+  assert.deepEqual(parseFechaHoraFichajePM13('2026-02-30', '09:00'), null, `${path}: fecha imposible rechazada`);
+  assert.equal(intervaloFichajePM13(
+    { fecha: '2026-10-31', hora: '23:00' },
+    { fecha: '2026-11-01', hora: '01:30' }
+  ).minutos, 150, `${path}: cruce de medianoche conservado`);
+  assert.equal(horasDeEmpleadoEnMes([
+    { id: 'a', empleadoId: 'e1', tipo: 'entrada', fecha: '2026-10-31', hora: '23:00' },
+    { id: 'b', empleadoId: 'e1', tipo: 'salida', fecha: '2026-11-01', hora: '01:30' },
+    { id: 'c', empleadoId: 'e1', tipo: 'entrada', fecha: '2026-10-15', hora: '09:00' },
+    { id: 'd', empleadoId: 'e1', tipo: 'salida', fecha: '2026-10-15', hora: '17:00' }
+  ], 'e1', '2026-10'), 10.5, `${path}: el periodo se atribuye al mes de la entrada`);
+  assert.equal(horasDeEmpleadoEnMes([
+    { id: 'a', empleadoId: 'e1', tipo: 'entrada', fecha: '2026-10-15', hora: '09:00' },
+    { id: 'b', empleadoId: 'e1', tipo: 'entrada', fecha: '2026-10-15', hora: '10:00' },
+    { id: 'c', empleadoId: 'e1', tipo: 'salida', fecha: '2026-10-15', hora: '17:00' }
+  ], 'e1', '2026-10'), 8, `${path}: no se cuentan dos entradas como dos jornadas`);
+  assert.match(temporalSrc, /valores de pared almacenados por el servidor/);
+  assert.match(temporalSrc, /const cruzaMedianoche = fin <= inicio\.minutos/);
+}
+
+const turnosStart = src.indexOf('const intervaloTurnoPM13 = (turno) => {');
+const turnosEnd = src.indexOf('const equivalenteTurnoPM13', turnosStart);
+assert.ok(turnosStart >= 0 && turnosEnd > turnosStart, 'debe existir el intervalo de turnos');
+const turnosContext = src.slice(src.indexOf('const parseFechaTurnoPM13'), turnosEnd);
+assert.match(turnosContext, /Date\.UTC\(/, 'los turnos deben usar una base calendaria independiente de la zona local');
+assert.match(turnosContext, /if \(hasta <= desde\) hasta \+= 1440;/, 'los turnos nocturnos deben cruzar medianoche explícitamente');
+assert.match(src, /operatingDay/, 'el flujo operativo ya recibe el día operativo resuelto por servidor');
+
+console.log('MULTIPLE_ENTRIES_EXITS=1');
+console.log('CROSS_MIDNIGHT=1');
+console.log('MONTH_PERIOD_BY_ENTRY=1');
+console.log('WALL_CLOCK_NO_SILENT_TIMEZONE_REWRITE=1');
+console.log('OPERATING_DAY_SERVER_CONTEXT=1');

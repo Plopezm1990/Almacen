@@ -201,8 +201,26 @@ const baseEntrada = { empleadoId: 'a1', fecha: '2026-09-06', tipo: 'entrada', ho
   assert.equal(remoto.estado.length, 0);
 }
 
+// PM13 2.7/2.8: idempotencia multi-dispositivo. Aplicar dos veces el mismo fichaje
+// confirmado por el servidor (dos dispositivos, o un reintento tras el coalescing) no
+// debe duplicarlo: aplicarConfirmadoFichajePM13 deduplica por id.
+{
+  const fichajeServidor = { id: 'remote-dup', empleadoId: 'a1', localId: 'local-a', fecha: '2026-09-07', hora: '12:00', tipo: 'entrada', anulado: false };
+  const remoto = entorno([], 'local-a', {
+    window: {
+      getSupabaseClient: async () => ({ rpc: async () => ({ data: { ok: true, fichaje: fichajeServidor }, error: null }) })
+    }
+  });
+  const r1 = await remoto.nueva().fichar('a1', 'entrada');
+  const r2 = await remoto.nueva().fichar('a1', 'entrada');
+  assert.equal(r1.ok, true);
+  assert.equal(r2.ok, true);
+  assert.equal(remoto.estado.length, 1, 'el mismo fichaje confirmado aplicado dos veces no se duplica');
+  assert.equal(remoto.estado.filter((f) => f.id === 'remote-dup').length, 1);
+}
+
 // Barreras estáticas de UI y cálculo global.
-const uiStart = src.indexOf('function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos }) {');
+const uiStart = src.indexOf('function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, updateFichaje, eliminarFichaje, fichajesAbiertos,');
 assert.ok(uiStart >= 0, 'RegistroHorario presente');
 const uiNext = src.indexOf('\nfunction ', uiStart + 30);
 const ui = src.slice(uiStart, uiNext > uiStart ? uiNext : uiStart + 160000);
@@ -213,7 +231,8 @@ const guardPos = ui.indexOf('const guardado = await Promise.resolve(addFichajeMa
 const rejectPos = ui.indexOf('if (!guardado)', guardPos);
 const closePos = ui.indexOf('setShowManual(false)', guardPos);
 assert.ok(guardPos >= 0 && rejectPos > guardPos && closePos > rejectPos, 'modal solo cierra tras guardado confirmado');
-assert.match(ui, /fichajesVigentesPM13\.filter\(\(f22\) => f22\.fecha >= desde/);
+assert.match(ui, /const resumen = resumenFichajesPM13\(fichajesVigentesPM13\)/, 'el historial usa el emparejamiento temporal');
+assert.match(ui, /fechaFin/, 'el historial conserva la fecha de salida nocturna');
 
 // PM28 correctivo-fichaje: los botones de Entrada/Salida ya no llaman a fichar()
 // directamente en el onClick descartando el resultado — pasan por un manejador que
@@ -226,7 +245,7 @@ assert.match(ui, /role: "status"/, 'hay un anuncio accesible del resultado');
 const openPos = src.indexOf('const fichajesAbiertos =');
 assert.ok(openPos >= 0, 'cálculo global de fichajes abiertos presente');
 const openSlice = src.slice(openPos, openPos + 2200);
-assert.match(openSlice, /fichajes\.filter\(\(f22\) => f22\?\.anulado !== true/);
+assert.match(openSlice, /resumenFichajesPM13\(fichajes\)\.abiertos/);
 
 const logicText = src.slice(start, end);
 assert.doesNotMatch(logicText, /setFichajes\(\(s22\) => s22\.filter\(\(f22\) => f22\.id !== id/);
@@ -235,9 +254,49 @@ assert.match(logicText, /pm13_fichaje_manual/);
 assert.match(logicText, /pm13_corregir_fichaje/);
 assert.match(logicText, /pm13_anular_fichaje/);
 
+// PM13 2.6: día operativo configurable por empresa (helper puro).
+{
+  const dStart = src.indexOf('function diaOperativoPM13(');
+  const dEnd = src.indexOf('\nfunction intervaloFichajePM13(', dStart);
+  assert.ok(dStart >= 0 && dEnd > dStart, 'No se localizó diaOperativoPM13');
+  const dCode = src.slice(dStart, dEnd) + '\nglobalThis.__diaOp = diaOperativoPM13;';
+  const sb = { Date, String, Number, Math, console };
+  sb.globalThis = sb;
+  vm.createContext(sb);
+  vm.runInContext(dCode, sb);
+  const diaOp = sb.__diaOp;
+  // Corte 00:00 (0) = día natural (identidad): no cambia el comportamiento previo.
+  assert.equal(diaOp('2026-09-07', '02:30', 0), '2026-09-07');
+  assert.equal(diaOp('2026-09-07', '23:59', 0), '2026-09-07');
+  assert.equal(diaOp('2026-09-07', '02:30'), '2026-09-07', 'sin corte = identidad');
+  // Corte 06:00 (360): una marca anterior al corte cuenta al día operativo anterior.
+  assert.equal(diaOp('2026-09-07', '05:59', 360), '2026-09-06');
+  assert.equal(diaOp('2026-09-07', '06:00', 360), '2026-09-07', 'justo en el corte cuenta al día actual');
+  assert.equal(diaOp('2026-09-07', '22:00', 360), '2026-09-07');
+  assert.equal(diaOp('2026-09-01', '03:00', 360), '2026-08-31', 'cruza fin de mes');
+  assert.equal(diaOp('2026-01-01', '01:00', 360), '2025-12-31', 'cruza fin de año');
+  // Entradas inválidas: devuelve la fecha tal cual, sin romper.
+  assert.equal(diaOp('2026-09-07', '25:00', 360), '2026-09-07');
+  assert.equal(diaOp('', '03:00', 360), '');
+  const historialSlice = src.slice(src.indexOf('const filasHistorial ='), src.indexOf('function textoRegistro()', src.indexOf('const filasHistorial =')));
+  assert.match(historialSlice, /fechaFin:\s*par0\.salida\s*\?\s*diaOperativoPM13\(par0\.salida\?\.fecha,\s*par0\.salida\?\.hora,\s*corteDiaMin\)/, 'la salida también se asigna al día operativo');
+  console.log('DIA_OPERATIVO_CONFIGURABLE=1');
+}
+// PM13 2.5: offline, un reintento en el mismo tick (misma instancia, sin el coalescing
+// del camino remoto) no duplica, porque el prepend deduplica por el id determinista.
+{
+  const e = entorno();
+  const l = e.nueva();
+  assert.equal(l.addFichajeManual(baseEntrada), true);
+  l.addFichajeManual(baseEntrada);
+  assert.equal(e.estado.length, 1, 'offline: reintento en el mismo tick no duplica');
+  assert.equal(e.estado.filter((f) => f.id === e.estado[0].id).length, 1, 'id determinista único, sin duplicado');
+  console.log('OFFLINE_REINTENTO_SIN_DUPLICAR=1');
+}
 console.log('PM13_P03_FICHAJES_FRONTEND=PASS');
 console.log('ACTIVOS_SCOPE_SECUENCIA=1');
 console.log('REPLAY_DOBLE_CLIC=1');
 console.log('CORRECCION_TRAZABLE=1');
 console.log('ANULACION_SIN_BORRADO=1');
+console.log('IDEMPOTENCIA_MULTIDISPOSITIVO=1');
 console.log('UI_FAIL_CLOSED=1');

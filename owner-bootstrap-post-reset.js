@@ -34,7 +34,16 @@
   function quitarSetup() {
     var anterior = document.getElementById(ROOT_SETUP_ID);
     if (anterior) anterior.remove();
+    // Plataforma (D01): si hay un panel o la pantalla de contraseña inicial abiertos, se cierran con el resto.
+    if (window.__laPlataforma && typeof window.__laPlataforma.cerrarTodo === "function") window.__laPlataforma.cerrarTodo();
     document.documentElement.classList.remove("la-installation-needs-setup");
+  }
+
+  // Plataforma (D01): al pasar del panel a la aplicación (y al revés) o tras elegir la contraseña inicial se recarga
+  // la página. El programa que queda cargado por detrás mientras se ve el panel tiene la barrera de sincronización
+  // cerrada y, pasados unos segundos, daría avisos falsos de «cambio no guardado»; recargado arranca limpio.
+  function recargarPagina() {
+    window.location.reload();
   }
 
   function iniciarComprobacion() {
@@ -215,6 +224,14 @@
   }
 
   async function validarSesion(supabase, sesion) {
+    // Plataforma (D01): una renovación de sesión (token nuevo, pestaña que vuelve) no debe reconstruir un panel
+    // o una pantalla de contraseña que ya están abiertos con datos a medio rellenar.
+    var plat = window.__laPlataforma;
+    if (plat && sesion && sesion.user && sesion.user.id &&
+        (plat.panelAbierto(sesion.user.id) || plat.cambioAbierto(sesion.user.id))) {
+      return;
+    }
+
     var miSecuencia = ++secuencia;
     supabaseActual = supabase;
     usuarioActual = sesion;
@@ -222,6 +239,7 @@
 
     if (!sesion || !sesion.user || !sesion.user.id) {
       usuarioActual = null;
+      if (plat && typeof plat.olvidarModoAplicacion === "function") plat.olvidarModoAplicacion();
       liberarVistaSinSesion();
       return;
     }
@@ -238,6 +256,30 @@
         return;
       }
 
+      // Plataforma (D01), ANTES de preguntar por la instalación:
+      //  1) el dueño de una empresa cliente con contraseña inicial debe elegir la suya;
+      //  2) el administrador de la plataforma entra en su panel (aunque no tenga ninguna empresa propia).
+      var adminEnAplicacion = false;
+      if (plat) {
+        if (await plat.sigueDebiendoCambiar(supabase, sesion)) {
+          if (miSecuencia !== secuencia) return;
+          if (typeof window.__laOwnerBootstrapSetReady === "function") window.__laOwnerBootstrapSetReady(false);
+          plat.mostrarCambioContrasena(supabase, sesion, { recargar: recargarPagina });
+          return;
+        }
+        if (miSecuencia !== secuencia) return;
+        var estadoPlat = await plat.consultarEstado(sesion);
+        if (miSecuencia !== secuencia) return;
+        // Lo lee la pantalla de Empresas para no ofrecer «Añadir empresa» cuando las altas las hace el administrador.
+        window.__laPlataformaActiva = estadoPlat.plataforma_activa === true;
+        if (estadoPlat.es_admin === true && !plat.enModoAplicacion(sesion.user.id)) {
+          if (typeof window.__laOwnerBootstrapSetReady === "function") window.__laOwnerBootstrapSetReady(false);
+          plat.mostrarPanel(supabase, sesion, estadoPlat, { recargar: recargarPagina });
+          return;
+        }
+        adminEnAplicacion = estadoPlat.es_admin === true;
+      }
+
       var estado = await rpcP4("obtener_estado_instalacion", sesion, {});
       if (miSecuencia !== secuencia) return;
       if (!estado || !estado.state || !estado.generation) throw new Error("Respuesta de instalación incompleta");
@@ -249,6 +291,9 @@
         if (typeof window.__laOwnerBootstrapSetReady === "function") window.__laOwnerBootstrapSetReady(true);
         if (window.__instalacionSyncPermitida !== true) throw new Error("Sincronización no validada");
         liberarVistaLista();
+        if (adminEnAplicacion) {
+          plat.montarAtajo(sesion.user.id, recargarPagina);
+        }
         if (typeof window.subirPendientes === "function") await window.subirPendientes();
         return;
       }

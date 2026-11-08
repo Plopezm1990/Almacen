@@ -33,7 +33,7 @@ for (const [nombre, codigo] of [["runtime", runtime], ["fuente recuperada", recu
   assert.doesNotMatch(codigo, /onClick: \(\) => finalizarConteo\(activo\.id\)/, `${nombre}: no debe quedar el cierre directo antiguo`);
 }
 const motorPos = html.indexOf('<script src="./pm12-conteo-estados-v1.js"></script>');
-const appPos = html.indexOf('<script type="module" src="./fuente.js"></script>');
+const appPos = html.search(/<script type="module" src="\.\/fuente\.js(?:\?[^\"]*)?"><\/script>/);
 assert.ok(motorPos >= 0 && appPos > motorPos, "el motor PM12 debe cargarse antes de la aplicación");
 
 console.log("PM12_P04_OK=1");

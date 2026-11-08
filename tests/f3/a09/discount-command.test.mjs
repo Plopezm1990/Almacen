@@ -203,7 +203,9 @@ test('A09.2.5 muestra la auditoría completa de descuentos sin DML desde el TPV'
     assert.match(candidate, /.from\("abc_descuento_aprobacion_intentos"\)[\s\S]*?\.select\(/);
     assert.match(candidate, /operationIds = new Set\(solicitudes\.map/);
     assert.match(candidate, /intentos\.data.*filter\(\(row\) => operationIds\.has/);
-    assert.match(candidate, /.from\("abc_eventos"\)[\s\S]*?CUENTA_DESCUENTO_APLICADO/);
+    // 3/10/2026: los eventos de descuento ya no se leen de la tabla abc_eventos desde el navegador (no tiene permiso); los da una función del servidor
+    assert.match(candidate, /supabase\.rpc\("abc_listar_eventos_descuento_cuenta", \{\s+p_empresa_id: empresaId,\s+p_local_id: localId,\s+p_cuenta_id: contexto\.cuentaId\s+\}\)/);
+    assert.doesNotMatch(candidate, /\.from\("abc_eventos"\)/);
     assert.match(candidate, /Auditoría A09 · historial/);
     assert.match(candidate, /Solicitudes y estado final/);
     assert.match(candidate, /Intentos de aprobación/);
