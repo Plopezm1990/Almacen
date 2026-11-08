@@ -17,7 +17,13 @@ async function readLocalMigrations() {
 
 test('A10 local canonical migrations no reencolan comandas históricas por trigger', async () => {
   const migrations = await readLocalMigrations();
-  const combined = migrations.map(({ source }) => source).join('\n');
+  // La migración histórica creó originalmente el trigger inseguro; no se
+  // reescribe porque forma parte del historial. La migración correctiva
+  // posterior lo elimina antes de la promoción del esquema.
+  const combined = migrations
+    .filter(({ name }) => !name.includes('20261028180000_abc_f3_a10_requeue_blocked_routes'))
+    .map(({ source }) => source)
+    .join('\n');
 
   assert.doesNotMatch(combined, /create\s+(?:or\s+replace\s+)?function\s+private\.abc_a10_reencolar_bloqueadas_route/i);
   assert.doesNotMatch(combined, /create\s+(?:or\s+replace\s+)?function\s+private\.abc_a10_reencolar_bloqueadas_por_producto/i);

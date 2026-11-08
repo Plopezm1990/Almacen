@@ -9,7 +9,7 @@ const sourceUrls = [
 
 function extraerAccionEnviar(source) {
   const start = source.indexOf('async function enviarPedidoGuardadoA05()');
-  const end = source.indexOf('\n  async function ejecutarAccionA05(', start);
+  const end = source.indexOf('\n  async function enviarPedidoOperativoA05(', start);
   assert.ok(start >= 0 && end > start, 'A05 UI: acción de envío no localizable');
   return source.slice(start, end).trim();
 }
