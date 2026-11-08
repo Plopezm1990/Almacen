@@ -23267,6 +23267,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
     return v22 && v22.fecha ? v22.fecha : "\u2014";
   }
+  function ivaTicketDesdeImportes(pctDeclarado, base, impuestos, pctProducto) {
+    if (Number.isFinite(pctDeclarado) && pctDeclarado >= 0) return pctDeclarado;
+    if (Number.isFinite(base) && base > 0 && Number.isFinite(impuestos)) {
+      return Math.round(impuestos / base * 1e4) / 100;
+    }
+    if (Number.isFinite(pctProducto) && pctProducto >= 0) return pctProducto;
+    return 0;
+  }
   function desgloseIvaTicketVista(v22) {
     const mapa = /* @__PURE__ */ new Map();
     (v22 && v22.lineas || []).forEach((l22) => {
@@ -24984,12 +24992,16 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const cantidad = Number(linea.cantidad) || 0;
       const totalLinea = Number(linea.total) || 0;
       const ingresoUnitario = Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario);
+      const baseLinea = Number(linea.base ?? linea.baseLinea);
+      const impuestosLinea = Number(linea.impuestos ?? linea.impuestosLinea);
+      const ivaLinea = ivaTicketDesdeImportes(Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct), baseLinea, impuestosLinea);
+      const netoUnitario = Number.isFinite(ingresoUnitario) && ingresoUnitario >= 0 ? ingresoUnitario : Number.isFinite(baseLinea) && baseLinea >= 0 && cantidad > 0 ? baseLinea / cantidad : cantidad > 0 ? totalLinea / cantidad / (1 + ivaLinea / 100) : 0;
       return {
       id: linea.id || `checkout-linea-${indice}`,
       productoId: linea.productoId || linea.producto_id,
       cantidad,
-      ingresoUnitario: Number.isFinite(ingresoUnitario) && ingresoUnitario >= 0 ? ingresoUnitario : cantidad > 0 ? totalLinea / cantidad : 0,
-      ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
+      ingresoUnitario: netoUnitario,
+      ivaVentaAplicado: ivaLinea
       };
     }).filter((linea) => linea.productoId && linea.cantidad > 0) : [];
     if (lineas.length === 0) return null;
@@ -25983,17 +25995,27 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         const precioDeclarado = Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario);
         const totalLineaRapida = Number(linea.total ?? linea.total_linea ?? linea.importe ?? linea.importeLinea);
         const productoRapida = productos.find((producto) => producto.id === productoId);
+        const baseLineaRapida = Number(linea.base ?? linea.baseLinea);
+        const impuestosLineaRapida = Number(linea.impuestos ?? linea.impuestosLinea);
+        const ivaLineaRapida = ivaTicketDesdeImportes(
+          Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct),
+          baseLineaRapida,
+          impuestosLineaRapida,
+          productoRapida ? ivaDe(productoRapida) : NaN
+        );
         const ingresoUnitario = Number.isFinite(precioDeclarado) && precioDeclarado > 0
           ? precioDeclarado
-          : Number.isFinite(totalLineaRapida) && cantidad > 0 && totalLineaRapida > 0
-            ? totalLineaRapida / cantidad
-            : productoRapida ? precioNeto(productoRapida) : 0;
+          : Number.isFinite(baseLineaRapida) && baseLineaRapida > 0 && cantidad > 0
+            ? baseLineaRapida / cantidad
+            : Number.isFinite(totalLineaRapida) && cantidad > 0 && totalLineaRapida > 0
+              ? totalLineaRapida / cantidad / (1 + ivaLineaRapida / 100)
+              : productoRapida ? precioNeto(productoRapida) : 0;
         return {
           id: linea.id || linea.lineaId || `venta-rapida-linea-${indice}`,
           productoId,
           cantidad,
           ingresoUnitario,
-          ivaVentaAplicado: Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct) || 0
+          ivaVentaAplicado: ivaLineaRapida
         };
       }).filter((linea) => linea.productoId && linea.cantidad > 0);
       const numeroFiscalRapida = documentoFiscalRapida
