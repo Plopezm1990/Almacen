@@ -25,6 +25,7 @@ const EXCLUIDAS = new Set([
   '20261005060000_abc_p3c_titularidad_productos.sql',
   '20261005100000_abc_p3c_lista_confirmada.sql',
   '20261010150000_abc_d09_d11_stock_order_integration.sql',
+  '20261029210000_abc_d09_d11_economic_snapshot.sql',
   '20261010153000_abc_d10_legacy_refund_guard.sql',
   '20261009120000_plataforma_f1_administrador_y_empresas.sql',
   '20261009130000_plataforma_f2_eliminar_empresa.sql',
@@ -87,6 +88,24 @@ const EXCLUIDAS = new Set([
   '20261028170000_pm10_recepcion_stock_atomica.sql',
   '20261028180000_abc_f3_a10_requeue_blocked_routes.sql',
   '20261028190000_abc_f4_cuenta_cierre_pagada.sql',
+  // Corrección contextual P3c aplicada en una ventana separada; no forma parte de la foto F7 histórica.
+  '20261029200000_abc_p3c_contexto_productos_production_fix.sql',
+  // Autoridad del stock en la ruta contextual P3c; ventana separada de la foto F7 histórica.
+  '20261030130000_abc_p3c_stock_authority.sql',
+  // Atajo seguro para cambios automáticos de stock/contexto; misma ventana separada.
+  '20261030143000_abc_p3c_stock_only_fast_path.sql',
+  // Presentación de categorías del TPV (orden y color por local): se valida en QA
+  // y se promueve en su propia ventana, con el contrato
+  // tests/cfg/tpv-categorias-presentacion-db-contract.mjs. No forma parte de la
+  // foto F7 histórica del 3/10.
+  '20261031120000_abc_tpv_categorias_presentacion.sql',
+  '20261031150000_abc_tpv_categorias_puede_configurar.sql',
+  // Apertura del cobro con el pedido en cocina: se valida en QA y se promueve en su
+  // propia ventana, con el contrato tests/f4/b02-b03/cobro-pedido-en-cocina-contract.sql.
+  // No forma parte de la foto F7 histórica del 3/10.
+  '20261031170000_abc_f4_cobro_pedido_en_cocina.sql',
+  // Corrección de aislamiento Storage de Issue #190, exclusiva de QA; no forma parte de la foto F7 histórica.
+  '20261107220000_issue190_qa_storage_local_isolation.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

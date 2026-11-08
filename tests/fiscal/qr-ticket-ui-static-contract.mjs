@@ -5,7 +5,7 @@ import test from "node:test";
 const source = await readFile(new URL("../../fuente.js", import.meta.url), "utf8");
 
 test("el historial conserva el payload fiscal asociado a la venta", () => {
-  assert.match(source, /qrFiscal:\s*lineas\[0\]\?\.qrFiscal\s*\|\|\s*null/);
+  assert.match(source, /qrFiscal:\s*(?:lineas\[0\]|lineaConTicket)\?\.qrFiscal\s*\|\|\s*null/);
 });
 
 test("la fixture visual QR solo puede activarse en preview QA o localhost", () => {
