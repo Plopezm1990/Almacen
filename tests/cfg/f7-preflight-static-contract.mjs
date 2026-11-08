@@ -87,6 +87,9 @@ const EXCLUIDAS = new Set([
   // a la foto F7 del 3/10, con contrato propio contra Postgres real en
   // tests/f5/c07/db/a02-venta-fiscal-sellada-contract.mjs.
   '20261108170000_a02_cerrar_y_sellar_venta_fiscal.sql',
+  // N-02: reconciliación de funciones ya versionadas para corregir la
+  // divergencia histórica entre QA y producción; queda fuera de la foto F7.
+  '20261108193000_n02_reconcile_deployed_db_functions.sql',
   '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
   // F8 C04: alta de terminal/caja por propietario, con preflight propio.
   '20261027200000_abc_f8_c04_terminal_caja_propietario.sql',
