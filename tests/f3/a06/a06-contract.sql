@@ -170,6 +170,13 @@ insert into public.catalogo_tpv_productos(
   '10000000-0000-0000-0000-000000000004',
   'Chocolate A06','ud',false,0,10,10,true,7,'{"origen":"A06"}'::jsonb
 );
+do $$ begin
+  if exists(select 1 from information_schema.columns where table_schema='public'
+    and table_name='catalogo_tpv_productos' and column_name='requiere_preparacion') then
+    execute $sql$update public.catalogo_tpv_productos set requiere_preparacion=false
+      where empresa_id='emp-d' and local_id='loc-d1' and producto_id='prod-a06-chocolate'$sql$;
+  end if;
+end $$;
 
 insert into public.catalogo_tpv_grupos_opciones(
   id,empresa_id,local_id,nombre,tipo_grupo,orden,activo,version

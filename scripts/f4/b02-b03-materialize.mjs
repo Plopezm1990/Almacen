@@ -76,13 +76,38 @@ if (!recovered.includes("function clavePendienteCobroF4(")) {
   console.log("F4_B02_B03_SOURCE_RECOVERY_ALREADY_CURRENT=1");
 }
 
+const recoveredBeforeApiExports = recovered;
+const f4ApiNames = "iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4";
+const f4ApiList = f4ApiNames.split(", ");
+const f4InvocationOld = "moverCantidadLineaCuentaA08 } = crearLogicaVenta";
+const f4InvocationNew = `moverCantidadLineaCuentaA08, ${f4ApiNames} } = crearLogicaVenta`;
+const f4ReturnOld = "moverCantidadLineaCuentaA08 };";
+const f4ReturnNew = `moverCantidadLineaCuentaA08, ${f4ApiNames} };`;
+const tieneInvocacionF4 = /const \{[\s\S]*\biniciarCobroCuentaF4\b[\s\S]*\} = crearLogicaVenta\(/.test(recovered);
+const retornoLogicaVenta = recovered.match(/return \{[\s\S]*?moverCantidadLineaCuentaA08[\s\S]*?\};/);
+const tieneRetornoF4 = !!retornoLogicaVenta && f4ApiList.every((nombre) => retornoLogicaVenta[0].includes(nombre));
+if (!tieneInvocacionF4 && !recovered.includes(f4InvocationNew)) {
+  recovered = replaceOnce(recovered, f4InvocationOld, f4InvocationNew, "API_INVOCATION");
+}
+if (!tieneRetornoF4 && !recovered.includes(f4ReturnNew)) {
+  recovered = replaceOnce(recovered, f4ReturnOld, f4ReturnNew, "API_RETURN");
+}
+if (recovered !== recoveredBeforeApiExports) {
+  fs.writeFileSync(recoveredPath, recovered);
+  console.log("F4_B02_B03_API_EXPORTS_PATCHED=1");
+}
+
+const invocationMarker = recovered.includes(f4InvocationNew) ? f4InvocationNew : "crearLogicaVenta({";
+const returnMarker = recovered.includes(f4ReturnNew) ? f4ReturnNew : "return {";
 for (const marker of [
   "function clavePendienteCobroF4(",
   '"abc_preparar_checkout_cuenta"',
   '"abc_iniciar_cobro"',
   '"abc_confirmar_efectivo"',
   '"Cobro · F4"',
-  "renderCobroF4()"
+  "renderCobroF4()",
+  invocationMarker,
+  returnMarker
 ]) {
   if (!recovered.includes(marker)) throw new Error("F4_B02_B03_MARKER_MISSING_" + marker);
 }

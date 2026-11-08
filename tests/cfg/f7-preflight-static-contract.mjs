@@ -88,6 +88,10 @@ const EXCLUIDAS = new Set([
   '20261028170000_pm10_recepcion_stock_atomica.sql',
   '20261028180000_abc_f3_a10_requeue_blocked_routes.sql',
   '20261028190000_abc_f4_cuenta_cierre_pagada.sql',
+  // Correcciones A10 de rutas y preparación: ventana QA posterior a la foto F7.
+  '20261101093000_abc_f3_a10_disable_auto_route_requeue.sql',
+  '20261101094000_abc_f3_a10_assignment_without_historical_requeue.sql',
+  '20261102100000_abc_f3_a10c_preparation_route_guard.sql',
   // A10 preparación: ventana QA posterior a la foto F7 histórica.
   '20261029190000_abc_f3_a10_preparation_mode.sql',
   '20261029200000_abc_f3_a10_preparation_mode_prod_candidate.sql',

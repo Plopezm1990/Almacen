@@ -10254,7 +10254,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const grupoId = String(seleccion?.grupo_id || "");
       const opcionId = String(seleccion?.opcion_id || "");
       const cantidad = Number(seleccion?.cantidad);
-      if (!uuidPersistidoA02(grupoId) || !uuidPersistidoA02(opcionId) || !Number.isSafeInteger(cantidad) || cantidad < 1) {
+      if (!uuidTextoCatalogoA02(grupoId) || !uuidTextoCatalogoA02(opcionId) || !Number.isSafeInteger(cantidad) || cantidad < 1) {
         throw new Error("configuracion_a04_cliente_invalida");
       }
       const clave = `${grupoId}:${opcionId}`;
@@ -10305,6 +10305,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function uuidPersistidoA02(valor) {
     return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(valor);
+  }
+  function uuidTextoCatalogoA02(valor) {
+    return typeof valor === "string" && /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(valor);
   }
   function validarContextoCuentaA02(contexto, empresaId, localId) {
     if (!contexto || contexto.schemaVersion !== 1) throw new Error("contexto_cuenta_persistido_invalido");
@@ -10537,6 +10540,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("pedido_enviar_no_autorizado")) return "Tu perfil no tiene permiso para enviar este pedido.";
     if (msg.includes("pedido_no_enviable")) return "El pedido ya no está en un estado que permita enviarlo.";
     if (msg.includes("pedido_lineas_no_confirmadas")) return "Hay líneas que todavía no están confirmadas y el pedido no puede enviarse.";
+    if (msg.includes("producto_preparacion_clasificacion_pendiente")) return "Hay productos sin clasificar como preparación o entrega directa. Completa su clasificación antes de enviarlos.";
+    if (msg.includes("producto_preparacion_sin_ruta")) return "Hay un producto que requiere preparación pero no tiene una ruta activa a cocina. Configura la ruta y vuelve a intentarlo.";
     if (msg.includes("transicion_linea_no_autorizada")) return "Tu perfil no tiene permiso para realizar esta transición del pedido.";
     if (msg.includes("linea_cancelar_no_autorizada")) return "Tu perfil no tiene permiso para cancelar esta línea.";
     if (msg.includes("cancelacion_sensible_no_autorizada")) return "Esta cancelación requiere autorización sensible de Encargado o Propietario.";
@@ -24958,8 +24963,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     });
     return true;
   }
-
-
+  function sincronizarImporteCobroF4(resultado) {
+    const saldo = Number(resultado?.saldo);
+    setImporteCobroF4(Number.isFinite(saldo) && saldo > 0 ? saldo.toFixed(2) : "");
+    if (!Number.isFinite(saldo) || saldo <= 0) setEfectivoRecibidoCobroF4("");
+  }
   async function adjuntarEstadoFiscalC07D(resultado) {
     if (!resultado?.ok || typeof leerEstadoFiscalC07D !== "function" || !resultado?.cuentaId) return resultado;
     const fiscal = await leerEstadoFiscalC07D(resultado.cuentaId);
@@ -25026,16 +25034,21 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   async function refrescarCobroF4() {
     if (typeof leerEstadoCobroF4 !== "function" || !pedidoOperativoA05?.cuentaId) {
       setEstadoCobroF4(null);
+      setImporteCobroF4("");
+      setEfectivoRecibidoCobroF4("");
       return;
     }
     setCargandoCobroF4(true);
     const resultado = await leerEstadoCobroF4();
     setCargandoCobroF4(false);
     if (!resultado?.ok) {
+      setImporteCobroF4("");
+      setEfectivoRecibidoCobroF4("");
       setErrorCobroF4(resultado?.error || "No se pudo consultar el estado del cobro.");
       return;
     }
     setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
+    sincronizarImporteCobroF4(resultado);
     setErrorCobroF4("");
   }
   async function ejecutarCobroF4(medio, opciones = {}) {
@@ -25057,6 +25070,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return;
     }
     setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
+    sincronizarImporteCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
   }
   async function recuperarCobroF4UI() {
@@ -25071,6 +25085,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return;
     }
     setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
+    sincronizarImporteCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || "Estado de cobro recuperado sin crear otro intento.");
   }
   function cambiarFormularioIncidenciaB04(campo, valor) {
@@ -25284,7 +25299,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         fixtureSoloLectura ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[10.5px] mb-2", "data-c07d-fixture": "readonly", style: { color: C2.inkSoft } }, "Fixture QA C07-D.2.4 solo lectura: los botones de cobro están desactivados y no se crea ninguna operación.") : null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] uppercase tracking-wide", style: { color: C2.inkSoft } }, "A cobrar"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-bold text-[26px] leading-none", style: { color: C2.ink } }, "€", fmt(saldoVisible))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-1.5 mb-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setEfectivoRecibidoCobroF4(String(importeVisible)) }, "Exacto"), billetesSugeridosTpv(importeVisible).map((pieza) => /* @__PURE__ */ import_react4.default.createElement(Btn, { key: pieza, small: true, variant: "ghost", onClick: () => setEfectivoRecibidoCobroF4(String(pieza)) }, "€" + pieza))), 
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-2" },
-          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Importe de este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
+          /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Exacto para este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
         ),
         cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2 p-2 rounded-lg", style: { background: cambioVisible < 0 ? C2.redSoft : C2.accentSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] uppercase tracking-wide", style: { color: C2.inkSoft } }, cambioVisible < 0 ? "Falta" : "Cambio a devolver"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-bold text-[24px] leading-none", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, "€", fmt(Math.abs(cambioVisible)))) : null,
@@ -25337,6 +25352,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
     if (!pedidoOperativoA05?.cuentaId || typeof leerEstadoCobroF4 !== "function") {
       setEstadoCobroF4(null);
+      setImporteCobroF4("");
+      setEfectivoRecibidoCobroF4("");
       setErrorCobroF4("");
       return () => { activo = false; };
     }
@@ -25345,12 +25362,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (!activo) return;
       setCargandoCobroF4(false);
       if (!resultado?.ok) {
+        setImporteCobroF4("");
+        setEfectivoRecibidoCobroF4("");
         setErrorCobroF4(resultado?.error || "No se pudo consultar el cobro.");
         return;
       }
       adjuntarEstadoFiscalC07D(resultado).then((estadoConFiscal) => {
         if (activo) setEstadoCobroF4(estadoConFiscal);
       });
+      sincronizarImporteCobroF4(resultado);
       setErrorCobroF4("");
     }).catch(() => {
       if (!activo) return;
@@ -26080,6 +26100,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   ) : estadoBorradorA06?.estado === "CADUCADO" ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Borrador local caducado: se descartó porque superó la política de 24 h.")
   ) : estadoBorradorA06?.estado === "INVALIDO" || estadoBorradorA06?.estado === "NO_DISPONIBLE" ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mb-4 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, estadoBorradorA06.error || "No se puede usar el borrador local.") : null,
+  errorVenta ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-4 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", errorVenta) : null,
   conflictoA06 ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: "#FCE8E6", border: "1px solid " + C2.red } },
     /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] font-semibold", style: { color: C2.red } }, "Conflicto de edición: otro terminal cambió esta cuenta."),
     /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, conflictoA06.recuperado ? "Se ha recargado la versión del servidor. Tu borrador local no se ha borrado: revísalo antes de repetir la acción." : "No se ha sobrescrito el servidor. Tu borrador local se conserva; recarga la cuenta antes de repetir la acción."),
@@ -26650,7 +26671,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       setError(resultado?.error || "No se pudo asignar la ruta.");
       return;
     }
-    setMensaje("Ruta de producto actualizada correctamente.");
+    setMensaje("Ruta de producto actualizada. Se aplicará a nuevas comandas; las comandas bloqueadas existentes no se reenvían automáticamente.");
     await refrescarEstaciones();
   }
 
@@ -26730,11 +26751,13 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
 
   function renderComanda(comanda) {
     const lineas = Array.isArray(comanda?.lineas) ? comanda.lineas : [];
+    const bloqueadaSinRuta = String(comanda?.estado || "") === "BLOQUEADA" && !comanda?.estacion_id;
     return h3(Card, { key: comanda.id, className: "mb-2" },
       h3("div", { className: "flex items-center justify-between gap-2 mb-2" },
         h3("div", { className: "text-[12.5px] font-semibold" }, String(comanda.tipo || "COMANDA"), " · ", nombreEstacion(comanda.estacion_id)),
         h3("span", { className: "text-[10.5px] font-semibold", style: { color: comanda.estado === "BLOQUEADA" ? C2.red : C2.accent } }, String(comanda.estado || "PENDIENTE"))
       ),
+      bloqueadaSinRuta ? h3("div", { role: "alert", className: "mb-2 p-2 rounded-lg text-[11.5px]", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } }, "Sin ruta de preparación: esta comanda está bloqueada y no se imprimirá. Asigna cada producto a una estación activa en «Estaciones y rutas». Esta asignación no reenvía automáticamente la comanda existente.") : null,
       h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Pedido ", String(comanda.pedido_id || "").slice(-12), " · ", comanda.created_at || "sin fecha"),
       lineas.map((linea) => {
         const nota = notas[linea.id] || "";
@@ -26753,8 +26776,8 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
             )
           ) : null,
           h3("div", { className: "flex gap-1.5 flex-wrap mt-2" },
-            h3(Btn, { small: true, onClick: () => ejecutarA10("reprint:" + comanda.id, () => reimprimirComandaA10(comanda.id)) }, "Reimprimir"),
-            version > 0 ? h3(Btn, { small: true, variant: "ghost", onClick: () => ejecutarA10("change:" + linea.id, () => enviarCambioComandaA10({ lineaId: linea.linea_id, nota, lineaVersion: version })), disabled: !nota.trim() }, "Enviar cambio") : null
+            bloqueadaSinRuta ? h3("span", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, "No imprimible hasta asignar una ruta") : h3(Btn, { small: true, onClick: () => ejecutarA10("reprint:" + comanda.id, () => reimprimirComandaA10(comanda.id)) }, "Reimprimir"),
+            version > 0 && !bloqueadaSinRuta ? h3(Btn, { small: true, variant: "ghost", onClick: () => ejecutarA10("change:" + linea.id, () => enviarCambioComandaA10({ lineaId: linea.linea_id, nota, lineaVersion: version })), disabled: !nota.trim() }, "Enviar cambio") : null
           ),
           version > 0 ? h3(Input, { value: nota, onChange: (e2) => setNotas((prev) => ({ ...prev, [linea.id]: e2.target.value })), placeholder: "Nota operativa para cocina…", maxLength: 500 }) : null
         );
@@ -26856,7 +26879,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       ),
       h3(Btn, { small: true, onClick: guardarRuta, disabled: !!procesando || !productoId || !estacionId }, procesando === "ruta" ? "Guardando…" : "Guardar ruta")
     ),
-    h3(Card, { className: "mb-3" }, h3("div", { className: "flex items-center justify-between gap-2 mb-2" }, h3("div", { className: "text-[12.5px] font-semibold" }, "Comandas"), h3("select", { value: estacionId, onChange: (e2) => setEstacionId(e2.target.value), className: "rounded-lg px-2 py-1 text-[11px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Todas las estaciones"), estaciones.map((estacion) => h3("option", { key: estacion.id, value: estacion.id }, estacion.codigo)))), h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "La lista procede de abc_listar_comandas_estacion y respeta el local activo."), comandas.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay comandas para este filtro.") : comandas.map(renderComanda))
+    h3(Card, { className: "mb-3" }, h3("div", { className: "flex items-center justify-between gap-2 mb-2" }, h3("div", { className: "text-[12.5px] font-semibold" }, "Comandas"), h3("select", { value: estacionId, onChange: (e2) => setEstacionId(e2.target.value), className: "rounded-lg px-2 py-1 text-[11px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Todas las estaciones"), estaciones.map((estacion) => h3("option", { key: estacion.id, value: estacion.id }, estacion.codigo)))), h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "La lista procede de abc_listar_comandas_estacion y respeta el local activo."), comandas.some((comanda) => String(comanda?.estado || "") === "BLOQUEADA" && !comanda?.estacion_id) ? h3("div", { role: "status", className: "mb-2 p-2 rounded-lg text-[11.5px]", style: { background: C2.amberSoft, color: C2.ink } }, "Hay comandas sin ruta de preparación. Configura el producto y la estación activa arriba; no se imprimirán ni se reenviarán automáticamente hasta resolver el flujo operativo.") : null, comandas.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay comandas para este filtro.") : comandas.map(renderComanda))
   );
 }
 function Traspasos({ productos, productosEmpresa = [], locales = [], localActivoId, traspasos, traspasarStock, traspasarEntreLocales, pisoVentaBajo, fichasCosto = [] }) {

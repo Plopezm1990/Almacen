@@ -44,6 +44,8 @@ const migrations = [
   '20260924040000_abc_f3_a06_account_recovery.sql',
   '20260924050000_abc_f3_a07_tables_zones.sql',
   '20260924060000_abc_f3_a08_account_split_merge.sql',
+  '20260926110000_abc_f3_a10_kitchen_commands.sql',
+  '20261102100000_abc_f3_a10c_preparation_route_guard.sql',
 ];
 
 export async function bootstrapA08({ verbose = false } = {}) {

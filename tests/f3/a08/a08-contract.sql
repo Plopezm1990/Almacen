@@ -183,6 +183,13 @@ insert into public.catalogo_tpv_productos(
   'emp-f','loc-f1','prod-frac-f','EUR','10000000-0000-0000-0000-000000000008',
   'Producto fraccionable F','kg',true,2,20,10,true,1,'{}'::jsonb
 );
+do $$ begin
+  if exists(select 1 from information_schema.columns where table_schema='public'
+    and table_name='catalogo_tpv_productos' and column_name='requiere_preparacion') then
+    execute $sql$update public.catalogo_tpv_productos set requiere_preparacion=false
+      where empresa_id='emp-f' and local_id='loc-f1' and producto_id in ('prod-unit-f','prod-frac-f')$sql$;
+  end if;
+end $$;
 
 -- A07: una mesa compartida para las cuentas de split y otra para merge.
 select public.abc_crear_zona(

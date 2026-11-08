@@ -369,7 +369,7 @@
 
   // QA de L&A Suite SOLO en Deploy Preview.
   // Producción y cualquier otro dominio quedan fuera por diseño.
-  var HOST_PREVIEW = /^(?:deploy-preview-\d+|[a-f0-9]{24})--chic-entremet-9107cf\.netlify\.app$/i;
+  var HOST_PREVIEW = /^(?:deploy-preview-\d+|[a-f0-9]{24}|qa-fase2-\d{8})--chic-entremet-9107cf\.netlify\.app$/i;
   if (typeof window === "undefined" || !HOST_PREVIEW.test(window.location.hostname)) return;
 
   var SUPABASE_PROD_HOST = "flqercbgpgmmfaakrwkc.supabase.co";

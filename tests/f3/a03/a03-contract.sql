@@ -154,6 +154,13 @@ insert into public.catalogo_tpv_productos(
   'Churros','ud',false,0,10.00000000,10.0000,true,7,
   '{"origen":"fixture-a03"}'::jsonb
 );
+do $$ begin
+  if exists(select 1 from information_schema.columns where table_schema='public'
+    and table_name='catalogo_tpv_productos' and column_name='requiere_preparacion') then
+    execute $sql$update public.catalogo_tpv_productos set requiere_preparacion=false
+      where empresa_id='emp-a' and local_id='loc-a' and producto_id='prod-churros'$sql$;
+  end if;
+end $$;
 
 select public.abc_abrir_cuenta(
   'a03.open.account.0001','emp-a','loc-a',

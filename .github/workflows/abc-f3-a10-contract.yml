@@ -110,6 +110,8 @@ jobs:
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260924160739_abc_f3_a09_descuentos_cortesias.sql
       - name: Aplicar A10
         run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20260926110000_abc_f3_a10_kitchen_commands.sql
+      - name: Aplicar A10C -- guard de rutas y clasificación de preparación
+        run: psql -v ON_ERROR_STOP=1 -f supabase/migrations/20261102100000_abc_f3_a10c_preparation_route_guard.sql
 
       - name: Regresión ACL F2 tras A10
         run: psql -v ON_ERROR_STOP=1 -f tests/f2/m04d/m04d-contract.sql

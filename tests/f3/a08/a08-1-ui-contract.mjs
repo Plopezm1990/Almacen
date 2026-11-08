@@ -2,7 +2,7 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
 
-const src = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
+const src = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8").replace(/\r\n/g, "\n");
 const a08 = fs.readFileSync("supabase/migrations/20260924060000_abc_f3_a08_account_split_merge.sql", "utf8");
 const a082 = fs.readFileSync("supabase/migrations/20260927203000_abc_f3_a08_2_payment_interlock.sql", "utf8");
 
@@ -136,7 +136,7 @@ assert.ok(src.includes('msg.includes("cuenta_origen_version_conflict")'));
 assert.ok(src.includes('msg.includes("cuenta_destino_version_conflict")'));
 
 // Wiring completo desde la factoría hasta VentaRapida.
-assert.ok(src.includes("listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta"));
+assert.ok(src.includes("listarCuentasRepartoA08, moverCantidadLineaCuentaA08"));
 assert.ok(src.includes("movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria"));
 assert.ok(src.includes("renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05()"));
 

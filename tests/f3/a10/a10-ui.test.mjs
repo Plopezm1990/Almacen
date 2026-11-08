@@ -52,6 +52,18 @@ test('A10 UI solo lee tablas de estaciones/rutas y no hace DML directo', async (
   }
 });
 
+test('A10 UI trata SIN_RUTA como bloqueo seguro y no como reimpresión operativa', async () => {
+  const [runtime, recovery] = await loadSources();
+  for (const source of [runtime, recovery]) {
+    assert.match(source, /bloqueadaSinRuta/);
+    assert.match(source, /Sin ruta de preparación: esta comanda está bloqueada y no se imprimirá/);
+    assert.match(source, /Esta asignación no reenvía automáticamente la comanda existente/);
+    assert.match(source, /No imprimible hasta asignar una ruta/);
+    assert.match(source, /las comandas bloqueadas existentes no se reenvían automáticamente/);
+    assert.match(source, /comandas sin ruta de preparación/);
+  }
+});
+
 test('el contrato y la implementación A10 siguen alineados', async () => {
   const [runtime, recovery, migration, contract] = await Promise.all([
     readFile(new URL('../../../fuente.js', import.meta.url), 'utf8'),
