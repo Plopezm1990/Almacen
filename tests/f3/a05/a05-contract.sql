@@ -194,6 +194,13 @@ insert into public.catalogo_tpv_productos(
   '10000000-0000-0000-0000-000000000003',
   'Churro ficticio','ud',false,0,1,10,true,1,'{"origen":"fixture-a05"}'
 );
+do $$ begin
+  if exists(select 1 from information_schema.columns where table_schema='public'
+    and table_name='catalogo_tpv_productos' and column_name='requiere_preparacion') then
+    execute $sql$update public.catalogo_tpv_productos set requiere_preparacion=false
+      where empresa_id='emp-c' and local_id='loc-c1' and producto_id in ('prod-cafe','prod-churro')$sql$;
+  end if;
+end $$;
 
 -- Flujo principal de dos líneas.
 select public.abc_abrir_cuenta(
