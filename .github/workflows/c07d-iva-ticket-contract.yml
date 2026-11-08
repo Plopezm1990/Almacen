@@ -1,0 +1,25 @@
+name: C07D ticket VAT breakdown (isolated contract)
+
+on:
+  pull_request:
+    branches: [release]
+    paths:
+      - fuente.js
+      - source-recovery/fuente-recuperado.js
+      - tests/c07d/iva-ticket-desglose-contract.mjs
+      - .github/workflows/c07d-iva-ticket-contract.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  unit-iva-ticket:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify JavaScript syntax
+        run: node --check fuente.js
+      - name: Execute ticket VAT contracts without credentials or remote databases
+        run: node --test tests/c07d/iva-ticket-desglose-contract.mjs
