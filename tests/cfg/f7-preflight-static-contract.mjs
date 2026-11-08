@@ -83,6 +83,10 @@ const EXCLUIDAS = new Set([
   // la foto F7 del 3/10 y se promueve en su propia ventana, con el contrato
   // tests/pm11/db/a01-baja-revoca-acceso-contract.mjs contra Postgres real.
   '20261108100000_a01_baja_empleado_revoca_acceso.sql',
+  // A-02: la venta fiscal se cierra y se sella al saldar la cuenta. Posterior
+  // a la foto F7 del 3/10, con contrato propio contra Postgres real en
+  // tests/f5/c07/db/a02-venta-fiscal-sellada-contract.mjs.
+  '20261108170000_a02_cerrar_y_sellar_venta_fiscal.sql',
   '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
   // F8 C04: alta de terminal/caja por propietario, con preflight propio.
   '20261027200000_abc_f8_c04_terminal_caja_propietario.sql',
