@@ -506,7 +506,7 @@ begin
      where operation_id='a10.unrouted.send'
   ) then raise exception 'A10_FAIL: producto sin ruta creó comanda'; end if;
   if (select estado from public.pedidos_tpv
-       where id='60000000-0000-0000-0000-000000000021')<>'BORRADOR' then
+       where id='60000000-0000-0000-0000-000000000021')<>'ABIERTO' then
     raise exception 'A10_FAIL: pedido sin ruta cambió de estado';
   end if;
 end $$;
