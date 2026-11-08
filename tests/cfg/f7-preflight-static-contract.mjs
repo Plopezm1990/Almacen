@@ -88,6 +88,9 @@ const EXCLUIDAS = new Set([
   '20261028170000_pm10_recepcion_stock_atomica.sql',
   '20261028180000_abc_f3_a10_requeue_blocked_routes.sql',
   '20261028190000_abc_f4_cuenta_cierre_pagada.sql',
+  // A10 preparación: ventana QA posterior a la foto F7 histórica.
+  '20261029190000_abc_f3_a10_preparation_mode.sql',
+  '20261029200000_abc_f3_a10_preparation_mode_prod_candidate.sql',
   // Corrección contextual P3c aplicada en una ventana separada; no forma parte de la foto F7 histórica.
   '20261029200000_abc_p3c_contexto_productos_production_fix.sql',
   // Autoridad del stock en la ruta contextual P3c; ventana separada de la foto F7 histórica.
