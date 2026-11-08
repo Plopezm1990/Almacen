@@ -173,15 +173,15 @@ insert into public.caja_sesion_responsables(
 
 insert into public.catalogo_tpv_productos(
   empresa_id,local_id,producto_id,currency_code,entidad_fiscal_id,nombre,unidad,
-  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,requiere_preparacion,version,snapshot_origen
+  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,version,snapshot_origen
 ) values
 (
   'emp-f','loc-f1','prod-unit-f','EUR','10000000-0000-0000-0000-000000000008',
-  'Producto unidad F','ud',false,0,10,10,true,false,1,'{}'::jsonb
+  'Producto unidad F','ud',false,0,10,10,true,1,'{}'::jsonb
 ),
 (
   'emp-f','loc-f1','prod-frac-f','EUR','10000000-0000-0000-0000-000000000008',
-  'Producto fraccionable F','kg',true,2,20,10,true,false,1,'{}'::jsonb
+  'Producto fraccionable F','kg',true,2,20,10,true,1,'{}'::jsonb
 );
 
 -- A07: una mesa compartida para las cuentas de split y otra para merge.

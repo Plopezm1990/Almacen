@@ -154,11 +154,11 @@ insert into public.caja_sesion_responsables(
 
 insert into public.catalogo_tpv_productos(
   empresa_id,local_id,producto_id,currency_code,entidad_fiscal_id,nombre,unidad,
-  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,requiere_preparacion,version,snapshot_origen
+  fraccionable,precision_cantidad,precio_unitario,impuesto_pct,activo,version,snapshot_origen
 ) values (
   'emp-b','loc-b1','prod-chocolate','EUR',
   '10000000-0000-0000-0000-000000000002',
-  'Chocolate','ud',false,0,10.00000000,10.0000,true,false,7,
+  'Chocolate','ud',false,0,10.00000000,10.0000,true,7,
   '{"origen":"fixture-a04"}'::jsonb
 );
 
