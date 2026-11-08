@@ -125975,8 +125975,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     });
     return true;
   }
-
-
+  function sincronizarImporteCobroF4(resultado) {
+    const saldo = Number(resultado?.saldo);
+    setImporteCobroF4(Number.isFinite(saldo) && saldo > 0 ? saldo.toFixed(2) : "");
+    if (!Number.isFinite(saldo) || saldo <= 0) setEfectivoRecibidoCobroF4("");
+  }
   async function adjuntarEstadoFiscalC07D(resultado) {
     if (!resultado?.ok || typeof leerEstadoFiscalC07D !== "function" || !resultado?.cuentaId) return resultado;
     const fiscal = await leerEstadoFiscalC07D(resultado.cuentaId);
@@ -126057,6 +126060,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return;
     }
     setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
+    sincronizarImporteCobroF4(resultado);
     setErrorCobroF4("");
   }
   async function ejecutarCobroF4(medio, opciones = {}) {
@@ -126078,6 +126082,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return;
     }
     setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
+    sincronizarImporteCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
   }
   async function recuperarCobroF4UI() {
@@ -126092,6 +126097,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return;
     }
     setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
+    sincronizarImporteCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || "Estado de cobro recuperado sin crear otro intento.");
   }
   function cambiarFormularioIncidenciaB04(campo, valor) {
@@ -126376,6 +126382,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       adjuntarEstadoFiscalC07D(resultado).then((estadoConFiscal) => {
         if (activo) setEstadoCobroF4(estadoConFiscal);
       });
+      sincronizarImporteCobroF4(resultado);
       setErrorCobroF4("");
     }).catch(() => {
       if (!activo) return;

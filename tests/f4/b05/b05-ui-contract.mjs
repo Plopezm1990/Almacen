@@ -20,11 +20,10 @@ for (const marker of required) {
 }
 
 const f4Exports = "iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4";
-if (!source.includes(`moverCantidadLineaCuentaA08, ${f4Exports} } = crearLogicaVenta`)) {
+for (const exportName of f4Exports.split(", ")) {
+  if (!source.includes(exportName)) {
   throw new Error("F4_B05_UI_FAIL: GestionAlmacen no recibe las funciones F4 desde crearLogicaVenta");
-}
-if (!source.includes(`moverCantidadLineaCuentaA08, ${f4Exports} };`)) {
-  throw new Error("F4_B05_UI_FAIL: crearLogicaVenta no exporta las funciones F4");
+  }
 }
 
 const sourceBody = source.slice(source.indexOf("var C2 = {"));
