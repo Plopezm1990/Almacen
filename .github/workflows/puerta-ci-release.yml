@@ -449,8 +449,8 @@ jobs:
           [ "$NODE_ACTIVE_PASS" = "282" ] || { echo "NODE_ACTIVE_PASS != 282" >&2; fallo=1; }
           [ "$NODE_ACTIVE_FAIL" = "0" ] || { echo "NODE_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$INFRA_FAIL" = "0" ] || { echo "INFRA_FAIL != 0" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_TOTAL" = "28" ] || { echo "POSTGRES_ACTIVE_TOTAL != 28" >&2; fallo=1; }
-          [ "$POSTGRES_ACTIVE_PASS" = "28" ] || { echo "POSTGRES_ACTIVE_PASS != 28" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_TOTAL" = "29" ] || { echo "POSTGRES_ACTIVE_TOTAL != 29" >&2; fallo=1; }
+          [ "$POSTGRES_ACTIVE_PASS" = "29" ] || { echo "POSTGRES_ACTIVE_PASS != 29" >&2; fallo=1; }
           [ "$POSTGRES_ACTIVE_FAIL" = "0" ] || { echo "POSTGRES_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$HISTORICAL_EXPECTED_FAIL" = "1" ] || { echo "HISTORICAL_EXPECTED_FAIL != 1" >&2; fallo=1; }
           [ "$PGLITE_ACTIVE_TOTAL" = "1" ] || { echo "PGLITE_ACTIVE_TOTAL != 1" >&2; fallo=1; }
@@ -483,7 +483,7 @@ jobs:
           echo "CALCULO_ACTIVE_FAIL=$active_fail"
 
           if [ "$total_activos" -ne 315 ]; then
-            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_313: $total_activos" >&2
+            echo "TOTAL_ACTIVOS_CALCULADO_DISTINTO_DE_315: $total_activos" >&2
             exit 1
           fi
           if [ "$active_pass" -ne 315 ] || [ "$active_fail" -ne 0 ]; then
