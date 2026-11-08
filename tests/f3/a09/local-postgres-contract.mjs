@@ -56,6 +56,11 @@ async function bootstrap(db) {
   assert.equal(createHash('sha256').update(migration).digest('hex'),
     createHash('sha256').update(draft).digest('hex'),'migration must match reviewed draft bytes');
   await db.query(migration.toString('utf8'));
+  // El seed A08 compartido también se ejecuta tras A10 y declara esta columna.
+  // A09 conserva deliberadamente la foto A03-A09, así que añadimos solo la
+  // columna de compatibilidad antes de reutilizar el seed, sin aplicar A10C.
+  await db.query(`alter table public.catalogo_tpv_productos
+    add column if not exists requiere_preparacion boolean`);
   const a08 = await readFile(resolve(root, 'tests/f3/a08/a08-contract.sql'), 'utf8');
   const marker = a08.indexOf('-- Replay exacto.');
   assert(marker > 0);
