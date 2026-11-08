@@ -51,12 +51,12 @@ echo "POSTGRES_VERSION_VERIFICADA=$pg_major"
 # esto es un no-op idempotente tolerado.
 sudo -u postgres psql -h 127.0.0.1 -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || \
   psql -h 127.0.0.1 -U postgres -c "ALTER USER postgres PASSWORD 'postgres';" 2>/dev/null || true
-for db in pm12_p08_test pm14_p02_test pm33_p05_test a09_discount_test plataforma_p01_test pm11_a01_test; do
+for db in pm12_p08_test pm14_p02_test pm33_p05_test a09_discount_test plataforma_p01_test pm11_a01_test c07d_a02_test; do
   dropdb -h 127.0.0.1 -U postgres --if-exists "$db"
   createdb -h 127.0.0.1 -U postgres "$db"
 done
 
-for dir in tests/pm12/db tests/pm14/db tests/pm33/db tests/plataforma/db tests/pm11/db; do
+for dir in tests/pm12/db tests/pm14/db tests/pm33/db tests/plataforma/db tests/pm11/db tests/f5/c07/db; do
   if [ -f "$dir/package-lock.json" ]; then
     npm ci --silent --prefix "$dir"
   else
@@ -99,11 +99,23 @@ fi
 psql -h 127.0.0.1 -U postgres -d pm11_a01_test -v ON_ERROR_STOP=1 -f tests/pm11/db/fixtures-a01.sql
 psql -h 127.0.0.1 -U postgres -d pm11_a01_test -v ON_ERROR_STOP=1 -f "$migracion_a01"
 
+# f5/c07/db (A-02) necesita su fixture y, encima, la migracion que se audita.
+migracion_a02=$(find supabase/migrations -maxdepth 1 -type f -iname '*a02_cerrar_y_sellar_venta_fiscal.sql')
+n_migracion_a02=$(printf '%s
+' "$migracion_a02" | grep -c . || true)
+if [ "$n_migracion_a02" -ne 1 ]; then
+  echo "MIGRACION_A02_NO_UNICA: se esperaba exactamente 1, se encontraron $n_migracion_a02" >&2
+  exit 1
+fi
+psql -h 127.0.0.1 -U postgres -d c07d_a02_test -v ON_ERROR_STOP=1 -f tests/f5/c07/db/fixtures-a02.sql
+psql -h 127.0.0.1 -U postgres -d c07d_a02_test -v ON_ERROR_STOP=1 -f "$migracion_a02"
+
 export PM12_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm12_p08_test'
 export PM14_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm14_p02_test'
 export PM33_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm33_p05_test'
 export PLATAFORMA_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/plataforma_p01_test'
 export PM11_A01_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/pm11_a01_test'
+export C07D_A02_TEST_DATABASE_URL='postgresql://postgres:postgres@127.0.0.1:5432/c07d_a02_test'
 export A09_PG_PORT=5432
 export A09_PG_DATABASE='a09_discount_test'
 export A09_PG_CLIENT="$ROOT/tests/pm12/db/node_modules/pg"

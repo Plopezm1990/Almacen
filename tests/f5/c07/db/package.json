@@ -1,0 +1,6 @@
+{
+  "name": "c07d-a02-venta-fiscal-sellada-contract",
+  "private": true,
+  "type": "module",
+  "dependencies": { "pg": "8.16.3" }
+}
