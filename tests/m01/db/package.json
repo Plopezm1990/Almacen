@@ -1,0 +1,6 @@
+{
+  "name": "m01-server-pin-contract",
+  "private": true,
+  "type": "module",
+  "dependencies": { "pg": "8.16.3" }
+}

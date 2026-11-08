@@ -460,6 +460,64 @@ function modoLocalNoReclamado() {
     return { key: key, value: "", shared: false };
   }
 
+  function sanitizarEmpleadosLegacy(value) {
+    try {
+      var lista = JSON.parse(value || "[]");
+      if (!Array.isArray(lista)) return "[]";
+      return JSON.stringify(lista.map(function (empleado) {
+        var copia = Object.assign({}, empleado || {});
+        delete copia.pin;
+        copia.pinConfigurado = false;
+        return copia;
+      }));
+    } catch (e) {
+      return "[]";
+    }
+  }
+
+  async function empleadosPropietarioSinSecretos(contexto, shared) {
+    var base = [];
+    try {
+      var original = await getOriginal("empleados", shared);
+      if (original && original.value) {
+        var parsed = JSON.parse(original.value);
+        if (Array.isArray(parsed)) base = parsed.map(function (empleado) {
+          var copia = Object.assign({}, empleado || {});
+          delete copia.pin;
+          copia.pinConfigurado = false;
+          return copia;
+        });
+      }
+    } catch (e) {}
+    if (!contexto || !contexto.empresaId || !contexto.localId) return respuestaStorage("empleados", base);
+    try {
+      var supabase = await clienteSupabase();
+      var remoto = await supabase.rpc("pm11_listar_empleados_modo", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId
+      });
+      if (remoto.error || !remoto.data || remoto.data.ok !== true || !Array.isArray(remoto.data.empleados)) {
+        return respuestaStorage("empleados", base);
+      }
+      var porId = Object.create(null);
+      base.forEach(function (empleado) { if (empleado && empleado.id) porId[String(empleado.id)] = empleado; });
+      remoto.data.empleados.forEach(function (seguro) {
+        if (!seguro || !seguro.id) return;
+        var existente = porId[String(seguro.id)];
+        if (existente) {
+          existente.pinConfigurado = seguro.pinConfigurado === true;
+          existente.activo = seguro.activo !== false;
+        } else {
+          porId[String(seguro.id)] = seguro;
+          base.push(seguro);
+        }
+      });
+      return respuestaStorage("empleados", base);
+    } catch (e) {
+      return respuestaStorage("empleados", base);
+    }
+  }
+
   function encargosSoloCaja(cobros) {
     if (!Array.isArray(cobros) || cobros.length === 0) return [];
     return [{ id: "contexto-caja", cobros: cobros }];
@@ -518,11 +576,14 @@ function modoLocalNoReclamado() {
     // cerrado para las colecciones empresariales controladas. loadKey aplicará
     // el fallback del módulo sin borrar la copia local.
     if (!rol) {
-    if (modoLocalNoReclamado()) return getOriginal(key, shared);
+    if (modoLocalNoReclamado()) return key === "empleados" ? empleadosPropietarioSinSecretos(null, shared) : getOriginal(key, shared);
     return respuestaVacia(key);
   }
 
-    if (rol === "Propietario") return getOriginal(key, shared);
+    if (rol === "Propietario") {
+      if (key === "empleados") return empleadosPropietarioSinSecretos(contexto, shared);
+      return getOriginal(key, shared);
+    }
 
     // Sustituciones de mínimo privilegio: el empleado recibe únicamente la
     // parte necesaria para ejecutar su tarea.
@@ -561,7 +622,7 @@ function modoLocalNoReclamado() {
     try { contexto = await obtenerContexto(false); } catch (e) {}
     var rol = contexto && contexto.rol;
     if (!rol) {
-    if (modoLocalNoReclamado()) return setOriginal(key, value, shared, opcionesP3c);
+    if (modoLocalNoReclamado()) return key === "empleados" ? setOriginal(key, sanitizarEmpleadosLegacy(value), shared, opcionesP3c) : setOriginal(key, value, shared, opcionesP3c);
     return { key: key, value: value, shared: false };
   }
 
@@ -576,6 +637,9 @@ function modoLocalNoReclamado() {
       }
     }
 
+    if (rol === "Propietario" && key === "empleados") {
+      return setOriginal(key, sanitizarEmpleadosLegacy(value), shared, opcionesP3c);
+    }
     return setOriginal(key, value, shared, opcionesP3c);
   };
 
