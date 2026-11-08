@@ -130,6 +130,15 @@ for linea in "${archivos[@]}"; do
     dropdb -h 127.0.0.1 -U postgres --if-exists "$isolated_db" >/dev/null 2>&1 || true
     export "$isolated_env=postgresql://postgres:postgres@127.0.0.1:5432/$isolated_db"
   fi
+  # Presentacion de categorias del TPV: misma pauta que F5, base desechable
+  # propia y el mismo cliente pg que ya usa el resto de la bateria.
+  if [ "$f" = "tests/cfg/tpv-categorias-presentacion-db-contract.mjs" ]; then
+    isolated_db="tpv_cat_test"
+    isolated_env="TPV_CAT_TEST_DATABASE_URL"
+    dropdb -h 127.0.0.1 -U postgres --if-exists "$isolated_db" >/dev/null 2>&1 || true
+    export "$isolated_env=postgresql://postgres:postgres@127.0.0.1:5432/$isolated_db"
+    export TPV_CAT_PG_CLIENT="$ROOT/tests/pm12/db/node_modules/pg"
+  fi
   out=""
   if [ -n "$isolated_db" ] && ! createdb -h 127.0.0.1 -U postgres "$isolated_db" >/dev/null 2>&1; then
     out="No se pudo crear la base aislada $isolated_db"
