@@ -105269,7 +105269,7 @@ function GestionAlmacen() {
   }
   const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
-  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, cancelarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, cancelarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
   const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId, locales });
   const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId, locales });
@@ -107563,9 +107563,33 @@ function prepararCancelacionAppccPM19(registro, opciones = {}) {
   if (!actorNombre) return { ok: false, codigo: "actor_obligatorio", error: "Indica qui\xE9n cancela el registro." };
   return { ok: true, replayed: false, motivo, actorNombre };
 }
-function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales = [] }) {
+function normalizarLecturaAppccF3(fila) {
+  const row = fila && fila.lectura ? fila.lectura : fila;
+  if (!row || !row.id) return null;
+  const realizada = row.realizada_en || row.created_at || null;
+  const texto = realizada ? String(realizada) : "";
+  return {
+    id: row.id,
+    fecha: texto ? texto.slice(0, 10) : "",
+    hora: texto.length >= 16 ? texto.slice(11, 16) : "",
+    puntoId: row.punto_control_id || "",
+    puntoNombre: row.punto_nombre || "",
+    tipo: row.tipo || "otro",
+    valor: row.valor == null ? "" : String(row.valor),
+    conforme: row.conforme !== false,
+    observaciones: row.observaciones || "",
+    responsable: row.actor_nombre || row.actor_user_id || "",
+    actorUserId: row.actor_user_id || null,
+    actorEmpleadoId: row.actor_empleado_id || null,
+    createdAt: realizada,
+    localId: row.local_id || null,
+    cancelado: false
+  };
+}
+function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales = [], empresaId = null }) {
   const puntoEsDelLocalActivoAppcc = (p22) => !!p22 && (!localActivoId || p22.localId === localActivoId);
   const registroEsDelLocalActivoAppcc = (r2) => !!r2 && (!localActivoId || r2.localId === localActivoId);
+  const remotoAppccDisponible = () => typeof window !== "undefined" && window.__laAppccAuthorityActive === true && typeof window.getSupabaseClient === "function" && empresaId && localActivoId;
   function addPuntoControl(data) {
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return;
     setPuntosControl((s22) => [...s22, { id: uid(), activo: true, ...data, localId: localActivoId || data.localId || null }]);
@@ -107578,13 +107602,38 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return;
     setPuntosControl((s22) => s22.filter((p22) => p22.id !== id || !puntoEsDelLocalActivoAppcc(p22)));
   }
-  function registrarAppcc(data) {
+  async function registrarAppcc(data) {
     const contextoAppcc = validarContextoEscrituraPM10({ localActivoId, locales });
     if (!contextoAppcc.ok) return contextoAppcc;
     const punto = puntosControl.find((p22) => p22.id === data.puntoId);
     if (data.puntoId && !puntoEsDelLocalActivoAppcc(punto)) return { ok: false, codigo: "punto_otro_local", error: "El punto de control pertenece a otro local." };
     const validacion = validarRegistroAppccPM19(data);
     if (!validacion.ok) return validacion;
+    if (remotoAppccDisponible()) {
+      try {
+        const cryptoApi = typeof crypto !== "undefined" ? crypto : null;
+        const lecturaId = cryptoApi && typeof cryptoApi.randomUUID === "function" ? cryptoApi.randomUUID() : null;
+        if (!lecturaId) return { ok: false, codigo: "uuid_no_disponible", error: "No se pudo generar el identificador seguro de la lectura." };
+        const supabase = await window.getSupabaseClient();
+        const respuesta = await supabase.rpc("appcc_registrar_lectura", {
+          p_lectura_id: lecturaId,
+          p_punto_control_id: String(data.puntoId || ""),
+          p_empresa_id: String(empresaId),
+          p_local_id: String(localActivoId),
+          p_valor: String(data.valor == null ? "" : data.valor),
+          p_conforme: data.conforme !== false,
+          p_observaciones: String(data.observaciones || "")
+        });
+        if (respuesta && respuesta.error) return { ok: false, codigo: respuesta.error.code || "appcc_rpc_error", error: respuesta.error.message || "No se pudo guardar el control APPCC en el servidor." };
+        const registroRemoto = normalizarLecturaAppccF3(respuesta && respuesta.data);
+        if (!registroRemoto) return { ok: false, codigo: "appcc_respuesta_invalida", error: "El servidor no devolvió la lectura APPCC." };
+        setRegistrosAppcc((s22) => [registroRemoto, ...s22.filter((r2) => r2.id !== registroRemoto.id)]);
+        if (registrarAuditoria) registrarAuditoria("Registrar control APPCC", `${registroRemoto.puntoNombre || "Control"} · ${registroRemoto.conforme === false ? "NO CONFORME" : "conforme"} · actor: ${registroRemoto.actorUserId || "servidor"}`);
+        return { ok: true, registro: registroRemoto, servidor: true };
+      } catch (error) {
+        return { ok: false, codigo: "appcc_rpc_error", error: error?.message || "No se pudo guardar el control APPCC en el servidor." };
+      }
+    }
     const registro = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data, responsable: validacion.responsable, cancelado: false, localId: localActivoId || punto && punto.localId || null };
     setRegistrosAppcc((s22) => [registro, ...s22]);
     if (registrarAuditoria) registrarAuditoria("Registrar control APPCC", `${data.puntoNombre || "Control"} \xB7 ${data.conforme === false ? "NO CONFORME" : "conforme"} \xB7 responsable: ${validacion.responsable}`);
@@ -107598,6 +107647,7 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
     const preparada = prepararCancelacionAppccPM19(registro, opciones);
     if (!preparada.ok) return preparada;
     if (preparada.replayed) return { ok: true, replayed: true };
+    if (remotoAppccDisponible()) return { ok: false, codigo: "appcc_cancelacion_no_modelada", error: "La cancelación remota requiere una operación append-only específica; no se modifica el historial desde el navegador." };
     const canceladoEn = (/* @__PURE__ */ new Date()).toISOString();
     setRegistrosAppcc((s22) => s22.map((r2) => r2.id === id ? { ...r2, cancelado: true, motivoCancelacion: preparada.motivo, canceladoPor: preparada.actorNombre, canceladoEn } : r2));
     if (registrarAuditoria) registrarAuditoria("Cancelar control APPCC", `${registro.puntoNombre || "Control"} del ${registro.fecha} \xB7 ${preparada.motivo}`);
@@ -121300,9 +121350,9 @@ function Appcc({
     if (punto.tempMax != null && v22 > punto.tempMax) return false;
     return true;
   }
-  function submitRegistro() {
+  async function submitRegistro() {
     const auto = evaluarConformidad(registroPara, registroForm.valor);
-    const res = registrarAppcc({
+    const res = await registrarAppcc({
       puntoId: registroPara.id,
       puntoNombre: registroPara.nombre,
       tipo: registroPara.tipo,

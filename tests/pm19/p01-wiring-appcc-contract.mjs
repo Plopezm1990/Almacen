@@ -15,7 +15,7 @@ const src = fs.readFileSync('fuente.js', 'utf8');
   const fin = src.indexOf('function crearLogicaFichaje(', ini);
   const cuerpo = src.slice(ini, fin);
 
-  assert.match(cuerpo, /function crearLogicaAppcc\(\{ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria(?:, locales = \[\])? \}\)/, 'debe recibir registrarAuditoria (y, desde P05, locales)');
+  assert.match(cuerpo, /function crearLogicaAppcc\(\{ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria(?:, locales = \[\])?(?:, empresaId = null)? \}\)/, 'debe recibir registrarAuditoria, locales y el contexto de empresa');
   assert.match(cuerpo, /const validacion = validarRegistroAppccPM19\(data\);/, 'registrarAppcc debe validar con la función pura');
   assert.match(cuerpo, /if \(registrarAuditoria\) registrarAuditoria\("Registrar control APPCC"/, 'debe dejar rastro de auditoría al registrar');
   assert.match(cuerpo, /function cancelarRegistroAppcc\(id, opciones = \{\}\)/, 'debe exponer cancelación trazable');
@@ -27,7 +27,7 @@ const src = fs.readFileSync('fuente.js', 'utf8');
 
 // ---- Composición: pasa registrarAuditoria y cancelarRegistroAppcc (no la función vieja). ----
 {
-  assert.match(src, /crearLogicaAppcc\(\{ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales \}\)/, 'la composición debe pasar registrarAuditoria y locales a crearLogicaAppcc');
+  assert.match(src, /crearLogicaAppcc\(\{ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales, empresaId:/, 'la composición debe pasar registrarAuditoria, locales y empresaId a crearLogicaAppcc');
   assert.doesNotMatch(src, /eliminarRegistroAppcc/, 'no debe quedar ninguna referencia a la función de borrado físico en todo el bundle');
   console.log('P01_PM19_COMPOSICION_APPCC_ACTUALIZADA=PASS');
 }
@@ -41,7 +41,7 @@ const src = fs.readFileSync('fuente.js', 'utf8');
   const cuerpo = src.slice(ini, fin);
 
   assert.match(cuerpo, /cancelarRegistroAppcc,/, 'el componente debe recibir cancelarRegistroAppcc como prop');
-  assert.match(cuerpo, /const res = registrarAppcc\(\{/, 'submitRegistro debe leer el resultado {ok,error} real');
+  assert.match(cuerpo, /const res = (?:await )?registrarAppcc\(\{/, 'submitRegistro debe leer el resultado {ok,error} real');
   assert.match(cuerpo, /if \(!res\.ok\) \{\s*setErrorRegistro\(res\.error\);/, 'un registro rechazado debe mostrar el error, no fallar en silencio');
   assert.match(cuerpo, /function confirmarCancelarRegistro\(\)/, 'debe existir el flujo de confirmación de cancelación');
   assert.match(cuerpo, /cancelarRegistroAppcc\(cancelarRegistro\.id, \{/, 'la cancelación real debe llamar a cancelarRegistroAppcc');
