@@ -126,6 +126,9 @@ const EXCLUIDAS = new Set([
   '20261107220000_issue190_qa_storage_local_isolation.sql',
   // B-02: índice posterior para el historial de errores; no forma parte de la foto F7 cerrada del 3/10.
   '20261109120000_b02_errores_sistema_fecha_idx.sql',
+  // A-03/A-04: APPCC histórico y atribución server-side; ventana de Fase 3
+  // posterior a la foto F7 cerrada del 3/10, con contrato propio.
+  '20261109150000_a03_a04_appcc_y_atribucion.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
