@@ -19,6 +19,10 @@ const closeMigration = readFileSync(
   path.join(root, 'supabase', 'migrations', '20261001140000_abc_f5_c04_close_reopen.sql'),
   'utf8'
 );
+const appccMigration = readFileSync(
+  path.join(root, 'supabase', 'migrations', '20261109150000_a03_a04_appcc_y_atribucion.sql'),
+  'utf8'
+);
 
 for (const source of [runtime, recovered]) {
   assert.match(source, /function crearLogicaVenta\(\{[\s\S]*registrarAuditoria = null \}\)/, 'la lógica de venta debe recibir el registrador de auditoría');
@@ -53,5 +57,17 @@ assert.match(personalMigration, /auth\.uid\(\)/, 'Personal debe derivar el actor
 assert.match(personalMigration, /actor_user_id/, 'Personal debe persistir el actor de sesión');
 assert.match(closeMigration, /auth\.uid\(\)/, 'el cierre debe derivar el actor de la sesión');
 assert.match(closeMigration, /actor_user_id/, 'el cierre debe persistir el actor de sesión');
+
+const auditFunction = appccMigration.match(
+  /create or replace function public\.registrar_auditoria\([\s\S]*?as \$\$([\s\S]*?)\$\$;/i
+);
+assert.ok(auditFunction, 'la migración A-04 debe contener la función común de auditoría');
+assert.doesNotMatch(
+  auditFunction[1],
+  /\bp_usuario\b/,
+  'el nombre recibido del cliente no puede ser la identidad autoritativa persistida'
+);
+assert.match(auditFunction[1], /auth\.uid\(\)/, 'la auditoría común debe derivar el actor de la sesión');
+assert.match(auditFunction[1], /v_actor_nombre/, 'la auditoría común debe resolver el nombre desde el perfil');
 
 console.log('A03_A04_BUSINESS_OPERATION_COVERAGE_CONTRACT=PASS');
