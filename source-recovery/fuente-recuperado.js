@@ -6576,7 +6576,7 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return;
     setPuntosControl((s22) => s22.filter((p22) => p22.id !== id || !puntoEsDelLocalActivoAppcc(p22)));
   }
-  async function registrarAppcc(data) {
+  function registrarAppcc(data) {
     const contextoAppcc = validarContextoEscrituraPM10({ localActivoId, locales });
     if (!contextoAppcc.ok) return contextoAppcc;
     const punto = puntosControl.find((p22) => p22.id === data.puntoId);
@@ -6584,7 +6584,8 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
     const validacion = validarRegistroAppccPM19(data);
     if (!validacion.ok) return validacion;
     if (remotoAppccDisponible()) {
-      try {
+      return (async () => {
+        try {
         const cryptoApi = typeof crypto !== "undefined" ? crypto : null;
         const lecturaId = cryptoApi && typeof cryptoApi.randomUUID === "function" ? cryptoApi.randomUUID() : null;
         if (!lecturaId) return { ok: false, codigo: "uuid_no_disponible", error: "No se pudo generar el identificador seguro de la lectura." };
@@ -6604,9 +6605,10 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
         setRegistrosAppcc((s22) => [registroRemoto, ...s22.filter((r2) => r2.id !== registroRemoto.id)]);
         if (registrarAuditoria) registrarAuditoria("Registrar control APPCC", `${registroRemoto.puntoNombre || "Control"} · ${registroRemoto.conforme === false ? "NO CONFORME" : "conforme"} · actor: ${registroRemoto.actorUserId || "servidor"}`);
         return { ok: true, registro: registroRemoto, servidor: true };
-      } catch (error) {
-        return { ok: false, codigo: "appcc_rpc_error", error: error?.message || "No se pudo guardar el control APPCC en el servidor." };
-      }
+        } catch (error) {
+          return { ok: false, codigo: "appcc_rpc_error", error: error?.message || "No se pudo guardar el control APPCC en el servidor." };
+        }
+      })();
     }
     const registro = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data, responsable: validacion.responsable, cancelado: false, localId: localActivoId || punto && punto.localId || null };
     setRegistrosAppcc((s22) => [registro, ...s22]);
