@@ -12,6 +12,15 @@ const migrationPath = path.join(
   '20261109150000_a03_a04_appcc_y_atribucion.sql'
 );
 const sql = fs.readFileSync(migrationPath, 'utf8').toLowerCase();
+const correctionMigration = fs.readFileSync(
+  path.join(
+    root,
+    'supabase',
+    'migrations',
+    '20261109201101_a03_appcc_correction_response.sql'
+  ),
+  'utf8'
+).toLowerCase();
 
 function mustContain(fragment, message = fragment) {
   assert.ok(sql.includes(fragment.toLowerCase()), `Falta contrato A-03/A-04: ${message}`);
@@ -30,6 +39,17 @@ mustContain('appcc_corregir_lectura');
 mustContain('clock_timestamp()', 'la hora de la lectura debe venir del servidor');
 mustContain('alter table public.appcc_lecturas enable row level security');
 mustContain('revoke all on table public.appcc_lecturas');
+
+assert.match(
+  correctionMigration,
+  /return jsonb_build_object\(\s*'ok', true,\s*'replayed', false,\s*'correccion', to_jsonb\(v_existente\)/s,
+  'la primera corrección debe devolver la fila append-only recién insertada'
+);
+assert.match(
+  correctionMigration,
+  /returning \* into v_existente;/,
+  'la corrección nueva debe capturar la fila insertada antes de serializarla'
+);
 
 // A-04: la identidad efectiva se deriva de la sesión y del perfil; el texto
 // recibido del navegador no puede convertirse en actor persistido.

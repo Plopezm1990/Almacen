@@ -131,6 +131,9 @@ const EXCLUIDAS = new Set([
   '20261109150000_a03_a04_appcc_y_atribucion.sql',
   '20261109170000_a03_appcc_cancelacion_append_only.sql',
   '20261109180000_a03_appcc_puntos_server_side.sql',
+  // Corrección incremental de la respuesta de APPCC; se aplica en la ventana
+  // de Fase 3 y no forma parte de la foto F7 cerrada del 3/10.
+  '20261109201101_a03_appcc_correction_response.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
