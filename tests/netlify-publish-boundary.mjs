@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 import { lstat, readdir, readFile, readlink } from 'node:fs/promises';
 import path from 'node:path';
+import { renderHeadersForContext } from '../.github/scripts/netlify-csp.mjs';
 
 const root = process.cwd();
 const outName = '.netlify-dist';
@@ -61,14 +62,20 @@ assert(String(published.get(generatedTailwind)).startsWith('file:'), 'Generated 
 const comparablePublished = new Map(published);
 comparablePublished.delete(generatedTailwind);
 
-assert(source.size === comparablePublished.size,
+const templateHeaders = await readFile(path.join(root, '_headers'), 'utf8');
+const renderedHeaders = renderHeadersForContext(templateHeaders, process.env.CONTEXT);
+const renderedHeadersDigest = createHash('sha256').update(renderedHeaders).digest('hex');
+const expectedSource = new Map(source);
+expectedSource.set('_headers', `file:${renderedHeadersDigest}`);
+
+assert(expectedSource.size === comparablePublished.size,
   `Publish entry count mismatch: source=${source.size}, published-static=${comparablePublished.size}`);
-for (const [key, expected] of source) {
+for (const [key, expected] of expectedSource) {
   assert(comparablePublished.has(key), `Missing publish entry: ${key}`);
   assert(comparablePublished.get(key) === expected, `Publish content mismatch: ${key}`);
 }
 for (const key of comparablePublished.keys()) {
-  assert(source.has(key), `Unexpected publish entry: ${key}`);
+  assert(expectedSource.has(key), `Unexpected publish entry: ${key}`);
 }
 
 const forbiddenPrefixes = ['.github/','node_modules/','tests/','supabase/','source-recovery/','docs/','tools/'];
@@ -99,7 +106,7 @@ assert(index.includes('tailwind.generated.css'), 'index.html does not load gener
 assert(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(index), 'index.html still contains inline script');
 assert(!/<script(?![^>]*\bsrc=)[^>]*>/i.test(recovery), 'restablecer-contrasena.html still contains inline script');
 
-const headers = await readFile(path.join(root, '_headers'), 'utf8');
+const headers = templateHeaders;
 for (const expected of [
   'Content-Security-Policy:',
   "script-src 'self'",
