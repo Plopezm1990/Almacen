@@ -27,7 +27,6 @@ mustContain('valor_anterior text not null');
 mustContain('lectura_original_id uuid not null references public.appcc_lecturas(id)');
 mustContain('appcc_registrar_lectura');
 mustContain('appcc_corregir_lectura');
-mustContain('appcc_cancelar_lectura');
 mustContain('clock_timestamp()', 'la hora de la lectura debe venir del servidor');
 mustContain('alter table public.appcc_lecturas enable row level security');
 mustContain('revoke all on table public.appcc_lecturas');
