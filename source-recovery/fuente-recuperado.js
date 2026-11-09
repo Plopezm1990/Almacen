@@ -4216,8 +4216,8 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
-  const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -10154,7 +10154,7 @@ var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza
 // pantalla no vuelva a prometer ni a negar algo distinto de lo que hace el
 // servidor.
 var ESTADOS_PEDIDO_COBRABLE_F4 = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO", "CERRADO"];
-function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null, registrarAuditoria = null }) {
   function c07dActivoEnEntornoQa() {
     return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
   }
@@ -13150,6 +13150,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         };
       }
       if (data?.ok && String(data?.status || "") === "APLICADA") {
+        if (!data?.replayed) registrarAuditoria?.("DESCUENTO_CUENTA", `${operationId} · ${kind} · ${reason}`);
         const cuenta = typeof recuperarCuentaA06 === "function" ? await recuperarCuentaA06() : null;
         return { ok: true, applied: true, resultado: data, cuenta };
       }
@@ -13207,7 +13208,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     });
     if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
-    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    if (!hayConexion) {
+      const resultadoLocal = venderLocal(lineas, medioPago, detallePago);
+      if (resultadoLocal?.ok) registrarAuditoria?.("VENTA_TPV", `${resultadoLocal.ventaId} · ${resultadoLocal.n || 0} línea(s) · ${medioPago}`);
+      return resultadoLocal;
+    }
     const ventaId = uid();
     let totalVenta = 0;
     (lineas || []).forEach((ln2) => {
@@ -13261,6 +13266,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         r2 = await intentarRpc(4e3);
       }
       await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      if (!r2.data?.replayed) registrarAuditoria?.("VENTA_TPV", `${ventaId} · ${lineasParaRpc.length} línea(s) · ${medioPago}`);
       return { ok: true, n: lineasParaRpc.length, modo: "pm07-servidor", replayed: !!r2.data?.replayed, ventaId };
     } catch (error) {
       return { ok: false, ...errorVisible(error) };
