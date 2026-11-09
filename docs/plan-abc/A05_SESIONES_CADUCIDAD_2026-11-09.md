@@ -49,6 +49,8 @@ Se consultó en modo lectura la configuración no secreta de Auth de ambos proye
 
 La documentación oficial de Supabase distingue el JWT de corta duración de la sesión completa y define el timeout de inactividad y el time-box como controles separados: [User sessions](https://supabase.com/docs/guides/auth/sessions). En el estado actual, ambos controles están desactivados en QA y producción.
 
+La misma documentación añade dos límites que condicionan el diseño: el control se comprueba cuando la sesión se renueva, no como una destrucción inmediata de todas las sesiones al cambiar la configuración, y la duración efectiva puede ser el timeout configurado más la expiración del JWT. Por eso un timeout server-side no sustituye al bloqueo de interfaz del terminal compartido; el contrato debe verificar ambos comportamientos por separado.
+
 ## Código servido y causa raíz
 
 La comparación sobre `origin/release` encontró estos caminos:
