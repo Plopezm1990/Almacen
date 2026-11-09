@@ -62,6 +62,8 @@ La comparación sobre `origin/release` encontró estos caminos:
 5. `edge-auth-patch.js:200` escucha cambios de sesión y `edge-auth-patch.js:632` cierra la sesión local cuando un perfil pasa a inactivo. Además, `fuente.js:44122` ejecuta una comprobación del perfil cada 30 segundos y en foco/visibilidad. Esa guarda revoca por estado del perfil, no por tiempo sin actividad.
 6. No se encontró lógica de aplicación para `sessions_inactivity_timeout`, `sessions_timebox`, `inactivity`, `idle` o un contador de eventos de teclado/puntero que provoque logout. Las coincidencias `Idle*` restantes pertenecen al planificador interno de React, no a una política de sesión.
 
+7. El modo empleado existente no constituye por sí mismo una reautenticación server-side: `crearLogicaSeguridad` compara el PIN contra un hash mantenido en el estado local del navegador, y la carga inicial recupera también `modoEmpleado`, `usuarioActivoId` y `pinPropietario` mediante `loadKey`. Por tanto, ese flujo puede servir como contexto operativo local, pero no debe usarse como prueba de identidad suficiente para levantar el bloqueo de un terminal compartido sin una decisión y una comprobación autorizada en servidor.
+
 La causa raíz es, por tanto, una combinación de **configuración de Auth sin timeout** y **cliente con persistencia y renovación automáticas**, sin política de inactividad propia ni reidentificación de terminal compartido.
 
 ## Evidencia por nivel
@@ -87,6 +89,7 @@ Una remediación técnicamente coherente deberá combinar:
 - una política de terminal compartido que no confunda “sesión Supabase viva” con “empleado actualmente identificado”;
 - cierre/limpieza de estado local al detectar `SIGNED_OUT`, sesión inválida o timeout;
 - contrato de regresión que compruebe que el cliente no acepta una sesión reanudada tras el límite sin reautenticación;
+- contrato de regresión que compruebe que ni `modoEmpleado` ni `usuarioActivoId` persistidos en el navegador levantan por sí solos el bloqueo del terminal;
 - prueba separada para `sessions_inactivity_timeout` y para el comportamiento de reidentificación, sin usar producción.
 
 No se fija aquí un número de minutos ni se aplica ninguna configuración por falta de esa decisión y para no convertir una suposición en requisito.
