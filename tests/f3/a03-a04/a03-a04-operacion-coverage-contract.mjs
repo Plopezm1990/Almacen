@@ -30,6 +30,7 @@ for (const source of [runtime, recovered]) {
   assert.match(source, /"Aplicar ajustes de inventario"/, 'un ajuste de stock debe quedar en la auditoría común');
   assert.match(source, /registrar_venta_stock_carrito_pm09/, 'la venta debe pasar por la RPC PM09 server-side');
   assert.match(source, /revertir_venta_stock_carrito_pm09/, 'la reversión debe pasar por la RPC PM09 server-side');
+  assert.doesNotMatch(source, /\bdescontar_stock(?:_carrito)?\b/, 'el cliente no debe volver al camino legado de stock sin atribución');
   assert.match(source, /pm11_alta_empleado/, 'Personal debe pasar por la RPC server-side de alta');
   assert.match(source, /pm11_baja_empleado/, 'Personal debe pasar por la RPC server-side de baja');
   assert.match(source, /pm11_reactivar_empleado/, 'Personal debe pasar por la RPC server-side de reactivación');
