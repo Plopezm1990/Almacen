@@ -107586,21 +107586,90 @@ function normalizarLecturaAppccF3(fila) {
     cancelado: false
   };
 }
+function normalizarPuntoAppccF3(fila) {
+  const row = fila && fila.punto ? fila.punto : fila;
+  if (!row || !row.id) return null;
+  return {
+    id: row.id,
+    nombre: row.nombre || "",
+    tipo: row.tipo || "otro",
+    frecuencia: row.frecuencia || "Diaria",
+    tempMin: row.temp_min == null ? null : Number(row.temp_min),
+    tempMax: row.temp_max == null ? null : Number(row.temp_max),
+    activo: row.activo !== false,
+    localId: row.local_id || null,
+    empresaId: row.empresa_id || null,
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null
+  };
+}
 function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales = [], empresaId = null }) {
   const puntoEsDelLocalActivoAppcc = (p22) => !!p22 && (!localActivoId || p22.localId === localActivoId);
   const registroEsDelLocalActivoAppcc = (r2) => !!r2 && (!localActivoId || r2.localId === localActivoId);
   const remotoAppccDisponible = () => typeof window !== "undefined" && window.__laAppccAuthorityActive === true && typeof window.getSupabaseClient === "function" && empresaId && localActivoId;
   function addPuntoControl(data) {
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return;
-    setPuntosControl((s22) => [...s22, { id: uid(), activo: true, ...data, localId: localActivoId || data.localId || null }]);
+    const punto = { id: uid(), activo: true, ...data, localId: localActivoId || data.localId || null };
+    if (remotoAppccDisponible()) {
+      return (async () => {
+        try {
+          const supabase = await window.getSupabaseClient();
+          const respuesta = await supabase.rpc("appcc_guardar_punto", { p_id: punto.id, p_empresa_id: String(empresaId), p_local_id: String(localActivoId), p_nombre: punto.nombre, p_tipo: punto.tipo, p_frecuencia: punto.frecuencia, p_temp_min: punto.tempMin, p_temp_max: punto.tempMax, p_activo: true });
+          if (respuesta && respuesta.error) return { ok: false, error: respuesta.error.message || "No se pudo guardar el punto APPCC." };
+          const remoto = normalizarPuntoAppccF3(respuesta && respuesta.data);
+          if (!remoto) return { ok: false, error: "El servidor no devolvió el punto APPCC." };
+          setPuntosControl((s22) => [...s22.filter((p22) => p22.id !== remoto.id), remoto]);
+          return { ok: true, punto: remoto, servidor: true };
+        } catch (error) {
+          return { ok: false, error: error?.message || "No se pudo guardar el punto APPCC." };
+        }
+      })();
+    }
+    setPuntosControl((s22) => [...s22, punto]);
+    return { ok: true, punto };
   }
   function updatePuntoControl(id, data) {
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return;
+    if (remotoAppccDisponible()) {
+      const actual = puntosControl.find((p22) => p22.id === id);
+      if (!puntoEsDelLocalActivoAppcc(actual)) return { ok: false, error: "El punto no pertenece al local activo." };
+      const punto = { ...actual, ...data, localId: actual.localId || localActivoId || null };
+      return (async () => {
+        try {
+          const supabase = await window.getSupabaseClient();
+          const respuesta = await supabase.rpc("appcc_guardar_punto", { p_id: punto.id, p_empresa_id: String(empresaId), p_local_id: String(localActivoId), p_nombre: punto.nombre, p_tipo: punto.tipo, p_frecuencia: punto.frecuencia, p_temp_min: punto.tempMin, p_temp_max: punto.tempMax, p_activo: punto.activo !== false });
+          if (respuesta && respuesta.error) return { ok: false, error: respuesta.error.message || "No se pudo actualizar el punto APPCC." };
+          const remoto = normalizarPuntoAppccF3(respuesta && respuesta.data);
+          if (!remoto) return { ok: false, error: "El servidor no devolvió el punto APPCC actualizado." };
+          setPuntosControl((s22) => s22.map((p22) => p22.id === id ? remoto : p22));
+          return { ok: true, punto: remoto, servidor: true };
+        } catch (error) {
+          return { ok: false, error: error?.message || "No se pudo actualizar el punto APPCC." };
+        }
+      })();
+    }
     setPuntosControl((s22) => s22.map((p22) => p22.id === id && puntoEsDelLocalActivoAppcc(p22) ? { ...p22, ...data, localId: p22.localId || localActivoId || null } : p22));
+    return { ok: true };
   }
   function deletePuntoControl(id) {
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return;
+    if (remotoAppccDisponible()) {
+      const actual = puntosControl.find((p22) => p22.id === id);
+      if (!puntoEsDelLocalActivoAppcc(actual)) return { ok: false, error: "El punto no pertenece al local activo." };
+      return (async () => {
+        try {
+          const supabase = await window.getSupabaseClient();
+          const respuesta = await supabase.rpc("appcc_desactivar_punto", { p_id: id, p_empresa_id: String(empresaId), p_local_id: String(localActivoId) });
+          if (respuesta && respuesta.error) return { ok: false, error: respuesta.error.message || "No se pudo desactivar el punto APPCC." };
+          setPuntosControl((s22) => s22.filter((p22) => p22.id !== id));
+          return { ok: true, servidor: true };
+        } catch (error) {
+          return { ok: false, error: error?.message || "No se pudo desactivar el punto APPCC." };
+        }
+      })();
+    }
     setPuntosControl((s22) => s22.filter((p22) => p22.id !== id || !puntoEsDelLocalActivoAppcc(p22)));
+    return { ok: true };
   }
   function registrarAppcc(data) {
     const contextoAppcc = validarContextoEscrituraPM10({ localActivoId, locales });
@@ -121345,19 +121414,23 @@ function Appcc({
   const [motivoCancelarRegistro, setMotivoCancelarRegistro] = (0, import_react4.useState)("");
   const [actorCancelarRegistro, setActorCancelarRegistro] = (0, import_react4.useState)("");
   const [errorCancelarRegistro, setErrorCancelarRegistro] = (0, import_react4.useState)("");
-  function submitPunto() {
+  async function submitPunto() {
     if (!puntoForm.nombre.trim()) {
       setPuntoError("Ponle nombre al punto de control.");
       return;
     }
     setPuntoError("");
-    addPuntoControl({
+    const resultado = await addPuntoControl({
       nombre: puntoForm.nombre.trim(),
       tipo: puntoForm.tipo,
       tempMin: puntoForm.tempMin === "" ? null : Number(puntoForm.tempMin),
       tempMax: puntoForm.tempMax === "" ? null : Number(puntoForm.tempMax),
       frecuencia: puntoForm.frecuencia
     });
+    if (resultado && resultado.ok === false) {
+      setPuntoError(resultado.error || "No se pudo guardar el punto de control.");
+      return;
+    }
     setPuntoForm({ nombre: "", tipo: "temperatura", tempMin: "", tempMax: "", frecuencia: "Diaria" });
     setShowPunto(false);
   }

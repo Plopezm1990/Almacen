@@ -58,6 +58,32 @@
     };
   }
 
+  function mapPunto(row) {
+    if (!row || !row.id) return null;
+    return {
+      id: row.id,
+      nombre: row.nombre || "",
+      tipo: row.tipo || "otro",
+      frecuencia: row.frecuencia || "Diaria",
+      tempMin: row.temp_min == null ? null : Number(row.temp_min),
+      tempMax: row.temp_max == null ? null : Number(row.temp_max),
+      activo: row.activo !== false,
+      localId: row.local_id || null,
+      empresaId: row.empresa_id || null,
+      createdAt: row.created_at || null,
+      updatedAt: row.updated_at || null
+    };
+  }
+
+  async function leerPuntos(client) {
+    var response = await client
+      .from("appcc_puntos_control")
+      .select("id,empresa_id,local_id,nombre,tipo,frecuencia,temp_min,temp_max,activo,created_at,updated_at")
+      .order("nombre", { ascending: true });
+    if (!response || response.error) throw (response && response.error) || new Error("A03_PUNTOS_READ_FALLO");
+    return JSON.stringify((Array.isArray(response.data) ? response.data : []).map(mapPunto).filter(Boolean));
+  }
+
   async function leerLecturas(client) {
     var response = await client
       .from("appcc_lecturas")
@@ -95,14 +121,17 @@
     var originalSet = storage.set.bind(storage);
 
     storage.get = async function (key, shared) {
-      if (String(key || "") !== "registrosAppcc") return originalGet(key, shared);
+      var normalized = String(key || "");
+      if (normalized !== "registrosAppcc" && normalized !== "puntosControl") return originalGet(key, shared);
       var authority = await resolverAutoridad();
       if (!authority.active) return originalGet(key, shared);
+      if (normalized === "puntosControl") return respuestaStorage(key, await leerPuntos(authority.client), shared);
       return respuestaStorage(key, await leerLecturas(authority.client), shared);
     };
 
     storage.set = async function (key, value, shared, options) {
-      if (String(key || "") !== "registrosAppcc") return originalSet(key, value, shared, options);
+      var normalized = String(key || "");
+      if (normalized !== "registrosAppcc" && normalized !== "puntosControl") return originalSet(key, value, shared, options);
       var authority = await resolverAutoridad();
       if (authority.active) return respuestaStorage(key, value, shared);
       return originalSet(key, value, shared, options);

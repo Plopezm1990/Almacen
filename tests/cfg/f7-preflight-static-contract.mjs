@@ -130,6 +130,7 @@ const EXCLUIDAS = new Set([
   // posterior a la foto F7 cerrada del 3/10, con contrato propio.
   '20261109150000_a03_a04_appcc_y_atribucion.sql',
   '20261109170000_a03_appcc_cancelacion_append_only.sql',
+  '20261109180000_a03_appcc_puntos_server_side.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
