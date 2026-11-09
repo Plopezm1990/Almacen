@@ -102,7 +102,7 @@ Deno.serve(async (req: Request) => {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
       return json(req, { ok: false, error: "El correo no es válido." }, 400);
     }
-    if (password.length < 6 || password.length > 200) {
+    if (password.length < 8 || password.length > 200) {
       return json(req, { ok: false, error: "La contraseña no cumple la longitud permitida." }, 400);
     }
     if (!ROLES_VALIDOS.has(rol)) return json(req, { ok: false, error: "Ese rol de acceso no está permitido." }, 400);
