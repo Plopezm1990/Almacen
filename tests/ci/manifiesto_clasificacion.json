@@ -50,6 +50,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/b02/b02-errors-system-date-index-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/c01/cobro-efectivo-redondeo-contract.mjs",
       "classification": "active_contract",
       "environment": "node"

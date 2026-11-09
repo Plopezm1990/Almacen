@@ -124,6 +124,8 @@ const EXCLUIDAS = new Set([
   '20261031170000_abc_f4_cobro_pedido_en_cocina.sql',
   // Corrección de aislamiento Storage de Issue #190, exclusiva de QA; no forma parte de la foto F7 histórica.
   '20261107220000_issue190_qa_storage_local_isolation.sql',
+  // B-02: índice posterior para el historial de errores; no forma parte de la foto F7 cerrada del 3/10.
+  '20261109120000_b02_errores_sistema_fecha_idx.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
