@@ -111038,6 +111038,17 @@ var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza
 // servidor.
 var ESTADOS_PEDIDO_COBRABLE_F4 = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO", "CERRADO"];
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
+  async function leerTodasLasFilasConPaginacionA09(construirConsulta, tamanoPagina = 200) {
+    const filas = [];
+    for (let desde = 0; ; desde += tamanoPagina) {
+      const respuesta = await construirConsulta().range(desde, desde + tamanoPagina - 1);
+      if (respuesta.error) return { data: null, error: respuesta.error };
+      const pagina = Array.isArray(respuesta.data) ? respuesta.data : [];
+      filas.push(...pagina);
+      if (pagina.length < tamanoPagina) return { data: filas, error: null };
+    }
+  }
+
   function c07dActivoEnEntornoQa() {
     return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
   }
@@ -125186,27 +125197,25 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const checkouts = Array.isArray(checkoutsResponse.data) ? checkoutsResponse.data : [];
       const checkoutIds = checkouts.map((row) => row?.id).filter(Boolean);
       if (checkoutIds.length === 0) return { ok: true, efectos: [] };
-      const pagosResponse = await supabase
+      const pagosResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("pagos")
         .select("id,checkout_id,medio,estado,importe_objetivo,importe_recibido,cambio_entregado,payment_currency_code,created_at,resolved_at")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .in("checkout_id", checkoutIds)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .order("created_at", { ascending: false }));
       if (pagosResponse.error) throw pagosResponse.error;
       const pagos = Array.isArray(pagosResponse.data) ? pagosResponse.data : [];
       const pagoIds = pagos.map((row) => row?.id).filter(Boolean);
       if (pagoIds.length === 0) return { ok: true, efectos: [] };
-      const cajaResponse = await supabase
+      const cajaResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("caja_operaciones")
         .select("operation_id,origen_id,tipo,importe,efecto_efectivo,medio_pago,concepto,fecha,currency_code,operating_day,abc_command_id,created_at")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .eq("origen_tipo", "ABC_PAGO")
         .in("origen_id", pagoIds)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .order("created_at", { ascending: false }));
       if (cajaResponse.error) throw cajaResponse.error;
       const checkoutById = new Map(checkouts.map((row) => [String(row?.id || ""), row]));
       const pagoById = new Map(pagos.map((row) => [String(row?.id || ""), row]));
@@ -125245,27 +125254,25 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (pedidosResponse.error) throw pedidosResponse.error;
       const pedidoIds = (Array.isArray(pedidosResponse.data) ? pedidosResponse.data : []).map((row) => row?.id).filter(Boolean);
       if (pedidoIds.length === 0) return { ok: true, lineas: [] };
-      const lineasResponse = await supabase
+      const lineasResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("pedido_lineas")
         .select("id,pedido_id,producto_id,cantidad,unidad,estado,version,descuento_total,base,impuestos,total")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .in("pedido_id", pedidoIds)
-        .order("id", { ascending: true })
-        .limit(200);
+        .order("id", { ascending: true }));
       if (lineasResponse.error) throw lineasResponse.error;
       const lineas = Array.isArray(lineasResponse.data) ? lineasResponse.data : [];
       const lineaIds = lineas.map((row) => row?.id).filter(Boolean);
       if (lineaIds.length === 0) return { ok: true, lineas: [] };
-      const descuentosResponse = await supabase
+      const descuentosResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("abc_descuentos_aplicados")
         .select("operation_id,source_line_id,tipo,importe,created_at")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .eq("cuenta_id", contexto.cuentaId)
         .in("source_line_id", lineaIds)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .order("created_at", { ascending: false }));
       if (descuentosResponse.error) throw descuentosResponse.error;
       const descuentosPorLinea = new Map();
       for (const descuento of Array.isArray(descuentosResponse.data) ? descuentosResponse.data : []) {
@@ -125310,14 +125317,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const ventas = Array.isArray(ventasResponse.data) ? ventasResponse.data : [];
       const ventaIds = ventas.map((row) => row?.id).filter(Boolean);
       if (ventaIds.length === 0) return { ok: true, fiscalizaciones: [] };
-      const lineasResponse = await supabase
+      const lineasResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("venta_fiscal_lineas")
         .select("id,venta_fiscal_id,source_line_id,cantidad,descuento,base,impuesto,total,currency_code,created_at")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .in("venta_fiscal_id", ventaIds)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .order("created_at", { ascending: false }));
       if (lineasResponse.error) throw lineasResponse.error;
       const ventaById = new Map(ventas.map((row) => [String(row?.id || ""), row]));
       return {
