@@ -64,7 +64,27 @@
       .select("id,punto_control_id,local_id,punto_nombre,tipo,valor,conforme,observaciones,realizada_en,actor_user_id,actor_empleado_id,actor_nombre,created_at")
       .order("realizada_en", { ascending: false });
     if (!response || response.error) throw (response && response.error) || new Error("A03_LECTURAS_READ_FALLO");
-    return JSON.stringify((Array.isArray(response.data) ? response.data : []).map(mapLectura).filter(Boolean));
+    var cancelaciones = await client
+      .from("appcc_lectura_cancelaciones")
+      .select("lectura_id,motivo,actor_user_id,actor_empleado_id,actor_nombre,created_at");
+    if (!cancelaciones || cancelaciones.error) {
+      var errorCode = cancelaciones && cancelaciones.error && cancelaciones.error.code;
+      var errorMessage = String(cancelaciones && cancelaciones.error && cancelaciones.error.message || "");
+      var tablaAunNoAplicada = errorCode === "42P01" || errorCode === "PGRST205" || /appcc_lectura_cancelaciones/i.test(errorMessage);
+      if (!tablaAunNoAplicada) throw (cancelaciones && cancelaciones.error) || new Error("A03_CANCELACIONES_READ_FALLO");
+      cancelaciones = { data: [] };
+    }
+    var lecturas = (Array.isArray(response.data) ? response.data : []).map(mapLectura).filter(Boolean);
+    var porId = new Map(lecturas.map(function (lectura) { return [lectura.id, lectura]; }));
+    (Array.isArray(cancelaciones.data) ? cancelaciones.data : []).forEach(function (cancelacion) {
+      var lectura = porId.get(cancelacion.lectura_id);
+      if (!lectura) return;
+      lectura.cancelado = true;
+      lectura.motivoCancelacion = cancelacion.motivo || "";
+      lectura.canceladoPor = cancelacion.actor_nombre || cancelacion.actor_user_id || "";
+      lectura.canceladoEn = cancelacion.created_at || null;
+    });
+    return JSON.stringify(lecturas);
   }
 
   function install() {

@@ -14,6 +14,7 @@ for (const source of [runtime, recovered]) {
 }
 
 assert.match(bridge, /appcc_lecturas/, 'el puente debe leer la tabla dedicada');
+assert.match(bridge, /appcc_lectura_cancelaciones/, 'el puente debe incorporar cancelaciones append-only');
 assert.match(bridge, /storage\.set = async function[\s\S]*registrosAppcc[\s\S]*originalSet/, 'el puente debe interceptar la escritura de registrosAppcc');
 assert.match(bridge, /serverAuthoritative: true/, 'la respuesta del puente debe declarar la autoridad server-side');
 assert.match(bridge, /window\.__laAppccAuthorityActive = true/, 'el puente debe publicar la capacidad únicamente tras comprobarla');

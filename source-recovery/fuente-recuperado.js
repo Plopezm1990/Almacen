@@ -6623,7 +6623,29 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
     const preparada = prepararCancelacionAppccPM19(registro, opciones);
     if (!preparada.ok) return preparada;
     if (preparada.replayed) return { ok: true, replayed: true };
-    if (remotoAppccDisponible()) return { ok: false, codigo: "appcc_cancelacion_no_modelada", error: "La cancelación remota requiere una operación append-only específica; no se modifica el historial desde el navegador." };
+    if (remotoAppccDisponible()) {
+      return (async () => {
+        try {
+          const cryptoApi = typeof crypto !== "undefined" ? crypto : null;
+          const cancelacionId = cryptoApi && typeof cryptoApi.randomUUID === "function" ? cryptoApi.randomUUID() : null;
+          if (!cancelacionId) return { ok: false, codigo: "uuid_no_disponible", error: "No se pudo generar el identificador seguro de la cancelación." };
+          const supabase = await window.getSupabaseClient();
+          const respuesta = await supabase.rpc("appcc_cancelar_lectura", {
+            p_cancelacion_id: cancelacionId,
+            p_lectura_id: id,
+            p_motivo: preparada.motivo
+          });
+          if (respuesta && respuesta.error) return { ok: false, codigo: respuesta.error.code || "appcc_cancelacion_rpc_error", error: respuesta.error.message || "No se pudo anotar la cancelación en el servidor." };
+          const cancelacion = respuesta && respuesta.data && respuesta.data.cancelacion;
+          if (!cancelacion) return { ok: false, codigo: "appcc_cancelacion_respuesta_invalida", error: "El servidor no devolvió la cancelación." };
+          setRegistrosAppcc((s22) => s22.map((r2) => r2.id === id ? { ...r2, cancelado: true, motivoCancelacion: cancelacion.motivo || preparada.motivo, canceladoPor: cancelacion.actor_nombre || cancelacion.actor_user_id || "", canceladoEn: cancelacion.created_at || null } : r2));
+          if (registrarAuditoria) registrarAuditoria("Cancelar control APPCC", `${registro.puntoNombre || "Control"} del ${registro.fecha} · ${preparada.motivo}`);
+          return { ok: true, replayed: respuesta.data.replayed === true, servidor: true };
+        } catch (error) {
+          return { ok: false, codigo: "appcc_cancelacion_rpc_error", error: error?.message || "No se pudo anotar la cancelación en el servidor." };
+        }
+      })();
+    }
     const canceladoEn = (/* @__PURE__ */ new Date()).toISOString();
     setRegistrosAppcc((s22) => s22.map((r2) => r2.id === id ? { ...r2, cancelado: true, motivoCancelacion: preparada.motivo, canceladoPor: preparada.actorNombre, canceladoEn } : r2));
     if (registrarAuditoria) registrarAuditoria("Cancelar control APPCC", `${registro.puntoNombre || "Control"} del ${registro.fecha} \xB7 ${preparada.motivo}`);
@@ -20350,8 +20372,8 @@ function Appcc({
     setActorCancelarRegistro("");
     setErrorCancelarRegistro("");
   }
-  function confirmarCancelarRegistro() {
-    const res = cancelarRegistroAppcc(cancelarRegistro.id, {
+  async function confirmarCancelarRegistro() {
+    const res = await cancelarRegistroAppcc(cancelarRegistro.id, {
       motivo: motivoCancelarRegistro,
       actorNombre: actorCancelarRegistro
     });
