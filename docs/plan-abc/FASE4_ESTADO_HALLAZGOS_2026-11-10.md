@@ -104,11 +104,11 @@ La comparación exacta de nombres en solo lectura devolvió:
 | Categoría | QA | Producción | Solo QA | Solo producción |
 |---|---:|---:|---:|---:|
 | Relaciones públicas/privadas | 151 | 131 | 21 | 1 |
-| Funciones | 490 | 431 | 73 | 14 |
+| Funciones | 493 | 431 | 73 | 11 |
 | Políticas RLS | 110 | 103 | 14 | 7 |
-| Triggers no internos | 60 | 57 | 9 | 6 |
+| Triggers no internos | 62 | 57 | 9 | 4 |
 
-El historial registra 270 versiones en QA y 175 en producción, frente a 203
+El historial registra 271 versiones en QA y 175 en producción, frente a 203
 prefijos de migración presentes en el clon. La ACL efectiva de
 `obtener_contexto_operativo(text)` ya coincide (`service_role=false`,
 `authenticated=true`, `anon=false`); la divergencia restante es global de

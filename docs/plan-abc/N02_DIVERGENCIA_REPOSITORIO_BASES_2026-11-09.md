@@ -396,3 +396,22 @@ Esta aplicación elimina una divergencia concreta de objetos entre QA y
 producción y deja la remediación reproducible en el repositorio. N-02 sigue
 abierto por el inventario global, el historial divergente y la ausencia de la
 migración en producción; no se ha escrito en producción.
+
+### Recuento posterior a la paridad QA — 2026-11-10
+
+Se repitió la comparación de inventario después de aplicar la migración de
+infraestructura. La fotografía vigente quedó así:
+
+| Categoría | QA | Producción | Solo QA | Solo producción |
+|---|---:|---:|---:|---:|
+| Relaciones | 151 | 131 | 21 | 1 |
+| Funciones | 493 | 431 | 73 | 11 |
+| Políticas RLS | 110 | 103 | 14 | 7 |
+| Triggers no internos | 62 | 57 | 9 | 4 |
+| Migraciones registradas | 271 | 175 | — | — |
+
+La reducción de funciones exclusivas de producción de 14 a 11 y de triggers
+exclusivos de 6 a 4 es consistente con la remediación QA. Las diferencias de
+relaciones, políticas e historial permanecen; por tanto, esta aplicación
+resuelve un subconjunto concreto de N-02, pero no permite certificar todavía
+la paridad completa.
