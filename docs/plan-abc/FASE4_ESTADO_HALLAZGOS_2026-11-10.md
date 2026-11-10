@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado al cierre de esta actualización:** `fd028409`
+**Commit verificado al cierre de esta actualización:** `4a61dfa9`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -325,3 +325,8 @@ El commit documental posterior `96b8a600` también terminó con 23 workflows
 `success` y cero fallos. La repetición confirma que el registro de la
 divergencia de migraciones no rompe la batería de CI; sigue siendo una
 validación de repositorio, no una promoción de base de datos.
+
+El commit de corrección M-03 `4a61dfa9` terminó igualmente con 23 workflows
+`success` y cero fallos. La barrera MFA y el contrato nuevo quedan integrados
+en la puerta CI; la medición remota no equivale a haber enrolado factores ni a
+haber probado una cuenta autenticada en QA.
