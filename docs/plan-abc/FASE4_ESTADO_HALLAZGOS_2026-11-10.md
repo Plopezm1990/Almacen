@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado al cierre de esta actualización:** `146ca33b`
+**Commit verificado al cierre de esta actualización:** `7b0699b4`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -19,7 +19,7 @@ en producción.
 | A-05 | Parcial, abierto | Guardia de inactividad y reidentificación del cliente; contratos pasan | `sessions_inactivity_timeout` y `sessions_timebox` siguen en 0 en ambos entornos; hay sesiones históricas |
 | M-01 | Remediado en código y QA, abierto en alcance de entornos | PIN server-side, RLS y contratos pasan; tabla presente en QA | Producción sigue sin `private.pm11_empleado_pin`; requiere promoción autorizada |
 | M-02 | Cerrado técnicamente en alcance | CSP de QA y producción medida por HTTP 200 con único origen Supabase correspondiente | No equivale a una certificación de seguridad general |
-| M-03 | Remediado en código y aplicado en QA, abierto en alcance de entornos | Gate TOTP/AAL2 de cliente y guarda server-side en `private.la_usuario_activo()` para Propietario, Encargado y Cajero/a; contrato y definición QA pasan | Falta observar enrolamiento/desafío en QA, recuperación y promoción autorizada a producción |
+| M-03 | Remediado en código y aplicado en QA, abierto en alcance de entornos | Gate TOTP/AAL2 de cliente, revalidación tras `PASSWORD_RECOVERY` y guarda server-side en `private.la_usuario_activo()` para Propietario, Encargado y Cajero/a; contrato y definición QA pasan | Falta observar enrolamiento/desafío en QA, definir recuperación de segundo factor y promoción autorizada a producción |
 | M-04 | Remediado en código, abierto en alcance de entornos | Contrato de contraseña mínima pasa y preview listo | Falta verificación autenticada y promoción; rate-limit/captcha del proveedor no queda demostrado |
 | M-05 | Remediado en código, abierto en alcance de entornos | Contrato de paginación pasa y preview listo | Falta verificación autenticada y promoción |
 | M-06 | Abierto | Ausencia de tarea programada medida; contrato de retención existente | No se inventa plazo: falta decisión legal/negocio y ejecución programada |
@@ -61,6 +61,11 @@ Windows: tanto el alias `bash.exe` de Windows como Git Bash fallan antes de
 ejecutar el script por `NtCreateDirectoryObject ... 0xC0000022`. No se cuenta
 como fallo de un contrato; queda como incidencia de herramienta local. Los
 contratos focalizados anteriores sí se ejecutaron y pasaron.
+
+La CI asociada al commit `7b0699b4` terminó con 23 workflows en `success`.
+Esto verifica la integración de la corrección M-03 y del contrato de orden de
+carga en la puerta remota; no sustituye la observación autenticada del flujo
+TOTP ni una promoción a producción.
 
 ## Medición puntual de QA y producción
 
