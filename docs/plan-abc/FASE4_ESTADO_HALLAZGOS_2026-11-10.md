@@ -285,3 +285,23 @@ paridad semántica de M-08 en una reproducción limpia del bootstrap. La
 ausencia de factores MFA mantiene M-03 abierto, y la ausencia en producción de
 la tabla PIN y del índice mantiene M-01 y B-02 abiertos en alcance de
 entornos.
+
+### Recuento estructural adicional de N-02 — 2026-11-10
+
+Se volvió a medir el inventario de los esquemas `public` y `private` sin
+ejecutar funciones de negocio. QA presenta 498 funciones, 66 triggers no
+internos y 151 relaciones; producción presenta 431 funciones, 57 triggers no
+internos y 131 relaciones. Las extensiones instaladas coinciden en ambos
+proyectos (`pg_stat_statements`, `pgcrypto`, `plpgsql`, `supabase_vault` y
+`uuid-ossp`), por lo que la diferencia no se explica por ese inventario.
+
+La consulta por firma confirma que las seis funciones legacy que siguen solo
+en producción son exactamente: `private.abc_a10_reencolar_bloqueadas`,
+`public.anular_venta_tpv`, `public.descontar_stock`,
+`public.descontar_stock_carrito` y las dos sobrecargas antiguas de
+`public.registrar_auditoria`. Todas pertenecen a `postgres` y no tienen
+dependientes directos de catálogo. La sobrecarga de `registrar_auditoria` de
+ocho argumentos sí existe en ambos entornos y no se cuenta como divergencia
+legacy. Esta comprobación es **medida**; no justifica copiar funciones de
+escritura sensibles ni permite cerrar N-02 sin reconciliar el inventario
+restante y la historia de migraciones.
