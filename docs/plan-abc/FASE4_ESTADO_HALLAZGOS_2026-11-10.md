@@ -27,7 +27,7 @@ en producción.
 | M-08 | Abierto, con causa acotada | `bootstrap_owner_instalacion` tiene distinta representación textual, pero la huella semántica sin comentarios/espacios coincide en ambos entornos | Falta reproducir el flujo autenticado de instalación en QA y decidir si se exige identidad textual/procedencia; producción solo se lee |
 | B-01 | Cerrado técnicamente en alcance | Fuente/hash de `importar-factura` coincidente en QA y producción; contrato server/client pasa | La tolerancia de 0,12 € no se interpreta como regla fiscal universal |
 | B-02 | Remediado en código y QA, abierto en alcance de entornos | Migración y contrato pasan; índice de fecha presente en QA | Producción no tiene el índice y no se ejecuta DDL allí sin ventana autorizada |
-| N-02 | Abierto | Inventario de relaciones, funciones, políticas, triggers y migraciones con divergencia; contrato de reconciliación pasa | Requiere reconciliación completa y promoción controlada; no se altera producción durante la auditoría |
+| N-02 | Abierto, con una divergencia ACL concreta reconciliada | Inventario global sigue divergente; el ACL efectivo de `obtener_contexto_operativo` ya coincide en QA y producción (`service_role=false`, `authenticated=true`, `anon=false`) y el contrato pasa | Requiere reconciliación exhaustiva e historial/promoción controlados; no se altera producción durante la auditoría |
 
 ## Comprobaciones ejecutadas
 

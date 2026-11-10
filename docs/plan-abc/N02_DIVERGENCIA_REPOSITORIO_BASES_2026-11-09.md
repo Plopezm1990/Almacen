@@ -172,6 +172,28 @@ N-02 queda **investigado y revalidado**, con remediación versionada preparada y
 
 No se creó ningún dato sintético nuevo en QA durante esta revalidación. No se ejecutó ninguna sentencia de escritura remota en producción.
 
+## Reconciliación ACL acotada — 2026-11-10
+
+Se añadió y aplicó **solo en QA** la migración versionada
+`20261110200000_n02_context_acl_parity.sql`. La migración revoca el `EXECUTE`
+histórico de `service_role` sobre `public.obtener_contexto_operativo(text)` y
+conserva el permiso para `authenticated`.
+
+La consulta posterior de solo lectura devolvió:
+
+| Permiso | QA | Producción |
+|---|---:|---:|
+| `service_role` | `false` | `false` |
+| `authenticated` | `true` | `true` |
+| `anon` | `false` | `false` |
+| versión de la migración ACL | `20261110201305` | no registrada |
+
+Esto elimina una divergencia de ACL concreta entre los entornos y queda
+**reproducido/medido** en QA y producción. La ausencia de la versión en
+producción se mantiene como dato: no se reparó el historial ni se escribió en
+producción. N-02 continúa abierto por la divergencia global de inventario,
+historial y objetos no comparados exhaustivamente.
+
 ## Corrección explícita de la comparación de `bootstrap_owner_instalacion` — 2026-11-10
 
 Una consulta posterior, separando el cuerpo `pg_proc.prosrc` de la representación completa de `pg_get_functiondef`, devuelve una divergencia que debe prevalecer sobre la tabla anterior: el cuerpo de QA mide `MD5=77104240e60fa4f5b38a2583e58808d6`, cuerpo normalizado `977eb2748752ba4d101bfa278ee509db` y longitud 3.997; producción mide `MD5=2ac268ea336339890f9541df88aa2325`, cuerpo normalizado `bc6019e27e50cf1597d8e8e75deb804e` y longitud 3.356. La afirmación previa de igualdad normalizada queda corregida como no reproducible con la medición actual.
