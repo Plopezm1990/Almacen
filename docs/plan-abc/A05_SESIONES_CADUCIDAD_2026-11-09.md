@@ -1,13 +1,13 @@
 # A-05 — Las sesiones no caducan
 
-Fecha de corte: 2026-11-09  
+Fecha de corte: 2026-11-10
 Producción: `flqercbgpgmmfaakrwkc` («L&A Suite»)  
 QA: `qjqorixtkilwsndqayyx` («L&A Suite QA»)  
 Fuente de código comparada: `origin/release` en `29354efead2e5e860d9e2d24d4199675e5eb0beb`
 
 ## Criterio y límite
 
-El criterio del hallazgo es que la sesión caduque por inactividad en un plazo definido y que un terminal compartido exija reidentificación. Esta auditoría no inventa el plazo: falta una decisión de negocio/seguridad sobre cuántos minutos de inactividad deben permitirse y sobre si la reidentificación será una nueva contraseña, un PIN de empleado server-side o un cierre completo de sesión.
+El criterio del hallazgo es que la sesión caduque por inactividad en un plazo definido y que un terminal compartido exija reidentificación. Al reanudar este punto, el usuario autorizó la política candidata que se detalla abajo: 15 minutos sin interacción humana, login completo de Supabase para volver a entrar y un timeout server-side de Auth como defensa adicional.
 
 No se revocó ninguna sesión, no se modificó ningún usuario y no se cambió la configuración de Auth de ninguno de los dos proyectos.
 
@@ -16,6 +16,8 @@ No se revocó ninguna sesión, no se modificó ningún usuario y no se cambió l
 Al reanudar este objetivo el 2026-11-10 se adopta como política candidata la propuesta ya documentada: bloqueo de interfaz tras 15 minutos sin interacción humana, reidentificación mediante el login completo de Supabase, `sessions_inactivity_timeout` positivo como defensa server-side y `sessions_timebox` inicialmente desactivado. Esta adopción autoriza preparar y probar la corrección en QA; no autoriza escribir en producción ni convierte la política en una certificación de producción.
 
 Para mantener una sola cifra auditable, la configuración candidata de QA será `sessions_inactivity_timeout = 900` segundos. El JWT permanece en 3600 segundos: el bloqueo de la interfaz es el control inmediato del terminal y el timeout Auth es una defensa adicional, no una promesa de logout visual exactamente al segundo 900.
+
+La aplicación de ese valor en QA no fue posible: la pantalla Authentication → Sessions del proyecto `qjqorixtkilwsndqayyx` muestra los campos `Inactivity timeout` y `Time-box user sessions` deshabilitados y el aviso “Configuring user sessions is only available on the Pro Plan and above”. Un intento anterior de actualización mediante la API de gestión, usando el token de auditoría de solo lectura, respondió 403. No se hizo ningún cambio de configuración; por tanto, QA conserva `sessions_inactivity_timeout = 0`.
 
 ## Medición actual de `auth.sessions`
 
@@ -77,17 +79,28 @@ La causa raíz es, por tanto, una combinación de **configuración de Auth sin t
 - **Medido:** sesiones, usuarios, antigüedad, `not_after` y parámetros efectivos de Auth en QA y producción.
 - **Probado por código:** inicialización de Supabase sin opciones de sesión, persistencia/renovación por defecto de la biblioteca embebida, restauración de la sesión al cargar y ausencia de contador de inactividad de la aplicación.
 - **Observado:** el código dispone de logout manual y de una guarda de perfil inactivo cada 30 segundos.
-- **No reproducido:** no se forzó una caducidad real ni se esperó un timeout en QA, porque ambos timeouts están a cero y alterarlos remotamente cambiaría la configuración de Auth. Tampoco se cerraron sesiones existentes.
+- **Reproducido:** el contrato estático A-05 pasa en la rama candidata y la sintaxis de los dos artefactos servidos es válida. La comprobación del flujo real de 15 minutos y del timeout server-side no se pudo reproducir porque el timeout de QA sigue a cero y el plan Free no permite cambiarlo. Tampoco se cerraron sesiones existentes.
 
-## Criterio técnico de remediación pendiente
+## Batería y comparación con control limpio
 
-Antes de implementar se necesita decidir, por escrito:
+El 2026-11-10 se ejecutó la batería local completa de contratos sobre la rama candidata y sobre un worktree limpio de `origin/release`, siguiendo la disciplina de separar fallos del entorno Windows de fallos introducidos por el cambio.
 
-1. El valor de `sessions_inactivity_timeout` para QA y producción.
-2. Si también habrá `sessions_timebox` como límite absoluto.
-3. Si un terminal compartido debe exigir una nueva autenticación completa o una reidentificación de empleado separada de la sesión del propietario.
-4. Qué operaciones deben bloquearse mientras la reidentificación esté pendiente.
-5. Cómo tratar una sesión renovada automáticamente después de que la interfaz haya quedado sin actividad.
+| Ejecución | Inventario | Activos | Activos Node | Fallos Node | Contrato A-05 |
+|---|---:|---:|---:|---:|---|
+| Rama candidata `3d5f064a` | 343 | 326 | 292 | 22 | Pasa |
+| Control limpio `origin/release` (`29354efe`) | 334 | 317 | 283 | 22 | No existe |
+
+El conjunto de los 22 fallos locales coincide entre candidata y control: son los fallos Windows/dependencias ya conocidos, incluido el límite local de `tailwindcss` ausente. Esto es una comparación **medida en local**, no una certificación de QA ni de producción. El contrato nuevo A-05 no añade un fallo a la batería.
+
+## Criterio técnico de la remediación candidata
+
+La decisión adoptada para esta corrección candidata es:
+
+1. Bloqueo de interfaz tras 15 minutos sin interacción humana.
+2. Login completo de Supabase para reidentificar el terminal.
+3. `sessions_inactivity_timeout = 900` segundos como defensa server-side cuando el plan de QA/producción lo permita.
+4. `sessions_timebox = 0` inicialmente; no se añade un límite absoluto sin una decisión separada.
+5. Una sesión renovada automáticamente no cuenta como actividad humana y no reinicia el contador de interfaz.
 
 Una remediación técnicamente coherente deberá combinar:
 
@@ -98,12 +111,12 @@ Una remediación técnicamente coherente deberá combinar:
 - contrato de regresión que compruebe que ni `modoEmpleado` ni `usuarioActivoId` persistidos en el navegador levantan por sí solos el bloqueo del terminal;
 - prueba separada para `sessions_inactivity_timeout` y para el comportamiento de reidentificación, sin usar producción.
 
-No se fija aquí un número de minutos ni se aplica ninguna configuración por falta de esa decisión y para no convertir una suposición en requisito.
+La política anterior queda preparada en código y contrato, pero el timeout server-side no queda aplicado en QA ni en producción por la restricción del plan. La promoción a producción requerirá una decisión operativa separada, una vía de configuración compatible y una verificación explícita posterior; esta auditoría no la ejecuta.
 
 ## Estado
 
-Estado de A-05: **corrección candidata versionada y contrato estático preparados; pendiente de aplicar/verificar exclusivamente en QA y de dejar producción expresamente sin cambios**.
+Estado de A-05: **corrección candidata versionada, contrato estático pasado y batería comparada; timeout server-side de QA no aplicable por plan Free y producción expresamente sin cambios**.
 
-No se crearon datos ni credenciales sintéticas para este punto. No se revocaron sesiones. Producción permaneció en solo lectura.
+No se crearon datos ni credenciales sintéticas para este punto. No se revocaron sesiones. Producción permaneció en solo lectura. La única escritura externa intentada fue el login OAuth del panel de Supabase; no se guardaron credenciales ni se cambió configuración.
 
 Límite adicional: el mecanismo histórico `source-recovery/CURRENT_RELEASE.patch` ya presentaba deriva respecto del `fuente.js` existente en este `HEAD`; no se reescribió ese parche histórico para ocultar la deriva. La corrección A-05 se verifica por el contrato estático, la sintaxis del parche y el diff mínimo del bundle servido; la reconstrucción byte a byte completa del runtime queda como trabajo separado.
