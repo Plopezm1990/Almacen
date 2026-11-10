@@ -69,3 +69,26 @@ Hasta que esas comprobaciones existan, A-03 permanece abierto. La prueba QA no a
 
 El paquete no se presenta como reversible mediante un bloque destructivo automático: las tablas y registros APPCC forman parte de la remediación y una eliminación ciega podría destruir trazabilidad. La estrategia de recuperación debe ser una decisión independiente del responsable de producción, basada en copia/restore y ventana controlada. No se ejecuta ni se inventa aquí.
 
+## Aplicación autorizada y verificación posterior — 2026-11-10
+
+El usuario autorizó expresamente aplicar en producción únicamente estas cuatro migraciones, en este orden:
+
+1. `20261109150000_a03_a04_appcc_y_atribucion.sql`.
+2. `20261109170000_a03_appcc_cancelacion_append_only.sql`.
+3. `20261109180000_a03_appcc_puntos_server_side.sql`.
+4. `20261109201101_a03_appcc_correction_response.sql`.
+
+Se ejecutaron desde el SQL Editor autenticado de Supabase contra `flqercbgpgmmfaakrwkc`. Las cuatro devolvieron `Success. No rows returned`. No se ejecutaron cobros, devoluciones, operaciones de stock, cierres de caja, documentos fiscales ni cargas de datos de negocio.
+
+La comprobación posterior, en solo lectura, midió en producción:
+
+- 4 tablas APPCC presentes y las 4 con RLS activo.
+- Las 5 RPC presentes, con `SECURITY DEFINER` y `EXECUTE` para `authenticated`.
+- Las 5 RPC sin `EXECUTE` para `anon` ni `public`.
+- La función `appcc_guardar_punto` quedó inicialmente sin el `GRANT` efectivo; se reaplicó únicamente la sentencia `GRANT` que forma parte literal de la tercera migración autorizada. La verificación posterior devuelve `authenticated=true`, `anon=false` y `public=false` para esa función.
+- Las huellas de producción medidas son: `appcc_cancelar_lectura` `dd8697bfb9061dc05c721ac878c3acec`, `appcc_corregir_lectura` `4a62463ddadfdc54466613c253490036`, `appcc_desactivar_punto` `a04b1570ca2e3de54a6094d5c5cf42ca`, `appcc_guardar_punto` `1f4316a35741fe9566b36ab6ea4d0ae6` y `appcc_registrar_lectura` `92d1ade3d04869cb53451364946b899a`.
+
+El historial `supabase_migrations.schema_migrations` no contiene esas cuatro versiones: el SQL Editor ejecutó las definiciones, pero no registró el bookkeeping de migraciones. No se ha insertado un registro manual porque eso sería una escritura adicional distinta de las cuatro migraciones autorizadas. Queda como discrepancia operativa que debe resolver el responsable de despliegue con el mecanismo oficial antes de considerar el historial versionado coherente.
+
+Este resultado demuestra la remediación del esquema y los privilegios server-side en producción (**medido** en la base, 2026-11-10). No demuestra todavía la aplicación web en producción: el PR `#218` sigue abierto y no se ha fusionado ni se ha desplegado su paquete cliente. Por ello no se certifica A-03 como completamente cerrado; queda pendiente la promoción autorizada del código y su comprobación funcional, además de resolver el historial de migraciones.
+
