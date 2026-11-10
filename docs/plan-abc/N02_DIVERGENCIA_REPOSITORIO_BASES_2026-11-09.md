@@ -216,5 +216,39 @@ La afirmación correcta es que `bootstrap_owner_instalacion` mantiene
 **equivalencia semántica medida** entre los dos entornos, aunque no identidad
 textual ni procedencia común. Esto reduce una divergencia concreta de N-02 y
 corrige explícitamente la corrección anterior; no cierra N-02 porque siguen
-abiertas la divergencia global de inventario, la ACL de
-`obtener_contexto_operativo` y el historial de migraciones.
+abiertas la divergencia global de inventario y el historial de migraciones.
+La ACL de `obtener_contexto_operativo` fue reconciliada posteriormente en QA
+y su estado efectivo ya coincide con producción; véase la sección de
+reconciliación ACL acotada.
+
+### Inventario exhaustivo de nombres — 2026-11-10
+
+Se repitió la comparación en solo lectura sobre los nombres exactos de las
+relaciones públicas/privadas (tablas, particiones, vistas, materialized views
+y foreign tables), funciones con sus argumentos de identidad, políticas RLS y
+triggers no internos. La comparación se hizo en cliente entre las dos
+respuestas, sin modificar ninguna base.
+
+| Categoría | QA | Producción | Solo QA | Solo producción |
+|---|---:|---:|---:|---:|
+| Relaciones | 151 | 131 | 21 | 1 |
+| Funciones | 490 | 431 | 73 | 14 |
+| Políticas RLS | 110 | 103 | 14 | 7 |
+| Triggers no internos | 60 | 57 | 9 | 6 |
+
+Ejemplos medidos de objetos que existen solo en QA incluyen
+`private.pm11_empleado_pin`, `public.abc_anticipo_movimientos` y
+`public.abc_b06_politica_conceptos`. Ejemplos medidos de objetos que existen
+solo en producción incluyen `private.pm27_prod_recovery_20260914`,
+`public.anular_venta_tpv(text,text)` y
+`public.descontar_stock(text,numeric,text,jsonb)`. Los ejemplos no sustituyen
+el conjunto completo: demuestran que las diferencias afectan tanto a objetos
+de seguridad/apoyo como a funciones de negocio.
+
+Esta medición actualiza los conteos acotados anteriores de 150/131 relaciones
+y 487/431 funciones; aquellos valores se conservan arriba como trazabilidad
+histórica, pero no deben usarse como el estado vigente. La conclusión vigente
+es que N-02 continúa abierto por la divergencia de inventario y de historial.
+La divergencia ACL de `obtener_contexto_operativo` ya fue reconciliada en QA y
+producción coincide en su estado efectivo; no se cuenta como diferencia
+pendiente en esta nueva medición.

@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado:** `10808a18`  
+**Commit verificado:** `3abe2eaa`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -33,7 +33,7 @@ en producción.
 
 Pasaron el 10 de noviembre de 2026:
 
-- validador del manifiesto CI: `333` contratos activos, `350` entradas totales;
+- validador del manifiesto CI: `334` contratos activos, `351` entradas totales;
 - contratos M-01 de servidor y RLS;
 - contratos M-04, M-05, M-07 y B-01;
 - contratos APPCC/atribución de A-03/A-04;
