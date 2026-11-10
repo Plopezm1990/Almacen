@@ -320,3 +320,8 @@ paridad quedó registrada con la versión interna `20261110204740`. Estas
 versiones no se interpretan como prueba de que las definiciones aplicadas en
 ambos entornos sean iguales: esa equivalencia se comprueba por catálogo y por
 contrato, no por el mero número de migración.
+
+El commit documental posterior `96b8a600` también terminó con 23 workflows
+`success` y cero fallos. La repetición confirma que el registro de la
+divergencia de migraciones no rompe la batería de CI; sigue siendo una
+validación de repositorio, no una promoción de base de datos.
