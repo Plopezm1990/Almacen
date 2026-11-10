@@ -92,3 +92,36 @@ El historial `supabase_migrations.schema_migrations` no contiene esas cuatro ver
 
 Este resultado demuestra la remediación del esquema y los privilegios server-side en producción (**medido** en la base, 2026-11-10). No demuestra todavía la aplicación web en producción: el PR `#218` sigue abierto y no se ha fusionado ni se ha desplegado su paquete cliente. Por ello no se certifica A-03 como completamente cerrado; queda pendiente la promoción autorizada del código y su comprobación funcional, además de resolver el historial de migraciones.
 
+## Actualización de cierre — 2026-11-10
+
+La situación descrita en la sección anterior queda superada por las actuaciones autorizadas posteriores:
+
+- El PR `#218` se fusionó en `release` con el commit `6f68696eb8f9d066bd211c6ed891aabde95f0f0a`.
+- Netlify publicó el despliegue de producción `6af2eab2c4a3a5b5057298be` desde ese commit. La URL comprobada fue `https://release--chic-entremet-9107cf.netlify.app/`.
+- El historial remoto se reparó mediante Supabase CLI `3.1.0`, usando el Session pooler IPv4. Las cuatro versiones quedaron registradas como `applied` y la comprobación posterior devolvió las mismas cuatro versiones en las columnas `Local` y `Remote`:
+  - `20261109150000`
+  - `20261109170000`
+  - `20261109180000`
+  - `20261109201101`
+- La reparación anterior no ejecutó SQL de las migraciones: actualizó únicamente el historial `supabase_migrations.schema_migrations`, conforme al propósito de `migration repair`.
+
+### Reproducción funcional de producción
+
+La aplicación desplegada se abrió con una sesión de propietario ya existente y se navegó únicamente en modo lectura:
+
+1. Carga del panel general de producción, mostrando el local activo `CHOCOLOYOS S.L.`.
+2. Entrada en `Control sanitario (APPCC)`.
+3. Entrada en `Puntos de control`, donde se mostró que todavía no hay puntos definidos.
+4. Entrada en `Historial`, con el intervalo `2026-11-01` a `2026-11-10`, donde se mostró `Sin registros en este periodo`.
+
+No se pulsó `Nuevo punto de control`, no se registró ninguna lectura, no se corrigió ni canceló ninguna lectura y no se ejecutó ninguna operación de cobro, devolución, stock, caja o documento fiscal.
+
+### Clasificación de la evidencia y límite
+
+- **Medido:** tablas, RLS, privilegios, huellas de funciones e historial de migraciones en producción el 2026-11-10.
+- **Probado por código:** migraciones versionadas, contratos de regresión y paquete cliente revisado; la huella del despliegue corresponde al commit fusionado.
+- **Reproducido:** carga y navegación de las rutas APPCC en la URL de producción, sin mutaciones.
+- **No probado en producción:** una escritura APPCC real y su posterior lectura/corrección/cancelación. La política de la auditoría prohíbe producir esos datos en producción; la aceptación de escritura se reprodujo en QA y se trasladó a producción mediante el código y las huellas de las funciones.
+
+Con este alcance, A-03 queda **cerrado técnicamente y verificado en producción en modo solo lectura**. No se presenta como una certificación de una escritura de negocio real en producción, porque esa prueba está expresamente fuera del alcance autorizado.
+

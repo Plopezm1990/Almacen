@@ -123,3 +123,51 @@ No se ha comprobado todavía:
 4. La ejecución de la migración N-02 en producción, que queda fuera de esta fase por la regla de solo lectura y requeriría autorización específica.
 
 No se creó ningún dato sintético nuevo en QA para N-02. No se ejecutó ninguna sentencia de escritura remota.
+
+## Revalidación de seguimiento — 2026-11-10
+
+Se repitió la medición en solo lectura sobre QA (`qjqorixtkilwsndqayyx`) y producción (`flqercbgpgmmfaakrwkc`). Esta sección prevalece sobre las cifras de corte del 2026-11-09 cuando difieren; no se reescribe la medición histórica porque forma parte de la trazabilidad.
+
+### Inventario actual acotado
+
+| Objeto contado | QA | Producción | Clasificación |
+|---|---:|---:|---|
+| Relaciones públicas/privadas (tablas, particiones, vistas, matviews y foreign tables) | 150 | 131 | Medido 2026-11-10 |
+| Funciones públicas/privadas | 487 | 431 | Medido 2026-11-10 |
+| Políticas RLS | 110 | 103 | Medido 2026-11-10 |
+| Triggers no internos | 60 | 57 | Medido 2026-11-10 |
+| Migraciones registradas | 267 | 175 | Medido 2026-11-10 |
+| Última migración registrada | `20261109201233` | `20261109201101` | Medido 2026-11-10 |
+
+Estos conteos no son una comparación exhaustiva de nombres, columnas, índices o definiciones. Sí demuestran que la divergencia de inventario sigue abierta y que no sería correcto certificar N-02 como paridad completa.
+
+### Comparación actual de las tres funciones de la remediación
+
+| Función | QA | Producción | Resultado |
+|---|---|---|---|
+| `private.la_usuario_activo()` | `prosrc` MD5 `61c859ebfaeac333e757d03ea8ce4fbd`; normalizada `37722785f21b401a62466ec37de45f93`; longitud 540 | Mismos MD5 y longitud | Medido: identidad textual y normalizada en esta función |
+| `public.bootstrap_owner_instalacion(text,text)` | `prosrc` MD5 `77104240e60fa4f5b38a2583e58808d6`; normalizada `bc6019e27e50cf1597d8e8e75deb804e`; longitud 3997; `authenticated` puede ejecutar | `prosrc` MD5 `2ac268ea336339890f9541df88aa2325`; normalizada `bc6019e27e50cf1597d8e8e75deb804e`; longitud 3356; `authenticated` puede ejecutar | Medido: misma función tras normalización, pero distinta representación/procedencia textual |
+| `public.obtener_contexto_operativo(text)` | `prosrc` MD5 `05661e8c3cec97e4d7245e45cd826471`; normalizada `5075a335aacb1cbf3f8cb44746a23a36`; longitud 14394; `authenticated` y `service_role` pueden ejecutar | `prosrc` MD5 `c0a59e17b2a8486eb35467e70ecc24ab`; normalizada `5075a335aacb1cbf3f8cb44746a23a36`; longitud 14002; solo `authenticated` puede ejecutar | Medido: misma lógica tras normalización, con divergencia textual y de ACL |
+
+La conclusión de esta revalidación es más precisa que una afirmación genérica de “paridad”: las tres funciones seleccionadas mantienen equivalencia funcional bajo la comparación normalizada usada, pero el inventario global y al menos una ACL no coinciden. La huella `prosrc` idéntica solo se ha demostrado para `private.la_usuario_activo()`.
+
+### Historial reciente actual
+
+Versiones registradas desde `20261101000000`:
+
+- QA: `20261101022150`, `20261101194745`, `20261101194906`, `20261102063724`, `20261102204642`, `20261107222112`, `20261108112949`, `20261109144148`, `20261109163045`, `20261109163053`, `20261109183228`, `20261109191804`, `20261109191912`, `20261109191913`, `20261109201233`.
+- Producción: `20261101150825`, `20261101152053`, `20261101152102`, `20261108114221`, `20261108120610`, `20261109150000`, `20261109170000`, `20261109180000`, `20261109201101`.
+
+La presencia de las cuatro versiones A-03/A-04 en producción refleja la reparación autorizada de historial realizada el 2026-11-10; esa operación solo reparó el registro de migraciones y no demuestra por sí misma que el SQL de esas migraciones se haya ejecutado en producción. Esta distinción queda mantenida deliberadamente.
+
+### Revisión de la rama de auditoría
+
+En la rama `codex/fase3-a03-a04` se midieron 201 ficheros de migración locales. La migración candidata N-02 `20261108193000_n02_reconcile_deployed_db_functions.sql` y el contrato `tests/n02-reconcile-migration-contract.mjs` están presentes, y el contrato volvió a pasar con `N02_CONTRACT_PASS=4 N02_CONTRACT_FAIL=0`.
+
+Esto es evidencia **probada por código** de que la remediación candidata conserva los bloques canónicos, el preflight y las ACL declaradas. No es evidencia de que la migración esté aplicada en producción: producción sigue sin registrar esa migración y no se ha escrito en ella.
+
+### Estado actualizado de N-02
+
+N-02 queda **investigado y revalidado**, con remediación versionada preparada y aplicación confirmada en QA. No queda **cerrado completamente** como paridad de repositorio contra bases desplegadas: permanecen diferencias globales de inventario, una divergencia de ACL en `obtener_contexto_operativo` y una divergencia de procedencia textual en `bootstrap_owner_instalacion`. Cerrar esas diferencias en producción exigiría una autorización separada para escribir en producción y una comparación exhaustiva previa de los objetos afectados.
+
+No se creó ningún dato sintético nuevo en QA durante esta revalidación. No se ejecutó ninguna sentencia de escritura remota en producción.

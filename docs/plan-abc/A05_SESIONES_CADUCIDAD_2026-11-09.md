@@ -120,3 +120,44 @@ Estado de A-05: **corrección candidata versionada, contrato estático pasado y 
 No se crearon datos ni credenciales sintéticas para este punto. No se revocaron sesiones. Producción permaneció en solo lectura. La única escritura externa intentada fue el login OAuth del panel de Supabase; no se guardaron credenciales ni se cambió configuración.
 
 Límite adicional: el mecanismo histórico `source-recovery/CURRENT_RELEASE.patch` ya presentaba deriva respecto del `fuente.js` existente en este `HEAD`; no se reescribió ese parche histórico para ocultar la deriva. La corrección A-05 se verifica por el contrato estático, la sintaxis del parche y el diff mínimo del bundle servido; la reconstrucción byte a byte completa del runtime queda como trabajo separado.
+
+## Revalidación de despliegues y reproducción controlada — 2026-11-10
+
+### Medición actual de sesiones
+
+Se repitió en solo lectura la consulta sobre `auth.sessions`:
+
+| Medición | QA | Producción |
+|---|---:|---:|
+| Sesiones vivas | 163 | 9 |
+| Usuarios con sesión | 14 | 1 |
+| Sesiones creadas hace más de 7 días | 119 | 8 |
+| Sesión creada más antigua | 2026-09-04 10:23:37 UTC | 2026-10-11 20:56:10 UTC |
+| Sesión creada más reciente | 2026-11-09 21:10:20 UTC | 2026-11-05 20:54:35 UTC |
+
+Esta fotografía sigue demostrando que las filas históricas de Auth no se limpian retrospectivamente solo por haber desplegado la guarda de interfaz. No se revocó ninguna sesión ni se modificó ningún usuario. La antigüedad de una fila no se usa como sustituto de una prueba de inactividad del navegador.
+
+### Código efectivamente servido
+
+El HTML público de los dos entornos carga `edge-auth-patch.js`. La comparación del archivo servido dio el mismo MD5 para QA y producción (`e0b23aa34e543282b738560c76a664f7`) y contiene el marcador de instalación, el límite de 15 minutos, la exclusión de `TOKEN_REFRESHED`, `auth.signOut({ scope: "local" })` y la limpieza del contexto operativo. El archivo local de la rama tiene otra huella binaria por finales de línea, pero su contenido normalizado coincide con el archivo servido.
+
+Esto es **observado en el paquete público** y **probado por código**; no es una inferencia basada únicamente en la rama local. La igualdad del paquete no demuestra que el timeout server-side de Supabase esté activo: la configuración medida sigue siendo `sessions_inactivity_timeout = 0` en ambos proyectos.
+
+### Reproducción QA sin esperar 15 minutos reales
+
+En una pestaña QA aislada, con la sesión `owner.a@qa.invalid` ya presente, se leyó primero `auth.getSession()` y devolvió sesión. Después se avanzó el reloj virtual del navegador 960000 ms (16 minutos), sin escribir en la base ni ejecutar operaciones de negocio. La lectura posterior devolvió:
+
+```text
+hasSession: false
+almacen:modoEmpleado: null
+almacen:usuarioActivoId: null
+chocoloyos_contexto_operativo_seguro_v1: null
+```
+
+La prueba se clasifica como **reproducida en QA** mediante aceleración controlada del reloj; no equivale a una espera de 16 minutos de pared. El cierre local se propagó a la otra pestaña QA del mismo origen, que quedó sin sesión y necesitará login para volver a entrar. No se abrió una sesión ni se transmitieron credenciales durante la prueba.
+
+### Estado actualizado
+
+La parte de terminal compartido queda demostrada: el paquete de producción y QA contiene la misma guarda y el flujo de inactividad se reprodujo en QA con limpieza del contexto y cierre local de Auth. El control server-side sigue sin estar disponible en el plan actual: `sessions_inactivity_timeout = 0`, `sessions_timebox = 0`, y las sesiones históricas permanecen en `auth.sessions`.
+
+Por tanto, A-05 queda **cerrado en su corrección de cliente y reidentificación del terminal**, con equivalencia del artefacto servido en QA y producción, pero queda **limitado explícitamente** por la defensa server-side no configurable y por la ausencia de una prueba de espera real. No se presenta como prueba de que Supabase vaya a revocar inmediatamente las filas históricas.
