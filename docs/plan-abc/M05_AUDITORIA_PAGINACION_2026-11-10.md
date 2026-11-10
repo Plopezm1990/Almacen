@@ -5,7 +5,7 @@ Rama de corrección: `fix/m05-audit-pagination`
 
 ## Estado
 
-La corrección está versionada y el contrato estático pasa sobre una extracción limpia. El cierre efectivo en un despliegue vivo todavía no está certificado porque la rama no se ha publicado en un preview actualizado.
+La corrección está versionada y el contrato estático pasa sobre una extracción limpia. El preview integrado del PR #220 para el commit `e179b807` está listo en Netlify (`6af3746d4210a5c82f09d07b`), pero el botón de carga de páginas todavía no se ha observado con una sesión QA autorizada y producción no se ha modificado.
 
 ## Corrección
 
@@ -40,8 +40,8 @@ También pasaron `node --check` sobre los dos artefactos JavaScript.
 
 - La medición base de QA tenía 1.011 filas de auditoría y la lectura publicada usaba un tope de 500.
 - No se creó ningún dato en QA ni se escribió en producción.
-- No se ha reproducido todavía el botón de carga de páginas contra un preview actualizado.
-- No se certifica que la rama ya esté en producción o en el preview QA servido.
+- No se ha reproducido todavía el botón de carga de páginas con una sesión QA contra el preview actualizado.
+- El preview QA sí está medido como deploy listo; no se certifica que la rama esté en producción.
 - La exportación completa no se implementa en este cambio; el criterio elegido es paginación.
 
-M-05 queda avanzado como corrección versionada y regresión reproducida, pero continúa abierto para cierre completo hasta verificar un deploy actualizado y observar la paginación funcional con la sesión QA autorizada.
+M-05 queda avanzado como corrección versionada, regresión reproducida y preview QA listo, pero continúa abierto para cierre completo hasta observar la paginación funcional con la sesión QA autorizada y resolver la integración de producción mediante una ventana autorizada.
