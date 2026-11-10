@@ -393,3 +393,23 @@ se revocan en bloque ni se incorporan artificialmente a A-05, M-03, M-04 o
 N-02. La protección contra contraseñas filtradas queda registrada como riesgo
 separado de Auth: no se habilitó porque requiere un cambio de configuración y
 una decisión de alcance independiente.
+
+## Corte posterior de M-08 y CI — 2026-11-10
+
+Se volvió a ejecutar el contrato local aislado con PGlite fuera del árbol del
+repositorio:
+
+```text
+M08_BOOTSTRAP_LOCAL_FUNCTIONAL=PASS
+```
+
+La consulta nominal de `public.bootstrap_owner_instalacion(text,text)` se repitió
+en QA y producción. El MD5 textual sigue siendo distinto (`029b4839...` frente a
+`208f62fd...`), pero la huella semántica calculada eliminando comentarios y
+espacios coincide en ambos proyectos: `88dde7f01bb445f2608f7e991838e1fa`.
+La equivalencia semántica es **medida**; la ejecución autenticada de instalación
+en QA sigue sin estar **reproducida** ni **observada**.
+
+El commit documental `e88ecceb525eca2ee4dc4f47ede07ab8194e3046` terminó con
+`23/23` workflows de CI en `success`. Es evidencia **observada** de la batería
+remota y no certifica por sí sola la promoción de bases ni el flujo autenticado.
