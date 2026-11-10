@@ -3,6 +3,7 @@ import { resolve } from 'node:path';
 
 const root = process.cwd();
 const source = readFileSync(resolve(root, 'edge-auth-patch.js'), 'utf8');
+const index = readFileSync(resolve(root, 'index.html'), 'utf8');
 const serverMigration = readFileSync(resolve(root, 'supabase/migrations/20261110230000_m03_server_aal2_gate.sql'), 'utf8');
 
 const required = [
@@ -24,6 +25,12 @@ const required = [
 
 for (const token of required) {
   if (!source.includes(token)) throw new Error(`M03 falta evidencia estática: ${token}`);
+}
+
+const patchScript = index.indexOf('src="./edge-auth-patch.js"');
+const bundleScript = index.indexOf('src="./fuente.js');
+if (patchScript < 0 || bundleScript < 0 || patchScript > bundleScript) {
+  throw new Error('M03: edge-auth-patch.js debe cargarse antes de fuente.js');
 }
 
 if (source.includes('localStorage.getItem("rol")')) {
