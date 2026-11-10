@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado al cierre de esta actualización:** `4a61dfa9`
+**Commit verificado al cierre de esta actualización:** `cc55b0b2`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -33,7 +33,7 @@ en producción.
 
 Pasaron el 10 de noviembre de 2026:
 
-- validador del manifiesto CI: `336` contratos activos, `353` entradas totales;
+- validador del manifiesto CI: `338` contratos activos, `355` entradas totales;
 - contratos M-01 de servidor y RLS;
 - contratos M-04, M-05, M-07 y B-01;
 - contratos APPCC/atribución de A-03/A-04;
@@ -330,3 +330,17 @@ El commit de corrección M-03 `4a61dfa9` terminó igualmente con 23 workflows
 `success` y cero fallos. La barrera MFA y el contrato nuevo quedan integrados
 en la puerta CI; la medición remota no equivale a haber enrolado factores ni a
 haber probado una cuenta autenticada en QA.
+
+## Actualización de seguimiento — contrato local M-08 — 2026-11-10
+
+El commit `cc55b0b2` añadió `tests/m08/m08-bootstrap-functional-contract.mjs`.
+La reproducción local aislada ejecutó el fixture post-reset y la migración del
+bootstrap en PGlite, y pasó las comprobaciones de primer arranque, reintento
+idempotente y rollback ante fallo de la tercera escritura:
+`M08_BOOTSTRAP_LOCAL_FUNCTIONAL=PASS`.
+
+La puerta CI asociada al commit quedó con **23 workflows `success`**, incluido
+el recuento actualizado de `338/338` contratos activos (`302` Node, `31`
+Postgres 16, `2` PGlite y `3` full-stack). Esta evidencia es **reproducida**
+localmente y **observada** en CI; no acredita una ejecución autenticada en QA
+ni permite cerrar M-08 frente a producción.
