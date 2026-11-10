@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado al cierre de esta actualización:** `07105ed`
+**Commit verificado al cierre de esta actualización:** `146ca33b`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -87,15 +87,15 @@ El cierre integral exige tres cosas externas al trabajo local:
 3. Reconciliar las definiciones y el inventario de N-02/M-08 sin aplicar cambios
    manuales fuera del repositorio, y después medir de nuevo ambos entornos.
 
-Hasta que esas condiciones se cumplan, el estado honrado es **3 cerrados
-técnicamente en alcance, 11 abiertos o parciales**, no 14 cerrados.
+Hasta que esas condiciones se cumplan, el estado honrado es **4 cerrados
+técnicamente en alcance, 10 abiertos o parciales**, no 14 cerrados.
 
 ## Revalidación de seguimiento posterior — 2026-11-10
 
 La rama de auditoría quedó en `4d17e19a`, con los contratos focalizados de N-02
 y el validador del manifiesto ejecutados después de la documentación adicional.
-El estado global no cambia: **3 hallazgos cerrados técnicamente en alcance y
-11 abiertos o parciales**.
+El estado global no cambia: **4 hallazgos cerrados técnicamente en alcance y
+10 abiertos o parciales**.
 
 ### N-02: medición vigente
 
@@ -169,7 +169,7 @@ sobrecargas de `registrar_auditoria`) quedan expresamente fuera por su relación
 con operaciones sensibles y porque falta una decisión de alcance que permita
 reconstruir firmas, permisos y contratos sin adivinar.
 
-Estado global: **3 hallazgos cerrados técnicamente en alcance y 11 abiertos o
+Estado global: **4 hallazgos cerrados técnicamente en alcance y 10 abiertos o
 parciales**. N-02 mejora en un subconjunto medido, pero continúa abierto por la
 divergencia global de inventario/historial, las seis funciones legacy y la falta
 de promoción controlada a producción. Esta actualización no convierte una
@@ -216,7 +216,7 @@ funcionales no quedó autenticada; por tanto, esos puntos permanecen como
 corrección **probada por código** y regresión **reproducida** localmente, pero
 no como flujo QA **observado** en esta actualización.
 
-El corte sigue siendo **3 hallazgos cerrados técnicamente en alcance y 11
+El corte sigue siendo **4 hallazgos cerrados técnicamente en alcance y 10
 abiertos o parciales**. Producción permanece solo lectura.
 
 ## Revalidación puntual de M-08 y N-02 — 2026-11-10
