@@ -265,6 +265,12 @@ estado `ready`; su escaneo de secretos no encontró coincidencias. Esto es
 **observado** en los servicios CI/deploy y **reproducido** en la rama, pero no
 convierte en observada la navegación autenticada que aún falta en QA.
 
+La misma batería se repitió para el commit `6ada94f1`: 23 workflows quedaron
+terminados y todos concluyeron `success`. Esta comprobación es **observada** en
+CI para la nueva documentación y deja reproducida la validación del inventario
+N-02 junto con la puerta completa; no cambia la clasificación de los entornos
+ni acredita una promoción a producción.
+
 ## Instantánea comparativa de seguimiento — 2026-11-10
 
 Se repitió una lectura nominal, sin escritura, contra QA y producción para
