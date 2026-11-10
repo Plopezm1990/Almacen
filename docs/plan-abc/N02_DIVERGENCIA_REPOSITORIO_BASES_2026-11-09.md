@@ -464,3 +464,41 @@ El historial QA muestra la migración aplicada con la versión interna generada
 Por tanto, la conclusión es **paridad acotada de estos nueve objetos medida en
 QA y producción**, no paridad global ni cierre de N-02: siguen abiertas las
 diferencias de inventario, políticas, historial y las seis funciones legacy.
+
+### Clasificación de las seis funciones legacy restantes — 2026-11-10
+
+Se volvió a consultar producción en solo lectura para no tratar la mera
+presencia de una función como una llamada activa. La medición de firmas,
+permisos, triggers y dependencias directas devolvió:
+
+| Familia | Firma medida en producción | ACL efectiva | Triggers / dependencias directas | Marcadores del cuerpo |
+|---|---|---|---|---|
+| `private.abc_a10_reencolar_bloqueadas` | `(text,text,text,uuid)` | solo `postgres` | ninguno | `UPDATE`, `DELETE`, bloqueo de filas |
+| `public.anular_venta_tpv` | `(text,text)` | solo `postgres` | ninguno | `INSERT`, `UPDATE`, bloqueo, `auth.uid()`, ventas/stock |
+| `public.descontar_stock` | `(text,numeric,text,jsonb)` | solo `postgres` | ninguno | `INSERT`, `UPDATE`, bloqueo, stock/ventas; no `auth.uid()` |
+| `public.descontar_stock_carrito` | `(jsonb,text)` | solo `postgres` | ninguno | `INSERT`, `UPDATE`, bloqueo, `auth.uid()`, stock/ventas |
+| `public.registrar_auditoria` | `(text,text,text,text,text,text)` | solo `postgres` | ninguno | `INSERT`, `auth.uid()`, auditoría |
+| `public.registrar_auditoria` | `(text,text,text)` | solo `postgres` | ninguno | `INSERT`, `auth.uid()`, auditoría |
+
+La sobrecarga de ocho argumentos de `registrar_auditoria` no pertenece a este
+conjunto: ya existe en QA y producción y tiene una ACL distinta, con ejecución
+para `authenticated`. Se mantiene fuera de la lista de exclusivas de
+producción.
+
+La búsqueda del árbol versionado confirma que la rama actual no considera esas
+funciones legacy como el contrato operativo vigente: migraciones históricas
+revocan sus permisos públicos y las migraciones de A-10 eliminan la ruta de
+reencolado antigua. La presencia actual en producción, con permisos solo para
+`postgres`, es por tanto **medida como deriva histórica**, no como prueba de
+que la UI las invoque. La ausencia de llamadas en el código cliente ya estaba
+documentada, pero tampoco permite afirmar que no exista una integración de
+servicio externa.
+
+No se copiaron estas seis funciones a QA ni se ejecutó ninguna de ellas. La
+decisión es intencionada: copiar una función que hace `INSERT`/`UPDATE` sobre
+ventas o stock, o que inserta auditoría, sin contrato de uso y sin reconstruir
+la procedencia canónica mantendría la divergencia de seguridad bajo otro
+entorno y podría reintroducir una ruta legacy. Para cerrar la diferencia en
+producción haría falta una ventana de esquema separada que decida entre retirar
+los objetos, reconstruirlos desde una migración canónica o declarar su
+dependencia externa; esa ventana no forma parte de esta auditoría.
