@@ -331,6 +331,25 @@ El commit de corrección M-03 `4a61dfa9` terminó igualmente con 23 workflows
 en la puerta CI; la medición remota no equivale a haber enrolado factores ni a
 haber probado una cuenta autenticada en QA.
 
+## Revalidación puntual N-02 — inventario legacy — 2026-11-10
+
+La lectura nominal de funciones volvió a confirmar que producción contiene seis
+funciones que no aparecen en QA:
+
+- `private.abc_a10_reencolar_bloqueadas(text,text,text,uuid)`;
+- `public.anular_venta_tpv(text,text)`;
+- `public.descontar_stock(text,numeric,text,jsonb)`;
+- `public.descontar_stock_carrito(jsonb,text)`;
+- dos sobrecargas antiguas de `public.registrar_auditoria`.
+
+Las seis funciones legacy devuelven `EXECUTE=false` para `anon`,
+`authenticated` y `service_role` en la comprobación nominal actual. Esto reduce
+la exposición pública, pero no elimina la divergencia de inventario ni prueba
+que sus definiciones deban existir. Además, `public.obtener_contexto_operativo`
+y la sobrecarga vigente de `public.registrar_auditoria` tienen MD5 distintos
+entre QA y producción en esta lectura. Por tanto, N-02 continúa abierto: no se
+copian, eliminan ni reactivan funciones durante esta auditoría.
+
 ## Actualización de seguimiento — contrato local M-08 — 2026-11-10
 
 El commit `cc55b0b2` añadió `tests/m08/m08-bootstrap-functional-contract.mjs`.
