@@ -311,3 +311,12 @@ ocho argumentos sí existe en ambos entornos y no se cuenta como divergencia
 legacy. Esta comprobación es **medida**; no justifica copiar funciones de
 escritura sensibles ni permite cerrar N-02 sin reconciliar el inventario
 restante y la historia de migraciones.
+
+La historia de migraciones también sigue divergente: QA contiene 272 filas,
+desde `20260904091829` hasta `20261110204740`; producción contiene 175,
+desde `20260904135838` hasta `20261109201101`. En producción aparecen las
+cuatro versiones reparadas manualmente del 9 de noviembre; en QA la segunda
+paridad quedó registrada con la versión interna `20261110204740`. Estas
+versiones no se interpretan como prueba de que las definiciones aplicadas en
+ambos entornos sean iguales: esa equivalencia se comprueba por catálogo y por
+contrato, no por el mero número de migración.
