@@ -47,6 +47,15 @@ línea y espacios antes de calcular la huella: QA y producción coinciden en
 `88dde7f01bb445f2608f7e991838e1fa`. Esto corrige una medición anterior que
 llamaba normalizada a una huella que conservaba comentarios.
 
+Durante la revalidación del preview se reprodujo además un fallo de arranque
+real: Netlify devolvía `Identifier 'activarModoEmpleado' has already been
+declared`. El merge había dejado dos destructuraciones idénticas en `fuente.js`
+y `source-recovery/fuente-recuperado.js`. Se eliminó la duplicación, se añadió
+una aserción al contrato M-01 y el deploy posterior quedó `ready`; el navegador
+ya muestra el login en lugar de la pantalla de error. Esto queda clasificado
+como **reproducido y corregido** en QA/preview, no como cierre de ningún
+hallazgo de producción.
+
 La batería completa `tests/ci/ejecutar_bateria_no_db.sh` no pudo arrancar en
 Windows: tanto el alias `bash.exe` de Windows como Git Bash fallan antes de
 ejecutar el script por `NtCreateDirectoryObject ... 0xC0000022`. No se cuenta
