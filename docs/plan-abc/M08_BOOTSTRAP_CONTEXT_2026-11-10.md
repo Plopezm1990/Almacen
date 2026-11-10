@@ -78,3 +78,25 @@ El límite permanece: no hay una reproducción completa del bootstrap en esta
 base QA compartida y no se creó una rama nueva ni se generaron datos para
 fabricarla. Producción siguió en solo lectura.
 
+## Reproducción local aislada — 2026-11-10
+
+Se añadió el contrato `tests/m08/m08-bootstrap-functional-contract.mjs`, que
+ejecuta en PGlite una copia aislada del fixture
+`tests/bootstrap-owner-post-reset.sql` y de la migración versionada del
+bootstrap. El script comprueba el primer arranque, el reintento idempotente y
+la atomicidad ante un fallo de la tercera escritura; termina verificando que
+el rollback no deja empresa, local ni membresía y devuelve el estado
+`needs_setup`.
+
+Resultado reproducido localmente:
+
+```text
+M08_BOOTSTRAP_LOCAL_FUNCTIONAL=PASS
+```
+
+Esta prueba es **reproducida localmente**, no una acreditación de QA ni de
+producción. PGlite es PostgreSQL 18 WASM y no sustituye el contrato de
+PostgreSQL 16 ni una ejecución autenticada en un entorno desplegado. M-08
+permanece abierto hasta disponer de esa reproducción de entorno y de una
+decisión explícita sobre reconciliar la procedencia textual desplegada.
+
