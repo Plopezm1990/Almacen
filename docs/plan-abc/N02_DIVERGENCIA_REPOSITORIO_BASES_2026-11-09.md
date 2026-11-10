@@ -171,3 +171,9 @@ Esto es evidencia **probada por código** de que la remediación candidata conse
 N-02 queda **investigado y revalidado**, con remediación versionada preparada y aplicación confirmada en QA. No queda **cerrado completamente** como paridad de repositorio contra bases desplegadas: permanecen diferencias globales de inventario, una divergencia de ACL en `obtener_contexto_operativo` y una divergencia de procedencia textual en `bootstrap_owner_instalacion`. Cerrar esas diferencias en producción exigiría una autorización separada para escribir en producción y una comparación exhaustiva previa de los objetos afectados.
 
 No se creó ningún dato sintético nuevo en QA durante esta revalidación. No se ejecutó ninguna sentencia de escritura remota en producción.
+
+## Corrección explícita de la comparación de `bootstrap_owner_instalacion` — 2026-11-10
+
+Una consulta posterior, separando el cuerpo `pg_proc.prosrc` de la representación completa de `pg_get_functiondef`, devuelve una divergencia que debe prevalecer sobre la tabla anterior: el cuerpo de QA mide `MD5=77104240e60fa4f5b38a2583e58808d6`, cuerpo normalizado `977eb2748752ba4d101bfa278ee509db` y longitud 3.997; producción mide `MD5=2ac268ea336339890f9541df88aa2325`, cuerpo normalizado `bc6019e27e50cf1597d8e8e75deb804e` y longitud 3.356. La afirmación previa de igualdad normalizada queda corregida como no reproducible con la medición actual.
+
+La divergencia refuerza, en lugar de cerrar, N-02: la migración canónica está versionada y el contrato local pasa, pero el cuerpo desplegado no es idéntico entre QA y producción. La función sigue concedida a `authenticated` en ambos entornos; la ACL no elimina la diferencia de definición. No se ejecutó la función ni se escribió en producción.
