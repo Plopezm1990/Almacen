@@ -502,3 +502,24 @@ entorno y podría reintroducir una ruta legacy. Para cerrar la diferencia en
 producción haría falta una ventana de esquema separada que decida entre retirar
 los objetos, reconstruirlos desde una migración canónica o declarar su
 dependencia externa; esa ventana no forma parte de esta auditoría.
+
+### Revalidación estructural posterior — 2026-11-10
+
+Se repitió la consulta de solo lectura sobre los dos proyectos, contando
+funciones de `public`/`private`, triggers no internos, relaciones de catálogo y
+el historial oficial de `supabase_migrations.schema_migrations`:
+
+| Medición | QA (`qjqorixtkilwsndqayyx`) | Producción (`flqercbgpgmmfaakrwkc`) |
+|---|---:|---:|
+| Funciones | 498 | 431 |
+| Triggers no internos | 66 | 57 |
+| Relaciones (`r,p,v,m,f`) | 151 | 131 |
+| Versiones de migración | 272 | 175 |
+| Última versión registrada | `20261110204740` | `20261109201101` |
+
+La repetición confirma que N-02 no puede cerrarse por la paridad acotada de
+las migraciones ya aplicadas en QA. Las seis funciones legacy exclusivas de
+producción siguen sin copiarse ni ejecutarse; sus firmas, ACL y ausencia de
+dependencias directas se mantienen como evidencia **medida**, pero todavía
+falta una decisión de procedencia y una ventana controlada para reconciliar o
+retirar esos objetos. Producción permaneció en solo lectura.
