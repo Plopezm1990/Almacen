@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado al cierre de esta actualización:** `39e5129b`
+**Commit verificado al cierre de esta actualización:** `2beea598`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
