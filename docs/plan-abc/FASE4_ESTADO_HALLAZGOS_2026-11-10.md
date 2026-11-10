@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado:** `3abe2eaa`
+**Commit verificado:** `4d17e19a`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -89,3 +89,37 @@ El cierre integral exige tres cosas externas al trabajo local:
 
 Hasta que esas condiciones se cumplan, el estado honrado es **3 cerrados
 técnicamente en alcance, 11 abiertos o parciales**, no 14 cerrados.
+
+## Revalidación de seguimiento posterior — 2026-11-10
+
+La rama de auditoría quedó en `4d17e19a`, con los contratos focalizados de N-02
+y el validador del manifiesto ejecutados después de la documentación adicional.
+El estado global no cambia: **3 hallazgos cerrados técnicamente en alcance y
+11 abiertos o parciales**.
+
+### N-02: medición vigente
+
+La comparación exacta de nombres en solo lectura devolvió:
+
+| Categoría | QA | Producción | Solo QA | Solo producción |
+|---|---:|---:|---:|---:|
+| Relaciones públicas/privadas | 151 | 131 | 21 | 1 |
+| Funciones | 490 | 431 | 73 | 14 |
+| Políticas RLS | 110 | 103 | 14 | 7 |
+| Triggers no internos | 60 | 57 | 9 | 6 |
+
+El historial registra 270 versiones en QA y 175 en producción, frente a 203
+prefijos de migración presentes en el clon. La ACL efectiva de
+`obtener_contexto_operativo(text)` ya coincide (`service_role=false`,
+`authenticated=true`, `anon=false`); la divergencia restante es global de
+inventario/procedencia/historial y no se presenta como resuelta.
+
+### M-03: medición MFA vigente
+
+La lectura directa de `auth.mfa_factors` devuelve cero factores en QA y cero en
+producción. Los proyectos tienen respectivamente 25 y 5 usuarios de Auth.
+M-03 sigue abierto porque falta aprobar la política de roles, recuperación y
+exigencia de `aal2`, además de implementar y reproducir el flujo TOTP.
+
+Estas revalidaciones son **medidas**; no sustituyen una promoción a producción,
+una decisión de negocio ni una prueba funcional autenticada desde navegador.
