@@ -344,3 +344,26 @@ el recuento actualizado de `338/338` contratos activos (`302` Node, `31`
 Postgres 16, `2` PGlite y `3` full-stack). Esta evidencia es **reproducida**
 localmente y **observada** en CI; no acredita una ejecución autenticada en QA
 ni permite cerrar M-08 frente a producción.
+
+## Revalidación nominal posterior — 2026-11-10
+
+Se repitió una consulta de solo lectura sobre las dos bases después de la
+revalidación local de M-08. No se ejecutaron RPC de negocio ni sentencias de
+escritura. El resultado fue:
+
+| Comprobación | QA | Producción |
+|---|---:|---:|
+| Factores MFA (`auth.mfa_factors`) | `0` | `0` |
+| Tabla `private.pm11_empleado_pin` | presente | ausente |
+| Índice de fecha de `errores_sistema` | presente | ausente |
+| Funciones `public`/`private` | `498` | `431` |
+| Relaciones `public`/`private` | `151` | `131` |
+| Triggers no internos `public`/`private` | `66` | `57` |
+| MD5 bruto de `bootstrap_owner_instalacion` | `029b4839e9ae2260b4e2cfed3aeb995b` | `208f62fdfc336e2c109e0997ae9d05aa` |
+| MD5 semántico de `bootstrap_owner_instalacion` | `88dde7f01bb445f2608f7e991838e1fa` | `88dde7f01bb445f2608f7e991838e1fa` |
+
+Esta comprobación es **medida** y confirma que no hay cambio de estado desde el
+corte anterior: M-01 y B-02 siguen sin promoción a producción, M-03 no tiene
+factores enrolados, M-08 conserva equivalencia semántica pero no reproducción
+autenticada, y N-02 mantiene divergencia estructural. Producción permaneció en
+solo lectura.
