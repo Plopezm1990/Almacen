@@ -46,6 +46,12 @@ Antes de cualquier aplicación futura, ejecutar únicamente el fichero [A03_PROD
 
 Una ejecución que no cumpla esas condiciones debe detener la ventana. El preflight no contiene operaciones de modificación.
 
+## Resultado del preflight de producción — 2026-11-10
+
+El preflight se ejecutó contra `flqercbgpgmmfaakrwkc` en solo lectura. Las tres dependencias internas existen: `private.la_usuario_activo()`, `private.la_tiene_local(text,text)` y `private.la_tiene_empresa(text)`. No hay aplicación parcial: las cuatro tablas APPCC, las cinco RPC, las políticas APPCC y las cuatro versiones de migración siguen ausentes.
+
+El resultado es coherente con el paquete preparado y no autoriza por sí mismo a aplicarlo. El siguiente paso técnico sería una ventana de migración explícitamente autorizada; mientras siga vigente la regla de producción solo lectura, A-03 permanece bloqueado.
+
 ## Verificación posterior prevista
 
 Solo después de una aplicación autorizada se podrían comprobar, en lectura:
