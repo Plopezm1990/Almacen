@@ -498,21 +498,35 @@ excepciones legales y operativas.
 
 ## Revisión adicional M-03 — defensa server-side — 2026-11-10
 
-Se consultaron las definiciones de funciones propias y las políticas RLS de QA
-y producción buscando una comprobación del claim de nivel de autenticación
-(`aal`/`aal2`). El resultado nominal actual fue:
+La medición inicial de este documento encontró cero comprobaciones `aal` porque
+se realizó antes de aplicar la migración server-side en QA. Esa afirmación queda
+corregida por la lectura posterior de la función concreta:
 
 | Comprobación | QA | Producción |
 |---|---:|---:|
-| Funciones `public`/`private` que comprueban el claim `aal` | 0 | 0 |
-| Políticas RLS que comprueban el claim `aal` | 0 | 0 |
+| `private.la_usuario_activo()` contiene la guarda `auth.jwt()->>'aal'` | sí; MD5 `aa3487ad081176ffab9b563420a23b1e` | no; MD5 `ea0763ad577c9cf11cd813768a4b8651` |
+| Reproducción de la función con `aal1` | `false` | no aplicable: la guarda no existe |
+| Reproducción de la función con `aal2` | `true` | no aplicable: la guarda no existe |
 
 La barrera M-03 versionada en `edge-auth-patch.js` sigue siendo una defensa de
-cliente: consulta el perfil server-side y bloquea la interfaz hasta `aal2`, pero
-no sustituye una condición server-side en las RPC o políticas que protegen las
-operaciones sensibles. Esta medición **probada por código desplegado** rebaja la
-confianza del cierre candidato: un cliente modificado no debe poder obtener
-acceso sensible solo porque el overlay no se muestre. M-03 permanece abierto
-hasta decidir el perímetro exacto de operaciones/roles y versionar una defensa
-server-side compatible con ese perímetro, además del enrolamiento observado en
-QA.
+cliente, pero en QA ya existe además la condición server-side para los roles
+`Propietario`, `Encargado` y `Cajero/a`. La reproducción `aal1`/`aal2` es
+**medida y reproducida en QA**; no acredita producción. M-03 permanece abierto
+hasta observar el enrolamiento/desafío TOTP desde navegador, definir la
+recuperación del segundo factor y promover la guarda mediante una ventana
+autorizada.
+
+## Revalidación de promoción QA frente a producción — lectura actual
+
+La consulta repetida en solo lectura devuelve el siguiente corte:
+
+| Comprobación | QA | Producción |
+|---|---:|---:|
+| `private.pm11_empleado_pin` | presente | ausente |
+| Índice de `errores_sistema` que incluye `fecha` | presente | ausente |
+| Guarda server-side `aal2` en `private.la_usuario_activo()` | presente | ausente |
+| Funciones en esquemas `public`/`private` | 498 | 431 |
+
+Esto es **medido sobre los dos despliegues** y confirma que una prueba verde en
+QA no acredita la promoción. No se aplicó DDL ni se modificaron datos en
+producción.
