@@ -19,7 +19,7 @@ en producción.
 | A-05 | Parcial, abierto | Guardia de inactividad y reidentificación del cliente; contratos pasan | `sessions_inactivity_timeout` y `sessions_timebox` siguen en 0 en ambos entornos; hay sesiones históricas |
 | M-01 | Remediado en código y QA, abierto en alcance de entornos | PIN server-side, RLS y contratos pasan; tabla presente en QA | Producción sigue sin `private.pm11_empleado_pin`; requiere promoción autorizada |
 | M-02 | Cerrado técnicamente en alcance | CSP de QA y producción medida por HTTP 200 con único origen Supabase correspondiente | No equivale a una certificación de seguridad general |
-| M-03 | Corrección candidata versionada, abierto en alcance de entornos | Gate TOTP/AAL2 para Propietario, Encargado y Cajero/a; contrato estático pasa; factores medidos en cero | Falta observar enrolamiento/desafío en QA, recuperación y promoción autorizada |
+| M-03 | Remediado en código y aplicado en QA, abierto en alcance de entornos | Gate TOTP/AAL2 de cliente y guarda server-side en `private.la_usuario_activo()` para Propietario, Encargado y Cajero/a; contrato y definición QA pasan | Falta observar enrolamiento/desafío en QA, recuperación y promoción autorizada a producción |
 | M-04 | Remediado en código, abierto en alcance de entornos | Contrato de contraseña mínima pasa y preview listo | Falta verificación autenticada y promoción; rate-limit/captcha del proveedor no queda demostrado |
 | M-05 | Remediado en código, abierto en alcance de entornos | Contrato de paginación pasa y preview listo | Falta verificación autenticada y promoción |
 | M-06 | Abierto | Ausencia de tarea programada medida; contrato de retención existente | No se inventa plazo: falta decisión legal/negocio y ejecución programada |
@@ -449,6 +449,29 @@ El commit `4de414ba619417ed8ff676fe2ae5307ee7b45fc8` terminó con `23/23`
 workflows de CI en `success`. Esto mejora la evidencia **probada por código** y
 **reproducida** de M-04; sigue sin demostrar el rate-limit/captcha efectivo del
 proveedor ni sustituye la observación autenticada en QA y la promoción controlada.
+
+## Corte posterior de M-03 — guarda `aal2` en QA — 2026-11-10
+
+La migración versionada `20261110230000_m03_server_aal2_gate.sql` redefine la
+guarda común `private.la_usuario_activo()` para exigir
+`auth.jwt()->>'aal' = 'aal2'` cuando la membresía activa tenga rol
+`Propietario`, `Encargado` o `Cajero/a`. El contrato M-03 y el preflight F7 pasan
+en local.
+
+La migración se aplicó únicamente en QA mediante el mecanismo de migraciones de
+Supabase y quedó registrada allí como `m03_server_aal2_gate` con versión interna
+`20261110223815`. La lectura posterior de la definición desplegada devolvió:
+
+- QA: MD5 `aa3487ad081176ffab9b563420a23b1e`, guarda `aal2` presente y roles
+  sensibles presentes;
+- producción: MD5 `ea0763ad577c9cf11cd813768a4b8651`, sin guarda `aal2` y sin ese
+  bloque de roles.
+
+El commit `fbaf26af19cd4b3a2a84c9ba50c5bd4aa1eaf7d3` terminó con `23/23`
+workflows de CI en `success`. Esto es evidencia **probada por código** y
+**observada** en el esquema QA; no demuestra todavía el enrolamiento/desafío de
+una cuenta, la recuperación ni la promoción a producción. Producción siguió en
+solo lectura.
 
 ## Revalidación puntual M-06 — programación de retención — 2026-11-10
 
