@@ -282,3 +282,31 @@ archivo histórico no presente en esta rama, de una migración con otra
 representación o de SQL aplicado fuera del historial. Estas nueve funciones
 quedan como candidatos prioritarios de reconciliación de procedencia; no se
 redefinen ni se eliminan durante la auditoría.
+
+### Comparación de historial de migraciones por identificador — 2026-11-10
+
+Se comparó, también en solo lectura, el conjunto de versiones de
+`supabase_migrations.schema_migrations` de cada proyecto con los prefijos de
+las migraciones presentes en `supabase/migrations` del clon de auditoría.
+
+| Conjunto | Versiones |
+|---|---:|
+| Migraciones locales en el clon | 203 |
+| QA | 270 |
+| Producción | 175 |
+| Versiones locales que no aparecen en QA | 181 |
+| Versiones de QA que no aparecen en el clon | 248 |
+| Versiones locales que no aparecen en producción | 80 |
+| Versiones de producción que no aparecen en el clon | 52 |
+| Versiones exactas comunes entre clon y QA | 22 |
+| Versiones exactas comunes entre clon y producción | 95 |
+
+Esta comparación es **medida sobre identificadores de historial**, no una
+prueba de que cada versión exclusiva carezca de su SQL equivalente. El
+historial puede contener migraciones de otra copia del repositorio, versiones
+registradas durante despliegues con un nombre diferente o reparaciones
+autorizadas de bookkeeping. Aun con esa cautela, el solapamiento bajo demuestra
+que no se puede tratar el historial de ninguna de las dos bases como una copia
+directa del directorio local. El resultado refuerza el criterio de N-02:
+antes de promover una reconciliación hay que mapear cada objeto relevante a su
+procedencia y separar SQL ejecutado de simples filas de historial.
