@@ -87,6 +87,12 @@ const EXCLUIDAS = new Set([
   // a la foto F7 del 3/10, con contrato propio contra Postgres real en
   // tests/f5/c07/db/a02-venta-fiscal-sellada-contract.mjs.
   '20261108170000_a02_cerrar_y_sellar_venta_fiscal.sql',
+  // M-01: el PIN de empleado pasa a una tabla privada y a RPC server-side;
+  // es una ventana posterior con contrato propio contra Postgres real.
+  '20261108120000_m01_server_pin_authentication.sql',
+  // M-01 follow-up: activa RLS sobre la tabla privada del PIN; es posterior
+  // a la foto F7 histórica y tiene contrato propio.
+  '20261110190000_m01_enable_pin_rls.sql',
   // N-02: reconciliación de funciones ya versionadas para corregir la
   // divergencia histórica entre QA y producción; queda fuera de la foto F7.
   '20261108193000_n02_reconcile_deployed_db_functions.sql',
