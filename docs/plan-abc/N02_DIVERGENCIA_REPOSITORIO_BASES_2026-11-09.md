@@ -252,3 +252,33 @@ es que N-02 continúa abierto por la divergencia de inventario y de historial.
 La divergencia ACL de `obtener_contexto_operativo` ya fue reconciliada en QA y
 producción coincide en su estado efectivo; no se cuenta como diferencia
 pendiente en esta nueva medición.
+
+### Trazabilidad de funciones solo presentes en producción — 2026-11-10
+
+Para acotar la causa de la divergencia, se compararon las 14 funciones que
+aparecen solo en producción con el texto de las migraciones locales. La
+búsqueda usó el nombre cualificado, el nombre de la función y su lista exacta
+de argumentos de identidad; no ejecutó SQL y no modifica ningún archivo ni
+entorno.
+
+| Resultado de la búsqueda literal en migraciones | Cantidad |
+|---|---:|
+| Funciones solo en producción con coincidencia textual en alguna migración | 5 |
+| Funciones solo en producción sin coincidencia textual de firma exacta | 9 |
+
+Las cinco coincidencias son `private.es_propietario_activo()`, las dos
+guardas `private.pm13_cargo_guard_*()`, `public.completar_local_movimiento()`
+y `public.estampar_propiedad_suscripcion_push()`. Entre las nueve sin
+coincidencia literal están `private.abc_a10_reencolar_bloqueadas(...)`,
+`public.anular_venta_tpv(text,text)`,
+`public.descontar_stock(text,numeric,text,jsonb)`,
+`public.descontar_stock_carrito(jsonb,text)`, las dos sobrecargas históricas
+de `public.registrar_auditoria(...)`, `public.actualizar_fecha()`,
+`public.actualizar_fecha_perfil()` y `public.rls_auto_enable()`.
+
+La clasificación correcta es **medido como ausencia de coincidencia literal**,
+no “demostrado como creado manualmente”: una definición puede proceder de un
+archivo histórico no presente en esta rama, de una migración con otra
+representación o de SQL aplicado fuera del historial. Estas nueve funciones
+quedan como candidatos prioritarios de reconciliación de procedencia; no se
+redefinen ni se eliminan durante la auditoría.
