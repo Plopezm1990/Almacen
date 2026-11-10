@@ -572,3 +572,8 @@ batería**. No sustituye la observación autenticada del preview QA, la medició
 de promoción en producción ni las decisiones de negocio/legal pendientes. El
 único elemento no versionado visible en el árbol es el directorio preexistente
 `supabase/.temp/`, que no se incluye en los cambios.
+
+Después de subir esta actualización como `d522b55f`, los `23/23` workflows de
+GitHub Actions terminaron en `success`. Esta comprobación es **observada en CI**
+y confirma la puerta remota del repositorio; no transforma por sí sola la
+evidencia local en una promoción de QA o producción.
