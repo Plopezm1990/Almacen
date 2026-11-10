@@ -530,3 +530,19 @@ La consulta repetida en solo lectura devuelve el siguiente corte:
 Esto es **medido sobre los dos despliegues** y confirma que una prueba verde en
 QA no acredita la promoción. No se aplicó DDL ni se modificaron datos en
 producción.
+
+## Revalidación de estado — 2026-11-11
+
+La lectura nominal se repitió al día siguiente, siempre en modo solo lectura:
+
+| Comprobación | QA | Producción |
+|---|---:|---:|
+| `private.pm11_empleado_pin` | presente | ausente |
+| Índice de `errores_sistema` que incluye `fecha` | presente | ausente |
+| Guarda server-side `aal2` en `private.la_usuario_activo()` | presente | ausente |
+| Funciones en esquemas `public`/`private` | 498 | 431 |
+| Factores MFA en `auth.mfa_factors` | 0 | 0 |
+
+El corte del 11 de noviembre no muestra promoción, enrolamiento MFA ni cambio
+de inventario entre los entornos. Producción permaneció en solo lectura y no se
+ejecutó ninguna operación de negocio.
