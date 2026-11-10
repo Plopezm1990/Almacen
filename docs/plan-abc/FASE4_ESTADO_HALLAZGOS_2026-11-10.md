@@ -235,3 +235,23 @@ presente en QA. Se mantienen fuera de la segunda migración de paridad porque
 cuatro ejecutan escrituras relacionadas con ventas/stock y dos registran
 histórico; no existe todavía una decisión de procedencia, permisos y contrato
 que autorice su copia.
+
+## Seguimiento CI de M-04 — 2026-11-10
+
+El workflow `P2-SEC — Edge tenant security candidate` falló inicialmente en el
+commit `38d947bc` porque los dos handlers de creación de empleado modificados
+por M-04 pertenecen también al perímetro histórico P2-SEC y la puerta no tenía
+una clasificación para ese cambio acotado. El fallo ocurrió antes de ejecutar
+los contratos, con el mensaje de perímetro no reconocido; no fue un fallo de
+la política de contraseña ni de un contrato de tenant.
+
+Se añadió la clasificación explícita `M04_PASSWORD_HARDENING` para el conjunto
+exacto de tres archivos que forman el cambio verificable (los dos handlers y
+el propio workflow). La puerta conserva la ejecución completa de los contratos
+P2-SEC. La comprobación local del conjunto de rutas pasó y el workflow remoto
+del commit `10e19e90` terminó con `success` (run `42904190198`, job
+`edge-security`).
+
+Esta secuencia queda clasificada como **reproducida y corregida en CI**. No
+modifica el estado de producción ni sustituye la observación autenticada del
+flujo de alta/cambio de contraseña en QA.
