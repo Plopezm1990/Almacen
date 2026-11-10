@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado:** `4d17e19a`
+**Commit verificado:** `895a9207`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -113,6 +113,15 @@ prefijos de migración presentes en el clon. La ACL efectiva de
 `obtener_contexto_operativo(text)` ya coincide (`service_role=false`,
 `authenticated=true`, `anon=false`); la divergencia restante es global de
 inventario/procedencia/historial y no se presenta como resuelta.
+
+La migración `20261110210000_n02_legacy_infrastructure_parity.sql` también se
+aplicó en QA. QA ya contiene las tres funciones de infraestructura, los dos
+triggers de `updated_at` y el event trigger `ensure_rls`; las definiciones de
+las dos funciones de fila y de ambos triggers coinciden literalmente con
+producción, y `rls_auto_enable()` coincide semánticamente tras normalizar la
+capitalización y los espacios. Producción sigue sin registrar esta migración,
+por lo que el paso no se presenta como promoción ni como cierre integral de
+N-02.
 
 ### M-03: medición MFA vigente
 
