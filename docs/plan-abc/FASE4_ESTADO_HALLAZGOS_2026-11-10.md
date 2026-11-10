@@ -367,3 +367,9 @@ corte anterior: M-01 y B-02 siguen sin promoción a producción, M-03 no tiene
 factores enrolados, M-08 conserva equivalencia semántica pero no reproducción
 autenticada, y N-02 mantiene divergencia estructural. Producción permaneció en
 solo lectura.
+
+## Estado del PR y de la verificación remota — 2026-11-10
+
+El trabajo versionado de esta fase continúa en el [PR #220](https://github.com/Plopezm1990/Almacen/pull/220), dirigido a `release`. El PR permanece abierto y mergeable; no se ha fusionado desde esta auditoría.
+
+Para el commit `7b6549c2298c34e8ab859cbe37dd87deb09b0536`, la consulta de GitHub devolvió **23 ejecuciones de CI terminadas con `success`**. Netlify publicó el preview `https://deploy-preview-220--chic-entremet-9107cf.netlify.app/` en estado listo. Esta evidencia es **observada** en CI y en el servicio de despliegue; no equivale a promoción a producción ni a una observación autenticada del flujo de la aplicación.
