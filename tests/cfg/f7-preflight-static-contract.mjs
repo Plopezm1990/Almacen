@@ -90,6 +90,9 @@ const EXCLUIDAS = new Set([
   // M-01: el PIN de empleado pasa a una tabla privada y a RPC server-side;
   // es una ventana posterior con contrato propio contra Postgres real.
   '20261108120000_m01_server_pin_authentication.sql',
+  // M-01 follow-up: activa RLS sobre la tabla privada del PIN; es posterior
+  // a la foto F7 histórica y tiene contrato propio.
+  '20261110190000_m01_enable_pin_rls.sql',
   '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
   // F8 C04: alta de terminal/caja por propietario, con preflight propio.
   '20261027200000_abc_f8_c04_terminal_caja_propietario.sql',

@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 336,
+  "total_inventory": 337,
   "expected_counts": {
-    "active_contract": 319,
+    "active_contract": 320,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 284,
+      "active_contract": 285,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -1704,6 +1704,11 @@
       "path": "tests/f5/c07/db/a02-venta-fiscal-sellada-contract.mjs",
       "classification": "active_contract",
       "environment": "postgres"
+    },
+    {
+      "path": "tests/m01/m01-pin-rls-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
     },
     {
       "path": "tests/m01/m01-server-pin-contract.mjs",
