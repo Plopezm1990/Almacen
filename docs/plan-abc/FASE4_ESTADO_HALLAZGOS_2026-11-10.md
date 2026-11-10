@@ -546,3 +546,29 @@ La lectura nominal se repitió al día siguiente, siempre en modo solo lectura:
 El corte del 11 de noviembre no muestra promoción, enrolamiento MFA ni cambio
 de inventario entre los entornos. Producción permaneció en solo lectura y no se
 ejecutó ninguna operación de negocio.
+
+## Revalidación de contratos focales — 2026-11-11
+
+Se volvió a ejecutar en el árbol de auditoría, sin acceder a producción ni
+modificar QA, la batería focal de los hallazgos todavía abiertos:
+
+- M-03: `M03_MFA_ROLE_GATE_CONTRACT=PASS`.
+- A-05: contrato estático de caducidad de sesión `OK`.
+- M-04: `M04_PASSWORD_POLICY_CONTRACT=PASS`.
+- M-05: contrato de paginación de auditoría `OK`.
+- M-07: contrato de paginación de consultas relacionadas `OK`.
+- M-08: `M08_BOOTSTRAP_LOCAL_FUNCTIONAL=PASS` en PGlite aislado.
+- B-02: migración, consulta y contrato del índice de fecha `PASS`.
+- N-02: reconciliación `N02_CONTRACT_PASS=4 N02_CONTRACT_FAIL=0`, más los
+  contratos de infraestructura legacy y de infraestructura restante `PASS`.
+
+El validador del manifiesto devolvió `338` contratos activos de `355` entradas
+(`302` Node, `31` Postgres, `2` PGlite y `3` full-stack), con un histórico
+esperado en rojo y sin incidencias de inventario. `git diff --check` no detectó
+errores.
+
+Esta evidencia es **reproducida localmente** y **observada en la salida de la
+batería**. No sustituye la observación autenticada del preview QA, la medición
+de promoción en producción ni las decisiones de negocio/legal pendientes. El
+único elemento no versionado visible en el árbol es el directorio preexistente
+`supabase/.temp/`, que no se incluye en los cambios.
