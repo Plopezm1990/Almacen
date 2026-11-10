@@ -133,6 +133,21 @@ exigencia de `aal2`, además de implementar y reproducir el flujo TOTP.
 Estas revalidaciones son **medidas**; no sustituyen una promoción a producción,
 una decisión de negocio ni una prueba funcional autenticada desde navegador.
 
+### Revalidación de promoción QA frente a producción — 2026-11-10
+
+Una consulta de solo lectura repetida sobre ambos proyectos devuelve:
+
+| Comprobación | QA | Producción |
+|---|---:|---:|
+| `private.pm11_empleado_pin` presente | sí | no |
+| índice de `errores_sistema` que incluye `fecha` | sí | no |
+| filas en `auth.mfa_factors` | 0 | 0 |
+
+Los contratos de M-01, B-02, M-02 y A-03/A-04 pasan en la rama de auditoría,
+pero la medición de esquema demuestra que M-01 y B-02 todavía no están
+promovidos a producción. Esta evidencia es **medida** y **probada por código**;
+no se presenta como cierre efectivo de producción.
+
 ## Actualización posterior — segunda paridad QA de N-02 — 2026-11-10
 
 Se aplicó exclusivamente en QA la migración versionada
@@ -203,3 +218,20 @@ no como flujo QA **observado** en esta actualización.
 
 El corte sigue siendo **3 hallazgos cerrados técnicamente en alcance y 11
 abiertos o parciales**. Producción permanece solo lectura.
+
+## Revalidación puntual de M-08 y N-02 — 2026-11-10
+
+La lectura de `public.bootstrap_owner_instalacion(text,text)` devuelve el mismo
+hash semántico sin comentarios ni espacios en QA y producción,
+`88dde7f01bb445f2608f7e991838e1fa`, pero mantiene hashes textuales distintos:
+`029b4839e9ae2260b4e2cfed3aeb995b` en QA y
+`208f62fdfc336e2c109e0997ae9d05aa` en producción. La equivalencia semántica no
+sustituye la reproducción de una instalación limpia ni resuelve la procedencia
+de la definición.
+
+La consulta nominal de solo lectura confirma que las seis funciones legacy
+clasificadas en N-02 están presentes en producción y ninguna de ellas está
+presente en QA. Se mantienen fuera de la segunda migración de paridad porque
+cuatro ejecutan escrituras relacionadas con ventas/stock y dos registran
+histórico; no existe todavía una decisión de procedencia, permisos y contrato
+que autorice su copia.
