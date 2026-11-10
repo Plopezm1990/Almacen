@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 342,
+  "total_inventory": 343,
   "expected_counts": {
-    "active_contract": 325,
+    "active_contract": 326,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 291,
+      "active_contract": 292,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -34,6 +34,11 @@
     }
   },
   "entries": [
+    {
+      "path": "tests/a05/a05-session-expiry-static-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
     {
       "path": "tests/alb/a01-proveedor-desde-albaran-motor-contract.mjs",
       "classification": "active_contract",

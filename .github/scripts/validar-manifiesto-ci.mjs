@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const INVENTORY = 342;
+const INVENTORY = 343;
 const CLASSES = ['active_contract', 'historical_expected_fail', 'utility', 'diagnostic'];
 const ENVIRONMENTS = ['node', 'postgres', 'pglite', 'supabase_full_stack'];
 const PAIRS = {
@@ -12,9 +12,9 @@ const PAIRS = {
   pglite: ['active_contract', 'utility'],
   supabase_full_stack: ['active_contract'],
 };
-const COUNTS = { active_contract: 325, historical_expected_fail: 1, utility: 11, diagnostic: 5 };
+const COUNTS = { active_contract: 326, historical_expected_fail: 1, utility: 11, diagnostic: 5 };
 const ENVIRONMENT_COUNTS = {
-  node: { active_contract: 291, historical_expected_fail: 0, utility: 10, diagnostic: 5 },
+  node: { active_contract: 292, historical_expected_fail: 0, utility: 10, diagnostic: 5 },
   postgres: { active_contract: 30, historical_expected_fail: 1, utility: 0, diagnostic: 0 },
   pglite: { active_contract: 1, historical_expected_fail: 0, utility: 1, diagnostic: 0 },
   supabase_full_stack: { active_contract: 3, historical_expected_fail: 0, utility: 0, diagnostic: 0 },
@@ -174,7 +174,7 @@ function selfTest(manifest, realPaths) {
   spoofed.push({ ...duplicate, environment: 'unknown_environment' });
   const spoofedActive = spoofed.filter((entry) => entry.classification === 'active_contract').length;
   if (spoofed.length !== INVENTORY || spoofedActive !== COUNTS.active_contract) {
-    throw new Error('El caso combinado no conserva 342 entradas y 325 contratos activos.');
+    throw new Error('El caso combinado no conserva 343 entradas y 326 contratos activos.');
   }
   const spoofedCodes = new Set(validate({ ...manifest, entries: spoofed }, realPaths).issues.map((issue) => issue.code));
   if (!['invalid_environment', 'duplicate_path', 'missing_path'].every((code) => spoofedCodes.has(code))) {

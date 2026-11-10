@@ -11,6 +11,12 @@ El criterio del hallazgo es que la sesión caduque por inactividad en un plazo d
 
 No se revocó ninguna sesión, no se modificó ningún usuario y no se cambió la configuración de Auth de ninguno de los dos proyectos.
 
+## Política adoptada para la corrección candidata
+
+Al reanudar este objetivo el 2026-11-10 se adopta como política candidata la propuesta ya documentada: bloqueo de interfaz tras 15 minutos sin interacción humana, reidentificación mediante el login completo de Supabase, `sessions_inactivity_timeout` positivo como defensa server-side y `sessions_timebox` inicialmente desactivado. Esta adopción autoriza preparar y probar la corrección en QA; no autoriza escribir en producción ni convierte la política en una certificación de producción.
+
+Para mantener una sola cifra auditable, la configuración candidata de QA será `sessions_inactivity_timeout = 900` segundos. El JWT permanece en 3600 segundos: el bloqueo de la interfaz es el control inmediato del terminal y el timeout Auth es una defensa adicional, no una promesa de logout visual exactamente al segundo 900.
+
 ## Medición actual de `auth.sessions`
 
 Consulta de solo lectura realizada el 2026-11-09. Se contaron filas y fechas, sin devolver tokens, hashes de refresh, direcciones IP ni agentes de usuario.
@@ -96,6 +102,8 @@ No se fija aquí un número de minutos ni se aplica ninguna configuración por f
 
 ## Estado
 
-Estado de A-05: **causa raíz medida y probada por código; remediación pendiente de decisión de política y de autorización de cambio de configuración**.
+Estado de A-05: **corrección candidata versionada y contrato estático preparados; pendiente de aplicar/verificar exclusivamente en QA y de dejar producción expresamente sin cambios**.
 
 No se crearon datos ni credenciales sintéticas para este punto. No se revocaron sesiones. Producción permaneció en solo lectura.
+
+Límite adicional: el mecanismo histórico `source-recovery/CURRENT_RELEASE.patch` ya presentaba deriva respecto del `fuente.js` existente en este `HEAD`; no se reescribió ese parche histórico para ocultar la deriva. La corrección A-05 se verifica por el contrato estático, la sintaxis del parche y el diff mínimo del bundle servido; la reconstrucción byte a byte completa del runtime queda como trabajo separado.
