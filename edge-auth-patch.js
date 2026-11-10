@@ -1052,7 +1052,7 @@ function modoLocalNoReclamado() {
       supabase = await window.getSupabaseClient();
       supabase.auth.onAuthStateChange(function (evento) {
         if (evento === "SIGNED_OUT") limpiarOverlay();
-        else if (evento === "SIGNED_IN" || evento === "TOKEN_REFRESHED" || evento === "MFA_CHALLENGE_VERIFIED") comprobarMfa();
+        else if (evento === "SIGNED_IN" || evento === "PASSWORD_RECOVERY" || evento === "TOKEN_REFRESHED" || evento === "MFA_CHALLENGE_VERIFIED") comprobarMfa();
       });
       comprobarMfa();
     } catch (e) {}

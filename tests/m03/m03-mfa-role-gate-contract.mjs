@@ -18,6 +18,7 @@ const required = [
   'mfa.challenge({ factorId: factorActual.id })',
   'mfa.verify({',
   'MFA_CHALLENGE_VERIFIED',
+  'PASSWORD_RECOVERY',
   'aria-modal'
 ];
 
