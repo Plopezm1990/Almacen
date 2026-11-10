@@ -362,3 +362,37 @@ referencias Git disponibles y que no existen en QA. La decisión pendiente es
 si deben incorporarse a una migración canónica, documentarse como legado
 deliberado o eliminarse en una ventana de esquema separada; ninguna de esas
 acciones se ejecuta durante esta auditoría.
+
+### Aplicación QA de la paridad de infraestructura — 2026-11-10
+
+La migración versionada
+`20261110210000_n02_legacy_infrastructure_parity.sql` se aplicó únicamente en
+QA con resultado satisfactorio (`success: true`). No contiene `INSERT`,
+`UPDATE` ni `DELETE`: crea o reemplaza funciones, permisos y objetos de
+trigger. No se creó ningún dato sintético.
+
+La lectura posterior confirmó en QA:
+
+- `actualizar_fecha()` y `actualizar_fecha_perfil()` presentes, con ACL
+  `postgres=X/postgres` y las mismas huellas `pg_get_functiondef` que
+  producción (`87a1e75c07ed90451c51bb9f717cb80d` y
+  `9fb60ea097e496fb62595cbe73cbf2f6`);
+- los triggers `almacen_kv_actualizar_fecha` y
+  `perfiles_actualizar_fecha` presentes, con la misma huella de definición que
+  producción (`68ef4d46abec7b444c4f46163aba7781` y
+  `05e4cd30deb7625756ea8e8f42cf35c2`);
+- el event trigger `ensure_rls` presente y asociado a `rls_auto_enable()`;
+- la migración registrada en el historial QA.
+
+`rls_auto_enable()` conserva la misma lógica, pero su MD5 bruto difiere por la
+capitalización de palabras reservadas introducida al aplicar la migración:
+QA `ff53cb0e176a9dfdcfb94697a9f3d610` y producción
+`6998ea6b4c2480f5d2e34b5dcf3f8d36`. La huella semántica calculada tras pasar a
+minúsculas y eliminar comentarios/espacios coincide en ambos:
+`c711c6c1408bddbae63b0f91cb8ea9af`. La conclusión correcta es **equivalencia
+semántica medida**, no identidad textual.
+
+Esta aplicación elimina una divergencia concreta de objetos entre QA y
+producción y deja la remediación reproducible en el repositorio. N-02 sigue
+abierto por el inventario global, el historial divergente y la ausencia de la
+migración en producción; no se ha escrito en producción.
