@@ -171,3 +171,35 @@ retiran esas rutas legacy, por lo que no se copian a QA sin una decisión de
 procedencia y contrato de uso. N-02 sigue abierto, pero el motivo de esa
 diferencia ya está medido y documentado; no queda tratado como una ausencia
 desconocida.
+
+## Corte de seguimiento de M-06 y M-08 — 2026-11-10
+
+### M-06: retención
+
+La medición actual confirma que QA y producción no tienen mecanismo programado
+de purga (`pg_cron`, `pg_net`, `pgmq`, `cron.job` y
+`cron.job_run_details` ausentes). QA tiene 1.016 filas de auditoría, 830 de
+errores, 10 fichajes y 904 movimientos; producción tiene 19, 1, 0 y 5,
+respectivamente. Esto es **medido** y dimensiona el alcance; no fija un plazo
+legal. M-06 continúa abierto hasta que exista una decisión aprobada de
+retención, excepciones, anonimización/borrado y autoridad de ejecución.
+
+### M-08: bootstrap
+
+En QA se midieron 14 propietarios activos y ninguna instalación determinista
+completa (`0` idempotentes, `14` no idempotentes o parciales). Invocar el
+bootstrap en el proyecto compartido no habría sido una reproducción limpia y
+podría haber creado datos; por eso no se invocó. Esta evidencia es **medida** y
+deja como requisito una base QA vacía o una rama aislada para reproducir el
+camino de instalación completo. M-08 continúa abierto.
+
+### M-04, M-05 y M-07
+
+Los contratos estáticos de contraseña, paginación de auditoría y paginación de
+consultas relacionadas pasan. La sesión QA necesaria para observar los flujos
+funcionales no quedó autenticada; por tanto, esos puntos permanecen como
+corrección **probada por código** y regresión **reproducida** localmente, pero
+no como flujo QA **observado** en esta actualización.
+
+El corte sigue siendo **3 hallazgos cerrados técnicamente en alcance y 11
+abiertos o parciales**. Producción permanece solo lectura.
