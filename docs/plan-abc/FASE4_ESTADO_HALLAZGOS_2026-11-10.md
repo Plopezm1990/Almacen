@@ -255,3 +255,12 @@ del commit `10e19e90` terminó con `success` (run `42904190198`, job
 Esta secuencia queda clasificada como **reproducida y corregida en CI**. No
 modifica el estado de producción ni sustituye la observación autenticada del
 flujo de alta/cambio de contraseña en QA.
+
+### Estado externo del commit de seguimiento
+
+La consulta de workflows asociada al commit `9ff99b4b` devolvió 23 ejecuciones
+terminadas y todas con conclusión `success`, incluida la puerta P2-SEC. Netlify
+publicó el deploy preview correspondiente (`6af38b27d46f47d362ff0976`) en
+estado `ready`; su escaneo de secretos no encontró coincidencias. Esto es
+**observado** en los servicios CI/deploy y **reproducido** en la rama, pero no
+convierte en observada la navegación autenticada que aún falta en QA.
