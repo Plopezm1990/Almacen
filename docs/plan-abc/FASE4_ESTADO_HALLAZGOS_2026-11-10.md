@@ -132,3 +132,30 @@ exigencia de `aal2`, además de implementar y reproducir el flujo TOTP.
 
 Estas revalidaciones son **medidas**; no sustituyen una promoción a producción,
 una decisión de negocio ni una prueba funcional autenticada desde navegador.
+
+## Actualización posterior — segunda paridad QA de N-02 — 2026-11-10
+
+Se aplicó exclusivamente en QA la migración versionada
+`20261110220000_n02_remaining_infrastructure_parity.sql` (resultado remoto
+`success: true`). No se escribieron datos de negocio ni se tocó producción.
+
+La migración deja en QA los cinco helpers y los cuatro triggers que ya estaban
+medidos en producción. Los cuatro `md5(pg_get_triggerdef(...))` coinciden y las
+cinco funciones coinciden por hash normalizado de `prosrc` tras eliminar
+comentarios de línea, finales de línea y espacios. La ACL efectiva también
+coincide: `es_propietario_activo()` es ejecutable por `authenticated` y
+`postgres`; los otros cuatro helpers quedan restringidos a `postgres`.
+
+Esto reduce el conjunto de funciones solo en producción de 11 a 6 y elimina
+la exclusividad de los cuatro triggers tratados. Las seis funciones legacy que
+siguen solo en producción (`abc_a10_reencolar_bloqueadas`,
+`anular_venta_tpv`, `descontar_stock`, `descontar_stock_carrito` y las dos
+sobrecargas de `registrar_auditoria`) quedan expresamente fuera por su relación
+con operaciones sensibles y porque falta una decisión de alcance que permita
+reconstruir firmas, permisos y contratos sin adivinar.
+
+Estado global: **3 hallazgos cerrados técnicamente en alcance y 11 abiertos o
+parciales**. N-02 mejora en un subconjunto medido, pero continúa abierto por la
+divergencia global de inventario/historial, las seis funciones legacy y la falta
+de promoción controlada a producción. Esta actualización no convierte una
+prueba QA en acreditación de producción.

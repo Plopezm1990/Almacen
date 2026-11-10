@@ -415,3 +415,52 @@ exclusivos de 6 a 4 es consistente con la remediación QA. Las diferencias de
 relaciones, políticas e historial permanecen; por tanto, esta aplicación
 resuelve un subconjunto concreto de N-02, pero no permite certificar todavía
 la paridad completa.
+
+### Segunda aplicación QA de paridad de infraestructura — 2026-11-10
+
+Se versionó y aplicó únicamente en QA la migración
+`20261110220000_n02_remaining_infrastructure_parity.sql`. El resultado remoto
+fue `success: true`. La migración no contiene `INSERT`, `UPDATE` ni `DELETE`
+y no creó datos sintéticos; crea o reemplaza cinco funciones de infraestructura,
+ajusta sus ACL y crea de forma idempotente cuatro triggers ya observados en
+producción.
+
+La verificación posterior, separando cada tipo de evidencia, fue:
+
+| Objeto | QA | Producción | Evidencia |
+|---|---|---|---|
+| `private.es_propietario_activo()` | presente; `authenticated` y `postgres` pueden ejecutar | presente; mismas ACL | Medido en ambos entornos |
+| `private.pm13_cargo_guard_nombre()` | presente; solo `postgres` | presente; solo `postgres` | Medido en ambos entornos |
+| `private.pm13_cargo_guard_propietario()` | presente; solo `postgres` | presente; solo `postgres` | Medido en ambos entornos |
+| `public.completar_local_movimiento()` | presente; solo `postgres` | presente; solo `postgres` | Medido en ambos entornos |
+| `public.estampar_propiedad_suscripcion_push()` | presente; solo `postgres` | presente; solo `postgres` | Medido en ambos entornos |
+| Cuatro triggers (`pm13_*`, `movimientos_completar_local`, `suscripciones_push_estampar_propiedad`) | presentes | presentes | Medido en ambos entornos |
+
+Las cuatro huellas `md5(pg_get_triggerdef(...))` coinciden entre QA y
+producción. En las funciones, los hashes brutos de `prosrc` difieren cuando
+producción conserva finales CRLF o comentarios históricos; al quitar
+comentarios de línea, normalizar a minúsculas y eliminar espacios, las cinco
+huellas coinciden exactamente:
+
+`6dcd02572d4836a46cec6d3426345772`,
+`b1daa63cb68c4eb0bf4175b1ffdb7b5d`,
+`c1d9c6e1bcfc62e7efdf0281763ac04b`,
+`3e1c7d255c09f8fbf2e24f86e5ca245d` y
+`3bf329d0931d74d831316d20a91759f9`.
+
+En la comparación nominal usada para el inventario, las funciones exclusivas
+de producción bajan de 11 a 6 y los cuatro triggers exclusivos de producción
+que motivaron esta migración dejan de estarlo. Permanecen seis funciones
+legacy solo en producción: `private.abc_a10_reencolar_bloqueadas()`,
+`public.anular_venta_tpv(...)`, `public.descontar_stock(...)`,
+`public.descontar_stock_carrito(...)` y las dos sobrecargas históricas de
+`public.registrar_auditoria(...)`. No se copian en esta fase porque realizan o
+están ligadas a operaciones sensibles de stock/ventas/auditoría y requieren
+una decisión de alcance y una prueba independiente; copiar nombres sin
+reconstruir sus firmas y permisos sería una falsa remediación.
+
+El historial QA muestra la migración aplicada con la versión interna generada
+`20261110204740`; producción no se modificó y no registra esta aplicación.
+Por tanto, la conclusión es **paridad acotada de estos nueve objetos medida en
+QA y producción**, no paridad global ni cierre de N-02: siguen abiertas las
+diferencias de inventario, políticas, historial y las seis funciones legacy.
