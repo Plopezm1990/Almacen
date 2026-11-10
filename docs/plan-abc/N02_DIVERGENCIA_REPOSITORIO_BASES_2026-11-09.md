@@ -310,3 +310,28 @@ que no se puede tratar el historial de ninguna de las dos bases como una copia
 directa del directorio local. El resultado refuerza el criterio de N-02:
 antes de promover una reconciliación hay que mapear cada objeto relevante a su
 procedencia y separar SQL ejecutado de simples filas de historial.
+
+### Revisión del historial Git de las firmas sin coincidencia actual — 2026-11-10
+
+Se corrigió el alcance de la medición anterior buscando también en todos los
+commits y referencias Git disponibles del clon, no solo en el árbol de trabajo
+actual. El resultado es:
+
+| Clasificación histórica | Resultado |
+|---|---:|
+| Firmas sin coincidencia literal actual cuya familia aparece en una migración de algún commit | 5 familias |
+| Firmas históricas de `registrar_auditoria` sin coincidencia exacta de firma actual, pero con rastro de la familia | 2 sobrecargas |
+| Familias sin rastro en ninguna migración de las referencias Git consultadas | 3 |
+
+Las tres familias sin rastro histórico son `public.actualizar_fecha()`,
+`public.actualizar_fecha_perfil()` y `public.rls_auto_enable()`. Las familias
+`abc_a10_reencolar_bloqueadas`, `anular_venta_tpv`, `descontar_stock`,
+`descontar_stock_carrito` y `registrar_auditoria` sí aparecen en migraciones de
+commits anteriores, aunque varias de esas migraciones ya no están en el árbol
+actual o no contienen la firma exacta desplegada.
+
+La afirmación anterior “sin coincidencia textual” sigue siendo correcta para
+el árbol actual, pero no debe leerse como “sin rastro histórico” para esas
+cinco familias. La evidencia correcta es **medida por búsqueda en el historial
+Git** y deja como prioridad máxima los tres objetos sin rastro, además de la
+reconciliación de las firmas históricas que no coinciden exactamente.
