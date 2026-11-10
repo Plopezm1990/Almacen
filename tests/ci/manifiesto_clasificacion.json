@@ -1,6 +1,6 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 343,
+  "total_inventory": 346,
   "expected_counts": {
     "active_contract": 329,
     "historical_expected_fail": 1,

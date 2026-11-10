@@ -3,7 +3,7 @@ import { execFileSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { resolve } from 'node:path';
 
-const INVENTORY = 343;
+const INVENTORY = 346;
 const CLASSES = ['active_contract', 'historical_expected_fail', 'utility', 'diagnostic'];
 const ENVIRONMENTS = ['node', 'postgres', 'pglite', 'supabase_full_stack'];
 const PAIRS = {
@@ -174,7 +174,7 @@ function selfTest(manifest, realPaths) {
   spoofed.push({ ...duplicate, environment: 'unknown_environment' });
   const spoofedActive = spoofed.filter((entry) => entry.classification === 'active_contract').length;
   if (spoofed.length !== INVENTORY || spoofedActive !== COUNTS.active_contract) {
-    throw new Error('El caso combinado no conserva 343 entradas y 329 contratos activos.');
+    throw new Error('El caso combinado no conserva 346 entradas y 329 contratos activos.');
   }
   const spoofedCodes = new Set(validate({ ...manifest, entries: spoofed }, realPaths).issues.map((issue) => issue.code));
   if (!['invalid_environment', 'duplicate_path', 'missing_path'].every((code) => spoofedCodes.has(code))) {
