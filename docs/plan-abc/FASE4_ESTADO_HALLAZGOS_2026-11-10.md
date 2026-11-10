@@ -449,3 +449,21 @@ El commit `4de414ba619417ed8ff676fe2ae5307ee7b45fc8` terminó con `23/23`
 workflows de CI en `success`. Esto mejora la evidencia **probada por código** y
 **reproducida** de M-04; sigue sin demostrar el rate-limit/captcha efectivo del
 proveedor ni sustituye la observación autenticada en QA y la promoción controlada.
+
+## Revalidación puntual M-06 — programación de retención — 2026-11-10
+
+Una consulta de solo lectura basada en catálogos devolvió el siguiente corte:
+
+| Comprobación | QA | Producción |
+|---|---:|---:|
+| Extensión `pg_cron` instalada | no | no |
+| Relación de tareas `cron.job` presente | no | no |
+| Funciones cuyo nombre sugiere purga/retención/anonimización | 2 | 1 |
+| Columnas de fecha candidatas en `public`/`private` | 146 | 127 |
+
+Las funciones detectadas fueron `private.plataforma_plan_purga` en ambos
+entornos y `public.pm11_anonimizar_empleado` solo en QA. La presencia de una
+función no prueba que se ejecute; no hay programador observado. M-06 continúa
+abierto hasta que exista una política aprobada de conservación, una estrategia
+de ejecución y una verificación de que la purga/anonimización respeta las
+excepciones legales y operativas.
