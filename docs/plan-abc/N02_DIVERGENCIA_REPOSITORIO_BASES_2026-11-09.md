@@ -335,3 +335,30 @@ el árbol actual, pero no debe leerse como “sin rastro histórico” para esas
 cinco familias. La evidencia correcta es **medida por búsqueda en el historial
 Git** y deja como prioridad máxima los tres objetos sin rastro, además de la
 reconciliación de las firmas históricas que no coinciden exactamente.
+
+### Clasificación funcional de los tres objetos sin rastro — 2026-11-10
+
+La consulta de solo lectura sobre producción acotó el uso efectivo de las tres
+familias sin rastro Git:
+
+| Función | MD5 de definición | Uso observado | QA |
+|---|---|---|---|
+| `public.actualizar_fecha()` | `87a1e75c07ed90451c51bb9f717cb80d` | Trigger `almacen_kv_actualizar_fecha`; asigna `NEW.updated_at` | Ausente |
+| `public.actualizar_fecha_perfil()` | `9fb60ea097e496fb62595cbe73cbf2f6` | Trigger `perfiles_actualizar_fecha`; asigna `NEW.updated_at` | Ausente |
+| `public.rls_auto_enable()` | `6998ea6b4c2480f5d2e34b5dcf3f8d36` | Event trigger `ensure_rls`; recorre comandos DDL de creación de tablas | Ausente |
+
+Las dos primeras tienen ACL explícita solo para `postgres`, no son
+`SECURITY DEFINER` y tienen un trigger de fila cada una. `rls_auto_enable()`
+sí está marcada como `SECURITY DEFINER`, pero la consulta no encontró un
+trigger de fila ni una llamada desde la aplicación: el uso observado es el
+event trigger de infraestructura indicado arriba. Esto es **medido y
+observado en las definiciones desplegadas**, no una certificación de que no
+existan otros consumidores fuera de los catálogos consultados.
+
+La clasificación reduce la prioridad de estos tres objetos como riesgo de
+atribución de empleado, pero no elimina la divergencia de N-02: producción
+depende de funciones y triggers que no tienen una migración rastreable en las
+referencias Git disponibles y que no existen en QA. La decisión pendiente es
+si deben incorporarse a una migración canónica, documentarse como legado
+deliberado o eliminarse en una ventana de esquema separada; ninguna de esas
+acciones se ejecuta durante esta auditoría.
