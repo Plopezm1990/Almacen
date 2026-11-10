@@ -96,6 +96,9 @@ const EXCLUIDAS = new Set([
   // N-02: reconciliación de funciones ya versionadas para corregir la
   // divergencia histórica entre QA y producción; queda fuera de la foto F7.
   '20261108193000_n02_reconcile_deployed_db_functions.sql',
+  // N-02 follow-up: alinea en QA el ACL histórico de obtener_contexto_operativo;
+  // es posterior a la foto F7 y se valida en su propia ventana.
+  '20261110200000_n02_context_acl_parity.sql',
   '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
   // F8 C04: alta de terminal/caja por propietario, con preflight propio.
   '20261027200000_abc_f8_c04_terminal_caja_propietario.sql',
