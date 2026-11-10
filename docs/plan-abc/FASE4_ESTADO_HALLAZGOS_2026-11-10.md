@@ -467,3 +467,24 @@ función no prueba que se ejecute; no hay programador observado. M-06 continúa
 abierto hasta que exista una política aprobada de conservación, una estrategia
 de ejecución y una verificación de que la purga/anonimización respeta las
 excepciones legales y operativas.
+
+## Revisión adicional M-03 — defensa server-side — 2026-11-10
+
+Se consultaron las definiciones de funciones propias y las políticas RLS de QA
+y producción buscando una comprobación del claim de nivel de autenticación
+(`aal`/`aal2`). El resultado nominal actual fue:
+
+| Comprobación | QA | Producción |
+|---|---:|---:|
+| Funciones `public`/`private` que comprueban el claim `aal` | 0 | 0 |
+| Políticas RLS que comprueban el claim `aal` | 0 | 0 |
+
+La barrera M-03 versionada en `edge-auth-patch.js` sigue siendo una defensa de
+cliente: consulta el perfil server-side y bloquea la interfaz hasta `aal2`, pero
+no sustituye una condición server-side en las RPC o políticas que protegen las
+operaciones sensibles. Esta medición **probada por código desplegado** rebaja la
+confianza del cierre candidato: un cliente modificado no debe poder obtener
+acceso sensible solo porque el overlay no se muestre. M-03 permanece abierto
+hasta decidir el perímetro exacto de operaciones/roles y versionar una defensa
+server-side compatible con ese perímetro, además del enrolamiento observado en
+QA.
