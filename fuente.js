@@ -104424,6 +104424,10 @@ function GestionAlmacen() {
   }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
   const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
+  const [auditoriaDesdeServidor, setAuditoriaDesdeServidor] = (0, import_react4.useState)(false);
+  const [auditoriaHayMas, setAuditoriaHayMas] = (0, import_react4.useState)(false);
+  const [auditoriaCargando, setAuditoriaCargando] = (0, import_react4.useState)(false);
+  const [auditoriaError, setAuditoriaError] = (0, import_react4.useState)("");
   const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
   const [ordenesProduccion, setOrdenesProduccion] = (0, import_react4.useState)([]);
   const [traspasos, setTraspasos] = (0, import_react4.useState)([]);
@@ -104885,6 +104889,8 @@ function GestionAlmacen() {
       setModoEmpleado(!!me2);
       setPinPropietario(pin || "");
       setAuditoria(au);
+      setAuditoriaDesdeServidor(false);
+      setAuditoriaHayMas(false);
       setOrdenesProduccion(op);
       setTraspasos(tr);
       setUsuarioActivoId(ua || null);
@@ -105438,13 +105444,32 @@ function GestionAlmacen() {
     empresaId: empresaDelLocalActivo?.id || null,
     localId: localActivoId || null
   });
+  async function cargarPaginaAuditoria(reiniciar = false) {
+    if (auditoriaCargando || typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return;
+    setAuditoriaCargando(true);
+    setAuditoriaError("");
+    try {
+      const supabase = await window.getSupabaseClient();
+      const desde = reiniciar || !auditoriaDesdeServidor ? 0 : auditoria.length;
+      const rAud = await supabase.from("auditoria_registro").select("datos").order("creado_en", { ascending: false }).range(desde, desde + 499);
+      if (rAud.error) throw rAud.error;
+      const datos = (rAud.data || []).map((fila) => fila.datos).filter(Boolean);
+      setAuditoria((actual) => reiniciar || !auditoriaDesdeServidor ? datos : [...actual, ...datos]);
+      setAuditoriaDesdeServidor(true);
+      setAuditoriaHayMas(datos.length === 500);
+    } catch (e2) {
+      setAuditoriaError(e2?.message || "No se pudo cargar la auditoria.");
+    } finally {
+      setAuditoriaCargando(false);
+    }
+  }
   function registrarAuditoria(accion, detalle) {
     const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
     const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
     const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
     if (!hayConexion) {
-      setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      setAuditoria((s22) => [entrada, ...s22]);
       return;
     }
     (async () => {
@@ -105464,10 +105489,9 @@ function GestionAlmacen() {
           new Promise((_22, reject) => setTimeout(() => reject(new Error("La auditor\xEDa tard\xF3 demasiado en responder")), 6e3))
         ]);
         if (r2.error) throw r2.error;
-        const rAud = await supabase.from("auditoria_registro").select("datos").order("creado_en", { ascending: false }).limit(500);
-        if (!rAud.error && rAud.data) setAuditoria(rAud.data.map((fila) => fila.datos));
+        await cargarPaginaAuditoria(true);
       } catch (e2) {
-        setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+        setAuditoria((s22) => [entrada, ...s22]);
       }
     })();
   }
@@ -106488,7 +106512,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria, cargarPaginaAuditoria, auditoriaDesdeServidor, auditoriaHayMas, auditoriaCargando, auditoriaError }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D }));
   // PM13-P04.2: claves estables de capacidad de consulta, separadas del texto visible y de la navegacion.
   const CAPACIDADES_CONSULTA_PANTALLA = Object.freeze({
     dashboard: "ABC_PANTALLA_DASHBOARD_CONSULTAR",
@@ -123817,7 +123841,15 @@ function EscanerCodigoBarras({ onDetectado, onClose }) {
     setIntento((i33) => i33 + 1);
   }, className: "ml-1 font-medium", style: { color: C2.accent } }, "Reintentar")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "O escribe el c\xF3digo a mano" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: manual, onChange: (e2) => setManual(e2.target.value), placeholder: "EAN o c\xF3digo", autoFocus: estado !== "activo" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => manual.trim() && onDetectado(manual.trim()) }, "Usar este c\xF3digo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onClose }, "Cancelar")));
 }
-function Auditoria({ auditoria }) {
+function AuditoriaPaginacion({ cargarPaginaAuditoria, auditoriaDesdeServidor, auditoriaHayMas, auditoriaCargando, auditoriaError }) {
+  const sinConexion = typeof window === "undefined" || !window.__nubeActiva;
+  const deshabilitado = sinConexion || auditoriaCargando || auditoriaDesdeServidor && !auditoriaHayMas;
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, auditoriaDesdeServidor ? auditoriaHayMas ? "Mostrando una parte del registro; puedes cargar mas." : "Registro completo cargado." : "La vista local es limitada; carga el registro del servidor por paginas."), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", disabled: deshabilitado, onClick: () => cargarPaginaAuditoria(!auditoriaDesdeServidor) }, auditoriaCargando ? "Cargando..." : auditoriaDesdeServidor ? "Cargar mas registros" : "Cargar registro completo")), auditoriaError && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] mt-2", style: { color: C2.red } }, auditoriaError));
+}
+function Auditoria(props) {
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(AuditoriaPaginacion, props), /* @__PURE__ */ import_react4.default.createElement(AuditoriaContenido, props));
+}
+function AuditoriaContenido({ auditoria }) {
   const [desde, setDesde] = (0, import_react4.useState)(primerDiaMes(/* @__PURE__ */ new Date()));
   const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
   const [copiado, setCopiado] = (0, import_react4.useState)(false);
