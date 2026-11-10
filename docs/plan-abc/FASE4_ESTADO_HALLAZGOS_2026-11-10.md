@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado:** `895a9207`
+**Commit verificado al cierre de esta actualización:** `adb6eee2`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -159,3 +159,15 @@ parciales**. N-02 mejora en un subconjunto medido, pero continúa abierto por la
 divergencia global de inventario/historial, las seis funciones legacy y la falta
 de promoción controlada a producción. Esta actualización no convierte una
 prueba QA en acreditación de producción.
+
+### Estado de seguimiento posterior — clasificación legacy N-02
+
+El commit `adb6eee2` añade la clasificación read-only de las seis funciones que
+siguen solo en producción. No tienen triggers ni dependencias directas en el
+catálogo de producción; sus permisos efectivos son solo para `postgres`. Cuatro
+contienen escrituras sobre ventas/stock y las dos sobrecargas antiguas de
+auditoría insertan histórico. La rama actual contiene migraciones que revocan o
+retiran esas rutas legacy, por lo que no se copian a QA sin una decisión de
+procedencia y contrato de uso. N-02 sigue abierto, pero el motivo de esa
+diferencia ya está medido y documentado; no queda tratado como una ausencia
+desconocida.
