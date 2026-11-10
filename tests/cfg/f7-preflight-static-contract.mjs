@@ -102,6 +102,9 @@ const EXCLUIDAS = new Set([
   // N-02 follow-up: replica en QA tres utilidades de infraestructura observadas
   // en producción; no forma parte de la foto F7 histórica.
   '20261110210000_n02_legacy_infrastructure_parity.sql',
+  // N-02 follow-up: replica en QA guards y triggers de infraestructura activos;
+  // no forma parte de la foto F7 histórica.
+  '20261110220000_n02_remaining_infrastructure_parity.sql',
   '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
   // F8 C04: alta de terminal/caja por propietario, con preflight propio.
   '20261027200000_abc_f8_c04_terminal_caja_propietario.sql',
