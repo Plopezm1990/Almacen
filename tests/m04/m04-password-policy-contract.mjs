@@ -7,6 +7,7 @@ const edgeFunctions = [
   'supabase/functions/qa-crear-empleado/index.ts',
 ];
 const bundles = ['source-recovery/fuente-recuperado.js', 'fuente.js'];
+const recoveryPage = read('restablecer-contrasena.js');
 
 for (const path of edgeFunctions) {
   const source = read(path);
@@ -28,5 +29,12 @@ for (const path of bundles) {
   assert.match(login, /bloqueoHasta > Date\.now\(\)/, `${path}: el login no consulta el bloqueo vigente`);
   assert.match(login, /Demasiados intentos fallidos/, `${path}: falta el mensaje visible de bloqueo`);
 }
+
+assert.match(recoveryPage, /if\(p1\.length<8\)/,
+  'restablecer-contrasena.js: la recuperación debe exigir 8 caracteres');
+assert.doesNotMatch(recoveryPage, /p1\.length<6/,
+  'restablecer-contrasena.js: no debe conservar el mínimo antiguo de 6 caracteres');
+assert.match(recoveryPage, /body:JSON\.stringify\(\{password:p1\}\)/,
+  'restablecer-contrasena.js: el camino de recuperación debe enviar la contraseña validada');
 
 console.log('M04_PASSWORD_POLICY_CONTRACT=PASS');
