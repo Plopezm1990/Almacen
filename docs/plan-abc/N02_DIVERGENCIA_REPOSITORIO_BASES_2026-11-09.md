@@ -177,3 +177,22 @@ No se creó ningún dato sintético nuevo en QA durante esta revalidación. No s
 Una consulta posterior, separando el cuerpo `pg_proc.prosrc` de la representación completa de `pg_get_functiondef`, devuelve una divergencia que debe prevalecer sobre la tabla anterior: el cuerpo de QA mide `MD5=77104240e60fa4f5b38a2583e58808d6`, cuerpo normalizado `977eb2748752ba4d101bfa278ee509db` y longitud 3.997; producción mide `MD5=2ac268ea336339890f9541df88aa2325`, cuerpo normalizado `bc6019e27e50cf1597d8e8e75deb804e` y longitud 3.356. La afirmación previa de igualdad normalizada queda corregida como no reproducible con la medición actual.
 
 La divergencia refuerza, en lugar de cerrar, N-02: la migración canónica está versionada y el contrato local pasa, pero el cuerpo desplegado no es idéntico entre QA y producción. La función sigue concedida a `authenticated` en ambos entornos; la ACL no elimina la diferencia de definición. No se ejecutó la función ni se escribió en producción.
+
+### Corrección final de la normalización — 2026-11-10
+
+La comparación anterior llamaba “normalizada” a una huella que todavía
+conservaba comentarios de línea. Se repitió la consulta sobre
+`pg_get_functiondef`, eliminando comentarios de línea y espacios antes del
+cálculo. El resultado fue:
+
+| Entorno | MD5 bruto | MD5 semántica sin comentarios/espacios |
+|---|---|---|
+| QA | `029b4839e9ae2260b4e2cfed3aeb995b` | `88dde7f01bb445f2608f7e991838e1fa` |
+| Producción | `208f62fdfc336e2c109e0997ae9d05aa` | `88dde7f01bb445f2608f7e991838e1fa` |
+
+La afirmación correcta es que `bootstrap_owner_instalacion` mantiene
+**equivalencia semántica medida** entre los dos entornos, aunque no identidad
+textual ni procedencia común. Esto reduce una divergencia concreta de N-02 y
+corrige explícitamente la corrección anterior; no cierra N-02 porque siguen
+abiertas la divergencia global de inventario, la ACL de
+`obtener_contexto_operativo` y el historial de migraciones.

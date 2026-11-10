@@ -24,7 +24,7 @@ en producción.
 | M-05 | Remediado en código, abierto en alcance de entornos | Contrato de paginación pasa y preview listo | Falta verificación autenticada y promoción |
 | M-06 | Abierto | Ausencia de tarea programada medida; contrato de retención existente | No se inventa plazo: falta decisión legal/negocio y ejecución programada |
 | M-07 | Remediado en código, abierto en alcance de entornos | Contrato de paginación de consultas relacionadas pasa y preview listo | Falta verificación autenticada y promoción; el caso de volumen real no se ejecuta en producción |
-| M-08 | Abierto | `bootstrap_owner_instalacion` existe en ambos entornos, pero su definición desplegada difiere | Falta reconciliar la definición y demostrar el flujo de instalación en QA; producción solo se lee |
+| M-08 | Abierto, con causa acotada | `bootstrap_owner_instalacion` tiene distinta representación textual, pero la huella semántica sin comentarios/espacios coincide en ambos entornos | Falta reproducir el flujo autenticado de instalación en QA y decidir si se exige identidad textual/procedencia; producción solo se lee |
 | B-01 | Cerrado técnicamente en alcance | Fuente/hash de `importar-factura` coincidente en QA y producción; contrato server/client pasa | La tolerancia de 0,12 € no se interpreta como regla fiscal universal |
 | B-02 | Remediado en código y QA, abierto en alcance de entornos | Migración y contrato pasan; índice de fecha presente en QA | Producción no tiene el índice y no se ejecuta DDL allí sin ventana autorizada |
 | N-02 | Abierto | Inventario de relaciones, funciones, políticas, triggers y migraciones con divergencia; contrato de reconciliación pasa | Requiere reconciliación completa y promoción controlada; no se altera producción durante la auditoría |
@@ -41,6 +41,11 @@ Pasaron el 10 de noviembre de 2026:
 - contrato CSP de M-02;
 - contrato de índice de B-02;
 - contrato de reconciliación de N-02.
+
+La comparación posterior de `bootstrap_owner_instalacion` eliminó comentarios de
+línea y espacios antes de calcular la huella: QA y producción coinciden en
+`88dde7f01bb445f2608f7e991838e1fa`. Esto corrige una medición anterior que
+llamaba normalizada a una huella que conservaba comentarios.
 
 La batería completa `tests/ci/ejecutar_bateria_no_db.sh` no pudo arrancar en
 Windows: tanto el alias `bash.exe` de Windows como Git Bash fallan antes de
