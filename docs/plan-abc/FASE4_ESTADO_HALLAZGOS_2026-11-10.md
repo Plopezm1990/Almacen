@@ -432,3 +432,20 @@ en QA sigue sin estar **reproducida** ni **observada**.
 El commit documental `e88ecceb525eca2ee4dc4f47ede07ab8194e3046` terminó con
 `23/23` workflows de CI en `success`. Es evidencia **observada** de la batería
 remota y no certifica por sí sola la promoción de bases ni el flujo autenticado.
+
+## Corte posterior de M-04 — recuperación de contraseña — 2026-11-10
+
+El contrato existente de M-04 se amplió para cubrir también
+`restablecer-contrasena.js`, además de las dos Edge Functions y los dos bundles
+que ya comprobaba. Verifica que la página de recuperación exige ocho caracteres,
+no conserva el mínimo antiguo de seis y envía únicamente la contraseña validada
+al endpoint de actualización. El resultado local fue:
+
+```text
+M04_PASSWORD_POLICY_CONTRACT=PASS
+```
+
+El commit `4de414ba619417ed8ff676fe2ae5307ee7b45fc8` terminó con `23/23`
+workflows de CI en `success`. Esto mejora la evidencia **probada por código** y
+**reproducida** de M-04; sigue sin demostrar el rate-limit/captcha efectivo del
+proveedor ni sustituye la observación autenticada en QA y la promoción controlada.
