@@ -93,6 +93,9 @@ const EXCLUIDAS = new Set([
   // M-01 follow-up: activa RLS sobre la tabla privada del PIN; es posterior
   // a la foto F7 histórica y tiene contrato propio.
   '20261110190000_m01_enable_pin_rls.sql',
+  // N-02: reconciliación de funciones ya versionadas para corregir la
+  // divergencia histórica entre QA y producción; queda fuera de la foto F7.
+  '20261108193000_n02_reconcile_deployed_db_functions.sql',
   '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
   // F8 C04: alta de terminal/caja por propietario, con preflight propio.
   '20261027200000_abc_f8_c04_terminal_caja_propietario.sql',
@@ -127,6 +130,16 @@ const EXCLUIDAS = new Set([
   '20261031170000_abc_f4_cobro_pedido_en_cocina.sql',
   // Corrección de aislamiento Storage de Issue #190, exclusiva de QA; no forma parte de la foto F7 histórica.
   '20261107220000_issue190_qa_storage_local_isolation.sql',
+  // B-02: índice posterior para el historial de errores; no forma parte de la foto F7 cerrada del 3/10.
+  '20261109120000_b02_errores_sistema_fecha_idx.sql',
+  // A-03/A-04: APPCC histórico y atribución server-side; ventana de Fase 3
+  // posterior a la foto F7 cerrada del 3/10, con contrato propio.
+  '20261109150000_a03_a04_appcc_y_atribucion.sql',
+  '20261109170000_a03_appcc_cancelacion_append_only.sql',
+  '20261109180000_a03_appcc_puntos_server_side.sql',
+  // Corrección incremental de la respuesta de APPCC; se aplica en la ventana
+  // de Fase 3 y no forma parte de la foto F7 cerrada del 3/10.
+  '20261109201101_a03_appcc_correction_response.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

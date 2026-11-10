@@ -208,6 +208,121 @@
   iniciarBarreraConSesion();
 })();
 
+// A-05: bloqueo por inactividad del terminal compartido.
+// Este control es deliberadamente independiente de autoRefreshToken: renovar
+// un JWT en segundo plano no es actividad humana y no debe prolongar el uso de
+// un terminal abandonado. Al caducar se elimina el contexto operativo local y
+// se cierra la sesión Auth local, de modo que la siguiente persona debe pasar
+// por el login server-side completo.
+(function () {
+  "use strict";
+  if (window.__laA05SessionIdleGuardInstalada) return;
+  window.__laA05SessionIdleGuardInstalada = true;
+
+  var A05_INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+  var A05_CHECK_INTERVAL_MS = 5000;
+  var sessionActiva = false;
+  var ultimaActividadAt = 0;
+  var cerrandoPorInactividad = false;
+  var supabaseActivo = null;
+  var intervalo = null;
+
+  function limpiarContextoOperativoLocal() {
+    // No se borra la copia empresarial ni la cola de pendientes: solo se
+    // impide que el siguiente usuario herede la identidad operativa anterior.
+    ["modoEmpleado", "usuarioActivoId"].forEach(function (clave) {
+      try { localStorage.removeItem("almacen:" + clave); } catch (e) {}
+    });
+    try { localStorage.removeItem("chocoloyos_contexto_operativo_seguro_v1"); } catch (e) {}
+  }
+
+  function detenerReloj() {
+    sessionActiva = false;
+    ultimaActividadAt = 0;
+    if (intervalo !== null) {
+      clearInterval(intervalo);
+      intervalo = null;
+    }
+  }
+
+  async function caducarPorInactividad() {
+    if (cerrandoPorInactividad || !supabaseActivo) return;
+    cerrandoPorInactividad = true;
+    limpiarContextoOperativoLocal();
+    try {
+      await supabaseActivo.auth.signOut({ scope: "local" });
+    } catch (e) {
+      // Aunque la red falle, la identidad operativa local ya queda retirada.
+      detenerReloj();
+    } finally {
+      cerrandoPorInactividad = false;
+    }
+  }
+
+  function comprobarInactividad() {
+    if (!sessionActiva || !ultimaActividadAt || cerrandoPorInactividad) return;
+    if (Date.now() - ultimaActividadAt >= A05_INACTIVITY_TIMEOUT_MS) {
+      caducarPorInactividad();
+    }
+  }
+
+  function registrarActividadHumana() {
+    if (sessionActiva && !cerrandoPorInactividad) ultimaActividadAt = Date.now();
+  }
+
+  function iniciarReloj(supabase, reiniciarActividad) {
+    supabaseActivo = supabase;
+    sessionActiva = true;
+    if (reiniciarActividad || !ultimaActividadAt) ultimaActividadAt = Date.now();
+    if (intervalo === null) intervalo = setInterval(comprobarInactividad, A05_CHECK_INTERVAL_MS);
+  }
+
+  function instalarEventos() {
+    ["pointerdown", "keydown", "touchstart", "mousedown", "wheel"].forEach(function (evento) {
+      window.addEventListener(evento, registrarActividadHumana, { passive: true });
+    });
+  }
+
+  async function instalarGuardia() {
+    var supabase = null;
+    for (var intento = 0; intento < 160; intento++) {
+      if (window.__nubeActiva && typeof window.getSupabaseClient === "function") {
+        try { supabase = await window.getSupabaseClient(); } catch (e) {}
+        if (supabase && supabase.auth) break;
+      }
+      await new Promise(function (resolver) { setTimeout(resolver, 25); });
+    }
+    if (!supabase || !supabase.auth) return;
+    supabaseActivo = supabase;
+    instalarEventos();
+
+    try {
+      var actual = await supabase.auth.getSession();
+      if (actual && actual.data && actual.data.session) iniciarReloj(supabase, true);
+      supabase.auth.onAuthStateChange(function (evento, sesion) {
+        if (!sesion || evento === "SIGNED_OUT") {
+          detenerReloj();
+          return;
+        }
+        // TOKEN_REFRESHED no representa actividad humana y no reinicia el reloj.
+        if (evento === "TOKEN_REFRESHED") {
+          if (!sessionActiva) iniciarReloj(supabase, false);
+          return;
+        }
+        if (evento === "SIGNED_IN" || evento === "INITIAL_SESSION") {
+          iniciarReloj(supabase, true);
+        } else if (!sessionActiva) {
+          iniciarReloj(supabase, false);
+        }
+      });
+    } catch (e) {
+      detenerReloj();
+    }
+  }
+
+  instalarGuardia();
+})();
+
 // Contexto operativo mínimo + barrera de copias locales por rol.
 //
 // El programa es local-first: una colección puede seguir existiendo en el

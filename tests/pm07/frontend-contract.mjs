@@ -50,7 +50,7 @@ const checks = {
   // lo que importa es que sigue siendo la RPC atómica de venta/reverso de
   // carrito, no una llamada distinta.
   venta_rpc_pm07: /supabase\.rpc\("registrar_venta_stock_carrito(_\w+)?"/.test(venta),
-  venta_solo_un_fallback_offline: (venta.match(/return venderLocal\(lineas, medioPago, detallePago\);/g) || []).length === 1,
+  venta_solo_un_fallback_offline: (venta.match(/return resultadoLocal;/g) || []).length === 1,
   venta_fallo_cloud_no_muta_local: venta.includes('No se ha descontado stock localmente.'),
   venta_sin_rpc_antigua: !venta.includes('descontar_stock_carrito'),
   reverso_rpc_pm07: /supabase\.rpc\("revertir_venta_stock_carrito(_\w+)?"/.test(anular),
