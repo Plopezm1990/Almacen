@@ -22,11 +22,11 @@ for (const required of [
 // El preflight detectó un fallo real de scope en A02/A05. A06.1 lo deja
 // cubierto para impedir ReferenceError en runtime.
 assert.ok(
-  recovered.includes("function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null })"),
+  recovered.includes("function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null, registrarAuditoria = null })"),
   "A06.1: empresaDelLocalActivo no se inyecta en crearLogicaVenta"
 );
 assert.ok(
-  recovered.includes("crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });"),
+  recovered.includes("crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });"),
   "A06.1: GestionAlmacen no pasa empresaDelLocalActivo"
 );
 assert.ok(

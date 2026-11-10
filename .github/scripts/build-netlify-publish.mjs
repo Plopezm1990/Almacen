@@ -1,7 +1,8 @@
-import { cp, mkdir, readdir, rm, access, readFile } from 'node:fs/promises';
+import { cp, mkdir, readdir, rm, access, readFile, writeFile } from 'node:fs/promises';
 import { execFile } from 'node:child_process';
 import { promisify } from 'node:util';
 import path from 'node:path';
+import { renderHeadersForContext } from './netlify-csp.mjs';
 
 const execFileAsync = promisify(execFile);
 const root = process.cwd();
@@ -45,6 +46,14 @@ for (const entry of entries) {
   });
   copied.push(entry.name);
 }
+
+const publishedHeadersPath = path.join(outDir, '_headers');
+const templateHeaders = await readFile(publishedHeadersPath, 'utf8');
+await writeFile(
+  publishedHeadersPath,
+  renderHeadersForContext(templateHeaders, process.env.CONTEXT),
+  'utf8',
+);
 
 const tailwindCli = path.join(root, 'node_modules', 'tailwindcss', 'lib', 'cli.js');
 await access(tailwindCli);

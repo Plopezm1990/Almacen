@@ -44135,6 +44135,108 @@ var init_index_es = __esm({
   setTimeout(comprobarPerfilActivo, 1e3);
 })();
 
+// A-05: bloqueo por inactividad del terminal compartido.
+(function() {
+  "use strict";
+  if (window.__laA05SessionIdleGuardInstalada) return;
+  window.__laA05SessionIdleGuardInstalada = true;
+  var A05_INACTIVITY_TIMEOUT_MS = 15 * 60 * 1000;
+  var A05_CHECK_INTERVAL_MS = 5e3;
+  var sessionActiva = false;
+  var ultimaActividadAt = 0;
+  var cerrandoPorInactividad = false;
+  var supabaseActivo = null;
+  var intervalo = null;
+  function limpiarContextoOperativoLocal() {
+    ["modoEmpleado", "usuarioActivoId"].forEach(function(clave) {
+      try {
+        localStorage.removeItem("almacen:" + clave);
+      } catch (e2) {
+      }
+    });
+    try {
+      localStorage.removeItem("chocoloyos_contexto_operativo_seguro_v1");
+    } catch (e2) {
+    }
+  }
+  function detenerReloj() {
+    sessionActiva = false;
+    ultimaActividadAt = 0;
+    if (intervalo !== null) {
+      clearInterval(intervalo);
+      intervalo = null;
+    }
+  }
+  async function caducarPorInactividad() {
+    if (cerrandoPorInactividad || !supabaseActivo) return;
+    cerrandoPorInactividad = true;
+    limpiarContextoOperativoLocal();
+    try {
+      await supabaseActivo.auth.signOut({ scope: "local" });
+    } catch (e2) {
+      detenerReloj();
+    } finally {
+      cerrandoPorInactividad = false;
+    }
+  }
+  function comprobarInactividad() {
+    if (!sessionActiva || !ultimaActividadAt || cerrandoPorInactividad) return;
+    if (Date.now() - ultimaActividadAt >= A05_INACTIVITY_TIMEOUT_MS) caducarPorInactividad();
+  }
+  function registrarActividadHumana() {
+    if (sessionActiva && !cerrandoPorInactividad) ultimaActividadAt = Date.now();
+  }
+  function iniciarReloj(supabase, reiniciarActividad) {
+    supabaseActivo = supabase;
+    sessionActiva = true;
+    if (reiniciarActividad || !ultimaActividadAt) ultimaActividadAt = Date.now();
+    if (intervalo === null) intervalo = setInterval(comprobarInactividad, A05_CHECK_INTERVAL_MS);
+  }
+  function instalarEventos() {
+    ["pointerdown", "keydown", "touchstart", "mousedown", "wheel"].forEach(function(evento) {
+      window.addEventListener(evento, registrarActividadHumana, { passive: true });
+    });
+  }
+  async function instalarGuardia() {
+    var supabase = null;
+    for (var intento = 0; intento < 160; intento++) {
+      if (window.__nubeActiva && typeof window.getSupabaseClient === "function") {
+        try {
+          supabase = await window.getSupabaseClient();
+        } catch (e2) {
+        }
+        if (supabase && supabase.auth) break;
+      }
+      await new Promise(function(resolver) {
+        setTimeout(resolver, 25);
+      });
+    }
+    if (!supabase || !supabase.auth) return;
+    supabaseActivo = supabase;
+    instalarEventos();
+    try {
+      var actual = await supabase.auth.getSession();
+      if (actual && actual.data && actual.data.session) iniciarReloj(supabase, true);
+      supabase.auth.onAuthStateChange(function(evento, sesion) {
+        if (!sesion || evento === "SIGNED_OUT") {
+          detenerReloj();
+          return;
+        }
+        // TOKEN_REFRESHED no representa actividad humana y no reinicia el reloj.
+        if (evento === "TOKEN_REFRESHED") {
+          if (!sessionActiva) iniciarReloj(supabase, false);
+          return;
+        }
+        if (evento === "SIGNED_IN" || evento === "INITIAL_SESSION") iniciarReloj(supabase, true);
+        else if (!sessionActiva) iniciarReloj(supabase, false);
+      });
+    } catch (e2) {
+      detenerReloj();
+    }
+  }
+  instalarGuardia();
+})();
+
 // fuente-recuperado.js
 var ReactNS = __toESM(require_react(), 1);
 var import_client = __toESM(require_client(), 1);
@@ -105242,8 +105344,8 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
-  const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -105269,7 +105371,7 @@ function GestionAlmacen() {
   }
   const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
-  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, cancelarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales });
+  const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, cancelarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
   const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId, locales });
   const { addFichaCosto, updateFichaCosto, deleteFichaCosto, alergenosDeFicha } = crearLogicaFichasCosto({ productos, setFichasCosto, localActivoId, locales });
@@ -107563,20 +107665,113 @@ function prepararCancelacionAppccPM19(registro, opciones = {}) {
   if (!actorNombre) return { ok: false, codigo: "actor_obligatorio", error: "Indica qui\xE9n cancela el registro." };
   return { ok: true, replayed: false, motivo, actorNombre };
 }
-function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales = [] }) {
+function normalizarLecturaAppccF3(fila) {
+  const row = fila && fila.lectura ? fila.lectura : fila;
+  if (!row || !row.id) return null;
+  const realizada = row.realizada_en || row.created_at || null;
+  const texto = realizada ? String(realizada) : "";
+  return {
+    id: row.id,
+    fecha: texto ? texto.slice(0, 10) : "",
+    hora: texto.length >= 16 ? texto.slice(11, 16) : "",
+    puntoId: row.punto_control_id || "",
+    puntoNombre: row.punto_nombre || "",
+    tipo: row.tipo || "otro",
+    valor: row.valor == null ? "" : String(row.valor),
+    conforme: row.conforme !== false,
+    observaciones: row.observaciones || "",
+    responsable: row.actor_nombre || row.actor_user_id || "",
+    actorUserId: row.actor_user_id || null,
+    actorEmpleadoId: row.actor_empleado_id || null,
+    createdAt: realizada,
+    localId: row.local_id || null,
+    cancelado: false
+  };
+}
+function normalizarPuntoAppccF3(fila) {
+  const row = fila && fila.punto ? fila.punto : fila;
+  if (!row || !row.id) return null;
+  return {
+    id: row.id,
+    nombre: row.nombre || "",
+    tipo: row.tipo || "otro",
+    frecuencia: row.frecuencia || "Diaria",
+    tempMin: row.temp_min == null ? null : Number(row.temp_min),
+    tempMax: row.temp_max == null ? null : Number(row.temp_max),
+    activo: row.activo !== false,
+    localId: row.local_id || null,
+    empresaId: row.empresa_id || null,
+    createdAt: row.created_at || null,
+    updatedAt: row.updated_at || null
+  };
+}
+function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales = [], empresaId = null }) {
   const puntoEsDelLocalActivoAppcc = (p22) => !!p22 && (!localActivoId || p22.localId === localActivoId);
   const registroEsDelLocalActivoAppcc = (r2) => !!r2 && (!localActivoId || r2.localId === localActivoId);
+  const remotoAppccDisponible = () => typeof window !== "undefined" && window.__laAppccAuthorityActive === true && typeof window.getSupabaseClient === "function" && empresaId && localActivoId;
   function addPuntoControl(data) {
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return;
-    setPuntosControl((s22) => [...s22, { id: uid(), activo: true, ...data, localId: localActivoId || data.localId || null }]);
+    const punto = { id: uid(), activo: true, ...data, localId: localActivoId || data.localId || null };
+    if (remotoAppccDisponible()) {
+      return (async () => {
+        try {
+          const supabase = await window.getSupabaseClient();
+          const respuesta = await supabase.rpc("appcc_guardar_punto", { p_id: punto.id, p_empresa_id: String(empresaId), p_local_id: String(localActivoId), p_nombre: punto.nombre, p_tipo: punto.tipo, p_frecuencia: punto.frecuencia, p_temp_min: punto.tempMin, p_temp_max: punto.tempMax, p_activo: true });
+          if (respuesta && respuesta.error) return { ok: false, error: respuesta.error.message || "No se pudo guardar el punto APPCC." };
+          const remoto = normalizarPuntoAppccF3(respuesta && respuesta.data);
+          if (!remoto) return { ok: false, error: "El servidor no devolvió el punto APPCC." };
+          setPuntosControl((s22) => [...s22.filter((p22) => p22.id !== remoto.id), remoto]);
+          return { ok: true, punto: remoto, servidor: true };
+        } catch (error) {
+          return { ok: false, error: error?.message || "No se pudo guardar el punto APPCC." };
+        }
+      })();
+    }
+    setPuntosControl((s22) => [...s22, punto]);
+    return { ok: true, punto };
   }
   function updatePuntoControl(id, data) {
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return;
+    if (remotoAppccDisponible()) {
+      const actual = puntosControl.find((p22) => p22.id === id);
+      if (!puntoEsDelLocalActivoAppcc(actual)) return { ok: false, error: "El punto no pertenece al local activo." };
+      const punto = { ...actual, ...data, localId: actual.localId || localActivoId || null };
+      return (async () => {
+        try {
+          const supabase = await window.getSupabaseClient();
+          const respuesta = await supabase.rpc("appcc_guardar_punto", { p_id: punto.id, p_empresa_id: String(empresaId), p_local_id: String(localActivoId), p_nombre: punto.nombre, p_tipo: punto.tipo, p_frecuencia: punto.frecuencia, p_temp_min: punto.tempMin, p_temp_max: punto.tempMax, p_activo: punto.activo !== false });
+          if (respuesta && respuesta.error) return { ok: false, error: respuesta.error.message || "No se pudo actualizar el punto APPCC." };
+          const remoto = normalizarPuntoAppccF3(respuesta && respuesta.data);
+          if (!remoto) return { ok: false, error: "El servidor no devolvió el punto APPCC actualizado." };
+          setPuntosControl((s22) => s22.map((p22) => p22.id === id ? remoto : p22));
+          return { ok: true, punto: remoto, servidor: true };
+        } catch (error) {
+          return { ok: false, error: error?.message || "No se pudo actualizar el punto APPCC." };
+        }
+      })();
+    }
     setPuntosControl((s22) => s22.map((p22) => p22.id === id && puntoEsDelLocalActivoAppcc(p22) ? { ...p22, ...data, localId: p22.localId || localActivoId || null } : p22));
+    return { ok: true };
   }
   function deletePuntoControl(id) {
     if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return;
+    if (remotoAppccDisponible()) {
+      const actual = puntosControl.find((p22) => p22.id === id);
+      if (!puntoEsDelLocalActivoAppcc(actual)) return { ok: false, error: "El punto no pertenece al local activo." };
+      return (async () => {
+        try {
+          const supabase = await window.getSupabaseClient();
+          const respuesta = await supabase.rpc("appcc_desactivar_punto", { p_id: id, p_empresa_id: String(empresaId), p_local_id: String(localActivoId) });
+          if (respuesta && respuesta.error) return { ok: false, error: respuesta.error.message || "No se pudo desactivar el punto APPCC." };
+          setPuntosControl((s22) => s22.filter((p22) => p22.id !== id));
+          return { ok: true, servidor: true };
+        } catch (error) {
+          return { ok: false, error: error?.message || "No se pudo desactivar el punto APPCC." };
+        }
+      })();
+    }
     setPuntosControl((s22) => s22.filter((p22) => p22.id !== id || !puntoEsDelLocalActivoAppcc(p22)));
+    return { ok: true };
   }
   function registrarAppcc(data) {
     const contextoAppcc = validarContextoEscrituraPM10({ localActivoId, locales });
@@ -107585,6 +107780,33 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
     if (data.puntoId && !puntoEsDelLocalActivoAppcc(punto)) return { ok: false, codigo: "punto_otro_local", error: "El punto de control pertenece a otro local." };
     const validacion = validarRegistroAppccPM19(data);
     if (!validacion.ok) return validacion;
+    if (remotoAppccDisponible()) {
+      return (async () => {
+        try {
+        const cryptoApi = typeof crypto !== "undefined" ? crypto : null;
+        const lecturaId = cryptoApi && typeof cryptoApi.randomUUID === "function" ? cryptoApi.randomUUID() : null;
+        if (!lecturaId) return { ok: false, codigo: "uuid_no_disponible", error: "No se pudo generar el identificador seguro de la lectura." };
+        const supabase = await window.getSupabaseClient();
+        const respuesta = await supabase.rpc("appcc_registrar_lectura", {
+          p_lectura_id: lecturaId,
+          p_punto_control_id: String(data.puntoId || ""),
+          p_empresa_id: String(empresaId),
+          p_local_id: String(localActivoId),
+          p_valor: String(data.valor == null ? "" : data.valor),
+          p_conforme: data.conforme !== false,
+          p_observaciones: String(data.observaciones || "")
+        });
+        if (respuesta && respuesta.error) return { ok: false, codigo: respuesta.error.code || "appcc_rpc_error", error: respuesta.error.message || "No se pudo guardar el control APPCC en el servidor." };
+        const registroRemoto = normalizarLecturaAppccF3(respuesta && respuesta.data);
+        if (!registroRemoto) return { ok: false, codigo: "appcc_respuesta_invalida", error: "El servidor no devolvió la lectura APPCC." };
+        setRegistrosAppcc((s22) => [registroRemoto, ...s22.filter((r2) => r2.id !== registroRemoto.id)]);
+        if (registrarAuditoria) registrarAuditoria("Registrar control APPCC", `${registroRemoto.puntoNombre || "Control"} · ${registroRemoto.conforme === false ? "NO CONFORME" : "conforme"} · actor: ${registroRemoto.actorUserId || "servidor"}`);
+        return { ok: true, registro: registroRemoto, servidor: true };
+        } catch (error) {
+          return { ok: false, codigo: "appcc_rpc_error", error: error?.message || "No se pudo guardar el control APPCC en el servidor." };
+        }
+      })();
+    }
     const registro = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), ...data, responsable: validacion.responsable, cancelado: false, localId: localActivoId || punto && punto.localId || null };
     setRegistrosAppcc((s22) => [registro, ...s22]);
     if (registrarAuditoria) registrarAuditoria("Registrar control APPCC", `${data.puntoNombre || "Control"} \xB7 ${data.conforme === false ? "NO CONFORME" : "conforme"} \xB7 responsable: ${validacion.responsable}`);
@@ -107598,6 +107820,29 @@ function crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, set
     const preparada = prepararCancelacionAppccPM19(registro, opciones);
     if (!preparada.ok) return preparada;
     if (preparada.replayed) return { ok: true, replayed: true };
+    if (remotoAppccDisponible()) {
+      return (async () => {
+        try {
+          const cryptoApi = typeof crypto !== "undefined" ? crypto : null;
+          const cancelacionId = cryptoApi && typeof cryptoApi.randomUUID === "function" ? cryptoApi.randomUUID() : null;
+          if (!cancelacionId) return { ok: false, codigo: "uuid_no_disponible", error: "No se pudo generar el identificador seguro de la cancelación." };
+          const supabase = await window.getSupabaseClient();
+          const respuesta = await supabase.rpc("appcc_cancelar_lectura", {
+            p_cancelacion_id: cancelacionId,
+            p_lectura_id: id,
+            p_motivo: preparada.motivo
+          });
+          if (respuesta && respuesta.error) return { ok: false, codigo: respuesta.error.code || "appcc_cancelacion_rpc_error", error: respuesta.error.message || "No se pudo anotar la cancelación en el servidor." };
+          const cancelacion = respuesta && respuesta.data && respuesta.data.cancelacion;
+          if (!cancelacion) return { ok: false, codigo: "appcc_cancelacion_respuesta_invalida", error: "El servidor no devolvió la cancelación." };
+          setRegistrosAppcc((s22) => s22.map((r2) => r2.id === id ? { ...r2, cancelado: true, motivoCancelacion: cancelacion.motivo || preparada.motivo, canceladoPor: cancelacion.actor_nombre || cancelacion.actor_user_id || "", canceladoEn: cancelacion.created_at || null } : r2));
+          if (registrarAuditoria) registrarAuditoria("Cancelar control APPCC", `${registro.puntoNombre || "Control"} del ${registro.fecha} · ${preparada.motivo}`);
+          return { ok: true, replayed: respuesta.data.replayed === true, servidor: true };
+        } catch (error) {
+          return { ok: false, codigo: "appcc_cancelacion_rpc_error", error: error?.message || "No se pudo anotar la cancelación en el servidor." };
+        }
+      })();
+    }
     const canceladoEn = (/* @__PURE__ */ new Date()).toISOString();
     setRegistrosAppcc((s22) => s22.map((r2) => r2.id === id ? { ...r2, cancelado: true, motivoCancelacion: preparada.motivo, canceladoPor: preparada.actorNombre, canceladoEn } : r2));
     if (registrarAuditoria) registrarAuditoria("Cancelar control APPCC", `${registro.puntoNombre || "Control"} del ${registro.fecha} \xB7 ${preparada.motivo}`);
@@ -111037,7 +111282,7 @@ var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza
 // pantalla no vuelva a prometer ni a negar algo distinto de lo que hace el
 // servidor.
 var ESTADOS_PEDIDO_COBRABLE_F4 = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO", "CERRADO"];
-function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null }) {
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null, registrarAuditoria = null }) {
   function c07dActivoEnEntornoQa() {
     return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
   }
@@ -114033,6 +114278,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         };
       }
       if (data?.ok && String(data?.status || "") === "APLICADA") {
+        if (!data?.replayed) registrarAuditoria?.("DESCUENTO_CUENTA", `${operationId} · ${kind} · ${reason}`);
         const cuenta = typeof recuperarCuentaA06 === "function" ? await recuperarCuentaA06() : null;
         return { ok: true, applied: true, resultado: data, cuenta };
       }
@@ -114090,7 +114336,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     });
     if (incluyeOtroLocal) return { ok: false, error: "La venta incluye productos de otro local." };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
-    if (!hayConexion) return venderLocal(lineas, medioPago, detallePago);
+    if (!hayConexion) {
+      const resultadoLocal = venderLocal(lineas, medioPago, detallePago);
+      if (resultadoLocal?.ok) registrarAuditoria?.("VENTA_TPV", `${resultadoLocal.ventaId} · ${resultadoLocal.n || 0} línea(s) · ${medioPago}`);
+      return resultadoLocal;
+    }
     const ventaId = uid();
     let totalVenta = 0;
     (lineas || []).forEach((ln2) => {
@@ -114144,6 +114394,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         r2 = await intentarRpc(4e3);
       }
       await sincronizarStockPm07({ setProductos, setMovimientos, localActivoId });
+      if (!r2.data?.replayed) registrarAuditoria?.("VENTA_TPV", `${ventaId} · ${lineasParaRpc.length} línea(s) · ${medioPago}`);
       return { ok: true, n: lineasParaRpc.length, modo: "pm07-servidor", replayed: !!r2.data?.replayed, ventaId };
     } catch (error) {
       return { ok: false, ...errorVisible(error) };
@@ -121271,19 +121522,23 @@ function Appcc({
   const [motivoCancelarRegistro, setMotivoCancelarRegistro] = (0, import_react4.useState)("");
   const [actorCancelarRegistro, setActorCancelarRegistro] = (0, import_react4.useState)("");
   const [errorCancelarRegistro, setErrorCancelarRegistro] = (0, import_react4.useState)("");
-  function submitPunto() {
+  async function submitPunto() {
     if (!puntoForm.nombre.trim()) {
       setPuntoError("Ponle nombre al punto de control.");
       return;
     }
     setPuntoError("");
-    addPuntoControl({
+    const resultado = await addPuntoControl({
       nombre: puntoForm.nombre.trim(),
       tipo: puntoForm.tipo,
       tempMin: puntoForm.tempMin === "" ? null : Number(puntoForm.tempMin),
       tempMax: puntoForm.tempMax === "" ? null : Number(puntoForm.tempMax),
       frecuencia: puntoForm.frecuencia
     });
+    if (resultado && resultado.ok === false) {
+      setPuntoError(resultado.error || "No se pudo guardar el punto de control.");
+      return;
+    }
     setPuntoForm({ nombre: "", tipo: "temperatura", tempMin: "", tempMax: "", frecuencia: "Diaria" });
     setShowPunto(false);
   }
@@ -121300,9 +121555,9 @@ function Appcc({
     if (punto.tempMax != null && v22 > punto.tempMax) return false;
     return true;
   }
-  function submitRegistro() {
+  async function submitRegistro() {
     const auto = evaluarConformidad(registroPara, registroForm.valor);
-    const res = registrarAppcc({
+    const res = await registrarAppcc({
       puntoId: registroPara.id,
       puntoNombre: registroPara.nombre,
       tipo: registroPara.tipo,
@@ -121324,8 +121579,8 @@ function Appcc({
     setActorCancelarRegistro("");
     setErrorCancelarRegistro("");
   }
-  function confirmarCancelarRegistro() {
-    const res = cancelarRegistroAppcc(cancelarRegistro.id, {
+  async function confirmarCancelarRegistro() {
+    const res = await cancelarRegistroAppcc(cancelarRegistro.id, {
       motivo: motivoCancelarRegistro,
       actorNombre: actorCancelarRegistro
     });
