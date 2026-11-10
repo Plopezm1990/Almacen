@@ -373,3 +373,23 @@ solo lectura.
 El trabajo versionado de esta fase continúa en el [PR #220](https://github.com/Plopezm1990/Almacen/pull/220), dirigido a `release`. El PR permanece abierto y mergeable; no se ha fusionado desde esta auditoría.
 
 Para el commit `7b6549c2298c34e8ab859cbe37dd87deb09b0536`, la consulta de GitHub devolvió **23 ejecuciones de CI terminadas con `success`**. Netlify publicó el preview `https://deploy-preview-220--chic-entremet-9107cf.netlify.app/` en estado listo. Esta evidencia es **observada** en CI y en el servicio de despliegue; no equivale a promoción a producción ni a una observación autenticada del flujo de la aplicación.
+
+## Advisors de Supabase — lectura adicional — 2026-11-10
+
+Se consultaron los advisors de seguridad y salud de ambos proyectos en modo
+solo lectura. Salud no devuelve lints activos en ninguno de los dos proyectos.
+Seguridad devuelve:
+
+| Aviso | QA | Producción |
+|---|---:|---:|
+| RLS habilitado sin política | 62 | 48 |
+| `SECURITY DEFINER` ejecutable por `authenticated` | 237 | 199 |
+| Protección contra contraseñas filtradas desactivada | 1 | 1 |
+
+Esta lectura es **observada** en el servicio Supabase, no una autorización para
+modificar ACL, políticas, funciones o configuración de Auth. Los avisos incluyen
+objetos privados y RPC históricas cuyo acceso puede ser deliberado; por ello no
+se revocan en bloque ni se incorporan artificialmente a A-05, M-03, M-04 o
+N-02. La protección contra contraseñas filtradas queda registrada como riesgo
+separado de Auth: no se habilitó porque requiere un cambio de configuración y
+una decisión de alcance independiente.
