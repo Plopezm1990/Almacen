@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado al cierre de esta actualización:** `cc55b0b2`
+**Commit verificado al cierre de esta actualización:** `e2361953`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -15,7 +15,7 @@ en producción.
 | Hallazgo | Estado a esta fecha | Evidencia que lo sostiene | Límite de cierre |
 |---|---|---|---|
 | A-03 | Cerrado técnicamente en alcance | Migraciones, esquema, RLS, RPC y contratos; paridad normalizada de las cinco funciones APPCC | No se ejecuta una operación de negocio en producción por la regla de solo lectura |
-| A-04 | Parcial, abierto | Cobertura servidor de actor y contratos pasan; no cubre todavía toda operación de negocio | Falta completar inventario/cableado de todos los flujos y medir cobertura efectiva |
+| A-04 | Cerrado técnicamente en alcance | RPC común deriva el actor desde `auth.uid()`; contratos pasan; QA y producción tienen el cableado público equivalente medido | No se reconstruye el histórico sin actor; no se certifican operaciones fuera del registrador común ni una segunda sesión real de navegador |
 | A-05 | Parcial, abierto | Guardia de inactividad y reidentificación del cliente; contratos pasan | `sessions_inactivity_timeout` y `sessions_timebox` siguen en 0 en ambos entornos; hay sesiones históricas |
 | M-01 | Remediado en código y QA, abierto en alcance de entornos | PIN server-side, RLS y contratos pasan; tabla presente en QA | Producción sigue sin `private.pm11_empleado_pin`; requiere promoción autorizada |
 | M-02 | Cerrado técnicamente en alcance | CSP de QA y producción medida por HTTP 200 con único origen Supabase correspondiente | No equivale a una certificación de seguridad general |
