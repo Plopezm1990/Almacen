@@ -822,5 +822,242 @@ function modoLocalNoReclamado() {
   setTimeout(comprobarPerfilActivo, 1000);
 })();
 
+// M-03: segundo factor para los roles que pueden operar sobre caja o gestionar
+// la empresa. Esta barrera se mantiene fuera del bundle histórico para que la
+// exigencia de AAL2 sea auditable y no dependa de una copia local del rol.
+(function () {
+  "use strict";
+  if (window.__laM03MfaGateInstalada) return;
+  window.__laM03MfaGateInstalada = true;
+
+  var ROLES_MFA_OBLIGATORIA = {
+    "Propietario": true,
+    "Encargado": true,
+    "Cajero/a": true
+  };
+  var overlay = null;
+  var supabase = null;
+  var ejecucion = 0;
+  var factorActual = null;
+  var challengeActual = null;
+
+  function nodo(tag, texto) {
+    var el = document.createElement(tag);
+    if (texto !== undefined) el.textContent = texto;
+    return el;
+  }
+
+  function limpiarOverlay() {
+    if (overlay && overlay.parentNode) overlay.parentNode.removeChild(overlay);
+    overlay = null;
+    factorActual = null;
+    challengeActual = null;
+  }
+
+  function crearOverlay() {
+    limpiarOverlay();
+    overlay = nodo("div");
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-labelledby", "la-m03-titulo");
+    overlay.style.cssText = [
+      "position:fixed", "inset:0", "z-index:2147483647", "display:flex",
+      "align-items:center", "justify-content:center", "padding:24px",
+      "background:rgba(15,23,42,.82)", "font-family:system-ui,sans-serif",
+      "color:#0f172a"
+    ].join(";");
+    var tarjeta = nodo("div");
+    tarjeta.style.cssText = [
+      "width:min(560px,100%)", "max-height:calc(100vh - 48px)",
+      "overflow:auto", "background:#fff", "border-radius:16px", "padding:24px",
+      "box-shadow:0 20px 60px rgba(0,0,0,.35)"
+    ].join(";");
+    overlay.appendChild(tarjeta);
+    document.body.appendChild(overlay);
+    return tarjeta;
+  }
+
+  function boton(texto) {
+    var b = nodo("button", texto);
+    b.type = "button";
+    b.style.cssText = [
+      "display:block", "width:100%", "margin-top:14px", "padding:11px 14px",
+      "border:0", "border-radius:9px", "background:#0f766e", "color:#fff",
+      "font-weight:700", "cursor:pointer"
+    ].join(";");
+    return b;
+  }
+
+  function campoCodigo() {
+    var input = nodo("input");
+    input.type = "text";
+    input.inputMode = "numeric";
+    input.autocomplete = "one-time-code";
+    input.maxLength = 6;
+    input.pattern = "[0-9]{6}";
+    input.placeholder = "Código de 6 dígitos";
+    input.setAttribute("aria-label", "Código del autenticador");
+    input.style.cssText = [
+      "display:block", "width:100%", "box-sizing:border-box", "margin-top:12px",
+      "padding:11px", "border:1px solid #94a3b8", "border-radius:8px",
+      "font-size:18px", "letter-spacing:.18em", "text-align:center"
+    ].join(";");
+    return input;
+  }
+
+  function mensajeError(tarjeta, texto) {
+    var p = nodo("p", texto);
+    p.setAttribute("role", "alert");
+    p.style.cssText = "margin:12px 0 0;color:#b91c1c;font-weight:600";
+    tarjeta.appendChild(p);
+  }
+
+  function encabezado(tarjeta, subtitulo) {
+    tarjeta.appendChild(nodo("h2", "Verificación adicional requerida"));
+    tarjeta.lastChild.id = "la-m03-titulo";
+    var p = nodo("p", subtitulo);
+    p.style.cssText = "margin:8px 0 0;color:#334155;line-height:1.45";
+    tarjeta.appendChild(p);
+  }
+
+  async function verificarCodigo(tarjeta, input, botonVerificar) {
+    var codigo = String(input.value || "").replace(/\s/g, "");
+    if (!/^\d{6}$/.test(codigo)) {
+      mensajeError(tarjeta, "Introduce un código de 6 dígitos.");
+      return;
+    }
+    botonVerificar.disabled = true;
+    try {
+      if (!challengeActual) {
+        var desafio = await supabase.auth.mfa.challenge({ factorId: factorActual.id });
+        if (desafio.error || !desafio.data || !desafio.data.id) throw desafio.error || new Error("No se pudo crear el desafío");
+        challengeActual = desafio.data.id;
+      }
+      var verificacion = await supabase.auth.mfa.verify({
+        factorId: factorActual.id,
+        challengeId: challengeActual,
+        code: codigo
+      });
+      if (verificacion.error) throw verificacion.error;
+      challengeActual = null;
+      await comprobarMfa();
+    } catch (e) {
+      botonVerificar.disabled = false;
+      mensajeError(tarjeta, "El código no se ha podido verificar. Comprueba la hora del dispositivo e inténtalo de nuevo.");
+    }
+  }
+
+  function renderVerificacion(tarjeta, rol) {
+    encabezado(tarjeta, "El rol " + rol + " requiere MFA. Introduce el código de tu aplicación autenticadora para continuar.");
+    var input = campoCodigo();
+    tarjeta.appendChild(input);
+    var b = boton("Verificar y continuar");
+    b.addEventListener("click", function () { verificarCodigo(tarjeta, input, b); });
+    tarjeta.appendChild(b);
+    input.focus();
+  }
+
+  function renderEnrolamiento(tarjeta, rol, datos) {
+    encabezado(tarjeta, "El rol " + rol + " requiere configurar un autenticador TOTP antes de usar la aplicación.");
+    tarjeta.appendChild(nodo("p", "Escanea el código QR con una aplicación autenticadora. Si no puedes escanearlo, usa la URI o el secreto que aparecen debajo. No los compartas."));
+    if (datos.totp && datos.totp.qr_code) {
+      var qr = nodo("img");
+      qr.alt = "Código QR para configurar el autenticador";
+      qr.src = datos.totp.qr_code;
+      qr.style.cssText = "display:block;width:220px;height:220px;margin:16px auto;object-fit:contain";
+      tarjeta.appendChild(qr);
+    }
+    var uri = datos.totp && datos.totp.uri ? String(datos.totp.uri) : "";
+    var secreto = datos.totp && datos.totp.secret ? String(datos.totp.secret) : "";
+    var detalles = nodo("details");
+    detalles.appendChild(nodo("summary", "Mostrar configuración manual"));
+    if (uri) detalles.appendChild(nodo("p", "URI: " + uri));
+    if (secreto) detalles.appendChild(nodo("p", "Secreto: " + secreto));
+    tarjeta.appendChild(detalles);
+    var input = campoCodigo();
+    tarjeta.appendChild(input);
+    var b = boton("Confirmar autenticador");
+    b.addEventListener("click", function () { verificarCodigo(tarjeta, input, b); });
+    tarjeta.appendChild(b);
+    input.focus();
+  }
+
+  async function prepararEnrolamiento(tarjeta, rol) {
+    try {
+      var alta = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "LA Suite - " + rol });
+      if (alta.error || !alta.data || !alta.data.id) throw alta.error || new Error("No se pudo iniciar el alta MFA");
+      factorActual = alta.data;
+      renderEnrolamiento(tarjeta, rol, alta.data);
+    } catch (e) {
+      mensajeError(tarjeta, "No se pudo iniciar el alta del autenticador. Revisa la configuración MFA del proyecto.");
+    }
+  }
+
+  async function comprobarMfa() {
+    var esta = ++ejecucion;
+    if (!window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+      limpiarOverlay();
+      return;
+    }
+    try {
+      supabase = await window.getSupabaseClient();
+      var sesion = await supabase.auth.getSession();
+      var session = sesion && sesion.data && sesion.data.session;
+      if (!session) { limpiarOverlay(); return; }
+      var perfil = await supabase.from("perfiles").select("rol,activo").eq("user_id", session.user.id).maybeSingle();
+      if (esta !== ejecucion) return;
+      if (perfil.error || !perfil.data || perfil.data.activo !== true) {
+        var bloqueado = crearOverlay();
+        encabezado(bloqueado, "No se pudo validar el perfil activo en el servidor. La aplicación permanecerá bloqueada hasta que la sesión pueda comprobarse.");
+        return;
+      }
+      var rol = perfil.data.rol;
+      if (!ROLES_MFA_OBLIGATORIA[rol]) { limpiarOverlay(); return; }
+      var aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      if (aal.error) throw aal.error;
+      if (aal.data && aal.data.currentLevel === "aal2") { limpiarOverlay(); return; }
+      var factores = await supabase.auth.mfa.listFactors();
+      if (factores.error) throw factores.error;
+      var totp = factores.data && Array.isArray(factores.data.totp) ? factores.data.totp : [];
+      var verificados = totp.filter(function (factor) { return factor && factor.status === "verified"; });
+      var tarjeta = crearOverlay();
+      if (verificados.length === 0) {
+        encabezado(tarjeta, "El rol " + rol + " requiere configurar un autenticador TOTP.");
+        var iniciar = boton("Configurar autenticador TOTP");
+        iniciar.addEventListener("click", function () {
+          iniciar.disabled = true;
+          tarjeta.textContent = "Preparando configuración segura…";
+          prepararEnrolamiento(tarjeta, rol);
+        });
+        tarjeta.appendChild(iniciar);
+      } else {
+        factorActual = verificados[0];
+        challengeActual = null;
+        renderVerificacion(tarjeta, rol);
+      }
+    } catch (e) {
+      var errorTarjeta = crearOverlay();
+      encabezado(errorTarjeta, "No se pudo comprobar el segundo factor en el servidor. La aplicación permanecerá bloqueada hasta que la verificación esté disponible.");
+    }
+  }
+
+  window.__m03ComprobarMfa = comprobarMfa;
+  (async function iniciar() {
+    for (var i = 0; i < 160; i++) {
+      if (window.__nubeActiva && typeof window.getSupabaseClient === "function") break;
+      await new Promise(function (resolve) { setTimeout(resolve, 25); });
+    }
+    if (!window.__nubeActiva || typeof window.getSupabaseClient !== "function") return;
+    try {
+      supabase = await window.getSupabaseClient();
+      supabase.auth.onAuthStateChange(function (evento) {
+        if (evento === "SIGNED_OUT") limpiarOverlay();
+        else if (evento === "SIGNED_IN" || evento === "TOKEN_REFRESHED" || evento === "MFA_CHALLENGE_VERIFIED") comprobarMfa();
+      });
+      comprobarMfa();
+    } catch (e) {}
+  })();
+})();
+
 // PM17 P04: la neutralización de selección y la UX de autenticación ya viven
 // en fuente.js. No se inyectan parches externos desde este runtime.

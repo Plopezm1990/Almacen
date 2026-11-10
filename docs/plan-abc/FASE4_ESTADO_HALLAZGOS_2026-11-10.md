@@ -19,7 +19,7 @@ en producción.
 | A-05 | Parcial, abierto | Guardia de inactividad y reidentificación del cliente; contratos pasan | `sessions_inactivity_timeout` y `sessions_timebox` siguen en 0 en ambos entornos; hay sesiones históricas |
 | M-01 | Remediado en código y QA, abierto en alcance de entornos | PIN server-side, RLS y contratos pasan; tabla presente en QA | Producción sigue sin `private.pm11_empleado_pin`; requiere promoción autorizada |
 | M-02 | Cerrado técnicamente en alcance | CSP de QA y producción medida por HTTP 200 con único origen Supabase correspondiente | No equivale a una certificación de seguridad general |
-| M-03 | Abierto | MFA medido sin factores; decisión de política y flujo de enrolamiento documentados | Falta decisión de negocio/seguridad e implementación, enrolamiento y exigencia por rol |
+| M-03 | Corrección candidata versionada, abierto en alcance de entornos | Gate TOTP/AAL2 para Propietario, Encargado y Cajero/a; contrato estático pasa; factores medidos en cero | Falta observar enrolamiento/desafío en QA, recuperación y promoción autorizada |
 | M-04 | Remediado en código, abierto en alcance de entornos | Contrato de contraseña mínima pasa y preview listo | Falta verificación autenticada y promoción; rate-limit/captcha del proveedor no queda demostrado |
 | M-05 | Remediado en código, abierto en alcance de entornos | Contrato de paginación pasa y preview listo | Falta verificación autenticada y promoción |
 | M-06 | Abierto | Ausencia de tarea programada medida; contrato de retención existente | No se inventa plazo: falta decisión legal/negocio y ejecución programada |
