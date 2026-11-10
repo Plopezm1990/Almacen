@@ -53,3 +53,28 @@ No se invocó el bootstrap en producción. Tampoco se invocó en QA durante esta
 
 La migración versionada de N-02 contiene una definición canónica y el contrato local la protege, pero eso es **probado por código**; no acredita que producción la tenga aplicada desde esa migración. Cerrar M-08 requiere una reproducción controlada del flujo de instalación en QA y decidir si la identidad textual/procedencia debe reconciliarse en una ventana autorizada.
 
+## Comprobación de precondiciones QA — 2026-11-10
+
+Antes de intentar una reproducción adicional se midió, sin invocar el
+bootstrap, si QA conservaba alguna instalación determinista completa que
+permitiera probar el camino idempotente sin escribir:
+
+| Medición | Resultado |
+|---|---:|
+| Propietarios activos considerados | 14 |
+| Instalaciones deterministas completas para esos propietarios | 0 |
+| Estados no idempotentes o parciales | 14 |
+
+La función aborta cuando encuentra cualquier empresa, local o membresía en un
+estado que no sea exactamente el núcleo determinista del propietario. Como QA
+ya tiene estado empresarial y ninguno de los 14 propietarios satisface la
+ruta idempotente, no se invocó la función: hacerlo no sería una reproducción
+limpia y podría crear o alterar una empresa, un local y una membresía de
+prueba. Esta medición es **medida** en QA y explica por qué la reproducción
+E2E del bootstrap requiere una base QA vacía o una rama Supabase aislada, no
+los datos sintéticos vivos del proyecto compartido.
+
+El límite permanece: no hay una reproducción completa del bootstrap en esta
+base QA compartida y no se creó una rama nueva ni se generaron datos para
+fabricarla. Producción siguió en solo lectura.
+
