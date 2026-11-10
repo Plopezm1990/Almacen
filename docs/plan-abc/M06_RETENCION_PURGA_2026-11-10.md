@@ -41,3 +41,29 @@ Antes de versionar una migración o una tarea programada deben aprobarse, por ta
 - No se borró ni anonimizó ningún dato.
 - No se escribió en producción.
 - M-06 queda abierto hasta recibir una política aprobada y poder convertirla en migración/contrato verificable.
+
+## Inventario de retención actualizado — 2026-11-10
+
+Se repitió la medición en solo lectura sobre QA y producción. Las filas son
+conteos actuales; las fechas son límites observados, no plazos recomendados:
+
+| Tabla | QA: filas / rango temporal observado | Producción: filas / rango temporal observado |
+|---|---:|---:|
+| `auditoria_registro` | 1.016 / 2026-09-04 a 2026-11-10 | 19 / 2026-10-12 a 2026-11-07 |
+| `errores_sistema` | 830 / 2026-10-01 a 2026-11-04 | 1 / 2026-10-20 |
+| `fichajes_registro` | 10 / 2026-09-06 a 2026-10-29 | 0 |
+| `movimientos_registro` | 904 / 2026-09-04 a 2026-10-28 | 5 / 2026-10-11 a 2026-10-21 |
+| `caja_operaciones` | 64 / 2026-10-03 a 2026-11-08 | 9 / 2026-10-29 a 2026-10-30 |
+| `prefiltros_candidatos` | 0 | 0 |
+
+La comprobación de mecanismos devuelve en ambos entornos: `pg_cron` ausente,
+`pg_net` ausente, `pgmq` ausente, `cron.job` inexistente y
+`cron.job_run_details` inexistente. QA sí tiene
+`public.pm11_anonimizar_empleado(...)`; producción no. Esta última diferencia
+es de inventario, no autorización para ejecutarla ni evidencia de que una
+anonimización periódica exista.
+
+La medición es **medida** sobre catálogos y filas reales. No convierte la edad
+de una fila en una infracción ni permite inferir un plazo legal. M-06 sigue
+abierto hasta que se aprueben los plazos y excepciones por finalidad, se elija
+anonimización o borrado y se versionen una tarea y sus contratos.
