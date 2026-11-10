@@ -2,7 +2,7 @@
 
 **Fecha de corte:** 10 de noviembre de 2026  
 **Rama de auditoría:** `codex/fase4-remediacion-restante`  
-**Commit verificado al cierre de esta actualización:** `db87595d`
+**Commit verificado al cierre de esta actualización:** `fd028409`
 **QA:** `qjqorixtkilwsndqayyx`  
 **Producción:** `flqercbgpgmmfaakrwkc`
 
@@ -264,3 +264,24 @@ publicó el deploy preview correspondiente (`6af38b27d46f47d362ff0976`) en
 estado `ready`; su escaneo de secretos no encontró coincidencias. Esto es
 **observado** en los servicios CI/deploy y **reproducido** en la rama, pero no
 convierte en observada la navegación autenticada que aún falta en QA.
+
+## Instantánea comparativa de seguimiento — 2026-11-10
+
+Se repitió una lectura nominal, sin escritura, contra QA y producción para
+evitar que el estado dependiera de una medición antigua. El resultado fue:
+
+| Comprobación | QA (`qjqorixtkilwsndqayyx`) | Producción (`flqercbgpgmmfaakrwkc`) |
+|---|---:|---:|
+| Factores MFA en `auth.mfa_factors` | 0 | 0 |
+| `private.pm11_empleado_pin` | presente | ausente |
+| Índice de fecha de `errores_sistema` | presente | ausente |
+| `abc_cerrar_cuenta_pagada` contiene `locked_at` | sí | no |
+| Huella semántica de `bootstrap_owner_instalacion` | `88dde7f01bb445f2608f7e991838e1fa` | `88dde7f01bb445f2608f7e991838e1fa` |
+
+Esta tabla es evidencia **medida** de solo lectura en la fecha indicada. No
+representa promoción entre entornos ni cierre de A-02: la función de cierre
+continúa distinta precisamente en el punto `locked_at`. Tampoco convierte la
+paridad semántica de M-08 en una reproducción limpia del bootstrap. La
+ausencia de factores MFA mantiene M-03 abierto, y la ausencia en producción de
+la tabla PIN y del índice mantiene M-01 y B-02 abiertos en alcance de
+entornos.
