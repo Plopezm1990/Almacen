@@ -2,6 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 
 const source = readFileSync('fuente.js', 'utf8');
+const bootstrap = readFileSync('owner-bootstrap-post-reset.js', 'utf8');
 const appStart = source.indexOf('function AppConSesion()');
 const appEnd = source.indexOf('var rutaHash', appStart);
 assert.ok(appStart >= 0 && appEnd > appStart, 'M03_APP_SESSION_COMPONENT_NOT_FOUND');
@@ -27,5 +28,14 @@ assert.doesNotMatch(terminarMfa, /await window\.subirPendientes\(\)/, 'M03_POST_
 assert.match(source, /inputMode: "numeric"/, 'M03_TOTP_INPUT_NOT_NUMERIC');
 assert.match(source, /autoComplete: "one-time-code"/, 'M03_TOTP_INPUT_NOT_AUTOCOMPLETE');
 assert.match(source, /Cerrar sesión/, 'M03_MFA_LOCKOUT_ACTION_MISSING');
+
+assert.match(bootstrap, /function mfaAutorizadaParaAplicacion\(supabase\)/, 'M03_BOOTSTRAP_MFA_GATE_MISSING');
+assert.match(bootstrap, /currentLevel === "aal2"/, 'M03_BOOTSTRAP_AAL2_CHECK_MISSING');
+const bootstrapValidationStart = bootstrap.indexOf('async function validarSesion(supabase, sesion)');
+const bootstrapPreparation = bootstrap.indexOf('window.__prepararSesionPostReset', bootstrapValidationStart);
+const bootstrapMfaGate = bootstrap.indexOf('mfaAutorizadaParaAplicacion(supabase)', bootstrapValidationStart);
+assert.ok(bootstrapValidationStart >= 0, 'M03_BOOTSTRAP_SESSION_VALIDATOR_NOT_FOUND');
+assert.ok(bootstrapMfaGate > bootstrapValidationStart && bootstrapMfaGate < bootstrapPreparation, 'M03_BOOTSTRAP_CALLS_CONTEXT_BEFORE_MFA');
+assert.match(bootstrap.slice(bootstrapMfaGate, bootstrapPreparation), /liberarVistaSinSesion\(\)/, 'M03_BOOTSTRAP_AAL1_MUST_LEAVE_MFA_VIEW_AVAILABLE');
 
 console.log('M03_CONTRACT_PASS=1');
