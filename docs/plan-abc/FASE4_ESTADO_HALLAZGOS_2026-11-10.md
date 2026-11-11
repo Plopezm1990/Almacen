@@ -586,6 +586,12 @@ Esto es **medido y reproducido en QA** para la barrera que impide mutar un
 estado compartido no vacío. No es una reproducción de primer arranque ni de la
 ruta idempotente; M-08 sigue requiriendo una base QA vacía o una rama aislada.
 
+La rama aislada solicitada para esa prueba no pudo crearse porque el proyecto
+QA no tiene plan Pro o superior. No se generó coste ni se modificó QA. La
+cotización de un proyecto temporal independiente en la misma organización es
+`0 USD/mes`, pero su creación requiere autorización separada. Esta limitación
+queda documentada y no se presenta como cierre de M-08.
+
 Después de subir esta actualización como `d522b55f`, los `23/23` workflows de
 GitHub Actions terminaron en `success`. Esta comprobación es **observada en CI**
 y confirma la puerta remota del repositorio; no transforma por sí sola la

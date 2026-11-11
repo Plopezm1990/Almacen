@@ -124,3 +124,19 @@ arranque, la ruta idempotente ni el flujo autenticado del navegador. M-08
 continúa abierto hasta reproducir una instalación limpia en una base QA vacía o
 en una rama aislada.
 
+## Infraestructura aislada no disponible por el plan — 2026-11-11
+
+Tras la confirmación del coste de una rama aislada, se intentó crear
+`la-suite-audit-m08-20261111` sobre el proyecto QA. Supabase rechazó la
+operación porque el proyecto no está en Pro o superior. No se creó la rama,
+no se generó ningún coste y no cambió el proyecto QA compartido.
+
+Se consultó como alternativa un proyecto temporal independiente en la misma
+organización; la cotización devuelta es `0 USD/mes`. Ese proyecto no se crea
+automáticamente: requiere una autorización separada por tratarse de un
+recurso externo distinto de la rama inicialmente solicitada.
+
+Hasta disponer de esa autorización o de PostgreSQL 16 local operativo, M-08
+conserva la reproducción local PGlite y la barrera QA compartida, pero no una
+reproducción limpia desplegada.
+
