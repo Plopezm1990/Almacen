@@ -52,3 +52,16 @@ El contrato comprueba el mínimo y máximo en las dos funciones Edge, el texto v
 | El rate limit protege server-side contra clientes modificados | No demostrado |
 
 M-04 queda avanzado como corrección versionada, regresión reproducida y preview QA listo, pero continúa abierto para el cierre completo hasta observar el flujo autenticado y disponer de una promoción autorizada o de la evidencia equivalente en producción. La protección server-side frente a clientes manipulados tampoco queda demostrada por este cambio.
+
+## Observación de la pantalla de recuperación en preview QA — 2026-11-11
+
+Se abrió en el preview del PR 220 la ruta pública
+`restablecer-contrasena.html`. La interfaz cargó correctamente y mostró el
+campo `Correo de la cuenta`, el botón `Enviar enlace de recuperación` y el
+enlace de vuelta al inicio de sesión. Esto es evidencia **observada** de que la
+superficie pública de recuperación está publicada y accesible.
+
+No se envió el formulario, no se generó ningún correo y no se modificó ninguna
+contraseña o cuenta. Esta observación no demuestra el rate-limit server-side,
+la entrega del correo, el consumo de un enlace de recuperación ni la
+verificación autenticada posterior; M-04 sigue abierto.

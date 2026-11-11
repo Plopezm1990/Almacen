@@ -634,3 +634,15 @@ La actualización anterior quedó integrada en `d469cf37`; sus `23/23` workflows
 de CI terminaron en `success` y el deploy preview quedó disponible. Es una
 validación **observada en CI**, no una promoción de la guarda a producción ni
 una demostración del enrolamiento TOTP.
+
+## Observación pública M-04 en preview QA — 2026-11-11
+
+Se abrió la ruta pública `restablecer-contrasena.html` del preview del PR 220.
+La pantalla cargó y mostró el campo `Correo de la cuenta`, el botón `Enviar
+enlace de recuperación` y el enlace de vuelta al inicio de sesión. Esto es
+evidencia **observada** de la superficie publicada de recuperación.
+
+No se envió el formulario, no se generó correo y no se modificó ninguna cuenta.
+La observación no demuestra el rate-limit server-side, la entrega del correo,
+el consumo del enlace ni la verificación autenticada posterior; M-04 sigue
+abierto.
