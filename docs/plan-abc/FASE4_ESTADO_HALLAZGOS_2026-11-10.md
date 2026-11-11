@@ -664,3 +664,22 @@ Esta evidencia es **medida** y de solo lectura. Confirma que la divergencia
 estructural sigue presente y que las remediaciones recientes permanecen en QA
 sin promoción equivalente a producción. No se copiaron ni ejecutaron funciones
 legacy y no se modificó ninguna base; N-02 continúa abierto.
+
+## Revalidación A-05 y M-01 — 2026-11-11
+
+La lectura actual confirma los límites de los dos primeros pendientes:
+
+| Comprobación | QA | Producción |
+|---|---:|---:|
+| Sesiones en `auth.sessions` | 165 | 8 |
+| Sesiones con más de 7 días | 126 | 7 |
+| `private.pm11_empleado_pin` | presente, RLS activo, 1 fila privada sintética | ausente |
+| `sessions_inactivity_timeout` | 0 | 0 |
+| `sessions_timebox` | 0 | 0 |
+
+La tabla PIN y su RLS están **medidos** en QA, pero no existen en producción.
+La protección de cliente de A-05 está **probada por código y reproducida en
+QA**, pero la defensa server-side sigue sin estar configurada. No se revocaron
+sesiones, no se promovió la migración M-01 y no se escribió en producción.
+Consecuentemente, A-05 y M-01 no pueden marcarse como completamente cerrados
+en alcance de entornos.

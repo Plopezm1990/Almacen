@@ -161,3 +161,17 @@ La prueba se clasifica como **reproducida en QA** mediante aceleración controla
 La parte de terminal compartido queda demostrada: el paquete de producción y QA contiene la misma guarda y el flujo de inactividad se reprodujo en QA con limpieza del contexto y cierre local de Auth. El control server-side sigue sin estar disponible en el plan actual: `sessions_inactivity_timeout = 0`, `sessions_timebox = 0`, y las sesiones históricas permanecen en `auth.sessions`.
 
 Por tanto, A-05 queda **cerrado en su corrección de cliente y reidentificación del terminal**, con equivalencia del artefacto servido en QA y producción, pero queda **limitado explícitamente** por la defensa server-side no configurable y por la ausencia de una prueba de espera real. No se presenta como prueba de que Supabase vaya a revocar inmediatamente las filas históricas.
+
+## Revalidación de estado — 2026-11-11
+
+La lectura nominal actual de `auth.sessions` devolvió 165 sesiones en QA, de
+las que 126 tienen más de siete días, y 8 sesiones en producción, de las que 7
+tienen más de siete días. No se revocó ninguna sesión. La configuración de
+sesiones continúa en `sessions_inactivity_timeout = 0` y `sessions_timebox = 0`
+en ambos proyectos, según la medición de configuración del proyecto; el plan
+actual mantiene esos controles no configurables.
+
+Esta revalidación es **medida** y confirma que la corrección de cliente no
+limpia retrospectivamente las filas de Auth ni sustituye el timeout server-side.
+A-05 sigue cerrado solo en la parte de cliente/reidentificación y abierto en el
+alcance completo de entorno.
