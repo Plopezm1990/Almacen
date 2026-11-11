@@ -129190,12 +129190,25 @@ function MfaGate({ cliente, modo, onComplete, onSignOut }) {
     (async () => {
       try {
         if (modo === "enroll") {
-          const { data, error: error2 } = await cliente.auth.mfa.enroll({ factorType: "totp", friendlyName: "L&A Suite" });
-          if (error2) throw error2;
-          if (!activo) return;
-          setFactorId(data.id);
-          setQr(data.totp?.qr_code || "");
-          setSecret(data.totp?.secret || "");
+          // Un intento interrumpido deja un factor TOTP `unverified`. No se
+          // debe llamar a enroll() otra vez: Supabase lo rechaza como nombre
+          // duplicado. Reutilizamos el factor pendiente para que el usuario
+          // pueda terminar la verificación con el código que ya tiene.
+          const factores = await cliente.auth.mfa.listFactors();
+          if (factores.error) throw factores.error;
+          const factorPendiente = [...(factores.data?.totp || [])].find((factor) => factor.status === "unverified" && factor.friendly_name === "L&A Suite");
+          if (factorPendiente) {
+            if (!activo) return;
+            setFactorId(factorPendiente.id);
+            setError("Hay una activación pendiente. Usa el código de la aplicación autenticadora que vinculaste anteriormente.");
+          } else {
+            const { data, error: error2 } = await cliente.auth.mfa.enroll({ factorType: "totp", friendlyName: "L&A Suite" });
+            if (error2) throw error2;
+            if (!activo) return;
+            setFactorId(data.id);
+            setQr(data.totp?.qr_code || "");
+            setSecret(data.totp?.secret || "");
+          }
         } else {
           const { data, error: error2 } = await cliente.auth.mfa.listFactors();
           if (error2) throw error2;
