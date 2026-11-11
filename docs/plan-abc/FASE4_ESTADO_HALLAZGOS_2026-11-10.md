@@ -666,6 +666,20 @@ recuperación del segundo factor y la promoción autorizada de la guarda
 server-side `aal2` a producción. No se guardó el secreto TOTP ni se escribió en
 producción.
 
+## Revalidación M-04 — 2026-11-11
+
+El contrato focal `tests/m04/m04-password-policy-contract.mjs` volvió a pasar
+en la rama de auditoría:
+
+```text
+M04_PASSWORD_POLICY_CONTRACT=PASS
+```
+
+Es evidencia **reproducida** de la corrección versionada. No se crearon
+cuentas, no se cambiaron contraseñas, no se enviaron correos y M-04 permanece
+abierto por la verificación autenticada del proveedor, el rate-limit server-side
+y la promoción controlada a producción.
+
 ## Revalidación estructural N-02 — 2026-11-11
 
 La lectura nominal repetida sobre QA y producción devolvió el siguiente corte:

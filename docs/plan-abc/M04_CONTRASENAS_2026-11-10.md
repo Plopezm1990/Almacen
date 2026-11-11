@@ -65,3 +65,17 @@ No se envió el formulario, no se generó ningún correo y no se modificó ningu
 contraseña o cuenta. Esta observación no demuestra el rate-limit server-side,
 la entrega del correo, el consumo de un enlace de recuperación ni la
 verificación autenticada posterior; M-04 sigue abierto.
+
+## Revalidación del contrato — 2026-11-11
+
+Se volvió a ejecutar el contrato focal `tests/m04/m04-password-policy-contract.mjs`
+sobre la rama de auditoría. El resultado fue:
+
+```text
+M04_PASSWORD_POLICY_CONTRACT=PASS
+```
+
+Esta ejecución es evidencia **reproducida** de la política versionada y de la
+regresión local. No se crearon cuentas, no se cambiaron contraseñas, no se
+enviaron correos y no sustituye la verificación autenticada del proveedor ni la
+promoción controlada a producción.
