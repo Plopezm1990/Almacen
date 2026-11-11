@@ -72,6 +72,25 @@
     catch (e) { return ""; }
   }
 
+  // M03: este bootstrap se ejecuta en paralelo al componente de sesión. No
+  // puede consultar el contexto empresarial ni abrir la barrera de
+  // sincronización mientras la sesión siga en AAL1; de lo contrario, el
+  // arranque histórico llegaría a las RPC protegidas antes de que el usuario
+  // terminase el desafío MFA.
+  async function mfaAutorizadaParaAplicacion(supabase) {
+    if (!supabase || !supabase.auth || !supabase.auth.mfa) return false;
+    var aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal && aal.error) throw aal.error;
+    var factores = await supabase.auth.mfa.listFactors();
+    if (factores && factores.error) throw factores.error;
+    var totp = factores && factores.data && Array.isArray(factores.data.totp) ? factores.data.totp : [];
+    var phone = factores && factores.data && Array.isArray(factores.data.phone) ? factores.data.phone : [];
+    var hayFactorVerificado = totp.concat(phone).some(function (factor) {
+      return factor && factor.status === "verified";
+    });
+    return hayFactorVerificado && aal && aal.data && aal.data.currentLevel === "aal2";
+  }
+
   async function rpcP4(nombre, sesion, cuerpo) {
     if (typeof window.__laOwnerBootstrapRpc !== "function") {
       throw new Error("Canal seguro de bootstrap no disponible");
@@ -245,6 +264,15 @@
     }
 
     try {
+      // M03: dejar visible la pantalla MFA, pero sin liberar el bootstrap ni
+      // ejecutar ninguna RPC de contexto, hasta que la sesión esté elevada.
+      if (!(await mfaAutorizadaParaAplicacion(supabase))) {
+        if (miSecuencia !== secuencia) return;
+        liberarVistaSinSesion();
+        return;
+      }
+      if (miSecuencia !== secuencia) return;
+
       if (typeof window.__prepararSesionPostReset !== "function") {
         throw new Error("Barrera de generación no disponible");
       }
