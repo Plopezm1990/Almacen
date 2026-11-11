@@ -592,6 +592,12 @@ cotización de un proyecto temporal independiente en la misma organización es
 `0 USD/mes`, pero su creación requiere autorización separada. Esta limitación
 queda documentada y no se presenta como cierre de M-08.
 
+La creación autorizada del proyecto temporal tampoco pudo ejecutarse: la
+organización ya alcanzó el límite de `2` proyectos gratuitos activos para el
+propietario. No se pausó ni eliminó ningún proyecto y no se generó coste. La
+reproducción limpia de M-08 requiere PostgreSQL operativo fuera de ese límite o
+una decisión específica de plan/entorno.
+
 Después de subir esta actualización como `d522b55f`, los `23/23` workflows de
 GitHub Actions terminaron en `success`. Esta comprobación es **observada en CI**
 y confirma la puerta remota del repositorio; no transforma por sí sola la

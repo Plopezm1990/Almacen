@@ -140,3 +140,10 @@ Hasta disponer de esa autorización o de PostgreSQL 16 local operativo, M-08
 conserva la reproducción local PGlite y la barrera QA compartida, pero no una
 reproducción limpia desplegada.
 
+La autorización para crear el proyecto temporal se intentó ejecutar el
+2026-11-11. Supabase la rechazó porque el propietario ya alcanzó el límite de
+`2` proyectos gratuitos activos. No se creó ningún proyecto, no se pausó ni
+eliminó ninguno existente y no se generó coste. Superar este límite exigiría
+pausar/eliminar un entorno existente o actualizar el plan, decisiones que quedan
+fuera de esta auditoría sin autorización específica.
+
