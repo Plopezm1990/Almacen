@@ -615,3 +615,17 @@ han documentado en el informe específico de M-06.
 Esto es **medido** y no se interpreta como plazo legal ni como autorización de
 borrado/anonimización. M-06 sigue abierto hasta que exista una política
 aprobada y un mecanismo versionado y verificable.
+
+## Observación funcional M-03 en preview QA — 2026-11-11
+
+Se inició sesión en el preview del PR 220 con una cuenta sintética de
+`Propietario` ya existente. La interfaz autenticada mostró el panel de
+administración, pero mantuvo la aplicación bloqueada con `Verificación
+adicional requerida` y el mensaje de que el rol necesita configurar un
+autenticador TOTP. Esto es evidencia **reproducida y observada** de la barrera
+de cliente en el flujo real de navegador.
+
+No se abrió el enrolamiento, no se creó ningún factor y no se cambió Auth. La
+prueba no demuestra aún el ciclo completo enrolamiento/desafío/verificación ni
+la recuperación de un segundo factor perdido; M-03 permanece abierto junto con
+la ausencia de promoción de la guarda `aal2` a producción.
