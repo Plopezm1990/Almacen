@@ -523,3 +523,24 @@ producción siguen sin copiarse ni ejecutarse; sus firmas, ACL y ausencia de
 dependencias directas se mantienen como evidencia **medida**, pero todavía
 falta una decisión de procedencia y una ventana controlada para reconciliar o
 retirar esos objetos. Producción permaneció en solo lectura.
+
+### Revalidación estructural — 2026-11-11
+
+Se repitió de nuevo la consulta nominal, siempre en solo lectura, sobre QA y
+producción. El corte actual es:
+
+| Medición | QA (`qjqorixtkilwsndqayyx`) | Producción (`flqercbgpgmmfaakrwkc`) |
+|---|---:|---:|
+| Funciones `public`/`private` | 498 | 431 |
+| Triggers no internos | 66 | 57 |
+| Relaciones (`r,p,v,m,f`) | 151 | 131 |
+| Versiones de migración | 273 | 175 |
+| Última versión registrada | `20261110223815` | `20261109201101` |
+| Factores MFA | 0 | 0 |
+
+La cifra de migraciones de QA sustituye únicamente al corte anterior de esta
+misma ficha; no se reescribe la medición histórica. La diferencia estructural
+permanece: QA contiene las remediaciones aplicadas durante la auditoría y
+producción conserva funciones y objetos legacy no presentes en QA. Esta
+revalidación es **medida**; no reconcilia procedencia, ACL, dependencias ni
+autoriza una escritura en producción. N-02 continúa abierto.

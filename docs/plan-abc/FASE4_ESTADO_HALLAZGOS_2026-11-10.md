@@ -646,3 +646,21 @@ No se envió el formulario, no se generó correo y no se modificó ninguna cuent
 La observación no demuestra el rate-limit server-side, la entrega del correo,
 el consumo del enlace ni la verificación autenticada posterior; M-04 sigue
 abierto.
+
+## Revalidación estructural N-02 — 2026-11-11
+
+La lectura nominal repetida sobre QA y producción devolvió el siguiente corte:
+
+| Medición | QA | Producción |
+|---|---:|---:|
+| Funciones `public`/`private` | 498 | 431 |
+| Triggers no internos | 66 | 57 |
+| Relaciones (`r,p,v,m,f`) | 151 | 131 |
+| Versiones de migración | 273 | 175 |
+| Última versión registrada | `20261110223815` | `20261109201101` |
+| Factores MFA | 0 | 0 |
+
+Esta evidencia es **medida** y de solo lectura. Confirma que la divergencia
+estructural sigue presente y que las remediaciones recientes permanecen en QA
+sin promoción equivalente a producción. No se copiaron ni ejecutaron funciones
+legacy y no se modificó ninguna base; N-02 continúa abierto.
