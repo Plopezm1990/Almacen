@@ -34,7 +34,8 @@ assert.match(source, /inputMode: "numeric"/, 'M03_TOTP_INPUT_NOT_NUMERIC');
 assert.match(source, /autoComplete: "one-time-code"/, 'M03_TOTP_INPUT_NOT_AUTOCOMPLETE');
 assert.match(source, /Cerrar sesión/, 'M03_MFA_LOCKOUT_ACTION_MISSING');
 assert.match(mfaGate, /const factores = await cliente\.auth\.mfa\.listFactors\(\);[\s\S]*?const factorPendiente =/, 'M03_ENROLL_MUST_LIST_EXISTING_FACTORS');
-assert.match(mfaGate, /factor\.status === "unverified" && factor\.friendly_name === "L&A Suite"/, 'M03_ENROLL_MUST_RECOGNIZE_PENDING_FACTOR');
+assert.match(mfaGate, /factores\.data\?\.all \|\| \[\]/, 'M03_ENROLL_MUST_INSPECT_ALL_FACTORS');
+assert.match(mfaGate, /factor\.factor_type === "totp" && factor\.status === "unverified" && factor\.friendly_name === "L&A Suite"/, 'M03_ENROLL_MUST_RECOGNIZE_PENDING_FACTOR');
 assert.match(mfaGate, /setFactorId\(factorPendiente\.id\)/, 'M03_ENROLL_MUST_REUSE_PENDING_FACTOR');
 
 assert.match(bootstrap, /function mfaAutorizadaParaAplicacion\(supabase\)/, 'M03_BOOTSTRAP_MFA_GATE_MISSING');
