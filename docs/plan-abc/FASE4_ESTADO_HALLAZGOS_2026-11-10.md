@@ -647,6 +647,25 @@ La observación no demuestra el rate-limit server-side, la entrega del correo,
 el consumo del enlace ni la verificación autenticada posterior; M-04 sigue
 abierto.
 
+## Corrección y reproducción completa M-03 en QA — 2026-11-11
+
+La observación anterior de M-03 indicaba que todavía no se había creado ningún
+factor. Esa afirmación era correcta en el corte anterior, pero queda corregida
+por la acción posterior autorizada expresamente: en el preview del PR 220 se
+completó el enrolamiento TOTP de la cuenta sintética de propietario, se aceptó
+el código y la aplicación quedó abierta.
+
+Después se cerró sesión y se volvió a iniciar sesión. La aplicación exigió el
+desafío MFA; el código TOTP fue aceptado y la aplicación volvió a abrirse. La
+consulta posterior de solo lectura en QA confirmó `1` factor y `1` factor
+`verified` para esa cuenta sintética. Producción continúa con `0` factores.
+
+Esto mejora M-03 a evidencia **medida, reproducida y observada** del ciclo
+completo en QA. No constituye cierre global: sigue pendiente la política de
+recuperación del segundo factor y la promoción autorizada de la guarda
+server-side `aal2` a producción. No se guardó el secreto TOTP ni se escribió en
+producción.
+
 ## Revalidación estructural N-02 — 2026-11-11
 
 La lectura nominal repetida sobre QA y producción devolvió el siguiente corte:
