@@ -628,6 +628,22 @@ filas. El contrato estático de M-07 pasa y la corrección permanece desplegada
 en el preview, pero M-07 sigue abierto por faltar esa reproducción funcional y
 la promoción/evidencia efectiva en producción.
 
+## Revalidación B-02 — índice de errores — 2026-11-11
+
+El contrato local volvió a pasar:
+
+```text
+B02_MIGRACION_INDICE_FECHA=PASS
+B02_CONSULTA_ERRORES_ORDENADA=PASS
+B02_CONTRACT_PASS
+```
+
+La lectura de catálogos desplegados confirma que QA tiene
+`errores_sistema_fecha_idx` definido como índice B-tree sobre
+`public.errores_sistema (fecha DESC)`, mientras que producción no devuelve ese
+índice. Esto es **reproducido** en el contrato y **medido** en ambos catálogos;
+B-02 sigue abierto en alcance de entornos y no se ejecuta DDL en producción.
+
 ## Observación funcional M-03 en preview QA — 2026-11-11
 
 Se inició sesión en el preview del PR 220 con una cuenta sintética de
