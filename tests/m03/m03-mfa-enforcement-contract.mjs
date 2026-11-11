@@ -47,5 +47,6 @@ const edgeMfaGate = edgeAuth.indexOf('mfaAutorizadaParaAplicacion(supabase)', ed
 assert.ok(edgeValidationStart >= 0, 'M03_EDGE_AUTH_VALIDATOR_NOT_FOUND');
 assert.ok(edgeMfaGate > edgeValidationStart && edgeMfaGate < edgePreparation, 'M03_EDGE_AUTH_CALLS_CONTEXT_BEFORE_MFA');
 assert.match(edgeAuth.slice(edgeMfaGate, edgePreparation), /__instalacionSyncPermitida = false/, 'M03_EDGE_AUTH_AAL1_MUST_KEEP_SYNC_CLOSED');
+assert.match(source, /const localPersistidoValido = !!localActivoFinal[\s\S]*?if \(!localPersistidoValido && idsLocalesHuerfanos\.length === 1/, 'M03_OLD_FOREIGN_PRODUCT_MUST_NOT_REPLACE_VALID_LOCAL');
 
 console.log('M03_CONTRACT_PASS=1');

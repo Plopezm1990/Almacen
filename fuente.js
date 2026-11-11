@@ -104920,7 +104920,11 @@ function GestionAlmacen() {
       const idsProductoConLocal = [...new Set(productosBase.map((prod) => prod && prod.localId).filter(Boolean))];
       const idsLocalesIniciales = new Set(localesFinales.map((l22) => l22 && l22.id).filter(Boolean));
       const idsLocalesHuerfanos = idsProductoConLocal.filter((id) => !idsLocalesIniciales.has(id));
-      if (idsLocalesHuerfanos.length === 1 && localesFinales.length > 0) {
+      const localPersistidoValido = !!localActivoFinal && localesFinales.some((l22) => l22 && l22.id === localActivoFinal && l22.activo !== false && !l22.fusionadoEn);
+      // Un producto antiguo de otro local no puede cambiar el contexto que el
+      // servidor ya ha autorizado para esta cuenta. Solo hacemos la reparación
+      // heurística cuando no existe una selección local persistida y válida.
+      if (!localPersistidoValido && idsLocalesHuerfanos.length === 1 && localesFinales.length > 0) {
         const nombresLocales = new Set(localesFinales.map((l22) => normalizarNombreLocal(l22 && l22.nombre)).filter(Boolean));
         if (nombresLocales.size === 1) {
           const idCanonico = idsLocalesHuerfanos[0];
