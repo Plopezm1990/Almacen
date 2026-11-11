@@ -8,6 +8,10 @@ const appStart = source.indexOf('function AppConSesion()');
 const appEnd = source.indexOf('var rutaHash', appStart);
 assert.ok(appStart >= 0 && appEnd > appStart, 'M03_APP_SESSION_COMPONENT_NOT_FOUND');
 const app = source.slice(appStart, appEnd);
+const mfaGateStart = source.indexOf('function MfaGate');
+const mfaGateEnd = source.indexOf('function AppConSesion()', mfaGateStart);
+assert.ok(mfaGateStart >= 0 && mfaGateEnd > mfaGateStart, 'M03_MFA_GATE_SOURCE_NOT_FOUND');
+const mfaGate = source.slice(mfaGateStart, mfaGateEnd);
 
 assert.match(source, /const MFA_REQUIRED_FOR_ALL_LA_SUITE = true;/, 'M03_MFA_POLICY_NOT_MANDATORY');
 assert.match(source, /auth\.mfa\.enroll\(\{ factorType: "totp"/, 'M03_ENROLL_FLOW_MISSING');
@@ -29,6 +33,9 @@ assert.doesNotMatch(terminarMfa, /await window\.subirPendientes\(\)/, 'M03_POST_
 assert.match(source, /inputMode: "numeric"/, 'M03_TOTP_INPUT_NOT_NUMERIC');
 assert.match(source, /autoComplete: "one-time-code"/, 'M03_TOTP_INPUT_NOT_AUTOCOMPLETE');
 assert.match(source, /Cerrar sesión/, 'M03_MFA_LOCKOUT_ACTION_MISSING');
+assert.match(mfaGate, /const factores = await cliente\.auth\.mfa\.listFactors\(\);[\s\S]*?const factorPendiente =/, 'M03_ENROLL_MUST_LIST_EXISTING_FACTORS');
+assert.match(mfaGate, /factor\.status === "unverified" && factor\.friendly_name === "L&A Suite"/, 'M03_ENROLL_MUST_RECOGNIZE_PENDING_FACTOR');
+assert.match(mfaGate, /setFactorId\(factorPendiente\.id\)/, 'M03_ENROLL_MUST_REUSE_PENDING_FACTOR');
 
 assert.match(bootstrap, /function mfaAutorizadaParaAplicacion\(supabase\)/, 'M03_BOOTSTRAP_MFA_GATE_MISSING');
 assert.match(bootstrap, /currentLevel === "aal2"/, 'M03_BOOTSTRAP_AAL2_CHECK_MISSING');
