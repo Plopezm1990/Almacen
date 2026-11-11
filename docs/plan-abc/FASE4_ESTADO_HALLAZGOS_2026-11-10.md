@@ -616,6 +616,18 @@ Esto es **medido** y no se interpreta como plazo legal ni como autorización de
 borrado/anonimización. M-06 sigue abierto hasta que exista una política
 aprobada y un mecanismo versionado y verificable.
 
+## Revalidación M-07 — volumen disponible en QA — 2026-11-11
+
+La lectura de solo lectura de QA encontró 67 filas en `pagos` (58
+`checkout_id` distintos), 65 en `caja_operaciones` (61 `origen_id`), 116 en
+`pedido_lineas` (108 `pedido_id`), 6 en `abc_descuentos_aplicados` (4
+`source_line_id`) y 67 en `venta_fiscal_lineas` (62 `venta_fiscal_id`). Ninguna
+relación alcanza 201 filas, por lo que no se puede reproducir honestamente una
+segunda página real sin crear datos comerciales sintéticos. No se crearon
+filas. El contrato estático de M-07 pasa y la corrección permanece desplegada
+en el preview, pero M-07 sigue abierto por faltar esa reproducción funcional y
+la promoción/evidencia efectiva en producción.
+
 ## Observación funcional M-03 en preview QA — 2026-11-11
 
 Se inició sesión en el preview del PR 220 con una cuenta sintética de
