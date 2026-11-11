@@ -100,3 +100,27 @@ PostgreSQL 16 ni una ejecución autenticada en un entorno desplegado. M-08
 permanece abierto hasta disponer de esa reproducción de entorno y de una
 decisión explícita sobre reconciliar la procedencia textual desplegada.
 
+## Reproducción QA del guardado de preflight — 2026-11-11
+
+La definición desplegada en QA se volvió a leer antes de ejecutar nada. El
+proyecto compartido ya contenía `12` empresas, `14` locales, `27` membresías y
+`25` perfiles, por lo que no cumplía las precondiciones de primer arranque.
+
+Con un propietario QA activo y nombres sintéticos que no se conservarían, se
+invocó el bootstrap dentro de una transacción controlada. La función devolvió
+el error esperado:
+
+```text
+PREFLIGHT_FALLO: estado empresarial no vacío o inconsistente
+```
+
+La lectura posterior confirmó `0` empresas y `0` locales con esos nombres, y
+los totales permanecieron en `12` empresas, `14` locales y `27` membresías.
+Por tanto, no se creó ningún dato sintético ni se modificó la instalación QA.
+
+Esta evidencia es **medida y reproducida en QA** para la barrera de preflight y
+su no-mutación en un estado compartido no vacío. No demuestra el primer
+arranque, la ruta idempotente ni el flujo autenticado del navegador. M-08
+continúa abierto hasta reproducir una instalación limpia en una base QA vacía o
+en una rama aislada.
+

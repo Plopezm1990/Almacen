@@ -573,6 +573,19 @@ de promoción en producción ni las decisiones de negocio/legal pendientes. El
 único elemento no versionado visible en el árbol es el directorio preexistente
 `supabase/.temp/`, que no se incluye en los cambios.
 
+### M-08: guardado de preflight en QA — 2026-11-11
+
+La función remota `public.bootstrap_owner_instalacion(text,text)` se invocó en
+QA con un propietario activo y nombres sintéticos, dentro de una transacción
+controlada. Como el proyecto compartido ya tenía estado empresarial, devolvió
+`PREFLIGHT_FALLO: estado empresarial no vacío o inconsistente`. La lectura
+posterior confirmó cero empresas y cero locales con esos nombres y ningún cambio
+en los totales QA (`12` empresas, `14` locales, `27` membresías).
+
+Esto es **medido y reproducido en QA** para la barrera que impide mutar un
+estado compartido no vacío. No es una reproducción de primer arranque ni de la
+ruta idempotente; M-08 sigue requiriendo una base QA vacía o una rama aislada.
+
 Después de subir esta actualización como `d522b55f`, los `23/23` workflows de
 GitHub Actions terminaron en `success`. Esta comprobación es **observada en CI**
 y confirma la puerta remota del repositorio; no transforma por sí sola la
