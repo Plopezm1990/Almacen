@@ -140,6 +140,9 @@ const EXCLUIDAS = new Set([
   // Corrección incremental de la respuesta de APPCC; se aplica en la ventana
   // de Fase 3 y no forma parte de la foto F7 cerrada del 3/10.
   '20261109201101_a03_appcc_correction_response.sql',
+  // A-04: sesión de empleado server-side para atribución en terminal compartido;
+  // es posterior a la foto F7 histórica y se valida con contrato propio.
+  '20261111220000_a04_server_employee_session.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

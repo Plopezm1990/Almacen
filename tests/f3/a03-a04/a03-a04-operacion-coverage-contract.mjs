@@ -43,7 +43,8 @@ for (const source of [runtime, recovered]) {
 
   const auditRpcCalls = source.match(/supabase\.rpc\("registrar_auditoria"/g) || [];
   assert.equal(auditRpcCalls.length, 1, 'el cliente debe tener una única llamada a la auditoría común');
-  const auditRpc = source.match(/supabase\.rpc\("registrar_auditoria",\s*\{([\s\S]*?)\}\)/);
+  const auditRpc = source.match(/supabase\.rpc\("registrar_auditoria",\s*\{([\s\S]*?)\}\)/)
+    || source.match(/const argumentosAuditoria = \{([\s\S]*?)\};/);
   assert.ok(auditRpc, 'la llamada cliente debe usar la RPC de auditoría común');
   for (const parameter of ['p_id', 'p_usuario', 'p_accion', 'p_detalle', 'p_fecha', 'p_hora', 'p_empresa_id', 'p_local_id']) {
     assert.match(auditRpc[1], new RegExp(`\\b${parameter}\\b`), `la llamada de auditoría debe conservar ${parameter}`);
