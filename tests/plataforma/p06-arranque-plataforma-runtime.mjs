@@ -104,6 +104,13 @@ async function arranque({ user = usuario(), estado, instalacion, rpcs = {}, carg
   const oyentes = [];
   const supabase = {
     auth: {
+      // P06 prueba el arranque posterior al acceso. Desde M03 ese camino solo
+      // puede continuar con una sesión que ya haya elevado AAL2 y tenga un
+      // factor TOTP verificado; el desafío MFA en sí se cubre en M03.
+      mfa: {
+        getAuthenticatorAssuranceLevel: async () => ({ data: { currentLevel: 'aal2', nextLevel: 'aal2' }, error: null }),
+        listFactors: async () => ({ data: { totp: [{ id: 'factor-p06', status: 'verified' }], phone: [] }, error: null })
+      },
       getSession: async () => ({ data: { session: sinSesion ? null : sesion } }),
       onAuthStateChange: (cb) => { oyentes.push(cb); return { data: { subscription: { unsubscribe() {} } } }; },
       signOut: async () => { sesion = null; oyentes.forEach((cb) => cb('SIGNED_OUT', null)); },
