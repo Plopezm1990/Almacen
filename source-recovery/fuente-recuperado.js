@@ -28026,15 +28026,131 @@ var ErrorBoundaryGlobal = class extends import_react4.default.Component {
     return this.props.children;
   }
 };
+const MFA_REQUIRED_FOR_ALL_LA_SUITE = true;
+function evaluarMfaSesion(cliente) {
+  return (async () => {
+    if (!MFA_REQUIRED_FOR_ALL_LA_SUITE) return { modo: null };
+    const aal = await cliente.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal.error) throw aal.error;
+    if (aal.data?.nextLevel === "aal2" && aal.data?.currentLevel !== "aal2") return { modo: "challenge" };
+    const factores = await cliente.auth.mfa.listFactors();
+    if (factores.error) throw factores.error;
+    const verificados = [...(factores.data?.totp || []), ...(factores.data?.phone || [])].filter((factor) => factor.status === "verified");
+    return { modo: verificados.length > 0 ? null : "enroll" };
+  })();
+}
+function MfaGate({ cliente, modo, onComplete, onSignOut }) {
+  const [factorId, setFactorId] = (0, import_react4.useState)("");
+  const [factorType, setFactorType] = (0, import_react4.useState)("totp");
+  const [qr, setQr] = (0, import_react4.useState)("");
+  const [secret, setSecret] = (0, import_react4.useState)("");
+  const [codigo, setCodigo] = (0, import_react4.useState)("");
+  const [error, setError] = (0, import_react4.useState)("");
+  const [cargando, setCargando] = (0, import_react4.useState)(true);
+  const [verificando, setVerificando] = (0, import_react4.useState)(false);
+  (0, import_react4.useEffect)(() => {
+    let activo = true;
+    setCargando(true);
+    setError("");
+    setFactorId("");
+    setQr("");
+    setSecret("");
+    (async () => {
+      try {
+        if (modo === "enroll") {
+          const { data, error: error2 } = await cliente.auth.mfa.enroll({ factorType: "totp", friendlyName: "L&A Suite" });
+          if (error2) throw error2;
+          if (!activo) return;
+          setFactorId(data.id);
+          setQr(data.totp?.qr_code || "");
+          setSecret(data.totp?.secret || "");
+        } else {
+          const { data, error: error2 } = await cliente.auth.mfa.listFactors();
+          if (error2) throw error2;
+          const factor = [...(data?.totp || []), ...(data?.phone || [])].find((candidate) => candidate.status === "verified");
+          if (!factor) throw new Error("No hay ningún factor MFA verificado para esta cuenta.");
+          if (!activo) return;
+          setFactorId(factor.id);
+          setFactorType(factor.factor_type || "totp");
+        }
+      } catch (error2) {
+        if (activo) setError(error2?.message || "No se ha podido preparar el segundo factor.");
+      } finally {
+        if (activo) setCargando(false);
+      }
+    })();
+    return () => {
+      activo = false;
+    };
+  }, [cliente, modo]);
+  async function verificar() {
+    const codigoLimpio = codigo.trim();
+    if (!factorId || !/^\d{6,8}$/.test(codigoLimpio)) {
+      setError("Escribe el código de seis u ocho cifras de tu aplicación autenticadora.");
+      return;
+    }
+    setVerificando(true);
+    setError("");
+    try {
+      const challenge = await cliente.auth.mfa.challenge({ factorId });
+      if (challenge.error) throw challenge.error;
+      const verified = await cliente.auth.mfa.verify({ factorId, challengeId: challenge.data.id, code: codigoLimpio });
+      if (verified.error) throw verified.error;
+      await onComplete();
+    } catch (error2) {
+      setError(error2?.message || "El código no es válido. Inténtalo de nuevo.");
+    } finally {
+      setVerificando(false);
+    }
+  }
+  const estiloBase = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 50% 26%, #1C5C46 0%, #123B2D 44%, #081A14 100%)", fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui", padding: 20 };
+  const tarjeta = { background: "linear-gradient(180deg, rgba(22,71,54,.985), rgba(12,39,30,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 470, border: "1px solid rgba(198,154,82,.55)", boxShadow: "0 24px 70px rgba(0,0,0,.38)" };
+  const campo = { width: "100%", padding: "13px 14px", marginTop: 8, border: "1px solid rgba(198,154,82,.30)", borderRadius: 12, fontSize: 16, boxSizing: "border-box", fontFamily: "inherit", background: "rgba(2,18,11,.52)", color: "#F4EBDD", letterSpacing: ".18em" };
+  if (cargando) return /* @__PURE__ */ import_react4.default.createElement("div", { style: { ...estiloBase, color: "#D9C69A", fontSize: 13.5 } }, "Preparando el segundo factor\u2026");
+  return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("main", { style: tarjeta }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "58%", maxWidth: 190, height: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("h1", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 25, fontWeight: 600, textAlign: "center", margin: "0 0 10px", color: "#F7F0E3" } }, modo === "enroll" ? "Activa el segundo factor" : "Confirma tu segundo factor"), /* @__PURE__ */ import_react4.default.createElement("p", { style: { fontSize: 13, color: "#C9D4CC", lineHeight: 1.5, margin: "0 0 18px" } }, modo === "enroll" ? "Para proteger las cuentas con acceso a datos y operaciones sensibles, L&A Suite requiere una aplicación autenticadora. Escanea el código QR y confirma el código de seis cifras." : `Abre tu aplicación autenticadora e introduce el código${factorType === "phone" ? " recibido" : " mostrado"}.`), modo === "enroll" && qr ? /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", background: "#FFFFFF", padding: 12, borderRadius: 12, marginBottom: 14 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: qr, alt: "Código QR para activar el segundo factor", style: { width: 210, height: 210 } })) : null, modo === "enroll" && secret ? /* @__PURE__ */ import_react4.default.createElement("p", { style: { fontSize: 11.5, color: "#D9C69A", wordBreak: "break-all", lineHeight: 1.4 } }, "Si no puedes escanearlo, usa esta clave: ", secret) : null, /* @__PURE__ */ import_react4.default.createElement("label", { style: { display: "block", color: "#F7F0E3", fontSize: 12.5 } }, "Código de verificación", /* @__PURE__ */ import_react4.default.createElement("input", { type: "text", inputMode: "numeric", autoComplete: "one-time-code", pattern: "[0-9]{6,8}", maxLength: 8, value: codigo, onChange: (e2) => setCodigo(e2.target.value.replace(/\D/g, "").slice(0, 8)), style: campo, autoFocus: true })), error ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", style: { color: "#FFB9AE", fontSize: 12, marginTop: 12, lineHeight: 1.4 } }, error) : null, /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: verificar, disabled: verificando || !factorId, style: { width: "100%", padding: "13px", marginTop: 18, background: "linear-gradient(135deg, #8A6028 0%, #C69A52 52%, #9B7132 100%)", color: "#071D12", border: "1px solid rgba(232,199,130,.66)", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer" } }, verificando ? "Verificando\u2026" : modo === "enroll" ? "Activar y continuar" : "Continuar"), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: onSignOut, style: { display: "block", width: "100%", marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", cursor: "pointer", background: "transparent", border: "none", padding: 0, font: "inherit" } }, "Cerrar sesión")));
+}
 function AppConSesion() {
   const [fase, setFase] = (0, import_react4.useState)("comprobando");
   const [cliente, setCliente] = (0, import_react4.useState)(null);
+  const [mfaModo, setMfaModo] = (0, import_react4.useState)(null);
   const [email, setEmail] = (0, import_react4.useState)("");
   const [password, setPassword] = (0, import_react4.useState)("");
   const [error, setError] = (0, import_react4.useState)("");
   const [cargando, setCargando] = (0, import_react4.useState)(false);
+  async function abrirSesionConMfa(supabase, session, activo = true) {
+    if (!session) {
+      if (activo) {
+        setMfaModo(null);
+        setFase("login");
+      }
+      return;
+    }
+    if (activo) setFase("comprobando-mfa");
+    try {
+      const estadoMfa = await evaluarMfaSesion(supabase);
+      if (estadoMfa.modo) {
+        if (activo) {
+          setMfaModo(estadoMfa.modo);
+          setFase("mfa");
+        }
+        return;
+      }
+      await window.subirPendientes();
+      if (activo) {
+        setMfaModo(null);
+        setFase("dentro");
+      }
+    } catch (error2) {
+      if (activo) {
+        setMfaModo(null);
+        setError(error2?.message || "No se ha podido comprobar el segundo factor.");
+        setFase("mfa-error");
+      }
+    }
+  }
   (0, import_react4.useEffect)(() => {
     let activo = true;
+    let subscription = null;
     (async () => {
       const hayNube = await window.conectarNube();
       if (!activo) return;
@@ -28048,27 +28164,23 @@ function AppConSesion() {
       try {
         const { data } = await supabase.auth.getSession();
         if (!activo) return;
-        if (data.session) {
-          await window.subirPendientes();
-          setFase("dentro");
-        } else {
-          setFase("login");
-        }
-        supabase.auth.onAuthStateChange(async (_evento, s22) => {
+        await abrirSesionConMfa(supabase, data.session, activo);
+        subscription = supabase.auth.onAuthStateChange(async (_evento, session) => {
           if (!activo) return;
-          if (s22) {
-            await window.subirPendientes();
-            setFase("dentro");
-          } else setFase("login");
+          await abrirSesionConMfa(supabase, session, activo);
         });
-      } catch (e2) {
-        window.__nubeActiva = false;
-        window.actualizarIndicador();
-        setFase("dentro");
+      } catch (error2) {
+        if (activo) {
+          window.__nubeActiva = false;
+          window.actualizarIndicador();
+          setError(error2?.message || "No se ha podido comprobar el acceso seguro.");
+          setFase("mfa-error");
+        }
       }
     })();
     return () => {
       activo = false;
+      subscription?.data?.subscription?.unsubscribe?.();
     };
   }, []);
   async function entrar(e2) {
@@ -28080,15 +28192,33 @@ function AppConSesion() {
     setCargando(false);
     if (error2) setError("Correo o contrase\xF1a incorrectos.");
   }
+  async function terminarMfa() {
+    setError("");
+    setFase("comprobando-mfa");
+    try {
+      await window.subirPendientes();
+      setMfaModo(null);
+      setFase("dentro");
+    } catch (error2) {
+      setError(error2?.message || "No se ha podido cargar el panel.");
+      setFase("mfa-error");
+    }
+  }
+  async function cerrarSesionDesdeMfa() {
+    if (cliente) await cliente.auth.signOut();
+    setMfaModo(null);
+    setError("");
+    setFase("login");
+  }
   function entrarSinNube() {
     window.__nubeActiva = false;
     window.actualizarIndicador();
     setFase("dentro");
   }
   const estiloBase = { minHeight: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "radial-gradient(circle at 50% 26%, #1C5C46 0%, #123B2D 44%, #081A14 100%)", fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui", padding: 20 };
-  if (fase === "comprobando") {
-    return /* @__PURE__ */ import_react4.default.createElement("div", { style: { ...estiloBase, color: "#6B7A6E", fontSize: 13.5 } }, "Comprobando conexi\xF3n\u2026");
-  }
+  if (fase === "comprobando" || fase === "comprobando-mfa") return /* @__PURE__ */ import_react4.default.createElement("div", { style: { ...estiloBase, color: "#6B7A6E", fontSize: 13.5 } }, fase === "comprobando-mfa" ? "Comprobando el segundo factor\u2026" : "Comprobando conexi\xF3n\u2026");
+  if (fase === "mfa" && cliente && mfaModo) return /* @__PURE__ */ import_react4.default.createElement(MfaGate, { cliente, modo: mfaModo, onComplete: terminarMfa, onSignOut: cerrarSesionDesdeMfa });
+  if (fase === "mfa-error") return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("main", { style: { background: "linear-gradient(180deg, rgba(22,71,54,.985), rgba(12,39,30,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 430, border: "1px solid rgba(198,154,82,.55)" } }, /* @__PURE__ */ import_react4.default.createElement("h1", { style: { color: "#F7F0E3", fontSize: 22, marginTop: 0 } }, "No se puede abrir el acceso seguro"), /* @__PURE__ */ import_react4.default.createElement("p", { style: { color: "#C9D4CC", fontSize: 13, lineHeight: 1.5 } }, error || "Vuelve a iniciar sesión o inténtalo de nuevo."), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: cerrarSesionDesdeMfa, style: { width: "100%", padding: "13px", marginTop: 12, background: "#C69A52", color: "#071D12", border: 0, borderRadius: 12, fontSize: 15, fontWeight: 800 } }, "Volver al inicio")));
   if (fase === "login") {
     const campoAcceso = { width: "100%", padding: "13px 14px", marginBottom: 12, border: "1px solid rgba(198,154,82,.30)", borderRadius: 12, fontSize: 14, boxSizing: "border-box", fontFamily: "inherit", background: "rgba(2,18,11,.52)", color: "#F4EBDD" };
     return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("form", { onSubmit: entrar, className: "form-acceso", style: { background: "linear-gradient(180deg, rgba(22,71,54,.985), rgba(12,39,30,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 390, border: "1px solid rgba(198,154,82,.55)", boxShadow: "0 24px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.03)", backdropFilter: "blur(10px)" } }, /* @__PURE__ */ import_react4.default.createElement("style", null, ".form-acceso :focus-visible { outline: 3px solid #C69A52; outline-offset: 2px; }"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 4 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "72%", maxWidth: 225, height: "auto", display: "block", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.28))" } })), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 27, fontWeight: 600, textAlign: "center", marginBottom: 6, color: "#F7F0E3", letterSpacing: ".01em" } }, "L&A Suite"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 12.5, color: "#AEBBB2", textAlign: "center", marginBottom: 24, lineHeight: 1.45 } }, "Inicia sesi\xF3n para sincronizar entre dispositivos"), /* @__PURE__ */ import_react4.default.createElement(
