@@ -680,6 +680,19 @@ cuentas, no se cambiaron contraseñas, no se enviaron correos y M-04 permanece
 abierto por la verificación autenticada del proveedor, el rate-limit server-side
 y la promoción controlada a producción.
 
+## Observación funcional M-05 en preview QA — 2026-11-11
+
+Con la cuenta sintética de propietario autenticada mediante MFA se abrió la
+sección `Auditoría` del preview del PR 220. La vista indicó que el registro del
+servidor se carga por páginas; al activar `Cargar registro completo`, el control
+mostró `Cargando...` y después la pantalla pasó a `Mostrando una parte del
+registro; puedes cargar más`, con el botón `Cargar más registros` disponible.
+
+Esto es evidencia **reproducida y observada** de la paginación funcional en QA.
+No se escribieron filas ni se ejecutó ninguna operación de negocio. M-05 sigue
+abierto en alcance global por la promoción y verificación controladas en
+producción.
+
 ## Revalidación estructural N-02 — 2026-11-11
 
 La lectura nominal repetida sobre QA y producción devolvió el siguiente corte:

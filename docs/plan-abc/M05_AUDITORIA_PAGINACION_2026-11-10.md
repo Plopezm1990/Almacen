@@ -45,3 +45,18 @@ También pasaron `node --check` sobre los dos artefactos JavaScript.
 - La exportación completa no se implementa en este cambio; el criterio elegido es paginación.
 
 M-05 queda avanzado como corrección versionada, regresión reproducida y preview QA listo, pero continúa abierto para cierre completo hasta observar la paginación funcional con la sesión QA autorizada y resolver la integración de producción mediante una ventana autorizada.
+
+## Observación funcional en preview QA — 2026-11-11
+
+Con la cuenta sintética de propietario ya autenticada mediante MFA se abrió la
+sección `Auditoría` del preview del PR 220. La vista mostró el aviso de que el
+registro del servidor se carga por páginas y el control `Cargar registro
+completo`. Al activarlo, el control pasó a `Cargando...` y después la pantalla
+mostró `Mostrando una parte del registro; puedes cargar más` junto con el botón
+`Cargar más registros`.
+
+Esto es evidencia **reproducida y observada** del flujo paginado en QA. No se
+crearon filas, no se cambió ningún filtro con efecto de escritura y no se
+ejecutó ninguna operación de negocio. M-05 queda funcionalmente observado en
+QA, pero sigue abierto en alcance global hasta disponer de promoción controlada
+a producción y de la verificación equivalente allí.
