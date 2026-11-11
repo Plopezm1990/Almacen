@@ -629,3 +629,8 @@ No se abrió el enrolamiento, no se creó ningún factor y no se cambió Auth. L
 prueba no demuestra aún el ciclo completo enrolamiento/desafío/verificación ni
 la recuperación de un segundo factor perdido; M-03 permanece abierto junto con
 la ausencia de promoción de la guarda `aal2` a producción.
+
+La actualización anterior quedó integrada en `d469cf37`; sus `23/23` workflows
+de CI terminaron en `success` y el deploy preview quedó disponible. Es una
+validación **observada en CI**, no una promoción de la guarda a producción ni
+una demostración del enrolamiento TOTP.
