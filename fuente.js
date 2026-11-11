@@ -111329,18 +111329,17 @@ var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza
 // pantalla no vuelva a prometer ni a negar algo distinto de lo que hace el
 // servidor.
 var ESTADOS_PEDIDO_COBRABLE_F4 = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO", "CERRADO"];
-function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null, registrarAuditoria = null }) {
-  async function leerTodasLasFilasConPaginacionA09(construirConsulta, tamanoPagina = 200) {
-    const filas = [];
-    for (let desde = 0; ; desde += tamanoPagina) {
-      const respuesta = await construirConsulta().range(desde, desde + tamanoPagina - 1);
-      if (respuesta.error) return { data: null, error: respuesta.error };
-      const pagina = Array.isArray(respuesta.data) ? respuesta.data : [];
-      filas.push(...pagina);
-      if (pagina.length < tamanoPagina) return { data: filas, error: null };
-    }
+async function leerTodasLasFilasConPaginacionA09(construirConsulta, tamanoPagina = 200) {
+  const filas = [];
+  for (let desde = 0; ; desde += tamanoPagina) {
+    const respuesta = await construirConsulta().range(desde, desde + tamanoPagina - 1);
+    if (respuesta.error) return { data: null, error: respuesta.error };
+    const pagina = Array.isArray(respuesta.data) ? respuesta.data : [];
+    filas.push(...pagina);
+    if (pagina.length < tamanoPagina) return { data: filas, error: null };
   }
-
+}
+function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null, registrarAuditoria = null }) {
   function c07dActivoEnEntornoQa() {
     return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
   }

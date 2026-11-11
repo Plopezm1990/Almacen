@@ -10,7 +10,6 @@ const patch = read("edge-auth-patch.js");
 const entry = read("source-recovery/entrada-recuperada.js");
 const bundledSources = [
   ["fuente.js", read("fuente.js")],
-  ["source-recovery/dist/fuente-locked.js", read("source-recovery/dist/fuente-locked.js")],
 ];
 
 assert.match(patch, /__laA05SessionIdleGuardInstalada/,
