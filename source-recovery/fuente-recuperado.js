@@ -28086,7 +28086,7 @@ function MfaGate({ cliente, modo, onComplete, onSignOut }) {
           // pueda terminar la verificación con el código que ya tiene.
           const factores = await cliente.auth.mfa.listFactors();
           if (factores.error) throw factores.error;
-          const factorPendiente = [...(factores.data?.totp || [])].find((factor) => factor.status === "unverified" && factor.friendly_name === "L&A Suite");
+          const factorPendiente = [...(factores.data?.all || [])].find((factor) => factor.factor_type === "totp" && factor.status === "unverified" && factor.friendly_name === "L&A Suite");
           if (factorPendiente) {
             if (!activo) return;
             setFactorId(factorPendiente.id);
