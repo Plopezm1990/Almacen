@@ -14,13 +14,13 @@ const seguridadFin = fuente.indexOf('\nfunction ', seguridadInicio + 1);
 assert.ok(seguridadInicio >= 0, 'falta crearLogicaSeguridad');
 const seguridad = fuente.slice(seguridadInicio, seguridadFin > seguridadInicio ? seguridadFin : undefined);
 
-assert.match(seguridad, /pm11_verificar_pin_empleado/);
+assert.match(seguridad, /pm11_iniciar_sesion_empleado/);
 assert.match(seguridad, /pinConfigurado\s*!==\s*true/);
 assert.doesNotMatch(seguridad, /hashPin\(/);
 assert.doesNotMatch(seguridad, /emp\.pin\b/);
-assert.match(fuente, /pm11_verificar_pin_empleado/);
+assert.match(fuente, /pm11_iniciar_sesion_empleado/);
 assert.match(fuente, /pinConfigurado\s*!==\s*true/);
-assert.match(bundle, /pm11_verificar_pin_empleado/);
+assert.match(bundle, /pm11_iniciar_sesion_empleado/);
 assert.doesNotMatch(bundle, /hashPin\(pinIntento\)/);
 
 assert.match(edge, /sanitizarEmpleadosLegacy/);
