@@ -3,6 +3,7 @@ import { readFileSync } from 'node:fs';
 
 const source = readFileSync('fuente.js', 'utf8');
 const bootstrap = readFileSync('owner-bootstrap-post-reset.js', 'utf8');
+const edgeAuth = readFileSync('edge-auth-patch.js', 'utf8');
 const appStart = source.indexOf('function AppConSesion()');
 const appEnd = source.indexOf('var rutaHash', appStart);
 assert.ok(appStart >= 0 && appEnd > appStart, 'M03_APP_SESSION_COMPONENT_NOT_FOUND');
@@ -37,5 +38,14 @@ const bootstrapMfaGate = bootstrap.indexOf('mfaAutorizadaParaAplicacion(supabase
 assert.ok(bootstrapValidationStart >= 0, 'M03_BOOTSTRAP_SESSION_VALIDATOR_NOT_FOUND');
 assert.ok(bootstrapMfaGate > bootstrapValidationStart && bootstrapMfaGate < bootstrapPreparation, 'M03_BOOTSTRAP_CALLS_CONTEXT_BEFORE_MFA');
 assert.match(bootstrap.slice(bootstrapMfaGate, bootstrapPreparation), /liberarVistaSinSesion\(\)/, 'M03_BOOTSTRAP_AAL1_MUST_LEAVE_MFA_VIEW_AVAILABLE');
+
+assert.match(edgeAuth, /function mfaAutorizadaParaAplicacion\(supabase\)/, 'M03_EDGE_AUTH_MFA_GATE_MISSING');
+assert.match(edgeAuth, /currentLevel === "aal2"/, 'M03_EDGE_AUTH_AAL2_CHECK_MISSING');
+const edgeValidationStart = edgeAuth.indexOf('async function validar(sesion)');
+const edgePreparation = edgeAuth.indexOf('prepararSesionPostReset(supabase, sesion)', edgeValidationStart);
+const edgeMfaGate = edgeAuth.indexOf('mfaAutorizadaParaAplicacion(supabase)', edgeValidationStart);
+assert.ok(edgeValidationStart >= 0, 'M03_EDGE_AUTH_VALIDATOR_NOT_FOUND');
+assert.ok(edgeMfaGate > edgeValidationStart && edgeMfaGate < edgePreparation, 'M03_EDGE_AUTH_CALLS_CONTEXT_BEFORE_MFA');
+assert.match(edgeAuth.slice(edgeMfaGate, edgePreparation), /__instalacionSyncPermitida = false/, 'M03_EDGE_AUTH_AAL1_MUST_KEEP_SYNC_CLOSED');
 
 console.log('M03_CONTRACT_PASS=1');

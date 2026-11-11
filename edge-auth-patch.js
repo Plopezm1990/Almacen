@@ -120,6 +120,24 @@
     }
   }
 
+  // M03: este guard se inicia de forma independiente del componente React de
+  // sesión. No puede validar la generación ni abrir la sincronización con una
+  // sesión AAL1, porque prepararSesionPostReset() puede habilitar la cola y
+  // subirPendientes() puede alcanzar RPC protegidas antes del desafío MFA.
+  async function mfaAutorizadaParaAplicacion(supabase) {
+    if (!supabase || !supabase.auth || !supabase.auth.mfa) return false;
+    var aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+    if (aal && aal.error) throw aal.error;
+    var factores = await supabase.auth.mfa.listFactors();
+    if (factores && factores.error) throw factores.error;
+    var totp = factores && factores.data && Array.isArray(factores.data.totp) ? factores.data.totp : [];
+    var phone = factores && factores.data && Array.isArray(factores.data.phone) ? factores.data.phone : [];
+    var hayFactorVerificado = totp.concat(phone).some(function (factor) {
+      return factor && factor.status === "verified";
+    });
+    return hayFactorVerificado && aal && aal.data && aal.data.currentLevel === "aal2";
+  }
+
   async function prepararSesionPostReset(supabase, sesion) {
     if (!supabase || !sesion || !sesion.user || !sesion.user.id) {
       throw new Error("Sesión no disponible para validar la instalación");
@@ -181,6 +199,10 @@
     async function validar(sesion) {
       if (!sesion || recargar) return;
       try {
+        if (!(await mfaAutorizadaParaAplicacion(supabase))) {
+          window.__instalacionSyncPermitida = false;
+          return;
+        }
         var resultado = await prepararSesionPostReset(supabase, sesion);
         if (resultado.generacionCambiada) {
           recargar = true;
