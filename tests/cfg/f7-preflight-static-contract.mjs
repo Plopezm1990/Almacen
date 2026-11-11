@@ -152,6 +152,9 @@ const EXCLUIDAS = new Set([
   // M-03: exige aal2 server-side para roles sensibles; posterior a la foto F7
   // histórica y se valida mediante el contrato MFA y una ventana QA propia.
   '20261110230000_m03_server_aal2_gate.sql',
+  // A-04: sesión de empleado server-side para atribución en terminal compartido;
+  // es posterior a la foto F7 histórica y se valida con contrato propio.
+  '20261111220000_a04_server_employee_session.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

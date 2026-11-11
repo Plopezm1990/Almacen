@@ -104429,6 +104429,7 @@ function GestionAlmacen() {
   const [auditoriaCargando, setAuditoriaCargando] = (0, import_react4.useState)(false);
   const [auditoriaError, setAuditoriaError] = (0, import_react4.useState)("");
   const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
+  const [empleadoSesionToken, setEmpleadoSesionToken] = (0, import_react4.useState)(null);
   const [ordenesProduccion, setOrdenesProduccion] = (0, import_react4.useState)([]);
   const [traspasos, setTraspasos] = (0, import_react4.useState)([]);
   const [facturasDirectas, setFacturasDirectas] = (0, import_react4.useState)([]);
@@ -105380,7 +105381,7 @@ function GestionAlmacen() {
     if (locales.some((l22) => l22.id === id && l22.activo !== false && !l22.fusionadoEn)) setLocalInformeId(id);
   }
   const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
-  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null });
+  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId, empleadoSesionToken, setEmpleadoSesionToken, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null });
   const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, cancelarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
   const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId, locales });
@@ -105479,8 +105480,7 @@ function GestionAlmacen() {
     (async () => {
       try {
         const supabase = await window.getSupabaseClient();
-        const r2 = await Promise.race([
-          supabase.rpc("registrar_auditoria", {
+        const argumentosAuditoria = {
             p_id: entrada.id,
             p_usuario: usuario,
             p_accion: accion,
@@ -105489,13 +105489,18 @@ function GestionAlmacen() {
             p_hora: entrada.hora,
             p_empresa_id: entrada.empresaId,
             p_local_id: entrada.localId
-          }),
+        };
+        if (empleadoSesionToken) argumentosAuditoria.p_empleado_sesion = empleadoSesionToken;
+        const r2 = await Promise.race([
+          supabase.rpc("registrar_auditoria", argumentosAuditoria),
           new Promise((_22, reject) => setTimeout(() => reject(new Error("La auditor\xEDa tard\xF3 demasiado en responder")), 6e3))
         ]);
         if (r2.error) throw r2.error;
         await cargarPaginaAuditoria(true);
       } catch (e2) {
-        setAuditoria((s22) => [entrada, ...s22]);
+        if (typeof window !== "undefined") {
+          window.dispatchEvent(new CustomEvent("auditoria-remota-fallida", { detail: { accion, error: e2?.message || "error remoto" } }));
+        }
       }
     })();
   }
@@ -114733,7 +114738,7 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
   }
   return { traspasarStock, traspasarEntreLocales };
 }
-function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId, empresaId = null, localId = null }) {
+function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId, empleadoSesionToken = null, setEmpleadoSesionToken, empresaId = null, localId = null }) {
   function activarModoEmpleado() {
     if (!pinPropietario) return false;
     setModoEmpleado(true);
@@ -114744,13 +114749,14 @@ function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, se
     if (!emp || emp.pinConfigurado !== true || !empresaId || !localId || typeof window === "undefined" || typeof window.getSupabaseClient !== "function") return false;
     try {
       const supabase = await window.getSupabaseClient();
-      const { data, error } = await supabase.rpc("pm11_verificar_pin_empleado", {
+      const { data, error } = await supabase.rpc("pm11_iniciar_sesion_empleado", {
         p_empresa_id: empresaId,
         p_local_id: localId,
         p_empleado_id: empleadoId,
         p_pin: pinIntento
       });
-      if (error || data?.ok !== true || data?.verificado !== true) return false;
+      if (error || data?.ok !== true || data?.verificado !== true || typeof data?.token !== "string" || data.token.length < 32) return false;
+      setEmpleadoSesionToken(data.token);
     } catch {
       return false;
     }
@@ -114759,15 +114765,27 @@ function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, se
     return true;
   }
   async function salirModoEmpleado(pinIntento) {
+    async function revocarSesionEmpleado() {
+      if (!empleadoSesionToken || typeof window === "undefined" || typeof window.getSupabaseClient !== "function") return;
+      try {
+        const supabase = await window.getSupabaseClient();
+        await supabase.rpc("pm11_cerrar_sesion_empleado", { p_token: empleadoSesionToken });
+      } catch {
+      }
+    }
     if (!pinPropietario) {
+      await revocarSesionEmpleado();
       setModoEmpleado(false);
       setUsuarioActivoId(null);
+      setEmpleadoSesionToken(null);
       return true;
     }
     const hashIntento = await hashPinPropietarioLocal(pinIntento);
     if (hashIntento === pinPropietario) {
+      await revocarSesionEmpleado();
       setModoEmpleado(false);
       setUsuarioActivoId(null);
+      setEmpleadoSesionToken(null);
       return true;
     }
     return false;
