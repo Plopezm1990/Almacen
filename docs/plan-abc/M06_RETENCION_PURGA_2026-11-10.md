@@ -67,3 +67,24 @@ La medición es **medida** sobre catálogos y filas reales. No convierte la edad
 de una fila en una infracción ni permite inferir un plazo legal. M-06 sigue
 abierto hasta que se aprueben los plazos y excepciones por finalidad, se elija
 anonimización o borrado y se versionen una tarea y sus contratos.
+
+## Revalidación de mecanismos y volumen — 2026-11-11
+
+La lectura de solo lectura se repitió en ambos proyectos. El resultado actual
+es:
+
+| Tabla / mecanismo | QA | Producción |
+|---|---:|---:|
+| `auditoria_registro` | 1.016 filas; 2026-09-04 a 2026-11-10 | 19; 2026-10-12 a 2026-11-07 |
+| `errores_sistema` | 830; 2026-10-01 a 2026-11-04 | 1; 2026-10-20 |
+| `fichajes_registro` | 10; 2026-09-06 a 2026-10-29 | 0 |
+| `movimientos_registro` | 904; 2026-09-04 a 2026-10-28 | 5; 2026-10-11 a 2026-10-21 |
+| `caja_operaciones` | 65; 2026-10-03 a 2026-11-10 | 9; 2026-10-29 a 2026-10-30 |
+| `pg_cron`, `pg_net`, `pgmq` | ausentes | ausentes |
+| `cron.job`, `cron.job_run_details` | ausentes | ausentes |
+
+La diferencia de una operación adicional de caja en QA frente al corte
+anterior se limita a una lectura de estado; no se generó desde esta auditoría.
+Este corte sigue siendo **medido** y no fija plazos legales ni autoriza purgas.
+M-06 continúa abierto a la espera de la decisión aprobada y del mecanismo de
+ejecución correspondiente.

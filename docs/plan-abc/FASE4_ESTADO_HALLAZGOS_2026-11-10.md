@@ -602,3 +602,16 @@ Después de subir esta actualización como `d522b55f`, los `23/23` workflows de
 GitHub Actions terminaron en `success`. Esta comprobación es **observada en CI**
 y confirma la puerta remota del repositorio; no transforma por sí sola la
 evidencia local en una promoción de QA o producción.
+
+## Revalidación M-06 — 2026-11-11
+
+La lectura actual confirma que no existe mecanismo programado en ninguno de los
+dos entornos: `pg_cron`, `pg_net`, `pgmq`, `cron.job` y
+`cron.job_run_details` siguen ausentes. QA contiene 1.016 registros de
+auditoría, 830 errores, 10 fichajes, 904 movimientos y 65 operaciones de caja;
+producción contiene 19, 1, 0, 5 y 9 respectivamente. Las fechas observadas se
+han documentado en el informe específico de M-06.
+
+Esto es **medido** y no se interpreta como plazo legal ni como autorización de
+borrado/anonimización. M-06 sigue abierto hasta que exista una política
+aprobada y un mecanismo versionado y verificable.
