@@ -32,3 +32,16 @@ anterior de RLS desactivado ha desaparecido. Producción no se modificó.
 Esto deja M-01 corregido y reproducido en QA, pero no certificado globalmente:
 la promoción de la migración y la eliminación del único PIN legacy de
 producción requieren una ventana autorizada y siguen fuera de esta auditoría.
+
+## Revalidación de estado — 2026-11-11
+
+La lectura actual confirma en QA la tabla `private.pm11_empleado_pin`, RLS
+activo y una fila privada sintética ya declarada. En producción,
+`to_regclass('private.pm11_empleado_pin')` sigue devolviendo `NULL`; no se
+intentó consultar ni crear filas de esa tabla allí. QA conserva además 165
+sesiones de Auth y producción 8; estas cifras se registran como contexto de la
+lectura, no como una operación sobre sesiones.
+
+La diferencia entre entornos permanece **medida** y M-01 sigue corregido y
+reproducido en QA, pero abierto en alcance global hasta que exista una ventana
+autorizada para promover la migración y revisar el PIN legacy de producción.

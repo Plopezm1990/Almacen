@@ -23,6 +23,15 @@ assert.match(fuente, /pinConfigurado\s*!==\s*true/);
 assert.match(bundle, /pm11_iniciar_sesion_empleado/);
 assert.doesNotMatch(bundle, /hashPin\(pinIntento\)/);
 
+// Regresión de integración: el merge de los parches de seguridad y APPCC no
+// puede declarar dos veces el mismo binding dentro del componente principal.
+// Si ocurre, el bundle aborta antes de mostrar el login/panel con un
+// SyntaxError y el preview queda inutilizable.
+for (const [nombre, source] of [['source-recovery', fuente], ['bundle', bundle]]) {
+  const activaciones = source.match(/const \{ activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin \} = crearLogicaSeguridad\(/g) || [];
+  assert.equal(activaciones.length, 1, `${nombre}: activarModoEmpleado debe declararse una sola vez`);
+}
+
 assert.match(edge, /sanitizarEmpleadosLegacy/);
 assert.match(edge, /empleadosPropietarioSinSecretos/);
 assert.match(edge, /pm11_listar_empleados_modo/);

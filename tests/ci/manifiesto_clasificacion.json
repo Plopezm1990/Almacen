@@ -1,29 +1,29 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 348,
+  "total_inventory": 357,
   "expected_counts": {
-    "active_contract": 331,
+    "active_contract": 340,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 296,
+      "active_contract": 304,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
-    },
-    "pglite": {
-      "active_contract": 1,
-      "historical_expected_fail": 0,
-      "utility": 1,
-      "diagnostic": 0
     },
     "postgres": {
       "active_contract": 31,
       "historical_expected_fail": 1,
       "utility": 0,
+      "diagnostic": 0
+    },
+    "pglite": {
+      "active_contract": 2,
+      "historical_expected_fail": 0,
+      "utility": 1,
       "diagnostic": 0
     },
     "supabase_full_stack": {
@@ -55,12 +55,22 @@
       "environment": "node"
     },
     {
+      "path": "tests/b01/b01-tolerance-server-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/b02/b02-errors-system-date-index-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
     {
       "path": "tests/c01/cobro-efectivo-redondeo-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/c07d/iva-ticket-desglose-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -235,17 +245,17 @@
       "environment": "node"
     },
     {
-      "path": "tests/f3/a03-a04/a03-a04-operacion-coverage-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
       "path": "tests/f3/a03-a04/a03-a04-appcc-puntos-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
     {
       "path": "tests/f3/a03-a04/a03-a04-appcc-ui-authority-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a03-a04/a03-a04-operacion-coverage-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -261,6 +271,11 @@
     },
     {
       "path": "tests/f3/a05/a05-3-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f3/a05/a05-ui-adapter-smoke.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -350,12 +365,7 @@
       "environment": "node"
     },
     {
-      "path": "tests/f3/a10/a10-route-recovery-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/f3/a05/a05-ui-adapter-smoke.mjs",
+      "path": "tests/f3/a10/a10-preparation-mode-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -365,17 +375,12 @@
       "environment": "node"
     },
     {
+      "path": "tests/f3/a10/a10-route-recovery-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/f3/a10/a10-route-recovery-regression.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/f4/b05/b05-phase1-regression.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/f3/a10/a10-preparation-mode-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -386,6 +391,11 @@
     },
     {
       "path": "tests/f4/b04/b04-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f4/b05/b05-phase1-regression.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -620,6 +630,16 @@
       "environment": "node"
     },
     {
+      "path": "tests/f5/c07/c07d-production-variant-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/f5/c07/db/a02-venta-fiscal-sellada-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
       "path": "tests/f5/c08/c08-postgres-contract.mjs",
       "classification": "active_contract",
       "environment": "postgres"
@@ -775,6 +795,21 @@
       "environment": "node"
     },
     {
+      "path": "tests/m01/db/m01-server-pin-postgres-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
+    },
+    {
+      "path": "tests/m01/m01-pin-rls-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/m01/m01-server-pin-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/m02/m02-csp-environment-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
@@ -785,7 +820,47 @@
       "environment": "node"
     },
     {
+      "path": "tests/m03/m03-mfa-role-gate-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/m04/m04-password-policy-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/m05/m05-audit-pagination-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/m07/m07-related-query-pagination-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/m08/m08-bootstrap-functional-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/n02-context-acl-parity-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/n02-legacy-infrastructure-parity-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/n02-reconcile-migration-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/n02-remaining-infrastructure-parity-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1079,6 +1154,11 @@
       "path": "tests/pm11-compra/p10-regresion-integral-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/pm11/db/a01-baja-revoca-acceso-contract.mjs",
+      "classification": "active_contract",
+      "environment": "postgres"
     },
     {
       "path": "tests/pm12/db/p08-postgres-contract.mjs",
@@ -1739,41 +1819,6 @@
       "path": "tests/ui-context-bridge.mjs",
       "classification": "active_contract",
       "environment": "node"
-    },
-    {
-      "path": "tests/c07d/iva-ticket-desglose-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/pm11/db/a01-baja-revoca-acceso-contract.mjs",
-      "classification": "active_contract",
-      "environment": "postgres"
-    },
-    {
-      "path": "tests/f5/c07/c07d-production-variant-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/f5/c07/db/a02-venta-fiscal-sellada-contract.mjs",
-      "classification": "active_contract",
-      "environment": "postgres"
-    },
-    {
-      "path": "tests/m01/m01-pin-rls-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/m01/m01-server-pin-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/m01/db/m01-server-pin-postgres-contract.mjs",
-      "classification": "active_contract",
-      "environment": "postgres"
     }
   ]
 }

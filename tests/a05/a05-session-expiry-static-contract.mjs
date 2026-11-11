@@ -8,6 +8,9 @@ import fs from "node:fs";
 const read = (path) => fs.readFileSync(path, "utf8").replace(/\r\n/g, "\n");
 const patch = read("edge-auth-patch.js");
 const entry = read("source-recovery/entrada-recuperada.js");
+const bundledSources = [
+  ["fuente.js", read("fuente.js")],
+];
 
 assert.match(patch, /__laA05SessionIdleGuardInstalada/,
   "A-05: falta la guarda de inactividad instalada una sola vez");
@@ -31,5 +34,14 @@ assert.match(patch, /if \(!sesion \|\| evento === "SIGNED_OUT"\)/,
   "A-05: SIGNED_OUT no detiene el reloj de inactividad");
 assert.match(entry, /import "\.\.\/edge-auth-patch\.js";/,
   "A-05: la guarda no forma parte de la entrada reproducible del bundle");
+
+for (const [name, source] of bundledSources) {
+  assert.match(source, /__laA05SessionIdleGuardInstalada/,
+    `A-05: el artefacto empaquetado ${name} no incluye la guarda`);
+  assert.match(source, /15\s*\*\s*60\s*\*\s*(?:1000|1e3)/,
+    `A-05: el artefacto empaquetado ${name} no conserva el límite de 15 minutos`);
+  assert.match(source, /auth\.signOut\(\{\s*scope:\s*["']local["']\s*\}\)/,
+    `A-05: el artefacto empaquetado ${name} no cierra la sesión local`);
+}
 
 console.log("a05-session-expiry-static-contract: OK");

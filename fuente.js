@@ -104424,6 +104424,10 @@ function GestionAlmacen() {
   }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
   const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
+  const [auditoriaDesdeServidor, setAuditoriaDesdeServidor] = (0, import_react4.useState)(false);
+  const [auditoriaHayMas, setAuditoriaHayMas] = (0, import_react4.useState)(false);
+  const [auditoriaCargando, setAuditoriaCargando] = (0, import_react4.useState)(false);
+  const [auditoriaError, setAuditoriaError] = (0, import_react4.useState)("");
   const [usuarioActivoId, setUsuarioActivoId] = (0, import_react4.useState)(null);
   const [empleadoSesionToken, setEmpleadoSesionToken] = (0, import_react4.useState)(null);
   const [ordenesProduccion, setOrdenesProduccion] = (0, import_react4.useState)([]);
@@ -104886,6 +104890,8 @@ function GestionAlmacen() {
       setModoEmpleado(!!me2);
       setPinPropietario(pin || "");
       setAuditoria(au);
+      setAuditoriaDesdeServidor(false);
+      setAuditoriaHayMas(false);
       setOrdenesProduccion(op);
       setTraspasos(tr);
       setUsuarioActivoId(ua || null);
@@ -105443,13 +105449,32 @@ function GestionAlmacen() {
     empresaId: empresaDelLocalActivo?.id || null,
     localId: localActivoId || null
   });
+  async function cargarPaginaAuditoria(reiniciar = false) {
+    if (auditoriaCargando || typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return;
+    setAuditoriaCargando(true);
+    setAuditoriaError("");
+    try {
+      const supabase = await window.getSupabaseClient();
+      const desde = reiniciar || !auditoriaDesdeServidor ? 0 : auditoria.length;
+      const rAud = await supabase.from("auditoria_registro").select("datos").order("creado_en", { ascending: false }).range(desde, desde + 499);
+      if (rAud.error) throw rAud.error;
+      const datos = (rAud.data || []).map((fila) => fila.datos).filter(Boolean);
+      setAuditoria((actual) => reiniciar || !auditoriaDesdeServidor ? datos : [...actual, ...datos]);
+      setAuditoriaDesdeServidor(true);
+      setAuditoriaHayMas(datos.length === 500);
+    } catch (e2) {
+      setAuditoriaError(e2?.message || "No se pudo cargar la auditoria.");
+    } finally {
+      setAuditoriaCargando(false);
+    }
+  }
   function registrarAuditoria(accion, detalle) {
     const empleadoActivo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
     const usuario = modoEmpleado ? empleadoActivo ? empleadoActivo.nombre : "Empleado sin identificar" : "Propietario/a";
     const entrada = { id: uid(), fecha: todayISO(), hora: (/* @__PURE__ */ new Date()).toTimeString().slice(0, 5), usuario, accion, detalle, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null };
     const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
     if (!hayConexion) {
-      setAuditoria((s22) => [entrada, ...s22].slice(0, 500));
+      setAuditoria((s22) => [entrada, ...s22]);
       return;
     }
     (async () => {
@@ -105471,8 +105496,7 @@ function GestionAlmacen() {
           new Promise((_22, reject) => setTimeout(() => reject(new Error("La auditor\xEDa tard\xF3 demasiado en responder")), 6e3))
         ]);
         if (r2.error) throw r2.error;
-        const rAud = await supabase.from("auditoria_registro").select("datos").order("creado_en", { ascending: false }).limit(500);
-        if (!rAud.error && rAud.data) setAuditoria(rAud.data.map((fila) => fila.datos));
+        await cargarPaginaAuditoria(true);
       } catch (e2) {
         if (typeof window !== "undefined") {
           window.dispatchEvent(new CustomEvent("auditoria-remota-fallida", { detail: { accion, error: e2?.message || "error remoto" } }));
@@ -106497,7 +106521,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria, cargarPaginaAuditoria, auditoriaDesdeServidor, auditoriaHayMas, auditoriaCargando, auditoriaError }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D }));
   // PM13-P04.2: claves estables de capacidad de consulta, separadas del texto visible y de la navegacion.
   const CAPACIDADES_CONSULTA_PANTALLA = Object.freeze({
     dashboard: "ABC_PANTALLA_DASHBOARD_CONSULTAR",
@@ -111310,6 +111334,16 @@ var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza
 // pantalla no vuelva a prometer ni a negar algo distinto de lo que hace el
 // servidor.
 var ESTADOS_PEDIDO_COBRABLE_F4 = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO", "CERRADO"];
+async function leerTodasLasFilasConPaginacionA09(construirConsulta, tamanoPagina = 200) {
+  const filas = [];
+  for (let desde = 0; ; desde += tamanoPagina) {
+    const respuesta = await construirConsulta().range(desde, desde + tamanoPagina - 1);
+    if (respuesta.error) return { data: null, error: respuesta.error };
+    const pagina = Array.isArray(respuesta.data) ? respuesta.data : [];
+    filas.push(...pagina);
+    if (pagina.length < tamanoPagina) return { data: filas, error: null };
+  }
+}
 function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo = null, registrarAuditoria = null }) {
   function c07dActivoEnEntornoQa() {
     return typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
@@ -120975,7 +121009,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
   } }, "Eliminar"))), verResumenPrefiltro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setVerResumenPrefiltro(null), title: `Prefiltro \xB7 ${verResumenPrefiltro.candidato_nombre}` }, import_react4.default.createElement(ResumenPrefiltroNeutralPM17, { resumen: verResumenPrefiltro.resumen }), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-semibold mb-2" }, "Respuestas completas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Nombre completo:"), " ", verResumenPrefiltro.respuestas?.nombreCompleto), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Experiencia laboral:"), " ", verResumenPrefiltro.respuestas?.experienciaLaboral), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Por qu\xE9 busca trabajo:"), " ", verResumenPrefiltro.respuestas?.motivoBusqueda), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Experiencia en hosteler\xEDa/cara al p\xFAblico:"), " ", verResumenPrefiltro.respuestas?.experienciaHosteleria), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Funciones en el \xFAltimo trabajo:"), " ", verResumenPrefiltro.respuestas?.funcionesUltimoTrabajo), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Horarios rotativos y partidos:"), " ", verResumenPrefiltro.respuestas?.horariosRotativos), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Disponibilidad inmediata:"), " ", verResumenPrefiltro.respuestas?.disponibilidadInmediata), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Zona / barrio / c\xF3digo postal:"), " ", verResumenPrefiltro.respuestas?.zona), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Motivo del inter\xE9s:"), " ", verResumenPrefiltro.respuestas?.motivoSanGines), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "DNI/NIE en regla:"), " ", verResumenPrefiltro.respuestas?.papeles), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Tel\xE9fono:"), " ", verResumenPrefiltro.respuestas?.telefono), verResumenPrefiltro.respuestas?.preguntas && /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Preguntas del candidato:"), " ", verResumenPrefiltro.respuestas.preguntas)))), confirmarEliminarPrefiltro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarEliminarPrefiltro(null), title: "Eliminar prefiltro" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-4" }, "\xBFEliminar el prefiltro de ", /* @__PURE__ */ import_react4.default.createElement("b", null, confirmarEliminarPrefiltro.candidato_nombre), "?"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarEliminarPrefiltro(null) }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: borrarPrefiltro }, "Eliminar"))));
 }
 function ModalCrearCuenta({ empleado, cuentaForm, setCuentaForm, onCancelar, onCrear, error, creando, creadaOk }) {
-  return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: onCancelar, title: "Crear cuenta de acceso" }, creadaOk ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Cuenta creada para ", /* @__PURE__ */ import_react4.default.createElement("b", null, cuentaForm.nombre), ". Comun\xEDcale el correo y la contrase\xF1a en persona o por WhatsApp \u2014 puede cambiarla luego."), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: onCancelar }, "Entendido")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Esto crea una cuenta de acceso real para ", empleado?.nombre, " \u2014 con correo y contrase\xF1a propios, no solo el PIN. T\xFA decides la contrase\xF1a inicial; el empleado podr\xE1 cambiarla despu\xE9s."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo del empleado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: cuentaForm.email, onChange: (e2) => setCuentaForm({ ...cuentaForm, email: e2.target.value }), placeholder: "nombre@ejemplo.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contrase\xF1a inicial (m\xEDnimo 6 caracteres)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "text", value: cuentaForm.password, onChange: (e2) => setCuentaForm({ ...cuentaForm, password: e2.target.value }), placeholder: "Se la comunicas t\xFA en persona" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Rol" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: cuentaForm.rol, onChange: (e2) => setCuentaForm({ ...cuentaForm, rol: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "Encargado" }, "Encargado"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Camarero/a" }, "Camarero/a"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Cajero/a" }, "Cajero/a"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Churrero/a" }, "Churrero/a"))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: onCrear, disabled: creando }, creando ? "Creando\u2026" : "Crear cuenta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCancelar, disabled: creando }, "Cancelar"))));
+  return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: onCancelar, title: "Crear cuenta de acceso" }, creadaOk ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Cuenta creada para ", /* @__PURE__ */ import_react4.default.createElement("b", null, cuentaForm.nombre), ". Comun\xEDcale el correo y la contrase\xF1a en persona o por WhatsApp \u2014 puede cambiarla luego."), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: onCancelar }, "Entendido")) : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Esto crea una cuenta de acceso real para ", empleado?.nombre, " \u2014 con correo y contrase\xF1a propios, no solo el PIN. T\xFA decides la contrase\xF1a inicial; el empleado podr\xE1 cambiarla despu\xE9s."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Correo del empleado" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "email", value: cuentaForm.email, onChange: (e2) => setCuentaForm({ ...cuentaForm, email: e2.target.value }), placeholder: "nombre@ejemplo.com" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Contrase\xF1a inicial (m\xEDnimo 8 caracteres)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "text", value: cuentaForm.password, onChange: (e2) => setCuentaForm({ ...cuentaForm, password: e2.target.value }), placeholder: "Se la comunicas t\xFA en persona" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Rol" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: cuentaForm.rol, onChange: (e2) => setCuentaForm({ ...cuentaForm, rol: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "Encargado" }, "Encargado"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Camarero/a" }, "Camarero/a"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Cajero/a" }, "Cajero/a"), /* @__PURE__ */ import_react4.default.createElement("option", { value: "Churrero/a" }, "Churrero/a"))), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: onCrear, disabled: creando }, creando ? "Creando\u2026" : "Crear cuenta"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onCancelar, disabled: creando }, "Cancelar"))));
 }
 function etiquetaContextoPM15(local, empresa) {
   const nombreLocal = local && local.nombre ? local.nombre : "";
@@ -121345,6 +121379,10 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
     onCrear: async () => {
       if (!cuentaForm.email || !cuentaForm.password) {
         setErrorCuenta("Rellena correo y contrase\xF1a.");
+        return;
+      }
+      if (cuentaForm.password.length < 8) {
+        setErrorCuenta("La contrase\xF1a inicial debe tener al menos 8 caracteres.");
         return;
       }
       setCreandoCuenta(true);
@@ -123853,7 +123891,15 @@ function EscanerCodigoBarras({ onDetectado, onClose }) {
     setIntento((i33) => i33 + 1);
   }, className: "ml-1 font-medium", style: { color: C2.accent } }, "Reintentar")), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "O escribe el c\xF3digo a mano" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: manual, onChange: (e2) => setManual(e2.target.value), placeholder: "EAN o c\xF3digo", autoFocus: estado !== "activo" })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => manual.trim() && onDetectado(manual.trim()) }, "Usar este c\xF3digo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: onClose }, "Cancelar")));
 }
-function Auditoria({ auditoria }) {
+function AuditoriaPaginacion({ cargarPaginaAuditoria, auditoriaDesdeServidor, auditoriaHayMas, auditoriaCargando, auditoriaError }) {
+  const sinConexion = typeof window === "undefined" || !window.__nubeActiva;
+  const deshabilitado = sinConexion || auditoriaCargando || auditoriaDesdeServidor && !auditoriaHayMas;
+  return /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, auditoriaDesdeServidor ? auditoriaHayMas ? "Mostrando una parte del registro; puedes cargar mas." : "Registro completo cargado." : "La vista local es limitada; carga el registro del servidor por paginas."), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", disabled: deshabilitado, onClick: () => cargarPaginaAuditoria(!auditoriaDesdeServidor) }, auditoriaCargando ? "Cargando..." : auditoriaDesdeServidor ? "Cargar mas registros" : "Cargar registro completo")), auditoriaError && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] mt-2", style: { color: C2.red } }, auditoriaError));
+}
+function Auditoria(props) {
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(AuditoriaPaginacion, props), /* @__PURE__ */ import_react4.default.createElement(AuditoriaContenido, props));
+}
+function AuditoriaContenido({ auditoria }) {
   const [desde, setDesde] = (0, import_react4.useState)(primerDiaMes(/* @__PURE__ */ new Date()));
   const [hasta, setHasta] = (0, import_react4.useState)(todayISO());
   const [copiado, setCopiado] = (0, import_react4.useState)(false);
@@ -125481,27 +125527,25 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const checkouts = Array.isArray(checkoutsResponse.data) ? checkoutsResponse.data : [];
       const checkoutIds = checkouts.map((row) => row?.id).filter(Boolean);
       if (checkoutIds.length === 0) return { ok: true, efectos: [] };
-      const pagosResponse = await supabase
+      const pagosResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("pagos")
         .select("id,checkout_id,medio,estado,importe_objetivo,importe_recibido,cambio_entregado,payment_currency_code,created_at,resolved_at")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .in("checkout_id", checkoutIds)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .order("created_at", { ascending: false }));
       if (pagosResponse.error) throw pagosResponse.error;
       const pagos = Array.isArray(pagosResponse.data) ? pagosResponse.data : [];
       const pagoIds = pagos.map((row) => row?.id).filter(Boolean);
       if (pagoIds.length === 0) return { ok: true, efectos: [] };
-      const cajaResponse = await supabase
+      const cajaResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("caja_operaciones")
         .select("operation_id,origen_id,tipo,importe,efecto_efectivo,medio_pago,concepto,fecha,currency_code,operating_day,abc_command_id,created_at")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .eq("origen_tipo", "ABC_PAGO")
         .in("origen_id", pagoIds)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .order("created_at", { ascending: false }));
       if (cajaResponse.error) throw cajaResponse.error;
       const checkoutById = new Map(checkouts.map((row) => [String(row?.id || ""), row]));
       const pagoById = new Map(pagos.map((row) => [String(row?.id || ""), row]));
@@ -125540,27 +125584,25 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (pedidosResponse.error) throw pedidosResponse.error;
       const pedidoIds = (Array.isArray(pedidosResponse.data) ? pedidosResponse.data : []).map((row) => row?.id).filter(Boolean);
       if (pedidoIds.length === 0) return { ok: true, lineas: [] };
-      const lineasResponse = await supabase
+      const lineasResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("pedido_lineas")
         .select("id,pedido_id,producto_id,cantidad,unidad,estado,version,descuento_total,base,impuestos,total")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .in("pedido_id", pedidoIds)
-        .order("id", { ascending: true })
-        .limit(200);
+        .order("id", { ascending: true }));
       if (lineasResponse.error) throw lineasResponse.error;
       const lineas = Array.isArray(lineasResponse.data) ? lineasResponse.data : [];
       const lineaIds = lineas.map((row) => row?.id).filter(Boolean);
       if (lineaIds.length === 0) return { ok: true, lineas: [] };
-      const descuentosResponse = await supabase
+      const descuentosResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("abc_descuentos_aplicados")
         .select("operation_id,source_line_id,tipo,importe,created_at")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .eq("cuenta_id", contexto.cuentaId)
         .in("source_line_id", lineaIds)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .order("created_at", { ascending: false }));
       if (descuentosResponse.error) throw descuentosResponse.error;
       const descuentosPorLinea = new Map();
       for (const descuento of Array.isArray(descuentosResponse.data) ? descuentosResponse.data : []) {
@@ -125605,14 +125647,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const ventas = Array.isArray(ventasResponse.data) ? ventasResponse.data : [];
       const ventaIds = ventas.map((row) => row?.id).filter(Boolean);
       if (ventaIds.length === 0) return { ok: true, fiscalizaciones: [] };
-      const lineasResponse = await supabase
+      const lineasResponse = await leerTodasLasFilasConPaginacionA09(() => supabase
         .from("venta_fiscal_lineas")
         .select("id,venta_fiscal_id,source_line_id,cantidad,descuento,base,impuesto,total,currency_code,created_at")
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .in("venta_fiscal_id", ventaIds)
-        .order("created_at", { ascending: false })
-        .limit(200);
+        .order("created_at", { ascending: false }));
       if (lineasResponse.error) throw lineasResponse.error;
       const ventaById = new Map(ventas.map((row) => [String(row?.id || ""), row]));
       return {
@@ -129273,6 +129314,8 @@ function MfaGate({ cliente, modo, onComplete, onSignOut }) {
   return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("main", { style: tarjeta }, /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 12 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "58%", maxWidth: 190, height: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("h1", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 25, fontWeight: 600, textAlign: "center", margin: "0 0 10px", color: "#F7F0E3" } }, modo === "enroll" ? "Activa el segundo factor" : "Confirma tu segundo factor"), /* @__PURE__ */ import_react4.default.createElement("p", { style: { fontSize: 13, color: "#C9D4CC", lineHeight: 1.5, margin: "0 0 18px" } }, modo === "enroll" ? "Para proteger las cuentas con acceso a datos y operaciones sensibles, L&A Suite requiere una aplicación autenticadora. Escanea el código QR y confirma el código de seis cifras." : `Abre tu aplicación autenticadora e introduce el código${factorType === "phone" ? " recibido" : " mostrado"}.`), modo === "enroll" && qr ? /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", background: "#FFFFFF", padding: 12, borderRadius: 12, marginBottom: 14 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: qr, alt: "Código QR para activar el segundo factor", style: { width: 210, height: 210 } })) : null, modo === "enroll" && secret ? /* @__PURE__ */ import_react4.default.createElement("p", { style: { fontSize: 11.5, color: "#D9C69A", wordBreak: "break-all", lineHeight: 1.4 } }, "Si no puedes escanearlo, usa esta clave: ", secret) : null, /* @__PURE__ */ import_react4.default.createElement("label", { style: { display: "block", color: "#F7F0E3", fontSize: 12.5 } }, "Código de verificación", /* @__PURE__ */ import_react4.default.createElement("input", { type: "text", inputMode: "numeric", autoComplete: "one-time-code", pattern: "[0-9]{6,8}", maxLength: 8, value: codigo, onChange: (e2) => setCodigo(e2.target.value.replace(/\D/g, "").slice(0, 8)), style: campo, autoFocus: true })), error ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", style: { color: "#FFB9AE", fontSize: 12, marginTop: 12, lineHeight: 1.4 } }, error) : null, /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: verificar, disabled: verificando || !factorId, style: { width: "100%", padding: "13px", marginTop: 18, background: "linear-gradient(135deg, #8A6028 0%, #C69A52 52%, #9B7132 100%)", color: "#071D12", border: "1px solid rgba(232,199,130,.66)", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer" } }, verificando ? "Verificando\u2026" : modo === "enroll" ? "Activar y continuar" : "Continuar"), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: onSignOut, style: { display: "block", width: "100%", marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", cursor: "pointer", background: "transparent", border: "none", padding: 0, font: "inherit" } }, "Cerrar sesión")));
 }
 function AppConSesion() {
+  const MAX_INTENTOS_LOGIN_M04 = 5;
+  const BLOQUEO_LOGIN_MS_M04 = 60 * 1000;
   const [fase, setFase] = (0, import_react4.useState)("comprobando");
   const [cliente, setCliente] = (0, import_react4.useState)(null);
   const [mfaModo, setMfaModo] = (0, import_react4.useState)(null);
@@ -129280,6 +129323,18 @@ function AppConSesion() {
   const [password, setPassword] = (0, import_react4.useState)("");
   const [error, setError] = (0, import_react4.useState)("");
   const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [intentosFallidos, setIntentosFallidos] = (0, import_react4.useState)(0);
+  const [bloqueoHasta, setBloqueoHasta] = (0, import_react4.useState)(0);
+  (0, import_react4.useEffect)(() => {
+    if (!bloqueoHasta) return;
+    const temporizador = setInterval(() => {
+      if (Date.now() >= bloqueoHasta) {
+        setBloqueoHasta(0);
+        setError("");
+      }
+    }, 1000);
+    return () => clearInterval(temporizador);
+  }, [bloqueoHasta]);
   async function abrirSesionConMfa(supabase, session, activo = true) {
     if (!session) {
       if (activo) {
@@ -129348,12 +129403,29 @@ function AppConSesion() {
   }, []);
   async function entrar(e2) {
     e2.preventDefault();
-    if (!cliente) return;
+    if (!cliente || cargando) return;
+    if (bloqueoHasta > Date.now()) {
+      setError("Demasiados intentos fallidos. Espera un minuto antes de volver a intentarlo.");
+      return;
+    }
     setError("");
     setCargando(true);
     const { error: error2 } = await cliente.auth.signInWithPassword({ email, password });
     setCargando(false);
-    if (error2) setError("Correo o contrase\xF1a incorrectos.");
+    if (error2) {
+      const nuevosIntentos = intentosFallidos + 1;
+      if (nuevosIntentos >= MAX_INTENTOS_LOGIN_M04) {
+        setIntentosFallidos(0);
+        setBloqueoHasta(Date.now() + BLOQUEO_LOGIN_MS_M04);
+        setError("Demasiados intentos fallidos. Espera un minuto antes de volver a intentarlo.");
+      } else {
+        setIntentosFallidos(nuevosIntentos);
+        setError("Correo o contrase\xF1a incorrectos.");
+      }
+      return;
+    }
+    setIntentosFallidos(0);
+    setBloqueoHasta(0);
   }
   async function terminarMfa() {
     setError("");

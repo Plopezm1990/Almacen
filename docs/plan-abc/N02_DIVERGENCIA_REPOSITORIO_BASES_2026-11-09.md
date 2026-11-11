@@ -123,3 +123,424 @@ No se ha comprobado todavía:
 4. La ejecución de la migración N-02 en producción, que queda fuera de esta fase por la regla de solo lectura y requeriría autorización específica.
 
 No se creó ningún dato sintético nuevo en QA para N-02. No se ejecutó ninguna sentencia de escritura remota.
+
+## Revalidación de seguimiento — 2026-11-10
+
+Se repitió la medición en solo lectura sobre QA (`qjqorixtkilwsndqayyx`) y producción (`flqercbgpgmmfaakrwkc`). Esta sección prevalece sobre las cifras de corte del 2026-11-09 cuando difieren; no se reescribe la medición histórica porque forma parte de la trazabilidad.
+
+### Inventario actual acotado
+
+| Objeto contado | QA | Producción | Clasificación |
+|---|---:|---:|---|
+| Relaciones públicas/privadas (tablas, particiones, vistas, matviews y foreign tables) | 150 | 131 | Medido 2026-11-10 |
+| Funciones públicas/privadas | 487 | 431 | Medido 2026-11-10 |
+| Políticas RLS | 110 | 103 | Medido 2026-11-10 |
+| Triggers no internos | 60 | 57 | Medido 2026-11-10 |
+| Migraciones registradas | 267 | 175 | Medido 2026-11-10 |
+| Última migración registrada | `20261109201233` | `20261109201101` | Medido 2026-11-10 |
+
+Estos conteos no son una comparación exhaustiva de nombres, columnas, índices o definiciones. Sí demuestran que la divergencia de inventario sigue abierta y que no sería correcto certificar N-02 como paridad completa.
+
+### Comparación actual de las tres funciones de la remediación
+
+| Función | QA | Producción | Resultado |
+|---|---|---|---|
+| `private.la_usuario_activo()` | `prosrc` MD5 `61c859ebfaeac333e757d03ea8ce4fbd`; normalizada `37722785f21b401a62466ec37de45f93`; longitud 540 | Mismos MD5 y longitud | Medido: identidad textual y normalizada en esta función |
+| `public.bootstrap_owner_instalacion(text,text)` | `prosrc` MD5 `77104240e60fa4f5b38a2583e58808d6`; normalizada `bc6019e27e50cf1597d8e8e75deb804e`; longitud 3997; `authenticated` puede ejecutar | `prosrc` MD5 `2ac268ea336339890f9541df88aa2325`; normalizada `bc6019e27e50cf1597d8e8e75deb804e`; longitud 3356; `authenticated` puede ejecutar | Medido: misma función tras normalización, pero distinta representación/procedencia textual |
+| `public.obtener_contexto_operativo(text)` | `prosrc` MD5 `05661e8c3cec97e4d7245e45cd826471`; normalizada `5075a335aacb1cbf3f8cb44746a23a36`; longitud 14394; `authenticated` y `service_role` pueden ejecutar | `prosrc` MD5 `c0a59e17b2a8486eb35467e70ecc24ab`; normalizada `5075a335aacb1cbf3f8cb44746a23a36`; longitud 14002; solo `authenticated` puede ejecutar | Medido: misma lógica tras normalización, con divergencia textual y de ACL |
+
+La conclusión de esta revalidación es más precisa que una afirmación genérica de “paridad”: las tres funciones seleccionadas mantienen equivalencia funcional bajo la comparación normalizada usada, pero el inventario global y al menos una ACL no coinciden. La huella `prosrc` idéntica solo se ha demostrado para `private.la_usuario_activo()`.
+
+### Historial reciente actual
+
+Versiones registradas desde `20261101000000`:
+
+- QA: `20261101022150`, `20261101194745`, `20261101194906`, `20261102063724`, `20261102204642`, `20261107222112`, `20261108112949`, `20261109144148`, `20261109163045`, `20261109163053`, `20261109183228`, `20261109191804`, `20261109191912`, `20261109191913`, `20261109201233`.
+- Producción: `20261101150825`, `20261101152053`, `20261101152102`, `20261108114221`, `20261108120610`, `20261109150000`, `20261109170000`, `20261109180000`, `20261109201101`.
+
+La presencia de las cuatro versiones A-03/A-04 en producción refleja la reparación autorizada de historial realizada el 2026-11-10; esa operación solo reparó el registro de migraciones y no demuestra por sí misma que el SQL de esas migraciones se haya ejecutado en producción. Esta distinción queda mantenida deliberadamente.
+
+### Revisión de la rama de auditoría
+
+En la rama `codex/fase3-a03-a04` se midieron 201 ficheros de migración locales. La migración candidata N-02 `20261108193000_n02_reconcile_deployed_db_functions.sql` y el contrato `tests/n02-reconcile-migration-contract.mjs` están presentes, y el contrato volvió a pasar con `N02_CONTRACT_PASS=4 N02_CONTRACT_FAIL=0`.
+
+Esto es evidencia **probada por código** de que la remediación candidata conserva los bloques canónicos, el preflight y las ACL declaradas. No es evidencia de que la migración esté aplicada en producción: producción sigue sin registrar esa migración y no se ha escrito en ella.
+
+### Estado actualizado de N-02
+
+N-02 queda **investigado y revalidado**, con remediación versionada preparada y aplicación confirmada en QA. No queda **cerrado completamente** como paridad de repositorio contra bases desplegadas: permanecen diferencias globales de inventario, una divergencia de ACL en `obtener_contexto_operativo` y una divergencia de procedencia textual en `bootstrap_owner_instalacion`. Cerrar esas diferencias en producción exigiría una autorización separada para escribir en producción y una comparación exhaustiva previa de los objetos afectados.
+
+No se creó ningún dato sintético nuevo en QA durante esta revalidación. No se ejecutó ninguna sentencia de escritura remota en producción.
+
+## Reconciliación ACL acotada — 2026-11-10
+
+Se añadió y aplicó **solo en QA** la migración versionada
+`20261110200000_n02_context_acl_parity.sql`. La migración revoca el `EXECUTE`
+histórico de `service_role` sobre `public.obtener_contexto_operativo(text)` y
+conserva el permiso para `authenticated`.
+
+La consulta posterior de solo lectura devolvió:
+
+| Permiso | QA | Producción |
+|---|---:|---:|
+| `service_role` | `false` | `false` |
+| `authenticated` | `true` | `true` |
+| `anon` | `false` | `false` |
+| versión de la migración ACL | `20261110201305` | no registrada |
+
+Esto elimina una divergencia de ACL concreta entre los entornos y queda
+**reproducido/medido** en QA y producción. La ausencia de la versión en
+producción se mantiene como dato: no se reparó el historial ni se escribió en
+producción. N-02 continúa abierto por la divergencia global de inventario,
+historial y objetos no comparados exhaustivamente.
+
+## Corrección explícita de la comparación de `bootstrap_owner_instalacion` — 2026-11-10
+
+Una consulta posterior, separando el cuerpo `pg_proc.prosrc` de la representación completa de `pg_get_functiondef`, devuelve una divergencia que debe prevalecer sobre la tabla anterior: el cuerpo de QA mide `MD5=77104240e60fa4f5b38a2583e58808d6`, cuerpo normalizado `977eb2748752ba4d101bfa278ee509db` y longitud 3.997; producción mide `MD5=2ac268ea336339890f9541df88aa2325`, cuerpo normalizado `bc6019e27e50cf1597d8e8e75deb804e` y longitud 3.356. La afirmación previa de igualdad normalizada queda corregida como no reproducible con la medición actual.
+
+La divergencia refuerza, en lugar de cerrar, N-02: la migración canónica está versionada y el contrato local pasa, pero el cuerpo desplegado no es idéntico entre QA y producción. La función sigue concedida a `authenticated` en ambos entornos; la ACL no elimina la diferencia de definición. No se ejecutó la función ni se escribió en producción.
+
+### Corrección final de la normalización — 2026-11-10
+
+La comparación anterior llamaba “normalizada” a una huella que todavía
+conservaba comentarios de línea. Se repitió la consulta sobre
+`pg_get_functiondef`, eliminando comentarios de línea y espacios antes del
+cálculo. El resultado fue:
+
+| Entorno | MD5 bruto | MD5 semántica sin comentarios/espacios |
+|---|---|---|
+| QA | `029b4839e9ae2260b4e2cfed3aeb995b` | `88dde7f01bb445f2608f7e991838e1fa` |
+| Producción | `208f62fdfc336e2c109e0997ae9d05aa` | `88dde7f01bb445f2608f7e991838e1fa` |
+
+La afirmación correcta es que `bootstrap_owner_instalacion` mantiene
+**equivalencia semántica medida** entre los dos entornos, aunque no identidad
+textual ni procedencia común. Esto reduce una divergencia concreta de N-02 y
+corrige explícitamente la corrección anterior; no cierra N-02 porque siguen
+abiertas la divergencia global de inventario y el historial de migraciones.
+La ACL de `obtener_contexto_operativo` fue reconciliada posteriormente en QA
+y su estado efectivo ya coincide con producción; véase la sección de
+reconciliación ACL acotada.
+
+### Inventario exhaustivo de nombres — 2026-11-10
+
+Se repitió la comparación en solo lectura sobre los nombres exactos de las
+relaciones públicas/privadas (tablas, particiones, vistas, materialized views
+y foreign tables), funciones con sus argumentos de identidad, políticas RLS y
+triggers no internos. La comparación se hizo en cliente entre las dos
+respuestas, sin modificar ninguna base.
+
+| Categoría | QA | Producción | Solo QA | Solo producción |
+|---|---:|---:|---:|---:|
+| Relaciones | 151 | 131 | 21 | 1 |
+| Funciones | 490 | 431 | 73 | 14 |
+| Políticas RLS | 110 | 103 | 14 | 7 |
+| Triggers no internos | 60 | 57 | 9 | 6 |
+
+Ejemplos medidos de objetos que existen solo en QA incluyen
+`private.pm11_empleado_pin`, `public.abc_anticipo_movimientos` y
+`public.abc_b06_politica_conceptos`. Ejemplos medidos de objetos que existen
+solo en producción incluyen `private.pm27_prod_recovery_20260914`,
+`public.anular_venta_tpv(text,text)` y
+`public.descontar_stock(text,numeric,text,jsonb)`. Los ejemplos no sustituyen
+el conjunto completo: demuestran que las diferencias afectan tanto a objetos
+de seguridad/apoyo como a funciones de negocio.
+
+Esta medición actualiza los conteos acotados anteriores de 150/131 relaciones
+y 487/431 funciones; aquellos valores se conservan arriba como trazabilidad
+histórica, pero no deben usarse como el estado vigente. La conclusión vigente
+es que N-02 continúa abierto por la divergencia de inventario y de historial.
+La divergencia ACL de `obtener_contexto_operativo` ya fue reconciliada en QA y
+producción coincide en su estado efectivo; no se cuenta como diferencia
+pendiente en esta nueva medición.
+
+### Trazabilidad de funciones solo presentes en producción — 2026-11-10
+
+Para acotar la causa de la divergencia, se compararon las 14 funciones que
+aparecen solo en producción con el texto de las migraciones locales. La
+búsqueda usó el nombre cualificado, el nombre de la función y su lista exacta
+de argumentos de identidad; no ejecutó SQL y no modifica ningún archivo ni
+entorno.
+
+| Resultado de la búsqueda literal en migraciones | Cantidad |
+|---|---:|
+| Funciones solo en producción con coincidencia textual en alguna migración | 5 |
+| Funciones solo en producción sin coincidencia textual de firma exacta | 9 |
+
+Las cinco coincidencias son `private.es_propietario_activo()`, las dos
+guardas `private.pm13_cargo_guard_*()`, `public.completar_local_movimiento()`
+y `public.estampar_propiedad_suscripcion_push()`. Entre las nueve sin
+coincidencia literal están `private.abc_a10_reencolar_bloqueadas(...)`,
+`public.anular_venta_tpv(text,text)`,
+`public.descontar_stock(text,numeric,text,jsonb)`,
+`public.descontar_stock_carrito(jsonb,text)`, las dos sobrecargas históricas
+de `public.registrar_auditoria(...)`, `public.actualizar_fecha()`,
+`public.actualizar_fecha_perfil()` y `public.rls_auto_enable()`.
+
+La clasificación correcta es **medido como ausencia de coincidencia literal**,
+no “demostrado como creado manualmente”: una definición puede proceder de un
+archivo histórico no presente en esta rama, de una migración con otra
+representación o de SQL aplicado fuera del historial. Estas nueve funciones
+quedan como candidatos prioritarios de reconciliación de procedencia; no se
+redefinen ni se eliminan durante la auditoría.
+
+### Comparación de historial de migraciones por identificador — 2026-11-10
+
+Se comparó, también en solo lectura, el conjunto de versiones de
+`supabase_migrations.schema_migrations` de cada proyecto con los prefijos de
+las migraciones presentes en `supabase/migrations` del clon de auditoría.
+
+| Conjunto | Versiones |
+|---|---:|
+| Migraciones locales en el clon | 203 |
+| QA | 270 |
+| Producción | 175 |
+| Versiones locales que no aparecen en QA | 181 |
+| Versiones de QA que no aparecen en el clon | 248 |
+| Versiones locales que no aparecen en producción | 80 |
+| Versiones de producción que no aparecen en el clon | 52 |
+| Versiones exactas comunes entre clon y QA | 22 |
+| Versiones exactas comunes entre clon y producción | 95 |
+
+Esta comparación es **medida sobre identificadores de historial**, no una
+prueba de que cada versión exclusiva carezca de su SQL equivalente. El
+historial puede contener migraciones de otra copia del repositorio, versiones
+registradas durante despliegues con un nombre diferente o reparaciones
+autorizadas de bookkeeping. Aun con esa cautela, el solapamiento bajo demuestra
+que no se puede tratar el historial de ninguna de las dos bases como una copia
+directa del directorio local. El resultado refuerza el criterio de N-02:
+antes de promover una reconciliación hay que mapear cada objeto relevante a su
+procedencia y separar SQL ejecutado de simples filas de historial.
+
+### Revisión del historial Git de las firmas sin coincidencia actual — 2026-11-10
+
+Se corrigió el alcance de la medición anterior buscando también en todos los
+commits y referencias Git disponibles del clon, no solo en el árbol de trabajo
+actual. El resultado es:
+
+| Clasificación histórica | Resultado |
+|---|---:|
+| Firmas sin coincidencia literal actual cuya familia aparece en una migración de algún commit | 5 familias |
+| Firmas históricas de `registrar_auditoria` sin coincidencia exacta de firma actual, pero con rastro de la familia | 2 sobrecargas |
+| Familias sin rastro en ninguna migración de las referencias Git consultadas | 3 |
+
+Las tres familias sin rastro histórico son `public.actualizar_fecha()`,
+`public.actualizar_fecha_perfil()` y `public.rls_auto_enable()`. Las familias
+`abc_a10_reencolar_bloqueadas`, `anular_venta_tpv`, `descontar_stock`,
+`descontar_stock_carrito` y `registrar_auditoria` sí aparecen en migraciones de
+commits anteriores, aunque varias de esas migraciones ya no están en el árbol
+actual o no contienen la firma exacta desplegada.
+
+La afirmación anterior “sin coincidencia textual” sigue siendo correcta para
+el árbol actual, pero no debe leerse como “sin rastro histórico” para esas
+cinco familias. La evidencia correcta es **medida por búsqueda en el historial
+Git** y deja como prioridad máxima los tres objetos sin rastro, además de la
+reconciliación de las firmas históricas que no coinciden exactamente.
+
+### Clasificación funcional de los tres objetos sin rastro — 2026-11-10
+
+La consulta de solo lectura sobre producción acotó el uso efectivo de las tres
+familias sin rastro Git:
+
+| Función | MD5 de definición | Uso observado | QA |
+|---|---|---|---|
+| `public.actualizar_fecha()` | `87a1e75c07ed90451c51bb9f717cb80d` | Trigger `almacen_kv_actualizar_fecha`; asigna `NEW.updated_at` | Ausente |
+| `public.actualizar_fecha_perfil()` | `9fb60ea097e496fb62595cbe73cbf2f6` | Trigger `perfiles_actualizar_fecha`; asigna `NEW.updated_at` | Ausente |
+| `public.rls_auto_enable()` | `6998ea6b4c2480f5d2e34b5dcf3f8d36` | Event trigger `ensure_rls`; recorre comandos DDL de creación de tablas | Ausente |
+
+Las dos primeras tienen ACL explícita solo para `postgres`, no son
+`SECURITY DEFINER` y tienen un trigger de fila cada una. `rls_auto_enable()`
+sí está marcada como `SECURITY DEFINER`, pero la consulta no encontró un
+trigger de fila ni una llamada desde la aplicación: el uso observado es el
+event trigger de infraestructura indicado arriba. Esto es **medido y
+observado en las definiciones desplegadas**, no una certificación de que no
+existan otros consumidores fuera de los catálogos consultados.
+
+La clasificación reduce la prioridad de estos tres objetos como riesgo de
+atribución de empleado, pero no elimina la divergencia de N-02: producción
+depende de funciones y triggers que no tienen una migración rastreable en las
+referencias Git disponibles y que no existen en QA. La decisión pendiente es
+si deben incorporarse a una migración canónica, documentarse como legado
+deliberado o eliminarse en una ventana de esquema separada; ninguna de esas
+acciones se ejecuta durante esta auditoría.
+
+### Aplicación QA de la paridad de infraestructura — 2026-11-10
+
+La migración versionada
+`20261110210000_n02_legacy_infrastructure_parity.sql` se aplicó únicamente en
+QA con resultado satisfactorio (`success: true`). No contiene `INSERT`,
+`UPDATE` ni `DELETE`: crea o reemplaza funciones, permisos y objetos de
+trigger. No se creó ningún dato sintético.
+
+La lectura posterior confirmó en QA:
+
+- `actualizar_fecha()` y `actualizar_fecha_perfil()` presentes, con ACL
+  `postgres=X/postgres` y las mismas huellas `pg_get_functiondef` que
+  producción (`87a1e75c07ed90451c51bb9f717cb80d` y
+  `9fb60ea097e496fb62595cbe73cbf2f6`);
+- los triggers `almacen_kv_actualizar_fecha` y
+  `perfiles_actualizar_fecha` presentes, con la misma huella de definición que
+  producción (`68ef4d46abec7b444c4f46163aba7781` y
+  `05e4cd30deb7625756ea8e8f42cf35c2`);
+- el event trigger `ensure_rls` presente y asociado a `rls_auto_enable()`;
+- la migración registrada en el historial QA.
+
+`rls_auto_enable()` conserva la misma lógica, pero su MD5 bruto difiere por la
+capitalización de palabras reservadas introducida al aplicar la migración:
+QA `ff53cb0e176a9dfdcfb94697a9f3d610` y producción
+`6998ea6b4c2480f5d2e34b5dcf3f8d36`. La huella semántica calculada tras pasar a
+minúsculas y eliminar comentarios/espacios coincide en ambos:
+`c711c6c1408bddbae63b0f91cb8ea9af`. La conclusión correcta es **equivalencia
+semántica medida**, no identidad textual.
+
+Esta aplicación elimina una divergencia concreta de objetos entre QA y
+producción y deja la remediación reproducible en el repositorio. N-02 sigue
+abierto por el inventario global, el historial divergente y la ausencia de la
+migración en producción; no se ha escrito en producción.
+
+### Recuento posterior a la paridad QA — 2026-11-10
+
+Se repitió la comparación de inventario después de aplicar la migración de
+infraestructura. La fotografía vigente quedó así:
+
+| Categoría | QA | Producción | Solo QA | Solo producción |
+|---|---:|---:|---:|---:|
+| Relaciones | 151 | 131 | 21 | 1 |
+| Funciones | 493 | 431 | 73 | 11 |
+| Políticas RLS | 110 | 103 | 14 | 7 |
+| Triggers no internos | 62 | 57 | 9 | 4 |
+| Migraciones registradas | 271 | 175 | — | — |
+
+La reducción de funciones exclusivas de producción de 14 a 11 y de triggers
+exclusivos de 6 a 4 es consistente con la remediación QA. Las diferencias de
+relaciones, políticas e historial permanecen; por tanto, esta aplicación
+resuelve un subconjunto concreto de N-02, pero no permite certificar todavía
+la paridad completa.
+
+### Segunda aplicación QA de paridad de infraestructura — 2026-11-10
+
+Se versionó y aplicó únicamente en QA la migración
+`20261110220000_n02_remaining_infrastructure_parity.sql`. El resultado remoto
+fue `success: true`. La migración no contiene `INSERT`, `UPDATE` ni `DELETE`
+y no creó datos sintéticos; crea o reemplaza cinco funciones de infraestructura,
+ajusta sus ACL y crea de forma idempotente cuatro triggers ya observados en
+producción.
+
+La verificación posterior, separando cada tipo de evidencia, fue:
+
+| Objeto | QA | Producción | Evidencia |
+|---|---|---|---|
+| `private.es_propietario_activo()` | presente; `authenticated` y `postgres` pueden ejecutar | presente; mismas ACL | Medido en ambos entornos |
+| `private.pm13_cargo_guard_nombre()` | presente; solo `postgres` | presente; solo `postgres` | Medido en ambos entornos |
+| `private.pm13_cargo_guard_propietario()` | presente; solo `postgres` | presente; solo `postgres` | Medido en ambos entornos |
+| `public.completar_local_movimiento()` | presente; solo `postgres` | presente; solo `postgres` | Medido en ambos entornos |
+| `public.estampar_propiedad_suscripcion_push()` | presente; solo `postgres` | presente; solo `postgres` | Medido en ambos entornos |
+| Cuatro triggers (`pm13_*`, `movimientos_completar_local`, `suscripciones_push_estampar_propiedad`) | presentes | presentes | Medido en ambos entornos |
+
+Las cuatro huellas `md5(pg_get_triggerdef(...))` coinciden entre QA y
+producción. En las funciones, los hashes brutos de `prosrc` difieren cuando
+producción conserva finales CRLF o comentarios históricos; al quitar
+comentarios de línea, normalizar a minúsculas y eliminar espacios, las cinco
+huellas coinciden exactamente:
+
+`6dcd02572d4836a46cec6d3426345772`,
+`b1daa63cb68c4eb0bf4175b1ffdb7b5d`,
+`c1d9c6e1bcfc62e7efdf0281763ac04b`,
+`3e1c7d255c09f8fbf2e24f86e5ca245d` y
+`3bf329d0931d74d831316d20a91759f9`.
+
+En la comparación nominal usada para el inventario, las funciones exclusivas
+de producción bajan de 11 a 6 y los cuatro triggers exclusivos de producción
+que motivaron esta migración dejan de estarlo. Permanecen seis funciones
+legacy solo en producción: `private.abc_a10_reencolar_bloqueadas()`,
+`public.anular_venta_tpv(...)`, `public.descontar_stock(...)`,
+`public.descontar_stock_carrito(...)` y las dos sobrecargas históricas de
+`public.registrar_auditoria(...)`. No se copian en esta fase porque realizan o
+están ligadas a operaciones sensibles de stock/ventas/auditoría y requieren
+una decisión de alcance y una prueba independiente; copiar nombres sin
+reconstruir sus firmas y permisos sería una falsa remediación.
+
+El historial QA muestra la migración aplicada con la versión interna generada
+`20261110204740`; producción no se modificó y no registra esta aplicación.
+Por tanto, la conclusión es **paridad acotada de estos nueve objetos medida en
+QA y producción**, no paridad global ni cierre de N-02: siguen abiertas las
+diferencias de inventario, políticas, historial y las seis funciones legacy.
+
+### Clasificación de las seis funciones legacy restantes — 2026-11-10
+
+Se volvió a consultar producción en solo lectura para no tratar la mera
+presencia de una función como una llamada activa. La medición de firmas,
+permisos, triggers y dependencias directas devolvió:
+
+| Familia | Firma medida en producción | ACL efectiva | Triggers / dependencias directas | Marcadores del cuerpo |
+|---|---|---|---|---|
+| `private.abc_a10_reencolar_bloqueadas` | `(text,text,text,uuid)` | solo `postgres` | ninguno | `UPDATE`, `DELETE`, bloqueo de filas |
+| `public.anular_venta_tpv` | `(text,text)` | solo `postgres` | ninguno | `INSERT`, `UPDATE`, bloqueo, `auth.uid()`, ventas/stock |
+| `public.descontar_stock` | `(text,numeric,text,jsonb)` | solo `postgres` | ninguno | `INSERT`, `UPDATE`, bloqueo, stock/ventas; no `auth.uid()` |
+| `public.descontar_stock_carrito` | `(jsonb,text)` | solo `postgres` | ninguno | `INSERT`, `UPDATE`, bloqueo, `auth.uid()`, stock/ventas |
+| `public.registrar_auditoria` | `(text,text,text,text,text,text)` | solo `postgres` | ninguno | `INSERT`, `auth.uid()`, auditoría |
+| `public.registrar_auditoria` | `(text,text,text)` | solo `postgres` | ninguno | `INSERT`, `auth.uid()`, auditoría |
+
+La sobrecarga de ocho argumentos de `registrar_auditoria` no pertenece a este
+conjunto: ya existe en QA y producción y tiene una ACL distinta, con ejecución
+para `authenticated`. Se mantiene fuera de la lista de exclusivas de
+producción.
+
+La búsqueda del árbol versionado confirma que la rama actual no considera esas
+funciones legacy como el contrato operativo vigente: migraciones históricas
+revocan sus permisos públicos y las migraciones de A-10 eliminan la ruta de
+reencolado antigua. La presencia actual en producción, con permisos solo para
+`postgres`, es por tanto **medida como deriva histórica**, no como prueba de
+que la UI las invoque. La ausencia de llamadas en el código cliente ya estaba
+documentada, pero tampoco permite afirmar que no exista una integración de
+servicio externa.
+
+No se copiaron estas seis funciones a QA ni se ejecutó ninguna de ellas. La
+decisión es intencionada: copiar una función que hace `INSERT`/`UPDATE` sobre
+ventas o stock, o que inserta auditoría, sin contrato de uso y sin reconstruir
+la procedencia canónica mantendría la divergencia de seguridad bajo otro
+entorno y podría reintroducir una ruta legacy. Para cerrar la diferencia en
+producción haría falta una ventana de esquema separada que decida entre retirar
+los objetos, reconstruirlos desde una migración canónica o declarar su
+dependencia externa; esa ventana no forma parte de esta auditoría.
+
+### Revalidación estructural posterior — 2026-11-10
+
+Se repitió la consulta de solo lectura sobre los dos proyectos, contando
+funciones de `public`/`private`, triggers no internos, relaciones de catálogo y
+el historial oficial de `supabase_migrations.schema_migrations`:
+
+| Medición | QA (`qjqorixtkilwsndqayyx`) | Producción (`flqercbgpgmmfaakrwkc`) |
+|---|---:|---:|
+| Funciones | 498 | 431 |
+| Triggers no internos | 66 | 57 |
+| Relaciones (`r,p,v,m,f`) | 151 | 131 |
+| Versiones de migración | 272 | 175 |
+| Última versión registrada | `20261110204740` | `20261109201101` |
+
+La repetición confirma que N-02 no puede cerrarse por la paridad acotada de
+las migraciones ya aplicadas en QA. Las seis funciones legacy exclusivas de
+producción siguen sin copiarse ni ejecutarse; sus firmas, ACL y ausencia de
+dependencias directas se mantienen como evidencia **medida**, pero todavía
+falta una decisión de procedencia y una ventana controlada para reconciliar o
+retirar esos objetos. Producción permaneció en solo lectura.
+
+### Revalidación estructural — 2026-11-11
+
+Se repitió de nuevo la consulta nominal, siempre en solo lectura, sobre QA y
+producción. El corte actual es:
+
+| Medición | QA (`qjqorixtkilwsndqayyx`) | Producción (`flqercbgpgmmfaakrwkc`) |
+|---|---:|---:|
+| Funciones `public`/`private` | 498 | 431 |
+| Triggers no internos | 66 | 57 |
+| Relaciones (`r,p,v,m,f`) | 151 | 131 |
+| Versiones de migración | 273 | 175 |
+| Última versión registrada | `20261110223815` | `20261109201101` |
+| Factores MFA | 0 | 0 |
+
+La cifra de migraciones de QA sustituye únicamente al corte anterior de esta
+misma ficha; no se reescribe la medición histórica. La diferencia estructural
+permanece: QA contiene las remediaciones aplicadas durante la auditoría y
+producción conserva funciones y objetos legacy no presentes en QA. Esta
+revalidación es **medida**; no reconcilia procedencia, ACL, dependencias ni
+autoriza una escritura en producción. N-02 continúa abierto.

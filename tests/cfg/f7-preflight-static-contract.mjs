@@ -96,6 +96,15 @@ const EXCLUIDAS = new Set([
   // N-02: reconciliación de funciones ya versionadas para corregir la
   // divergencia histórica entre QA y producción; queda fuera de la foto F7.
   '20261108193000_n02_reconcile_deployed_db_functions.sql',
+  // N-02 follow-up: alinea en QA el ACL histórico de obtener_contexto_operativo;
+  // es posterior a la foto F7 y se valida en su propia ventana.
+  '20261110200000_n02_context_acl_parity.sql',
+  // N-02 follow-up: replica en QA tres utilidades de infraestructura observadas
+  // en producción; no forma parte de la foto F7 histórica.
+  '20261110210000_n02_legacy_infrastructure_parity.sql',
+  // N-02 follow-up: replica en QA guards y triggers de infraestructura activos;
+  // no forma parte de la foto F7 histórica.
+  '20261110220000_n02_remaining_infrastructure_parity.sql',
   '20261027163000_abc_f7_c07d_d2_3_frontend_config_status.sql',
   // F8 C04: alta de terminal/caja por propietario, con preflight propio.
   '20261027200000_abc_f8_c04_terminal_caja_propietario.sql',
@@ -140,6 +149,9 @@ const EXCLUIDAS = new Set([
   // Corrección incremental de la respuesta de APPCC; se aplica en la ventana
   // de Fase 3 y no forma parte de la foto F7 cerrada del 3/10.
   '20261109201101_a03_appcc_correction_response.sql',
+  // M-03: exige aal2 server-side para roles sensibles; posterior a la foto F7
+  // histórica y se valida mediante el contrato MFA y una ventana QA propia.
+  '20261110230000_m03_server_aal2_gate.sql',
   // A-04: sesión de empleado server-side para atribución en terminal compartido;
   // es posterior a la foto F7 histórica y se valida con contrato propio.
   '20261111220000_a04_server_employee_session.sql',

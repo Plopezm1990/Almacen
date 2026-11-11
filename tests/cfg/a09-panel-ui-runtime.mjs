@@ -64,7 +64,7 @@ async function clic(el) {
 
 function consultaSobre(filas, error = null) {
   const q = {
-    select() { return q; }, eq() { return q; }, in() { return q; }, is() { return q; }, order() { return q; }, limit() { return q; },
+    select() { return q; }, eq() { return q; }, in() { return q; }, is() { return q; }, order() { return q; }, limit() { return q; }, range() { return q; },
     maybeSingle() { return Promise.resolve(error ? { data: null, error } : { data: filas[0] || null, error: null }); },
     then(res, rej) { return Promise.resolve(error ? { data: null, error } : { data: filas, error: null }).then(res, rej); }
   };
