@@ -101483,7 +101483,7 @@ function valorCF(item) {
   return null;
 }
 var fmt = (n2) => (Number(n2) || 0).toLocaleString("es-ES", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-async function hashPin(pin) {
+async function hashPinPropietarioLocal(pin) {
   if (!pin) return "";
   const datos = new TextEncoder().encode("chocoloyos-pin-v1-" + pin);
   const buffer = await crypto.subtle.digest("SHA-256", datos);
@@ -105370,7 +105370,7 @@ function GestionAlmacen() {
     if (locales.some((l22) => l22.id === id && l22.activo !== false && !l22.fusionadoEn)) setLocalInformeId(id);
   }
   const { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion } = crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovimientos, devoluciones, setDevoluciones, setMovimientosCaja, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
-  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId });
+  const { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin } = crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId, empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null });
   const { addPuntoControl, updatePuntoControl, deletePuntoControl, registrarAppcc, cancelarRegistroAppcc } = crearLogicaAppcc({ puntosControl, registrosAppcc, setPuntosControl, setRegistrosAppcc, localActivoId, registrarAuditoria, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { fichar, addFichajeManual, updateFichaje, eliminarFichaje } = crearLogicaFichaje({ fichajes, setFichajes, empleados, localActivoId });
   const { addFreidora, updateFreidora, deleteFreidora, registrarCambio, registrarRelleno, eliminarRegistroAceite, consumoPorCiclo } = crearLogicaAceite({ freidoras, setFreidoras, registrosAceite, setRegistrosAceite, productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId, locales });
@@ -107252,14 +107252,18 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     if (!validacion.ok) return validacion;
     if (!localActivoId) return errorValidacionPM10("contexto_no_autorizado", "localId", "Personal requiere un local concreto.");
     if (motorPersonalRemotoDisponiblePM13() && !empresaId) return errorValidacionPM10("contexto_no_autorizado", "empresaId", "El motor remoto de Personal requiere empresa y local concretos.");
+    const pin = String(validacion.datos.pin || "").trim();
+    const datosSinPin = { ...validacion.datos };
+    delete datosSinPin.pin;
     const empleadoId = String(controlPM13.empleadoId || uid());
     const operationId = String(controlPM13.operationId || empleadoId);
     const nuevo = {
       documentos: [],
-      ...validacion.datos,
+      ...datosSinPin,
       id: empleadoId,
       localId: localActivoId,
       activo: true,
+      pinConfigurado: false,
       fechaAlta: validacion.datos.fechaAlta || fechaHoyPersonalPM13(),
       fechaBaja: "",
       motivoBaja: "",
@@ -107269,14 +107273,25 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
       setEmpleados((s22) => s22.some((e2) => e2.id === empleadoId) ? s22 : [...s22, nuevo]);
       return nuevo;
     };
-    if (!motorPersonalRemotoDisponiblePM13()) return aplicarLocal();
+    if (!motorPersonalRemotoDisponiblePM13()) {
+      if (pin) return errorValidacionPM10("pin_requiere_servidor", "pin", "El código de acceso requiere conexión con el servidor y no se guarda en este dispositivo.");
+      return aplicarLocal();
+    }
     return ejecutarUnaVezPersonalPM13(`alta:${empresaId}:${localActivoId}:${empleadoId}`, () => ejecutarRpcPersonalPM13("pm11_alta_empleado", {
       p_empresa_id: empresaId,
       p_local_id: localActivoId,
       p_empleado_id: empleadoId,
       p_nombre: nuevo.nombre,
-      p_datos: nuevo
-    })).then((remoto) => remoto.ok ? aplicarLocal() : errorBackendPersonalPM13(remoto.error));
+      p_datos: pin ? { ...nuevo, pin } : nuevo
+    })).then((remoto) => {
+      if (!remoto.ok) return errorBackendPersonalPM13(remoto.error);
+      return aplicarLocalWithPin(pin);
+    });
+    function aplicarLocalWithPin(pinConfigurado) {
+      const copia = { ...nuevo, pinConfigurado: !!pinConfigurado };
+      setEmpleados((s22) => s22.some((e2) => e2.id === empleadoId) ? s22 : [...s22, copia]);
+      return copia;
+    }
   }
   async function crearCuentaEmpleado(empleadoId, { nombre, email, password, rol }) {
     const empleadoLocal = empleados.find((e2) => e2.id === empleadoId);
@@ -107306,11 +107321,15 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
     const actual = empleados.find((e2) => e2.id === id);
     if (!empleadoEsDelLocalActivoPersonal(actual) || !localActivoId) return errorValidacionPM10("contexto_no_autorizado", "empleadoId", "El empleado no pertenece al local activo.");
     if (motorPersonalRemotoDisponiblePM13() && !empresaId) return errorValidacionPM10("contexto_no_autorizado", "empresaId", "El motor remoto de Personal requiere empresa y local concretos.");
-    const validacion = validarEmpleadoPM10({ ...actual, ...data, localId: actual.localId || localActivoId }, { localActivoId, locales, empresaId });
+    const pin = String(data?.pin || "").trim();
+    const datosSinPin = { ...(data || {}) };
+    delete datosSinPin.pin;
+    const validacion = validarEmpleadoPM10({ ...actual, ...datosSinPin, localId: actual.localId || localActivoId }, { localActivoId, locales, empresaId });
     if (!validacion.ok) return validacion;
     const dandoBaja = actual.activo !== false && validacion.datos.activo === false;
     const reactivando = actual.activo === false && validacion.datos.activo === true;
     if (!motorPersonalRemotoDisponiblePM13()) {
+      if (pin) return errorValidacionPM10("pin_requiere_servidor", "pin", "El código de acceso requiere conexión con el servidor y no se guarda en este dispositivo.");
       const cambiosEstado = dandoBaja ? {
         fechaBaja: validacion.datos.fechaBaja || fechaHoyPersonalPM13(),
         motivoBaja: String(validacion.datos.motivoBaja || "Baja registrada desde edición").trim() || "Baja registrada desde edición"
@@ -107333,11 +107352,11 @@ function crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setN
       p_empresa_id: empresaId,
       p_local_id: localActivoId,
       p_empleado_id: id,
-      p_cambios: validacion.datos,
+      p_cambios: pin ? { ...validacion.datos, pin } : validacion.datos,
       p_nombre: validacion.datos.nombre || actual.nombre
     })).then((remoto) => {
       if (!remoto.ok) return errorBackendPersonalPM13(remoto.error);
-      setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, id: e2.id, localId: e2.localId || localActivoId } : e2));
+      setEmpleados((s22) => s22.map((e2) => e2.id === id ? { ...e2, ...validacion.datos, id: e2.id, localId: e2.localId || localActivoId, pinConfigurado: pin ? true : e2.pinConfigurado === true } : e2));
       return true;
     });
   }
@@ -114676,7 +114695,7 @@ function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimie
   }
   return { traspasarStock, traspasarEntreLocales };
 }
-function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId }) {
+function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, setModoEmpleado, setUsuarioActivoId, empresaId = null, localId = null }) {
   function activarModoEmpleado() {
     if (!pinPropietario) return false;
     setModoEmpleado(true);
@@ -114684,9 +114703,19 @@ function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, se
   }
   async function entrarComoEmpleado(empleadoId, pinIntento) {
     const emp = empleados.find((e2) => e2.id === empleadoId && e2.activo !== false);
-    if (!emp || !emp.pin) return false;
-    const hashIntento = await hashPin(pinIntento);
-    if (hashIntento !== emp.pin) return false;
+    if (!emp || emp.pinConfigurado !== true || !empresaId || !localId || typeof window === "undefined" || typeof window.getSupabaseClient !== "function") return false;
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("pm11_verificar_pin_empleado", {
+        p_empresa_id: empresaId,
+        p_local_id: localId,
+        p_empleado_id: empleadoId,
+        p_pin: pinIntento
+      });
+      if (error || data?.ok !== true || data?.verificado !== true) return false;
+    } catch {
+      return false;
+    }
     setModoEmpleado(true);
     setUsuarioActivoId(empleadoId);
     return true;
@@ -114697,7 +114726,7 @@ function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, se
       setUsuarioActivoId(null);
       return true;
     }
-    const hashIntento = await hashPin(pinIntento);
+    const hashIntento = await hashPinPropietarioLocal(pinIntento);
     if (hashIntento === pinPropietario) {
       setModoEmpleado(false);
       setUsuarioActivoId(null);
@@ -114706,7 +114735,7 @@ function crearLogicaSeguridad({ pinPropietario, setPinPropietario, empleados, se
     return false;
   }
   async function establecerPin(nuevoPin) {
-    setPinPropietario(await hashPin(nuevoPin));
+    setPinPropietario(await hashPinPropietarioLocal(nuevoPin));
   }
   return { activarModoEmpleado, entrarComoEmpleado, salirModoEmpleado, establecerPin };
 }
@@ -116280,7 +116309,7 @@ function BotonModoEmpleado({ modoEmpleado, salirModoEmpleado, empleados = [], us
       setCerrandoSesionPropietarioPM17(false);
     }
   }
-  const conAcceso = empleados.filter((e2) => e2.activo !== false && e2.pin);
+  const conAcceso = empleados.filter((e2) => e2.activo !== false && e2.pinConfigurado === true);
   const empleadoActivo = empleados.find((e2) => e2.id === usuarioActivoId);
   if (miPerfil && miPerfil.rol !== "Propietario") {
     return /* @__PURE__ */ import_react4.default.createElement(
@@ -121052,21 +121081,10 @@ function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reac
       setError("El c\xF3digo de acceso debe tener entre 4 y 6 d\xEDgitos.");
       return;
     }
-    let hashNuevoPin = null;
-    if (form.pin) {
-      hashNuevoPin = await hashPin(form.pin);
-      if (empleados.some((e2) => e2.id !== editingId && e2.pin === hashNuevoPin)) {
-        setError("Ese c\xF3digo ya lo usa otro empleado. Ponle uno distinto.");
-        return;
-      }
-    }
+    
     setError("");
     const datos = { ...form };
-    if (hashNuevoPin) {
-      datos.pin = hashNuevoPin;
-    } else {
-      delete datos.pin;
-    }
+    if (!form.pin) delete datos.pin;
     let controlAltaPersonalPM13 = void 0;
     if (!editingId) {
       if (!altaOperacionPersonalPM13.current) altaOperacionPersonalPM13.current = { empleadoId: uid(), operationId: uid() };
