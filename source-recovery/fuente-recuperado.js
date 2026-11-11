@@ -28194,11 +28194,13 @@ function AppConSesion() {
   }
   async function terminarMfa() {
     setError("");
-    setFase("comprobando-mfa");
     try {
-      await window.subirPendientes();
-      setMfaModo(null);
-      setFase("dentro");
+      const { data, error: error2 } = await cliente.auth.getSession();
+      if (error2) throw error2;
+      // La verificación puede devolver una sesión renovada cuyo AAL todavía
+      // necesita ser reevaluado. No abras el panel ni subas pendientes hasta
+      // confirmar que la sesión que usará las RPC protegidas es AAL2.
+      await abrirSesionConMfa(cliente, data.session, true);
     } catch (error2) {
       setError(error2?.message || "No se ha podido cargar el panel.");
       setFase("mfa-error");
