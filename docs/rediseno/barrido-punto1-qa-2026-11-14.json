@@ -205,7 +205,25 @@
    "indicio": "Produccion"
   }
  ],
+ "defectos_encontrados_y_corregidos": [
+  {
+   "arreglo": "aria-label Estacion de preparacion, en las dos copias de la fuente",
+   "donde": "filtro de estacion de cocina",
+   "que": "select sin nombre accesible"
+  },
+  {
+   "arreglo": "aria-label Cantidad, Quitar una unidad y Anadir una unidad, en las dos copias",
+   "donde": "linea del carrito del TPV",
+   "que": "el campo de cantidad sin nombre accesible, y los dos botones de icono de mas y menos sin nombre, aunque midan 44x44"
+  },
+  {
+   "arreglo": "suelo de 24x24 en la hoja de apariencia para cualquier puntero; 89 a 0 en la peor pantalla",
+   "donde": "toda la aplicacion",
+   "que": "controles por debajo de 24x24 con raton, que es el minimo de WCAG 2.2 AA 2.5.8: la X de cerrar de todos los modales a 17x17, las flechas de categoria a 18x19 y los colores a 20x20"
+  }
+ ],
  "en_curso": true,
+ "falso_positivo_descartado": "En los volcados de texto aparecia una cadena de CSS dentro del TPV. Comprobado recorriendo los nodos de texto: su padre es un elemento style inyectado y no se ve en pantalla. No es un defecto. La leccion es que textContent incluye el contenido de los elementos style.",
  "faltan_por_precondicion_de_ensayo": {
   "cierre_provisional": [
    "caj-24",
@@ -442,11 +460,113 @@
   ]
  },
  "recuento": {
-  "abiertas_y_medidas": 26,
-  "pendientes_de_precondicion": 26,
+  "abiertas_y_medidas": 34,
+  "pendientes_de_precondicion": 18,
   "sin_construir_en_el_producto": 9,
   "terminado": false,
   "total_objetivo": 61
+ },
+ "segunda_tanda_con_pedido_de_ensayo": {
+  "dependencias_que_declara_el_propio_programa": [
+   "El cobro exige enviar el pedido antes.",
+   "El pago mixto exige un cobro parcial previo y se completa contra el saldo del servidor.",
+   "El pago mixto no existe en venta rapida de mostrador, donde solo hay Efectivo y Tarjeta: vive en el cobro F4 de sala.",
+   "Con un intento de tarjeta pendiente el servidor no permite iniciar otro cobro sobre ese saldo."
+  ],
+  "estado_que_queda_en_qa": "La cuenta de Mesa QA-A1-01 (cuenta 27ac5cb...) queda con 0,50 EUR confirmados y 0,60 EUR pendientes, con un intento de tarjeta simulada en estado Pendiente. No es un atasco por error: en modo simulado el intento queda pendiente hasta que el adaptador del proveedor lo resuelva, y el boton de recuperar o reintentar no lo cierra. Sirve de fixture permanente para tpv-19 y tpv-30, pero ocupa la mesa.",
+  "operaciones_de_ensayo_realizadas": [
+   "Carrito de mostrador con Cafe solo (QA) y su variante Pequeno, y vaciado despues.",
+   "Pedido de sala guardado sobre Mesa QA-A1-01, tipo de cuenta Mesa, 1,10 EUR.",
+   "Enviado a preparacion y puesto En preparacion.",
+   "Cobro parcial en efectivo de 0,50 EUR sobre 1,10, con 1,00 recibido y 0,50 de cambio.",
+   "Completar pago mixto con tarjeta simulada: el intento queda pendiente."
+  ],
+  "vistas": [
+   {
+    "bajo24": 1,
+    "bajo44": 7,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "variantes obligatorias (QA Tamano, minimo 1), suplementos con precio (Mediano +0,30, Grande +0,60, Leche de avena +0,20, Doble shot +0,50) y Sin lactosa",
+    "donde": "Configurar Cafe solo (QA)",
+    "id": "tpv-04",
+    "nota": "el unico por debajo de 24 era la X de cerrar a 17x17, ya corregida con el suelo de 24",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Alergenos: sin declarar, y Nota para cocina (opcional)",
+    "donde": "el mismo panel de configurar producto",
+    "id": "tpv-05",
+    "nota": "tpv-04 y tpv-05 son la misma superficie",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Borrador local activo. 1 linea(s), se conserva 24 h desde la ultima modificacion, caduca 15/11/2026 0:25:48",
+    "donde": "aviso de borrador local",
+    "id": "tpv-23",
+    "veredicto": "abierta"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 1,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "estado Abierto, aviso de que el pedido esta guardado y todavia no se ha enviado a preparacion, y el boton Enviar pedido a preparacion. En sala el carrito pide ademas Tipo de cuenta: Barra, Mesa, Terraza, Para llevar, Otro",
+    "donde": "Pedido operativo",
+    "id": "tpv-16",
+    "veredicto": "abierta"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 1,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "Cancelar linea y Cancelar pedido, con el campo Motivo de cancelacion (obligatorio para cancelar) a 44 px y con nombre",
+    "donde": "Pedido operativo",
+    "id": "tpv-15",
+    "veredicto": "abierta"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 5,
+    "campos": 2,
+    "camposSinNombre": 0,
+    "contenido": "Total 1,10, Confirmado 0,00, Pendiente 1,10, Cuenta: Lista para cobrar. Antes de enviar el pedido el propio panel avisa: Envia el pedido antes de cobrar",
+    "donde": "Cobro F4",
+    "id": "tpv-17",
+    "veredicto": "abierta"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 5,
+    "campos": 2,
+    "camposSinNombre": 0,
+    "contenido": "importes rapidos Exacto, 5, 10 y 20, mas Exacto para este pago y Efectivo recibido. Con 5,00 sobre 1,10 aparece Cambio a devolver 3,90; con 1,00 sobre 0,50, Cambio a devolver 0,50. La aritmetica cuadra",
+    "donde": "Cobro F4",
+    "id": "tpv-18",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 6,
+    "campos": 2,
+    "camposSinNombre": 0,
+    "contenido": "tras el cobro parcial: Efectivo confirmado, saldo restante calculado por el servidor 0.60, y el boton Completar pago mixto con tarjeta. El panel avisa de que ese boton usa el saldo del servidor y no el calculo local del navegador",
+    "donde": "Cobro F4",
+    "id": "tpv-19",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 1,
+    "campos": 4,
+    "camposSinNombre": 0,
+    "contenido": "Existe un intento pendiente, autorizado o desconocido, y no se permite iniciar otro cobro sobre ese saldo. Incluye Abrir incidencia B04 con Motivo, Codigo proveedor, Referencia proveedor y Evidencia (JSON opcional o nota), mas Recuperar o reintentar el mismo intento",
+    "donde": "Cobro F4, estado del intento",
+    "id": "tpv-30",
+    "veredicto": "abierta y ejercitada"
+   }
+  ]
  },
  "sesion": "Propietario real, QA-EMP-A / QA-A1",
  "sha": "3163c683 mas la etiqueta de la estacion de cocina, sin publicar",
