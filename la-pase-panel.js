@@ -115,7 +115,10 @@
       }
     } catch (error) {
       if (esCargaVigente(contexto, generacion)) {
-        estado.mapaError = { error: "No se ha podido contactar con el servidor." };
+        var fallo = { error: "No se ha podido contactar con el servidor." };
+        if (!estado.mapa) estado.mapaError = estado.mapaError || fallo;
+        if (!estado.comandas) estado.comandasError = estado.comandasError || fallo;
+        estado.caja = null;
       }
     } finally {
       if (generacion === generacionContexto) {

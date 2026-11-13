@@ -3284,7 +3284,7 @@ function GestionAlmacen() {
       modoEmpleado,
       cargarMapaSala: () => cargarMapaSalaA07({ paraPanel: true }),
       listarComandas: listarComandasA10,
-      consultarCaja: () => consultarCierreCajaA10({ soloEstado: true })
+      consultarCaja: () => listarEstacionesA10.consultarCierreCajaA10({ soloEstado: true })
     };
     try {
       window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
