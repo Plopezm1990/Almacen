@@ -556,6 +556,36 @@ html[data-la-paleta] body {
    grueso, aunque tambien tenga raton, manda el objetivo tactil. En un portatil
    con pantalla tactil tambien se activa, y en un producto de hosteleria ese
    lado del error es el bueno. */
+/* Dos suelos, cada uno con su motivo.
+
+   El primero rige SIEMPRE, con cualquier puntero, porque es el minimo exigible:
+   WCAG 2.2 AA, criterio 2.5.8 «Target Size (Minimum)», pide 24 x 24 px.
+
+   Medido a 1440 px con raton, el barrido encontro controles por debajo: la X de
+   cerrar que comparten todos los modales, a 17 x 17; las flechas de subir y
+   bajar categoria, a 18 x 19; y los colores de categoria, a 20 x 20. La peor
+   pantalla, orden y color de categorias, tenia 89 controles por debajo de
+   24 x 24. Con esta regla quedan 0, ahi y en TPV, cocina, caja, devoluciones,
+   configuracion, productos y personal, sin un solo desbordamiento horizontal.
+
+   Son tres o siete pixeles. No aprieta ninguna pantalla y cierra el minimo de
+   accesibilidad en toda la aplicacion de una vez. El nombre accesible ya estaba
+   bien en todos ellos: lo que fallaba era el tamano. */
+#root button,
+#root [role="button"] {
+  min-height: 24px;
+  min-width: 24px;
+}
+
+/* Al crecer la caja, el icono tiene que quedar centrado. Solo donde crece. */
+#root button[aria-label="Cerrar"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* El segundo suelo es el objetivo del plan, 44 x 44, que es el criterio 2.5.5
+   de nivel AAA y nacio para el dedo. Por eso cuelga del puntero. */
 @media (max-width: 760px), (any-pointer: coarse) {
   #root button { min-height: 44px; min-width: 44px; }
 }
