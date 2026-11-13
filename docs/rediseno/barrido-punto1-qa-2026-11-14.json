@@ -1,4 +1,123 @@
 {
+ "abiertas_como_seccion": {
+  "arqueo_de_caja": [
+   {
+    "estado": "abierta; el servidor avisa de que la caja o el terminal ya tienen sesion activa",
+    "id": "caj-02",
+    "seccion": "Apertura de sesion de caja"
+   },
+   {
+    "estado": "abierta con su estado vacio real: 'Nada registrado este dia.'",
+    "id": "caj-03",
+    "seccion": "Entradas, retiradas y reembolsos"
+   },
+   {
+    "estado": "abierta, 4 campos, todos con nombre",
+    "id": "caj-04",
+    "seccion": "Entrada / Retirada, categoria, importe, concepto y motivo obligatorio"
+   },
+   {
+    "estado": "no abierta: no hay ningun movimiento registrado hoy que retirar",
+    "id": "caj-05",
+    "seccion": "Retirar un movimiento"
+   },
+   {
+    "estado": "abierta, 23 campos, todos con nombre",
+    "id": "caj-06",
+    "seccion": "Efectivo contado y 15 denominaciones"
+   },
+   {
+    "estado": "abierta; la accion de cierre escribe y no se ha pulsado",
+    "id": "caj-07",
+    "seccion": "Arqueo del dia y Guardar arqueo"
+   },
+   {
+    "estado": "abierta con datos reales: 2026-10-28 Activo -17,50 EUR y 2026-10-25 Activo Cuadra",
+    "id": "caj-08",
+    "seccion": "Historial de arqueos"
+   }
+  ],
+  "cocina": [
+   {
+    "estado": "abierta: sesion 0c59e0c2 ABIERTA, nuevo responsable con la lista real de empleados, motivo del relevo",
+    "id": "caj-21",
+    "seccion": "Sesion, responsable y terminales"
+   },
+   {
+    "estado": "abierta, pero sin segundo terminal: 'No hay otros terminales activos disponibles en este local'. Es la dependencia Q07/Q08 ya conocida",
+    "id": "caj-22",
+    "seccion": "Terminales vinculados"
+   },
+   {
+    "estado": "abierta; Iniciar cierre escribe y no se ha pulsado",
+    "id": "caj-23",
+    "seccion": "Cierre de sesion de caja"
+   },
+   {
+    "estado": "abierta: COCINA-QA, Cocina QA-A1, 9 rutas",
+    "id": "coc-02",
+    "seccion": "Estaciones y rutas"
+   },
+   {
+    "estado": "abierta: codigo, nombre y tipo COCINA/CHURRERIA/BARRA/BEBIDAS/OTRO",
+    "id": "coc-03",
+    "seccion": "Crear estacion"
+   },
+   {
+    "estado": "abierta: producto, estacion y prioridad",
+    "id": "coc-04",
+    "seccion": "Asignar producto a estacion"
+   },
+   {
+    "estado": "abierta con comandas reales; el detalle se dibuja en la propia lista",
+    "id": "coc-05",
+    "seccion": "Comandas"
+   },
+   {
+    "estado": "parcial: el filtro existe pero QA solo tiene estacion COCINA-QA, no hay CHURRERIA que seleccionar",
+    "id": "coc-08",
+    "seccion": "Filtro por estacion"
+   }
+  ],
+  "tpv_con_cuenta_abierta": [
+   {
+    "id": "tpv-06",
+    "seccion": "Asignar Mesa QA-A1-02, comensales"
+   },
+   {
+    "id": "tpv-08",
+    "seccion": "Cambiar responsable, con la lista real de empleados"
+   },
+   {
+    "id": "tpv-10",
+    "seccion": "Repartir productos"
+   },
+   {
+    "id": "tpv-11",
+    "seccion": "Descuento / cortesia: porcentaje, importe antes de IVA o cortesia, y motivo"
+   },
+   {
+    "estado": "abierta con su estado vacio: 'No hay autorizaciones pendientes para esta cuenta'",
+    "id": "tpv-12",
+    "seccion": "Autorizaciones"
+   },
+   {
+    "estado": "abierta con su estado vacio",
+    "id": "tpv-13",
+    "seccion": "Auditoria A09, historial de descuentos"
+   },
+   {
+    "estado": "abierta: total 1,32 EUR, confirmado 1,32, pendiente 0,00; la cuenta ya estaba pagada",
+    "id": "tpv-17",
+    "seccion": "Cobro F4"
+   },
+   {
+    "estado": "abierta: documento emitido en C05 y registrado en cadena, entorno QA, estado VALIDADA",
+    "id": "caj-15",
+    "seccion": "Fiscalizacion C07-D"
+   }
+  ]
+ },
  "aviso_de_metodo": "La primera pasada se midio a 736 px de ancho, que esta por debajo del corte de 760 px, asi que el suelo tactil de 44 px estaba activo y 'cero controles cortos' no significaba nada. Repetida a 1440 px, que es la banda de raton. Las cifras de esta nota son las de 1440 px salvo donde se diga.",
  "capacidades_del_catalogo_relevantes": [
   "ABC_CUENTA_OPERAR",
@@ -87,8 +206,57 @@
   }
  ],
  "en_curso": true,
+ "faltan_por_precondicion_de_ensayo": {
+  "cierre_provisional": [
+   "caj-24",
+   "caj-25"
+  ],
+  "comanda_enrutada": [
+   "coc-06",
+   "coc-07"
+  ],
+  "detalle_fiscal": [
+   "caj-18",
+   "caj-19"
+  ],
+  "devolucion_y_reembolso": [
+   "caj-10",
+   "caj-12",
+   "caj-13"
+  ],
+  "justificante_por_correo": [
+   "tpv-32"
+  ],
+  "movimiento_de_caja_del_dia": [
+   "caj-05"
+  ],
+  "nota": "El brief autoriza operaciones de ensayo en QA. Estas vistas necesitan que se cree antes el dato que las hace existir, y eso es la siguiente tanda.",
+  "orden_de_produccion": [
+   "coc-10",
+   "coc-11",
+   "coc-12"
+  ],
+  "pedido_de_ensayo_sin_cobrar": [
+   "tpv-04",
+   "tpv-05",
+   "tpv-07",
+   "tpv-15",
+   "tpv-16",
+   "tpv-18",
+   "tpv-19",
+   "tpv-21",
+   "tpv-23",
+   "tpv-27",
+   "tpv-30"
+  ],
+  "segundo_terminal": [
+   "caj-22"
+  ]
+ },
  "fecha": "2026-11-14",
  "guion": "docs/rediseno/guion-barrido-apertura-qa.js",
+ "hallazgo_de_datos_de_qa": "La cocina de QA tiene comandas BLOQUEADAS sin ruta de preparacion, y el programa lo dice con sus palabras: 'Sin ruta de preparacion: esta comanda esta bloqueada y no se imprimira'. No es un defecto de interfaz, es el producto informando de un hueco en los datos de ensayo. Afecta a coc-05, coc-06 y coc-07, que necesitan una comanda enrutada para ejercitarse.",
+ "leccion_de_metodo": "Muchas de estas 'vistas' no son modales con disparador, son SECCIONES de una pestana que ya estan en pantalla. Buscarlas como boton daba 'no encontrada' en falso: caj-08, el historial de arqueos, estaba a la vista con sus filas reales. Leer el texto completo de la pestana y mapear sus secciones resulta mas rapido y mas fiel que pulsar disparadores uno a uno.",
  "medidas_1440": [
   {
    "botonesBajo24": 0,
@@ -272,6 +440,13 @@
    "caj-07",
    "caj-08"
   ]
+ },
+ "recuento": {
+  "abiertas_y_medidas": 26,
+  "pendientes_de_precondicion": 26,
+  "sin_construir_en_el_producto": 9,
+  "terminado": false,
+  "total_objetivo": 61
  },
  "sesion": "Propietario real, QA-EMP-A / QA-A1",
  "sha": "3163c683 mas la etiqueta de la estacion de cocina, sin publicar",
