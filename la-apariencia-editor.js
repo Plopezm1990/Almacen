@@ -292,6 +292,69 @@
 
   var contenedorIzq = null, contenedorDer = null;
 
+  /* ------------------------------------------------ delegacion por cargo */
+  /* Estado propio: la lista llega del servidor y solo el propietario la ve.
+     Mientras no se sabe, no se dibuja nada; si el contrato no esta desplegado
+     o el cargo no es propietario, la seccion no aparece. */
+  var delegacion = { estado: "sin-pedir", delegaciones: [], cargos: [] };
+
+  async function cargarDelegaciones() {
+    var m = motor();
+    if (!m || typeof m.listarDelegaciones !== "function") { delegacion.estado = "no-disponible"; return; }
+    var r = await m.listarDelegaciones();
+    if (r.ok) {
+      delegacion = { estado: "listo", delegaciones: r.delegaciones, cargos: r.cargos };
+    } else {
+      delegacion = { estado: "no-disponible", delegaciones: [], cargos: [], motivo: r.motivo };
+    }
+    repintar();
+  }
+
+  function bloqueDelegacion() {
+    if (delegacion.estado !== "listo") return null;
+    var m = motor();
+    var concedidos = delegacion.delegaciones.map(function (d) { return d.rol; });
+
+    var filas = delegacion.cargos.map(function (rol) {
+      var tiene = concedidos.indexOf(rol) >= 0;
+      var boton = el("button", {
+        type: "button", class: "la-ed-btn" + (tiene ? "" : " primario"),
+        texto: tiene ? "Retirar" : "Conceder",
+        "aria-label": (tiene ? "Retirar a " : "Conceder a ") + rol + " el permiso de cambiar la apariencia",
+        onclick: async function () {
+          boton.disabled = true;
+          var r = tiene ? await m.retirarDelegacion(rol) : await m.delegar(rol);
+          boton.disabled = false;
+          if (!r.ok) {
+            mostrarMensaje("error", r.motivo === "sin-permiso"
+              ? "El servidor ha rechazado el cambio: solo el propietario puede delegar esta accion."
+              : "No se ha podido actualizar la delegacion del cargo " + rol + ".");
+            return;
+          }
+          delegacion.delegaciones = r.delegaciones;
+          delegacion.cargos = r.cargos;
+          repintar();
+          mostrarMensaje("ok", tiene
+            ? "El cargo " + rol + " ya no puede cambiar la apariencia."
+            : "El cargo " + rol + " ya puede cambiar la apariencia de la empresa.");
+        }
+      });
+      return el("div", { class: "la-ed-campo", style: "justify-content:space-between" }, [
+        el("span", { texto: rol + (tiene ? " — puede aplicar" : " — solo consulta"), style: "flex:1" }),
+        boton
+      ]);
+    });
+
+    return el("section", { class: "la-ed-bloque" }, [
+      el("h3", { texto: "Quien puede cambiar la apariencia" }),
+      el("p", { style: "margin:0 0 8px;font-size:12px;color:var(--c-ink-soft)", texto:
+        "Ademas del propietario. El servidor comprueba el permiso en cada guardado, no el boton." }),
+      filas.length
+        ? el("div", { style: "display:grid;gap:6px" }, filas)
+        : el("div", { class: "la-ed-mensaje aviso", texto: "Esta empresa no tiene otros cargos activos." })
+    ]);
+  }
+
   function repintar() {
     if (!contenedorIzq) return;
     contenedorIzq.innerHTML = "";
@@ -299,6 +362,10 @@
     contenedorIzq.appendChild(bloquePaletas());
     contenedorIzq.appendChild(bloqueCampos());
     contenedorIzq.appendChild(bloqueImportar());
+    /* La seccion de delegacion solo existe para el propietario y con el
+       contrato desplegado: cuando no toca, bloqueDelegacion devuelve null. */
+    var deleg = bloqueDelegacion();
+    if (deleg) contenedorIzq.appendChild(deleg);
     contenedorDer.innerHTML = "";
     contenedorDer.appendChild(bloqueVistaPrevia());
   }
@@ -421,6 +488,10 @@
       mostrarMensaje("aviso", "Puedes consultar y probar la apariencia. Tu cargo no tiene permiso para aplicar ni restaurar cambios de la empresa.");
     }
     cerrar.focus();
+    /* La delegacion se pide aparte: si el cargo no es propietario o el
+       contrato no esta desplegado, la seccion simplemente no se dibuja. */
+    delegacion = { estado: "sin-pedir", delegaciones: [], cargos: [] };
+    if (!cargoRestringido) cargarDelegaciones();
   }
 
   function alTeclado(e) {

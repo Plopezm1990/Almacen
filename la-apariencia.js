@@ -494,6 +494,31 @@
   }
 
   /** Restaurar crea una revision nueva a partir de la anterior y conserva el historial. */
+  /* ------------------------------------------------- delegacion por cargo */
+  /* Solo el propietario administra quien mas puede aplicar la apariencia. Si
+     el contrato de delegacion no esta desplegado, la seccion no se ofrece en
+     vez de fingir que existe. */
+
+  async function llamarDelegacion(rpc, parametros) {
+    var sb = clienteNube();
+    if (!sb || !empresaActiva()) return { ok: false, motivo: "sin-conexion" };
+    var r = await sb.rpc(rpc, Object.assign({ p_empresa_id: empresaActiva() }, parametros || {}));
+    if (!r.error) {
+      return { ok: true, delegaciones: (r.data && r.data.delegaciones) || [], cargos: (r.data && r.data.cargos) || [] };
+    }
+    if (contratoAusente(r.error)) return { ok: false, motivo: "contrato-no-desplegado" };
+    var texto = (r.error.message || "") + " " + (r.error.details || "");
+    if (/apariencia_no_autorizada/.test(texto)) return { ok: false, motivo: "sin-permiso", servidor: true };
+    if (/apariencia_rol_inexistente/.test(texto)) return { ok: false, motivo: "cargo-inexistente", servidor: true };
+    if (/apariencia_rol_no_delegable/.test(texto)) return { ok: false, motivo: "cargo-no-delegable", servidor: true };
+    if (/apariencia_rol_requerido/.test(texto)) return { ok: false, motivo: "cargo-requerido", servidor: true };
+    return { ok: false, motivo: "error", detalle: texto.trim(), servidor: true };
+  }
+
+  function listarDelegaciones() { return llamarDelegacion("abc_apariencia_listar_delegaciones"); }
+  function delegar(rol) { return llamarDelegacion("abc_apariencia_delegar", { p_rol: rol }); }
+  function retirarDelegacion(rol) { return llamarDelegacion("abc_apariencia_retirar_delegacion", { p_rol: rol }); }
+
   async function restaurarAnterior(revisionLeida) {
     var contexto = contextoApariencia();
     var empresa = empresaActiva();
@@ -713,6 +738,9 @@
     estadoServidor: function () { return { disponible: servidor.disponible, puedeAplicar: servidor.puedeAplicar, motivo: servidor.motivo }; },
     guardarEmpresa: guardarEmpresa,
     restaurarAnterior: restaurarAnterior,
+    listarDelegaciones: listarDelegaciones,
+    delegar: delegar,
+    retirarDelegacion: retirarDelegacion,
     iniciarPrueba: iniciarPrueba,
     salirPrueba: salirPrueba,
     enPrueba: function () { return estado.origen === "prueba"; },

@@ -89,13 +89,19 @@ await db.exec(`
 
 /* ------------------------------------------------------ la migracion ----- */
 
-const sql = await readFile(path.join(raiz, 'supabase/migrations/20261113090000_rediseno_apariencia_empresa.sql'), 'utf8');
-try {
-  await db.exec(sql);
-  check('la migracion se aplica sin errores', true);
-} catch (error) {
-  check('la migracion se aplica sin errores', false, String(error.message || error).slice(0, 200));
-  process.exit(1);
+const MIGRACIONES = [
+  '20261113090000_rediseno_apariencia_empresa.sql',
+  '20261113140000_rediseno_apariencia_delegaciones.sql'
+];
+for (const nombre of MIGRACIONES) {
+  const sql = await readFile(path.join(raiz, 'supabase/migrations', nombre), 'utf8');
+  try {
+    await db.exec(sql);
+    check(`se aplica ${nombre.slice(0, 15)} sin errores`, true);
+  } catch (error) {
+    check(`se aplica ${nombre.slice(0, 15)} sin errores`, false, String(error.message || error).slice(0, 220));
+    process.exit(1);
+  }
 }
 
 /* ------------------------------------------------------- comprobaciones -- */
@@ -177,14 +183,53 @@ r = await comoUsuario(DUENA, `select public.abc_apariencia_guardar('QA-EMP-A', 3
   '{"fondo":"#FFF7ED","tarjetas":"#FFE4C7","texto":"#7F1D1D","enlaces":"#F97316","boton":"#DC2626","detalle":"#FDBA74"}'::jsonb) as d`);
 check('seis HEX validos se aceptan', r.rows[0].d.revision === 4 && r.rows[0].d.colores.boton === '#DC2626');
 
-// 10. La delegacion habilita a un cargo concreto.
-await db.exec(`insert into public.apariencia_delegaciones(empresa_id,rol,concedido_por)
-               values ('QA-EMP-A','Encargado','${DUENA}');`);
+// 10. La delegacion se concede y se retira desde el contrato, no a mano.
+{
+  const sinPermiso = await esperaError('un cargo no puede listar las delegaciones', 'apariencia_no_autorizada',
+    () => comoUsuario(ENCARG, `select public.abc_apariencia_listar_delegaciones('QA-EMP-A')`));
+  await esperaError('un cargo no puede delegarse a si mismo', 'apariencia_no_autorizada',
+    () => comoUsuario(ENCARG, `select public.abc_apariencia_delegar('QA-EMP-A','Encargado')`));
+  await esperaError('no se delega un cargo inexistente', 'apariencia_rol_inexistente',
+    () => comoUsuario(DUENA, `select public.abc_apariencia_delegar('QA-EMP-A','Sumiller')`));
+  await esperaError('no se delega el propio cargo de propietario', 'apariencia_rol_no_delegable',
+    () => comoUsuario(DUENA, `select public.abc_apariencia_delegar('QA-EMP-A','Propietario')`));
+
+  let r10 = await comoUsuario(DUENA, `select public.abc_apariencia_listar_delegaciones('QA-EMP-A') as d`);
+  check('el propietario ve los cargos delegables de su empresa',
+    JSON.stringify(r10.rows[0].d.cargos) === JSON.stringify(['Camarero/a', 'Encargado']),
+    JSON.stringify(r10.rows[0].d.cargos));
+
+  r10 = await comoUsuario(DUENA, `select public.abc_apariencia_delegar('QA-EMP-A','Encargado') as d`);
+  check('delegar deja la fila y devuelve la lista',
+    r10.rows[0].d.delegaciones.length === 1 && r10.rows[0].d.delegaciones[0].rol === 'Encargado');
+
+  r10 = await comoUsuario(DUENA, `select public.abc_apariencia_delegar('QA-EMP-A','Encargado') as d`);
+  check('delegar dos veces no duplica', r10.rows[0].d.delegaciones.length === 1);
+  const ev = await db.query(`select count(*)::int as n from public.apariencia_delegacion_eventos
+                              where empresa_id='QA-EMP-A' and accion='ALTA'`);
+  check('el evento de alta se registra una sola vez', ev.rows[0].n === 1, ev.rows[0].n + ' eventos');
+}
 r = await comoUsuario(ENCARG, `select public.abc_apariencia_guardar('QA-EMP-A', 4, 'claro', null, null) as d`);
 check('un cargo delegado si puede aplicar',
   r.rows[0].d.revision === 5 && r.rows[0].d.actualizado_por === ENCARG);
 await esperaError('la delegacion no alcanza a otros cargos', 'apariencia_no_autorizada',
   () => comoUsuario(CAMARER, `select public.abc_apariencia_guardar('QA-EMP-A', 5, 'pulso', null, null)`));
+
+// 10 bis. Retirar la delegacion devuelve al cargo a su situacion anterior.
+{
+  const r = await comoUsuario(DUENA, `select public.abc_apariencia_retirar_delegacion('QA-EMP-A','Encargado') as d`);
+  check('retirar la delegacion vacia la lista', r.rows[0].d.delegaciones.length === 0);
+  await esperaError('tras retirarla, el cargo vuelve a ser rechazado', 'apariencia_no_autorizada',
+    () => comoUsuario(ENCARG, `select public.abc_apariencia_guardar('QA-EMP-A', 5, 'patio', null, null)`));
+  const ev = await db.query(`select accion from public.apariencia_delegacion_eventos
+                              where empresa_id='QA-EMP-A' order by id`);
+  check('los eventos registran alta y baja',
+    ev.rows.map(x => x.accion).join(',') === 'ALTA,BAJA', ev.rows.map(x => x.accion).join(','));
+  const r2 = await comoUsuario(DUENA, `select public.abc_apariencia_retirar_delegacion('QA-EMP-A','Encargado') as d`);
+  check('retirar dos veces no annade otro evento', r2.rows[0].d.delegaciones.length === 0);
+  const ev2 = await db.query(`select count(*)::int as n from public.apariencia_delegacion_eventos where empresa_id='QA-EMP-A'`);
+  check('el registro de eventos sigue teniendo dos filas', ev2.rows[0].n === 2, ev2.rows[0].n + ' filas');
+}
 
 // 11. Aislamiento entre empresas.
 r = await comoUsuario(AJENA, `select public.abc_apariencia_guardar('QA-EMP-B', null, 'orbita', null, null) as d`);
