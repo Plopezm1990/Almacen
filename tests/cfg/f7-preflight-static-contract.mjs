@@ -157,6 +157,8 @@ const EXCLUIDAS = new Set([
   '20261111220000_a04_server_employee_session.sql',
   // Apariencia por empresa pertenece al rediseño posterior y se valida con su propio contrato.
   '20261113090000_rediseno_apariencia_empresa.sql',
+  // La delegacion de apariencia acompanna a la anterior y se valida con el mismo contrato propio.
+  '20261113140000_rediseno_apariencia_delegaciones.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

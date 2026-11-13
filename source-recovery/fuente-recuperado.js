@@ -28930,29 +28930,123 @@ function AppConSesion() {
   if (fase === "mfa" && cliente && mfaModo) return /* @__PURE__ */ import_react4.default.createElement(MfaGate, { cliente, modo: mfaModo, onComplete: terminarMfa, onSignOut: cerrarSesionDesdeMfa });
   if (fase === "mfa-error") return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("main", { style: { background: "linear-gradient(180deg, rgba(22,71,54,.985), rgba(12,39,30,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 430, border: "1px solid rgba(198,154,82,.55)" } }, /* @__PURE__ */ import_react4.default.createElement("h1", { style: { color: "#F7F0E3", fontSize: 22, marginTop: 0 } }, "No se puede abrir el acceso seguro"), /* @__PURE__ */ import_react4.default.createElement("p", { style: { color: "#C9D4CC", fontSize: 13, lineHeight: 1.5 } }, error || "Vuelve a iniciar sesión o inténtalo de nuevo."), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: cerrarSesionDesdeMfa, style: { width: "100%", padding: "13px", marginTop: 12, background: "#C69A52", color: "#071D12", border: 0, borderRadius: 12, fontSize: 15, fontWeight: 800 } }, "Volver al inicio")));
   if (fase === "login") {
-    const campoAcceso = { width: "100%", padding: "13px 14px", marginBottom: 12, border: "1px solid rgba(198,154,82,.30)", borderRadius: 12, fontSize: 14, boxSizing: "border-box", fontFamily: "inherit", background: "rgba(2,18,11,.52)", color: "#F4EBDD" };
-    return /* @__PURE__ */ import_react4.default.createElement("div", { style: estiloBase }, /* @__PURE__ */ import_react4.default.createElement("form", { onSubmit: entrar, className: "form-acceso", style: { background: "linear-gradient(180deg, rgba(22,71,54,.985), rgba(12,39,30,.985))", padding: "30px 28px 26px", borderRadius: 24, width: "100%", maxWidth: 390, border: "1px solid rgba(198,154,82,.55)", boxShadow: "0 24px 70px rgba(0,0,0,.38), inset 0 1px 0 rgba(255,255,255,.03)", backdropFilter: "blur(10px)" } }, /* @__PURE__ */ import_react4.default.createElement("style", null, ".form-acceso :focus-visible { outline: 3px solid #C69A52; outline-offset: 2px; }"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { display: "flex", justifyContent: "center", marginBottom: 4 } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "L&A Suite", style: { width: "72%", maxWidth: 225, height: "auto", display: "block", filter: "drop-shadow(0 8px 18px rgba(0,0,0,.28))" } })), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontFamily: "Georgia, 'Times New Roman', serif", fontSize: 27, fontWeight: 600, textAlign: "center", marginBottom: 6, color: "#F7F0E3", letterSpacing: ".01em" } }, "L&A Suite"), /* @__PURE__ */ import_react4.default.createElement("div", { style: { fontSize: 12.5, color: "#AEBBB2", textAlign: "center", marginBottom: 24, lineHeight: 1.45 } }, "Inicia sesi\xF3n para sincronizar entre dispositivos"), /* @__PURE__ */ import_react4.default.createElement(
-      "input",
-      {
-        type: "email",
-        required: true,
-        autoFocus: true,
-        placeholder: "Correo",
-        value: email,
-        onChange: (e2) => setEmail(e2.target.value),
-        style: campoAcceso
+    const esQA = typeof window !== "undefined" && window.__modoPruebasQA === true;
+    const estiloAcceso = `
+      .la-acceso { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 46%) minmax(0, 1fr); font-family: 'IBM Plex Sans', ui-sans-serif, system-ui; }
+      .la-acceso-arte { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 24px; padding: 40px 38px; color: #F0EADC;
+        background: radial-gradient(circle at 30% 20%, #1C5C46 0%, #123B2D 46%, #081A14 100%); }
+      .la-acceso-arte img { width: min(68%, 250px); height: auto; display: block; filter: drop-shadow(0 8px 18px rgba(0,0,0,.28)); }
+      .la-acceso-entorno { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 5px 12px; border-radius: 999px;
+        font-size: 12px; font-weight: 700; letter-spacing: .04em; background: rgba(214,176,106,.16); border: 1px solid rgba(214,176,106,.5); color: #E8C782; }
+      .la-acceso-lema { font-size: clamp(30px, 4vw, 52px); line-height: 1.04; font-weight: 300; letter-spacing: -.02em; margin: 0; }
+      .la-acceso-lema strong { display: block; font-weight: 700; }
+      .la-acceso-monograma { display: block; font-size: 13px; letter-spacing: .34em; text-transform: uppercase; color: #C69A52; margin-bottom: 14px; }
+      .la-acceso-pie { font-size: 12.5px; color: #9FB0A5; }
+      .la-acceso-cuerpo { display: flex; align-items: center; justify-content: center; padding: 40px 28px; background: var(--c-bg, #F7F3E9); color: var(--c-ink, #1B2420); }
+      .la-acceso-cuerpo form { width: 100%; max-width: 400px; }
+      .la-acceso-cuerpo h1 { font-size: 27px; line-height: 1.12; margin: 0 0 6px; letter-spacing: -.02em; }
+      .la-acceso-intro { margin: 0 0 22px; font-size: 13.5px; color: var(--c-ink-soft, #4F5B55); }
+      .la-acceso-campo { display: block; margin-bottom: 14px; }
+      .la-acceso-campo span { display: block; margin-bottom: 6px; font-size: 12.5px; font-weight: 600; color: var(--c-ink-soft, #4F5B55); }
+      .la-acceso-campo input { width: 100%; min-height: 48px; padding: 0 14px; box-sizing: border-box; font: inherit; font-size: 14px;
+        border: 1px solid var(--c-border-control, #8F8470); border-radius: 12px; background: var(--c-surface, #FFFDF8); color: var(--c-ink, #1B2420); }
+      .la-acceso-error { margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; font-size: 12.5px; line-height: 1.45;
+        background: var(--c-red-soft, #F9E3E0); border: 1px solid var(--c-red, #A3302A); color: var(--c-red, #A3302A); }
+      .la-acceso-entrar { width: 100%; min-height: 48px; border: 0; border-radius: 12px; cursor: pointer; font: inherit; font-size: 15px; font-weight: 700;
+        background: var(--c-accent-fill, #123B2D); color: var(--c-on-accent, #F7F2E8); }
+      .la-acceso-entrar[disabled] { opacity: .6; cursor: progress; }
+      .la-acceso-alt { margin-top: 16px; display: grid; gap: 10px; }
+      .la-acceso-alt a, .la-acceso-alt button { display: inline-flex; align-items: center; min-height: 44px; font: inherit; font-size: 12.5px;
+        text-align: left; color: var(--c-accent, #7A5718); background: transparent; border: 0; padding: 0; cursor: pointer;
+        text-decoration: underline; text-underline-offset: 3px; }
+      .la-acceso-nota { margin: 18px 0 0; font-size: 12px; line-height: 1.5; color: var(--c-ink-soft, #4F5B55); }
+      .la-acceso :focus-visible { outline: 3px solid var(--c-focus-ring, #C69A52); outline-offset: 2px; }
+      @media (max-width: 860px) {
+        .la-acceso { grid-template-columns: minmax(0, 1fr); }
+        .la-acceso-arte { padding: 26px 22px; gap: 14px; }
+        .la-acceso-lema { font-size: 28px; }
+        .la-acceso-cuerpo { padding: 28px 22px 44px; }
       }
-    ), /* @__PURE__ */ import_react4.default.createElement(
-      "input",
-      {
-        type: "password",
-        required: true,
-        placeholder: "Contrase\xF1a",
-        value: password,
-        onChange: (e2) => setPassword(e2.target.value),
-        style: { ...campoAcceso, marginBottom: 16 }
-      }
-    ), error && /* @__PURE__ */ import_react4.default.createElement("div", { style: { color: "#FFB9AE", fontSize: 12.5, marginBottom: 12, lineHeight: 1.4 } }, error), /* @__PURE__ */ import_react4.default.createElement("button", { type: "submit", disabled: cargando, style: { width: "100%", padding: "13px", background: "linear-gradient(135deg, #8A6028 0%, #C69A52 52%, #9B7132 100%)", color: "#071D12", border: "1px solid rgba(232,199,130,.66)", borderRadius: 12, fontSize: 15, fontWeight: 800, cursor: "pointer", boxShadow: "0 8px 20px rgba(0,0,0,.22)" } }, cargando ? "Entrando\u2026" : "Entrar"), /* @__PURE__ */ import_react4.default.createElement("a", { href: "./restablecer-contrasena.html", style: { display: "block", marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer" } }, "\xBFOlvidaste tu contrase\xF1a?"), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: entrarSinNube, style: { display: "block", width: "100%", marginTop: 12, textAlign: "center", fontSize: 12.5, color: "#C69A52", textDecoration: "underline", textUnderlineOffset: 3, cursor: "pointer", background: "transparent", border: "none", padding: 0, font: "inherit" } }, "Trabajar solo en este equipo, sin sincronizar")));
+    `;
+    return /* @__PURE__ */ import_react4.default.createElement(
+      "div",
+      { className: "la-acceso" },
+      /* @__PURE__ */ import_react4.default.createElement("style", null, estiloAcceso),
+      /* @__PURE__ */ import_react4.default.createElement(
+        "section",
+        { className: "la-acceso-arte" },
+        /* @__PURE__ */ import_react4.default.createElement(
+          "div",
+          null,
+          /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: NOMBRE_PROYECTO }),
+          esQA ? /* @__PURE__ */ import_react4.default.createElement("span", { className: "la-acceso-entorno" }, "QA \xB7 entorno de pruebas") : null
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(
+          "div",
+          null,
+          /* @__PURE__ */ import_react4.default.createElement("span", { className: "la-acceso-monograma" }, NOMBRE_PROYECTO),
+          /* @__PURE__ */ import_react4.default.createElement(
+            "p",
+            { className: "la-acceso-lema" },
+            "Gesti\xF3n de",
+            /* @__PURE__ */ import_react4.default.createElement("strong", null, "hosteler\xEDa.")
+          )
+        ),
+        /* @__PURE__ */ import_react4.default.createElement("p", { className: "la-acceso-pie" }, LEMA_PROYECTO)
+      ),
+      /* @__PURE__ */ import_react4.default.createElement(
+        "main",
+        { className: "la-acceso-cuerpo", id: "contenido" },
+        /* @__PURE__ */ import_react4.default.createElement(
+          "form",
+          { onSubmit: entrar },
+          /* @__PURE__ */ import_react4.default.createElement("h1", null, "Iniciar sesi\xF3n"),
+          /* @__PURE__ */ import_react4.default.createElement("p", { className: "la-acceso-intro" }, "Acceso al espacio de trabajo de tu local."),
+          error ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-acceso-error", role: "alert" }, error) : null,
+          /* @__PURE__ */ import_react4.default.createElement(
+            "label",
+            { className: "la-acceso-campo" },
+            /* @__PURE__ */ import_react4.default.createElement("span", null, "Correo electr\xF3nico"),
+            /* @__PURE__ */ import_react4.default.createElement("input", {
+              type: "email",
+              required: true,
+              autoFocus: true,
+              autoComplete: "username",
+              value: email,
+              onChange: (e2) => setEmail(e2.target.value)
+            })
+          ),
+          /* @__PURE__ */ import_react4.default.createElement(
+            "label",
+            { className: "la-acceso-campo" },
+            /* @__PURE__ */ import_react4.default.createElement("span", null, "Contrase\xF1a"),
+            /* @__PURE__ */ import_react4.default.createElement("input", {
+              type: "password",
+              required: true,
+              autoComplete: "current-password",
+              value: password,
+              onChange: (e2) => setPassword(e2.target.value)
+            })
+          ),
+          /* @__PURE__ */ import_react4.default.createElement(
+            "button",
+            { type: "submit", className: "la-acceso-entrar", disabled: cargando },
+            cargando ? "Entrando…" : "Entrar"
+          ),
+          /* @__PURE__ */ import_react4.default.createElement(
+            "div",
+            { className: "la-acceso-alt" },
+            /* @__PURE__ */ import_react4.default.createElement("a", { href: "./restablecer-contrasena.html" }, "\xBFOlvidaste tu contrase\xF1a?"),
+            /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", onClick: entrarSinNube }, "Trabajar solo en este equipo, sin sincronizar")
+          ),
+          /* @__PURE__ */ import_react4.default.createElement(
+            "p",
+            { className: "la-acceso-nota" },
+            "El acceso de empleados con PIN se abre dentro de la aplicaci\xF3n, en Modo empleado: el servidor exige una sesi\xF3n iniciada para comprobarlo."
+          )
+        )
+      )
+    );
   }
   return /* @__PURE__ */ import_react4.default.createElement(GestionAlmacen, null);
 }
