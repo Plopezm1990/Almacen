@@ -142,6 +142,9 @@ function panel() { return document.getElementById("la-pase-panel"); }
   var det = panel().querySelector(".la-pase-detalle");
   comprueba("una mesa libre ofrece abrirla en el TPV",
     !!det && /Abrir mesa en el TPV/.test(det.textContent), det ? det.textContent.slice(0, 70) : "sin detalle");
+  det.querySelector("button").click();
+  comprueba("la navegación al TPV conserva la mesa elegida",
+    window.__ultimoIrA === "venta" && window.__ultimoDestino.mesaId === "m1");
   panel().querySelectorAll(".la-pase-mesa")[1].click();
   await esperar(50);
   det = panel().querySelector(".la-pase-detalle");

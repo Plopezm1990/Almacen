@@ -38,7 +38,7 @@ assert.ok(
   "A06.1: crearLogicaVenta no devuelve los adaptadores operativos"
 );
 
-const start = recovered.indexOf("async function recuperarCuentaA06()");
+const start = recovered.indexOf("async function recuperarCuentaA06(");
 const end = recovered.indexOf("\n  function leerPedidoOperativoA05()", start);
 assert.ok(start >= 0 && end > start, "A06.1: adaptador de recuperación no localizable");
 const adapter = recovered.slice(start, end);

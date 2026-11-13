@@ -231,7 +231,7 @@
         el("span", { class: "val", texto: (m.nombre || m.codigo || "Mesa") + " · " + (m.__zona || "") })
       ]),
       el("div", { class: "hueco" }),
-      botonIrA("venta", "Ver cuenta", "la-pase-accion")
+      botonIrA("venta", "Ver cuenta", "la-pase-accion", { mesaId: m.mesa_id })
     ]);
   }
 
@@ -336,7 +336,7 @@
       ]),
       inoperable
         ? el("span", { class: "txt", texto: "Esta mesa no admite servicio ahora mismo." })
-        : botonIrA("venta", abierta ? "Ver cuenta en el TPV" : "Abrir mesa en el TPV", "la-pase-accion")
+        : botonIrA("venta", abierta ? "Ver cuenta en el TPV" : "Abrir mesa en el TPV", "la-pase-accion", { mesaId: mesa.mesa_id })
     ]);
   }
 
