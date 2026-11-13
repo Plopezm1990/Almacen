@@ -31,6 +31,7 @@
     mapaError: null,
     comandas: null,
     comandasError: null,
+    caja: null,
     cargando: false,
     ultimaCarga: 0
   };
@@ -39,6 +40,10 @@
 
   function disenoActivo() {
     return document.documentElement.getAttribute("data-la-diseno") || null;
+  }
+
+  function esPanelServicio(diseno) {
+    return diseno === "pase" || diseno === "ascua";
   }
 
   /* ------------------------------------------------------------ utilidades */
@@ -81,7 +86,7 @@
 
   async function cargar(forzar) {
     var p = puente();
-    if (!p || p.tabActual !== "dashboard" || disenoActivo() !== "pase") return;
+    if (!p || p.tabActual !== "dashboard" || !esPanelServicio(disenoActivo())) return;
     var contexto = claveContexto(p);
     actualizarContexto(contexto);
     if (!p.empresaId || !p.localId || estado.cargando) return;
@@ -100,6 +105,13 @@
         if (!esCargaVigente(contexto, generacion)) return;
         if (c && c.ok) { estado.comandas = c.comandas || []; estado.comandasError = null; }
         else { estado.comandas = null; estado.comandasError = c || { error: "No se ha podido cargar la cola." }; }
+      }
+      if (typeof p.consultarCaja === "function" && p.puedeConsultar?.("caja")) {
+        var caja = await p.consultarCaja();
+        if (!esCargaVigente(contexto, generacion)) return;
+        estado.caja = caja && caja.ok ? caja.sessionEstado : null;
+      } else {
+        estado.caja = null;
       }
     } catch (error) {
       if (esCargaVigente(contexto, generacion)) {
@@ -139,16 +151,49 @@
         ]),
         el("div", { class: "la-pase-cifra" }, [
           el("div", { class: "n", texto: comandas ? String(comandas.length) : "—" }),
-          el("div", { class: "e", texto: "Comandas en la cola" })
+          el("div", { class: "e", texto: "Comandas consultadas" })
         ]),
-        el("div", { class: "la-pase-cifra" }, [
-          el("div", { class: "n", texto: "Sin dato" }),
-          el("div", { class: "e", texto: "Caja (no expuesta a este panel)" })
-        ])
+        p.puedeConsultar?.("caja") ? el("div", { class: "la-pase-cifra" }, [
+          el("div", { class: "n", texto: etiquetaCaja() }),
+          el("div", { class: "e", texto: "Caja del terminal" })
+        ]) : null
       ])
     ]);
 
     return el("section", { class: "la-pase-turno", "aria-label": "El turno en directo" }, [izquierda, bloquePlano()]);
+  }
+
+  function etiquetaCaja() {
+    return { ABIERTA: "Abierta", EN_CIERRE: "En cierre", CIERRE_PROVISIONAL: "Cierre provisional" }[estado.caja] || "Sin estado confirmado";
+  }
+
+  function bloqueAscua() {
+    var p = puente();
+    var mesas = mesasDe(estado.mapa);
+    var abiertas = mesas.filter(function (mesa) { return mesa.estado_efectivo === "OCUPADA"; }).length;
+    var puedeCaja = p.puedeConsultar?.("caja");
+    var porcentaje = mesas.length ? 100 * abiertas / mesas.length : 0;
+    var esfera = el("div", { class: "la-ascua-esfera", "aria-hidden": "true" }, [
+      el("div", { class: "la-ascua-anillo", style: "--la-ascua-progreso:" + porcentaje + "%" }),
+      el("span", { class: "la-ascua-dato", texto: estado.mapa ? abiertas + " / " + mesas.length : "—" })
+    ]);
+    return el("section", { class: "la-ascua-turno", "aria-label": "El servicio, al punto" }, [
+      el("div", { class: "la-ascua-cab" }, [
+        el("p", { class: "la-pase-local", texto: (p.empresaId || "Empresa") + " · " + (p.localId || "Sin local") }),
+        el("h2", { texto: "El servicio, al punto." }),
+        el("dl", {}, [
+          el("div", {}, [el("dt", { texto: "Mesas con cuenta abierta" }), el("dd", { texto: estado.mapa ? abiertas + " de " + mesas.length : "Sin datos confirmados" })]),
+          el("div", {}, [el("dt", { texto: "Comandas mostradas" }), el("dd", { texto: Array.isArray(estado.comandas) ? String(estado.comandas.length) : "Sin datos confirmados" })]),
+          puedeCaja ? el("div", {}, [el("dt", { texto: "Caja del terminal" }), el("dd", { texto: etiquetaCaja() })]) : null
+        ]),
+        el("div", { class: "la-ascua-acciones" }, [
+          botonIrA("venta", "Sala y TPV"),
+          botonIrA("cocina", "Cocina"),
+          puedeCaja ? botonIrA("caja", "Caja") : null
+        ])
+      ]),
+      esfera
+    ]);
   }
 
   function bloquePrioridad(ocupadas) {
@@ -378,7 +423,8 @@
 
   function pintar() {
     var p = puente();
-    var activo = p && p.tabActual === "dashboard" && disenoActivo() === "pase";
+    var diseno = disenoActivo();
+    var activo = p && p.tabActual === "dashboard" && esPanelServicio(diseno);
     var previo = document.getElementById(ID);
 
     if (!activo) {
@@ -389,13 +435,22 @@
     if (!destino) return;
     actualizarContexto(claveContexto(p));
 
-    var nodo = el("div", { id: ID, class: "la-pase" }, [
-      bloqueTurno(),
+    var nodo = el("div", { id: ID, class: diseno === "ascua" ? "la-pase la-ascua" : "la-pase" }, [
+      diseno === "ascua" ? bloqueAscua() : bloqueTurno(),
       el("div", { class: "la-pase-abajo" }, [bloqueCola(), bloqueAccesos()])
     ]);
 
+    var focoPrevio = previo && previo.contains(document.activeElement) ? document.activeElement : null;
+    var firmaFoco = focoPrevio && focoPrevio.tagName === "BUTTON"
+      ? [focoPrevio.parentElement?.className, focoPrevio.getAttribute("aria-label") || focoPrevio.textContent] : null;
     if (previo && previo.parentNode) previo.parentNode.replaceChild(nodo, previo);
     else destino.insertBefore(nodo, destino.firstChild);
+    if (firmaFoco) {
+      Array.from(nodo.querySelectorAll("button:not([disabled])")).find(function (boton) {
+        return boton.parentElement?.className === firmaFoco[0] &&
+          (boton.getAttribute("aria-label") || boton.textContent) === firmaFoco[1];
+      })?.focus({ preventScroll: true });
+    }
   }
 
   /* ------------------------------------------------------------- arranque */
@@ -420,6 +475,7 @@
     estado.mapaError = null;
     estado.comandas = null;
     estado.comandasError = null;
+    estado.caja = null;
     estado.cargando = false;
     estado.ultimaCarga = 0;
     return true;
@@ -435,12 +491,12 @@
     var tab = p ? p.tabActual : null;
     var diseno = disenoActivo();
     if (!cambioContexto && tab === ultimoTab && diseno === ultimoDiseno) {
-      if (tab === "dashboard" && diseno === "pase" && !document.getElementById(ID)) pintar();
+      if (tab === "dashboard" && esPanelServicio(diseno) && !document.getElementById(ID)) pintar();
       return;
     }
     ultimoTab = tab;
     ultimoDiseno = diseno;
-    if (tab === "dashboard" && diseno === "pase") { pintar(); cargar(true); }
+    if (tab === "dashboard" && esPanelServicio(diseno)) { pintar(); cargar(true); }
     else pintar();
   }
 
@@ -450,7 +506,7 @@
   setInterval(revisar, 1200);
   setInterval(function () {
     var p = puente();
-    if (p && p.tabActual === "dashboard" && disenoActivo() === "pase") cargar(false);
+    if (p && p.tabActual === "dashboard" && esPanelServicio(disenoActivo())) cargar(false);
   }, REFRESCO_MS);
 
   /* Expuesto para las comprobaciones del banco de pruebas. */

@@ -3283,7 +3283,8 @@ function GestionAlmacen() {
       rol: miPerfil?.rol || "",
       modoEmpleado,
       cargarMapaSala: () => cargarMapaSalaA07({ paraPanel: true }),
-      listarComandas: listarComandasA10
+      listarComandas: listarComandasA10,
+      consultarCaja: () => consultarCierreCajaA10({ soloEstado: true })
     };
     try {
       window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
@@ -5062,10 +5063,18 @@ function GestionAlmacen() {
   const deleteGastoInforme = (id) => deleteGasto(id, localInformeId || localActivoId || null);
   const contextoActivoPM15 = etiquetaContextoPM15(locales.find((l22) => l22.id === localActivoId) || null, empresaDelLocalActivo);
   const diagnosticoLegadosPM10 = diagnosticarDatosLegadosPM10({ productos, pedidos: pedidos2, empleados, encargos, proveedores, clientes, locales, empresas });
+  function puedeVerPanelRediseno(id) {
+    if (window.__nubeActiva && !miPerfil) return false;
+    const requiereFiltro = modoEmpleado || window.__nubeActiva && miPerfil.rol !== "Propietario";
+    return (!requiereFiltro || itemsPermitidosEmpleado.includes(id)) && puedeConsultarPantallaPM13(id);
+  }
   const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }), tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, modoEmpleado && /* @__PURE__ */ import_react4.default.createElement(InicioEmpleado, { nombre: nombreActivoEmpleado, rol: rolEfectivoEmpleadoNav, contextoLocal: contextoActivoPM15, empleadoIdResuelto: empleadoActivoResuelto ? empleadoActivoResuelto.id : null, turnoHoy: empleadoActivoResuelto ? turnosDelLocalActivo.find((t22) => t22.empleadoId === empleadoActivoResuelto.id && t22.fecha === todayISO()) : void 0, fichajesHoyEmpleado: empleadoActivoResuelto ? fichajesDelLocalActivo.filter((f22) => f22.empleadoId === empleadoActivoResuelto.id && f22.fecha === todayISO() && f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true") : [], fichar, itemsPermitidos: itemsPermitidosEmpleado, setTab: cambiarTabPM15 }), /* @__PURE__ */ import_react4.default.createElement(
     Dashboard,
     {
       empresa: empresaDelLocalActivo,
+      diseno: disenoNavegacion,
+      contexto: contextoActivoPM15,
+      puedeVerPanelRediseno,
       itemsPermitidos: typeof window !== "undefined" && window.__nubeActiva ? miPerfil?.rol === "Propietario" ? null : itemsPermitidosEmpleado : modoEmpleado ? itemsPermitidosEmpleado : null,
       valorInventario: valorInventarioInforme,
       valorUtillaje: valorUtillajeInforme,
@@ -5528,8 +5537,7 @@ function GestionAlmacen() {
     return filtrados.map(porId).filter(Boolean);
   };
   function puedeNavegarRediseno(id) {
-    if (window.__nubeActiva && (!miPerfil || miPerfil.rol !== "Propietario" && !itemsPermitidosEmpleado.includes(id))) return false;
-    return pick([id]).length > 0;
+    return puedeVerPanelRediseno(id) && Boolean(porId(id));
   }
   function navegarRediseno(id) {
     return puedeNavegarRediseno(id) && cambiarTabPM15(id);
@@ -12251,10 +12259,11 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return { supabase, empresaId, localId: localActivoId, terminalId: terminal.terminalId, sessionId, sessionEstado: sesion.estado, operatingDay };
   }
 
-  async function consultarCierreCajaA10() {
+  async function consultarCierreCajaA10({ soloEstado = false } = {}) {
     try {
       const contexto = await contextoCierreA10({ conDia: false });
       const base = { ok: true, sessionId: contexto.sessionId, sessionEstado: contexto.sessionEstado };
+      if (soloEstado) return base;
       if (contexto.sessionEstado === "EN_CIERRE") {
         const { data, error } = await contexto.supabase.rpc("abc_previsualizar_arqueo_caja", {
           p_empresa_id: contexto.empresaId,
@@ -15853,7 +15862,81 @@ function InicioEmpleado({ nombre, rol, contextoLocal, empleadoIdResuelto, turnoH
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-5" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 mb-1" }, /* @__PURE__ */ import_react4.default.createElement(UserRound, { size: 18, color: C2.ink }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold" }, "Hola, ", nombre || "—")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-1", style: { color: C2.inkSoft } }, rol), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4 truncate", style: { color: C2.inkSoft } }, contextoLocal || "—"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 text-[11.5px] mb-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(CalendarClock, { size: 13 }), "Turno de hoy"), !turnoHoy ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px]", style: { color: C2.inkSoft } }, "Sin turno asignado hoy") : esLibre ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-medium" }, "Hoy libre") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-semibold" }, turnoHoy.tipo, turnoHoy.horaInicio ? /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, " \xB7 ", turnoHoy.horaInicio, "–", turnoHoy.horaFin) : null)), permitido("fichaje") && (empleadoIdResuelto ? /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 text-[11.5px] mb-1", style: { color: C2.inkSoft } }, /* @__PURE__ */ import_react4.default.createElement(Clock, { size: 13 }), "Fichaje"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-semibold mb-3" }, estadoFichaje, abierto && ultimaEntrada ? ` \xB7 entr\xF3 a las ${ultimaEntrada.hora}` : ""), /* @__PURE__ */ import_react4.default.createElement("button", { type: "button", disabled: procesandoFichaje, onClick: () => alFicharPersonalPM13(), className: "w-full inline-flex items-center justify-center gap-2 rounded-lg font-semibold", style: { minHeight: 48, fontSize: 16, background: C2.accentFill, color: C2.onAccent, opacity: procesandoFichaje ? 0.7 : 1 } }, abierto ? /* @__PURE__ */ import_react4.default.createElement(LogOut, { size: 18 }) : /* @__PURE__ */ import_react4.default.createElement(LogIn, { size: 18 }), procesandoFichaje ? "Fichando…" : abierto ? "Fichar salida" : "Fichar entrada"), /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[11.5px] mt-2", style: { color: resultadoFichaje?.tipo === "error" ? C2.red : resultadoFichaje?.tipo === "incierto" ? C2.amber : C2.inkSoft } }, resultadoFichaje?.mensaje || "")) : /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: C2.inkSoft } }, "No se ha podido identificar tu registro de fichaje en este dispositivo. Usa Registro horario para fichar tu entrada o salida."), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setTab("fichaje") }, "Ir a Registro horario"))));
 }
-function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null }) {
+const PANELES_REDISENO = {
+  oliva: { titulo: "Resumen de operaci\xF3n", indicadores: ["saldo", "pedidos", "stockbajo"], accesos: ["venta", "recepcion", "conteo"] },
+  claro: { titulo: "Resumen del local", indicadores: ["pedidos", "facturas", "stockbajo"], accesos: ["venta", "recepcion", "resultados"] },
+  pulso: { titulo: "Control operativo", indicadores: ["saldo", "margen", "pedidos", "stockbajo", "descuadresstock"], accesos: ["venta", "cocina", "caja", "resumen_almacen"] },
+  patio: { titulo: "Mi turno", indicadores: ["pedidos", "caducidades", "conteos"], accesos: ["venta", "cocina", "recepcion", "fichaje"] },
+  sello: { titulo: "Panel de gesti\xF3n", indicadores: ["saldo", "margen", "pedidos", "personal"], accesos: ["clientes", "facturas", "reportes"] },
+  orbita: { titulo: "El pulso", destacado: "del negocio.", indicadores: ["margen", "pedidos", "stockbajo"], accesos: ["venta", "cocina", "resultados"] }
+};
+const ACCESOS_PANEL_REDISENO = {
+  venta: ["Abrir TPV", ShoppingBag],
+  cocina: ["Ir a Cocina", Factory],
+  caja: ["Revisar caja", Wallet],
+  recepcion: ["Recibir mercanc\xEDa", ClipboardList],
+  conteo: ["Contar existencias", Boxes],
+  resumen_almacen: ["Ver almac\xE9n", Package],
+  fichaje: ["Ver registro horario", Clock],
+  clientes: ["Abrir Clientes", Users],
+  facturas: ["Ver Facturas", Files],
+  reportes: ["Ver Informes", ChartColumn],
+  resultados: ["Consultar resultados", TrendingUp]
+};
+function PanelDiseno({ diseno, contexto, tarjetas, puedeConsultar, navegar, abrirIndicador }) {
+  const h = import_react4.default.createElement;
+  const panelRef = (0, import_react4.useRef)(null);
+  (0, import_react4.useEffect)(() => {
+    if (diseno !== "orbita" || typeof IntersectionObserver !== "function" ||
+        !window.matchMedia("(prefers-reduced-motion: no-preference)").matches) return;
+    const nodo = panelRef.current?.querySelector(".la-panel-indicadores");
+    if (!nodo) return;
+    const observador = new IntersectionObserver(([entrada]) => {
+      if (!entrada.isIntersecting) return;
+      nodo.classList.add("la-orbita-entrada");
+      observador.disconnect();
+    }, { threshold: .2 });
+    observador.observe(nodo);
+    return () => observador.disconnect();
+  }, [diseno, puedeConsultar]);
+  const panel = Object.prototype.hasOwnProperty.call(PANELES_REDISENO, diseno) ? PANELES_REDISENO[diseno] : null;
+  if (!panel) return null;
+  const indicadores = panel.indicadores.map((id) => tarjetas.find((item) => item.id === id))
+    .filter((item) => item && puedeConsultar(item.tab));
+  const accesos = panel.accesos.filter(puedeConsultar);
+  const esOrbita = diseno === "orbita";
+  function moverLinea(e2) {
+    if (e2.pointerType !== "mouse" || !window.matchMedia("(prefers-reduced-motion: no-preference)").matches) return;
+    const rect = e2.currentTarget.getBoundingClientRect();
+    e2.currentTarget.style.setProperty("--la-orbita-puntero", (e2.clientX - rect.left) + "px");
+  }
+  return h("section", { ref: panelRef, className: "la-panel-diseno", "data-la-panel": diseno, "aria-label": panel.titulo },
+    h("header", {
+      className: "la-panel-diseno-cab",
+      onPointerMove: esOrbita ? moverLinea : undefined,
+      onPointerLeave: esOrbita ? (e2) => e2.currentTarget.style.removeProperty("--la-orbita-puntero") : undefined
+    },
+    contexto && h("p", { className: "la-panel-contexto" }, esOrbita ? "Panel de operaci\xF3n \u00B7 " + contexto : contexto),
+    h("h2", null, esOrbita && h("span", { "aria-hidden": true }, "\u2728 "),
+      panel.titulo, panel.destacado && h("em", null, " " + panel.destacado)),
+    accesos.length > 0 && h("div", { className: "la-panel-accesos", "aria-label": "Accesos r\xE1pidos" },
+      accesos.map((id) => {
+        const [texto, Icono] = ACCESOS_PANEL_REDISENO[id];
+        return h("button", { key: id, type: "button", onClick: () => { if (puedeConsultar(id)) navegar(id); } },
+          h(Icono, { size: 17, "aria-hidden": true }), texto);
+      }))
+    ),
+    indicadores.length > 0 && h("div", { className: "la-panel-indicadores" },
+      indicadores.map((item) => h("button", {
+        key: item.id, type: "button", onClick: () => { if (puedeConsultar(item.tab)) abrirIndicador(item); }
+      },
+      h(ACCESOS_PANEL_REDISENO[item.tab]?.[1] || ClipboardList, { size: 18, "aria-hidden": true }),
+      h("span", null, item.titulo),
+      h("strong", null, item.valor)))
+    )
+  );
+}
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null, diseno, contexto, puedeVerPanelRediseno }) {
   const entradas30 = movimientos.filter((m22) => esEntrada(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const salidas30 = movimientos.filter((m22) => esSalida(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const [abierta, setAbierta] = (0, import_react4.useState)(null);
@@ -16114,7 +16197,14 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
   ];
   const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t22) => itemsPermitidos.includes(t22.tab)) : tarjetas;
   const tarjetaAbierta = tarjetasVisibles.find((t22) => t22.id === abierta);
-  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[18px] font-semibold" }, "Panel general"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))), /* @__PURE__ */ import_react4.default.createElement("img", { src: (empresa && empresa.logo) || LOGO_PROYECTO, alt: "", style: { height: 56, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Toca cualquier cifra para ver el detalle."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" }, tarjetasVisibles.map((t22) => {
+  const panelDiseno = diseno && puedeVerPanelRediseno ? /* @__PURE__ */ import_react4.default.createElement(PanelDiseno, {
+    diseno, contexto, tarjetas: tarjetasVisibles, puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
+    abrirIndicador: (item) => {
+      setAbierta(item.id);
+      requestAnimationFrame(() => document.querySelector('[data-la-panel-detalle]')?.focus());
+    }
+  }) : null;
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, panelDiseno, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[18px] font-semibold" }, "Panel general"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))), /* @__PURE__ */ import_react4.default.createElement("img", { src: (empresa && empresa.logo) || LOGO_PROYECTO, alt: "", style: { height: 56, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Toca cualquier cifra para ver el detalle."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" }, tarjetasVisibles.map((t22) => {
     const activa = abierta === t22.id;
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
@@ -16132,7 +16222,7 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-semibold mono mt-1", style: { color: t22.color || C2.ink } }, t22.valor),
       t22.nota && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: t22.notaColor || C2.inkSoft } }, t22.nota)
     );
-  })), tarjetaAbierta && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-6", style: { borderColor: C2.accent } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, tarjetaAbierta.titulo), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setAbierta(null), "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft }))), tarjetaAbierta.items.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "No hay nada pendiente aqu\xED ahora mismo.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3 max-h-72 overflow-y-auto" }, tarjetaAbierta.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.clave, className: "flex items-start justify-between py-1.5 border-b last:border-0", style: { borderColor: C2.divider } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "pr-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, it2.principal), it2.secundario && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, it2.secundario)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px] mono font-semibold whitespace-nowrap", style: { color: it2.derechaColor || C2.inkSoft } }, it2.derecha)))), setTab && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => {
+  })), tarjetaAbierta && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-6", style: { borderColor: C2.accent } }, /* @__PURE__ */ import_react4.default.createElement("span", { "data-la-panel-detalle": "", className: "sr-only", tabIndex: -1 }, tarjetaAbierta.titulo), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, tarjetaAbierta.titulo), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setAbierta(null), "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft }))), tarjetaAbierta.items.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "No hay nada pendiente aqu\xED ahora mismo.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3 max-h-72 overflow-y-auto" }, tarjetaAbierta.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.clave, className: "flex items-start justify-between py-1.5 border-b last:border-0", style: { borderColor: C2.divider } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "pr-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, it2.principal), it2.secundario && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, it2.secundario)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px] mono font-semibold whitespace-nowrap", style: { color: it2.derechaColor || C2.inkSoft } }, it2.derecha)))), setTab && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => {
     setTab(tarjetaAbierta.tab);
     setAbierta(null);
   } }, "Ir a ", tarjetaAbierta.tabNombre, " ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 }))), permitido("productos") && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 15, color: C2.amber }), " Alertas de reposici\xF3n"), stockBajo.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay productos por debajo de su stock m\xEDnimo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, stockBajo.map((p22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: p22.id, className: "flex items-center justify-between py-1.5 border-b last:border-0", style: { borderColor: C2.divider } }, /* @__PURE__ */ import_react4.default.createElement("span", null, p22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12px]", style: { color: C2.amber } }, p22.stock, " / m\xEDn. ", p22.stockMinimo))))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 15, color: caducanPronto.some((l22) => l22.dias < 0) ? C2.red : C2.amber }), "Caducidades pr\xF3ximas"), caducanPronto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Ning\xFAn lote caduca en los pr\xF3ximos 30 d\xEDas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 max-h-48 overflow-y-auto" }, caducanPronto.slice(0, 12).map((l22) => {

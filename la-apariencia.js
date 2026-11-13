@@ -271,12 +271,15 @@
       if (!config) {
         raiz.removeAttribute("data-la-diseno");
         raiz.removeAttribute("data-la-paleta");
+        raiz.removeAttribute("data-la-personalizada");
         raiz.removeAttribute("data-la-origen");
         estado = { config: null, origen: "base" };
       } else {
         raiz.setAttribute("data-la-diseno", config.diseno);
         if (config.paleta) raiz.setAttribute("data-la-paleta", config.paleta);
         else raiz.removeAttribute("data-la-paleta");
+        if (config.colores) raiz.setAttribute("data-la-personalizada", "");
+        else raiz.removeAttribute("data-la-personalizada");
         /* Una paleta de biblioteca se resuelve igual que una propia, para que
            los enlaces y los bordes funcionales alcancen su contraste minimo.
            Los bloques de la hoja de estilos quedan como reserva sin JS. */
@@ -290,7 +293,13 @@
       return true;
     } catch (error) {
       /* Nunca dejar la suite sin interfaz por un fallo de apariencia. */
-      try { limpiarVariables(); raiz.removeAttribute("data-la-diseno"); raiz.removeAttribute("data-la-paleta"); } catch (e) {}
+      try {
+        limpiarVariables();
+        raiz.removeAttribute("data-la-diseno");
+        raiz.removeAttribute("data-la-paleta");
+        raiz.removeAttribute("data-la-personalizada");
+        raiz.removeAttribute("data-la-origen");
+      } catch (e) {}
       estado = { config: null, origen: "base" };
       return false;
     }

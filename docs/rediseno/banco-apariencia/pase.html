@@ -67,6 +67,7 @@ function puenteDePrueba(opciones) {
     irA: function (t) { window.__ultimoIrA = t; },
     puedeConsultar: o.puedeConsultar || function () { return true; },
     cargarMapaSala: o.cargarMapaSala || async function () { return mapaDePrueba(); },
+    consultarCaja: o.consultarCaja,
     listarComandas: o.listarComandas || async function () {
       return { ok: true, comandas: [
         { pedido_id: "p1", operation_id: "op-1", tipo: "NUEVA", estado: "PENDIENTE", mesa_codigo: "02" },
@@ -251,6 +252,28 @@ function panel() { return document.getElementById("la-pase-panel"); }
     consultasSinLocal === 0 && !/Solo A2/.test(panel().textContent) && !P.estado().mapa &&
     /Selecciona un local para ver sus mesas/.test(panel().textContent) &&
     /Selecciona un local para ver sus comandas/.test(panel().textContent));
+
+  var consultasCaja = 0;
+  window.__laPuenteRediseno = puenteDePrueba({
+    consultarCaja: async function () { consultasCaja++; return { ok: true, sessionEstado: "ABIERTA" }; }
+  });
+  window.LAApariencia.aplicar({ diseno: "ascua" }, "empresa");
+  await P.cargar(true);
+  await esperar(40);
+  comprueba("Ascua usa el mismo contrato de sala y estado del terminal",
+    !!panel().querySelector(".la-ascua-anillo") && /El servicio, al punto/.test(panel().textContent) &&
+    /Caja del terminalAbierta/.test(panel().textContent) && consultasCaja > 0);
+  window.__laPuenteRediseno = puenteDePrueba({
+    rol: "Camarero",
+    puedeConsultar: function (id) { return id !== "caja"; },
+    consultarCaja: async function () { consultasCaja++; return { ok: true, sessionEstado: "ABIERTA" }; }
+  });
+  var previasCaja = consultasCaja;
+  window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
+  await P.cargar(true);
+  await esperar(40);
+  comprueba("Ascua deja fuera los datos de caja si el cargo no puede abrir Caja",
+    !/Caja del terminal/.test(panel().textContent) && consultasCaja === previasCaja);
 
   var fallos = window.__res.filter(function (x) { return !x.ok; }).length;
   linea("");

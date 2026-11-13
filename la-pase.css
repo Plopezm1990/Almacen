@@ -30,6 +30,64 @@
   color: var(--pase-tinta);
 }
 
+.la-ascua {
+  --pase-fondo: var(--c-bg);
+  --pase-panel: var(--c-surface);
+  --pase-tarjeta: var(--c-bg);
+  --pase-tinta: var(--c-ink);
+  --pase-tinta-suave: var(--c-ink-soft);
+  --pase-acento: var(--c-accent);
+}
+.la-ascua-turno {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(160px, .6fr);
+  align-items: center;
+  gap: 16px 28px;
+  padding: clamp(14px, 3vw, 32px);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--la-radio);
+  color: var(--c-ink);
+}
+.la-ascua-cab .la-pase-local { color: var(--c-ink-soft); }
+.la-ascua-cab h2 { font: 700 clamp(28px, 5vw, 54px)/1.05 var(--la-display); margin: 4px 0 12px; }
+.la-ascua-cab dl { display: flex; flex-wrap: wrap; gap: 8px 20px; margin: 0 0 12px; }
+.la-ascua-cab dt { color: var(--c-ink-soft); }
+.la-ascua-cab dd { margin: 0; font-weight: 700; }
+.la-ascua-acciones { display: flex; flex-wrap: wrap; gap: 8px; }
+.la-ascua-acciones button {
+  min-height: 44px;
+  padding: 8px 12px;
+  color: var(--c-on-accent);
+  background: var(--c-accent-fill);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--la-radio);
+}
+.la-ascua-acciones button:disabled { opacity: .55; }
+.la-ascua-esfera {
+  position: relative;
+  display: grid;
+  place-items: center;
+  justify-self: center;
+  width: min(100%, 240px);
+  aspect-ratio: 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 34% 28%, var(--c-surface), var(--c-accent-soft));
+  box-shadow: inset 0 0 0 1px var(--c-divider);
+}
+.la-ascua-anillo {
+  position: absolute;
+  inset: 9%;
+  border-radius: 50%;
+  background: conic-gradient(var(--c-accent-fill) var(--la-ascua-progreso, 0%), var(--c-divider) 0);
+  mask-image: radial-gradient(circle, transparent 61%, black 62%);
+}
+.la-ascua-dato { font-size: clamp(20px, 4vw, 32px); font-weight: 700; }
+@media (max-width: 620px) {
+  .la-ascua-turno { grid-template-columns: minmax(0, 1fr); }
+  .la-ascua-esfera { width: min(62%, 190px); }
+}
+
 .la-pase-local {
   display: inline-flex; align-items: center; gap: 7px;
   background: color-mix(in srgb, var(--pase-tinta) 12%, transparent);
