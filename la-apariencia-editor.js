@@ -313,6 +313,9 @@
     ultimoFoco = document.activeElement;
 
     var actual = await m.leerEmpresa();
+    if (dialogo) return;
+    var acceso = m.estadoServidor();
+    var cargoRestringido = acceso.disponible === true && acceso.puedeAplicar === false;
     var enPrueba = m.enPrueba() ? m.estado().config : null;
     var base = enPrueba || actual;
     revisionLeida = actual ? actual.revision : null;
@@ -336,6 +339,7 @@
 
     var aplicar = el("button", {
       type: "button", class: "la-ed-btn primario", texto: "Aplicar a la empresa",
+      disabled: cargoRestringido ? "disabled" : null,
       onclick: async function () {
         aplicar.disabled = true;
         var r = await m.guardarEmpresa(borrador, revisionLeida);
@@ -374,6 +378,7 @@
 
     var restaurar = el("button", {
       type: "button", class: "la-ed-btn", texto: "Restaurar apariencia anterior",
+      disabled: cargoRestringido ? "disabled" : null,
       onclick: async function () {
         restaurar.disabled = true;
         var r = await m.restaurarAnterior();
@@ -403,6 +408,9 @@
     document.addEventListener("keydown", alTeclado, true);
     document.body.appendChild(dialogo);
     repintar();
+    if (cargoRestringido) {
+      mostrarMensaje("aviso", "Puedes consultar y probar la apariencia. Tu cargo no tiene permiso para aplicar ni restaurar cambios de la empresa.");
+    }
     cerrar.focus();
   }
 
@@ -410,7 +418,7 @@
     if (!dialogo) return;
     if (e.key === "Escape") { e.stopPropagation(); cerrarDialogo(); return; }
     if (e.key !== "Tab") return;
-    var focalizables = dialogo.querySelectorAll("button, input, textarea, a[href], select");
+    var focalizables = dialogo.querySelectorAll("button:not(:disabled), input:not(:disabled), textarea:not(:disabled), a[href], select:not(:disabled)");
     if (!focalizables.length) return;
     var primero = focalizables[0], ultimo = focalizables[focalizables.length - 1];
     if (e.shiftKey && document.activeElement === primero) { e.preventDefault(); ultimo.focus(); }

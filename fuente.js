@@ -129340,7 +129340,7 @@ function MfaGate({ cliente, modo, onComplete, onSignOut }) {
 function AppConSesion() {
   const MAX_INTENTOS_LOGIN_M04 = 5;
   const BLOQUEO_LOGIN_MS_M04 = 60 * 1000;
-  const [fase, setFase] = (0, import_react4.useState)("comprobando");
+  const [fase, setFaseReact] = (0, import_react4.useState)("comprobando");
   const [cliente, setCliente] = (0, import_react4.useState)(null);
   const [mfaModo, setMfaModo] = (0, import_react4.useState)(null);
   const [email, setEmail] = (0, import_react4.useState)("");
@@ -129349,6 +129349,11 @@ function AppConSesion() {
   const [cargando, setCargando] = (0, import_react4.useState)(false);
   const [intentosFallidos, setIntentosFallidos] = (0, import_react4.useState)(0);
   const [bloqueoHasta, setBloqueoHasta] = (0, import_react4.useState)(0);
+  const validacionSesionRef = (0, import_react4.useRef)({ token: "", solicitud: 0, fase: "comprobando" });
+  function setFase(siguiente) {
+    validacionSesionRef.current.fase = siguiente;
+    setFaseReact(siguiente);
+  }
   (0, import_react4.useEffect)(() => {
     if (!bloqueoHasta) return;
     const temporizador = setInterval(() => {
@@ -129360,30 +129365,37 @@ function AppConSesion() {
     return () => clearInterval(temporizador);
   }, [bloqueoHasta]);
   async function abrirSesionConMfa(supabase, session, activo = true) {
+    const validacion = validacionSesionRef.current;
+    const token = session?.access_token || "";
+    if (session && token && token === validacion.token &&
+        ["comprobando-mfa", "mfa", "dentro"].includes(validacion.fase)) return;
+    const solicitud = ++validacion.solicitud;
+    validacion.token = token;
+    const vigente = () => (typeof activo === "function" ? activo() : activo) && validacion.solicitud === solicitud;
     if (!session) {
-      if (activo) {
+      if (vigente()) {
         setMfaModo(null);
         setFase("login");
       }
       return;
     }
-    if (activo) setFase("comprobando-mfa");
+    if (!vigente()) return;
+    setFase("comprobando-mfa");
     try {
       const estadoMfa = await evaluarMfaSesion(supabase);
+      if (!vigente()) return;
       if (estadoMfa.modo) {
-        if (activo) {
-          setMfaModo(estadoMfa.modo);
-          setFase("mfa");
-        }
+        setMfaModo(estadoMfa.modo);
+        setFase("mfa");
         return;
       }
       await window.subirPendientes();
-      if (activo) {
+      if (vigente()) {
         setMfaModo(null);
         setFase("dentro");
       }
     } catch (error2) {
-      if (activo) {
+      if (vigente()) {
         setMfaModo(null);
         setError(error2?.message || "No se ha podido comprobar el segundo factor.");
         setFase("mfa-error");
@@ -129406,10 +129418,12 @@ function AppConSesion() {
       try {
         const { data } = await supabase.auth.getSession();
         if (!activo) return;
-        await abrirSesionConMfa(supabase, data.session, activo);
-        subscription = supabase.auth.onAuthStateChange(async (_evento, session) => {
-          if (!activo) return;
-          await abrirSesionConMfa(supabase, session, activo);
+        await abrirSesionConMfa(supabase, data.session, () => activo);
+        if (!activo) return;
+        subscription = supabase.auth.onAuthStateChange((_evento, session) => {
+          setTimeout(() => {
+            if (activo) abrirSesionConMfa(supabase, session, () => activo);
+          }, 0);
         });
       } catch (error2) {
         if (activo) {

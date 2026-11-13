@@ -81,26 +81,36 @@
 
   async function cargar(forzar) {
     var p = puente();
-    if (!p || estado.cargando) return;
+    if (!p || p.tabActual !== "dashboard" || disenoActivo() !== "pase") return;
+    var contexto = claveContexto(p);
+    actualizarContexto(contexto);
+    if (!p.empresaId || !p.localId || estado.cargando) return;
     if (!forzar && Date.now() - estado.ultimaCarga < 4000) return;
+    var generacion = generacionContexto;
     estado.cargando = true;
     try {
       if (typeof p.cargarMapaSala === "function") {
         var r = await p.cargarMapaSala();
+        if (!esCargaVigente(contexto, generacion)) return;
         if (r && r.ok) { estado.mapa = r; estado.mapaError = null; }
         else { estado.mapa = null; estado.mapaError = r || { error: "No se ha podido cargar la sala." }; }
       }
       if (typeof p.listarComandas === "function") {
         var c = await p.listarComandas(null, 50);
+        if (!esCargaVigente(contexto, generacion)) return;
         if (c && c.ok) { estado.comandas = c.comandas || []; estado.comandasError = null; }
         else { estado.comandas = null; estado.comandasError = c || { error: "No se ha podido cargar la cola." }; }
       }
     } catch (error) {
-      estado.mapaError = { error: "No se ha podido contactar con el servidor." };
+      if (esCargaVigente(contexto, generacion)) {
+        estado.mapaError = { error: "No se ha podido contactar con el servidor." };
+      }
     } finally {
-      estado.cargando = false;
-      estado.ultimaCarga = Date.now();
-      pintar();
+      if (generacion === generacionContexto) {
+        estado.cargando = false;
+        estado.ultimaCarga = Date.now();
+        pintar();
+      }
     }
   }
 
@@ -373,6 +383,7 @@
     }
     var destino = contenedorDestino();
     if (!destino) return;
+    actualizarContexto(claveContexto(p));
 
     var nodo = el("div", { id: ID, class: "la-pase" }, [
       bloqueTurno(),
@@ -387,13 +398,39 @@
 
   var ultimoTab = null;
   var ultimoDiseno = null;
+  var ultimoContexto = null;
+  var generacionContexto = 0;
+
+  function claveContexto(p) {
+    return JSON.stringify(p ? [p.empresaId, p.localId, p.rol, p.modoEmpleado] : []);
+  }
+
+  function actualizarContexto(contexto) {
+    if (contexto === ultimoContexto) return false;
+    ultimoContexto = contexto;
+    generacionContexto++;
+    estado.zonaFiltro = "todas";
+    estado.colaFiltro = "todas";
+    estado.mesaSeleccionada = null;
+    estado.mapa = null;
+    estado.mapaError = null;
+    estado.comandas = null;
+    estado.comandasError = null;
+    estado.cargando = false;
+    estado.ultimaCarga = 0;
+    return true;
+  }
+
+  function esCargaVigente(contexto, generacion) {
+    return generacion === generacionContexto && contexto === claveContexto(puente());
+  }
 
   function revisar() {
     var p = puente();
-    if (!p) return;
-    var tab = p.tabActual;
+    var cambioContexto = actualizarContexto(claveContexto(p));
+    var tab = p ? p.tabActual : null;
     var diseno = disenoActivo();
-    if (tab === ultimoTab && diseno === ultimoDiseno) {
+    if (!cambioContexto && tab === ultimoTab && diseno === ultimoDiseno) {
       if (tab === "dashboard" && diseno === "pase" && !document.getElementById(ID)) pintar();
       return;
     }
@@ -405,6 +442,7 @@
 
   window.addEventListener("la-puente:actualizado", revisar);
   window.addEventListener("la-apariencia:cambio", revisar);
+  window.addEventListener("pagehide", function () { actualizarContexto(claveContexto(null)); });
   setInterval(revisar, 1200);
   setInterval(function () {
     var p = puente();

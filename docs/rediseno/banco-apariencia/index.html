@@ -165,6 +165,32 @@
       !m.enPrueba() && document.documentElement.getAttribute("data-la-diseno") === "sello",
       document.documentElement.getAttribute("data-la-diseno"));
 
+    /* El permiso de escritura lo devuelve el servidor para la empresa activa. */
+    var llamadas = [];
+    window.__nubeActiva = true;
+    window.__nubeCliente = { rpc: async function (nombre) {
+      llamadas.push(nombre);
+      return { data: { ok: true, existe: true, diseno: "pase", revision: 5, puede_aplicar: false }, error: null };
+    } };
+    await m.abrirEditor();
+    var editor = document.querySelector(".la-ed");
+    var aplicar = editor.querySelector("button.primario");
+    var restaurar = Array.from(editor.querySelectorAll("button")).find(function (b) {
+      return b.textContent === "Restaurar apariencia anterior";
+    });
+    var probar = Array.from(editor.querySelectorAll("button")).find(function (b) {
+      return b.textContent === "Probar en la suite";
+    });
+    aplicar.click();
+    restaurar.click();
+    comprueba("un cargo restringido puede probar, pero no aplicar ni restaurar",
+      aplicar.disabled && restaurar.disabled && !probar.disabled &&
+      /Tu cargo no tiene permiso/.test(editor.textContent) &&
+      llamadas.every(function (nombre) { return nombre === "abc_apariencia_leer"; }));
+    editor.querySelector("header button").click();
+    window.__nubeActiva = false;
+    window.__nubeCliente = null;
+
     var fallos = window.__resultados.filter(function (x) { return !x.ok; }).length;
     linea("");
     linea("TOTAL " + window.__resultados.length + " comprobaciones, " + fallos + " fallos");

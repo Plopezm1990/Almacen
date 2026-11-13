@@ -220,6 +220,36 @@ function panel() { return document.getElementById("la-pase-panel"); }
   P.pintar();
   comprueba("fuera del panel del programa, Pase se retira", !panel());
 
+  /* Respuestas lentas del local anterior no pueden reemplazar el plano actual. */
+  var resolverMapaAnterior;
+  window.__laPuenteRediseno = puenteDePrueba({ cargarMapaSala: function () {
+    return new Promise(function (resolve) { resolverMapaAnterior = resolve; });
+  } });
+  var cargaAnterior = P.cargar(true);
+  var puenteA2 = puenteDePrueba({ cargarMapaSala: async function () {
+    return { ok: true, zonas: [{ zona_id: "a2", nombre: "Solo A2", mesas: [] }] };
+  } });
+  puenteA2.localId = "QA-A2";
+  window.__laPuenteRediseno = puenteA2;
+  window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
+  await esperar(40);
+  resolverMapaAnterior(mapaDePrueba());
+  await cargaAnterior;
+  comprueba("cambiar de local descarta el plano y las respuestas del local anterior",
+    /Solo A2/.test(panel().textContent) && !/Mesa 1/.test(panel().textContent));
+
+  var consultasSinLocal = 0;
+  var puenteConsolidado = puenteDePrueba({ cargarMapaSala: async function () {
+    consultasSinLocal++;
+    return mapaDePrueba();
+  }, listarComandas: async function () { consultasSinLocal++; return { ok: true, comandas: [] }; } });
+  puenteConsolidado.localId = null;
+  window.__laPuenteRediseno = puenteConsolidado;
+  window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
+  await P.cargar(true);
+  comprueba("sin local activo se retira el plano previo y no se consulta la sala",
+    consultasSinLocal === 0 && !/Solo A2/.test(panel().textContent) && !P.estado().mapa);
+
   var fallos = window.__res.filter(function (x) { return !x.ok; }).length;
   linea("");
   linea("TOTAL " + window.__res.length + " comprobaciones, " + fallos + " fallos");
