@@ -3258,6 +3258,30 @@ function GestionAlmacen() {
     formularioAbiertoPM15Ref.current = false;
     setTab(nuevaTab);
   }
+  // Rediseno: puente de solo lectura para la capa de apariencia y el panel
+  // de servicio Pase. Publica el contexto y las funciones que YA existen, sin
+  // duplicar logica de negocio ni saltarse controles: la navegacion pasa por
+  // cambiarTabPM15 (guarda de borrador y de permiso) y los datos de sala y de
+  // cocina salen de los mismos RPC que usa el TPV, con sus politicas RLS.
+  (0, import_react4.useEffect)(() => {
+    if (typeof window === "undefined") return;
+    window.__laPuenteRediseno = {
+      version: 1,
+      irA: cambiarTabPM15,
+      puedeConsultar: puedeConsultarPantallaPM13,
+      tabActual: tab,
+      empresaId: empresaDelLocalActivo?.id || null,
+      localId: localActivoId,
+      rol: miPerfil?.rol || "",
+      modoEmpleado,
+      cargarMapaSala: cargarMapaSalaA07,
+      listarComandas: listarComandasA10
+    };
+    try {
+      window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
+    } catch (e2) {
+    }
+  });
   const [saltoDevolucionProveedor, setSaltoDevolucionProveedor] = (0, import_react4.useState)(0);
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
