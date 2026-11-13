@@ -25,8 +25,21 @@ create table if not exists public.apariencia_delegacion_eventos (
 alter table public.apariencia_delegacion_eventos enable row level security;
 revoke all on table public.apariencia_delegacion_eventos from anon, authenticated;
 
--- Solo el propietario administra la delegacion. Delegar la propia facultad de
--- delegar seria una escalada de privilegio, asi que no se permite.
+create index if not exists apariencia_deleg_eventos_empresa_idx
+  on public.apariencia_delegacion_eventos (empresa_id, id desc);
+
+-- ----------------------------------------------------------------------------
+-- Correccion de autorizacion sobre 20261113090000.
+--
+-- `private.abc_apariencia_rol` devuelve UNA sola membresia, la de mayor
+-- alcance. `abc_apariencia_puede_aplicar` decidia con ella, asi que un usuario
+-- con dos membresias en la misma empresa (por ejemplo Encargado en un local y
+-- Camarero/a en otro, que el modelo permite) quedaba a merced del orden: si la
+-- delegada no era la que ganaba, se le denegaba teniendo permiso.
+--
+-- La autorizacion pasa a mirar TODAS sus membresias activas de esa empresa.
+-- `abc_apariencia_rol` se conserva intacta para mostrar el cargo.
+-- ----------------------------------------------------------------------------
 create or replace function private.abc_apariencia_es_propietario(p_empresa_id text)
 returns boolean
 language sql
@@ -34,7 +47,36 @@ stable
 security definer
 set search_path=''
 as $$
-  select coalesce(private.abc_apariencia_rol(p_empresa_id) = 'Propietario', false);
+  select exists(
+    select 1 from public.membresias_usuario m
+     where m.user_id = auth.uid()
+       and m.empresa_id = p_empresa_id
+       and m.activo = true
+       and m.rol = 'Propietario'
+  );
+$$;
+
+create or replace function private.abc_apariencia_puede_aplicar(p_empresa_id text)
+returns boolean
+language sql
+stable
+security definer
+set search_path=''
+as $$
+  select auth.uid() is not null and exists(
+    select 1
+      from public.membresias_usuario m
+     where m.user_id = auth.uid()
+       and m.empresa_id = p_empresa_id
+       and m.activo = true
+       and (
+         m.rol = 'Propietario'
+         or exists(
+           select 1 from public.apariencia_delegaciones d
+            where d.empresa_id = p_empresa_id and d.rol = m.rol
+         )
+       )
+  );
 $$;
 
 -- Un cargo solo se delega si existe de verdad en la empresa: evita filas

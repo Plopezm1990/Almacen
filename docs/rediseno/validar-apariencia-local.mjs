@@ -261,6 +261,32 @@ r = await db.query(`
      and routine_name in ('abc_apariencia_leer','abc_apariencia_guardar','abc_apariencia_restaurar')`);
 check('los tres RPC si estan concedidos a authenticated', r.rows[0].n === 3, r.rows[0].n + ' de 3');
 
+// 10 ter. Dos membresias en la misma empresa: basta con que UNA este delegada.
+// El orden de `abc_apariencia_rol` devuelve aqui 'Encargado' (id mas alto), de
+// modo que decidir por un solo cargo denegaria el permiso teniendolo.
+{
+  const DOBLE = '55555555-5555-5555-5555-555555555555';
+  await db.exec(`
+    insert into auth.users(id) values ('${DOBLE}');
+    insert into public.membresias_usuario(user_id,empresa_id,local_id,todos_locales,rol,activo) values
+      ('${DOBLE}','QA-EMP-A','QA-A2',false,'Camarero/a',true),
+      ('${DOBLE}','QA-EMP-A','QA-A1',false,'Encargado',true);`);
+  let r = await comoUsuario(DOBLE, `select private.abc_apariencia_rol('QA-EMP-A') as rol`);
+  check('con dos membresias, el cargo mostrado es uno solo', r.rows[0].rol === 'Encargado', r.rows[0].rol);
+  await comoUsuario(DUENA, `select public.abc_apariencia_retirar_delegacion('QA-EMP-A','Encargado')`);
+  await comoUsuario(DUENA, `select public.abc_apariencia_delegar('QA-EMP-A','Camarero/a')`);
+  r = await comoUsuario(DOBLE, `select private.abc_apariencia_puede_aplicar('QA-EMP-A') as v`);
+  check('basta con que una de sus membresias este delegada', r.rows[0].v === true, String(r.rows[0].v));
+  const rev = await comoUsuario(DUENA, `select public.abc_apariencia_leer('QA-EMP-A') as d`);
+  r = await comoUsuario(DOBLE, `select public.abc_apariencia_guardar('QA-EMP-A', ${rev.rows[0].d.revision}, 'patio', null, null) as d`);
+  check('y puede aplicar de verdad', r.rows[0].d.diseno === 'patio' && r.rows[0].d.actualizado_por === DOBLE);
+  await comoUsuario(DUENA, `select public.abc_apariencia_retirar_delegacion('QA-EMP-A','Camarero/a')`);
+  r = await comoUsuario(DOBLE, `select private.abc_apariencia_puede_aplicar('QA-EMP-A') as v`);
+  check('al retirar la unica delegacion, vuelve a no poder', r.rows[0].v === false, String(r.rows[0].v));
+  await db.exec(`delete from public.membresias_usuario where user_id='${DOBLE}';`);
+  await comoUsuario(DUENA, `select public.abc_apariencia_delegar('QA-EMP-A','Encargado')`);
+}
+
 // 14. Sin sesion no se puede leer.
 await db.exec(`select set_config('request.jwt.claim.sub', '', false);`);
 await esperaError('sin sesion no se puede leer', 'apariencia_no_autorizada',

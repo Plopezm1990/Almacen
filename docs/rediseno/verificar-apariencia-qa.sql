@@ -9,6 +9,11 @@
 --
 -- No escribe nada. Antes de aplicar la migracion devuelve ceros y '-' en las
 -- firmas, asi que sirve tambien como control previo.
+--
+-- Aviso: una vez aplicada tambien 20261113140000, "helpers privados" pasa a
+-- devolver 5 en vez de 3, porque esa migracion annade abc_apariencia_es_propietario
+-- y abc_apariencia_rol_existe. No es un fallo. Para esa segunda migracion usa
+-- docs/rediseno/verificar-apariencia-delegaciones-qa.sql.
 -- ============================================================================
 with t as (
   select c.relname, c.relrowsecurity
