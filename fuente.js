@@ -104375,6 +104375,7 @@ function GestionAlmacen() {
     return () => window.removeEventListener("conflicto-fusion", onConflictoFusion);
   }, []);
   const [tab, setTab] = (0, import_react4.useState)("dashboard");
+  const [pedidoDestinoCocina, setPedidoDestinoCocina] = (0, import_react4.useState)(null);
   const [disenoNavegacion, setDisenoNavegacion] = (0, import_react4.useState)(leerDisenoNavegacion);
   (0, import_react4.useEffect)(() => {
     const actualizar = () => setDisenoNavegacion(leerDisenoNavegacion());
@@ -104391,6 +104392,7 @@ function GestionAlmacen() {
     const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de pantalla se perder\xE1. \xBFQuieres continuar sin guardar?") : true;
     if (!decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar)) return false;
     formularioAbiertoPM15Ref.current = false;
+    setPedidoDestinoCocina(null);
     setTab(nuevaTab);
     return true;
   }
@@ -106458,7 +106460,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "", pedidoDestino: pedidoDestinoCocina, limpiarPedidoDestino: () => setPedidoDestinoCocina(null) }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -106669,8 +106671,12 @@ function GestionAlmacen() {
   function puedeNavegarRediseno(id) {
     return puedeVerPanelRediseno(id) && Boolean(porId(id));
   }
-  function navegarRediseno(id) {
-    return puedeNavegarRediseno(id) && cambiarTabPM15(id);
+  function navegarRediseno(id, destino = null) {
+    if (!puedeNavegarRediseno(id) || !cambiarTabPM15(id)) return false;
+    if (id === "cocina" && typeof destino?.pedidoId === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(destino.pedidoId)) {
+      setPedidoDestinoCocina({ id: destino.pedidoId, empresaId: empresaDelLocalActivo?.id, localId: localActivoId });
+    }
+    return true;
   }
   const gruposBase = [
     { id: "inicio", titulo: null, items: pick(["dashboard", "direccion", "buscar"]) },
@@ -113745,17 +113751,30 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     return finalizarCierreSesionCajaA10();
   }
 
-  async function listarComandasA10(estacionId = null, limite = 100) {
+  async function listarComandasA10(estacionId = null, limite = 100, pedidoId = null) {
     try {
       const contexto = await contextoA10(false);
       const { data, error } = await contexto.supabase.rpc("abc_listar_comandas_estacion", {
         p_empresa_id: contexto.empresaId,
         p_local_id: contexto.localId,
         p_estacion_id: estacionId || null,
-        p_limite: Math.min(500, Math.max(1, Number(limite) || 100))
+        p_limite: pedidoId ? 1 : Math.min(500, Math.max(1, Number(limite) || 100))
       });
       if (error) throw error;
       if (!Array.isArray(data)) throw new Error("comandas_respuesta_invalida");
+      if (pedidoId) {
+        const pedido = await contexto.supabase
+          .from("comandas_preparacion")
+          .select("id,pedido_id,estacion_id,tipo,estado,version,created_at,received_at,lineas:comanda_lineas(id,linea_id,accion,producto_id,cantidad,nota,decision_merma,snapshot)")
+          .eq("empresa_id", contexto.empresaId)
+          .eq("local_id", contexto.localId)
+          .eq("pedido_id", pedidoId)
+          .order("created_at", { ascending: true })
+          .order("id", { ascending: true })
+          .limit(100);
+        if (pedido.error) throw pedido.error;
+        return { ok: true, comandas: pedido.data || [] };
+      }
       return { ok: true, comandas: data };
     } catch (error) {
       return respuestaErrorA06(error);
@@ -128074,7 +128093,7 @@ function infoCierreA10(r2) {
     bloqueos: Array.isArray(r2?.bloqueos) ? r2.bloqueos : []
   };
 }
-function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil = "" }) {
+function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil = "", pedidoDestino, limpiarPedidoDestino }) {
   const h3 = import_react4.default.createElement;
   const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
   const consultarSesionCajaC01 = typeof listarEstacionesA10?.consultarSesionCajaC01 === "function" ? listarEstacionesA10.consultarSesionCajaC01 : null;
@@ -128092,6 +128111,8 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [estaciones, setEstaciones] = (0, import_react4.useState)([]);
   const [rutas, setRutas] = (0, import_react4.useState)([]);
   const [comandas, setComandas] = (0, import_react4.useState)([]);
+  const pedidoIdVisible = pedidoDestino?.empresaId === configEmpresa?.id && pedidoDestino?.localId === local?.id ? pedidoDestino?.id : null;
+  const ultimaConsultaComandas = (0, import_react4.useRef)(0);
   const [estacionId, setEstacionId] = (0, import_react4.useState)("");
   const [codigo, setCodigo] = (0, import_react4.useState)("");
   const [nombre, setNombre] = (0, import_react4.useState)("");
@@ -128220,9 +128241,11 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
 
   async function refrescarComandas() {
     if (typeof listarComandasA10 !== "function") return;
+    const consulta = ++ultimaConsultaComandas.current;
     setCargando(true);
     setError("");
-    const resultado = await listarComandasA10(estacionId || null, 100);
+    const resultado = await listarComandasA10(pedidoIdVisible ? null : estacionId || null, 100, pedidoIdVisible);
+    if (consulta !== ultimaConsultaComandas.current) return;
     setCargando(false);
     if (!resultado?.ok) {
       setError(resultado?.error || "No se pudieron cargar las comandas.");
@@ -128255,8 +128278,10 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   }, [local?.id, configEmpresa?.id]);
 
   (0, import_react4.useEffect)(() => {
+    setComandas([]);
     if (local?.id && configEmpresa?.id) refrescarComandas();
-  }, [estacionId, local?.id, configEmpresa?.id]);
+    return () => { ultimaConsultaComandas.current++; };
+  }, [estacionId, local?.id, configEmpresa?.id, pedidoIdVisible]);
 
   async function guardarEstacion() {
     if (procesando || typeof crearEstacionA10 !== "function") return;
@@ -128735,7 +128760,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       ),
       h3(Btn, { small: true, onClick: guardarRuta, disabled: !!procesando || !productoId || !estacionId }, procesando === "ruta" ? "Guardando…" : "Guardar ruta")
     ),
-    h3(Card, { className: "mb-3" }, h3("div", { className: "flex items-center justify-between gap-2 mb-2" }, h3("div", { className: "text-[12.5px] font-semibold" }, "Comandas"), h3("select", { value: estacionId, onChange: (e2) => setEstacionId(e2.target.value), className: "rounded-lg px-2 py-1 text-[11px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Todas las estaciones"), estaciones.map((estacion) => h3("option", { key: estacion.id, value: estacion.id }, estacion.codigo)))), h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "La lista procede de abc_listar_comandas_estacion y respeta el local activo."), comandas.some((comanda) => String(comanda?.estado || "") === "BLOQUEADA" && !comanda?.estacion_id) ? h3("div", { role: "status", className: "mb-2 p-2 rounded-lg text-[11.5px]", style: { background: C2.amberSoft, color: C2.ink } }, "Hay comandas sin ruta de preparación. Configura el producto y la estación activa arriba; no se imprimirán ni se reenviarán automáticamente hasta resolver el flujo operativo.") : null, comandas.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "No hay comandas para este filtro.") : comandas.map(renderComanda))
+    h3(Card, { className: "mb-3" }, h3("div", { className: "flex items-center justify-between gap-2 mb-2" }, h3("div", { className: "text-[12.5px] font-semibold" }, "Comandas"), pedidoIdVisible ? h3(Btn, { variant: "ghost", onClick: limpiarPedidoDestino }, "Quitar filtro de pedido") : h3("select", { value: estacionId, onChange: (e2) => setEstacionId(e2.target.value), className: "rounded-lg px-2 py-1 text-[11px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Todas las estaciones"), estaciones.map((estacion) => h3("option", { key: estacion.id, value: estacion.id }, estacion.codigo)))), h3("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, pedidoIdVisible ? "Pedido " + pedidoIdVisible.slice(0, 8) : "La lista respeta el local activo."), comandas.some((comanda) => String(comanda?.estado || "") === "BLOQUEADA" && !comanda?.estacion_id) ? h3("div", { role: "status", className: "mb-2 p-2 rounded-lg text-[11.5px]", style: { background: C2.amberSoft, color: C2.ink } }, "Hay comandas sin ruta de preparación. Configura el producto y la estación activa arriba; no se imprimirán ni se reenviarán automáticamente hasta resolver el flujo operativo.") : null, comandas.length === 0 ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, cargando ? "Cargando comandas..." : pedidoIdVisible ? "Este pedido no tiene comandas disponibles en este local." : "No hay comandas para este filtro.") : comandas.map(renderComanda))
   );
 }
 function Traspasos({ productos, productosEmpresa = [], locales = [], localActivoId, traspasos, traspasarStock, traspasarEntreLocales, pisoVentaBajo, fichasCosto = [] }) {

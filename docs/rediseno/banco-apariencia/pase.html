@@ -64,7 +64,7 @@ function puenteDePrueba(opciones) {
     localId: "QA-A1",
     rol: o.rol || "Propietario",
     modoEmpleado: !!o.modoEmpleado,
-    irA: function (t) { window.__ultimoIrA = t; },
+    irA: function (t, destino) { window.__ultimoIrA = t; window.__ultimoDestino = destino; },
     puedeConsultar: o.puedeConsultar || function () { return true; },
     cargarMapaSala: o.cargarMapaSala || async function () { return mapaDePrueba(); },
     consultarCaja: o.consultarCaja,
@@ -288,6 +288,9 @@ function panel() { return document.getElementById("la-pase-panel"); }
   comprueba("los pedidos listos aparecen antes que la cuenta abierta o enviada",
     /Listo para servir/.test(panel().querySelector(".la-pase-cola li:first-child").textContent) &&
     /3 de 151 pedidos/.test(panel().textContent));
+  panel().querySelector(".la-pase-cola li:first-child button").click();
+  comprueba("Ver en Cocina envía el identificador exacto del pedido",
+    window.__ultimoIrA === "cocina" && window.__ultimoDestino.pedidoId === "listo");
   panel().querySelector('[aria-label="Filtrar pedidos en servicio"] button:last-child').click();
   comprueba("el filtro Cuentas solo presenta pedidos ya servidos",
     panel().querySelectorAll(".la-pase-cola li").length === 1 &&

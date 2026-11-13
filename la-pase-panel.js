@@ -436,7 +436,8 @@
           document.createTextNode(nombresMesa.get(pedido.cuenta_id) || "Pedido"),
           el("span", { texto: String(pedido.id || "").slice(0, 8) })
         ]),
-        el("span", { class: "la-pase-etiqueta", texto: ESTADO_PEDIDO[pedido.estado]?.[1] || pedido.estado })
+        el("span", { class: "la-pase-etiqueta", texto: ESTADO_PEDIDO[pedido.estado]?.[1] || pedido.estado }),
+        botonIrA("cocina", "Ver en Cocina", "la-pase-accion suave", { pedidoId: pedido.id })
       ]);
     }));
     var parcial = estado.totalPedidos != null && estado.totalPedidos > estado.pedidos.length;
@@ -447,7 +448,7 @@
     ]);
   }
 
-  function botonIrA(tab, texto, clase) {
+  function botonIrA(tab, texto, clase, destino) {
     var p = puente();
     var permitido = !!(p && typeof p.irA === "function" &&
       (typeof p.puedeConsultar !== "function" || p.puedeConsultar(tab)));
@@ -457,7 +458,7 @@
       texto: texto,
       disabled: permitido ? null : "disabled",
       title: permitido ? null : "Tu cargo no tiene acceso a esta pantalla.",
-      onclick: function () { if (permitido) p.irA(tab); }
+      onclick: function () { if (permitido) p.irA(tab, destino); }
     });
   }
 
