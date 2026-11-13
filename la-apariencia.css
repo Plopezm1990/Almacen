@@ -524,3 +524,66 @@ html[data-la-paleta] body {
 @media (prefers-reduced-motion: reduce) {
   .la-apariencia-aviso { transition: none !important; animation: none !important; }
 }
+
+/* ==========================================================================
+   Tablas convertibles a fichas y objetivo tactil en los filtros.
+   --------------------------------------------------------------------------
+   Las etiquetas las pone la-tablas-fichas.js leyendo las cabeceras reales de
+   cada tabla, de modo que no hay ninguna lista de columnas escrita a mano.
+   Por encima del corte, la tabla sigue siendo una tabla.
+   ========================================================================== */
+
+/* Los filtros en forma de pildora son controles operativos. */
+#root button.rounded-full { min-height: 44px; }
+
+@media (max-width: 760px) {
+  #root table.la-tabla-fichas,
+  #root table.la-tabla-fichas > tbody,
+  #root table.la-tabla-fichas > tbody > tr,
+  #root table.la-tabla-fichas > tbody > tr > td { display: block; width: 100%; }
+
+  #root table.la-tabla-fichas > thead { display: none; }
+
+  #root table.la-tabla-fichas > tbody > tr {
+    border: 1px solid var(--c-divider, #E3DACA);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    padding: 4px 10px;
+  }
+
+  #root table.la-tabla-fichas > tbody > tr > td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    text-align: left;
+    flex-wrap: wrap;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    border: 0;
+  }
+
+  #root table.la-tabla-fichas > tbody > tr > td + td {
+    border-top: 1px solid var(--c-divider, #E3DACA);
+  }
+
+  /* La etiqueta sale del <th> real de esa columna. */
+  #root table.la-tabla-fichas > tbody > tr > td[data-etiqueta]:not([data-etiqueta=""])::before {
+    content: attr(data-etiqueta);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--c-ink-soft, #4F5B55);
+    flex: 0 0 auto;
+  }
+
+  /* Columna de acciones: sin cabecera, sin etiqueta, botones a la derecha. */
+  #root table.la-tabla-fichas > tbody > tr > td[data-etiqueta=""] {
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Una fila con celdas combinadas se queda como estaba. */
+  #root table.la-tabla-fichas > tbody > tr[data-la-sin-ficha] { display: table-row; }
+  #root table.la-tabla-fichas > tbody > tr[data-la-sin-ficha] > td { display: table-cell; }
+}

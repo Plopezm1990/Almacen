@@ -20,10 +20,10 @@
   .filtros button[aria-pressed="true"]{background:var(--c-chrome);color:#fff;border-color:var(--c-chrome)}
   .acciones button{font-size:12px;padding:4px 8px;border:1px solid var(--c-line);border-radius:8px;background:transparent;cursor:pointer}
 </style>
-<style id="del-rediseno"></style>
+<link rel="stylesheet" href="./la-apariencia.css" />
 </head>
 <body>
-<div class="envoltorio la-productos">
+<div id="root"><main><div class="envoltorio">
   <div class="filtros" role="group" aria-label="Tipo">
     <button type="button" aria-pressed="true" class="rounded-full">Todos</button>
     <button type="button" aria-pressed="false" class="rounded-full">Materia prima</button>
@@ -44,29 +44,11 @@
       <tbody id="cuerpo"></tbody>
     </table>
   </div>
-</div>
+</main></div>
+<script src="./la-tablas-fichas.js"></script>
 <script>
 /* La misma hoja que inyecta el componente Productos en fuente.js. */
-const estiloProductos = `
-    .la-productos button.rounded-full { min-height: 44px; }
-    @media (max-width: 760px) {
-      .la-productos table, .la-productos tbody, .la-productos tr, .la-productos td { display: block; width: 100%; }
-      .la-productos thead { display: none; }
-      .la-productos tbody tr { border: 1px solid var(--c-divider, #E3DACA); border-radius: 12px; margin-bottom: 10px; padding: 4px 10px; }
-      .la-productos tbody td { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0;
-        text-align: left; flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
-      .la-productos tbody td + td { border-top: 1px solid var(--c-divider, #E3DACA); }
-      .la-productos tbody td::before { font-size: 11.5px; font-weight: 600; color: var(--c-ink-soft, #4F5B55); }
-      .la-productos tbody td:nth-of-type(1)::before { content: "Producto"; }
-      .la-productos tbody td:nth-of-type(2)::before { content: "Stock"; }
-      .la-productos tbody td:nth-of-type(3)::before { content: "Costo s/IVA"; }
-      .la-productos tbody td:nth-of-type(4)::before { content: "PVP c/IVA"; }
-      .la-productos tbody td:nth-of-type(5)::before { content: "Margen"; }
-      .la-productos tbody td:nth-of-type(6)::before { content: "ABC"; }
-      .la-productos tbody td:nth-of-type(7) { justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
-    }
-  `;
-document.getElementById('del-rediseno').textContent = estiloProductos;
+
 
 const datos = [
   ['Café solo (QA)','48 ud','0,55 €','1,10 €','50 %','A'],

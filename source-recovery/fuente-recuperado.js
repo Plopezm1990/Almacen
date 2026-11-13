@@ -16646,29 +16646,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
     });
     setAvisoContenido(null);
   }
-  // Redisenno: la tabla de productos se convierte en fichas cuando no cabe, con
-  // su etiqueta por campo, y los filtros alcanzan el objetivo tactil de 44 px.
-  // Solo presentacion: no cambia el orden de las columnas ni las acciones.
-  const estiloProductos = `
-    .la-productos button.rounded-full { min-height: 44px; }
-    @media (max-width: 760px) {
-      .la-productos table, .la-productos tbody, .la-productos tr, .la-productos td { display: block; width: 100%; }
-      .la-productos thead { display: none; }
-      .la-productos tbody tr { border: 1px solid var(--c-divider, #E3DACA); border-radius: 12px; margin-bottom: 10px; padding: 4px 10px; }
-      .la-productos tbody td { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0;
-        text-align: left; flex-wrap: wrap; min-width: 0; overflow-wrap: anywhere; }
-      .la-productos tbody td + td { border-top: 1px solid var(--c-divider, #E3DACA); }
-      .la-productos tbody td::before { font-size: 11.5px; font-weight: 600; color: var(--c-ink-soft, #4F5B55); }
-      .la-productos tbody td:nth-of-type(1)::before { content: "Producto"; }
-      .la-productos tbody td:nth-of-type(2)::before { content: "Stock"; }
-      .la-productos tbody td:nth-of-type(3)::before { content: "Costo s/IVA"; }
-      .la-productos tbody td:nth-of-type(4)::before { content: "PVP c/IVA"; }
-      .la-productos tbody td:nth-of-type(5)::before { content: "Margen"; }
-      .la-productos tbody td:nth-of-type(6)::before { content: "ABC"; }
-      .la-productos tbody td:nth-of-type(7) { justify-content: flex-end; flex-wrap: wrap; gap: 8px; }
-    }
-  `;
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-productos" }, /* @__PURE__ */ import_react4.default.createElement("style", null, estiloProductos), /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setShowAjusteCruce(true);
     setErrorCruce("");
   } }, /* @__PURE__ */ import_react4.default.createElement(ArrowLeftRight, { size: 15 }), " Ajuste entre productos"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Nuevo producto")) }, "Productos"), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start gap-2 text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 16, color: C2.amber, style: { marginTop: 2, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("span", null, /* @__PURE__ */ import_react4.default.createElement("b", null, "Almac\xE9n congelado por conteo en curso."), " Las entradas y salidas est\xE1n bloqueadas hasta que finalices el conteo en Inventario ciego."))), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement(Bloque, { titulo: "1 \xB7 Identificaci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-3 gap-x-4" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo / SKU (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.codigo, onChange: (e2) => setForm({ ...form, codigo: e2.target.value }), placeholder: "Interno o de proveedor" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(CampoCategoria, { value: form.categoria, onChange: (v22) => setForm({ ...form, categoria: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Departamento" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: form.departamento, onChange: (e2) => setForm({ ...form, departamento: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, DEPARTAMENTOS.map((d2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: d2, value: d2 }, d2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad de medida (c\xF3mo lo cuentas)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: form.unidad, onChange: (e2) => setForm({ ...form, unidad: e2.target.value }), placeholder: "unidad, kg, botella\u2026" })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo de producto" }, /* @__PURE__ */ import_react4.default.createElement(
