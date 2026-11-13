@@ -155,6 +155,8 @@ const EXCLUIDAS = new Set([
   // A-04: sesión de empleado server-side para atribución en terminal compartido;
   // es posterior a la foto F7 histórica y se valida con contrato propio.
   '20261111220000_a04_server_employee_session.sql',
+  // Apariencia por empresa pertenece al rediseño posterior y se valida con su propio contrato.
+  '20261113090000_rediseno_apariencia_empresa.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))

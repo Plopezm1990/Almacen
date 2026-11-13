@@ -137,6 +137,19 @@
 }
 .la-rumbo-dialogo input::placeholder { color: var(--c-ink-soft); }
 .la-rumbo-recuento { margin: 8px 0; font-size: .9em; color: var(--c-ink-soft); }
+.la-rumbo-guardadas { margin: 8px 0; }
+.la-rumbo-guardadas h3 { margin-bottom: 4px; font-size: .9em; font-weight: 700; }
+.la-rumbo-guardadas > div { display: flex; flex-wrap: wrap; gap: 4px; }
+.la-rumbo-guardadas button,
+.la-rumbo-fijar {
+  min-height: 44px;
+  padding: 6px 10px;
+  color: var(--c-ink);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border-control);
+  border-radius: 6px;
+}
+.la-rumbo-fijar[aria-pressed="true"] { background: var(--c-accent-soft); }
 .la-rumbo-dialogo ul { list-style: none; padding: 0; margin: 0; }
 .la-rumbo-dialogo li {
   display: grid;

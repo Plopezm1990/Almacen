@@ -104424,6 +104424,7 @@ function GestionAlmacen() {
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
   const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
+  const [miPerfilUsuarioId, setMiPerfilUsuarioId] = (0, import_react4.useState)(null);
   const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({ personal: null, fichaje: null, ausencias: null });
   const [pantallasRolEmpleado, setPantallasRolEmpleado] = (0, import_react4.useState)(null);
   const [corteDiaMinPM13, setCorteDiaMinPM13] = (0, import_react4.useState)(0);
@@ -104439,6 +104440,7 @@ function GestionAlmacen() {
         const { data: perfil } = await supabase.from("perfiles").select("rol, nombre").eq("user_id", userId).maybeSingle();
         if (!activo || !perfil) return;
         setMiPerfil(perfil);
+        setMiPerfilUsuarioId(userId);
         if (perfil.rol !== "Propietario") setModoEmpleado(true);
       } catch (e2) {
       }
@@ -106689,6 +106691,8 @@ function GestionAlmacen() {
     return true;
   };
   const pestanasFijasMovil = pick(TAB_PRIORITIES_MOVIL[rolNavegacionMovil] || ["dashboard"]);
+  const ambitoRumbo = miPerfilUsuarioId && empresaDelLocalActivo?.id
+    ? JSON.stringify([miPerfilUsuarioId, empresaDelLocalActivo.id, localActivoId, miPerfil?.rol, usuarioActivoId]) : null;
   return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", "data-la-contenedor": disenoNavegacion || undefined, style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
@@ -106894,7 +106898,7 @@ function GestionAlmacen() {
       mostrarEnlaceDevolucionProveedor,
       irADevolucionProveedor
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 min-w-0 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, disenoNavegacion === "rumbo" && (!window.__nubeActiva || miPerfil) && /* @__PURE__ */ import_react4.default.createElement(BuscadorRumbo, { grupos: gruposBase, tab, puedeNavegar: puedeNavegarRediseno, navegar: navegarRediseno }), contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 min-w-0 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, disenoNavegacion === "rumbo" && (!window.__nubeActiva || miPerfil) && /* @__PURE__ */ import_react4.default.createElement(BuscadorRumbo, { grupos: gruposBase, tab, ambito: ambitoRumbo, puedeNavegar: puedeNavegarRediseno, navegar: navegarRediseno }), contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
     "textarea",
     {
       readOnly: true,
@@ -116602,9 +116606,28 @@ function buscarPantallasRumbo(grupos, consulta, puedeNavegar) {
     }).map((item) => ({ ...item, modulo }));
   });
 }
-function BuscadorRumbo({ grupos, tab, puedeNavegar, navegar }) {
+function leerPreferenciasRumbo(ambito) {
+  const inicial = { ambito, fijadas: [], recientes: [] };
+  if (!ambito) return inicial;
+  try {
+    const datos = JSON.parse(localStorage.getItem("la-rumbo:v1:" + ambito) || "{}");
+    for (const campo of ["fijadas", "recientes"]) {
+      if (Array.isArray(datos?.[campo])) inicial[campo] = [...new Set(datos[campo].filter((id) => typeof id === "string"))].slice(0, 10);
+    }
+  } catch (error) {}
+  return inicial;
+}
+function escribirPreferenciasRumbo(preferencias) {
+  try {
+    localStorage.setItem("la-rumbo:v1:" + preferencias.ambito, JSON.stringify({
+      fijadas: preferencias.fijadas, recientes: preferencias.recientes
+    }));
+  } catch (error) {}
+}
+function BuscadorRumbo({ grupos, tab, ambito, puedeNavegar, navegar }) {
   const [consulta, setConsulta] = (0, import_react4.useState)("");
   const [seleccion, setSeleccion] = (0, import_react4.useState)(0);
+  const [preferencias, setPreferencias] = (0, import_react4.useState)(() => leerPreferenciasRumbo(ambito));
   const dialogo = (0, import_react4.useRef)(null);
   const entrada = (0, import_react4.useRef)(null);
   const boton = (0, import_react4.useRef)(null);
@@ -116612,6 +116635,39 @@ function BuscadorRumbo({ grupos, tab, puedeNavegar, navegar }) {
   const resultados = buscarPantallasRumbo(grupos, consulta, puedeNavegar);
   const indice = Math.min(seleccion, resultados.length - 1);
   const h = import_react4.default.createElement;
+  const sePuedeGuardar = Boolean(ambito) && !window.LAApariencia?.enPrueba();
+  const puedeGuardarActual = sePuedeGuardar && puedeNavegar(tab);
+  const guardadas = preferencias.ambito === ambito ? preferencias : leerPreferenciasRumbo(ambito);
+  const disponibles = grupos.flatMap((grupo) => grupo.items).filter((item) => puedeNavegar(item.id));
+  const fijada = guardadas.fijadas.includes(tab);
+  (0, import_react4.useEffect)(() => {
+    setPreferencias(leerPreferenciasRumbo(ambito));
+  }, [ambito]);
+  (0, import_react4.useEffect)(() => {
+    if (!puedeGuardarActual) return;
+    const actuales = leerPreferenciasRumbo(ambito);
+    if (actuales.recientes[0] === tab) return;
+    actuales.recientes = [tab, ...actuales.recientes.filter((id) => id !== tab)].slice(0, 10);
+    escribirPreferenciasRumbo(actuales);
+    setPreferencias(actuales);
+  }, [ambito, tab, puedeGuardarActual]);
+  function fijarActual() {
+    if (!sePuedeGuardar || !puedeNavegar(tab)) return;
+    const actuales = leerPreferenciasRumbo(ambito);
+    actuales.fijadas = actuales.fijadas.includes(tab) ? actuales.fijadas.filter((id) => id !== tab)
+      : [tab, ...actuales.fijadas].slice(0, 10);
+    escribirPreferenciasRumbo(actuales);
+    setPreferencias(actuales);
+  }
+  function accesosGuardados(titulo, ids) {
+    const items = ids.map((id) => disponibles.find((item) => item.id === id)).filter(Boolean);
+    if (!items.length) return null;
+    return h("section", { "aria-label": titulo, className: "la-rumbo-guardadas" },
+      h("h3", null, titulo),
+      h("div", null, items.map((item) => h("button", {
+        key: item.id, type: "button", onClick: () => elegir(item.id)
+      }, item.label))));
+  }
   function abrir() {
     if (!dialogo.current || dialogo.current.open) return;
     focoPrevio.current = document.activeElement;
@@ -116668,6 +116724,11 @@ function BuscadorRumbo({ grupos, tab, puedeNavegar, navegar }) {
       h("h2", { id: "la-rumbo-titulo" }, "Ir a una pantalla"),
       h("button", { type: "button", "aria-label": "Cerrar buscador", onClick: () => dialogo.current?.close() },
         h(X2, { size: 18, "aria-hidden": true }))),
+    sePuedeGuardar && disponibles.some((item) => item.id === tab) && h("button", {
+      type: "button", className: "la-rumbo-fijar", "aria-pressed": fijada, onClick: fijarActual
+    }, fijada ? "Quitar pantalla fijada" : "Fijar pantalla actual"),
+    !consulta && accesosGuardados("Fijadas", guardadas.fijadas),
+    !consulta && accesosGuardados("Recientes", guardadas.recientes.filter((id) => !guardadas.fijadas.includes(id))),
     h("input", {
       ref: entrada, value: consulta, type: "search", role: "combobox", "aria-label": "Nombre de pantalla o m\xF3dulo",
       "aria-expanded": true, "aria-controls": "la-rumbo-resultados", "aria-autocomplete": "list",
