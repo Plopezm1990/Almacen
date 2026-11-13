@@ -153,6 +153,26 @@ await esperaError('unos colores incompletos se rechazan', 'apariencia_colores_in
 await esperaError('un HEX invalido se rechaza', 'apariencia_colores_invalidos',
   () => comoUsuario(DUENA, `select public.abc_apariencia_guardar('QA-EMP-A', 3, 'oliva', null,
     '{"fondo":"#FFFFFF","tarjetas":"#FFFFFF","texto":"#000000","enlaces":"#123456","boton":"#123456","detalle":"rojo"}'::jsonb)`));
+// Un `null` de JSON es un valor invalido, no una ausencia de paleta.
+await esperaError('un solo null de JSON entre los seis se rechaza', 'apariencia_colores_invalidos',
+  () => comoUsuario(DUENA, `select public.abc_apariencia_guardar('QA-EMP-A', 3, 'oliva', null,
+    '{"fondo":"#FFFFFF","tarjetas":"#FFFFFF","texto":"#000000","enlaces":"#123456","boton":"#123456","detalle":null}'::jsonb)`));
+await esperaError('los seis null de JSON se rechazan', 'apariencia_colores_invalidos',
+  () => comoUsuario(DUENA, `select public.abc_apariencia_guardar('QA-EMP-A', 3, 'oliva', null,
+    '{"fondo":null,"tarjetas":null,"texto":null,"enlaces":null,"boton":null,"detalle":null}'::jsonb)`));
+await esperaError('un valor que no es cadena se rechaza', 'apariencia_colores_invalidos',
+  () => comoUsuario(DUENA, `select public.abc_apariencia_guardar('QA-EMP-A', 3, 'oliva', null,
+    '{"fondo":"#FFFFFF","tarjetas":"#FFFFFF","texto":"#000000","enlaces":"#123456","boton":123456,"detalle":"#FDBA74"}'::jsonb)`));
+// La ausencia de paleta propia es el NULL de SQL, y si se acepta.
+{
+  const r0 = await comoUsuario(DUENA, `select private.abc_apariencia_colores_validos(null) as v`);
+  const r1 = await comoUsuario(DUENA, `select private.abc_apariencia_colores_validos('null'::jsonb) as v`);
+  const r2 = await comoUsuario(DUENA, `select private.abc_apariencia_colores_validos(
+    '{"fondo":null,"tarjetas":null,"texto":null,"enlaces":null,"boton":null,"detalle":null}'::jsonb) as v`);
+  check('el NULL de SQL se acepta como ausencia de paleta', r0.rows[0].v === true, String(r0.rows[0].v));
+  check('el null de JSON no cuenta como ausencia', r1.rows[0].v === false, String(r1.rows[0].v));
+  check('seis null de JSON devuelven false, no NULL', r2.rows[0].v === false, String(r2.rows[0].v));
+}
 r = await comoUsuario(DUENA, `select public.abc_apariencia_guardar('QA-EMP-A', 3, 'oliva', null,
   '{"fondo":"#FFF7ED","tarjetas":"#FFE4C7","texto":"#7F1D1D","enlaces":"#F97316","boton":"#DC2626","detalle":"#FDBA74"}'::jsonb) as d`);
 check('seis HEX validos se aceptan', r.rows[0].d.revision === 4 && r.rows[0].d.colores.boton === '#DC2626');

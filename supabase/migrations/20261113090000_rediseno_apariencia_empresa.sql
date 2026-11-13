@@ -103,19 +103,36 @@ begin
   );
 end $$;
 
--- Solo HEX de seis digitos en los seis campos semanticos, o nada.
+-- Paleta propia: o no hay ninguna, o estan los seis campos semanticos con una
+-- cadena HEX de seis digitos en cada uno.
+--
+-- Solo el NULL de SQL significa "sin paleta propia". Un `null` de JSON en
+-- cualquiera de los seis campos es un valor invalido, no una ausencia: por eso
+-- se exige jsonb_typeof(...) = 'string' campo a campo, en vez de confiar en el
+-- operador ->> , que devuelve NULL tanto para un `null` de JSON como para una
+-- clave ausente. La envoltura coalesce(..., false) mantiene el resultado
+-- estrictamente booleano: bool_and ignora los NULL y, sin ella, seis `null`
+-- de JSON devolvian NULL y el `if not ...` de quien llama no se disparaba.
 create or replace function private.abc_apariencia_colores_validos(p_colores jsonb)
 returns boolean
 language sql
 immutable
 as $$
-  select p_colores is null or (
-    jsonb_typeof(p_colores) = 'object'
-    and (select bool_and(p_colores ? k) from unnest(array['fondo','tarjetas','texto','enlaces','boton','detalle']) k)
-    and (select count(*) from jsonb_object_keys(p_colores)) = 6
-    and (select bool_and(p_colores->>k ~ '^#[0-9A-Fa-f]{6}$')
-           from unnest(array['fondo','tarjetas','texto','enlaces','boton','detalle']) k)
-  );
+  select coalesce(
+    p_colores is null
+    or (
+      jsonb_typeof(p_colores) = 'object'
+      and (select count(*) from jsonb_object_keys(p_colores)) = 6
+      and (
+        select coalesce(bool_and(
+                 p_colores ? k
+                 and jsonb_typeof(p_colores -> k) = 'string'
+                 and p_colores ->> k ~ '^#[0-9A-Fa-f]{6}$'
+               ), false)
+          from unnest(array['fondo','tarjetas','texto','enlaces','boton','detalle']) k
+      )
+    ),
+    false);
 $$;
 
 -- -------------------------------------------------------------------- leer --
