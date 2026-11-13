@@ -17,10 +17,26 @@ certificado son 5.500.891 y el desplegado hoy, 6.309.658. La fuente recuperada
 no reproduce el artefacto. La única vía certificada es **editar las dos copias
 con texto idéntico** y verificar con `recuperar_candidato.py --check`.
 
-**Las pantallas no son componentes sueltos.** 102 componentes en 31.286 líneas,
-pero `GestionAlmacen` tiene 12.144, `VentaRapida` 3.278 y `AppConSesion` 2.513.
-Unas 18.000 de las 31.000 líneas están en tres componentes, y ahí viven los
-módulos de uso diario como ramas de un `tab === ...`.
+**Corrección del 13/11, posterior al piloto.** La primera medición de esta nota
+decía que había 102 componentes y que `GestionAlmacen` tenía 12.144 líneas. Era
+**falsa**: el script solo reconocía funciones con inicial mayúscula, así que
+absorbía en cada componente todos los ayudantes en minúscula que venían detrás.
+
+La medición correcta es bastante mejor:
+
+| | |
+|---|---|
+| Funciones de primer nivel | **307** en 31.381 líneas |
+| Mediana | **20 líneas** |
+| Funciones de más de 300 líneas | **20** |
+| `GestionAlmacen` | **2.666 líneas, y es un enrutador** |
+| Mayores | `crearLogicaVenta` 3.295 (lógica, no interfaz), `VentaRapida` 3.267, `AppConSesion` 2.607 |
+
+Y el dato que más cambia el panorama: **las 44 ramas `tab === ...` de
+`GestionAlmacen` delegan las 44 en un componente**. Ninguna pantalla se dibuja
+en línea dentro del enrutador. Es decir, la aplicación ya está organizada como
+una pantalla por componente, que es justo lo que hace viable rehacerlas una a
+una sin pisarse.
 
 ## El método, ya probado
 
