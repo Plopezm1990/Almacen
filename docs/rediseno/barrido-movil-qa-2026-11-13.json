@@ -1,0 +1,30 @@
+{
+  "titulo": "Barrido en ancho de telefono sobre QA con datos reales",
+  "fecha": "2026-11-13",
+  "entorno": "deploy-preview-225--chic-entremet-9107cf.netlify.app",
+  "supabase": "qjqorixtkilwsndqayyx",
+  "sesion": "pm07.smoke@qa.invalid",
+  "mfa": "aal2 con TOTP, codigo aportado por el propietario",
+  "empresa": "QA-EMP-A",
+  "local": "QA-A1",
+  "ancho": "390 x 844",
+  "metodo": "Navegacion real por el puente del programa a los 44 destinos del menu, con una pasada de la capa de tablas y medida del DOM resultante en cada uno.",
+  "resultado_transversal": {
+    "pantallas_medidas": 44,
+    "con_desbordamiento_horizontal": 0,
+    "campos_por_debajo_de_44px": 0,
+    "filtros_por_debajo_de_44px": 0
+  },
+  "tablas_convertidas": [
+    { "pantalla": "productos", "tablas": 1, "filas": 20, "etiquetas": ["Producto","Stock","Costo s/IVA","PVP c/IVA","Margen","ABC"], "cabecera_oculta": true },
+    { "pantalla": "saldo", "tablas": 1, "filas_dato": 22, "filas_de_grupo_preservadas": 3, "etiquetas": ["Nº","Descripción del producto","U/M","Existencia","Costo","Importe","Salidas 12m","ABC"], "cabecera_oculta": true },
+    { "pantalla": "reportes", "tablas": 2, "filas": 36 },
+    { "pantalla": "libroiva", "tablas": 1, "filas": 1 }
+  ],
+  "observaciones": [
+    "Las etiquetas salen de las cabeceras reales de cada tabla. En saldo son ocho y corresponden a las ocho columnas del listado.",
+    "La guarda de celdas combinadas hizo falta de verdad: saldo agrupa por proveedor con filas de colspan=8, que se marcan y se dejan como fila de tabla mientras las 22 filas de dato pasan a ficha.",
+    "La mayoria de las pantallas del programa no usa <table>: ya dibujan sus listados como tarjetas o bloques. De los 44 destinos, solo 4 tienen tabla. El trabajo de conversion es por tanto mucho menor de lo previsto.",
+    "Una medida con espera corta cuenta de menos: productos no mostro tabla con 1,3 s de espera y si con 3,4 s. Las cifras de este barrido usan la espera larga en las pantallas con datos."
+  ]
+}
