@@ -16,10 +16,12 @@ En la ventana de 09:42:30 a 09:53:00, hora de Madrid, los registros de QA muestr
 
 El componente principal volvía a la pantalla de comprobación y reconstruía el panel ante notificaciones repetidas del mismo token. El cambio deduplica estas notificaciones durante la validación, el reto MFA y el panel abierto. Una sesión o un token nuevo conserva la validación de MFA. La salida o una validación más reciente invalidan resultados en curso. El contrato aislado comprueba repetición, renovación, reto, salida y desmontaje. Queda verificar el flujo con dos pestañas y un cambio A1 → A2 → Todos → A1 en el preview, midiendo solicitudes y manteniendo abierta solo la sesión necesaria. Si el tiempo de espera de movimientos persiste, estudiar esa consulta y su plan por separado.
 
+Con sesión de Propietario en el preview de QA se completó A1 → A2 → Todos → A1 en una sola pestaña, sin reinicio del panel. «Todos los locales» consolida los informes y conserva el último local operativo. Queda la repetición simultánea con dos pestañas y medición de peticiones.
+
 Pase borra de inmediato el plano, la cola, los filtros y la mesa seleccionada cuando cambia el contexto. Descarta respuestas pendientes del local anterior y evita consultar sala y cocina sin un local operativo. Se comprobó en el banco aislado con una respuesta antigua retrasada.
 
 ## Pendientes
 
 - Verificar Aplicar/Restaurar desactivados y Probar disponible en el preview con sesión de Camarero/a. Si procede, comprobar concesión y retirada de una delegación temporal en QA con el procedimiento del programa.
 - Registrar `20261113090000` mediante el procedimiento del repositorio. El Editor SQL aplicó el esquema y la CLI disponible carece de sesión. El registro es independiente del funcionamiento de Apariencia.
-- Verificar la incidencia de arranque con sesiones reales y conservar los resultados separados de los de F2. Continuar F3 con las composiciones, navegación y atajos del resto de propuestas, que todavía comparten la presentación del producto con tokens de color y tipografía.
+- Repetir la incidencia de arranque con dos pestañas y conservar las mediciones separadas de las pruebas de F2.
