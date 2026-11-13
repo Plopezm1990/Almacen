@@ -312,8 +312,9 @@
     if (dialogo) return;
     ultimoFoco = document.activeElement;
 
+    var contexto = m.contexto();
     var actual = await m.leerEmpresa();
-    if (dialogo) return;
+    if (dialogo || contexto !== m.contexto()) return;
     var acceso = m.estadoServidor();
     var cargoRestringido = acceso.disponible === true && acceso.puedeAplicar === false;
     var enPrueba = m.enPrueba() ? m.estado().config : null;
@@ -332,6 +333,7 @@
     var probar = el("button", {
       type: "button", class: "la-ed-btn", texto: "Probar en la suite",
       onclick: function () {
+        if (contexto !== m.contexto()) { cerrarDialogo(); return; }
         if (!m.iniciarPrueba(borrador)) { mostrarMensaje("error", "La configuracion no es valida: revisa el disenno y los colores."); return; }
         cerrarDialogo();
       }
@@ -341,8 +343,10 @@
       type: "button", class: "la-ed-btn primario", texto: "Aplicar a la empresa",
       disabled: cargoRestringido ? "disabled" : null,
       onclick: async function () {
+        if (contexto !== m.contexto()) { cerrarDialogo(); return; }
         aplicar.disabled = true;
         var r = await m.guardarEmpresa(borrador, revisionLeida);
+        if (!dialogo || contexto !== m.contexto()) return;
         aplicar.disabled = false;
         if (r.ok) {
           revisionLeida = r.config.revision;
@@ -379,8 +383,10 @@
       type: "button", class: "la-ed-btn", texto: "Restaurar apariencia anterior",
       disabled: cargoRestringido ? "disabled" : null,
       onclick: async function () {
+        if (contexto !== m.contexto()) { cerrarDialogo(); return; }
         restaurar.disabled = true;
         var r = await m.restaurarAnterior(revisionLeida);
+        if (!dialogo || contexto !== m.contexto()) return;
         restaurar.disabled = false;
         if (r.ok) {
           revisionLeida = r.config.revision;
@@ -450,6 +456,7 @@
   }
 
   window.addEventListener("la-apariencia:abrir-editor", function () { abrir(); });
+  window.addEventListener("la-apariencia:contexto-cambiado", function () { if (dialogo) cerrarDialogo(); });
   if (window.LAApariencia) window.LAApariencia.abrirEditor = abrir;
 
   if (document.readyState === "loading") {

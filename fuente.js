@@ -104429,6 +104429,10 @@ function GestionAlmacen() {
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
   const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
   const [miPerfilUsuarioId, setMiPerfilUsuarioId] = (0, import_react4.useState)(null);
+  (0, import_react4.useEffect)(() => {
+    window.__laUsuarioAparienciaId = miPerfilUsuarioId;
+    return () => { delete window.__laUsuarioAparienciaId; };
+  }, [miPerfilUsuarioId]);
   const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({ personal: null, fichaje: null, ausencias: null });
   const [pantallasRolEmpleado, setPantallasRolEmpleado] = (0, import_react4.useState)(null);
   const [corteDiaMinPM13, setCorteDiaMinPM13] = (0, import_react4.useState)(0);
@@ -125683,7 +125687,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           const cuenta = await recuperarMesaDestinoRef.current({
             cuentaIdDestino: cuentas[0].cuenta_id,
             diaDestino: resultado.operatingDay,
-            mesaIdDestino,
+            mesaIdDestino: mesaDestinoId,
             sigueVigente: () => activo
           });
           if (!activo) return;

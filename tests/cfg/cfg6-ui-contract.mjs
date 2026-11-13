@@ -59,8 +59,8 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   assert.equal(cuenta("NOMBRES_ROLES.map("), 0, nombre + ": ninguna lista de selección usa ya todos los roles");
   assert.ok(cuenta("var ROLES_EMPLEADO = {") === 1 && mapaRoles.includes('"Churrero/a"'), nombre + ": el mapa de pestañas de quien ya tiene un rol retirado no se toca");
   // Reabrir cierre (D14).
-  assert.equal(cuenta('resolverMermaComandaA10, rolPerfil = "" }) {'), 1, nombre + ": la pantalla de cierre recibe el perfil");
-  assert.equal(cuenta('resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos"'), 1, nombre + ": y se le pasa el rol del perfil");
+  assert.equal(cuenta('resolverMermaComandaA10, rolPerfil = "", pedidoDestino'), 1, nombre + ": la pantalla de cierre recibe el perfil");
+  assert.equal(cuenta('resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "", pedidoDestino: pedidoDestinoCocina'), 1, nombre + ": y se le pasa el rol del perfil");
   assert.equal(cuenta('const [puedeReabrirCierre, setPuedeReabrirCierre] = (0, import_react4.useState)(null);'), 1);
   assert.equal(cuenta('puedeReabrirCierre === false ? null : h3('), 2, nombre + ": el motivo y el botón de reabrir solo se ocultan cuando se SABE que no hay permiso");
   assert.equal(cuenta('puedeReabrirCierre === false ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Solo el Propietario (o quien él autorice en Configuración) puede reabrir un cierre provisional.") : null,'), 1);

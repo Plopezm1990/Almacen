@@ -323,8 +323,16 @@
     return window.__usuarioActivoNombre || "";
   }
 
+  function contextoApariencia() {
+    return JSON.stringify([empresaActiva(), window.__laUsuarioAparienciaId || usuarioActivo()]);
+  }
+
   function claveSesion() {
-    return CLAVE_PRUEBA + ":" + (empresaActiva() || "sin-empresa") + ":" + (usuarioActivo() || "sin-usuario");
+    return CLAVE_PRUEBA + ":" + contextoApariencia();
+  }
+
+  function claveBiblioteca() {
+    return CLAVE_BIBLIOTECA + ":" + contextoApariencia();
   }
 
   /* ------------------------------------------------------------ almacenaje */
@@ -369,10 +377,13 @@
    * demas locales ni a las demas sesiones.
    */
   async function leerEmpresa() {
+    var contexto = contextoApariencia();
+    var empresa = empresaActiva();
     var sb = clienteNube();
-    if (sb && empresaActiva()) {
+    if (sb && empresa) {
       try {
-        var r = await sb.rpc("abc_apariencia_leer", { p_empresa_id: empresaActiva() });
+        var r = await sb.rpc("abc_apariencia_leer", { p_empresa_id: empresa });
+        if (contexto !== contextoApariencia()) return null;
         if (!r.error) {
           servidor = { disponible: true, puedeAplicar: !!(r.data && r.data.puede_aplicar), motivo: "" };
           return desdeRpc(r.data);
@@ -386,12 +397,14 @@
             : (r.error.code || "error") + ": " + (r.error.message || "")
         };
       } catch (error) {
+        if (contexto !== contextoApariencia()) return null;
         servidor = { disponible: false, puedeAplicar: null, motivo: "sin-respuesta" };
       }
     }
     try {
       if (!window.storage || typeof window.storage.get !== "function") return null;
       var fila = await window.storage.get(CLAVE);
+      if (contexto !== contextoApariencia()) return null;
       var bruto = fila && fila.value;
       if (typeof bruto === "string") bruto = JSON.parse(bruto);
       return normalizarConfig(bruto);
@@ -424,15 +437,18 @@
     var config = normalizarConfig(entrada);
     if (!config) return { ok: false, motivo: "configuracion-invalida" };
 
+    var contexto = contextoApariencia();
+    var empresa = empresaActiva();
     var sb = clienteNube();
-    if (sb && empresaActiva() && servidor.motivo !== "contrato-no-desplegado") {
+    if (sb && empresa && servidor.motivo !== "contrato-no-desplegado") {
       var r = await sb.rpc("abc_apariencia_guardar", {
-        p_empresa_id: empresaActiva(),
+        p_empresa_id: empresa,
         p_revision_leida: revisionLeida == null ? null : Number(revisionLeida),
         p_diseno: config.diseno,
         p_paleta: config.paleta,
         p_colores: config.colores
       });
+      if (contexto !== contextoApariencia()) return { ok: false, motivo: "contexto-cambiado" };
       if (!r.error) {
         servidor.disponible = true;
         var guardadoServidor = desdeRpc(r.data);
@@ -448,6 +464,7 @@
     }
 
     var actual = await leerEmpresa();
+    if (contexto !== contextoApariencia()) return { ok: false, motivo: "contexto-cambiado" };
     if (actual && actual.revision !== revisionLeida) {
       return { ok: false, motivo: "revision-obsoleta", actual: actual };
     }
@@ -469,6 +486,7 @@
     } catch (error) {
       return { ok: false, motivo: "no-guardado" };
     }
+    if (contexto !== contextoApariencia()) return { ok: false, motivo: "contexto-cambiado" };
     var guardado = normalizarConfig(siguiente);
     aplicar(guardado, "empresa");
     /* `soloLocal` avisa de que el cambio NO ha salido de este navegador. */
@@ -477,17 +495,21 @@
 
   /** Restaurar crea una revision nueva a partir de la anterior y conserva el historial. */
   async function restaurarAnterior(revisionLeida) {
+    var contexto = contextoApariencia();
+    var empresa = empresaActiva();
     var actual = null;
     if (revisionLeida === undefined) {
       actual = await leerEmpresa();
       revisionLeida = actual ? actual.revision : null;
     }
+    if (contexto !== contextoApariencia()) return { ok: false, motivo: "contexto-cambiado" };
     var sb = clienteNube();
-    if (sb && empresaActiva() && servidor.motivo !== "contrato-no-desplegado") {
+    if (sb && empresa && servidor.motivo !== "contrato-no-desplegado") {
       var r = await sb.rpc("abc_apariencia_restaurar", {
-        p_empresa_id: empresaActiva(),
+        p_empresa_id: empresa,
         p_revision_leida: revisionLeida
       });
+      if (contexto !== contextoApariencia()) return { ok: false, motivo: "contexto-cambiado" };
       if (!r.error) {
         var restaurado = desdeRpc(r.data);
         aplicar(restaurado, "empresa");
@@ -496,6 +518,7 @@
       return traducirErrorRpc(r.error);
     }
     if (!actual) actual = await leerEmpresa();
+    if (contexto !== contextoApariencia()) return { ok: false, motivo: "contexto-cambiado" };
     if (actual && actual.revision !== revisionLeida) {
       return { ok: false, motivo: "revision-obsoleta", actual: actual };
     }
@@ -520,8 +543,10 @@
   }
 
   async function salirPrueba() {
+    var contexto = contextoApariencia();
     try { sessionStorage.removeItem(claveSesion()); } catch (e) {}
     var empresa = await leerEmpresa();
+    if (contexto !== contextoApariencia()) return false;
     return aplicar(empresa, empresa ? "empresa" : "base");
   }
 
@@ -539,7 +564,7 @@
 
   function leerBiblioteca() {
     try {
-      var bruto = localStorage.getItem(CLAVE_BIBLIOTECA + ":" + (empresaActiva() || "sin-empresa"));
+      var bruto = localStorage.getItem(claveBiblioteca());
       var lista = bruto ? JSON.parse(bruto) : [];
       return Array.isArray(lista) ? lista.filter(function (p) { return p && normalizarColores(p); }) : [];
     } catch (error) { return []; }
@@ -553,7 +578,7 @@
     var entrada = Object.assign({ nombre: String(nombre).slice(0, 60) }, limpio);
     if (existente >= 0) lista[existente] = entrada; else lista.push(entrada);
     try {
-      localStorage.setItem(CLAVE_BIBLIOTECA + ":" + (empresaActiva() || "sin-empresa"), JSON.stringify(lista));
+      localStorage.setItem(claveBiblioteca(), JSON.stringify(lista));
     } catch (error) { return { ok: false, motivo: "no-guardado" }; }
     return { ok: true, reemplazada: existente >= 0, lista: lista };
   }
@@ -650,21 +675,26 @@
 
   /* ------------------------------------------------------------- arranque */
 
-  var empresaVigilada = empresaActiva();
+  var contextoVigilado = contextoApariencia();
 
   async function resolver() {
+    var contexto = contextoApariencia();
     var prueba = leerPrueba();
     if (prueba) return aplicar(prueba, "prueba");
     var empresa = await leerEmpresa();
+    if (contexto !== contextoApariencia()) return false;
     return aplicar(empresa, empresa ? "empresa" : "base");
   }
 
   function vigilarContexto() {
     setInterval(function () {
-      var actual = empresaActiva();
-      if (actual === empresaVigilada) return;
-      empresaVigilada = actual;
+      var actual = contextoApariencia();
+      if (actual === contextoVigilado) return;
+      contextoVigilado = actual;
       limpiarPruebasDelNavegador();
+      servidor = { disponible: null, puedeAplicar: null, motivo: "" };
+      aplicar(null, "base");
+      window.dispatchEvent(new CustomEvent("la-apariencia:contexto-cambiado"));
       resolver();
     }, 1500);
     window.addEventListener("pagehide", limpiarPruebasDelNavegador);
@@ -676,6 +706,7 @@
     PALETAS: PALETAS,
     CAMPOS: CAMPOS,
     estado: function () { return { diseno: estado.config ? estado.config.diseno : null, origen: estado.origen, config: estado.config }; },
+    contexto: contextoApariencia,
     aplicar: function (config, origen) { return aplicar(normalizarConfig(config), origen || "empresa"); },
     resolver: resolver,
     leerEmpresa: leerEmpresa,

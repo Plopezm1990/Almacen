@@ -208,6 +208,20 @@
     var falloRed = await m.guardarEmpresa({ diseno: "claro" }, 8);
     comprueba("un error temporal del servidor no se presenta como guardado local",
       !falloRed.ok && !falloRed.soloLocal && llamadas.includes("abc_apariencia_guardar"));
+    window.__laUsuarioAparienciaId = "propietario-prueba-a";
+    m.guardarEnBiblioteca("Propia A", base);
+    window.__laUsuarioAparienciaId = "propietario-prueba-b";
+    var sinPaletaAjena = !m.leerBiblioteca().some(function (p) { return p.nombre === "Propia A"; });
+    window.__laUsuarioAparienciaId = "propietario-prueba-a";
+    comprueba("la biblioteca personal se aísla entre cuentas de la misma empresa",
+      sinPaletaAjena && m.leerBiblioteca().some(function (p) { return p.nombre === "Propia A"; }));
+    var resolverAnterior;
+    window.__nubeCliente = { rpc: function () { return new Promise(function (resolver) { resolverAnterior = resolver; }); } };
+    var lecturaAnterior = m.leerEmpresa();
+    window.__laUsuarioAparienciaId = "propietario-prueba-b";
+    resolverAnterior({ data: { ok: true, existe: true, diseno: "orbita", revision: 8, puede_aplicar: true }, error: null });
+    comprueba("una respuesta tardía no se atribuye al usuario siguiente", (await lecturaAnterior) === null);
+    delete window.__laUsuarioAparienciaId;
     window.__nubeActiva = false;
     window.__nubeCliente = null;
 
