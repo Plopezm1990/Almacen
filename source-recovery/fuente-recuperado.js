@@ -24236,14 +24236,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         "div",
         { className: "grid grid-cols-1 sm:grid-cols-2 gap-2 mb-2" },
         h3(Input, { value: filtroVentasTexto, onChange: (e2) => setFiltroVentasTexto(e2.target.value), placeholder: "Buscar venta, producto, pago o empleado\u2026" }),
-        h3("select", { value: filtroVentasPago, onChange: (e2) => setFiltroVentasPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12.5px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todos", "Efectivo", "Tarjeta", "Mixto", "Transferencia", "Otro"].map((x3) => h3("option", { key: x3, value: x3 }, x3 === "Todos" ? "Todos los pagos" : x3)))
+        h3("select", { value: filtroVentasPago, onChange: (e2) => setFiltroVentasPago(e2.target.value), "aria-label": "Forma de pago", className: "w-full rounded-lg px-3 py-2 text-[12.5px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todos", "Efectivo", "Tarjeta", "Mixto", "Transferencia", "Otro"].map((x3) => h3("option", { key: x3, value: x3 }, x3 === "Todos" ? "Todos los pagos" : x3)))
       ),
       h3(
         "div",
         { className: "grid grid-cols-3 gap-2 mb-3" },
-        h3(Input, { type: "date", value: filtroVentasDesde, onChange: (e2) => setFiltroVentasDesde(e2.target.value) }),
-        h3(Input, { type: "date", value: filtroVentasHasta, onChange: (e2) => setFiltroVentasHasta(e2.target.value) }),
-        h3("select", { value: filtroVentasEstado, onChange: (e2) => setFiltroVentasEstado(e2.target.value), className: "w-full rounded-lg px-2 py-2 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todas", "Activas", "Anuladas", "Dev. parcial", "Dev. total"].map((x3) => h3("option", { key: x3, value: x3 }, x3)))
+        h3(Input, { type: "date", value: filtroVentasDesde, onChange: (e2) => setFiltroVentasDesde(e2.target.value), "aria-label": "Desde la fecha" }),
+        h3(Input, { type: "date", value: filtroVentasHasta, onChange: (e2) => setFiltroVentasHasta(e2.target.value), "aria-label": "Hasta la fecha" }),
+        h3("select", { value: filtroVentasEstado, onChange: (e2) => setFiltroVentasEstado(e2.target.value), "aria-label": "Estado de la venta", className: "w-full rounded-lg px-2 py-2 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, ["Todas", "Activas", "Anuladas", "Dev. parcial", "Dev. total"].map((x3) => h3("option", { key: x3, value: x3 }, x3)))
       ),
       ventasFiltradas.length === 0 ? h3(Empty, { text: historialVentas.length ? "No hay ventas que coincidan con estos filtros." : "Todav\xEDa no hay ventas registradas en este local." }) : h3("div", { className: "space-y-1.5" }, ventasFiltradas.slice(0, 100).map((v23) => h3(
         "button",
