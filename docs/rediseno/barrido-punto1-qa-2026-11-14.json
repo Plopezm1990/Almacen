@@ -1,0 +1,333 @@
+{
+ "aviso_de_metodo": "La primera pasada se midio a 736 px de ancho, que esta por debajo del corte de 760 px, asi que el suelo tactil de 44 px estaba activo y 'cero controles cortos' no significaba nada. Repetida a 1440 px, que es la banda de raton. Las cifras de esta nota son las de 1440 px salvo donde se diga.",
+ "capacidades_del_catalogo_relevantes": [
+  "ABC_CUENTA_OPERAR",
+  "ABC_CUENTA_REASIGNAR",
+  "ABC_CUENTA_REPARTIR",
+  "ABC_CUENTA_UNIR",
+  "ABC_REPARTO_REVERTIR",
+  "ABC_LINEA_CANCELAR",
+  "ABC_PEDIDO_CANCELAR",
+  "ABC_CANCELACION_SENSIBLE",
+  "ABC_COBRO_INICIAR",
+  "ABC_COBRO_EFECTIVO",
+  "ABC_COBRO_RESOLVER_INCIERTO",
+  "ABC_REEMBOLSO_SOLICITAR",
+  "ABC_REEMBOLSO_CONFIRMAR",
+  "ABC_CAJA_OPERAR",
+  "ABC_CIERRE_REABRIR",
+  "ABC_EMISOR_CAMBIAR",
+  "ABC_COMANDA_VER",
+  "ABC_COMANDA_REIMPRIMIR",
+  "ABC_COMANDA_CAMBIAR",
+  "ABC_COMANDA_CONFIGURAR",
+  "ABC_COMANDA_MERMA_DECIDIR",
+  "ABC_SALA_VER",
+  "ABC_SALA_CONFIGURAR",
+  "ABC_MESA_ASIGNAR",
+  "ABC_MESA_RESERVAR",
+  "ABC_MESA_BLOQUEAR"
+ ],
+ "con_respaldo_en_codigo_por_abrir": [
+  {
+   "id": "tpv-07",
+   "indicio": "Trasladar, 2 apariciones"
+  },
+  {
+   "id": "tpv-23",
+   "indicio": "conflicto de edicion y borrador local, 7 apariciones"
+  },
+  {
+   "id": "tpv-27",
+   "indicio": "Invitacion"
+  },
+  {
+   "id": "tpv-30",
+   "indicio": "pendiente de confirmacion, Iniciar tarjeta simulada"
+  },
+  {
+   "id": "tpv-32",
+   "indicio": "justificante, Enviar por correo"
+  },
+  {
+   "id": "caj-08",
+   "indicio": "Historial de arqueos"
+  },
+  {
+   "id": "caj-21",
+   "indicio": "Registrar relevo"
+  },
+  {
+   "id": "caj-22",
+   "indicio": "vincularTerminal, 26 apariciones"
+  },
+  {
+   "id": "caj-23",
+   "indicio": "cierre provisional, 13 apariciones"
+  },
+  {
+   "id": "caj-24",
+   "indicio": "Ensayar cierre"
+  },
+  {
+   "id": "caj-25",
+   "indicio": "Reabrir"
+  },
+  {
+   "id": "coc-06",
+   "indicio": "Reimprimir"
+  },
+  {
+   "id": "coc-07",
+   "indicio": "merma, Enviar cambio"
+  },
+  {
+   "id": "coc-10",
+   "indicio": "Produccion"
+  }
+ ],
+ "en_curso": true,
+ "fecha": "2026-11-14",
+ "guion": "docs/rediseno/guion-barrido-apertura-qa.js",
+ "medidas_1440": [
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 141,
+   "botonesSinNombre": 0,
+   "campoSinNombre": "select de filtro de estacion (Todas las estaciones / COCINA-QA)",
+   "campos": 100,
+   "camposSinNombre": 1,
+   "desbordaH": false,
+   "id": "coc-02",
+   "titulo": "Cocina y comandas",
+   "veredicto": "abierta"
+  },
+  {
+   "desbordaH": false,
+   "id": "coc-03",
+   "nota": "el formulario de estacion se despliega en la propia pantalla; la medida abarca la pantalla anfitriona",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 3,
+   "botonesSinNombre": 0,
+   "campos": 4,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "id": "caj-02",
+   "titulo": "Arqueo de caja",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 7,
+   "botonesSinNombre": 0,
+   "campos": 8,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "id": "caj-04",
+   "titulo": "Arqueo de caja",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 7,
+   "botonesSinNombre": 0,
+   "campos": 23,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "id": "caj-06",
+   "titulo": "Arqueo de caja",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 13,
+   "botonesSinNombre": 0,
+   "campos": 19,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "id": "caj-17",
+   "titulo": "Configuracion / Fiscalidad y AEAT",
+   "veredicto": "abierta"
+  },
+  {
+   "botonesBajo24": 1,
+   "botonesBajo44": 15,
+   "botonesSinNombre": 0,
+   "campos": 6,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "ejemplosBajo24": [
+    "Cambiar a modo oscuro 24x67"
+   ],
+   "id": "tpv-02",
+   "titulo": "TPV / Venta rapida",
+   "veredicto": "abierta"
+  },
+  {
+   "botonesBajo24": 89,
+   "botonesBajo44": 89,
+   "botonesSinNombre": 0,
+   "campos": 0,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "ejemplosBajo24": [
+    "Cerrar 17x17",
+    "Subir Al peso 18x19",
+    "Bajar Al peso 18x19",
+    "AZUL para Al peso 20x20",
+    "NARANJA 20x20",
+    "VERDE 20x20"
+   ],
+   "hallazgo": "89 controles por debajo de 24x24 con raton. Todos tienen nombre accesible, pero el tamano esta por debajo del minimo de WCAG 2.2 AA 2.5.8. Es el peor caso encontrado hasta ahora y no lo tapa el suelo tactil, que solo rige por debajo de 760 px o con puntero grueso.",
+   "id": "tpv-22",
+   "titulo": "Orden y color de categorias",
+   "veredicto": "abierta"
+  }
+ ],
+ "medidas_736_primera_pasada": [
+  {
+   "campos": 1,
+   "camposSinNombre": 0,
+   "id": "tpv-06",
+   "panel": "Asignar Mesa QA-A1-02 / Comensales",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "campos": 2,
+   "camposSinNombre": 0,
+   "id": "tpv-08",
+   "panel": "Nuevo responsable, con la lista real de empleados",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "campos": 0,
+   "camposSinNombre": 0,
+   "id": "tpv-10",
+   "panel": "Repartir productos",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "campos": 3,
+   "camposSinNombre": 0,
+   "id": "tpv-11",
+   "panel": "Descuento / cortesia: tipo, porcentaje, motivo",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "campos": 0,
+   "id": "tpv-34",
+   "panel": "Ticket con QR fiscal de ensayo",
+   "veredicto": "abierta"
+  },
+  {
+   "campos": 5,
+   "camposSinNombre": 0,
+   "id": "caj-09",
+   "titulo": "Devoluciones / De cliente",
+   "veredicto": "abierta"
+  },
+  {
+   "campos": 4,
+   "camposSinNombre": 0,
+   "id": "caj-11",
+   "titulo": "Reembolso economico B08",
+   "veredicto": "abierta"
+  }
+ ],
+ "objetivo": "Punto 1: barrido de apertura de Servicio, Cocina y Caja y fiscalidad, 61 vistas pendientes",
+ "pendientes_por_precondicion": {
+  "autorizacion_pendiente": [
+   "tpv-12",
+   "tpv-13"
+  ],
+  "comanda_en_cola": [
+   "coc-05",
+   "coc-06",
+   "coc-07"
+  ],
+  "cuenta_con_lineas": [
+   "tpv-04",
+   "tpv-05",
+   "tpv-15",
+   "tpv-16",
+   "tpv-18",
+   "tpv-19",
+   "tpv-21"
+  ],
+  "orden_de_produccion": [
+   "coc-10",
+   "coc-11",
+   "coc-12"
+  ],
+  "pago_seleccionado": [
+   "caj-12",
+   "caj-13"
+  ],
+  "sesion_de_caja_abierta": [
+   "caj-03",
+   "caj-05",
+   "caj-07",
+   "caj-08"
+  ]
+ },
+ "sesion": "Propietario real, QA-EMP-A / QA-A1",
+ "sha": "3163c683 mas la etiqueta de la estacion de cocina, sin publicar",
+ "sin_rastro_en_el_producto": {
+  "metodo": "Sonda de texto sobre source-recovery/fuente-recuperado.js con varios terminos por vista, y revision del contexto de cada coincidencia debil para no dar por inexistente lo que solo cambia de nombre.",
+  "vistas": [
+   {
+    "estado": "sin pantalla propia",
+    "id": "tpv-09",
+    "matiz": "el servidor si conoce el concepto: hay un error cuentas_recuperables_no_autorizadas y la nocion de varias cuentas abiertas por mesa. Falta la pantalla, no el contrato.",
+    "ojo": "la matriz la daba por origen Codigo; no lo es",
+    "pantalla": "Recuperar cuenta y tickets aparcados"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-24",
+    "pantalla": "Funciones rapidas del TPV"
+   },
+   {
+    "estado": "sin pantalla propia",
+    "id": "tpv-26",
+    "matiz": "existe la capacidad ABC_CUENTA_UNIR, 'Unir cuentas', en el catalogo de permisos. El permiso esta; la pantalla no.",
+    "pantalla": "Unir mesas"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-28",
+    "matiz": "hay medio de pago Transferencia, que no es lo mismo",
+    "pantalla": "Bizum y estado de pago"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-29",
+    "pantalla": "Propina y vale regalo"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-31",
+    "pantalla": "Solicitar factura a empresa"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-33",
+    "pantalla": "Pantalla para cliente"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "caj-16",
+    "pantalla": "Rectificacion fiscal"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "caj-20",
+    "pantalla": "Factura electronica entre empresas"
+   }
+  ]
+ },
+ "url": "https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}
