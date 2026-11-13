@@ -587,3 +587,34 @@ html[data-la-paleta] body {
   #root table.la-tabla-fichas > tbody > tr[data-la-sin-ficha] { display: table-row; }
   #root table.la-tabla-fichas > tbody > tr[data-la-sin-ficha] > td { display: table-cell; }
 }
+
+/* ==========================================================================
+   Campos de formulario en anchos tactiles.
+   --------------------------------------------------------------------------
+   La clase dominante de campo en el programa es
+   `w-full rounded-lg px-3 py-2 text-[13px]`, 89 apariciones, que da unos 34 px
+   de alto: por debajo del objetivo operativo de 44 x 44 de la especificacion.
+
+   La correccion se limita a anchos tactiles. En escritorio, con raton, 34 px
+   es una altura razonable y subirla apretaria pantallas densas como el TPV sin
+   necesidad. La disposicion en una columna no hace falta tocarla: las 24
+   rejillas del programa ya colapsan en el corte `md` de Tailwind.
+   ========================================================================== */
+
+@media (max-width: 760px) {
+  #root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  #root select,
+  #root textarea {
+    min-height: 44px;
+  }
+
+  /* Una barra fija no debe tapar el campo que acaba de recibir el foco
+     cuando se abre el teclado del telefono. */
+  #root input,
+  #root select,
+  #root textarea,
+  #root [tabindex]:not([tabindex="-1"]) {
+    scroll-margin-block-end: 96px;
+    scroll-margin-block-start: 72px;
+  }
+}
