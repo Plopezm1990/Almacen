@@ -104411,7 +104411,7 @@ function GestionAlmacen() {
       rol: miPerfil?.rol || "",
       modoEmpleado,
       cargarMapaSala: () => cargarMapaSalaA07({ paraPanel: true }),
-      listarComandas: listarComandasA10,
+      listarPedidosTurno: listarEstacionesA10.listarPedidosTurno,
       consultarCaja: () => listarEstacionesA10.consultarCierreCajaA10({ soloEstado: true })
     };
     try {
@@ -113762,6 +113762,31 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  async function listarPedidosTurnoRediseno() {
+    try {
+      const contexto = await contextoA10(false);
+      const { supabase, empresaId, localId } = contexto;
+      const autorizacion = await supabase.rpc("abc_listar_comandas_estacion", {
+        p_empresa_id: empresaId, p_local_id: localId, p_estacion_id: null, p_limite: 1
+      });
+      if (autorizacion.error) throw autorizacion.error;
+      const respuesta = await supabase
+        .from("pedidos_tpv")
+        .select("id,cuenta_id,estado,created_at,cuentas_comerciales!inner(estado)", { count: "exact" })
+        .eq("empresa_id", empresaId)
+        .eq("local_id", localId)
+        .eq("cuentas_comerciales.estado", "ABIERTA")
+        .in("estado", ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO"])
+        .order("created_at", { ascending: true })
+        .order("id", { ascending: true })
+        .limit(150);
+      if (respuesta.error) throw respuesta.error;
+      return { ok: true, pedidos: respuesta.data || [], total: respuesta.count ?? null };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function ejecutarOperacionA10(rpc, operationId, params) {
     try {
       const contexto = await contextoA10(true);
@@ -114637,6 +114662,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
   listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
+  listarEstacionesA10.listarPedidosTurno = listarPedidosTurnoRediseno;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
   return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };

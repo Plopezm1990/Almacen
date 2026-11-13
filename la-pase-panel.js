@@ -31,6 +31,8 @@
     mapaError: null,
     comandas: null,
     comandasError: null,
+    pedidos: null,
+    totalPedidos: null,
     caja: null,
     cargando: false,
     ultimaCarga: 0
@@ -100,7 +102,13 @@
         if (r && r.ok) { estado.mapa = r; estado.mapaError = null; }
         else { estado.mapa = null; estado.mapaError = r || { error: "No se ha podido cargar la sala." }; }
       }
-      if (typeof p.listarComandas === "function") {
+      if (typeof p.listarPedidosTurno === "function" && p.puedeConsultar?.("cocina")) {
+        var resultado = await p.listarPedidosTurno();
+        if (!esCargaVigente(contexto, generacion)) return;
+        estado.pedidos = resultado && resultado.ok ? resultado.pedidos : null;
+        estado.totalPedidos = resultado && resultado.ok ? resultado.total : null;
+        estado.comandasError = resultado && resultado.ok ? null : resultado;
+      } else if (typeof p.listarComandas === "function") {
         var c = await p.listarComandas(null, 50);
         if (!esCargaVigente(contexto, generacion)) return;
         if (c && c.ok) { estado.comandas = c.comandas || []; estado.comandasError = null; }
@@ -117,7 +125,7 @@
       if (esCargaVigente(contexto, generacion)) {
         var fallo = { error: "No se ha podido contactar con el servidor." };
         if (!estado.mapa) estado.mapaError = estado.mapaError || fallo;
-        if (!estado.comandas) estado.comandasError = estado.comandasError || fallo;
+        if (!estado.comandas && !estado.pedidos) estado.comandasError = estado.comandasError || fallo;
         estado.caja = null;
       }
     } finally {
@@ -152,10 +160,10 @@
           el("div", { class: "n", texto: estado.mapa ? ocupadas.length + " de " + mesas.length : "—" }),
           el("div", { class: "e", texto: "Mesas con cuenta abierta" })
         ]),
-        el("div", { class: "la-pase-cifra" }, [
-          el("div", { class: "n", texto: comandas ? String(comandas.length) : "—" }),
-          el("div", { class: "e", texto: "Comandas consultadas" })
-        ]),
+        !p.listarPedidosTurno || p.puedeConsultar?.("cocina") ? el("div", { class: "la-pase-cifra" }, [
+          el("div", { class: "n", texto: estado.totalPedidos != null ? String(estado.totalPedidos) : comandas ? String(comandas.length) : "—" }),
+          el("div", { class: "e", texto: p.listarPedidosTurno ? "Pedidos en servicio" : "Comandas consultadas" })
+        ]) : null,
         p.puedeConsultar?.("caja") ? el("div", { class: "la-pase-cifra" }, [
           el("div", { class: "n", texto: etiquetaCaja() }),
           el("div", { class: "e", texto: "Caja del terminal" })
@@ -186,7 +194,8 @@
         el("h2", { texto: "El servicio, al punto." }),
         el("dl", {}, [
           el("div", {}, [el("dt", { texto: "Mesas con cuenta abierta" }), el("dd", { texto: estado.mapa ? abiertas + " de " + mesas.length : "Sin datos confirmados" })]),
-          el("div", {}, [el("dt", { texto: "Comandas mostradas" }), el("dd", { texto: Array.isArray(estado.comandas) ? String(estado.comandas.length) : "Sin datos confirmados" })]),
+          p.puedeConsultar?.("cocina") ? el("div", {}, [el("dt", { texto: p.listarPedidosTurno ? "Pedidos en servicio" : "Comandas mostradas" }),
+            el("dd", { texto: estado.totalPedidos != null ? String(estado.totalPedidos) : Array.isArray(estado.comandas) ? String(estado.comandas.length) : "Sin datos confirmados" })]) : null,
           puedeCaja ? el("div", {}, [el("dt", { texto: "Caja del terminal" }), el("dd", { texto: etiquetaCaja() })]) : null
         ]),
         el("div", { class: "la-ascua-acciones" }, [
@@ -332,6 +341,7 @@
   }
 
   function bloqueCola() {
+    if (typeof puente()?.listarPedidosTurno === "function") return bloquePedidosTurno();
     var cab = el("div", { class: "la-pase-plano-cab" }, [el("h3", { texto: "Cola del turno" })]);
     var cuerpo;
 
@@ -386,6 +396,55 @@
       }
     }
     return el("section", { class: "la-pase-caja" }, [cab, cuerpo]);
+  }
+
+  var ESTADO_PEDIDO = {
+    PREPARADO: [0, "Listo para servir"],
+    PARCIALMENTE_PREPARADO: [1, "Parcialmente listo"],
+    EN_PREPARACION: [2, "En preparación"],
+    ENVIADO: [3, "Enviado a cocina"],
+    SERVIDO: [4, "Cuenta abierta"]
+  };
+
+  function bloquePedidosTurno() {
+    var p = puente();
+    var cab = el("h3", { texto: "Pedidos en servicio" });
+    var aviso = !p.localId ? "Selecciona un local para ver sus pedidos."
+      : !p.puedeConsultar?.("cocina") ? "Tu cargo no tiene acceso a la cola de Cocina."
+      : estado.comandasError ? estado.comandasError.error || "No se han podido cargar los pedidos."
+      : !Array.isArray(estado.pedidos) ? "Cargando los pedidos…"
+      : estado.pedidos.length === 0 ? "No hay pedidos en servicio." : null;
+    if (aviso) return el("section", { class: "la-pase-caja" }, [cab, el("p", { class: "la-pase-aviso", role: "status", texto: aviso })]);
+    var filtro = el("div", { class: "la-pase-filtros", role: "group", "aria-label": "Filtrar pedidos en servicio" },
+      [["todas", "Todos"], ["cocina", "Cocina"], ["cuentas", "Cuentas"]].map(function (opcion) {
+        return el("button", { type: "button", texto: opcion[1], "aria-pressed": String(estado.colaFiltro === opcion[0]),
+          onclick: function () { estado.colaFiltro = opcion[0]; pintar(); } });
+      }));
+    var pedidos = estado.pedidos.filter(function (pedido) {
+      return estado.colaFiltro === "todas" || (estado.colaFiltro === "cuentas") === (pedido.estado === "SERVIDO");
+    }).sort(function (a, b) {
+      return (ESTADO_PEDIDO[a.estado]?.[0] ?? 9) - (ESTADO_PEDIDO[b.estado]?.[0] ?? 9)
+        || String(a.created_at).localeCompare(String(b.created_at));
+    });
+    var nombresMesa = new Map();
+    mesasDe(estado.mapa).forEach(function (mesa) {
+      (mesa.cuentas || []).forEach(function (cuenta) { nombresMesa.set(cuenta.cuenta_id, mesa.nombre || mesa.codigo); });
+    });
+    var lista = el("ul", { class: "la-pase-cola" }, pedidos.slice(0, 8).map(function (pedido) {
+      return el("li", {}, [
+        el("div", { class: "q" }, [
+          document.createTextNode(nombresMesa.get(pedido.cuenta_id) || "Pedido"),
+          el("span", { texto: String(pedido.id || "").slice(0, 8) })
+        ]),
+        el("span", { class: "la-pase-etiqueta", texto: ESTADO_PEDIDO[pedido.estado]?.[1] || pedido.estado })
+      ]);
+    }));
+    var parcial = estado.totalPedidos != null && estado.totalPedidos > estado.pedidos.length;
+    return el("section", { class: "la-pase-caja" }, [
+      cab, filtro, pedidos.length ? lista : el("p", { class: "la-pase-aviso", texto: "Ningún pedido con ese filtro." }),
+      parcial ? el("p", { class: "la-pase-aviso", texto: "La muestra del panel contiene " + estado.pedidos.length + " de " + estado.totalPedidos + " pedidos." }) : null,
+      botonIrA("cocina", "Ver Cocina", "la-pase-accion suave")
+    ]);
   }
 
   function botonIrA(tab, texto, clase) {
@@ -478,6 +537,8 @@
     estado.mapaError = null;
     estado.comandas = null;
     estado.comandasError = null;
+    estado.pedidos = null;
+    estado.totalPedidos = null;
     estado.caja = null;
     estado.cargando = false;
     estado.ultimaCarga = 0;
