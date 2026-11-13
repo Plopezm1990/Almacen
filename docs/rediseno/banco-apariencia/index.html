@@ -188,6 +188,26 @@
       /Tu cargo no tiene permiso/.test(editor.textContent) &&
       llamadas.every(function (nombre) { return nombre === "abc_apariencia_leer"; }));
     editor.querySelector("header button").click();
+    window.__nubeCliente = { rpc: async function (nombre, args) {
+      if (nombre === "abc_apariencia_leer") {
+        return { data: { ok: true, existe: true, diseno: "pase", revision: 8, puede_aplicar: true }, error: null };
+      }
+      llamadas.push({ nombre: nombre, revision: args.p_revision_leida });
+      return { data: null, error: { message: "apariencia_revision_obsoleta", details: "revision_vigente=8" } };
+    } };
+    var restObsoleta = await m.restaurarAnterior(7);
+    comprueba("restaurar envía la revisión leída y rechaza una revisión obsoleta",
+      restObsoleta.motivo === "revision-obsoleta" && llamadas.some(function (r) {
+        return r.nombre === "abc_apariencia_restaurar" && r.revision === 7;
+      }));
+    window.__nubeCliente = { rpc: async function (nombre) {
+      llamadas.push(nombre);
+      return { data: null, error: { code: "57014", message: "statement timeout" } };
+    } };
+    await m.leerEmpresa();
+    var falloRed = await m.guardarEmpresa({ diseno: "claro" }, 8);
+    comprueba("un error temporal del servidor no se presenta como guardado local",
+      !falloRed.ok && !falloRed.soloLocal && llamadas.includes("abc_apariencia_guardar"));
     window.__nubeActiva = false;
     window.__nubeCliente = null;
 

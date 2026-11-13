@@ -365,7 +365,6 @@
           var vigente = r.revisionVigente != null ? r.revisionVigente : (r.actual && r.actual.revision);
           mostrarMensaje("aviso", "El servidor ha rechazado el cambio: otra persona publico la revision " +
             vigente + " mientras editabas. Vuelve a cargar y aplica de nuevo tus cambios.");
-          if (vigente != null) revisionLeida = vigente;
           return;
         }
         if (r.motivo === "configuracion-invalida") {
@@ -381,7 +380,7 @@
       disabled: cargoRestringido ? "disabled" : null,
       onclick: async function () {
         restaurar.disabled = true;
-        var r = await m.restaurarAnterior();
+        var r = await m.restaurarAnterior(revisionLeida);
         restaurar.disabled = false;
         if (r.ok) {
           revisionLeida = r.config.revision;
@@ -390,9 +389,13 @@
           mostrarMensaje("ok", "Se ha restaurado la apariencia anterior como revision " + r.config.revision + ".");
           return;
         }
-        mostrarMensaje("aviso", r.motivo === "sin-revision-anterior"
-          ? "Todavia no hay una configuracion anterior que restaurar."
-          : "No se ha podido restaurar la apariencia anterior.");
+        if (r.motivo === "revision-obsoleta") {
+          mostrarMensaje("aviso", "La apariencia ha cambiado desde que abriste el editor. Ciérralo y vuelve a abrirlo para revisar la versión actual antes de restaurar.");
+        } else {
+          mostrarMensaje("aviso", r.motivo === "sin-revision-anterior"
+            ? "Todavia no hay una configuracion anterior que restaurar."
+            : "No se ha podido restaurar la apariencia anterior.");
+        }
       }
     });
 

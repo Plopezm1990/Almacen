@@ -48,7 +48,13 @@
 .la-claro-marca { gap: 8px; color: var(--c-ink-soft); }
 .la-claro-marca img { width: 32px; height: 32px; border-radius: 7px; }
 .la-claro-usuario { margin-inline-start: auto; }
-.la-claro-usuario > button { min-width: 44px; min-height: 44px; }
+.la-claro-usuario > button {
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--c-ink) !important;
+  background: var(--c-bg) !important;
+  border: 1px solid var(--c-border-control);
+}
 .la-claro-area { position: relative; }
 .la-claro-area button,
 .la-rumbo-acceso > button {
@@ -371,6 +377,25 @@ html[data-la-paleta] body {
   background: transparent; color: var(--c-ink);
 }
 .la-apariencia-aviso :focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 2px; }
+
+@media (max-width: 767px) {
+  body:has(#root [data-la-barra-inferior]) #la-ed-lanzador { display: none; }
+  .la-ed-lanzador { inset-block: max(12px, env(safe-area-inset-top)) auto !important; }
+  .la-apariencia-aviso {
+    position: sticky;
+    inset: 0 auto auto;
+    transform: none;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    max-width: none;
+    border: 0;
+    border-bottom: 1px solid var(--c-border-control);
+    border-radius: 0;
+    padding: 6px 10px;
+    box-shadow: none;
+  }
+  .la-apariencia-aviso span { flex: 1 0 100%; }
+}
 
 @media (prefers-reduced-motion: reduce) {
   .la-apariencia-aviso { transition: none !important; animation: none !important; }

@@ -248,7 +248,9 @@ function panel() { return document.getElementById("la-pase-panel"); }
   window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
   await P.cargar(true);
   comprueba("sin local activo se retira el plano previo y no se consulta la sala",
-    consultasSinLocal === 0 && !/Solo A2/.test(panel().textContent) && !P.estado().mapa);
+    consultasSinLocal === 0 && !/Solo A2/.test(panel().textContent) && !P.estado().mapa &&
+    /Selecciona un local para ver sus mesas/.test(panel().textContent) &&
+    /Selecciona un local para ver sus comandas/.test(panel().textContent));
 
   var fallos = window.__res.filter(function (x) { return !x.ok; }).length;
   linea("");

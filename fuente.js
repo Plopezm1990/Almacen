@@ -104410,7 +104410,7 @@ function GestionAlmacen() {
       localId: localActivoId,
       rol: miPerfil?.rol || "",
       modoEmpleado,
-      cargarMapaSala: cargarMapaSalaA07,
+      cargarMapaSala: () => cargarMapaSalaA07({ paraPanel: true }),
       listarComandas: listarComandasA10
     };
     try {
@@ -113842,17 +113842,19 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     });
   }
 
-  async function cargarMapaSalaA07() {
+  async function cargarMapaSalaA07({ paraPanel = false } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para ver la sala." };
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
     let contexto = null;
-    try {
-      contexto = leerContextoCuentaA02(empresaId, localActivoId);
-    } catch (error) {
-      return { ok: false, error: errorRpcA02(error) };
+    if (!paraPanel) {
+      try {
+        contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      } catch (error) {
+        return { ok: false, error: errorRpcA02(error) };
+      }
     }
-    if (!contexto) {
+    if (!paraPanel && !contexto) {
       return {
         ok: false,
         requiereCuenta: true,
@@ -113864,26 +113866,41 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     try {
       const supabase = await window.getSupabaseClient();
       const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      let operatingDay = contexto?.operatingDay || null;
+      if (paraPanel) {
+        const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", {
+          p_empresa_id: empresaId, p_local_id: localActivoId
+        });
+        if (diaError) {
+          if (!String(diaError.message || "").includes("abc_caja_no_autorizado")) throw diaError;
+          contexto = leerContextoCuentaA02(empresaId, localActivoId);
+          if (!contexto) return { ok: false, error: "El plano necesita el contexto del turno. Abre el TPV para consultar la sala con tu cargo.", requiereCuenta: true };
+        }
+        operatingDay = contexto?.operatingDay || dia?.operating_day;
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(String(operatingDay || ""))) {
+          return { ok: false, error: "El servidor no devolvió el día operativo de este local." };
+        }
+      }
       const { data, error } = await supabase.rpc("abc_listar_mapa_sala", {
         p_empresa_id: empresaId,
         p_local_id: localActivoId,
         p_terminal_id: terminal.terminalId,
         p_session_id: terminal.sessionId,
-        p_operating_day: contexto.operatingDay
+        p_operating_day: operatingDay
       });
       if (error) throw error;
       if (!data?.ok || !Array.isArray(data.zonas)) throw new Error("mapa_sala_respuesta_invalida");
       return {
         ok: true,
         zonas: data.zonas,
-        operatingDay: data.operating_day || contexto.operatingDay,
+        operatingDay: data.operating_day || operatingDay,
         terminalId: terminal.terminalId,
         sessionId: terminal.sessionId,
         currentUserId: terminal.userId,
-        cuentaId: contexto.cuentaId,
-        cuentaVersion: contexto.cuentaVersion,
-        ubicacion: contexto.ubicacion || null,
-        responsableActual: contexto.responsableActual || null
+        cuentaId: contexto?.cuentaId || null,
+        cuentaVersion: contexto?.cuentaVersion || null,
+        ubicacion: contexto?.ubicacion || null,
+        responsableActual: contexto?.responsableActual || null
       };
     } catch (error) {
       return respuestaErrorA06(error);
@@ -116726,7 +116743,7 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
   const ETIQUETA_PESTANA = { dashboard: "Inicio", fichaje: "Fichaje" };
   const otros = grupos.map((g2) => ({ ...g2, items: g2.items.filter((it2) => !idsFijos.has(it2.id)) })).filter((g2) => g2.items.length > 0 || g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor);
   const hayBadgeEnOtros = otros.some((g2) => g2.items.some((it2) => it2.badge > 0));
-  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden flex shrink-0", style: { background: C2.surface, borderTop: `1px solid ${C2.line}` } }, pestanasFijas.map((it2) => {
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { "data-la-barra-inferior": "", className: "md:hidden flex shrink-0", style: { background: C2.surface, borderTop: `1px solid ${C2.line}` } }, pestanasFijas.map((it2) => {
     const Icon2 = it2.icon;
     const active = tab === it2.id;
     return /* @__PURE__ */ import_react4.default.createElement(
@@ -116743,7 +116760,14 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
     /* @__PURE__ */ import_react4.default.createElement(Ellipsis, { size: 20, color: C2.inkSoft }),
     /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: C2.inkSoft } }, "M\xE1s"),
     hayBadgeEnOtros && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-1.5 right-[28%] w-2 h-2 rounded-full", style: { background: C2.red } })
-  )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, otros.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-3" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, g2.titulo), g2.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, { key: it2.id, it: it2, tab, onPick: () => {
+  )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, typeof window.LAApariencia?.abrirEditor === "function" && /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, {
+    it: { id: "apariencia", label: "Apariencia", icon: Cog },
+    tab,
+    onPick: () => {
+      setAbierto(false);
+      requestAnimationFrame(() => window.LAApariencia.abrirEditor());
+    }
+  }), otros.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-3" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, g2.titulo), g2.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, { key: it2.id, it: it2, tab, onPick: () => {
     if (setTab(it2.id)) setAbierto(false);
   } })), g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor && /* @__PURE__ */ import_react4.default.createElement(
     "button",

@@ -416,7 +416,7 @@
     if (!config) return { ok: false, motivo: "configuracion-invalida" };
 
     var sb = clienteNube();
-    if (sb && empresaActiva() && servidor.disponible !== false) {
+    if (sb && empresaActiva() && servidor.motivo !== "contrato-no-desplegado") {
       var r = await sb.rpc("abc_apariencia_guardar", {
         p_empresa_id: empresaActiva(),
         p_revision_leida: revisionLeida == null ? null : Number(revisionLeida),
@@ -439,7 +439,7 @@
     }
 
     var actual = await leerEmpresa();
-    if (actual && revisionLeida != null && actual.revision !== revisionLeida) {
+    if (actual && actual.revision !== revisionLeida) {
       return { ok: false, motivo: "revision-obsoleta", actual: actual };
     }
     var siguiente = {
@@ -467,13 +467,17 @@
   }
 
   /** Restaurar crea una revision nueva a partir de la anterior y conserva el historial. */
-  async function restaurarAnterior() {
-    var actual = await leerEmpresa();
+  async function restaurarAnterior(revisionLeida) {
+    var actual = null;
+    if (revisionLeida === undefined) {
+      actual = await leerEmpresa();
+      revisionLeida = actual ? actual.revision : null;
+    }
     var sb = clienteNube();
-    if (sb && empresaActiva() && servidor.disponible === true) {
+    if (sb && empresaActiva() && servidor.motivo !== "contrato-no-desplegado") {
       var r = await sb.rpc("abc_apariencia_restaurar", {
         p_empresa_id: empresaActiva(),
-        p_revision_leida: actual ? actual.revision : null
+        p_revision_leida: revisionLeida
       });
       if (!r.error) {
         var restaurado = desdeRpc(r.data);
@@ -481,6 +485,10 @@
         return { ok: true, config: restaurado, servidor: true };
       }
       return traducirErrorRpc(r.error);
+    }
+    if (!actual) actual = await leerEmpresa();
+    if (actual && actual.revision !== revisionLeida) {
+      return { ok: false, motivo: "revision-obsoleta", actual: actual };
     }
     if (!actual || !actual.anterior) return { ok: false, motivo: "sin-revision-anterior" };
     return guardarEmpresa(actual.anterior, actual.revision);
@@ -627,7 +635,7 @@
       aviso.appendChild(texto);
       aviso.appendChild(editar);
       aviso.appendChild(salir);
-      document.body.appendChild(aviso);
+      document.body.prepend(aviso);
     } catch (e) {}
   }
 
