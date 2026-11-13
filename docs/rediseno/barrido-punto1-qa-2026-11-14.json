@@ -459,10 +459,22 @@
    "caj-08"
   ]
  },
+ "quedan_estas_diez": {
+  "caj-05": "Retirar movimiento de caja: no hay ningun movimiento registrado hoy",
+  "caj-13": "Resolver reembolso: hace falta una solicitud de reembolso pendiente",
+  "caj-24": "Ensayo de cierre definitivo: hace falta iniciar el cierre provisional",
+  "caj-25": "Reabrir cierre provisional: hace falta un cierre provisional hecho",
+  "coc-06": "Reimprimir comanda: hace falta una comanda enrutada; las de QA estan BLOQUEADAS sin ruta",
+  "coc-07": "Resolver merma de preparacion: igual, comanda enrutada",
+  "coc-10": "Registrar produccion: hace falta una ficha o receta de produccion en QA",
+  "coc-11": "Anular produccion: hace falta una orden de produccion",
+  "coc-12": "Traspasar produccion: hace falta una orden de produccion",
+  "tpv-07": "Trasladar cuenta: hace falta una segunda cuenta abierta compatible"
+ },
  "recuento": {
-  "abiertas_y_medidas": 34,
-  "pendientes_de_precondicion": 18,
-  "sin_construir_en_el_producto": 9,
+  "abiertas_y_medidas": 41,
+  "pendientes_de_precondicion": 10,
+  "sin_construir_en_el_producto": 10,
   "terminado": false,
   "total_objetivo": 61
  },
@@ -621,8 +633,69 @@
     "estado": "sin rastro",
     "id": "caj-20",
     "pantalla": "Factura electronica entre empresas"
+   },
+   {
+    "estado": "no existe para tickets de venta",
+    "id": "tpv-32",
+    "matiz": "la vista de ticket solo ofrece Imprimir o Guardar PDF. El 'Enviar por correo' que aparece en la fuente, con icono de sobre, pertenece a los pedidos a proveedor (setCorreoPedido), no al justificante de una venta. Y 'justificante' en el TPV es el campo de concepto de un movimiento de caja, no un envio",
+    "pantalla": "Enviar justificante por correo"
    }
   ]
  },
+ "tercera_tanda_sin_escribir_nada": {
+  "nota": "Todas estas se abrieron solo leyendo y navegando. Ninguna operacion de escritura.",
+  "vistas": [
+   {
+    "contenido": "Expediente de piloto sandbox. Estado inicial PENDIENTE_EMPRESA, empresa QA-EMP-A, local QA-A1, entorno SANDBOX. El panel declara que es solo lectura en preview QA, que no crea expedientes, no cambia estados, no usa secretos y no activa produccion",
+    "donde": "Configuracion, Fiscalidad y AEAT",
+    "id": "caj-19",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Procesamiento fiscal QA: reclama y resuelve hasta 10 elementos de la cola en modo QA_SIMULADOR, sin enviar nada a la AEAT. Emisor fiscal vinculado a Local A1: QA Fiscal A2, NIF QA-A2-TEST, entidad simulada que nunca podra activarse para emision real",
+    "donde": "Configuracion, Fiscalidad y AEAT",
+    "id": "caj-17",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Presentacion y asesoria: canal previsto, acreditacion prevista, nombre de la asesoria o proveedor, correo de contacto y NIF del presentador. Mas permiso del panel, duracion en dias, via, estado revisado, referencia externa opaca, huella SHA-256 de la evidencia y vigencia",
+    "donde": "Configuracion, Fiscalidad y AEAT",
+    "id": "caj-18",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "selector de la venta original con ventas reales de QA, y el aviso de que stock y reembolso se confirman juntos: si una parte falla, no se guarda ninguna",
+    "donde": "Devoluciones, De cliente",
+    "id": "caj-10",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "perfil de proveedor Simulador configurable B08, pago original con los pagos confirmados y su importe disponible, importe a reembolsar y motivo obligatorio. Cuatro campos, todos con nombre",
+    "donde": "Devoluciones, Reembolso economico B08",
+    "id": "caj-12",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "el producto Articulo varios (QA) existe y abre el mismo panel configurable, con alergenos y nota para cocina",
+    "donde": "catalogo del TPV",
+    "id": "tpv-27",
+    "matiz": "la mitad de invitacion no es una pantalla aparte: se resuelve con el tipo Cortesia del panel de descuento, que es tpv-11",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "ticket completo: empresa, local, numero TPV-000035, conceptos, subtotal, IVA, total, cobrado en efectivo, entregado y cambio, QR tributario con VERI*FACTU QA y EMISION REAL DESACTIVADA, y la URL de validacion de la AEAT. Boton Imprimir o Guardar PDF",
+    "donde": "Historial de ventas, detalle, Ver ticket",
+    "id": "tpv-20",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Venta V-20261113-2278E8, 2026-11-13, efectivo, ACTIVA, su linea, total original e ID interno, con Ver ticket o reimprimir y Anular venta. No se pulso anular",
+    "donde": "Historial de ventas, detalle de la venta",
+    "id": "tpv-21",
+    "veredicto": "abierta"
+   }
+  ]
+ },
+ "tpv-09_matiz_nuevo": "Al abrir el catalogo con una venta rapida en curso aparece 'Venta rapida en curso. La cuenta se conserva en el servidor para continuarla sin duplicar la venta' con el boton 'Continuar en Sala'. Asi que la continuacion de una cuenta SI existe; lo que no hay es la pantalla de cuentas aparcadas con su lista, que es lo que pide tpv-09.",
  "url": "https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
 }
