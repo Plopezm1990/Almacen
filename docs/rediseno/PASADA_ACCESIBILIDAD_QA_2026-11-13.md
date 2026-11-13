@@ -22,7 +22,8 @@ interfaz real y no tocan el paquete:
 |---|---|---|
 | Tablas a fichas | Copia el texto real de cada `<th>` en `data-etiqueta` de su celda; marca la tabla y exceptúa las filas con celdas combinadas | `la-tablas-fichas.js` |
 | Nombre por marcador | Copia `placeholder` a `aria-label` **solo** cuando el campo no tiene ya nombre | `la-tablas-fichas.js` |
-| Fichas y tacto | Reglas a ≤ 760 px: cabecera oculta, celda con su etiqueta, `min-height`/`min-width` de 44 px en botones y campos, y margen de desplazamiento para que la barra fija no tape el campo con el foco | `la-apariencia.css` |
+| Fichas | Reglas a ≤ 760 px: cabecera oculta y celda con su etiqueta. Cuelga del ancho porque habla de sitio para comparar columnas | `la-apariencia.css` |
+| Tacto | `min-height`/`min-width` de 44 px en botones y campos, con la puerta en el **puntero**, no en el ancho: `(max-width: 760px), (any-pointer: coarse)`. Más el margen de desplazamiento del teclado del teléfono, que sigue colgado del ancho | `la-apariencia.css` |
 
 Las etiquetas salen del propio `<th>`, así que **no pueden mentir**: si una
 pantalla cambia de columnas, sus fichas cambian con ella. Ninguna de las dos
@@ -75,22 +76,69 @@ Dos de los seis nombres los pone la capa genérica desde su marcador; los cuatro
 de los filtros vienen ya de la fuente. Evidencia en
 `docs/rediseno/medicion-etiquetas-tpv-qa-2026-11-13.json`.
 
-### El dato que hay que decidir
+### Los 68 controles cortos del escritorio: la puerta estaba mal puesta
 
-Los **68** controles cortos a 1440 px no son un fallo escondido: el suelo de
-44 px está acotado a `@media (max-width: 760px)`, a propósito, porque se escribió
-para el tacto. En ratón, los más pequeños son los distintivos de cabecera, de
-24 px de alto, y el menú de navegación, de 40 × 216.
+Los **68** controles cortos a 1440 px parecían pedir una de dos respuestas:
+dejar el escritorio como está o subirlo todo a 44. Las dos son peores que la
+tercera, porque la pregunta estaba mal planteada: **el umbral no es el ancho de
+la ventana, es con qué se toca la pantalla.**
 
-Importa cuál es la vara de medir:
+Lo que decía cada vara de medir:
 
 - **WCAG 2.2 AA**, criterio 2.5.8 «Target Size (Minimum)», pide 24 × 24 px. A
-  1440 px hay **0 controles por debajo de 24 × 24**: se cumple.
-- **44 × 44** es el criterio 2.5.5, nivel **AAA**, y es el que fijó el plan.
+  1440 px con ratón hay **0 controles por debajo de 24 × 24**: se cumple.
+- **44 × 44** es el criterio 2.5.5, de nivel **AAA**, y nació para el dedo.
 
-Extenderlo al escritorio es quitar la consulta de medio, pero no es gratis: sube
-el menú de 40 a 44 y los distintivos de cabecera de 24 a 44, y eso se ve. Es una
-decisión de diseño, no un arreglo, así que queda a la vista en vez de aplicada.
+Subir el escritorio a 44 habría apretado pantallas densas sin que nadie lo
+pidiera: el menú de 40 a 44 y los distintivos de cabecera de 24 a 44. Pero
+dejarlo en el ancho tapaba **un agujero de verdad, y del lado contrario**: este
+programa se usa en **terminales de barra con pantalla táctil**, que a 1024 o
+1280 px nunca entraban en `max-width: 760px` y se quedaban con distintivos de
+24 px para pulsar con el dedo. Eso sí es un riesgo operativo, y no se veía
+porque la medición se había hecho en móvil estrecho y en escritorio con ratón,
+nunca en el caso real del producto.
+
+Así que la puerta pasa a ser el puntero, y solo en las dos reglas que hablan de
+tamaño del objetivo:
+
+```css
+@media (max-width: 760px), (any-pointer: coarse) { … }
+```
+
+`any-pointer: coarse` significa «esta máquina tiene algún puntero grueso»,
+aunque además tenga ratón: es lo que describe un terminal táctil con ratón
+conectado, mientras que `pointer: coarse` mira solo el principal y se lo
+perdería. En un portátil con pantalla táctil también se activa; en un producto
+de hostelería, ese lado del error es el bueno. El programa ya usaba consultas de
+puntero —`(pointer: fine)` en dos bloques—, así que no se introduce nada nuevo.
+
+**Dos reglas se quedan colgadas del ancho, a propósito:**
+
+- La **conversión de tabla a fichas**, porque habla de sitio para comparar
+  columnas, no de dedos. Un terminal táctil ancho debe seguir viendo su tabla.
+- El **margen de desplazamiento** de 96 px, porque habla del teclado en pantalla
+  del teléfono. En un terminal apoyado en el mostrador no hay teclado que tape
+  nada y reservarle 96 px sería mover el foco sin motivo.
+
+#### Comprobado
+
+| Escenario | `any-pointer: coarse` | Chips | Regla |
+|---|---|---|---|
+| 1440 px, ratón | no | 27 px | apagada, densidad intacta |
+| 768 px, ratón | no | 27 px | apagada |
+| 375 px, táctil | sí | 44 px | encendida |
+
+El caso que importa —pantalla ancha **y** táctil— no se puede emular en este
+panel: al pasar de 768 px se pierde la emulación táctil (`maxTouchPoints` cae a
+0). Así que se probó el mecanismo aislando el segundo brazo del OR: a 1280 px con
+ratón se cambió `any-pointer: coarse` por `any-pointer: fine` sobre la hoja viva.
+Los chips subieron de 27 a 44 y al restaurar la condición volvieron a 27. El
+brazo de puntero se evalúa y se aplica en ancho grande, que es lo que hacía falta
+demostrar.
+
+Sin regresión a 375 px: la tabla sigue en modo ficha con sus seis etiquetas
+sacadas del `<th>` real, cabecera oculta, 0 chips por debajo de 44, 7 campos
+ninguno por debajo de 44, margen de foco en 96 px y sin desbordamiento.
 
 ## Lo que queda
 - Medir el modal «Eliminar producto» y el aviso «Ojo: has cambiado el contenido

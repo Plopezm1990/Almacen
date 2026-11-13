@@ -540,8 +540,23 @@ html[data-la-paleta] body {
    los modales desbordan. Comprobado tambien en TPV (135 botones), cocina
    (136), caja, informes y personal: cero por debajo y cero desbordamientos.
    Las tiras de categorias siguen desplazandose dentro de su propio contenedor,
-   que es lo que deben hacer. */
-@media (max-width: 760px) {
+   que es lo que deben hacer.
+
+   La puerta NO es el ancho, es el tipo de puntero. Medido a 1440 px con raton,
+   68 de 193 botones quedan por debajo de 44 x 44 y ninguno por debajo de
+   24 x 24, que es lo que exige WCAG 2.2 AA en su criterio 2.5.8. Los 44 x 44
+   son el 2.5.5, de nivel AAA, y nacieron para el dedo. Subir el escritorio a 44
+   apretaria pantallas densas sin que nadie lo pida: el menu pasaria de 40 a 44
+   y los distintivos de cabecera de 24 a 44.
+
+   Lo que si era un agujero real es el otro lado. Este programa se usa en
+   terminales de barra con pantalla tactil, que a 1024 o 1280 px no entraban en
+   `max-width: 760px` y se quedaban con distintivos de 24 px para pulsar con el
+   dedo. `any-pointer: coarse` los incluye: si la maquina tiene algun puntero
+   grueso, aunque tambien tenga raton, manda el objetivo tactil. En un portatil
+   con pantalla tactil tambien se activa, y en un producto de hosteleria ese
+   lado del error es el bueno. */
+@media (max-width: 760px), (any-pointer: coarse) {
   #root button { min-height: 44px; min-width: 44px; }
 }
 
@@ -604,19 +619,26 @@ html[data-la-paleta] body {
    `w-full rounded-lg px-3 py-2 text-[13px]`, 89 apariciones, que da unos 34 px
    de alto: por debajo del objetivo operativo de 44 x 44 de la especificacion.
 
-   La correccion se limita a anchos tactiles. En escritorio, con raton, 34 px
-   es una altura razonable y subirla apretaria pantallas densas como el TPV sin
-   necesidad. La disposicion en una columna no hace falta tocarla: las 24
-   rejillas del programa ya colapsan en el corte `md` de Tailwind.
+   La correccion se limita al dedo, por la misma razon que en los botones: con
+   raton, 34 px es una altura razonable y subirla apretaria pantallas densas
+   como el TPV sin necesidad. La disposicion en una columna no hace falta
+   tocarla: las 24 rejillas del programa ya colapsan en el corte `md` de
+   Tailwind.
    ========================================================================== */
 
-@media (max-width: 760px) {
+@media (max-width: 760px), (any-pointer: coarse) {
   #root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
   #root select,
   #root textarea {
     min-height: 44px;
   }
+}
 
+/* Esta sigue colgando del ancho, no del puntero: habla del teclado en pantalla
+   del telefono, que ocupa la mitad de abajo. En un terminal de barra apoyado en
+   el mostrador no hay teclado que tape nada, y reservarle 96 px seria mover el
+   foco sin motivo. */
+@media (max-width: 760px) {
   /* Una barra fija no debe tapar el campo que acaba de recibir el foco
      cuando se abre el teclado del telefono. */
   #root input,
