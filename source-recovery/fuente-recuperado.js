@@ -3247,16 +3247,24 @@ function GestionAlmacen() {
     return () => window.removeEventListener("conflicto-fusion", onConflictoFusion);
   }, []);
   const [tab, setTab] = (0, import_react4.useState)("dashboard");
+  const [disenoNavegacion, setDisenoNavegacion] = (0, import_react4.useState)(leerDisenoNavegacion);
+  (0, import_react4.useEffect)(() => {
+    const actualizar = () => setDisenoNavegacion(leerDisenoNavegacion());
+    window.addEventListener("la-apariencia:cambio", actualizar);
+    actualizar();
+    return () => window.removeEventListener("la-apariencia:cambio", actualizar);
+  }, []);
   const formularioAbiertoPM15Ref = import_react4.default.useRef(false);
   function marcarFormularioAbiertoPM15(abierto) {
     formularioAbiertoPM15Ref.current = !!abierto;
   }
   function cambiarTabPM15(nuevaTab) {
-    if (!puedeConsultarPantallaPM13(nuevaTab)) return;
+    if (!puedeConsultarPantallaPM13(nuevaTab)) return false;
     const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de pantalla se perder\xE1. \xBFQuieres continuar sin guardar?") : true;
-    if (!decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar)) return;
+    if (!decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar)) return false;
     formularioAbiertoPM15Ref.current = false;
     setTab(nuevaTab);
+    return true;
   }
   // Rediseno: puente de solo lectura para la capa de apariencia y el panel
   // de servicio Pase. Publica el contexto y las funciones que YA existen, sin
@@ -3264,11 +3272,11 @@ function GestionAlmacen() {
   // cambiarTabPM15 (guarda de borrador y de permiso) y los datos de sala y de
   // cocina salen de los mismos RPC que usa el TPV, con sus politicas RLS.
   (0, import_react4.useEffect)(() => {
-    if (typeof window === "undefined") return;
+    if (typeof window === "undefined" || !ready) return;
     window.__laPuenteRediseno = {
       version: 1,
-      irA: cambiarTabPM15,
-      puedeConsultar: puedeConsultarPantallaPM13,
+      irA: navegarRediseno,
+      puedeConsultar: puedeNavegarRediseno,
       tabActual: tab,
       empresaId: empresaDelLocalActivo?.id || null,
       localId: localActivoId,
@@ -3281,6 +3289,7 @@ function GestionAlmacen() {
       window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
     } catch (e2) {
     }
+    return () => { delete window.__laPuenteRediseno; };
   });
   const [saltoDevolucionProveedor, setSaltoDevolucionProveedor] = (0, import_react4.useState)(0);
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
@@ -5137,7 +5146,7 @@ function GestionAlmacen() {
       eliminarRegistroAceite,
       consumoPorCiclo
     }
-  ), tab === "buscar" && /* @__PURE__ */ import_react4.default.createElement(BusquedaGlobal, { productos: productosDelLocalActivo, proveedores, clientes, fichasCosto: fichasCostoDelLocalActivo, empleados: empleadosDelLocalActivo, setTab: cambiarTabPM15 }), tab === "pedidos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "buscar" && /* @__PURE__ */ import_react4.default.createElement(BusquedaGlobal, { productos: productosDelLocalActivo, proveedores, clientes, fichasCosto: fichasCostoDelLocalActivo, empleados: empleadosDelLocalActivo, puedeConsultar: puedeNavegarRediseno, setTab: cambiarTabPM15 }), tab === "pedidos" && /* @__PURE__ */ import_react4.default.createElement(
     Pedidos,
     {
       pedidos: pedidosDelLocalActivo,
@@ -5518,24 +5527,33 @@ function GestionAlmacen() {
     const filtrados = ids.filter((id) => (!modoEmpleado || itemsPermitidosEmpleado.includes(id)) && puedeConsultarPantallaPM13(id));
     return filtrados.map(porId).filter(Boolean);
   };
-  const GRUPOS = [
-    { titulo: null, items: pick(["dashboard", "direccion", "buscar"]) },
-    { titulo: "Compras", items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "facturas"]) },
-    { titulo: "Almac\xE9n", items: pick(["resumen_almacen", "productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos", "diagnostico", "etiquetas"]) },
-    { titulo: "Ventas", items: pick(["venta", "cocina", "encargos", "clientes", "devoluciones", "descuentos"]) },
-    { titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas"]) },
-    { titulo: "Finanzas y an\xE1lisis", items: pick(["pagos", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
-    { titulo: "Personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
-    { titulo: "Calidad", items: pick(["appcc", "aceite"]) },
-    { titulo: "Sistema", items: pick(["auditoria", "respaldos", "notificaciones", "locales", "configuracion", "errores_sistema"]) }
+  function puedeNavegarRediseno(id) {
+    if (window.__nubeActiva && (!miPerfil || miPerfil.rol !== "Propietario" && !itemsPermitidosEmpleado.includes(id))) return false;
+    return pick([id]).length > 0;
+  }
+  function navegarRediseno(id) {
+    return puedeNavegarRediseno(id) && cambiarTabPM15(id);
+  }
+  const gruposBase = [
+    { id: "inicio", titulo: null, items: pick(["dashboard", "direccion", "buscar"]) },
+    { id: "compras", titulo: "Compras", devolucionProveedor: true, items: pick(["proveedores", "pedidos", "recepcion", "albaranes", "facturas"]) },
+    { id: "almacen", titulo: "Almac\xE9n", items: pick(["resumen_almacen", "productos", "historial_producto", "conteo", "saldo", "mapa", "traspasos", "diagnostico", "etiquetas"]) },
+    { id: "ventas", titulo: "Ventas", items: pick(["venta", "cocina", "encargos", "clientes", "devoluciones", "descuentos"]) },
+    { id: "produccion", titulo: "Costes y producci\xF3n", items: pick(["fichas", "produccion", "mermas"]) },
+    { id: "finanzas", titulo: "Finanzas y an\xE1lisis", items: pick(["pagos", "resultados", "reportes", "libroiva", "caja", "tesoreria", "estacionalidad"]) },
+    { id: "personal", titulo: "Personal", items: pick(["personal", "fichaje", "turnos", "nominas"]) },
+    { id: "calidad", titulo: "Calidad", items: pick(["appcc", "aceite"]) },
+    { id: "sistema", titulo: "Sistema", items: pick(["auditoria", "respaldos", "notificaciones", "locales", "configuracion", "errores_sistema"]) }
   ];
+  const GRUPOS = agruparNavegacionRediseno(gruposBase, disenoNavegacion);
   const mostrarEnlaceDevolucionProveedor = pick(["proveedores"]).length > 0 && pick(["devoluciones"]).length > 0;
   const irADevolucionProveedor = () => {
+    if (!cambiarTabPM15("devoluciones")) return false;
     setSaltoDevolucionProveedor((n) => n + 1);
-    cambiarTabPM15("devoluciones");
+    return true;
   };
   const pestanasFijasMovil = pick(TAB_PRIORITIES_MOVIL[rolNavegacionMovil] || ["dashboard"]);
-  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", { "data-tema": temaOscuro ? "oscuro" : "claro", "data-la-contenedor": disenoNavegacion || undefined, style: { background: C2.bg, color: C2.ink, fontFamily: "'IBM Plex Sans', ui-sans-serif, system-ui" }, className: "w-full min-h-[700px] flex flex-col md:flex-row text-[14px]" }, fallosGuardado.length > 0 && /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       className: "text-[12.5px] px-3 py-2 flex items-center justify-between gap-2",
@@ -5726,6 +5744,7 @@ function GestionAlmacen() {
       grupos: GRUPOS,
       tab,
       setTab: cambiarTabPM15,
+      diseno: disenoNavegacion,
       temaOscuro,
       setTemaOscuro,
       modoEmpleado,
@@ -5739,7 +5758,7 @@ function GestionAlmacen() {
       mostrarEnlaceDevolucionProveedor,
       irADevolucionProveedor
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 min-w-0 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, disenoNavegacion === "rumbo" && (!window.__nubeActiva || miPerfil) && /* @__PURE__ */ import_react4.default.createElement(BuscadorRumbo, { grupos: gruposBase, tab, puedeNavegar: puedeNavegarRediseno, navegar: navegarRediseno }), contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
     "textarea",
     {
       readOnly: true,
@@ -15335,7 +15354,187 @@ function BotonModoEmpleado({ modoEmpleado, salirModoEmpleado, empleados = [], us
     "\u{1F512} Cerrar sesi\xF3n"
   ), confirmarLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !cerrandoSesionPropietarioPM17 && setConfirmarLogoutPropietarioPM17(false), title: "Cerrar sesi\xF3n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-4" }, "Vas a cerrar la sesi\xF3n de Propietario solo en este dispositivo. Los datos del negocio no se modificar\xE1n."), errorLogoutPropietarioPM17 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3", role: "alert", style: { color: C2.red } }, errorLogoutPropietarioPM17), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: cerrarSesionPropietarioPM17, disabled: cerrandoSesionPropietarioPM17 }, cerrandoSesionPropietarioPM17 ? "Cerrando…" : "Cerrar sesi\xF3n"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarLogoutPropietarioPM17(false), disabled: cerrandoSesionPropietarioPM17 }, "Cancelar")))));
 }
-function SidebarGrupos({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "", mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor }) {
+function leerDisenoNavegacion() {
+  return typeof document === "undefined" ? null : document.documentElement.getAttribute("data-la-diseno");
+}
+function agruparNavegacionRediseno(grupos, diseno) {
+  const distribucion = {
+    claro: [
+      ["Inicio", ["inicio"]],
+      ["Servicio", ["ventas"]],
+      ["Gesti\xF3n", ["compras", "almacen", "produccion", "finanzas"]],
+      ["Empresa", ["personal", "calidad", "sistema"]]
+    ],
+    sello: [
+      [null, ["inicio"]],
+      ["Ventas", ["ventas"]],
+      ["Almac\xE9n", ["almacen", "compras", "produccion"]],
+      ["Equipo", ["personal"]],
+      ["Control", ["finanzas", "calidad", "sistema"]]
+    ]
+  };
+  const definicion = diseno === "claro" || diseno === "sello" ? distribucion[diseno] : null;
+  if (!definicion) return grupos;
+  const usados = new Set(definicion.flatMap(([, ids]) => ids));
+  const agrupados = definicion.map(([titulo, ids]) => {
+    const partes = ids.map((id) => grupos.find((grupo) => grupo.id === id)).filter(Boolean);
+    return {
+      titulo,
+      items: partes.flatMap((parte) => parte.items),
+      devolucionProveedor: partes.some((parte) => parte.devolucionProveedor)
+    };
+  });
+  return agrupados.concat(grupos.filter((grupo) => !usados.has(grupo.id)));
+}
+function CabeceraClaro({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor }) {
+  const [abierto, setAbierto] = (0, import_react4.useState)(null);
+  const botones = (0, import_react4.useRef)({});
+  const h = import_react4.default.createElement;
+  function cerrar() {
+    if (abierto) botones.current[abierto]?.focus();
+    setAbierto(null);
+  }
+  return h("header", { className: "la-claro-cabecera hidden md:flex" },
+    h("div", { className: "la-claro-marca" }, h("img", { src: ICONO_PROYECTO, alt: "L&A Suite" }),
+      contextoActivoPM15 && h("span", null, contextoActivoPM15)),
+    h("nav", {
+      "aria-label": "M\xF3dulos",
+      onBlur: (e2) => { if (!e2.currentTarget.contains(e2.relatedTarget)) setAbierto(null); },
+      onKeyDown: (e2) => { if (e2.key === "Escape" && abierto) { e2.stopPropagation(); cerrar(); } }
+    }, grupos.filter((grupo) => grupo.items.length || grupo.devolucionProveedor && mostrarEnlaceDevolucionProveedor).map((grupo, indice) => {
+      const nombre = grupo.titulo || "Inicio";
+      const desplegado = abierto === nombre;
+      return h("div", { className: "la-claro-area", key: nombre },
+        h("button", {
+          type: "button", ref: (el2) => { botones.current[nombre] = el2; },
+          "aria-expanded": desplegado, "aria-controls": "la-claro-area-" + indice,
+          "data-activa": grupo.items.some((item) => item.id === tab),
+          onClick: () => setAbierto(desplegado ? null : nombre)
+        }, nombre, h(ChevronRight, { size: 14, "aria-hidden": true })),
+        h("div", { id: "la-claro-area-" + indice, className: "la-claro-destinos", hidden: !desplegado },
+          grupo.items.map((item) => h("button", {
+            key: item.id, type: "button", "aria-current": tab === item.id ? "page" : undefined,
+            onClick: () => { if (setTab(item.id)) cerrar(); }
+          }, h(item.icon, { size: 17, "aria-hidden": true }), item.label,
+          item.badge > 0 && h("span", { className: "la-claro-cuenta" }, item.badge))),
+          grupo.devolucionProveedor && mostrarEnlaceDevolucionProveedor && h("button", {
+            type: "button", onClick: () => { if (irADevolucionProveedor()) cerrar(); }
+          }, h(ArrowLeftRight, { size: 17, "aria-hidden": true }), "Devoluciones a proveedor")
+        )
+      );
+    })),
+    h("div", { className: "la-claro-usuario" },
+      h(BotonTema, { temaOscuro, setTemaOscuro }),
+      h(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))
+  );
+}
+const SINONIMOS_RUMBO = {
+  venta: "cobrar venta mesas sala ticket",
+  cocina: "comandas estaci\xF3n preparaci\xF3n",
+  caja: "apertura cierre turno efectivo",
+  buscar: "buscar registros",
+  fichaje: "fichar entrada salida",
+  conteo: "contar stock existencias",
+  reportes: "informes ventas",
+  libroiva: "impuestos fiscalidad"
+};
+function buscarPantallasRumbo(grupos, consulta, puedeNavegar) {
+  const palabras = normalizarParaComparar(consulta).split(" ").filter(Boolean);
+  return grupos.flatMap((grupo) => {
+    const modulo = grupo.titulo || "Inicio";
+    return grupo.items.filter((item) => {
+      const texto = normalizarParaComparar([item.label, modulo, item.id, SINONIMOS_RUMBO[item.id]].join(" "));
+      return puedeNavegar(item.id) && palabras.every((palabra) => texto.includes(palabra));
+    }).map((item) => ({ ...item, modulo }));
+  });
+}
+function BuscadorRumbo({ grupos, tab, puedeNavegar, navegar }) {
+  const [consulta, setConsulta] = (0, import_react4.useState)("");
+  const [seleccion, setSeleccion] = (0, import_react4.useState)(0);
+  const dialogo = (0, import_react4.useRef)(null);
+  const entrada = (0, import_react4.useRef)(null);
+  const boton = (0, import_react4.useRef)(null);
+  const focoPrevio = (0, import_react4.useRef)(null);
+  const resultados = buscarPantallasRumbo(grupos, consulta, puedeNavegar);
+  const indice = Math.min(seleccion, resultados.length - 1);
+  const h = import_react4.default.createElement;
+  function abrir() {
+    if (!dialogo.current || dialogo.current.open) return;
+    focoPrevio.current = document.activeElement;
+    setConsulta("");
+    setSeleccion(0);
+    dialogo.current.showModal();
+    entrada.current?.focus();
+  }
+  function elegir(id) {
+    if (navegar(id)) dialogo.current?.close();
+  }
+  (0, import_react4.useEffect)(() => {
+    function atajo(e2) {
+      if (e2.defaultPrevented || e2.repeat || e2.altKey || e2.shiftKey || !(e2.ctrlKey || e2.metaKey) || e2.key.toLowerCase() !== "k") return;
+      if (document.documentElement.dataset.tpvCaja === "1") return;
+      if (e2.target?.closest?.('input, textarea, select, [contenteditable]:not([contenteditable="false"]), [role="dialog"], dialog')) return;
+      if (document.querySelector('[role="dialog"][aria-modal="true"], dialog[open]')) return;
+      e2.preventDefault();
+      abrir();
+    }
+    window.addEventListener("keydown", atajo);
+    return () => window.removeEventListener("keydown", atajo);
+  }, []);
+  function alTeclado(e2) {
+    if (!resultados.length) return;
+    if (e2.key === "ArrowDown" || e2.key === "ArrowUp") {
+      e2.preventDefault();
+      const siguiente = (indice + (e2.key === "ArrowDown" ? 1 : -1) + resultados.length) % resultados.length;
+      setSeleccion(siguiente);
+      document.getElementById("la-rumbo-destino-" + siguiente)?.scrollIntoView({ block: "nearest" });
+    } else if (e2.key === "Enter") {
+      e2.preventDefault();
+      elegir(resultados[indice].id);
+    }
+  }
+  return h("div", { className: "la-rumbo-acceso" },
+    h("button", { type: "button", ref: boton, onClick: abrir, "aria-haspopup": "dialog" },
+      h(Search, { size: 17, "aria-hidden": true }), "Ir a una pantalla",
+      h("kbd", { "aria-hidden": true }, "Ctrl / \u2318 K")),
+    h("dialog", {
+      className: "la-rumbo-dialogo", ref: dialogo, "aria-labelledby": "la-rumbo-titulo",
+      onKeyDown: (e2) => {
+        if (e2.key !== "Escape") return;
+        e2.preventDefault();
+        e2.stopPropagation();
+        dialogo.current?.close();
+      },
+      onClose: () => {
+        const previo = focoPrevio.current;
+        (previo?.isConnected && previo !== document.body ? previo : boton.current)?.focus();
+      }
+    },
+    h("div", { className: "la-rumbo-cab" },
+      h("h2", { id: "la-rumbo-titulo" }, "Ir a una pantalla"),
+      h("button", { type: "button", "aria-label": "Cerrar buscador", onClick: () => dialogo.current?.close() },
+        h(X2, { size: 18, "aria-hidden": true }))),
+    h("input", {
+      ref: entrada, value: consulta, type: "search", role: "combobox", "aria-label": "Nombre de pantalla o m\xF3dulo",
+      "aria-expanded": true, "aria-controls": "la-rumbo-resultados", "aria-autocomplete": "list",
+      "aria-activedescendant": indice >= 0 ? "la-rumbo-destino-" + indice : undefined,
+      placeholder: "Busca por pantalla, m\xF3dulo o tarea",
+      onKeyDown: alTeclado,
+      onChange: (e2) => { setConsulta(e2.target.value); setSeleccion(0); }
+    }),
+    h("p", { role: "status", className: "la-rumbo-recuento" }, resultados.length ? resultados.length + (resultados.length === 1 ? " pantalla" : " pantallas") : "No hay pantallas que coincidan"),
+    h("ul", { id: "la-rumbo-resultados", role: "listbox", "aria-label": "Pantallas disponibles" }, resultados.map((item, i) =>
+      h("li", {
+        key: item.id, id: "la-rumbo-destino-" + i, role: "option", "aria-selected": indice === i,
+        onMouseDown: (e2) => e2.preventDefault(), onClick: () => elegir(item.id)
+      }, h(item.icon, { size: 17, "aria-hidden": true }), h("span", null, item.label),
+      h("small", null, tab === item.id ? item.modulo + " \u00B7 Actual" : item.modulo))))
+    )
+  );
+}
+function SidebarGrupos(props) {
+  if (props.diseno === "claro") return import_react4.default.createElement(CabeceraClaro, props);
+  const { grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "", mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor } = props;
   return /* @__PURE__ */ import_react4.default.createElement("aside", { style: { background: C2.chrome, color: "#fff" }, className: "hidden md:flex md:w-64 shrink-0 p-4 md:p-5 md:flex-col gap-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-xl px-3 py-3.5 mb-2.5", style: { background: "rgba(184,139,69,0.07)", border: "1px solid rgba(184,139,69,0.24)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "", style: { width: "100%", height: "auto", display: "block" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-widest uppercase mb-3", style: { color: "#9CB6A9" } }, LEMA_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-3", style: { color: "#E2D3B8" } }, contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))), grupos.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-1" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold uppercase tracking-wide mt-3 mb-1 px-3", style: { color: "#7E9186" } }, g2.titulo), g2.items.map((it2) => {
     const Icon2 = it2.icon;
     const active = tab === it2.id;
@@ -15361,7 +15560,7 @@ function SidebarGrupos({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmp
         it2.badge
       )
     );
-  }), g2.titulo === "Compras" && mostrarEnlaceDevolucionProveedor && /* @__PURE__ */ import_react4.default.createElement(
+  }), g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor && /* @__PURE__ */ import_react4.default.createElement(
     "button",
     {
       onClick: irADevolucionProveedor,
@@ -15397,7 +15596,7 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
   const [abierto, setAbierto] = (0, import_react4.useState)(false);
   const idsFijos = new Set(pestanasFijas.map((it2) => it2.id));
   const ETIQUETA_PESTANA = { dashboard: "Inicio", fichaje: "Fichaje" };
-  const otros = grupos.map((g2) => ({ titulo: g2.titulo, items: g2.items.filter((it2) => !idsFijos.has(it2.id)) })).filter((g2) => g2.items.length > 0 || g2.titulo === "Compras" && mostrarEnlaceDevolucionProveedor);
+  const otros = grupos.map((g2) => ({ ...g2, items: g2.items.filter((it2) => !idsFijos.has(it2.id)) })).filter((g2) => g2.items.length > 0 || g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor);
   const hayBadgeEnOtros = otros.some((g2) => g2.items.some((it2) => it2.badge > 0));
   return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden flex shrink-0", style: { background: C2.surface, borderTop: `1px solid ${C2.line}` } }, pestanasFijas.map((it2) => {
     const Icon2 = it2.icon;
@@ -15417,14 +15616,12 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
     /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: C2.inkSoft } }, "M\xE1s"),
     hayBadgeEnOtros && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-1.5 right-[28%] w-2 h-2 rounded-full", style: { background: C2.red } })
   )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, otros.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-3" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, g2.titulo), g2.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, { key: it2.id, it: it2, tab, onPick: () => {
-    setTab(it2.id);
-    setAbierto(false);
-  } })), g2.titulo === "Compras" && mostrarEnlaceDevolucionProveedor && /* @__PURE__ */ import_react4.default.createElement(
+    if (setTab(it2.id)) setAbierto(false);
+  } })), g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor && /* @__PURE__ */ import_react4.default.createElement(
     "button",
     {
       onClick: () => {
-        irADevolucionProveedor();
-        setAbierto(false);
+        if (irADevolucionProveedor()) setAbierto(false);
       },
       className: "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1",
       style: { background: tab === "devoluciones" ? C2.accentSoft : C2.bg, color: C2.ink }
@@ -27753,19 +27950,19 @@ function HistorialProducto({ productos, movimientos, pedidos: pedidos2, albarane
     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: m22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("b", { style: { color: esPositivo ? C2.accent : C2.red } }, esPositivo ? "+" : "\u2212", fmt(Math.abs(efecto))), " ", m22.motivo || m22.referencia || "\u2014", m22.tipo === "ajuste" && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-1 text-[10.5px]", style: { color: C2.inkSoft } }, "(ajuste de inventario)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, m22.fecha, m22.usuario ? ` \xB7 ${m22.usuario}` : "", m22.stockAnterior != null && m22.stockPosterior != null ? ` \xB7 saldo ${fmt(m22.stockAnterior)} \u2192 ${fmt(m22.stockPosterior)}` : "")), (m22.costoUnitario || m22.ingresoUnitario) && /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[11.5px]", style: { color: C2.inkSoft } }, "\u20AC", fmt(m22.tipo === "entrada" ? m22.costoUnitario : m22.ingresoUnitario), "/", producto.unidad)));
   }))), seccion === "pedidos" && (pedidosDelProducto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Este producto no est\xE1 en ning\xFAn pedido a proveedor." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, pedidosDelProducto.map(({ pedido, item }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: pedido.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px] font-medium" }, (proveedorPorId(pedido.proveedorId) || {}).nombre || "Proveedor eliminado"), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: pedido.estado === "Recibido" ? C2.inkSoft : pedido.estado === "Parcial" ? C2.amber : C2.accent }, pedido.estado)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, pedido.fecha, " \xB7 pedidas ", fmt(item.cantidad), " ", producto.unidad, " \xB7 recibidas ", fmt(item.cantidadRecibida || 0)))))), seccion === "compras" && (comprasDelProducto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin compras confirmadas de este producto." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, comprasDelProducto.map(({ albaran, linea, unidades, precioUnitario }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: albaran.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-1" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px] font-medium" }, (proveedorPorId(albaran.proveedorId) || {}).nombre || "Proveedor eliminado"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Albar\xE1n ", albaran.numero || "s/n")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, albaran.fecha, " \xB7 ", fmt(unidades), " ", producto.unidad, " a \u20AC", fmt(precioUnitario), "/", producto.unidad, linea.lote && ` \xB7 lote ${linea.lote}`, linea.caducidad && ` \xB7 caduca ${linea.caducidad}`))))), seccion === "traspasos" && (traspasosDelProducto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin traspasos registrados para este producto." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, traspasosDelProducto.map((t22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: t22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[12.5px]" }, t22.tipo === "ENTRE_LOCALES" ? `${t22.origenLocalNombre || "Origen"} \u2192 ${t22.destinoLocalNombre || "Destino"}` : t22.direccion === "a_piso" ? "Almac\xE9n \u2192 Piso de venta" : "Piso de venta \u2192 Almac\xE9n"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12.5px] font-semibold" }, fmt(t22.cantidad), " ", producto.unidad)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, t22.fecha, " ", t22.hora)))))));
 }
-function BusquedaGlobal({ productos, proveedores, clientes, fichasCosto, empleados, setTab }) {
+function BusquedaGlobal({ productos, proveedores, clientes, fichasCosto, empleados, puedeConsultar, setTab }) {
   const [q2, setQ] = (0, import_react4.useState)("");
   const resultados = (0, import_react4.useMemo)(() => {
     const texto = q2.trim().toLowerCase();
     if (texto.length < 2) return null;
     return {
-      productos: productos.filter((p22) => p22.nombre.toLowerCase().includes(texto) || (p22.codigoBarras || "").toLowerCase().includes(texto)).slice(0, 8),
-      proveedores: proveedores.filter((p22) => p22.nombre.toLowerCase().includes(texto)).slice(0, 8),
-      clientes: clientes.filter((c22) => c22.nombre.toLowerCase().includes(texto)).slice(0, 8),
-      fichasCosto: fichasCosto.filter((f22) => f22.nombre.toLowerCase().includes(texto)).slice(0, 8),
-      empleados: empleados.filter((e2) => e2.nombre.toLowerCase().includes(texto)).slice(0, 8)
+      productos: puedeConsultar("productos") ? productos.filter((p22) => p22.nombre.toLowerCase().includes(texto) || (p22.codigoBarras || "").toLowerCase().includes(texto)).slice(0, 8) : [],
+      proveedores: puedeConsultar("proveedores") ? proveedores.filter((p22) => p22.nombre.toLowerCase().includes(texto)).slice(0, 8) : [],
+      clientes: puedeConsultar("clientes") ? clientes.filter((c22) => c22.nombre.toLowerCase().includes(texto)).slice(0, 8) : [],
+      fichasCosto: puedeConsultar("fichas") ? fichasCosto.filter((f22) => f22.nombre.toLowerCase().includes(texto)).slice(0, 8) : [],
+      empleados: puedeConsultar("personal") ? empleados.filter((e2) => e2.nombre.toLowerCase().includes(texto)).slice(0, 8) : []
     };
-  }, [q2, productos, proveedores, clientes, fichasCosto, empleados]);
+  }, [q2, productos, proveedores, clientes, fichasCosto, empleados, puedeConsultar]);
   const totalResultados = resultados ? Object.values(resultados).reduce((a22, lista) => a22 + lista.length, 0) : 0;
   const GRUPOS = [
     { clave: "productos", titulo: "Productos", tab: "productos", icon: Package },
@@ -27790,7 +27987,7 @@ function BusquedaGlobal({ productos, proveedores, clientes, fichasCosto, emplead
       "button",
       {
         key: item.id,
-        onClick: () => setTab(g2.tab),
+        onClick: () => { if (puedeConsultar(g2.tab)) setTab(g2.tab); },
         className: "w-full text-left flex items-center justify-between px-3 py-2.5 rounded-lg",
         style: { border: `1px solid ${C2.line}`, background: C2.surface }
       },

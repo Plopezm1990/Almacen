@@ -199,7 +199,9 @@
     }
 
     var cuerpo;
-    if (estado.mapaError) {
+    if (!puente()?.localId) {
+      cuerpo = el("div", { class: "la-pase-aviso", role: "status", texto: "Selecciona un local para ver sus mesas." });
+    } else if (estado.mapaError) {
       cuerpo = el("div", { class: "la-pase-aviso", role: "status" }, [
         el("div", { texto: estado.mapaError.error || "No se ha podido cargar la sala." }),
         estado.mapaError.requiereCuenta
@@ -285,7 +287,9 @@
     var cab = el("div", { class: "la-pase-plano-cab" }, [el("h3", { texto: "Cola del turno" })]);
     var cuerpo;
 
-    if (estado.comandasError) {
+    if (!puente()?.localId) {
+      cuerpo = el("div", { class: "la-pase-aviso", role: "status", texto: "Selecciona un local para ver sus comandas." });
+    } else if (estado.comandasError) {
       cuerpo = el("div", { class: "la-pase-aviso", role: "status",
         texto: estado.comandasError.error || "No se ha podido cargar la cola del turno." });
     } else if (!Array.isArray(estado.comandas)) {
