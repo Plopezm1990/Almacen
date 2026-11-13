@@ -56,10 +56,43 @@ con `aria-label` y el mismo texto en las dos copias de la fuente:
 No cambia el estado, ni los manejadores, ni lo que ve el usuario.
 `PARIDAD_CUERPO_EXACTA=1`, `SOURCE_RECOVERY_CHECK=PASS`.
 
-## Lo que queda
+## Reverificado en el preview
 
-- Reverificar los cuatro nombres en el preview una vez publicado, con la misma
-  medición que los encontró.
+`cb8ab07b`, sesión real de Propietario en QA-EMP-A / QA-A1, con el historial de
+ventas a la vista. El paquete servido son 6.311.354 bytes y lleva las cuatro
+etiquetas. Medido con la misma comprobación que las encontró:
+
+| | 390 px | 1440 px |
+|---|---|---|
+| Campos visibles | 6 | 6 |
+| **Sin nombre accesible** | **0** | **0** |
+| Campos por debajo de 44 px | 0 | 0 |
+| Botones visibles | 142 | 193 |
+| Botones por debajo de 44 × 44 | **0** | 68 |
+| Desbordamiento horizontal | no | no |
+
+Dos de los seis nombres los pone la capa genérica desde su marcador; los cuatro
+de los filtros vienen ya de la fuente. Evidencia en
+`docs/rediseno/medicion-etiquetas-tpv-qa-2026-11-13.json`.
+
+### El dato que hay que decidir
+
+Los **68** controles cortos a 1440 px no son un fallo escondido: el suelo de
+44 px está acotado a `@media (max-width: 760px)`, a propósito, porque se escribió
+para el tacto. En ratón, los más pequeños son los distintivos de cabecera, de
+24 px de alto, y el menú de navegación, de 40 × 216.
+
+Importa cuál es la vara de medir:
+
+- **WCAG 2.2 AA**, criterio 2.5.8 «Target Size (Minimum)», pide 24 × 24 px. A
+  1440 px hay **0 controles por debajo de 24 × 24**: se cumple.
+- **44 × 44** es el criterio 2.5.5, nivel **AAA**, y es el que fijó el plan.
+
+Extenderlo al escritorio es quitar la consulta de medio, pero no es gratis: sube
+el menú de 40 a 44 y los distintivos de cabecera de 24 a 44, y eso se ve. Es una
+decisión de diseño, no un arreglo, así que queda a la vista en vez de aplicada.
+
+## Lo que queda
 - Medir el modal «Eliminar producto» y el aviso «Ojo: has cambiado el contenido
   del envase», que no entraron en la pasada.
 - Recorrido con lector de pantalla. La medición automática comprueba que el
