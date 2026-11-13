@@ -533,8 +533,17 @@ html[data-la-paleta] body {
    Por encima del corte, la tabla sigue siendo una tabla.
    ========================================================================== */
 
-/* Los filtros en forma de pildora son controles operativos. */
-#root button.rounded-full { min-height: 44px; }
+/* Todo boton es un control operativo. Medido en el preview a 390 px: de 99
+   botones de la pantalla de productos, 82 quedaban por debajo de 44 px, entre
+   ellos las acciones de fila a 32, los alergenos a 31 y el cierre de los
+   modales a 17 x 17. Con esta regla quedan 0 por debajo, y ni la pantalla ni
+   los modales desbordan. Comprobado tambien en TPV (135 botones), cocina
+   (136), caja, informes y personal: cero por debajo y cero desbordamientos.
+   Las tiras de categorias siguen desplazandose dentro de su propio contenedor,
+   que es lo que deben hacer. */
+@media (max-width: 760px) {
+  #root button { min-height: 44px; min-width: 44px; }
+}
 
 @media (max-width: 760px) {
   #root table.la-tabla-fichas,
