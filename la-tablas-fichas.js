@@ -1,5 +1,10 @@
 /* ==========================================================================
-   L&A Suite - Tablas convertibles a fichas
+   L&A Suite - Pasada de presentacion sobre la interfaz
+   --------------------------------------------------------------------------
+   Dos arreglos que se resuelven mejor una vez para toda la aplicacion que
+   pantalla por pantalla:
+
+   1. Tablas convertibles a fichas
    --------------------------------------------------------------------------
    La especificacion pide que las tablas se conviertan en fichas con sus
    etiquetas cuando el ancho no da para comparar columnas. En vez de tocar
@@ -52,12 +57,40 @@
     return true;
   }
 
+  /* ------------------------------------------------------------------------
+     2. Nombre accesible de los campos que solo tienen marcador de posicion.
+     Un `placeholder` no es un nombre: desaparece en cuanto se escribe y varios
+     lectores de pantalla no lo anuncian. Medido en QA, los buscadores del
+     programa dependian solo de el. Aqui se copia a `aria-label`, que si es un
+     nombre, sin tocar lo que ve el usuario.
+
+     Deliberadamente NO se inventa nombre para un campo que no tiene ni
+     marcador: eso exige una etiqueta de verdad y se arregla en su pantalla.
+     ---------------------------------------------------------------------- */
+  function tieneNombre(campo) {
+    if (campo.getAttribute("aria-label") || campo.getAttribute("aria-labelledby") || campo.title) return true;
+    return !!(campo.labels && campo.labels.length);
+  }
+
+  function nombrarPorMarcador(raiz) {
+    var campos = raiz.querySelectorAll("input[placeholder], textarea[placeholder]");
+    for (var i = 0; i < campos.length; i++) {
+      var campo = campos[i];
+      if (tieneNombre(campo)) continue;
+      var texto = (campo.getAttribute("placeholder") || "").replace(/\s+/g, " ").trim();
+      if (!texto) continue;
+      campo.setAttribute("aria-label", texto);
+      campo.setAttribute("data-la-nombre-de-marcador", "1");
+    }
+  }
+
   function pasada() {
     try {
       var raiz = document.getElementById("root");
       if (!raiz) return;
       var tablas = raiz.querySelectorAll("table");
       for (var i = 0; i < tablas.length; i++) etiquetar(tablas[i]);
+      nombrarPorMarcador(raiz);
     } catch (error) {
       /* Nunca romper la pantalla por una mejora de presentacion. */
     }
@@ -85,5 +118,5 @@
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", arrancar);
   else arrancar();
 
-  window.LATablasFichas = { pasada: pasada, etiquetar: etiquetar };
+  window.LATablasFichas = { pasada: pasada, etiquetar: etiquetar, nombrarPorMarcador: nombrarPorMarcador };
 })();
