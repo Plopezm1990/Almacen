@@ -327,6 +327,19 @@
     return window.__nubeActiva ? (window.__nubeCliente || null) : null;
   }
 
+  /**
+   * El contrato de servidor todavia no esta desplegado en este entorno.
+   * Postgres responde 42883 y PostgREST responde PGRST202 cuando la funcion
+   * no esta en su cache de esquema; ambos significan lo mismo aqui.
+   */
+  function contratoAusente(error) {
+    if (!error) return false;
+    var codigo = String(error.code || "");
+    var texto = String(error.message || "");
+    return codigo === "42883" || codigo === "PGRST202" ||
+      /does not exist|could not find the function/i.test(texto);
+  }
+
   function desdeRpc(datos) {
     if (!datos || datos.ok !== true || datos.existe !== true) return null;
     return normalizarConfig({
@@ -359,7 +372,7 @@
         servidor = {
           disponible: false,
           puedeAplicar: null,
-          motivo: r.error.code === "42883" || /does not exist/i.test(r.error.message || "")
+          motivo: contratoAusente(r.error)
             ? "contrato-no-desplegado"
             : (r.error.code || "error") + ": " + (r.error.message || "")
         };
@@ -417,7 +430,7 @@
         aplicar(guardadoServidor, "empresa");
         return { ok: true, config: guardadoServidor, servidor: true };
       }
-      if (!(r.error.code === "42883" || /does not exist/i.test(r.error.message || ""))) {
+      if (!contratoAusente(r.error)) {
         var fallo = traducirErrorRpc(r.error);
         if (fallo.motivo === "revision-obsoleta") fallo.actual = await leerEmpresa();
         return fallo;
