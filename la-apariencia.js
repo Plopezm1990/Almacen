@@ -320,7 +320,53 @@
 
   /* ------------------------------------------------------------ almacenaje */
 
+  /* Estado del contrato de servidor, para que el editor pueda decirlo claro. */
+  var servidor = { disponible: null, puedeAplicar: null, motivo: "" };
+
+  function clienteNube() {
+    return window.__nubeActiva ? (window.__nubeCliente || null) : null;
+  }
+
+  function desdeRpc(datos) {
+    if (!datos || datos.ok !== true || datos.existe !== true) return null;
+    return normalizarConfig({
+      diseno: datos.diseno,
+      paleta: datos.paleta,
+      colores: datos.colores,
+      revision: datos.revision,
+      actualizadoPor: datos.actualizado_por || "",
+      actualizadoEn: datos.actualizado_en || "",
+      anterior: datos.anterior || null
+    });
+  }
+
+  /**
+   * Lee la apariencia de la empresa. Prefiere el contrato de servidor
+   * (abc_apariencia_leer). Si todavia no esta desplegado, cae a la copia de
+   * este navegador y lo deja anotado: una configuracion local NO llega a los
+   * demas locales ni a las demas sesiones.
+   */
   async function leerEmpresa() {
+    var sb = clienteNube();
+    if (sb && empresaActiva()) {
+      try {
+        var r = await sb.rpc("abc_apariencia_leer", { p_empresa_id: empresaActiva() });
+        if (!r.error) {
+          servidor = { disponible: true, puedeAplicar: !!(r.data && r.data.puede_aplicar), motivo: "" };
+          return desdeRpc(r.data);
+        }
+        /* 42883: la funcion no existe todavia en este entorno. */
+        servidor = {
+          disponible: false,
+          puedeAplicar: null,
+          motivo: r.error.code === "42883" || /does not exist/i.test(r.error.message || "")
+            ? "contrato-no-desplegado"
+            : (r.error.code || "error") + ": " + (r.error.message || "")
+        };
+      } catch (error) {
+        servidor = { disponible: false, puedeAplicar: null, motivo: "sin-respuesta" };
+      }
+    }
     try {
       if (!window.storage || typeof window.storage.get !== "function") return null;
       var fila = await window.storage.get(CLAVE);
@@ -338,9 +384,47 @@
    * publico antes. No inventa fecha ni actor: usa los del contexto y deja
    * que el servidor fije la suya cuando el contrato lo permita.
    */
+  function traducirErrorRpc(error) {
+    var texto = (error && (error.message || "")) + " " + (error && error.details || "");
+    if (/apariencia_no_autorizada/.test(texto)) return { ok: false, motivo: "sin-permiso", servidor: true };
+    if (/apariencia_revision_obsoleta/.test(texto)) {
+      var m = texto.match(/revision_vigente=(\d+)/);
+      return { ok: false, motivo: "revision-obsoleta", servidor: true, revisionVigente: m ? Number(m[1]) : null };
+    }
+    if (/apariencia_diseno_no_registrado|apariencia_colores_invalidos/.test(texto)) {
+      return { ok: false, motivo: "configuracion-invalida", servidor: true };
+    }
+    if (/apariencia_sin_revision_anterior/.test(texto)) return { ok: false, motivo: "sin-revision-anterior", servidor: true };
+    return { ok: false, motivo: "no-guardado", servidor: true, detalle: texto.trim() };
+  }
+
   async function guardarEmpresa(entrada, revisionLeida) {
     var config = normalizarConfig(entrada);
     if (!config) return { ok: false, motivo: "configuracion-invalida" };
+
+    var sb = clienteNube();
+    if (sb && empresaActiva() && servidor.disponible !== false) {
+      var r = await sb.rpc("abc_apariencia_guardar", {
+        p_empresa_id: empresaActiva(),
+        p_revision_leida: revisionLeida == null ? null : Number(revisionLeida),
+        p_diseno: config.diseno,
+        p_paleta: config.paleta,
+        p_colores: config.colores
+      });
+      if (!r.error) {
+        servidor.disponible = true;
+        var guardadoServidor = desdeRpc(r.data);
+        aplicar(guardadoServidor, "empresa");
+        return { ok: true, config: guardadoServidor, servidor: true };
+      }
+      if (!(r.error.code === "42883" || /does not exist/i.test(r.error.message || ""))) {
+        var fallo = traducirErrorRpc(r.error);
+        if (fallo.motivo === "revision-obsoleta") fallo.actual = await leerEmpresa();
+        return fallo;
+      }
+      servidor = { disponible: false, puedeAplicar: null, motivo: "contrato-no-desplegado" };
+    }
+
     var actual = await leerEmpresa();
     if (actual && revisionLeida != null && actual.revision !== revisionLeida) {
       return { ok: false, motivo: "revision-obsoleta", actual: actual };
@@ -365,12 +449,26 @@
     }
     var guardado = normalizarConfig(siguiente);
     aplicar(guardado, "empresa");
-    return { ok: true, config: guardado };
+    /* `soloLocal` avisa de que el cambio NO ha salido de este navegador. */
+    return { ok: true, config: guardado, servidor: false, soloLocal: true };
   }
 
   /** Restaurar crea una revision nueva a partir de la anterior y conserva el historial. */
   async function restaurarAnterior() {
     var actual = await leerEmpresa();
+    var sb = clienteNube();
+    if (sb && empresaActiva() && servidor.disponible === true) {
+      var r = await sb.rpc("abc_apariencia_restaurar", {
+        p_empresa_id: empresaActiva(),
+        p_revision_leida: actual ? actual.revision : null
+      });
+      if (!r.error) {
+        var restaurado = desdeRpc(r.data);
+        aplicar(restaurado, "empresa");
+        return { ok: true, config: restaurado, servidor: true };
+      }
+      return traducirErrorRpc(r.error);
+    }
     if (!actual || !actual.anterior) return { ok: false, motivo: "sin-revision-anterior" };
     return guardarEmpresa(actual.anterior, actual.revision);
   }
@@ -551,6 +649,7 @@
     aplicar: function (config, origen) { return aplicar(normalizarConfig(config), origen || "empresa"); },
     resolver: resolver,
     leerEmpresa: leerEmpresa,
+    estadoServidor: function () { return { disponible: servidor.disponible, puedeAplicar: servidor.puedeAplicar, motivo: servidor.motivo }; },
     guardarEmpresa: guardarEmpresa,
     restaurarAnterior: restaurarAnterior,
     iniciarPrueba: iniciarPrueba,

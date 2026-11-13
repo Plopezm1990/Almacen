@@ -296,8 +296,13 @@
           });
         }));
       cab.appendChild(filtros);
-      cuerpo = lista.length
-        ? el("ul", { class: "la-pase-cola" }, lista.map(function (c) {
+      /* La cola del panel es un vistazo, no el listado de cocina: se muestran
+         las primeras y se ofrece el paso a Cocina para el resto. */
+      var TOPE = 8;
+      var sobran = Math.max(0, lista.length - TOPE);
+      var visibles = lista.slice(0, TOPE);
+      cuerpo = visibles.length
+        ? el("ul", { class: "la-pase-cola" }, visibles.map(function (c) {
             var ref = c.pedido_ref || c.pedido_id || c.operation_id || "";
             return el("li", {}, [
               el("div", { class: "q" }, [
@@ -308,6 +313,15 @@
             ]);
           }))
         : el("div", { class: "la-pase-aviso", role: "status", texto: "Ninguna comanda con ese filtro." });
+      if (sobran > 0) {
+        cuerpo = el("div", {}, [
+          cuerpo,
+          el("div", { class: "la-pase-detalle" }, [
+            el("div", { class: "txt" }, [el("span", { texto: "Y " + sobran + " comanda(s) mas en la cola." })]),
+            botonIrA("cocina", "Ver toda la cocina", "la-pase-accion suave")
+          ])
+        ]);
+      }
     }
     return el("section", { class: "la-pase-caja" }, [cab, cuerpo]);
   }

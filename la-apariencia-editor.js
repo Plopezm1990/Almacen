@@ -342,13 +342,26 @@
         aplicar.disabled = false;
         if (r.ok) {
           revisionLeida = r.config.revision;
-          mostrarMensaje("ok", "Apariencia aplicada a la empresa. Revision " + r.config.revision + ".");
+          if (r.soloLocal) {
+            mostrarMensaje("aviso", "Guardado como revision " + r.config.revision +
+              ", pero SOLO en este navegador: el contrato de servidor de la apariencia no esta " +
+              "desplegado en este entorno, asi que el cambio no llega a los demas locales ni a otras sesiones.");
+          } else {
+            mostrarMensaje("ok", "Apariencia aplicada a la empresa. Revision " + r.config.revision +
+              ", confirmada por el servidor.");
+          }
+          return;
+        }
+        if (r.motivo === "sin-permiso") {
+          mostrarMensaje("error", "El servidor ha rechazado el cambio: tu cargo no puede aplicar la " +
+            "apariencia de esta empresa. Pide al propietario que delegue esa accion en tu cargo.");
           return;
         }
         if (r.motivo === "revision-obsoleta") {
-          mostrarMensaje("aviso", "Otra persona ha publicado la revision " + r.actual.revision +
-            " mientras editabas. Vuelve a cargar y aplica de nuevo tus cambios.");
-          revisionLeida = r.actual.revision;
+          var vigente = r.revisionVigente != null ? r.revisionVigente : (r.actual && r.actual.revision);
+          mostrarMensaje("aviso", "El servidor ha rechazado el cambio: otra persona publico la revision " +
+            vigente + " mientras editabas. Vuelve a cargar y aplica de nuevo tus cambios.");
+          if (vigente != null) revisionLeida = vigente;
           return;
         }
         if (r.motivo === "configuracion-invalida") {
