@@ -28,6 +28,11 @@ un supuesto que merece quedar escrito.
 
 ## Lo que falló fue otra cosa: el local y el cargo de la cuenta nueva
 
+> **Aviso al lector:** de las dos cosas que fallaron aquí, el **cargo** era
+> culpa mía —hay un selector «Rol» en el formulario y no lo rellené, ver más
+> abajo «Segunda vuelta»—. El **local** sí es un hueco del producto, y ese se
+> confirmó dos veces.
+
 Para tener una cuenta de Cajero/a creé un empleado de ensayo, **QA Cajero MFA
 20261114**, con «Nivel de acceso en modo empleado» puesto en **Cajero/a**, y
 después su cuenta de acceso. La cuenta se creó —«Cuenta creada para QA Cajero
@@ -141,27 +146,70 @@ este local» y no llega a mirar el cargo. Las pruebas de caja, cobros y
 reembolsos por cargo siguen fuera de alcance hasta que una cuenta tenga
 membresía real en QA-A1, y eso no se puede dar desde la interfaz.
 
-## Lo que queda, y de quién depende
+## De dónde sale el «Local principal», exactamente
 
-Para las comprobaciones de Encargado y Cajero/a hace falta que **el propietario**
-asigne una cuenta al cargo y al local correctos, en «Configuración → Cargos y
-permisos → Asignar», con el local QA-A1. Eso exige su sesión, y por tanto su
-código.
+No es un local de QA mal elegido: **lo fabrica el cliente**. En la fuente, la
+cadena «Local principal» aparece **una sola vez**, en un respaldo que salta
+cuando la sesión resuelve **cero** locales:
 
-El segundo factor ya no es el obstáculo: una vez la cuenta esté en su cargo y su
-local, inscribirlo es cosa de un minuto y lo puedo hacer yo.
+```js
+if (localesFinales.length === 0 && hayDatosOperativosLegacy) {
+  const primerLocal = { id: uid(), nombre: "Local principal", … };
+```
+
+El `id` sale de `uid()`, generado en el navegador, y por eso **cambia en cada
+carga**: `mwg5z9u7qydtb7`, `mwg644yxfos1m7`, `mwg6isbwmvmh4z`. Nada del
+servidor lo respalda, así que toda llamada con ámbito de local falla antes de
+mirar el cargo, y `almacen_kv` se niega a guardar `localActivoId` porque esa
+clave no está en su lista permitida.
+
+Dicho de otro modo: **la cuenta no es de ningún local**, y el programa disimula
+ese vacío con un local inventado en vez de decirlo.
+
+## Lo que haría falta para cerrar las pruebas por cargo de ámbito local
+
+Que la cuenta tenga **pertenencia real a QA-A1**. Lo que he podido comprobar
+desde el paquete es que los locales de una sesión no se leen con un
+`from("locales")` directo, sino que vienen del contexto operativo, así que no
+me consta desde aquí cuál es la tabla ni la vía de alta, y no lo invento.
+
+Lo que sí consta:
+
+- El alta de cuenta desde Personal **no la crea** —dos cuentas, dos cargos, el
+  mismo resultado—.
+- La interfaz **no tiene ningún control** para asignarla: «Cargos y permisos»
+  asigna cargos personalizados, y su lista de «Asignados» en los roles del
+  sistema refleja el nivel del empleado, no una membresía de la cuenta.
+- Las cuentas de Encargado y Cajero/a que ya existían en QA sí tienen local, y
+  no se crearon desde esta pantalla.
+
+Con eso, lo de ámbito local —caja, cobros, reembolsos por cargo, los casos Q03
+y Q16— queda **fuera de alcance de la interfaz** y necesita que alguien dé de
+alta la membresía por donde se diera de alta en las cuentas sembradas.
 
 ## Lo que queda suelto en QA, para que nadie lo herede sin saberlo
 
-- Empleado **QA Cajero MFA 20261114** y su cuenta
-  `qa.cajero.mfa.20261114@qa.invalid`, con un segundo factor **activo**.
-- La contraseña inicial la generé en el navegador y **la he borrado**; el secreto
-  del factor vivía en la pestaña y se fue con ella. **La cuenta está ahora mismo
-  inservible**: nadie tiene ni la contraseña ni el factor.
-- Lo razonable es una de dos: o el propietario le asigna cargo y local y le pone
-  una contraseña nueva desde la ficha del empleado, o se le da de baja y se
-  queda como lo que es, un intento documentado.
+Dos empleados de ensayo y sus dos cuentas, las dos con **segundo factor
+activo** y las dos con la contraseña generada por mí y **ya borrada**:
 
-No la dejo a medias por descuido: la dejo así porque completarla exige
-decisiones que no son mías —qué cargo, qué local, quién custodia el factor— y
-porque una cuenta sin contraseña ni factor no puede usarla nadie.
+| Cuenta | Cargo | Sirve para |
+|---|---|---|
+| `qa.cajero.mfa.20261114@qa.invalid` | Camarero/a | nada: fue el intento con el rol por omisión |
+| `qa.cajero.mfa2.20261114@qa.invalid` | **Cajero/a** | fue la sesión con la que se certificó F2 |
+
+El secreto de cada factor vivió en la pestaña del navegador y se fue con ella.
+**Las dos cuentas están ahora mismo inservibles**: nadie tiene ni la contraseña
+ni el factor. No es un descuido; es la consecuencia de que yo no puedo custodiar
+un autenticador entre sesiones.
+
+Lo razonable, cuando se retome:
+
+1. Dar de baja a **QA Cajero MFA 20261114**, que no aporta nada.
+2. Decidir si **QA Cajero MFA2 20261114** se conserva —poniéndole contraseña
+   nueva desde la ficha del empleado, y con alguien que custodie su factor— o se
+   da de baja también y la prueba por cargo se rehace cuando haya membresía de
+   local.
+
+Y la lección de método, que es la que vale para la próxima: **inscribir el
+segundo factor es lo fácil; lo que hay que preparar antes es el cargo y el
+local de la cuenta.** Yo lo hice al revés.
