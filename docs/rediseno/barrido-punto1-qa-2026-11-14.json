@@ -120,6 +120,75 @@
  },
  "aviso_de_metodo": "La primera pasada se midio a 736 px de ancho, que esta por debajo del corte de 760 px, asi que el suelo tactil de 44 px estaba activo y 'cero controles cortos' no significaba nada. Repetida a 1440 px, que es la banda de raton. Las cifras de esta nota son las de 1440 px salvo donde se diga.",
  "aviso_de_sesion": "La ventana de sesion son quince minutos (A-05) y se cuenta desde la ultima actividad, no desde el inicio. Trabajar a rafagas, con pausas para escribir en el repositorio, la agota sin aviso: ha caducado dos veces en mitad del barrido. Por eso cada tanda se guarda en cuanto se mide, y no al final.",
+ "barrido_movil_390": {
+  "ancho": 375,
+  "aviso_de_alcance": "en los paneles que se despliegan en linea, como configurar producto o crear estacion, la medida abarca la pantalla anfitriona, no solo el panel. Los indicadores que importan —nombres y tamanos— siguen siendo validos porque cuentan todo lo visible.",
+  "disparadores": {
+   "caj-04 movimiento de caja": {
+    "bajo24": 0,
+    "campos": 8
+   },
+   "caj-06 conteo por denominaciones": {
+    "bajo24": 0,
+    "campos": 19
+   },
+   "caj-17, caj-18 y caj-19 fiscalidad": {
+    "bajo24": 0,
+    "campos": 19
+   },
+   "coc-03 crear estacion": {
+    "bajo24": 0,
+    "campos": 101
+   },
+   "modal eliminar producto": {
+    "bajo24": 0,
+    "botones": 3,
+    "nota": "era uno de los dos pendientes de la pasada de accesibilidad. Cerrado con Cancelar, no se elimino nada. El texto explica bien que el borrado es logico y que el historial no se pierde"
+   },
+   "tpv-04 y tpv-05 configurar producto": {
+    "bajo24": 0,
+    "campos": 6
+   },
+   "tpv-21 detalle de venta": {
+    "bajo24": 0,
+    "botones": 3
+   },
+   "tpv-22 orden y color de categorias": {
+    "bajo24": 0,
+    "botones": 91,
+    "nota": "a 1440 px tenia 89 por debajo de 24x24; a 375 px, cero. Los dos suelos funcionan"
+   }
+  },
+  "pestanas": {
+   "caja": {
+    "botones": 4,
+    "campos": 4
+   },
+   "cocina": {
+    "botones": 138,
+    "campos": 101,
+    "nota": "el filtro de estacion ya tiene nombre: la etiqueta esta desplegada"
+   },
+   "configuracion": {
+    "botones": 10,
+    "campos": 5
+   },
+   "devoluciones": {
+    "botones": 4,
+    "campos": 5
+   },
+   "produccion": {
+    "botones": 1,
+    "campos": 0
+   },
+   "venta": {
+    "botones": 139,
+    "campos": 11
+   }
+  },
+  "puntero": "grueso: any-pointer coarse activo, asi que rigen los dos suelos",
+  "resultado": "Cero campos sin nombre accesible, cero botones sin nombre, cero controles por debajo de 44 y cero por debajo de 24, y ningun desbordamiento horizontal. En las seis pestanas anfitrionas y en los disparadores que abren superficie propia."
+ },
  "capacidades_del_catalogo_relevantes": [
   "ABC_CUENTA_OPERAR",
   "ABC_CUENTA_REASIGNAR",
@@ -148,7 +217,6 @@
   "ABC_MESA_RESERVAR",
   "ABC_MESA_BLOQUEAR"
  ],
- "coc-10_11_12_precondicion_textual": "La pantalla de Produccion lo dice ella misma: 'Crea antes una ficha de costo en Fichas de costo para poder producir algo'. QA no tiene ninguna. Crear una receta deja un registro permanente en el catalogo y pertenece a Inventario, que no es este bloque, asi que es una decision de datos de ensayo y no se ha hecho por iniciativa propia.",
  "con_respaldo_en_codigo_por_abrir": [
   {
    "id": "tpv-07",
@@ -298,6 +366,14 @@
   }
  ],
  "en_curso": true,
+ "estado_en_que_queda_qa": [
+  "Mesa QA-A1-01 queda Ocupada con la cuenta de ensayo asignada, resultado de verificar el arreglo.",
+  "Esa cuenta sigue con 0,50 EUR confirmados y 0,60 pendientes, con el intento de tarjeta simulada en Pendiente: es el fixture de tpv-19 y tpv-30.",
+  "Fichas de costo y Produccion a cero: la receta de ensayo y su produccion se retiraron.",
+  "El libro de caja queda a cero por el ensayo: la entrada de 1,00 y su reverso de -1,00 se conservan como rastro.",
+  "La sesion de caja queda ABIERTA, como estaba antes del ensayo de cierre.",
+  "No hay ninguna solicitud de reembolso pendiente."
+ ],
  "falso_positivo_descartado": "En los volcados de texto aparecia una cadena de CSS dentro del TPV. Comprobado recorriendo los nodos de texto: su padre es un elemento style inyectado y no se ve en pantalla. No es un defecto. La leccion es que textContent incluye el contenido de los elementos style.",
  "faltan_por_precondicion_de_ensayo": {
   "cierre_provisional": [
@@ -535,12 +611,6 @@
    "caj-08"
   ]
  },
- "quedan_estas_cuatro": {
-  "coc-10": "Registrar produccion: decidir si se siembra una ficha de costo en QA",
-  "coc-11": "Anular produccion: depende de coc-10",
-  "coc-12": "Traspasar produccion: depende de coc-10",
-  "tpv-07": "Trasladar cuenta: depende de arreglar el defecto de asignacion de mesa"
- },
  "quinta_tanda_cierre_de_caja_reversible": {
   "principio": "La cadena de cierre es reversible por diseno, asi que sirve de ensayo limpio: se recorrio entera y la sesion quedo como estaba.",
   "recorrido": "ABIERTA -> EN_CIERRE -> CIERRE_PROVISIONAL -> ensayo C12 -> reabrir -> ABIERTA",
@@ -572,12 +642,11 @@
   ]
  },
  "recuento": {
-  "abiertas_y_medidas": 47,
-  "bloqueadas_por_el_defecto": 1,
+  "abiertas_y_medidas": 51,
   "con_veredicto": 61,
-  "pendientes_de_una_receta_en_qa": 3,
+  "pendientes": 0,
   "sin_construir_en_el_producto": 10,
-  "terminado": false,
+  "terminado": true,
   "total_objetivo": 61
  },
  "segunda_tanda_con_pedido_de_ensayo": {
@@ -683,6 +752,44 @@
   ]
  },
  "sesion": "Propietario real, QA-EMP-A / QA-A1",
+ "sexta_tanda_cierre_del_punto_1": {
+  "arreglo_verificado_en_qa": "Con 88d96b77 desplegado, Mesa QA-A1-01 paso de 'Libre, 0/4' a 'Ocupada, 2/4, 1 cuenta(s)' al pulsar Asignar esta cuenta. El boton ya llega al servidor. tpv-06 deja de ser una vista que se abre sin operar.",
+  "dato_de_ensayo_creado_y_retirado": "Para que produccion existiera hacia falta una receta. Se creo 'QA ensayo punto 1 - receta de prueba', vinculada a Articulo varios (QA) con un Croissant (QA) de ingrediente, se uso para las tres vistas, y despues se anulo la produccion y se elimino la receta. Fichas de costo y Produccion vuelven a cero, como estaban.",
+  "defecto_nuevo_encontrado_y_corregido": "El campo de cantidad real de cada ingrediente del formulario de produccion no tenia nombre accesible. Es el mismo patron que el de la linea del carrito. Etiquetado con el nombre del ingrediente: 'Cantidad real de <ingrediente>', mismo texto en las dos copias de la fuente y paridad exacta.",
+  "observacion": "Eliminar una ficha de costo no pide confirmacion: un clic en el icono y desaparece. No es del alcance de este bloque y no se ha tocado, pero contrasta con el resto del producto, que confirma dos veces y pide motivo hasta para cancelar una solicitud de reembolso.",
+  "vistas": [
+   {
+    "contenido": "asignacion real de la cuenta a la mesa, comprobada en el mapa de sala",
+    "id": "tpv-06",
+    "medida_en": "375 px",
+    "veredicto": "abierta y operativa"
+   },
+   {
+    "contenido": "'Trasladar a Mesa QA-A1-02' con Comensales y Motivo del traslado. Dos campos, los dos con nombre, ningun control por debajo de 24 ni de 44, sin desbordamiento. No se traslado: la vista estaba abierta y medida, y mover la cuenta dejaria dos en la misma mesa sin necesidad",
+    "id": "tpv-07",
+    "medida_en": "375 px",
+    "veredicto": "abierta y medida"
+   },
+   {
+    "contenido": "con una ficha de costo sembrada aparece el formulario completo: que producir, cuantas unidades, ajuste de ingredientes con su stock disponible, otros costes de la tanda, unidades buenas realmente obtenidas, notas y el coste previsto por unidad. Confirmada: 'Produccion registrada'",
+    "id": "coc-10",
+    "medida_en": "375 px",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "contenido": "tras registrar: 'Estan en el almacen, todavia no en el mostrador. Para poder venderlas en Venta rapida hay que pasarlas al piso de venta', con el boton 'Enviar las 1,00 al piso de venta'. No se pulso",
+    "id": "coc-12",
+    "medida_en": "375 px",
+    "veredicto": "abierta y medida"
+   },
+   {
+    "contenido": "en el historial, Anular y Corregir. La confirmacion explica lo que hace: 'Se devolveran los ingredientes al almacen y se quitaran las unidades elaboradas. Se borran tambien sus movimientos, para que no cuenten dos veces en los informes'. Anulada: el historial vuelve a cero",
+    "id": "coc-11",
+    "medida_en": "375 px",
+    "veredicto": "abierta y ejercitada"
+   }
+  ]
+ },
  "sha": "3163c683 mas la etiqueta de la estacion de cocina, sin publicar",
  "sin_rastro_en_el_producto": {
   "metodo": "Sonda de texto sobre source-recovery/fuente-recuperado.js con varios terminos por vista, y revision del contexto de cada coincidencia debil para no dar por inexistente lo que solo cambia de nombre.",
