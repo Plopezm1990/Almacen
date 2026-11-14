@@ -53,27 +53,34 @@ asignación**, así que la puerta de CI pasa en verde con el cable suelto.
 Encaja con el otro hallazgo de este trabajo: de los 87 flujos cuyos contratos
 leen el paquete, 37 no se disparan cuando el paquete cambia.
 
-## El arreglo
+## El arreglo, ya aplicado
 
-Una palabra: añadir `asignarMesaCuentaA07` al objeto que devuelve
-`crearLogicaVenta`. **No se ha aplicado**: es un cambio de comportamiento del
-producto, no de presentación, y este PR es de presentación.
+`asignarMesaCuentaA07` entra en el objeto que devuelve `crearLogicaVenta`, que
+pasa de 48 nombres a 49. Un cambio de 22 caracteres, con el mismo texto en las
+dos copias de la fuente y paridad de cuerpo exacta.
 
-Si se aplica, conviene acompañarlo de dos cosas:
+Queda pendiente, y no se ha hecho aquí, lo que evitaría la próxima vez:
 
 1. Un contrato que fije que todo manejador que `VentaRapida` declara llega como
-   función. La guarda silenciosa seguirá ahí, pero ya no podrá esconder nada.
+   función. Exige registrarlo en el manifiesto y subir los conteos de la puerta,
+   así que es un cambio con su propio alcance.
 2. Cambiar la guarda para que, si el manejador falta, lo diga en pantalla en vez
-   de callarse. Un `return` mudo en un botón habilitado es el defecto detrás del
-   defecto.
+   de callarse. **Un `return` mudo en un botón habilitado es el defecto detrás
+   del defecto**, y sigue ahí para los demás manejadores.
 
 ## Lo que arrastra
 
-| | |
-|---|---|
-| `tpv-06` Asignar mesa y comensales | se abre y se mide, pero **no opera** |
-| `tpv-07` Trasladar cuenta | **no se puede alcanzar** |
+| | Antes del arreglo | Después |
+|---|---|---|
+| `tpv-06` Asignar mesa y comensales | se abría y se medía, pero **no operaba** | pendiente de comprobar en QA |
+| `tpv-07` Trasladar cuenta | **no se podía alcanzar** | pendiente de comprobar en QA |
 
 El panel de traslado solo existe cuando la cuenta ya tiene mesa —son las dos
 ramas del mismo bloque, según haya ubicación o no—, y sin asignación nunca la
-tiene. Dos de las 61 vistas del punto 1 dependen de esa palabra.
+tiene. Dos de las 61 vistas del punto 1 dependían de esa palabra.
+
+**No está verificado en QA todavía.** El arreglo pasa las dos comprobaciones de
+la fuente —sintaxis y paridad de cuerpo exacta—, pero que la mesa pase a
+«Ocupada» al pulsar, y que entonces aparezca «Trasladar a …» con su motivo, hay
+que verlo en el preview con sesión. Hasta entonces esto es un arreglo creído, no
+un arreglo comprobado.
