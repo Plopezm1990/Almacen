@@ -192,3 +192,93 @@ una reforma de la puerta.
 
 Queda medido, reproducible con un comando, y con el caso de `p2-p06` ya cerrado
 como ejemplo de cómo se arregla uno.
+
+## 14/11, por la tarde: lo que el rediseño no tenía vigilado era el rediseño
+
+Buscando trabajo que no necesitara sesión de QA apareció el hueco más
+incómodo de todos, porque era mío. Este documento habla de los filtros de la
+puerta y de los 37 flujos ciegos al paquete, y mientras media eso no miré lo
+que tenía delante: **las seis capas con las que se hace el rediseño no
+apareciían en ningún contrato ni en ningún flujo.**
+
+Medido, no supuesto: buscar cada uno de los seis nombres de archivo en `tests/`,
+en `.github/` y en los guiones de `docs/rediseno` no devolvía nada. Ni una
+referencia, para ninguna de las seis.
+
+| Capa | Quién la vigilaba |
+|---|---|
+| `la-apariencia.css` | nadie |
+| `la-pase.css` | nadie |
+| `la-apariencia.js` | nadie |
+| `la-apariencia-editor.js` | nadie |
+| `la-pase-panel.js` | nadie |
+| `la-tablas-fichas.js` | nadie |
+
+El banco de apariencia cubre tres de ellas y tiene 24 comprobaciones, pero vive
+en `docs/`, que la puerta no ejecuta y que el artefacto publicado excluye. Es
+una herramienta para mirar, no una red.
+
+### Y algo peor que un hueco
+
+`tests/cfg/f7-preflight-static-contract.mjs` excluía las dos migraciones del
+rediseño de su foto histórica con esta razón escrita:
+
+> Apariencia por empresa pertenece al rediseño posterior y **se valida con su
+> propio contrato**.
+
+Y la segunda, «se valida con **el mismo contrato propio**». Ese contrato no
+existía. Dos migraciones salieron de la foto apoyándose en una red que nadie
+había tejido.
+
+Es el **tercer caso del mismo patrón en dos días**, y conviene verlos juntos
+porque ya no es casualidad:
+
+| Dónde | La forma |
+|---|---|
+| Asignar mesa en el TPV | `if (typeof f !== "function") return;` — un `return` mudo |
+| Regresiones heredadas en 9 flujos | `if [ -f "$f" ]; then node "$f"; fi` — un salto en silencio |
+| Exclusión de f7-preflight | un comentario que afirma un contrato inexistente |
+
+Los tres convierten **lo que falta en un aprobado**. Dos eran código y uno era
+prosa, y la prosa engaña igual de bien.
+
+### El contrato, y lo que cuesta
+
+`tests/rediseno/p01-capas-y-migraciones-contract.mjs`, estático, sin red y sin
+base de datos. Las seis capas enlazadas una sola vez y con su marca `?v=`;
+ninguna huérfana en el árbol; la **huella de cada capa fijada junto a su
+marca**; y las seis funciones públicas de las dos migraciones, cada una
+retirada de `public` y `anon` y concedida solo a `authenticated`. Además
+comprueba que la exclusión de f7-preflight sigue nombrándolo, para que la nota
+no vuelva a quedarse huérfana.
+
+Lo de la huella es lo que impide repetir el fallo del 13/11: cambié
+`la-apariencia.css`, no subí su marca, y el preview sirvió la copia anterior.
+Lo peor no fue el fallo, fue que **`fetch` me dio un verde falso**, porque
+`fetch` se salta la caché que el navegador sí estaba usando. Un contrato
+estático no se deja engañar por eso.
+
+El coste, dicho sin adornos: **cambiar una capa obliga a tocar el contrato.**
+Es a propósito, y es la parte que a alguien le va a molestar. La fricción es
+exactamente el paso que me salté.
+
+### La prueba negativa encontró un fallo en el propio contrato
+
+Cinco mutaciones, cada una con restauración garantizada del archivo. Cuatro
+pusieron el contrato en rojo. **La quinta se quedó en verde**, y era un fallo
+mío: el patrón decía
+
+```js
+new RegExp(`revoke all on function public\.${fn}[^;]*from public, anon`)
+```
+
+y ese `[^;]*` se tragaba el sufijo del nombre, así que
+`abc_apariencia_guardar_otro` colaba como si fuera `abc_apariencia_guardar`.
+Anclado con `\s*\(`, cayó como debía. Queda escrito en el código por qué
+lleva ese paréntesis, para que nadie lo «simplifique».
+
+La lección, que es la misma de todo este documento vista del otro lado: un
+contrato que no se ha visto fallar no se sabe si vigila. Escribir la prueba
+negativa costó diez minutos y encontró un defecto en el primer intento.
+
+La puerta queda en **359 entradas, 342 contratos activos, 306 en Node**.
