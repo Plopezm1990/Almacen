@@ -167,6 +167,92 @@ const EXCLUIDAS = new Set([
   '20261113090000_rediseno_apariencia_empresa.sql',
   '20261113140000_rediseno_apariencia_delegaciones.sql',
 ]);
+
+// ---- La justificación de cada exclusión, comprobable ----
+//
+// Varias exclusiones de arriba se apoyan en que la migración «tiene contrato
+// propio». Hasta el 15/11/2026 eso era prosa: no se podía comprobar, y una de
+// las notas era directamente falsa —la del rediseño afirmaba un contrato que no
+// existía—. Se barrieron las demás y resultaron ciertas, pero ninguna era
+// verificable: si mañana alguien renombra o borra uno de esos contratos, la
+// exclusión sigue funcionando y la migración se queda sin red sin que nada lo
+// diga. Es el mismo patrón que el `return` mudo de asignar mesa y que el
+// `if [ -f "$f" ]` de las regresiones heredadas: lo que falta pasa por aprobado.
+//
+// Aquí se nombra el contrato de cada una y se exige que exista Y que el
+// manifiesto de CI lo tenga como contrato activo. Existir no basta: un contrato
+// que no está en el manifiesto tampoco se ejecuta.
+//
+// Las exclusiones que NO aparecen en esta tabla son las que no prometen
+// contrato: dicen solo que no forman parte de la foto F7, y eso no hay que
+// respaldarlo con nada.
+const JUSTIFICACION = {
+  '20261108100000_a01_baja_empleado_revoca_acceso.sql': [
+    'tests/pm11/db/a01-baja-revoca-acceso-contract.mjs',
+  ],
+  '20261108170000_a02_cerrar_y_sellar_venta_fiscal.sql': [
+    'tests/f5/c07/db/a02-venta-fiscal-sellada-contract.mjs',
+  ],
+  '20261108120000_m01_server_pin_authentication.sql': [
+    'tests/m01/m01-server-pin-contract.mjs',
+    'tests/m01/db/m01-server-pin-postgres-contract.mjs',
+  ],
+  '20261110190000_m01_enable_pin_rls.sql': [
+    'tests/m01/m01-pin-rls-contract.mjs',
+  ],
+  '20261109150000_a03_a04_appcc_y_atribucion.sql': [
+    'tests/f3/a03-a04/a03-a04-appcc-atribucion-contract.mjs',
+  ],
+  '20261109170000_a03_appcc_cancelacion_append_only.sql': [
+    'tests/f3/a03-a04/a03-a04-appcc-cancelacion-contract.mjs',
+  ],
+  '20261109180000_a03_appcc_puntos_server_side.sql': [
+    'tests/f3/a03-a04/a03-a04-appcc-puntos-contract.mjs',
+  ],
+  '20261110230000_m03_server_aal2_gate.sql': [
+    'tests/m03/m03-mfa-role-gate-contract.mjs',
+    'tests/m03/m03-mfa-enforcement-contract.mjs',
+  ],
+  '20261111220000_a04_server_employee_session.sql': [
+    'tests/f3/a03-a04/a04-server-attribution-contract.mjs',
+  ],
+  '20261113090000_rediseno_apariencia_empresa.sql': [
+    'tests/rediseno/p01-capas-y-migraciones-contract.mjs',
+  ],
+  '20261113140000_rediseno_apariencia_delegaciones.sql': [
+    'tests/rediseno/p01-capas-y-migraciones-contract.mjs',
+  ],
+};
+
+const manifiesto = JSON.parse(
+  readFileSync(join(REPO, 'tests/ci/manifiesto_clasificacion.json'), 'utf8'),
+);
+const clasificacion = new Map(manifiesto.entries.map((e) => [e.path, e.classification]));
+
+for (const [migracion, contratos] of Object.entries(JUSTIFICACION)) {
+  assert.ok(
+    EXCLUIDAS.has(migracion),
+    `la tabla de justificación nombra ${migracion}, que ya no está excluida: ` +
+      'o vuelve a la foto F7 y entonces sobra aquí, o se renombró',
+  );
+  for (const contrato of contratos) {
+    assert.doesNotThrow(
+      () => readFileSync(join(REPO, contrato)),
+      `${migracion} se excluye de la foto F7 apoyándose en ${contrato}, y ese archivo no existe. ` +
+        'O se restituye el contrato, o la migración vuelve a la foto, o se cambia la justificación ' +
+        'por la verdadera. Lo que no vale es dejar la exclusión apoyada en nada.',
+    );
+    assert.equal(
+      clasificacion.get(contrato),
+      'active_contract',
+      `${migracion} se apoya en ${contrato}, que en el manifiesto de CI es ` +
+        `«${clasificacion.get(contrato) ?? 'no está'}» y no «active_contract». ` +
+        'Un contrato que el manifiesto no declara activo no lo ejecuta ningún entorno, ' +
+        'así que la exclusión se apoyaría en algo que no corre.',
+    );
+  }
+}
+
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
   .sort();

@@ -6,9 +6,19 @@
  * public.membresias_usuario), aplica la migracion tal cual y comprueba su
  * comportamiento. No toca ningun proyecto remoto.
  *
- *   node docs/rediseno/validar-apariencia-local.mjs
+ *   node tests/rediseno/p02-apariencia-empresa-pglite-contract.mjs
  *
  * PGlite se toma de tests/f3/a09/node_modules (npm ci --prefix tests/f3/a09).
+ *
+ * Por que cambio de sitio, el 15/11/2026. Nacio como `docs/rediseno/
+ * validar-apariencia-local.mjs`, y durante dos dias sus 49 comprobaciones pasaron
+ * solo cuando yo me acordaba de lanzarlas a mano. `docs/` no lo ejecuta la puerta
+ * y el artefacto publicado lo excluye, asi que era una herramienta para mirar, no
+ * una red. Ahora es un contrato activo del manifiesto, entorno `pglite`, y lo
+ * corre `tests/ci/ejecutar_pglite_local.sh` en cada candidato a release.
+ *
+ * No se ha tocado ni una comprobacion al moverlo: las mismas 49, el mismo
+ * resultado. Lo unico que cambia es quien se acuerda de ejecutarlas.
  */
 import { readFile } from 'node:fs/promises';
 import path from 'node:path';
