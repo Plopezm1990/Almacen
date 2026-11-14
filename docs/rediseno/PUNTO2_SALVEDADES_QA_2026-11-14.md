@@ -78,6 +78,23 @@ tiempo**. No es una vista que falte ni un permiso: es un segundo dispositivo.
 
 ### El cargo restringido
 
+**Intentado el 14/11 sin ayuda, y el resultado cambia el diagnóstico.** El
+segundo factor **no era el obstáculo**: la aplicación muestra la clave en
+base32 y el código TOTP se calcula con `crypto.subtle` del navegador, así que
+lo inscribí y el servidor abrió la sesión. Lo que falló fue el **cargo y el
+local** de la cuenta nueva: «Nivel de acceso en modo empleado» es el nivel del
+PIN, no el cargo en la nube, y la cuenta salió como Camarero/a en un «Local
+principal» generado en el equipo, sin terminal, de modo que el servidor
+rechaza por local y no por cargo. Todo el detalle, y lo que queda suelto en
+QA, en `docs/rediseno/INTENTO_MFA_CARGO_RESTRINGIDO_2026-11-14.md`.
+
+Lo que hace falta ahora es que el propietario asigne una cuenta al cargo y al
+local correctos en «Cargos y permisos». Inscribir el factor después es cosa de
+un minuto.
+
+**Lo de antes, que sigue siendo cierto:**
+
+
 Sigue bloqueado donde estaba: `m03_server_aal2_gate` exige `aal2` a Propietario,
 Encargado y Cajero/a, y las cuentas de prueba de esos dos cargos no tienen MFA
 inscrito. Sin inscribirlo, el servidor no las deja entrar, y las comprobaciones
