@@ -68,6 +68,39 @@ contratos, que corre todos sin mirar rutas, ha pesado más que la puerta remota.
 No es desconfianza: es que la puerta remota, por construcción, no corre lo que
 su filtro no nombra.
 
+## Corrección del 14/11: de 37 a 2
+
+La cifra de **37 flujos ciegos al paquete** es correcta como medida, pero la
+conclusión que saqué de ella no lo era. Al mirar uno por uno **qué los
+dispara**, el cuadro cambia:
+
+| | |
+|---|---|
+| Se disparan en **PR a `release`**, que es la puerta | **3** |
+| Se disparan al empujar a su **propia rama de trabajo**, que existe | 33 |
+| Escuchan una rama que no existe | 1 |
+
+Los 33 no son parte de la puerta: son flujos de su línea de trabajo, y corren
+cuando alguien empuja a su rama. Que no se disparen con el paquete en un PR a
+`release` no es un agujero de la puerta, es que no son la puerta.
+
+Y de los 3 que sí lo son, uno —`abc-f4-b11-offline-contract`— **ya estaba
+cubierto en la práctica**: su filtro lista `source-recovery/fuente-recuperado.js`,
+y por la regla de paridad esa copia cambia siempre que cambia `fuente.js`. Mi
+auditoría lo marcó porque compara nombres literales, no equivalencias.
+
+Así que el hueco real de la puerta eran **dos flujos**:
+`p2-edge-security-candidate` y `p2-r03a-release-current`, cuyos contratos leen
+`fuente.js` y cuyo filtro no lo nombraba ni a él ni a su copia.
+
+**Arreglado**, con el mismo método de siempre: primero comprobar que sus tres
+contratos pasan en esta rama —`P2_R03A_CONTRACT_OK=1`,
+`P2_EDGE_SECURITY_CONTRACT_OK=1`, `P2_EDGE_SECURITY_BEHAVIOR_OK=1`— y solo
+entonces añadir `fuente.js` y la copia legible a sus rutas.
+
+La lección: **una auditoría que cuenta ficheros no sabe lo que importa.** Medir
+los 37 estuvo bien; haber dicho que los 37 eran un agujero de la puerta, no.
+
 ## Lo que no se ha hecho, y por qué
 
 Cerrar los 37 no se ha metido aquí. Cambiaría el comportamiento de la puerta en
