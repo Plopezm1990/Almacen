@@ -120,3 +120,49 @@ distinto de `production` pone solo el host de QA.
 Sesión de propietario. El Cajero/a con el que terminé el punto anterior tiene
 denegadas justo las pestañas de este bloque: productos, proveedores, pedidos y
 traspasos.
+
+## Lo medido, ya escrito en la matriz (14/11, tarde)
+
+Y aqui un fallo mio de proceso que conviene no repetir: **el bloque 2 se midio
+y no se escribio.** Las 22 vistas de la tanda quedaron en
+`barrido-bloque2-qa-2026-11-14.json` y la matriz seguia diciendo «Pendiente» en
+las 49. La evidencia sin el registro no sirve de nada: el que mire la matriz no
+ve el trabajo hecho, y el siguiente que entre en QA vuelve a medir lo mismo.
+
+Volcado ya. **26 filas tocadas**, y ninguna otra:
+
+| | |
+|---|---|
+| Abiertas, con lo que se vio dentro | **20** |
+| No construidas, con su matiz | 2 (`inv-35`, `inv-36`) |
+| No ejercitadas a proposito, con su motivo | 2 (`inv-16`, `inv-17`) |
+| Sin aclarar, con lo que falta por hacer a mano | 2 (`com-29`, `com-30`) |
+
+Como queda el bloque:
+
+| | Inventario | Compras |
+|---|---|---|
+| Abiertas | 27 | 10 |
+| No construidas | 2 | 0 |
+| Pendientes | 7 | 20 |
+
+En toda la matriz: **121 abiertas, 12 no construidas, 134 pendientes** de 267.
+
+### Una salvedad sobre la medida de dispositivos
+
+La tanda se midio **a 736 px**, que esta dentro de la banda tactil, donde rige
+el suelo de 44. Asi que «cero controles por debajo de 24 ni de 44» acredita la
+banda tactil y **no** acredita el suelo de 24 a anchura de ordenador. Esta
+escrito asi en cada fila, con esas palabras, para no vender mas de lo medido.
+Es la misma leccion del bloque 1, cuando di por bueno un «cero controles
+cortos» que se habia medido donde no valia.
+
+### Lo que falta, agrupado por el dato que lo desbloquea
+
+- Un **pedido a proveedor**: `com-06` a `com-11`, y recibido `com-13` a `com-15`.
+- Un **albaran**: `com-17` a `com-20`.
+- Una **factura**: `com-22` a `com-24`.
+- Un **conteo completo** que se pueda ajustar y revertir: `inv-16` y `inv-17`.
+- `inv-06`, el cambio de envase, con contenido positivo antes y despues y
+  distinto, y una ficha de costo que use el producto.
+- `com-29` y `com-30`, a mano, antes de llamarlo defecto.
