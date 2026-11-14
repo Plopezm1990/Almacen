@@ -57,6 +57,29 @@ Con eso, las tres lecturas que expone el puente responden lo mismo:
 El servidor rechaza **por local**, no por cargo. Así que con esta cuenta no se
 puede separar una cosa de la otra, y no sirve para certificar autorización.
 
+## Lo que sí cerró esta sesión: F2 con cargo restringido
+
+La apariencia es de **empresa**, no de local, así que el local fantasma no la
+estorba. Y ahí la sesión restringida sirvió para cerrar la comprobación que
+pedía el plan desde el principio. Todo contestado por el servidor, con `rol`
+`Camarero/a`:
+
+| Operación | Respuesta |
+|---|---|
+| `leerEmpresa()` | **funciona**: diseño `orbita`, revisión 8, con quién y cuándo, y la revisión 7 anterior |
+| `estadoServidor()` | `{disponible: true, puedeAplicar: false}` |
+| `listarDelegaciones()` | `{ok: false, motivo: "sin-permiso", servidor: true}` |
+| `guardarEmpresa(...)` | `{ok: false, motivo: "sin-permiso", servidor: true}` |
+| `restaurarAnterior()` | `{ok: false, motivo: "sin-permiso", servidor: true}` |
+
+Y lo que importa: **tras los dos intentos de escritura la apariencia sigue en
+`orbita`, revisión 8**. No cambió nada. El `servidor: true` es del propio
+cliente diciendo que la negativa viene del servidor, no de la interfaz: el
+botón gris no es la defensa, es el reflejo de una defensa que está detrás.
+
+Puede leer, no puede aplicar, no puede restaurar y no puede ni ver las
+delegaciones. Es exactamente lo que el plan quería demostrar.
+
 ## Lo único aprovechable de la sesión restringida
 
 La guarda de navegación sí se midió, y es consistente: de once pestañas
