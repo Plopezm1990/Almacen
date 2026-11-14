@@ -148,6 +148,7 @@
   "ABC_MESA_RESERVAR",
   "ABC_MESA_BLOQUEAR"
  ],
+ "coc-10_11_12_precondicion_textual": "La pantalla de Produccion lo dice ella misma: 'Crea antes una ficha de costo en Fichas de costo para poder producir algo'. QA no tiene ninguna. Crear una receta deja un registro permanente en el catalogo y pertenece a Inventario, que no es este bloque, asi que es una decision de datos de ensayo y no se ha hecho por iniciativa propia.",
  "con_respaldo_en_codigo_por_abrir": [
   {
    "id": "tpv-07",
@@ -270,6 +271,14 @@
     "veredicto": "abierta y ejercitada"
    }
   ]
+ },
+ "defecto_de_producto_encontrado": {
+  "antiguedad": "No es de esta rama: falta tambien en `release`. `asignarMesaCuentaA07` entro con 'A07.1 materialize real floor integration' y `moverMesaCuentaA07` con 'A07.2 materialize move and reassignment'; la segunda si se exporto y la primera nunca. Ningun contrato lo cubre, y por eso nadie se habia dado cuenta.",
+  "arreglo": "una palabra: anadir `asignarMesaCuentaA07` al objeto que devuelve `crearLogicaVenta`. Es un cambio de comportamiento del producto, no de presentacion, asi que no se ha aplicado sin preguntar.",
+  "causa": "`crearLogicaVenta` define `asignarMesaCuentaA07` en la linea 12863 pero NO la incluye entre los 48 nombres que devuelve. `AppConSesion` la desestructura de ese retorno, asi que llega `undefined`, y se la pasa igual a `VentaRapida`. El manejador `confirmarAsignacionMesaA07` empieza con `if (!mesaSeleccionadaA07 || typeof asignarMesaCuentaA07 !== \"function\") return;` y sale por ahi sin decir nada.",
+  "consecuencia": "tpv-06 se abre pero no opera, y tpv-07 no se puede alcanzar: el panel de traslado solo existe cuando la cuenta ya tiene mesa, y sin asignacion nunca la tiene. Dos vistas de las 61 dependen de esta palabra.",
+  "sintoma": "El panel 'Asignar <mesa>' se dibuja, el boton 'Asignar esta cuenta' esta habilitado, y al pulsarlo no pasa nada: la mesa sigue Libre, no aparece ningun mensaje de error y no sale ni una peticion de red. Comprobado instrumentando fetch: cero llamadas.",
+  "titulo": "Asignar una mesa a una cuenta no funciona, y falla en silencio"
  },
  "defectos_encontrados_y_corregidos": [
   {
@@ -526,17 +535,47 @@
    "caj-08"
   ]
  },
- "quedan_estas_seis": {
-  "caj-24": "Ensayo de cierre definitivo: hace falta iniciar el cierre provisional",
-  "caj-25": "Reabrir cierre provisional: hace falta un cierre provisional hecho",
-  "coc-10": "Registrar produccion: hace falta una ficha o receta de produccion en QA",
-  "coc-11": "Anular produccion: hace falta una orden de produccion",
-  "coc-12": "Traspasar produccion: hace falta una orden de produccion",
-  "tpv-07": "Trasladar cuenta: asignar primero la cuenta a una mesa y luego elegir la otra"
+ "quedan_estas_cuatro": {
+  "coc-10": "Registrar produccion: decidir si se siembra una ficha de costo en QA",
+  "coc-11": "Anular produccion: depende de coc-10",
+  "coc-12": "Traspasar produccion: depende de coc-10",
+  "tpv-07": "Trasladar cuenta: depende de arreglar el defecto de asignacion de mesa"
+ },
+ "quinta_tanda_cierre_de_caja_reversible": {
+  "principio": "La cadena de cierre es reversible por diseno, asi que sirve de ensayo limpio: se recorrio entera y la sesion quedo como estaba.",
+  "recorrido": "ABIERTA -> EN_CIERRE -> CIERRE_PROVISIONAL -> ensayo C12 -> reabrir -> ABIERTA",
+  "vistas": [
+   {
+    "bajo24": 0,
+    "bajo44": 0,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "al iniciar el cierre la sesion pasa a EN_CIERRE y pide el efectivo contado. El servidor adelanta su propio calculo: esperado 108,36 = fondo 0,00 + entradas 112,36 - salidas 4,00, y avisa de que se recalcula al confirmar",
+    "id": "caj-23",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "contenido": "Ensayar cierre C12, que el propio panel describe como comprobacion sin modificar el cierre. Resultado: 'Ensayo C12: BLOQUEADO. La sesion no puede avanzar al cierre porque existe un bloqueo operativo que debe resolverse'. Efectivo esperado 108.36, contado 108.36, diferencia 0.00, documentos conciliados 0, pendientes 0. Hay efectos pendientes y pagos pendientes",
+    "id": "caj-24",
+    "nota": "los dos bloqueos son el pedido de ensayo y el intento de tarjeta simulada pendientes de la tanda anterior. El producto se niega a cerrar en definitivo, que es lo correcto, y la aritmetica del efectivo cuadra al centimo",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 0,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "Motivo de reapertura y Reabrir cierre provisional. Reabierto con motivo, la sesion vuelve a ABIERTA",
+    "id": "caj-25",
+    "veredicto": "abierta y ejercitada"
+   }
+  ]
  },
  "recuento": {
-  "abiertas_y_medidas": 45,
-  "pendientes_de_precondicion": 6,
+  "abiertas_y_medidas": 47,
+  "bloqueadas_por_el_defecto": 1,
+  "con_veredicto": 61,
+  "pendientes_de_una_receta_en_qa": 3,
   "sin_construir_en_el_producto": 10,
   "terminado": false,
   "total_objetivo": 61
