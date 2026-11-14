@@ -119,6 +119,7 @@
   ]
  },
  "aviso_de_metodo": "La primera pasada se midio a 736 px de ancho, que esta por debajo del corte de 760 px, asi que el suelo tactil de 44 px estaba activo y 'cero controles cortos' no significaba nada. Repetida a 1440 px, que es la banda de raton. Las cifras de esta nota son las de 1440 px salvo donde se diga.",
+ "aviso_de_sesion": "La ventana de sesion son quince minutos (A-05) y se cuenta desde la ultima actividad, no desde el inicio. Trabajar a rafagas, con pausas para escribir en el repositorio, la agota sin aviso: ha caducado dos veces en mitad del barrido. Por eso cada tanda se guarda en cuanto se mide, y no al final.",
  "capacidades_del_catalogo_relevantes": [
   "ABC_CUENTA_OPERAR",
   "ABC_CUENTA_REASIGNAR",
@@ -205,6 +206,71 @@
    "indicio": "Produccion"
   }
  ],
+ "cuarta_tanda_con_datos_creados_y_deshechos": {
+  "principio": "Cada dato de ensayo que se crea para abrir una vista se deshace despues por la via que ofrece el propio programa, no borrando por detras. Asi la vista queda comprobada y QA queda como estaba.",
+  "vistas": [
+   {
+    "contenido": "el detalle se dibuja en la propia tarjeta: estado, estacion, pedido con su identificador y hora, producto, cantidad y prioridad",
+    "correccion": "en la tanda anterior di coc-06 y coc-07 por bloqueadas porque las comandas que mire estaban sin ruta. Era un error de muestreo: la cola tiene 22 BLOQUEADAS y tambien 64 enrutadas a Cocina QA-A1, con sus botones",
+    "donde": "Cocina, cola de comandas",
+    "id": "coc-05",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "boton Reimprimir a 44x81. No se pulso: reimprimir deja registro",
+    "donde": "cada comanda enrutada",
+    "id": "coc-06",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "campo Nota operativa para cocina, a 44 px y con nombre, mas el boton Enviar cambio a 44x99",
+    "donde": "cada comanda enrutada",
+    "id": "coc-07",
+    "matiz": "la decision de merma como tal, que es la capacidad ABC_COMANDA_MERMA_DECIDIR, necesita una comanda que declare merma, y eso no se puede provocar desde la interfaz. Lo que si esta abierto es el envio de cambio con su nota",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "la lista deja de estar vacia: aparece la entrada de ensayo y, al lado, el apunte automatico del cobro parcial anterior, ENTRADA Cobro ABC en efectivo COBRO_VENTA +0,50. El libro de caja recoge el cobro del TPV",
+    "donde": "Arqueo, entradas y retiradas",
+    "id": "caj-03",
+    "veredicto": "abierta y con datos"
+   },
+   {
+    "contenido": "entrada de 1,00 EUR con categoria REPOSICION_CAJA, concepto y motivo obligatorio. Guardada: 'Entrada confirmada'",
+    "donde": "Arqueo, + Anadir",
+    "id": "caj-04",
+    "nota": "el formulario no esta en pantalla hasta pulsar + Anadir",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 0,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "no es un borrado, es 'Revertir con motivo', con el campo Motivo obligatorio del reverso. Confirmado: 'Reverso confirmado. El movimiento original se conserva', y aparece un REVERSO_ENTRADA de -1,00 con su motivo. El ensayo queda a cero y con rastro",
+    "donde": "Arqueo, sobre un movimiento",
+    "id": "caj-05",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "contenido": "solicitud de 0,32 EUR sobre un pago en efectivo: 'Solicitud creada como PENDIENTE'",
+    "donde": "Devoluciones, reembolso B08",
+    "id": "caj-12",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 0,
+    "campos": 4,
+    "camposSinNombre": 0,
+    "contenido": "con la solicitud pendiente aparecen Confirmar efectivo y Cancelar solicitud. La cancelacion tiene doble paso y su propio campo: Cancelar solicitud abre Confirmar cancelacion con Motivo de cancelacion, distinto del motivo de la solicitud. Sin ese motivo el servidor responde 'Escribe el motivo de la cancelacion'. Resultado final: 'Solicitud cancelada y saldo liberado'",
+    "donde": "la solicitud pendiente",
+    "id": "caj-13",
+    "nota": "se cancelo en vez de confirmar: cancelar no mueve dinero y deja QA como estaba",
+    "veredicto": "abierta y ejercitada"
+   }
+  ]
+ },
  "defectos_encontrados_y_corregidos": [
   {
    "arreglo": "aria-label Estacion de preparacion, en las dos copias de la fuente",
@@ -274,6 +340,7 @@
  "fecha": "2026-11-14",
  "guion": "docs/rediseno/guion-barrido-apertura-qa.js",
  "hallazgo_de_datos_de_qa": "La cocina de QA tiene comandas BLOQUEADAS sin ruta de preparacion, y el programa lo dice con sus palabras: 'Sin ruta de preparacion: esta comanda esta bloqueada y no se imprimira'. No es un defecto de interfaz, es el producto informando de un hueco en los datos de ensayo. Afecta a coc-05, coc-06 y coc-07, que necesitan una comanda enrutada para ejercitarse.",
+ "hallazgo_de_la_barrera_kv": "Al volver a entrar, el programa muestra: 'Un cambio no se ha podido guardar (historialRespaldos). Comprueba tu conexion o reintenta ahora; mientras tanto queda guardado en este equipo'. Es el patron ya documentado de la lista cerrada de claves de almacen_kv: una clave que no esta permitida recibe 42501 y queda marcada como denegada, con respaldo local. No es un fallo de red.",
  "leccion_de_metodo": "Muchas de estas 'vistas' no son modales con disparador, son SECCIONES de una pestana que ya estan en pantalla. Buscarlas como boton daba 'no encontrada' en falso: caj-08, el historial de arqueos, estaba a la vista con sus filas reales. Leer el texto completo de la pestana y mapear sus secciones resulta mas rapido y mas fiel que pulsar disparadores uno a uno.",
  "medidas_1440": [
   {
@@ -459,21 +526,17 @@
    "caj-08"
   ]
  },
- "quedan_estas_diez": {
-  "caj-05": "Retirar movimiento de caja: no hay ningun movimiento registrado hoy",
-  "caj-13": "Resolver reembolso: hace falta una solicitud de reembolso pendiente",
+ "quedan_estas_seis": {
   "caj-24": "Ensayo de cierre definitivo: hace falta iniciar el cierre provisional",
   "caj-25": "Reabrir cierre provisional: hace falta un cierre provisional hecho",
-  "coc-06": "Reimprimir comanda: hace falta una comanda enrutada; las de QA estan BLOQUEADAS sin ruta",
-  "coc-07": "Resolver merma de preparacion: igual, comanda enrutada",
   "coc-10": "Registrar produccion: hace falta una ficha o receta de produccion en QA",
   "coc-11": "Anular produccion: hace falta una orden de produccion",
   "coc-12": "Traspasar produccion: hace falta una orden de produccion",
-  "tpv-07": "Trasladar cuenta: hace falta una segunda cuenta abierta compatible"
+  "tpv-07": "Trasladar cuenta: asignar primero la cuenta a una mesa y luego elegir la otra"
  },
  "recuento": {
-  "abiertas_y_medidas": 41,
-  "pendientes_de_precondicion": 10,
+  "abiertas_y_medidas": 45,
+  "pendientes_de_precondicion": 6,
   "sin_construir_en_el_producto": 10,
   "terminado": false,
   "total_objetivo": 61
@@ -696,6 +759,7 @@
    }
   ]
  },
+ "tpv-07_precondicion_averiguada": "Buscar el traslado en la interfaz no daba con el. Leyendo la fuente queda claro por que: el mismo panel tiene dos ramas segun una variable de ubicacion. Sin ubicacion sale 'Asignar <mesa>' con comensales, que es tpv-06. Con ubicacion sale 'Trasladar a <mesa>' con comensales, Motivo del traslado y el boton Trasladar cuenta, que es tpv-07. Es decir: la cuenta tiene que estar ya asignada a una mesa para poder trasladarla. El pedido de ensayo se guardo como tipo Mesa pero sin asignar, asi que Mesa QA-A1-01 seguia Libre y siempre salia la rama de asignar. Queda hacerlo en este orden: asignar y despues seleccionar la otra mesa.",
  "tpv-09_matiz_nuevo": "Al abrir el catalogo con una venta rapida en curso aparece 'Venta rapida en curso. La cuenta se conserva en el servidor para continuarla sin duplicar la venta' con el boton 'Continuar en Sala'. Asi que la continuacion de una cuenta SI existe; lo que no hay es la pantalla de cuentas aparcadas con su lista, que es lo que pide tpv-09.",
  "url": "https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
 }
