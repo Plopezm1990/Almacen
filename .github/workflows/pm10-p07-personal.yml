@@ -38,7 +38,8 @@ jobs:
             tests/pm09/p09-historial-contract.mjs \
             tests/pm09/la007-results-contract.mjs \
             tests/pm09/la008-rotation-margin-contract.mjs; do
-            if [ -f "$f" ]; then node "$f"; fi
+            if [ ! -f "$f" ]; then echo "CONTRATO_HEREDADO_AUSENTE=$f" >&2; exit 1; fi
+            node "$f"
           done
       - name: Verificar barreras LA-017
         run: |

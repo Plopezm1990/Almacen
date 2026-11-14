@@ -76,17 +76,33 @@ corregir los nombres no pone nada en rojo: pone a correr lo que debía correr.
 Simulado el bucle corregido tal cual queda en el flujo: **ejecutados 9, fallos
 0**. Antes eran 4 de 9.
 
-## Lo que queda por decidir, y no he tocado
+## El arreglo de fondo, ya aplicado
 
-El `if [ -f "$f" ]` sigue ahí. Ahora no esconde nada, porque las nueve rutas
-existen, pero volverá a esconderlo el día que alguien renombre otro contrato.
-Lo honesto sería que el paso **falle** si un fichero de su lista no está, en vez
-de saltárselo. Es una línea:
+Corregir los nombres cura el síntoma; lo que impide que vuelva a pasar es que
+el paso **falle** cuando un contrato de su lista no está, en vez de saltárselo:
 
 ```bash
-if [ -f "$f" ]; then node "$f"; else echo "FALTA $f" >&2; exit 1; fi
+if [ ! -f "$f" ]; then echo "CONTRATO_HEREDADO_AUSENTE=$f" >&2; exit 1; fi
+node "$f"
 ```
 
-No lo he aplicado porque cambia el comportamiento de la puerta en ocho flujos y
-eso es decisión de quien la lleva. Pero es el arreglo que impide que esto
-vuelva a pasar, y el de los nombres sin este solo cura el síntoma.
+Aplicado. Y al aplicarlo aparecieron **nueve** flujos con ese bucle, no ocho:
+`pm10-p13-contexto.yml` también lo tenía, y `pm10-p11-robustez.yml` lo tiene
+**dos veces**.
+
+### Comprobado antes de dejarlo
+
+Lo peligroso de endurecer una guarda es convertir un salto benigno en un rojo.
+Así que conté lo que esos bucles listan: **92 rutas de contrato en los nueve
+flujos, y las 92 existen**. Ninguna hará fallar nada por estar ausente.
+
+Los nueve pasos llevan `set -e`, así que el `exit 1` corta el paso de verdad.
+Simulados los dos caminos:
+
+| Camino | Resultado |
+|---|---|
+| Todos presentes | ejecuta y sale con 0 |
+| Uno ausente | imprime `CONTRATO_HEREDADO_AUSENTE=…` y sale con 1 |
+
+Que es justo lo que no hacía antes.
+
