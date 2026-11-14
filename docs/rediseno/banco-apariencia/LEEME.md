@@ -19,7 +19,10 @@ sirve la carpeta directamente tras copiarlos.
 
 ## Que comprueba
 
-16 comprobaciones: los nueve disennos aplican tokens, los 54 pares disenno x paleta
+24 comprobaciones. La cifra decia 16 y llevaba tiempo desfasada; se habian anadido
+mas sin actualizarla, y una cuenta mal en un LEEME es peor que no ponerla.
+
+Los nueve disennos aplican tokens, los 54 pares disenno x paleta
 los conservan, un disenno no registrado devuelve la interfaz base, las seis paletas
 alcanzan el contraste exigido una vez resueltas, importar cinco HEX conserva el sexto
 campo, importar cuatro se rechaza, la tinta del boton es legible, la revision se

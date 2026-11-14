@@ -225,6 +225,56 @@
     window.__nubeActiva = false;
     window.__nubeCliente = null;
 
+    /* Suelos de tamano de control (WCAG 2.2). Esto no va de tokens: va de que la
+       capa no deje un control por debajo del minimo en ninguna anchura. Se mide
+       en un marco aislado porque las dos reglas son de consulta de medios y la
+       pagina del banco tiene su propia anchura.
+
+       La trampa que esto evita es la que me comi el 13/11: medi a 736 px, que
+       esta DENTRO de la banda tactil, y di por bueno un "cero controles cortos"
+       que no acreditaba el suelo de 24 a anchura de ordenador. Son dos reglas
+       distintas y hay que medir cada una donde rige. */
+    async function medirSuelos(ancho) {
+      var marco = document.createElement("iframe");
+      marco.setAttribute("title", "marco de medida de suelos");
+      marco.style.cssText = "position:fixed;left:-9999px;top:0;border:0;height:400px;width:" + ancho + "px";
+      marco.srcdoc = '<!doctype html><html><head><meta charset="utf-8">'
+        + '<link rel="stylesheet" href="./la-apariencia.css"></head><body>'
+        + '<div id="root">'
+        + '<button type="button" id="b1">A</button>'
+        + '<button type="button" id="b2" aria-label="Cerrar">x</button>'
+        + '<div role="button" id="b3" tabindex="0">B</div>'
+        + '</div></body></html>';
+      document.body.appendChild(marco);
+      await new Promise(function (r) { marco.onload = r; });
+      var d = marco.contentDocument;
+      var medidas = ["b1", "b2", "b3"].map(function (id) {
+        var e = d.getElementById(id);
+        var c = marco.contentWindow.getComputedStyle(e);
+        var caja = e.getBoundingClientRect();
+        return { id: id, alto: Math.round(caja.height), ancho: Math.round(caja.width), display: c.display };
+      });
+      marco.remove();
+      return medidas;
+    }
+
+    var escritorio = await medirSuelos(1200);
+    var cortos24 = escritorio.filter(function (m) { return m.alto < 24 || m.ancho < 24; });
+    comprueba("a 1200 px ningun control baja de 24", cortos24.length === 0,
+      escritorio.map(function (m) { return m.id + " " + m.ancho + "x" + m.alto; }).join(", "));
+
+    var tactil = await medirSuelos(700);
+    var botones44 = tactil.filter(function (m) { return m.id !== "b3"; });
+    var cortos44 = botones44.filter(function (m) { return m.alto < 44 || m.ancho < 44; });
+    comprueba("a 700 px ningun boton baja de 44", cortos44.length === 0,
+      botones44.map(function (m) { return m.id + " " + m.ancho + "x" + m.alto; }).join(", "));
+
+    /* El boton de cerrar lleva su propia regla para que la letra quede centrada
+       dentro del cuadrado que le imponen los suelos, no pegada a una esquina. */
+    var cerrar = escritorio.filter(function (m) { return m.id === "b2"; })[0];
+    comprueba("el boton de cerrar se centra dentro de su cuadrado",
+      cerrar && cerrar.display === "inline-flex", cerrar ? cerrar.display : "no medido");
+
     var fallos = window.__resultados.filter(function (x) { return !x.ok; }).length;
     linea("");
     linea("TOTAL " + window.__resultados.length + " comprobaciones, " + fallos + " fallos");
