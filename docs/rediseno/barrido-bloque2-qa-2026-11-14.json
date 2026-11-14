@@ -121,10 +121,90 @@
  },
  "recuento": {
   "objetivo": 49,
-  "pendientes": 41,
+  "pendientes": 27,
   "pestanas_medidas": 15,
+  "sin_aclarar": 2,
   "sin_construir": 2,
-  "vistas_abiertas": 6
+  "vistas_abiertas": 20
+ },
+ "segunda_tanda_disparadores_sin_dato": {
+  "hallazgo_lateral": "La pestana de proveedores avisa: '1 proveedor(es) se dieron de alta automaticamente desde la foto de un albaran y estan pendientes de revisar', y la ficha de Queseria Prueba Alb S.L. sale marcada 'Creado por IA · revisar'. Es rastro de que el flujo de lectura de albaran por foto se ejercito en QA en algun momento, aunque hoy sus funciones de borde no sean alcanzables desde el preview.",
+  "nota": "Catorce vistas mas, sin crear ningun dato. Todas limpias: ningun campo sin nombre, ningun control por debajo de 24 ni de 44, sin desbordamiento.",
+  "sin_aclarar": {
+   "com-29 y com-30": "Los botones existen con su etiqueta real, 'Marcar como pagada' y 'Eliminar', sobre dos facturas directas pendientes de 100.000,00 y 75,80 EUR. Al pulsarlos no aparecio ninguna superficie propia y nada cambio: 'Ver facturas ya pagadas' sigue en 0 y las dos facturas siguen pendientes. Comprobado a proposito, porque marcar una pagada habria sido una escritura que no buscaba. No lo doy por defecto: puede ser que pidan una confirmacion que no se dibujo o que mi clic programatico no fuera al elemento correcto. Queda por aclarar, y conviene hacerlo a mano antes de llamarlo defecto."
+  },
+  "vistas": [
+   {
+    "contenido": "formulario por pasos, 23 campos, empieza en '1 · Identificacion'",
+    "id": "inv-03",
+    "que": "Alta de producto"
+   },
+   {
+    "contenido": "5 campos. Lo explica bien: 'para cuando en el conteo sobra de uno y falta de otro porque se confundieron'",
+    "id": "inv-04",
+    "que": "Ajuste entre productos"
+   },
+   {
+    "contenido": "'Kardex — Agua 50 cl (QA). Stock actual: 74 unidad. Historico de 61 movimiento(s)'",
+    "id": "inv-05",
+    "que": "Kardex de producto"
+   },
+   {
+    "contenido": "seccion en linea: producto, direccion almacen a piso de venta, cantidad y Confirmar movimiento",
+    "id": "inv-23",
+    "que": "Traspasar a otra ubicacion"
+   },
+   {
+    "contenido": "seccion en linea: local destino, producto que sale, producto que recibe y cantidad",
+    "id": "inv-24",
+    "que": "Traspasar entre locales"
+   },
+   {
+    "contenido": "Reconciliacion de stock, con filtros discrepancias, con deficit, correctos y todos",
+    "id": "inv-26",
+    "que": "Movimientos en discrepancia"
+   },
+   {
+    "contenido": "misma pantalla; explica que un deficit por si solo no es un descuadre",
+    "id": "inv-27",
+    "que": "Confirmar correccion de stock"
+   },
+   {
+    "contenido": "etiquetas de vitrina y catalogo, con seleccion e imprimir",
+    "id": "inv-29",
+    "que": "Catalogo y alergenos"
+   },
+   {
+    "contenido": "abierta con su estado vacio real: las dos recetas de ensayo se retiraron",
+    "id": "inv-30",
+    "que": "Fichas de coste y recetas"
+   },
+   {
+    "contenido": "16 campos, todos con nombre",
+    "id": "inv-31",
+    "que": "Editar receta, ingredientes y coste"
+   },
+   {
+    "contenido": "6 campos. 'Todo lo que se ha perdido: caducidad, roturas, deterioro, autoconsumo'",
+    "id": "inv-34",
+    "que": "Registrar merma"
+   },
+   {
+    "contenido": "10 campos, nombre, NIF, direccion, web",
+    "id": "com-02",
+    "que": "Alta y edicion de proveedor"
+   },
+   {
+    "contenido": "en linea en la pestana, con sus datos y Editar y Marcar como revisado",
+    "id": "com-03",
+    "que": "Ficha de proveedor"
+   },
+   {
+    "contenido": "8 campos. Junta las facturas que entran por albaranes con las directas de luz, alquiler o gestoria",
+    "id": "com-28",
+    "que": "Factura directa"
+   }
+  ]
  },
  "sesion": "Propietario real, QA-EMP-A / QA-A1, ancho 736 px",
  "sha": "09648259 mas la etiqueta del conteo ciego",
