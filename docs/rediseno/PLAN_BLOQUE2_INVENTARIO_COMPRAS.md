@@ -67,6 +67,18 @@ Tres componentes no salen del enrutador y se dibujan dentro de otros, así que s
 vista se alcanza desde dentro: `FacturasLegacy`, `EscanerCodigoBarras` y
 `BloqueAplicarAjustes`.
 
+### Las quince, verificadas en el catálogo
+
+No me fío de haberlas deducido del enrutador, así que las comprobé también
+contra el catálogo de navegación: **las quince aparecen como `id` de panel y
+tienen su rama en el enrutador**, las cinco nuevas incluidas. Eso se puede
+afirmar sin sesión, leyendo la fuente.
+
+Y con la sesión de Cajero/a que quedó abierta se midió, de paso, cuántas de las
+quince alcanza ese cargo: **una**, devoluciones. Las otras catorce se le
+deniegan. Sirve para dos cosas: confirma que el bloque necesita propietario, y
+da un segundo dato de autorización por cargo para la matriz.
+
 ## Cómo medir, y en qué orden
 
 1. **Primero las pestañas enteras**, una medición por pestaña, que es donde
