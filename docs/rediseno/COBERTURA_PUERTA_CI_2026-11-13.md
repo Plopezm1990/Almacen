@@ -93,13 +93,93 @@ Así que el hueco real de la puerta eran **dos flujos**:
 `p2-edge-security-candidate` y `p2-r03a-release-current`, cuyos contratos leen
 `fuente.js` y cuyo filtro no lo nombraba ni a él ni a su copia.
 
-**Arreglado**, con el mismo método de siempre: primero comprobar que sus tres
-contratos pasan en esta rama —`P2_R03A_CONTRACT_OK=1`,
-`P2_EDGE_SECURITY_CONTRACT_OK=1`, `P2_EDGE_SECURITY_BEHAVIOR_OK=1`— y solo
-entonces añadir `fuente.js` y la copia legible a sus rutas.
+Eso creí, y añadí `fuente.js` y la copia legible a sus rutas tras comprobar que
+sus tres contratos pasan en esta rama —`P2_R03A_CONTRACT_OK=1`,
+`P2_EDGE_SECURITY_CONTRACT_OK=1`, `P2_EDGE_SECURITY_BEHAVIOR_OK=1`—. **Estaba
+mal, y la puerta remota lo dijo**: la sección siguiente cuenta por qué.
 
 La lección: **una auditoría que cuenta ficheros no sabe lo que importa.** Medir
 los 37 estuvo bien; haber dicho que los 37 eran un agujero de la puerta, no.
+
+## Corrección del 14/11, la segunda: los dos tampoco eran un hueco
+
+El PR se puso en rojo en `p2-r03a` y `edge-security`, los dos flujos cuyo filtro
+había ampliado, y en ninguno falló un contrato. Falló el primer paso, que en
+los dos se llama **«Frontera exacta del candidato»**.
+
+Lo que hace ese paso es comparar los archivos que el PR cambia contra una lista
+fija y abortar si no coinciden:
+
+```bash
+BASE='a34ac998f6e806e4dbeefaf511f4de6ca3bbbfc4'
+mapfile -t changed < <(git diff --name-only "$BASE"...HEAD | LC_ALL=C sort)
+expected=$'.github/scripts/p2-r03a/contract.mjs
+…'   # cinco archivos
+test "$actual" = "$expected"
+```
+
+Es decir: **su `paths:` no es un filtro de cobertura, es un cerrojo de disparo.**
+No está ahí para que el contrato corra cuando cambia lo que lee; está ahí para
+que el flujo solo se despierte en su propio candidato histórico. Ampliárselo no
+mejora nada: lo único que consigue es que se dispare en PRs que su frontera va a
+rechazar. Es lo que pasó.
+
+`edge-security` lo hace de forma algo más fina —filtra los cambios del PR a su
+propio perímetro y acepta siete formas conocidas de ese subconjunto— y ahí el
+detalle es casi cómico: el único archivo de su perímetro que este PR tocaba era
+**el propio workflow, porque yo acababa de editarle las rutas**. Un perímetro de
+un solo archivo no coincide con ninguna forma aceptada, y abortó:
+
+```
+Perímetro P2-SEC no reconocido:
+.github/workflows/p2-edge-security-candidate.yml
+```
+
+**Revertido.** Las cuatro líneas que añadí se han quitado y los dos flujos
+vuelven a no dispararse en este PR, que es lo correcto para lo que son.
+
+### Por qué `p2-p06` sí se podía ampliar
+
+Porque es el único de los siete que **degrada en vez de abortar**:
+
+```bash
+if [ "$actual" != "$expected" ]; then
+  echo "P2_P06_SCOPE=SKIP_MIXED_PR"
+else
+  echo "P2_P06_SCOPE=PASS"
+fi
+```
+
+Reconoce que un PR mixto no es su candidato, lo dice, y sigue ejecutando sus
+contratos. Por eso ampliarle el filtro funcionó y por eso aquella ampliación se
+queda: es lo que puso a correr su contrato en este PR y lo que destapó que
+exigía la forma vieja de `edge-auth-patch.js`.
+
+### La clase, contada
+
+Siete flujos tienen frontera exacta, todos en PR a `release`, y **seis abortan**:
+
+| | |
+|---|---|
+| Con frontera exacta | **7** |
+| De esos, que abortan si el PR no es su candidato | **6** |
+| Que degradan a `SKIP_MIXED_PR` | 1 (`p2-p06`) |
+
+La auditoría ya lo sabe: `FLUJOS_CON_FRONTERA_EXACTA=7`, y con `--paquete`
+marca `[FRONTERA EXACTA: no ampliar]` en los que además salen como ciegos al
+paquete. Así el próximo que lea la lista no repite mi error.
+
+### Y el recuento honesto
+
+Dije que el hueco real de la puerta eran dos flujos. **Eran cero.** Los dos que
+quedaban no son puerta de PRs futuros: son certificaciones de un candidato
+histórico concreto que siguen escuchando `pull_request`. Que no se disparen con
+el paquete no es un descuido, es su diseño.
+
+Convertir esos seis en algo que degrade como `p2-p06` **sí** sería una mejora de
+la puerta, y **no se hace aquí**: cambia el comportamiento de la puerta en todos
+los PR futuros y no tiene nada que ver con la apariencia. Queda medido y con el
+ejemplo de cómo se arregla uno, que es `p2-p06`.
 
 ## Lo que no se ha hecho, y por qué
 

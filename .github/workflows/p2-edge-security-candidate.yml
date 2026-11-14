@@ -5,8 +5,6 @@ on:
     branches: [release]
     paths:
       - '.github/scripts/p2-edge-security/**'
-      - 'fuente.js'
-      - 'source-recovery/fuente-recuperado.js'
       - '.github/workflows/p2-edge-security-candidate.yml'
       - 'docs/plan-maestro/P2_EDGE_SECURITY_CANDIDATE.md'
       - 'supabase/functions/_shared/tenant-scope.js'

@@ -18,6 +18,12 @@
  *   node docs/rediseno/auditar-filtros-de-rutas.mjs --detalle  # con los huecos
  *   node docs/rediseno/auditar-filtros-de-rutas.mjs --paquete  # solo el bundle
  *
+ * Aviso que costo dos rojos en el PR #225: hay flujos cuyo `paths:` NO es un
+ * filtro de cobertura sino un cerrojo de disparo. Fijan el conjunto exacto de
+ * archivos del candidato ("Frontera exacta del candidato") y abortan si el PR
+ * trae otra cosa. A esos ampliarles el filtro no mejora nada: los pone en rojo.
+ * Esta auditoria los marca aparte, en FLUJOS_CON_FRONTERA_EXACTA.
+ *
  * Sale con codigo 0 siempre: es una auditoria para leer, no una puerta.
  */
 import fs from 'node:fs';
@@ -73,8 +79,15 @@ function archivosQueLee(texto) {
   return leidos;
 }
 
+// Un flujo con frontera exacta compara los archivos cambiados del PR contra una
+// lista fija y aborta si no coinciden. Su `paths:` forma parte de ese cerrojo,
+// asi que ampliarlo es estrictamente danino: lo unico que consigue es que el
+// flujo se dispare en PRs que su frontera va a rechazar.
+const FRONTERA_EXACTA = new RegExp('Frontera exacta del candidato|expected=' + String.fromCharCode(36, 39));
+
 let conFiltro = 0, sinFiltro = 0, leenPaquete = 0;
 const ciegosAlPaquete = [];
+const conFrontera = [];
 const huecos = [];
 
 for (const nombre of fs.readdirSync(DIR_FLUJOS).sort()) {
@@ -87,6 +100,8 @@ for (const nombre of fs.readdirSync(DIR_FLUJOS).sort()) {
 
   const leidos = [...archivosQueLee(texto)].filter(f => fs.existsSync(f));
   const faltan = leidos.filter(f => !cubierto(f, filtro)).sort();
+  if (FRONTERA_EXACTA.test(texto)) conFrontera.push(nombre);
+
   const delPaquete = leidos.filter(f => PAQUETE.has(f));
   if (delPaquete.length) {
     leenPaquete++;
@@ -100,10 +115,16 @@ console.log(`FLUJOS_SIN_FILTRO=${sinFiltro}`);
 console.log(`FLUJOS_QUE_LEEN_EL_PAQUETE=${leenPaquete}`);
 console.log(`FLUJOS_CIEGOS_AL_PAQUETE=${ciegosAlPaquete.length}`);
 console.log(`FLUJOS_CON_ALGUN_HUECO=${huecos.length}`);
+console.log(`FLUJOS_CON_FRONTERA_EXACTA=${conFrontera.length}`);
 
 if (soloPaquete || detalle) {
   console.log('\nCiegos al paquete (su contrato lo lee, su filtro no lo incluye):');
-  for (const n of ciegosAlPaquete) console.log('  -', n);
+  for (const n of ciegosAlPaquete) {
+    const aviso = conFrontera.includes(n) ? '   [FRONTERA EXACTA: no ampliar]' : '';
+    console.log('  -', n + aviso);
+  }
+  console.log('\nCon frontera exacta (su filtro es un cerrojo, no cobertura):');
+  for (const n of conFrontera) console.log('  -', n);
 }
 if (detalle && !soloPaquete) {
   console.log('\nTodos los huecos:');

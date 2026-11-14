@@ -5,8 +5,6 @@ on:
     branches: [release]
     paths:
       - '.github/workflows/p2-r03a-release-current.yml'
-      - 'fuente.js'
-      - 'source-recovery/fuente-recuperado.js'
       - '.github/scripts/p2-r03a/**'
       - 'docs/plan-maestro/P2_R03A_RELEASE_CURRENT.md'
       - 'supabase/migrations/20260916195500_p2_r03a_restore_pm08_pm09_post_reset.sql'
