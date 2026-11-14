@@ -17601,6 +17601,7 @@ ${cuerpo}`;
                 actualizarConteoItem(activo.id, it2.productoId, "conteo", tecleado);
               }
             },
+            "aria-label": `Conteo de ${p22.nombre}`,
             className: "w-full rounded px-2 py-1.5 text-[13px] text-center mono",
             style: {
               border: `1px solid ${sinContar ? C2.line : C2.accent}`,
