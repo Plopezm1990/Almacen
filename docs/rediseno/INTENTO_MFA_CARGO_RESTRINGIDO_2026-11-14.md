@@ -87,6 +87,60 @@ probadas, un Camarero/a alcanza **tres** —inicio, TPV y cocina— y se le deni
 **ocho**: caja, devoluciones, configuración, productos, personal, informes,
 proveedores y pedidos.
 
+## Segunda vuelta, con la sesión de propietario: ya hay Cajero/a
+
+**Un error mío, primero.** El formulario de crear cuenta *sí* tiene un
+selector **«Rol»** con Encargado, Camarero/a, Cajero/a y Churrero/a. No lo vi
+porque mi filtro de campos buscaba por nombre y ese es un `select` que se
+llama «Rol». La cuenta salió Camarero/a porque dejé el valor por omisión, que
+está puesto a `"Camarero/a"` en el código. No era un defecto del producto: era
+que no lo rellené.
+
+Con el propietario dentro creé **QA Cajero MFA2 20261114** eligiendo Rol
+**Cajero/a**, inscribí el segundo factor calculando el TOTP igual que antes, y
+el servidor abrió la sesión: **`rol: "Cajero/a"`**. Es la primera sesión de un
+cargo restringido de verdad en todo este trabajo.
+
+### La guarda de navegación, comparada
+
+| Cargo | Alcanza | Se le deniega |
+|---|---|---|
+| Camarero/a | 3: inicio, TPV, cocina | 8 |
+| Cajero/a | 5: inicio, TPV, cocina, **caja, devoluciones** | 6 |
+
+La diferencia es exactamente caja y devoluciones, que es lo que dice su
+descripción: «cobros y operaciones de caja».
+
+### F2 con Cajero/a, contestado por el servidor
+
+| Operación | Respuesta |
+|---|---|
+| `leerEmpresa()` | funciona: `orbita`, revisión 8 |
+| `estadoServidor()` | `puedeAplicar: false` |
+| `listarDelegaciones()` | `sin-permiso`, `servidor: true` |
+| `guardarEmpresa(...)` | `sin-permiso`, `servidor: true` |
+| `restaurarAnterior()` | `sin-permiso`, `servidor: true` |
+
+Y tras los intentos, `orbita` revisión 8: **sin cambios**. Mismo resultado que
+con Camarero/a, lo cual es la respuesta correcta: ninguno de los dos cargos
+puede tocar la apariencia, y la negativa la da el servidor.
+
+## El hueco que queda, y ya está confirmado dos veces
+
+**Crear una cuenta desde Personal no le da pertenencia a ningún local.** Las
+dos cuentas que creé, con dos cargos distintos, caen en un «Local principal»
+generado en el equipo, cuyo id cambia en cada carga, y su selector de local
+ofrece solo «Todos los locales» y «Local principal»: **QA-A1 no aparece**.
+Encima la aplicación no puede ni guardar cuál es, porque `almacen_kv` niega
+`localActivoId`.
+
+Consecuencia práctica: todo lo que es **de empresa** se puede certificar con
+estos cargos —y queda certificado—, pero todo lo que es **de local** no, porque
+el servidor contesta antes «No hay ningún terminal TPV activo configurado para
+este local» y no llega a mirar el cargo. Las pruebas de caja, cobros y
+reembolsos por cargo siguen fuera de alcance hasta que una cuenta tenga
+membresía real en QA-A1, y eso no se puede dar desde la interfaz.
+
 ## Lo que queda, y de quién depende
 
 Para las comprobaciones de Encargado y Cajero/a hace falta que **el propietario**
