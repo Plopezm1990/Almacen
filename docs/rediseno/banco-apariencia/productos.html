@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="claro">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Banco - lista de productos</title>
+<style>
+  :root { --c-bg:#F7F2E8; --c-surface:#FFFDF8; --c-ink:#1B2420; --c-ink-soft:#4F5B55;
+          --c-line:#8F8470; --c-divider:#E3DACA; --c-accent:#7A5718; --c-chrome:#123B2D; }
+  html,body{margin:0;background:var(--c-bg);color:var(--c-ink);font:14px/1.4 'IBM Plex Sans',system-ui}
+  .envoltorio{padding:16px;max-width:1100px;margin:0 auto}
+  .tarjeta{background:var(--c-surface);border:1px solid var(--c-divider);border-radius:14px;padding:0;overflow:hidden}
+  table{width:100%;border-collapse:collapse;font-size:12.5px}
+  thead tr{color:var(--c-ink-soft);border-bottom:1px solid var(--c-line)}
+  th{text-align:left;font-weight:500;padding:10px 12px}
+  td{padding:10px 12px;border-bottom:1px solid var(--c-line)}
+  .filtros{display:flex;gap:8px;margin-bottom:10px;overflow-x:auto}
+  .filtros button{font-size:12px;font-weight:500;padding:6px 12px;border-radius:999px;white-space:nowrap;
+    background:var(--c-surface);color:var(--c-ink-soft);border:1px solid var(--c-line);cursor:pointer}
+  .filtros button[aria-pressed="true"]{background:var(--c-chrome);color:#fff;border-color:var(--c-chrome)}
+  .acciones button{font-size:12px;padding:4px 8px;border:1px solid var(--c-line);border-radius:8px;background:transparent;cursor:pointer}
+</style>
+<link rel="stylesheet" href="./la-apariencia.css" />
+</head>
+<body>
+<div id="root"><main><div class="envoltorio">
+  <div class="filtros" role="group" aria-label="Tipo">
+    <button type="button" aria-pressed="true" class="rounded-full">Todos</button>
+    <button type="button" aria-pressed="false" class="rounded-full">Materia prima</button>
+    <button type="button" aria-pressed="false" class="rounded-full">Consumible</button>
+    <button type="button" aria-pressed="false" class="rounded-full">Elaborado</button>
+  </div>
+  <div class="filtros" role="group" aria-label="Departamento">
+    <button type="button" aria-pressed="true" class="rounded-full">Todos los departamentos</button>
+    <button type="button" aria-pressed="false" class="rounded-full">Bebidas</button>
+    <button type="button" aria-pressed="false" class="rounded-full">Bollería</button>
+  </div>
+  <div class="tarjeta">
+    <table>
+      <thead><tr>
+        <th>Producto</th><th>Stock</th><th>Costo s/IVA</th><th>PVP c/IVA</th><th>Margen</th>
+        <th style="text-align:center">ABC</th><th></th>
+      </tr></thead>
+      <tbody id="cuerpo"></tbody>
+    </table>
+  </div>
+</main></div>
+<script src="./la-tablas-fichas.js"></script>
+<script>
+/* La misma hoja que inyecta el componente Productos en fuente.js. */
+
+
+const datos = [
+  ['Café solo (QA)','48 ud','0,55 €','1,10 €','50 %','A'],
+  ['Croissant (QA)','12 ud','0,61 €','1,32 €','54 %','B'],
+  ['Agua 50 cl (QA)','0 ud','0,42 €','1,00 €','58 %','C'],
+  ['Bocadillo de jamón (QA)','9 ud','2,30 €','4,95 €','53 %','A']
+];
+document.getElementById('cuerpo').innerHTML = datos.map(f =>
+  '<tr>' + f.map((v,i)=>'<td'+(i===5?' style="text-align:center"':'')+'>'+v+'</td>').join('')
+  + '<td class="acciones"><button type="button">Registrar salida</button> <button type="button">Editar</button></td></tr>'
+).join('');
+
+window.__medir = function(){
+  const anchoFicha = window.innerWidth <= 760;
+  const tds = [...document.querySelectorAll('tbody tr:first-child td')];
+  const etiquetas = tds.map(td => getComputedStyle(td,'::before').content).filter(c=>c && c!=='none');
+  const chips = [...document.querySelectorAll('.filtros button')];
+  return {
+    ancho: window.innerWidth,
+    modoFicha: anchoFicha,
+    cabeceraOculta: getComputedStyle(document.querySelector('thead')).display === 'none',
+    etiquetasVisibles: etiquetas.length,
+    etiquetas: etiquetas.slice(0,7),
+    chipsBajo44: chips.filter(b=>b.getBoundingClientRect().height < 44).length,
+    totalChips: chips.length,
+    desbordaH: document.documentElement.scrollWidth > window.innerWidth + 1
+  };
+};
+</script>
+</body>
+</html>

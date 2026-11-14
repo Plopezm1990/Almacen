@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="claro">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Banco de pruebas - panel Pase</title>
+<link rel="stylesheet" href="./la-apariencia.css" />
+<link rel="stylesheet" href="./la-pase.css" />
+<style>
+  :root, [data-tema="claro"] {
+    --c-bg:#F7F2E8; --c-surface:#FFFDF8; --c-ink:#1B2420; --c-ink-soft:#4F5B55;
+    --c-line:#8F8470; --c-border-control:#8F8470; --c-divider:#E3DACA;
+    --c-accent:#7A5718; --c-accent-fill:#123B2D; --c-on-accent:#F7F2E8; --c-accent-soft:#E6EEE9;
+    --c-amber:#7F5300; --c-amber-soft:#FBEFD6; --c-red:#A3302A; --c-red-soft:#F9E3E0;
+  }
+  html,body{margin:0}
+  body{background:var(--c-bg);color:var(--c-ink);font-family:var(--la-font,'IBM Plex Sans',system-ui,sans-serif)}
+  main{padding:16px;max-width:1240px;margin:0 auto}
+  #registro{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;background:var(--c-surface);border:1px solid var(--c-divider);border-radius:10px;padding:10px;margin-top:16px}
+</style>
+</head>
+<body>
+<div id="root"><main><div id="registro">(sin pruebas)</div></main></div>
+
+<script>
+  /* Contexto y almacenamiento simulados: ni red ni datos reales. */
+  window.__empresaActivaIdParaContexto = "QA-EMP-A";
+  window.__usuarioActivoNombre = "Banco de pruebas";
+  var memoria = {};
+  window.storage = {
+    get: async function (k) { return { key: k, value: memoria[k] || null, shared: false }; },
+    set: async function (k, v) { memoria[k] = v; },
+    delete: async function (k) { delete memoria[k]; }
+  };
+</script>
+<script src="./la-apariencia.js"></script>
+<script src="./la-pase-panel.js"></script>
+<script>
+/* ---- Datos de muestra con la MISMA forma que abc_listar_mapa_sala ---- */
+function mapaDePrueba() {
+  return {
+    ok: true,
+    operatingDay: "2026-11-13",
+    zonas: [
+      { zona_id: "z1", codigo: "INT", nombre: "Interior", tipo: "SALA", orden: 1, version: 1, mesas: [
+        { mesa_id: "m1", codigo: "01", nombre: "Mesa 1", capacidad: 4, orden: 1, version: 1, estado_manual: "NORMAL", estado_efectivo: "LIBRE", ocupacion_comensales: 0, sobre_capacidad: false, cuentas: [] },
+        { mesa_id: "m2", codigo: "02", nombre: "Mesa 2", capacidad: 2, orden: 2, version: 1, estado_manual: "NORMAL", estado_efectivo: "OCUPADA", ocupacion_comensales: 2, sobre_capacidad: false, cuentas: [{ cuenta_id: "c1", cuenta_version: 3, modalidad: "SALA", responsable_actual: "u1", comensales: 2, asignada_desde: "2026-11-13T12:05:00Z" }] },
+        { mesa_id: "m3", codigo: "03", nombre: "Mesa 3", capacidad: 4, orden: 3, version: 1, estado_manual: "BLOQUEADA", estado_efectivo: "BLOQUEADA", ocupacion_comensales: 0, sobre_capacidad: false, cuentas: [] }
+      ] },
+      { zona_id: "z2", codigo: "TER", nombre: "Terraza", tipo: "TERRAZA", orden: 2, version: 1, mesas: [
+        { mesa_id: "m8", codigo: "08", nombre: "Mesa 8", capacidad: 4, orden: 1, version: 1, estado_manual: "NORMAL", estado_efectivo: "OCUPADA", ocupacion_comensales: 6, sobre_capacidad: true, cuentas: [{ cuenta_id: "c2", cuenta_version: 1, modalidad: "SALA", responsable_actual: "u2", comensales: 6, asignada_desde: "2026-11-13T11:40:00Z" }] },
+        { mesa_id: "m9", codigo: "09", nombre: "Mesa 9", capacidad: 2, orden: 2, version: 1, estado_manual: "RESERVADA", estado_efectivo: "RESERVADA", reservada_hasta: "2026-11-13T21:00:00Z", ocupacion_comensales: 0, sobre_capacidad: false, cuentas: [] }
+      ] }
+    ]
+  };
+}
+
+function puenteDePrueba(opciones) {
+  var o = opciones || {};
+  return {
+    version: 1,
+    tabActual: "dashboard",
+    empresaId: "QA-EMP-A",
+    localId: "QA-A1",
+    rol: o.rol || "Propietario",
+    modoEmpleado: !!o.modoEmpleado,
+    irA: function (t, destino) { window.__ultimoIrA = t; window.__ultimoDestino = destino; },
+    puedeConsultar: o.puedeConsultar || function () { return true; },
+    cargarMapaSala: o.cargarMapaSala || async function () { return mapaDePrueba(); },
+    consultarCaja: o.consultarCaja,
+    listarPedidosTurno: o.listarPedidosTurno,
+    listarComandas: o.listarComandas || async function () {
+      return { ok: true, comandas: [
+        { pedido_id: "p1", operation_id: "op-1", tipo: "NUEVA", estado: "PENDIENTE", mesa_codigo: "02" },
+        { pedido_id: "p2", operation_id: "op-2", tipo: "NUEVA", estado: "RECIBIDA", mesa_codigo: "08" }
+      ] };
+    }
+  };
+}
+
+var registro = document.getElementById("registro");
+window.__res = [];
+function linea(t) { registro.textContent += "\n" + t; }
+function comprueba(nombre, ok, detalle) {
+  window.__res.push({ nombre: nombre, ok: !!ok, detalle: detalle || "" });
+  linea((ok ? "PASA  " : "FALLA ") + nombre + (detalle ? " - " + detalle : ""));
+}
+function esperar(ms) { return new Promise(function (r) { setTimeout(r, ms); }); }
+function panel() { return document.getElementById("la-pase-panel"); }
+
+(async function () {
+  registro.textContent = "Comprobaciones del panel Pase";
+  var P = window.LAPasePanel;
+  /* Deja que el motor de apariencia resuelva su estado inicial. */
+  await esperar(400);
+
+  /* 1. Sin el disenno Pase el panel no se monta. */
+  window.__laPuenteRediseno = puenteDePrueba();
+  window.LAApariencia.aplicar({ diseno: "oliva" }, "empresa");
+  P.pintar();
+  comprueba("con otro disenno el panel no se monta", !panel());
+
+  /* 2. Con Pase se monta y dibuja las zonas reales. */
+  window.LAApariencia.aplicar({ diseno: "pase" }, "empresa");
+  await P.cargar(true);
+  await esperar(80);
+  var p = panel();
+  comprueba("con Pase el panel se monta", !!p);
+  var zonas = p ? p.querySelectorAll(".la-pase-zona") : [];
+  comprueba("dibuja las dos zonas del servidor", zonas.length === 2, zonas.length + " zonas");
+  var mesas = p ? p.querySelectorAll(".la-pase-mesa") : [];
+  comprueba("dibuja las cinco mesas activas", mesas.length === 5, mesas.length + " mesas");
+
+  /* 3. Los estados del servidor se traducen sin inventar. */
+  var etiquetas = [...mesas].map(function (b) { return b.getAttribute("data-estado"); });
+  comprueba("mapea LIBRE, OCUPADA, BLOQUEADA y RESERVADA",
+    etiquetas.join(",") === "LIBRE,OCUPADA,BLOQUEADA,OCUPADA,RESERVADA", etiquetas.join(","));
+  comprueba("un estado desconocido no se inventa",
+    P.etiquetaEstado({ estado_efectivo: "RARO" }) === "RARO" &&
+    P.etiquetaEstado({}) === "Estado desconocido");
+
+  /* 4. Cada mesa tiene nombre accesible con zona, estado y plazas. */
+  var etq = mesas[1] ? mesas[1].getAttribute("aria-label") : "";
+  comprueba("la mesa expone zona, estado y plazas a lectores",
+    /Mesa 2.*Interior.*Cuenta abierta.*2 plazas/.test(etq), etq);
+
+  /* 5. El filtro por zona reduce el plano. */
+  var botonTerraza = [...p.querySelectorAll(".la-pase-plano-cab .la-pase-filtros button")]
+    .filter(function (b) { return b.textContent === "Terraza"; })[0];
+  botonTerraza.click();
+  await esperar(50);
+  comprueba("el filtro por zona deja solo esa zona",
+    panel().querySelectorAll(".la-pase-zona").length === 1 &&
+    panel().querySelectorAll(".la-pase-mesa").length === 2);
+  [...panel().querySelectorAll(".la-pase-plano-cab .la-pase-filtros button")]
+    .filter(function (b) { return b.textContent === "Todas"; })[0].click();
+  await esperar(50);
+
+  /* 6. Seleccionar una mesa libre ofrece abrirla; una ocupada, ver la cuenta. */
+  panel().querySelectorAll(".la-pase-mesa")[0].click();
+  await esperar(50);
+  var det = panel().querySelector(".la-pase-detalle");
+  comprueba("una mesa libre ofrece abrirla en el TPV",
+    !!det && /Abrir mesa en el TPV/.test(det.textContent), det ? det.textContent.slice(0, 70) : "sin detalle");
+  det.querySelector("button").click();
+  comprueba("la navegación al TPV conserva la mesa elegida",
+    window.__ultimoIrA === "venta" && window.__ultimoDestino.mesaId === "m1");
+  panel().querySelectorAll(".la-pase-mesa")[1].click();
+  await esperar(50);
+  det = panel().querySelector(".la-pase-detalle");
+  comprueba("una mesa con cuenta ofrece verla en el TPV",
+    !!det && /Ver cuenta en el TPV/.test(det.textContent));
+  comprueba("avisa de la mesa por encima de su capacidad",
+    (function () {
+      panel().querySelectorAll(".la-pase-mesa")[3].click();
+      var d = panel().querySelector(".la-pase-detalle");
+      return !!d && /por encima de su capacidad/.test(d.textContent);
+    })());
+
+  /* 7. Una mesa bloqueada no ofrece accion. */
+  panel().querySelectorAll(".la-pase-mesa")[2].click();
+  await esperar(50);
+  det = panel().querySelector(".la-pase-detalle");
+  comprueba("una mesa bloqueada no ofrece servicio",
+    !!det && /no admite servicio/.test(det.textContent) && !det.querySelector("button"));
+
+  /* 8. La navegacion pasa por el puente de la aplicacion. */
+  window.__ultimoIrA = null;
+  [...panel().querySelectorAll(".la-pase-accesos button")]
+    .filter(function (b) { return b.textContent === "Ver cocina"; })[0].click();
+  comprueba("los accesos navegan por el puente de la aplicacion", window.__ultimoIrA === "cocina", String(window.__ultimoIrA));
+
+  /* 9. Un cargo sin permiso ve el acceso desactivado, no oculto. */
+  window.__laPuenteRediseno = puenteDePrueba({ rol: "Camarero", puedeConsultar: function (t) { return t !== "caja"; } });
+  await P.cargar(true); await esperar(80);
+  var caja = [...panel().querySelectorAll(".la-pase-accesos button")]
+    .filter(function (b) { return b.textContent === "Revisar caja"; })[0];
+  comprueba("sin permiso, el acceso queda desactivado y explicado",
+    !!caja && caja.disabled && /no tiene acceso/.test(caja.getAttribute("title") || ""));
+
+  /* 10. Sala sin configurar: mensaje real, sin plano inventado. */
+  window.__laPuenteRediseno = puenteDePrueba({ cargarMapaSala: async function () { return { ok: true, zonas: [] }; } });
+  await P.cargar(true); await esperar(80);
+  comprueba("una sala sin zonas lo comunica",
+    /no tiene zonas ni mesas configuradas/.test(panel().textContent) &&
+    panel().querySelectorAll(".la-pase-mesa").length === 0);
+
+  /* 11. El error del servidor se muestra tal cual, con salida al TPV. */
+  window.__laPuenteRediseno = puenteDePrueba({ cargarMapaSala: async function () {
+    return { ok: false, requiereCuenta: true, error: "Guarda primero un pedido real para cargar la sala con el dia operativo y la sesion del servidor." };
+  } });
+  await P.cargar(true); await esperar(80);
+  comprueba("un error del servidor se muestra literal y ofrece el TPV",
+    /Guarda primero un pedido real/.test(panel().textContent) &&
+    [...panel().querySelectorAll("button")].some(function (b) { return b.textContent === "Abrir TPV"; }));
+
+  /* 12. La cola usa los estados que devuelve el servidor. */
+  window.__laPuenteRediseno = puenteDePrueba();
+  await P.cargar(true); await esperar(80);
+  var filas = panel().querySelectorAll(".la-pase-cola li");
+  comprueba("la cola lista las comandas del servidor", filas.length === 2, filas.length + " filas");
+  [...panel().querySelectorAll(".la-pase-caja .la-pase-filtros button")]
+    .filter(function (b) { return b.textContent === "Pendientes"; })[0].click();
+  await esperar(50);
+  comprueba("el filtro de la cola deja solo las pendientes",
+    panel().querySelectorAll(".la-pase-cola li").length === 1);
+
+  /* 13. Cola vacia lo comunica. */
+  window.__laPuenteRediseno = puenteDePrueba({ listarComandas: async function () { return { ok: true, comandas: [] }; } });
+  await P.cargar(true); await esperar(80);
+  comprueba("una cola vacia lo comunica", /No hay comandas en la cola/.test(panel().textContent));
+
+  /* 14. Ningun control operativo por debajo de 44x44. */
+  window.__laPuenteRediseno = puenteDePrueba();
+  await P.cargar(true); await esperar(80);
+  var peq = [...panel().querySelectorAll("button")].filter(function (b) {
+    var r = b.getBoundingClientRect();
+    return r.width > 0 && (r.height < 44 || r.width < 44);
+  }).map(function (b) { return b.textContent.slice(0, 18) + " " + Math.round(b.getBoundingClientRect().width) + "x" + Math.round(b.getBoundingClientRect().height); });
+  comprueba("ningun control operativo baja de 44x44", peq.length === 0, peq.join(" | "));
+
+  /* 15. Al salir del panel del programa, el panel se retira. */
+  window.__laPuenteRediseno = puenteDePrueba();
+  window.__laPuenteRediseno.tabActual = "venta";
+  P.pintar();
+  comprueba("fuera del panel del programa, Pase se retira", !panel());
+
+  /* Respuestas lentas del local anterior no pueden reemplazar el plano actual. */
+  var resolverMapaAnterior;
+  window.__laPuenteRediseno = puenteDePrueba({ cargarMapaSala: function () {
+    return new Promise(function (resolve) { resolverMapaAnterior = resolve; });
+  } });
+  var cargaAnterior = P.cargar(true);
+  var puenteA2 = puenteDePrueba({ cargarMapaSala: async function () {
+    return { ok: true, zonas: [{ zona_id: "a2", nombre: "Solo A2", mesas: [] }] };
+  } });
+  puenteA2.localId = "QA-A2";
+  window.__laPuenteRediseno = puenteA2;
+  window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
+  await esperar(40);
+  resolverMapaAnterior(mapaDePrueba());
+  await cargaAnterior;
+  comprueba("cambiar de local descarta el plano y las respuestas del local anterior",
+    /Solo A2/.test(panel().textContent) && !/Mesa 1/.test(panel().textContent));
+
+  var consultasSinLocal = 0;
+  var puenteConsolidado = puenteDePrueba({ cargarMapaSala: async function () {
+    consultasSinLocal++;
+    return mapaDePrueba();
+  }, listarComandas: async function () { consultasSinLocal++; return { ok: true, comandas: [] }; } });
+  puenteConsolidado.localId = null;
+  window.__laPuenteRediseno = puenteConsolidado;
+  window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
+  await P.cargar(true);
+  comprueba("sin local activo se retira el plano previo y no se consulta la sala",
+    consultasSinLocal === 0 && !/Solo A2/.test(panel().textContent) && !P.estado().mapa &&
+    /Selecciona un local para ver sus mesas/.test(panel().textContent) &&
+    /Selecciona un local para ver sus comandas/.test(panel().textContent));
+
+  var consultasCaja = 0;
+  window.__laPuenteRediseno = puenteDePrueba({
+    consultarCaja: async function () { consultasCaja++; return { ok: true, sessionEstado: "ABIERTA" }; }
+  });
+  window.LAApariencia.aplicar({ diseno: "ascua" }, "empresa");
+  await P.cargar(true);
+  await esperar(40);
+  comprueba("Ascua usa el mismo contrato de sala y estado del terminal",
+    !!panel().querySelector(".la-ascua-anillo") && /El servicio, al punto/.test(panel().textContent) &&
+    /Caja del terminalAbierta/.test(panel().textContent) && consultasCaja > 0);
+  window.__laPuenteRediseno = puenteDePrueba({
+    rol: "Camarero",
+    puedeConsultar: function (id) { return id !== "caja"; },
+    consultarCaja: async function () { consultasCaja++; return { ok: true, sessionEstado: "ABIERTA" }; }
+  });
+  var previasCaja = consultasCaja;
+  window.dispatchEvent(new CustomEvent("la-puente:actualizado"));
+  await P.cargar(true);
+  await esperar(40);
+  comprueba("Ascua deja fuera los datos de caja si el cargo no puede abrir Caja",
+    !/Caja del terminal/.test(panel().textContent) && consultasCaja === previasCaja);
+
+  var muestrasTurno = [
+    { id: "enviado", estado: "ENVIADO", created_at: "2026-11-13T07:00:00Z" },
+    { id: "cuenta", estado: "SERVIDO", created_at: "2026-11-13T07:10:00Z" },
+    { id: "listo", estado: "PREPARADO", created_at: "2026-11-13T07:20:00Z" }
+  ];
+  window.__laPuenteRediseno = puenteDePrueba({
+    listarPedidosTurno: async function () { return { ok: true, pedidos: muestrasTurno, total: 151 }; }
+  });
+  await P.cargar(true);
+  comprueba("los pedidos listos aparecen antes que la cuenta abierta o enviada",
+    /Listo para servir/.test(panel().querySelector(".la-pase-cola li:first-child").textContent) &&
+    /3 de 151 pedidos/.test(panel().textContent));
+  panel().querySelector(".la-pase-cola li:first-child button").click();
+  comprueba("Ver en Cocina envía el identificador exacto del pedido",
+    window.__ultimoIrA === "cocina" && window.__ultimoDestino.pedidoId === "listo");
+  panel().querySelector('[aria-label="Filtrar pedidos en servicio"] button:last-child').click();
+  comprueba("el filtro Cuentas solo presenta pedidos ya servidos",
+    panel().querySelectorAll(".la-pase-cola li").length === 1 &&
+    /Cuenta abierta/.test(panel().querySelector(".la-pase-cola li").textContent));
+
+  var fallos = window.__res.filter(function (x) { return !x.ok; }).length;
+  linea("");
+  linea("TOTAL " + window.__res.length + " comprobaciones, " + fallos + " fallos");
+  window.__banco = { total: window.__res.length, fallos: fallos, resultados: window.__res };
+
+  /* Deja el panel montado para la inspeccion visual. */
+  window.__laPuenteRediseno = puenteDePrueba();
+  await P.cargar(true);
+})();
+</script>
+</body>
+</html>

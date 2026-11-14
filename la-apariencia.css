@@ -1,0 +1,681 @@
+/* ==========================================================================
+   L&A Suite - Capa de apariencia por empresa
+   --------------------------------------------------------------------------
+   Redisenno: nueve disennos registrados y seis paletas de biblioteca.
+   La capa es ADITIVA: redefine unicamente los tokens semanticos que el
+   programa ya usa (--c-*). No altera contratos, permisos ni operaciones.
+
+   Precedencia (de menor a mayor):
+     1. Interfaz base del programa (:root / [data-tema])
+     2. Disenno de la empresa          html[data-la-diseno="..."]
+     3. Paleta de biblioteca           html[data-la-paleta="..."]
+     4. Paleta propia / prueba         estilo en linea sobre <html> (JS)
+
+   Un disenno desconocido no coincide con ningun selector: la interfaz base
+   sigue siendo valida. Esa es la resiliencia exigida por el plan (2.6).
+   ========================================================================== */
+
+:root {
+  /* La barra lateral y las cabeceras del programa usan este color de marca. */
+  --c-chrome: #123B2D;
+  --la-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --la-display: var(--la-font);
+  --la-radio: 12px;
+}
+
+@media (min-width: 768px) {
+  #root [data-la-contenedor="claro"] { flex-direction: column; }
+  [data-la-contenedor="claro"] .la-claro-cabecera {
+    position: relative;
+    z-index: 10;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 20px;
+    padding: 8px clamp(12px, 2vw, 28px);
+    background: var(--c-surface);
+    border-bottom: 1px solid var(--c-line);
+  }
+}
+
+.la-claro-marca,
+.la-claro-cabecera nav,
+.la-claro-usuario {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+.la-claro-marca { gap: 8px; color: var(--c-ink-soft); }
+.la-claro-marca img { width: 32px; height: 32px; border-radius: 7px; }
+.la-claro-usuario { margin-inline-start: auto; }
+.la-claro-usuario > button {
+  min-width: 44px;
+  min-height: 44px;
+  color: var(--c-ink) !important;
+  background: var(--c-bg) !important;
+  border: 1px solid var(--c-border-control);
+}
+.la-claro-area { position: relative; }
+.la-claro-area button,
+.la-rumbo-acceso > button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 8px 12px;
+  border-radius: var(--la-radio);
+  color: var(--c-ink);
+  font-weight: 600;
+  text-align: left;
+}
+.la-claro-area button:hover,
+.la-claro-area button[data-activa="true"],
+.la-claro-area button[aria-expanded="true"],
+.la-claro-area button[aria-current="page"],
+.la-rumbo-dialogo [aria-selected="true"],
+.la-rumbo-dialogo [role="option"]:hover { background: var(--c-accent-soft); color: var(--c-accent); }
+.la-claro-area > button svg { transform: rotate(90deg); }
+.la-claro-area > button[aria-expanded="true"] svg { transform: rotate(-90deg); }
+.la-claro-destinos {
+  position: absolute;
+  inset-block-start: 100%;
+  inset-inline-start: 0;
+  width: max-content;
+  max-width: min(310px, 80vw);
+  max-height: min(62dvh, 460px);
+  overflow-y: auto;
+  padding: 6px;
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--la-radio);
+  background: var(--c-surface);
+  box-shadow: 0 8px 28px rgba(0, 0, 0, .14);
+}
+.la-claro-area:last-child .la-claro-destinos { inset-inline: auto 0; }
+.la-claro-area .la-claro-destinos[hidden] { display: none; }
+.la-claro-destinos button { width: 100%; }
+.la-claro-destinos svg { flex: none; }
+.la-claro-cuenta { margin-inline-start: auto; color: var(--c-ink-soft); }
+.la-rumbo-acceso { margin-block-end: 12px; }
+.la-rumbo-acceso > button {
+  border: 1px solid var(--c-border-control);
+  background: var(--c-surface);
+}
+.la-rumbo-acceso kbd {
+  display: none;
+  padding-inline: 4px;
+  color: var(--c-ink-soft);
+  font-size: .8em;
+}
+@media (pointer: fine) { .la-rumbo-acceso kbd { display: inline; } }
+.la-rumbo-dialogo {
+  box-sizing: border-box;
+  position: fixed;
+  inset: 0;
+  width: min(560px, calc(100% - 24px));
+  max-height: min(72dvh, 560px);
+  margin: auto;
+  overflow-y: auto;
+  padding: 16px;
+  color: var(--c-ink);
+  background: var(--c-surface);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--la-radio);
+  box-shadow: 0 18px 52px rgba(0, 0, 0, .25);
+}
+.la-rumbo-dialogo::backdrop { background: rgba(9, 12, 20, .55); }
+.la-rumbo-cab { display: flex; align-items: center; justify-content: space-between; }
+.la-rumbo-cab h2 { font-weight: 700; font-size: 1.2em; }
+.la-rumbo-cab button { display: grid; place-items: center; width: 44px; height: 44px; }
+.la-rumbo-dialogo input {
+  width: 100%;
+  min-height: 44px;
+  padding: 8px 10px;
+  color: var(--c-ink);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--la-radio);
+}
+.la-rumbo-dialogo input::placeholder { color: var(--c-ink-soft); }
+.la-rumbo-recuento { margin: 8px 0; font-size: .9em; color: var(--c-ink-soft); }
+.la-rumbo-guardadas { margin: 8px 0; }
+.la-rumbo-guardadas h3 { margin-bottom: 4px; font-size: .9em; font-weight: 700; }
+.la-rumbo-guardadas > div { display: flex; flex-wrap: wrap; gap: 4px; }
+.la-rumbo-guardadas button,
+.la-rumbo-fijar {
+  min-height: 44px;
+  padding: 6px 10px;
+  color: var(--c-ink);
+  background: var(--c-bg);
+  border: 1px solid var(--c-border-control);
+  border-radius: 6px;
+}
+.la-rumbo-fijar[aria-pressed="true"] { background: var(--c-accent-soft); }
+.la-rumbo-dialogo ul { list-style: none; padding: 0; margin: 0; }
+.la-rumbo-dialogo li {
+  display: grid;
+  grid-template-columns: 17px minmax(0, 1fr) minmax(0, 40%);
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  padding: 6px 8px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+.la-rumbo-dialogo small { color: var(--c-ink-soft); overflow-wrap: anywhere; text-align: right; }
+[data-tpv-caja="1"] .la-claro-cabecera,
+[data-tpv-caja="1"] .la-rumbo-acceso { display: none; }
+
+@media (min-width: 768px) {
+  [data-la-contenedor="sello"] > aside { width: 248px; }
+}
+
+.la-panel-diseno {
+  position: relative;
+  display: grid;
+  gap: 14px;
+  margin-block-end: 22px;
+  padding: clamp(14px, 3vw, 32px);
+  border: 1px solid var(--c-border-control);
+  border-radius: var(--la-radio);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  font-family: var(--la-font);
+}
+.la-panel-diseno-cab { position: relative; }
+.la-panel-contexto { color: var(--c-ink-soft); font-size: .9em; font-weight: 600; }
+.la-panel-diseno h2 {
+  margin: 2px 0 10px;
+  font: 700 clamp(24px, 4vw, 38px)/1.1 var(--la-display);
+  overflow-wrap: anywhere;
+}
+.la-panel-accesos { display: flex; gap: 8px; flex-wrap: wrap; }
+.la-panel-accesos button,
+.la-panel-indicadores button {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 44px;
+  border-radius: var(--la-radio);
+  font-weight: 600;
+  text-align: start;
+}
+.la-panel-accesos button {
+  padding: 8px 12px;
+  border: 1px solid var(--c-border-control);
+  background: var(--c-bg);
+  color: var(--c-ink);
+}
+.la-panel-accesos button:first-child { color: var(--c-on-accent); background: var(--c-accent-fill); }
+.la-panel-indicadores {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 150px), 1fr));
+  gap: 8px;
+}
+.la-panel-indicadores button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 5px 8px;
+  padding: 10px;
+  border: 1px solid var(--c-border-control);
+  background: var(--c-bg);
+}
+.la-panel-indicadores strong {
+  grid-column: 2;
+  overflow-wrap: anywhere;
+  font-size: clamp(17px, 2.5vw, 24px);
+  line-height: 1.15;
+}
+[data-la-panel="claro"] { padding: 14px; }
+[data-la-panel="claro"] h2 { font-size: 24px; }
+[data-la-panel="pulso"] { gap: 8px; padding: 14px; border-radius: 6px; }
+[data-la-panel="pulso"] .la-panel-indicadores button { border-radius: 6px; }
+[data-la-panel="patio"] .la-panel-accesos {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+}
+[data-la-panel="patio"] .la-panel-accesos button { min-height: 56px; }
+[data-la-panel="sello"] { border-block-start: 4px solid var(--c-accent-fill); }
+[data-la-panel="orbita"] {
+  --la-orbita-azul: #8CC3FF;
+  overflow: hidden;
+  background:
+    radial-gradient(ellipse at 82% -18%, rgba(154, 93, 255, .23), transparent 60%),
+    var(--c-surface);
+}
+html[data-la-diseno="orbita"]:not([data-la-paleta]):not([data-la-personalizada]) [data-la-panel="orbita"] h2 {
+  color: #D0ABFF;
+  background: linear-gradient(105deg, #D0ABFF, #B0A6FF 45%, #8CC3FF);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+[data-la-panel="orbita"] h2 em { font: italic 400 1.08em "Instrument Serif", Georgia, serif; }
+[data-la-panel="orbita"] .la-panel-diseno-cab { padding-block-end: 9px; }
+[data-la-panel="orbita"] .la-panel-indicadores { gap: 12px; }
+[data-la-panel="orbita"] .la-panel-indicadores button {
+  border-color: var(--c-border-control);
+  border-block-start: 2px solid var(--c-accent);
+  background: var(--c-surface);
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  backdrop-filter: blur(10px);
+}
+html:not([data-la-paleta]):not([data-la-personalizada]) [data-la-panel="orbita"] .la-panel-indicadores button:nth-child(2) { border-block-start-color: #B0A6FF; }
+html:not([data-la-paleta]):not([data-la-personalizada]) [data-la-panel="orbita"] .la-panel-indicadores button:nth-child(3) { border-block-start-color: #8CC3FF; }
+[data-la-panel="orbita"] .la-panel-indicadores svg { color: var(--c-accent); }
+@media (pointer: fine) and (prefers-reduced-motion: no-preference) {
+  [data-la-panel="orbita"] .la-panel-diseno-cab::after {
+    content: "";
+    display: block;
+    height: 1px;
+    margin-block-start: 10px;
+    background: radial-gradient(90px 1px at var(--la-orbita-puntero, -100px) 50%, var(--la-orbita-azul), transparent);
+  }
+  [data-la-panel="orbita"] button { transition: opacity .18s ease, border-color .18s ease; }
+  [data-la-panel="orbita"] button:hover { opacity: .88; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .la-orbita-entrada { animation: la-orbita-entrada .35s ease-out both; }
+  @keyframes la-orbita-entrada {
+    from { opacity: .65; transform: translateY(6px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+}
+
+/* ---------- 1 - Oliva - referencia general (verde y oro de la marca) ----- */
+html[data-la-diseno="oliva"] {
+  --c-bg: #F7F2E8;  --c-surface: #FFFDF8;
+  --c-ink: #1B2420; --c-ink-soft: #4F5B55;
+  --c-line: #8F8470; --c-border-control: #8F8470; --c-divider: #E3DACA;
+  --c-badge-ring: transparent; --c-focus-ring: #123B2D;
+  --c-accent: #7A5718; --c-accent-fill: #123B2D; --c-on-accent: #F7F2E8; --c-accent-soft: #E6EEE9;
+  --c-amber: #7F5300; --c-amber-fill: #7F5300; --c-on-amber: #FFFFFF; --c-amber-soft: #FBEFD6;
+  --c-red: #A3302A; --c-red-fill: #A3302A; --c-on-red: #FFFFFF; --c-red-soft: #F9E3E0;
+  --c-chrome: #123B2D;
+  --la-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --la-radio: 12px;
+}
+
+/* ---------- 2 - Claro - luminoso y compacto ----------------------------- */
+html[data-la-diseno="claro"] {
+  --c-bg: #F6F8FC;  --c-surface: #FFFFFF;
+  --c-ink: #17263B; --c-ink-soft: #4B5C75;
+  --c-line: #728198; --c-border-control: #728198; --c-divider: #D9E2EF;
+  --c-badge-ring: transparent; --c-focus-ring: #2744B3;
+  --c-accent: #244EBC; --c-accent-fill: #213760; --c-on-accent: #FFFFFF; --c-accent-soft: #E8EFFF;
+  --c-amber: #704800; --c-amber-fill: #704800; --c-on-amber: #FFFFFF; --c-amber-soft: #FFF2D8;
+  --c-red: #992C43; --c-red-fill: #992C43; --c-on-red: #FFFFFF; --c-red-soft: #FBEAF0;
+  --c-chrome: #182D56;
+  --la-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --la-radio: 10px;
+}
+
+/* ---------- 3 - Pulso - oscuro, analitico y denso ----------------------- */
+html[data-la-diseno="pulso"] {
+  --c-bg: #0B121B;  --c-surface: #131F2D;
+  --c-ink: #EFF7FF; --c-ink-soft: #B3C4D6;
+  --c-line: #7790A8; --c-border-control: #7790A8; --c-divider: #34485C;
+  --c-badge-ring: #FFFFFF; --c-focus-ring: #A2F2FD;
+  --c-accent: #78E2EE; --c-accent-fill: #78E2EE; --c-on-accent: #0B121B; --c-accent-soft: #173645;
+  --c-amber: #FFCF84; --c-amber-fill: #6B4A00; --c-on-amber: #FFFFFF; --c-amber-soft: #392B19;
+  --c-red: #FFADBD; --c-red-fill: #8E1F31; --c-on-red: #FFFFFF; --c-red-soft: #452331;
+  --c-chrome: #0C1622;
+  --la-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --la-radio: 8px;
+}
+
+/* ---------- 4 - Patio - calido y orientado a tareas --------------------- */
+html[data-la-diseno="patio"] {
+  --c-bg: #FFF7ED;  --c-surface: #FFFCF7;
+  --c-ink: #37261E; --c-ink-soft: #654B3E;
+  --c-line: #927366; --c-border-control: #927366; --c-divider: #E7D4C5;
+  --c-badge-ring: transparent; --c-focus-ring: #944132;
+  --c-accent: #963C2E; --c-accent-fill: #55362B; --c-on-accent: #FFF7ED; --c-accent-soft: #F7E5DF;
+  --c-amber: #76480D; --c-amber-fill: #76480D; --c-on-amber: #FFFFFF; --c-amber-soft: #FCECD0;
+  --c-red: #9C2937; --c-red-fill: #9C2937; --c-on-red: #FFFFFF; --c-red-soft: #FAE6E8;
+  --c-chrome: #38261E;
+  --la-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --la-radio: 14px;
+}
+
+/* ---------- 5 - Rumbo - navegacion por busqueda ------------------------- */
+html[data-la-diseno="rumbo"] {
+  --c-bg: #F6F3FC;  --c-surface: #FEFDFF;
+  --c-ink: #261D38; --c-ink-soft: #5E526E;
+  --c-line: #837494; --c-border-control: #837494; --c-divider: #DED6ED;
+  --c-badge-ring: transparent; --c-focus-ring: #5B30B3;
+  --c-accent: #5838A7; --c-accent-fill: #34234F; --c-on-accent: #F6F3FC; --c-accent-soft: #EEE7FB;
+  --c-amber: #744809; --c-amber-fill: #744809; --c-on-amber: #FFFFFF; --c-amber-soft: #FDF0DB;
+  --c-red: #9A2A4E; --c-red-fill: #9A2A4E; --c-on-red: #FFFFFF; --c-red-soft: #FBE8F1;
+  --c-chrome: #251938;
+  --la-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
+  --la-radio: 12px;
+}
+
+/* ---------- 6 - Sello - corporativa clasica ----------------------------- */
+html[data-la-diseno="sello"] {
+  --c-bg: #F6F4EE;  --c-surface: #FFFFFF;
+  --c-ink: #1B211E; --c-ink-soft: #4F5A54;
+  --c-line: #858E85; --c-border-control: #858E85; --c-divider: #DAD6CB;
+  --c-badge-ring: transparent; --c-focus-ring: #846622;
+  --c-accent: #846622; --c-accent-fill: #14432F; --c-on-accent: #F6F4EE; --c-accent-soft: #EAF3EC;
+  --c-amber: #8A5A00; --c-amber-fill: #8A5A00; --c-on-amber: #FFFFFF; --c-amber-soft: #F7EEDB;
+  --c-red: #A3261B; --c-red-fill: #A3261B; --c-on-red: #FFFFFF; --c-red-soft: #FBEAE6;
+  --c-chrome: #0D3323;
+  --la-font: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --la-display: "Source Serif 4", Georgia, serif;
+  --la-radio: 10px;
+}
+
+/* ---------- 7 - Orbita - panel oscuro de carbon, acero y coral ---------- */
+html[data-la-diseno="orbita"] {
+  --c-bg: #17191C;  --c-surface: #202328;
+  --c-ink: #F1F3F6; --c-ink-soft: #929DA7;
+  --c-line: #737D88; --c-border-control: #737D88; --c-divider: #343941;
+  --c-badge-ring: #FFFFFF; --c-focus-ring: #A6BBFF;
+  --c-accent: #FF8E7D; --c-accent-fill: #FF4B32; --c-on-accent: #17191C; --c-accent-soft: #342727;
+  --c-amber: #FFCE89; --c-amber-fill: #6B4A00; --c-on-amber: #FFFFFF; --c-amber-soft: #362727;
+  --c-red: #FFB5A9; --c-red-fill: #8E2A1E; --c-on-red: #FFFFFF; --c-red-soft: #3B2627;
+  --c-chrome: #15171B;
+  --la-font: "Inter", "Segoe UI", ui-sans-serif, sans-serif;
+  --la-radio: 14px;
+}
+
+/* ---------- 8 - Ascua - panel calido de rojo, naranja y crema ----------- */
+html[data-la-diseno="ascua"] {
+  --c-bg: #FFF7ED;  --c-surface: #FFFCF8;
+  --c-ink: #341514; --c-ink-soft: #6D4037;
+  --c-line: #A87969; --c-border-control: #A87969; --c-divider: #EAD0BF;
+  --c-badge-ring: transparent; --c-focus-ring: #7F1D1D;
+  --c-accent: #9C3425; --c-accent-fill: #7F1D1D; --c-on-accent: #FFF7ED; --c-accent-soft: #FFE4C7;
+  --c-amber: #78400D; --c-amber-fill: #78400D; --c-on-amber: #FFFFFF; --c-amber-soft: #FFF0DC;
+  --c-red: #A31D1D; --c-red-fill: #DC2626; --c-on-red: #FFFFFF; --c-red-soft: #FDE8E5;
+  --c-chrome: #631516;
+  --la-font: "Inter", "Segoe UI", ui-sans-serif, sans-serif;
+  --la-display: "Source Serif 4", Georgia, serif;
+  --la-radio: 14px;
+}
+
+/* ---------- 9 - Pase - panel de servicio (piloto operativo) ------------- */
+html[data-la-diseno="pase"] {
+  --c-bg: #F3F3EC;  --c-surface: #FFFFFF;
+  --c-ink: #19221D; --c-ink-soft: #536258;
+  --c-line: #829184; --c-border-control: #829184; --c-divider: #DDE1D6;
+  --c-badge-ring: transparent; --c-focus-ring: #285A3A;
+  --c-accent: #27533B; --c-accent-fill: #15251E; --c-on-accent: #F0F5E8; --c-accent-soft: #E4EFE4;
+  --c-amber: #734710; --c-amber-fill: #734710; --c-on-amber: #FFFFFF; --c-amber-soft: #F1F6D8;
+  --c-red: #98282B; --c-red-fill: #98282B; --c-on-red: #FFFFFF; --c-red-soft: #FCE9E7;
+  --c-chrome: #12241B;
+  --la-font: "Inter", "Segoe UI", ui-sans-serif, sans-serif;
+  --la-radio: 15px;
+  /* Tokens propios del panel de servicio (plano, cola y accesos). */
+  --la-pase-fondo: #12241B;
+  --la-pase-panel: #192F23;
+  --la-pase-tarjeta: #1D3528;
+  --la-pase-tinta: #F0F5E8;
+  --la-pase-tinta-suave: #BDCCBF;
+  --la-pase-lima: #D7F95D;
+}
+
+/* ==========================================================================
+   Biblioteca de seis paletas - Fondo, Tarjetas, Texto, Enlaces, Boton y
+   Detalle. Se aplican sobre cualquiera de los nueve disennos.
+   ========================================================================== */
+
+html[data-la-paleta="bosque"] {
+  --c-bg: #0F1F17; --c-surface: #1E3A2E; --c-ink: #C7CBB8;
+  --c-accent: #6B7F67; --c-accent-fill: #3E5A3F; --c-line: #3D4337;
+  --c-ink-soft: #9AA394; --c-divider: #2A3A2E; --c-border-control: #3D4337;
+  --c-on-accent: #F2F5EC; --c-accent-soft: #23402F; --c-badge-ring: #FFFFFF;
+  --c-focus-ring: #9BBE8E; --c-chrome: #0B1710;
+}
+html[data-la-paleta="cafe-tostado"] {
+  --c-bg: #1A120E; --c-surface: #3A2418; --c-ink: #D5C4AE;
+  --c-accent: #A88462; --c-accent-fill: #6B4A2E; --c-line: #4A4A46;
+  --c-ink-soft: #A99883; --c-divider: #352318; --c-border-control: #4A4A46;
+  --c-on-accent: #FBF4EA; --c-accent-soft: #3F2A1C; --c-badge-ring: #FFFFFF;
+  --c-focus-ring: #C9A077; --c-chrome: #130C09;
+}
+html[data-la-paleta="azul-ambar"] {
+  --c-bg: #0B132B; --c-surface: #1C2541; --c-ink: #F4D6B0;
+  --c-accent: #5BC0DE; --c-accent-fill: #D97706; --c-line: #3A506B;
+  --c-ink-soft: #C3B198; --c-divider: #222E4C; --c-border-control: #3A506B;
+  --c-on-accent: #1A1206; --c-accent-soft: #1F2B47; --c-badge-ring: #FFFFFF;
+  --c-focus-ring: #8FD8EE; --c-chrome: #070E20;
+}
+html[data-la-paleta="amatista"] {
+  --c-bg: #0E0B1D; --c-surface: #2A1E4D; --c-ink: #C9C2E3;
+  --c-accent: #8B7CC7; --c-accent-fill: #5A3B8C; --c-line: #3A3A52;
+  --c-ink-soft: #A49CC0; --c-divider: #27203F; --c-border-control: #3A3A52;
+  --c-on-accent: #F3F0FB; --c-accent-soft: #2E2452; --c-badge-ring: #FFFFFF;
+  --c-focus-ring: #AFA2E4; --c-chrome: #0A0816;
+}
+html[data-la-paleta="granada"] {
+  --c-bg: #1A0F2E; --c-surface: #3B1B4F; --c-ink: #F4D7D4;
+  --c-accent: #D6598F; --c-accent-fill: #FF6B6B; --c-line: #7A2E6F;
+  --c-ink-soft: #CBAFB2; --c-divider: #2E1742; --c-border-control: #7A2E6F;
+  --c-on-accent: #2A0B0B; --c-accent-soft: #3A1B4E; --c-badge-ring: #FFFFFF;
+  --c-focus-ring: #F2A0C2; --c-chrome: #140B24;
+}
+html[data-la-paleta="ascua"] {
+  --c-bg: #FFF7ED; --c-surface: #FFE4C7; --c-ink: #7F1D1D;
+  --c-accent: #F97316; --c-accent-fill: #DC2626; --c-line: #FDBA74;
+  --c-ink-soft: #9A3A32; --c-divider: #F6D6B4; --c-border-control: #D59A66;
+  --c-on-accent: #FFFFFF; --c-accent-soft: #FFEFDC; --c-badge-ring: transparent;
+  --c-focus-ring: #B4451B; --c-chrome: #7F1D1D;
+}
+
+/* ==========================================================================
+   Aplicacion de los tokens que el bundle todavia resuelve en linea.
+   El verde de marca se escribe como color fijo en algunos elementos; aqui se
+   reencamina al token para que el disenno de la empresa lo gobierne.
+   ========================================================================== */
+html[data-la-diseno] [style*="#123B2D"],
+html[data-la-paleta] [style*="#123B2D"] {
+  background-color: var(--c-chrome) !important;
+}
+
+html[data-la-diseno] body,
+html[data-la-paleta] body {
+  background: var(--c-bg);
+  font-family: var(--la-font);
+}
+
+/* La prueba navegable y la vista previa se sennalan sin tapar la operacion. */
+.la-apariencia-aviso {
+  position: fixed; left: 50%; transform: translateX(-50%);
+  bottom: max(14px, env(safe-area-inset-bottom));
+  z-index: 10060; display: flex; align-items: center; gap: 10px;
+  padding: 10px 14px; border-radius: 14px;
+  background: var(--c-surface); color: var(--c-ink);
+  border: 2px solid var(--c-accent-fill);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .24);
+  font: 600 13px/1.3 var(--la-font);
+  max-width: min(92vw, 540px);
+}
+.la-apariencia-aviso button {
+  min-height: 44px; min-width: 44px; padding: 0 12px;
+  border-radius: 10px; border: 1px solid var(--c-border-control);
+  background: var(--c-accent-fill); color: var(--c-on-accent);
+  font: 600 13px/1 var(--la-font); cursor: pointer;
+}
+.la-apariencia-aviso button.secundario {
+  background: transparent; color: var(--c-ink);
+}
+.la-apariencia-aviso :focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 2px; }
+
+@media (max-width: 767px) {
+  body:has(#root [data-la-barra-inferior]) #la-ed-lanzador { display: none; }
+  .la-ed-lanzador { inset-block: max(12px, env(safe-area-inset-top)) auto !important; }
+  .la-apariencia-aviso {
+    position: sticky;
+    inset: 0 auto auto;
+    transform: none;
+    flex-wrap: wrap;
+    gap: 6px 8px;
+    max-width: none;
+    border: 0;
+    border-bottom: 1px solid var(--c-border-control);
+    border-radius: 0;
+    padding: 6px 10px;
+    box-shadow: none;
+  }
+  .la-apariencia-aviso span { flex: 1 0 100%; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .la-apariencia-aviso { transition: none !important; animation: none !important; }
+}
+
+/* ==========================================================================
+   Tablas convertibles a fichas y objetivo tactil en los filtros.
+   --------------------------------------------------------------------------
+   Las etiquetas las pone la-tablas-fichas.js leyendo las cabeceras reales de
+   cada tabla, de modo que no hay ninguna lista de columnas escrita a mano.
+   Por encima del corte, la tabla sigue siendo una tabla.
+   ========================================================================== */
+
+/* Todo boton es un control operativo. Medido en el preview a 390 px: de 99
+   botones de la pantalla de productos, 82 quedaban por debajo de 44 px, entre
+   ellos las acciones de fila a 32, los alergenos a 31 y el cierre de los
+   modales a 17 x 17. Con esta regla quedan 0 por debajo, y ni la pantalla ni
+   los modales desbordan. Comprobado tambien en TPV (135 botones), cocina
+   (136), caja, informes y personal: cero por debajo y cero desbordamientos.
+   Las tiras de categorias siguen desplazandose dentro de su propio contenedor,
+   que es lo que deben hacer.
+
+   La puerta NO es el ancho, es el tipo de puntero. Medido a 1440 px con raton,
+   68 de 193 botones quedan por debajo de 44 x 44 y ninguno por debajo de
+   24 x 24, que es lo que exige WCAG 2.2 AA en su criterio 2.5.8. Los 44 x 44
+   son el 2.5.5, de nivel AAA, y nacieron para el dedo. Subir el escritorio a 44
+   apretaria pantallas densas sin que nadie lo pida: el menu pasaria de 40 a 44
+   y los distintivos de cabecera de 24 a 44.
+
+   Lo que si era un agujero real es el otro lado. Este programa se usa en
+   terminales de barra con pantalla tactil, que a 1024 o 1280 px no entraban en
+   `max-width: 760px` y se quedaban con distintivos de 24 px para pulsar con el
+   dedo. `any-pointer: coarse` los incluye: si la maquina tiene algun puntero
+   grueso, aunque tambien tenga raton, manda el objetivo tactil. En un portatil
+   con pantalla tactil tambien se activa, y en un producto de hosteleria ese
+   lado del error es el bueno. */
+/* Dos suelos, cada uno con su motivo.
+
+   El primero rige SIEMPRE, con cualquier puntero, porque es el minimo exigible:
+   WCAG 2.2 AA, criterio 2.5.8 «Target Size (Minimum)», pide 24 x 24 px.
+
+   Medido a 1440 px con raton, el barrido encontro controles por debajo: la X de
+   cerrar que comparten todos los modales, a 17 x 17; las flechas de subir y
+   bajar categoria, a 18 x 19; y los colores de categoria, a 20 x 20. La peor
+   pantalla, orden y color de categorias, tenia 89 controles por debajo de
+   24 x 24. Con esta regla quedan 0, ahi y en TPV, cocina, caja, devoluciones,
+   configuracion, productos y personal, sin un solo desbordamiento horizontal.
+
+   Son tres o siete pixeles. No aprieta ninguna pantalla y cierra el minimo de
+   accesibilidad en toda la aplicacion de una vez. El nombre accesible ya estaba
+   bien en todos ellos: lo que fallaba era el tamano. */
+#root button,
+#root [role="button"] {
+  min-height: 24px;
+  min-width: 24px;
+}
+
+/* Al crecer la caja, el icono tiene que quedar centrado. Solo donde crece. */
+#root button[aria-label="Cerrar"] {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* El segundo suelo es el objetivo del plan, 44 x 44, que es el criterio 2.5.5
+   de nivel AAA y nacio para el dedo. Por eso cuelga del puntero. */
+@media (max-width: 760px), (any-pointer: coarse) {
+  #root button { min-height: 44px; min-width: 44px; }
+}
+
+@media (max-width: 760px) {
+  #root table.la-tabla-fichas,
+  #root table.la-tabla-fichas > tbody,
+  #root table.la-tabla-fichas > tbody > tr,
+  #root table.la-tabla-fichas > tbody > tr > td { display: block; width: 100%; }
+
+  #root table.la-tabla-fichas > thead { display: none; }
+
+  #root table.la-tabla-fichas > tbody > tr {
+    border: 1px solid var(--c-divider, #E3DACA);
+    border-radius: 12px;
+    margin-bottom: 10px;
+    padding: 4px 10px;
+  }
+
+  #root table.la-tabla-fichas > tbody > tr > td {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 8px 0;
+    text-align: left;
+    flex-wrap: wrap;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    border: 0;
+  }
+
+  #root table.la-tabla-fichas > tbody > tr > td + td {
+    border-top: 1px solid var(--c-divider, #E3DACA);
+  }
+
+  /* La etiqueta sale del <th> real de esa columna. */
+  #root table.la-tabla-fichas > tbody > tr > td[data-etiqueta]:not([data-etiqueta=""])::before {
+    content: attr(data-etiqueta);
+    font-size: 11.5px;
+    font-weight: 600;
+    color: var(--c-ink-soft, #4F5B55);
+    flex: 0 0 auto;
+  }
+
+  /* Columna de acciones: sin cabecera, sin etiqueta, botones a la derecha. */
+  #root table.la-tabla-fichas > tbody > tr > td[data-etiqueta=""] {
+    justify-content: flex-end;
+    gap: 8px;
+  }
+
+  /* Una fila con celdas combinadas se queda como estaba. */
+  #root table.la-tabla-fichas > tbody > tr[data-la-sin-ficha] { display: table-row; }
+  #root table.la-tabla-fichas > tbody > tr[data-la-sin-ficha] > td { display: table-cell; }
+}
+
+/* ==========================================================================
+   Campos de formulario en anchos tactiles.
+   --------------------------------------------------------------------------
+   La clase dominante de campo en el programa es
+   `w-full rounded-lg px-3 py-2 text-[13px]`, 89 apariciones, que da unos 34 px
+   de alto: por debajo del objetivo operativo de 44 x 44 de la especificacion.
+
+   La correccion se limita al dedo, por la misma razon que en los botones: con
+   raton, 34 px es una altura razonable y subirla apretaria pantallas densas
+   como el TPV sin necesidad. La disposicion en una columna no hace falta
+   tocarla: las 24 rejillas del programa ya colapsan en el corte `md` de
+   Tailwind.
+   ========================================================================== */
+
+@media (max-width: 760px), (any-pointer: coarse) {
+  #root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+  #root select,
+  #root textarea {
+    min-height: 44px;
+  }
+}
+
+/* Esta sigue colgando del ancho, no del puntero: habla del teclado en pantalla
+   del telefono, que ocupa la mitad de abajo. En un terminal de barra apoyado en
+   el mostrador no hay teclado que tape nada, y reservarle 96 px seria mover el
+   foco sin motivo. */
+@media (max-width: 760px) {
+  /* Una barra fija no debe tapar el campo que acaba de recibir el foco
+     cuando se abre el teclado del telefono. */
+  #root input,
+  #root select,
+  #root textarea,
+  #root [tabindex]:not([tabindex="-1"]) {
+    scroll-margin-block-end: 96px;
+    scroll-margin-block-start: 72px;
+  }
+}

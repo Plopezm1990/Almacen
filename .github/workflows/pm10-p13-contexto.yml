@@ -67,7 +67,8 @@ jobs:
             tests/pm10/p06-recepcion-contract.mjs \
             tests/pm10/p05-pedidos-contract.mjs \
             tests/pm10/p04-productos-contract.mjs; do
-            if [ -f "$f" ]; then node "$f"; fi
+            if [ ! -f "$f" ]; then echo "CONTRATO_HEREDADO_AUSENTE=$f" >&2; exit 1; fi
+            node "$f"
           done
       - name: Regresión PM09 aislamiento y robustez
         run: |

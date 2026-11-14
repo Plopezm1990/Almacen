@@ -21,7 +21,12 @@ const src = fs.readFileSync('fuente.js', 'utf8');
   // al mismo destino; lo que importa es el destino, no cómo se llega.
   assert.match(bloque, /(?:window\.location\.href = "\.\/restablecer-contrasena\.html";|href: "\.\/restablecer-contrasena\.html")/, 'el enlace debe navegar al mismo restablecer-contrasena.html que ya usaba el parche');
   assert.match(bloque, /"\\xBFOlvidaste tu contrase\\xF1a\?"/, 'debe mostrar el texto real del enlace');
-  assert.match(bloque, /placeholder: "Correo"/, 'debe seguir siendo el mismo formulario de login real (no uno nuevo)');
+  // El formulario real se reconoce por su cableado, no por un marcador de posicion:
+  // el redisenno sustituyo los placeholder por etiquetas visibles, que es mas accesible,
+  // y lo que no puede cambiar es que siga enviando con `entrar` y ligando el mismo estado.
+  assert.match(bloque, /onSubmit: entrar/, 'debe seguir siendo el mismo formulario de login real (no uno nuevo)');
+  assert.match(bloque, /onChange: \(e2\) => setEmail\(e2\.target\.value\)/, 'el campo de correo debe seguir ligado al estado real');
+  assert.match(bloque, /onChange: \(e2\) => setPassword\(e2\.target\.value\)/, 'el campo de contrasena debe seguir ligado al estado real');
   console.log('P03_PM17_LOGIN_ENLACE_OLVIDE_CONTRASENA=PASS');
 }
 

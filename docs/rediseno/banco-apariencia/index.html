@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="claro">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Banco de pruebas - capa de apariencia</title>
+<link rel="stylesheet" href="./la-apariencia.css" />
+<style>
+  /* Reproduce los tokens base del programa para comprobar la precedencia. */
+  :root, [data-tema="claro"] {
+    --c-bg:#F7F2E8; --c-surface:#FFFDF8; --c-ink:#1B2420; --c-ink-soft:#4F5B55;
+    --c-line:#8F8470; --c-border-control:#8F8470; --c-divider:#E3DACA;
+    --c-badge-ring:transparent; --c-focus-ring:var(--c-accent-fill);
+    --c-accent:#7A5718; --c-accent-fill:#123B2D; --c-on-accent:#F7F2E8; --c-accent-soft:#E6EEE9;
+    --c-amber:#7F5300; --c-amber-fill:#7F5300; --c-on-amber:#FFF; --c-amber-soft:#FBEFD6;
+    --c-red:#A3302A; --c-red-fill:#A3302A; --c-on-red:#FFF; --c-red-soft:#F9E3E0;
+  }
+  html,body{height:100%;margin:0}
+  body{background:var(--c-bg);color:var(--c-ink);font-family:var(--la-font,'IBM Plex Sans',system-ui,sans-serif)}
+  .cab{background:#123B2D;color:#F7F2E8;padding:12px 16px;font-weight:700}
+  .env{padding:16px;display:grid;gap:12px;max-width:980px}
+  .tarjeta{background:var(--c-surface);border:1px solid var(--c-line);border-radius:12px;padding:14px;color:var(--c-ink)}
+  .tarjeta small{color:var(--c-ink-soft)}
+  a{color:var(--c-accent)}
+  .btn{display:inline-block;background:var(--c-accent-fill);color:var(--c-on-accent);border:0;border-radius:10px;padding:12px 16px;font-weight:700;cursor:pointer}
+  .fila{display:flex;gap:8px;flex-wrap:wrap}
+  .fila button{min-height:44px;padding:0 12px;border-radius:9px;border:1px solid var(--c-border-control);background:var(--c-surface);color:var(--c-ink);cursor:pointer}
+  #registro{font:12px/1.5 ui-monospace,monospace;white-space:pre-wrap;background:var(--c-surface);border:1px solid var(--c-divider);border-radius:10px;padding:10px;color:var(--c-ink)}
+</style>
+</head>
+<body>
+<div class="cab" style="background:#123B2D">L&amp;A Suite - banco de pruebas de apariencia</div>
+<div class="env">
+  <div class="fila" id="selector"></div>
+  <div class="fila" id="paletas"></div>
+  <div class="tarjeta">
+    <b>Ventas de hoy</b><br /><small>1.248,40 EUR en 86 tickets</small><br />
+    <a href="#" onclick="return false">Ver el detalle del turno</a>
+  </div>
+  <div><button class="btn" type="button">Cobrar</button></div>
+  <div id="registro">(sin pruebas)</div>
+</div>
+
+<script>
+  /* Contexto y almacenamiento simulados: ni red ni datos reales. */
+  window.__empresaActivaIdParaContexto = "QA-EMP-A";
+  window.__usuarioActivoNombre = "Banco de pruebas";
+  var memoria = {};
+  window.storage = {
+    get: async function (k) { return { key: k, value: memoria[k] || null, shared: false }; },
+    set: async function (k, v) { memoria[k] = v; },
+    delete: async function (k) { delete memoria[k]; }
+  };
+</script>
+<script src="./la-apariencia.js"></script>
+<script src="./la-apariencia-editor.js"></script>
+<script>
+  var registro = document.getElementById("registro");
+  function linea(t) { registro.textContent += "\n" + t; }
+
+  var sel = document.getElementById("selector");
+  window.LAApariencia.DISENOS.forEach(function (d) {
+    var b = document.createElement("button");
+    b.type = "button"; b.textContent = d.nombre;
+    b.onclick = function () { window.LAApariencia.aplicar({ diseno: d.id }, "empresa"); };
+    sel.appendChild(b);
+  });
+  var pal = document.getElementById("paletas");
+  [{ id: null, nombre: "Sin paleta" }].concat(window.LAApariencia.PALETAS).forEach(function (p) {
+    var b = document.createElement("button");
+    b.type = "button"; b.textContent = p.nombre;
+    b.onclick = function () {
+      var actual = window.LAApariencia.estado().config;
+      window.LAApariencia.aplicar({ diseno: (actual && actual.diseno) || "oliva", paleta: p.id }, "empresa");
+    };
+    pal.appendChild(b);
+  });
+
+  /* Comprobaciones automaticas al cargar. */
+  window.__resultados = [];
+  function comprueba(nombre, ok, detalle) {
+    window.__resultados.push({ nombre: nombre, ok: !!ok, detalle: detalle || "" });
+    linea((ok ? "PASA  " : "FALLA ") + nombre + (detalle ? " - " + detalle : ""));
+  }
+
+  (async function () {
+    registro.textContent = "Comprobaciones de la capa de apariencia";
+    var m = window.LAApariencia;
+
+    comprueba("hay nueve disennos registrados", m.DISENOS.length === 9, m.DISENOS.length + " disennos");
+    comprueba("hay seis paletas de biblioteca", m.PALETAS.length === 6, m.PALETAS.length + " paletas");
+    comprueba("hay seis campos semanticos", m.CAMPOS.length === 6, m.CAMPOS.length + " campos");
+
+    /* Cada disenno cambia de verdad el fondo aplicado. */
+    var fondos = {};
+    m.DISENOS.forEach(function (d) {
+      m.aplicar({ diseno: d.id }, "empresa");
+      fondos[d.id] = getComputedStyle(document.documentElement).getPropertyValue("--c-bg").trim();
+    });
+    var distintos = Object.keys(fondos).filter(function (k, i, a) {
+      return a.findIndex(function (x) { return fondos[x] === fondos[k]; }) === i;
+    }).length;
+    comprueba("los nueve disennos aplican tokens", Object.keys(fondos).length === 9 && distintos >= 7,
+      distintos + " fondos distintos");
+
+    /* Un disenno no registrado deja la interfaz base. */
+    m.aplicar({ diseno: "inexistente" }, "empresa");
+    comprueba("un disenno desconocido vuelve a la base",
+      !document.documentElement.hasAttribute("data-la-diseno"));
+
+    /* Las 54 combinaciones disenno x paleta se aplican sin perder tokens. */
+    var pares = 0, sinTokens = 0;
+    m.DISENOS.forEach(function (d) {
+      m.PALETAS.forEach(function (p) {
+        m.aplicar({ diseno: d.id, paleta: p.id }, "empresa");
+        pares++;
+        var cs = getComputedStyle(document.documentElement);
+        ["--c-bg", "--c-surface", "--c-ink", "--c-accent", "--c-accent-fill", "--c-line"].forEach(function (t) {
+          if (!cs.getPropertyValue(t).trim()) sinTokens++;
+        });
+      });
+    });
+    comprueba("las 54 combinaciones conservan los tokens", pares === 54 && sinTokens === 0,
+      pares + " pares, " + sinTokens + " tokens vacios");
+
+    /* Contraste de las seis paletas de biblioteca. */
+    var malas = m.PALETAS.filter(function (p) {
+      return m.revisarContraste({ fondo: p.fondo, tarjetas: p.tarjetas, texto: p.texto, enlaces: p.enlaces, boton: p.boton, detalle: p.detalle }).length > 0;
+    }).map(function (p) { return p.nombre; });
+    comprueba("las seis paletas pasan el contraste exigido", malas.length === 0, malas.join(", "));
+
+    /* Importar cinco codigos conserva el sexto campo. */
+    var base = { fondo: "#101010", tarjetas: "#202020", texto: "#EEEEEE", enlaces: "#88CCFF", boton: "#225533", detalle: "#445544" };
+    var cinco = m.importarHex("#0F1F17 #1E3A2E #C7CBB8 #6B7F67 #3E5A3F", base);
+    comprueba("importar cinco HEX conserva Detalle",
+      cinco.ok && cinco.conservadoSexto && cinco.colores.detalle === "#445544", JSON.stringify(cinco.colores || {}));
+    var seis = m.importarHex("#0F1F17,#1E3A2E,#C7CBB8,#6B7F67,#3E5A3F,#3D4337", base);
+    comprueba("importar seis HEX sustituye los seis", seis.ok && seis.colores.detalle === "#3D4337");
+    var cuatro = m.importarHex("#0F1F17 #1E3A2E #C7CBB8 #6B7F67", base);
+    comprueba("importar cuatro HEX se rechaza", !cuatro.ok && cuatro.motivo === "cantidad-invalida");
+
+    /* La tinta del boton siempre es legible. */
+    var ilegibles = m.PALETAS.filter(function (p) { return m.contraste(m.tintaSobre(p.boton), p.boton) < 4.5; });
+    comprueba("la tinta del boton es legible en las seis paletas", ilegibles.length === 0);
+
+    /* Guardar, restaurar y revision. */
+    memoria = {};
+    var g1 = await m.guardarEmpresa({ diseno: "sello" }, null);
+    var g2 = await m.guardarEmpresa({ diseno: "pase" }, g1.ok ? g1.config.revision : null);
+    comprueba("guardar incrementa la revision", g1.ok && g2.ok && g2.config.revision === g1.config.revision + 1,
+      "rev " + (g1.ok ? g1.config.revision : "?") + " -> " + (g2.ok ? g2.config.revision : "?"));
+    var choque = await m.guardarEmpresa({ diseno: "claro" }, 1);
+    comprueba("una revision obsoleta se rechaza", !choque.ok && choque.motivo === "revision-obsoleta");
+    var r = await m.restaurarAnterior();
+    comprueba("restaurar recupera el disenno anterior y crea revision",
+      r.ok && r.config.diseno === "sello" && r.config.revision === 3,
+      r.ok ? r.config.diseno + " rev " + r.config.revision : r.motivo);
+
+    /* Prueba temporal del usuario y salida. */
+    m.iniciarPrueba({ diseno: "orbita" });
+    comprueba("la prueba temporal manda sobre la empresa",
+      m.enPrueba() && document.documentElement.getAttribute("data-la-diseno") === "orbita");
+    await m.salirPrueba();
+    comprueba("salir de la prueba recupera la apariencia de la empresa",
+      !m.enPrueba() && document.documentElement.getAttribute("data-la-diseno") === "sello",
+      document.documentElement.getAttribute("data-la-diseno"));
+
+    /* El permiso de escritura lo devuelve el servidor para la empresa activa. */
+    var llamadas = [];
+    window.__nubeActiva = true;
+    window.__nubeCliente = { rpc: async function (nombre) {
+      llamadas.push(nombre);
+      return { data: { ok: true, existe: true, diseno: "pase", revision: 5, puede_aplicar: false }, error: null };
+    } };
+    await m.abrirEditor();
+    var editor = document.querySelector(".la-ed");
+    var aplicar = editor.querySelector("button.primario");
+    var restaurar = Array.from(editor.querySelectorAll("button")).find(function (b) {
+      return b.textContent === "Restaurar apariencia anterior";
+    });
+    var probar = Array.from(editor.querySelectorAll("button")).find(function (b) {
+      return b.textContent === "Probar en la suite";
+    });
+    aplicar.click();
+    restaurar.click();
+    comprueba("un cargo restringido puede probar, pero no aplicar ni restaurar",
+      aplicar.disabled && restaurar.disabled && !probar.disabled &&
+      /Tu cargo no tiene permiso/.test(editor.textContent) &&
+      llamadas.every(function (nombre) { return nombre === "abc_apariencia_leer"; }));
+    editor.querySelector("header button").click();
+    window.__nubeCliente = { rpc: async function (nombre, args) {
+      if (nombre === "abc_apariencia_leer") {
+        return { data: { ok: true, existe: true, diseno: "pase", revision: 8, puede_aplicar: true }, error: null };
+      }
+      llamadas.push({ nombre: nombre, revision: args.p_revision_leida });
+      return { data: null, error: { message: "apariencia_revision_obsoleta", details: "revision_vigente=8" } };
+    } };
+    var restObsoleta = await m.restaurarAnterior(7);
+    comprueba("restaurar envía la revisión leída y rechaza una revisión obsoleta",
+      restObsoleta.motivo === "revision-obsoleta" && llamadas.some(function (r) {
+        return r.nombre === "abc_apariencia_restaurar" && r.revision === 7;
+      }));
+    window.__nubeCliente = { rpc: async function (nombre) {
+      llamadas.push(nombre);
+      return { data: null, error: { code: "57014", message: "statement timeout" } };
+    } };
+    await m.leerEmpresa();
+    var falloRed = await m.guardarEmpresa({ diseno: "claro" }, 8);
+    comprueba("un error temporal del servidor no se presenta como guardado local",
+      !falloRed.ok && !falloRed.soloLocal && llamadas.includes("abc_apariencia_guardar"));
+    window.__laUsuarioAparienciaId = "propietario-prueba-a";
+    m.guardarEnBiblioteca("Propia A", base);
+    window.__laUsuarioAparienciaId = "propietario-prueba-b";
+    var sinPaletaAjena = !m.leerBiblioteca().some(function (p) { return p.nombre === "Propia A"; });
+    window.__laUsuarioAparienciaId = "propietario-prueba-a";
+    comprueba("la biblioteca personal se aísla entre cuentas de la misma empresa",
+      sinPaletaAjena && m.leerBiblioteca().some(function (p) { return p.nombre === "Propia A"; }));
+    var resolverAnterior;
+    window.__nubeCliente = { rpc: function () { return new Promise(function (resolver) { resolverAnterior = resolver; }); } };
+    var lecturaAnterior = m.leerEmpresa();
+    window.__laUsuarioAparienciaId = "propietario-prueba-b";
+    resolverAnterior({ data: { ok: true, existe: true, diseno: "orbita", revision: 8, puede_aplicar: true }, error: null });
+    comprueba("una respuesta tardía no se atribuye al usuario siguiente", (await lecturaAnterior) === null);
+    delete window.__laUsuarioAparienciaId;
+    window.__nubeActiva = false;
+    window.__nubeCliente = null;
+
+    var fallos = window.__resultados.filter(function (x) { return !x.ok; }).length;
+    linea("");
+    linea("TOTAL " + window.__resultados.length + " comprobaciones, " + fallos + " fallos");
+    window.__banco = { total: window.__resultados.length, fallos: fallos, resultados: window.__resultados };
+    m.aplicar({ diseno: "pase" }, "empresa");
+  })();
+</script>
+</body>
+</html>
