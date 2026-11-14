@@ -155,9 +155,16 @@ const EXCLUIDAS = new Set([
   // A-04: sesión de empleado server-side para atribución en terminal compartido;
   // es posterior a la foto F7 histórica y se valida con contrato propio.
   '20261111220000_a04_server_employee_session.sql',
-  // Apariencia por empresa pertenece al rediseño posterior y se valida con su propio contrato.
+  // Apariencia por empresa y su delegacion pertenecen al rediseño posterior y no forman
+  // parte de la foto F7 cerrada del 3/10. Hasta el 14/11/2026 este comentario decia que
+  // se validaban «con su propio contrato» y ese contrato no existia: la nota hacia que una
+  // ausencia pareciera cobertura. Ahora existe y se nombra, que es la unica forma de que
+  // una exclusion se pueda comprobar:
+  //   tests/rediseno/p01-capas-y-migraciones-contract.mjs
+  // Ese contrato fija las seis funciones publicas de las dos migraciones, con su retirada
+  // de public y anon y su concesion a authenticated, y ademas comprueba que esta exclusion
+  // sigue nombrandolo. Si alguien quita el nombre, se pone rojo.
   '20261113090000_rediseno_apariencia_empresa.sql',
-  // La delegacion de apariencia acompanna a la anterior y se valida con el mismo contrato propio.
   '20261113140000_rediseno_apariencia_delegaciones.sql',
 ]);
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
