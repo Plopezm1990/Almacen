@@ -120813,6 +120813,7 @@ function Albaranes({
       if (a22) {
         anularAlbaran(a22);
       }
+      setAlb((previo) => previo && previo.id === anularId ? { ...previo, estado: "borrador" } : previo);
       setAnularId(null);
     } }, "S\xED, anular y editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAnularId(null) }, "Cancelar"))), confirmarId && (() => {
       const a22 = albaranes.find((x3) => x3.id === confirmarId);
@@ -120912,10 +120913,7 @@ function Albaranes({
     setModo("lista");
     setAlb(null);
     setFotoRevisionIA("");
-  } }, "Volver") }, bloqueado ? "Albar\xE1n registrado" : "Nuevo albar\xE1n"), bloqueado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Este albar\xE1n ya se dio de entrada, por eso est\xE1 en solo lectura. Si necesitas corregir algo, anula la entrada: se devolver\xE1 el stock y podr\xE1s editarlo."), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
-    anularAlbaran(alb);
-    setAlb({ ...alb, estado: "borrador" });
-  } }, "Anular entrada y editar")), alb.pedidoId && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este albar\xE1n est\xE1 enlazado a un pedido. Las l\xEDneas vienen con lo que pediste: corrige las cantidades para reflejar ", /* @__PURE__ */ import_react4.default.createElement("b", null, "lo que ha llegado de verdad"), ". Al dar entrada, el pedido se marcar\xE1 como recibido o parcial seg\xFAn corresponda.")), tarjetaDeteccionProveedor(), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-4 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor" }, /* @__PURE__ */ import_react4.default.createElement(
+  } }, "Volver") }, bloqueado ? "Albar\xE1n registrado" : "Nuevo albar\xE1n"), bloqueado && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.bg, border: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2" }, "Este albar\xE1n ya se dio de entrada, por eso est\xE1 en solo lectura. Si necesitas corregir algo, anula la entrada: se devolver\xE1 el stock y podr\xE1s editarlo."), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAnularId(alb.id) }, "Anular entrada y editar")), alb.pedidoId && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Este albar\xE1n est\xE1 enlazado a un pedido. Las l\xEDneas vienen con lo que pediste: corrige las cantidades para reflejar ", /* @__PURE__ */ import_react4.default.createElement("b", null, "lo que ha llegado de verdad"), ". Al dar entrada, el pedido se marcar\xE1 como recibido o parcial seg\xFAn corresponda.")), tarjetaDeteccionProveedor(), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-4 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Proveedor" }, /* @__PURE__ */ import_react4.default.createElement(
     "select",
     {
       value: alb.proveedorId,
