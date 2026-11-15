@@ -106920,6 +106920,7 @@ function GestionAlmacen() {
       readOnly: true,
       value: backupText,
       onFocus: (e2) => e2.target.select(),
+      "aria-label": "Texto del respaldo, para copiar y guardar fuera del programa",
       className: "w-full rounded-lg p-2 text-[11px] mono mb-3",
       style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, height: 160, resize: "none" }
     }
@@ -122301,13 +122302,13 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   const entregados = encargos.filter((e2) => e2.estado === "Entregado");
   const historial = historialEncargosPM14(encargos);
   function colorDias(d2) {
-    if (d2 === null) return C2.inkSoft;
+    if (d2 === null || d2 === void 0 || Number.isNaN(d2)) return C2.inkSoft;
     if (d2 < 0) return C2.red;
     if (d2 <= 2) return C2.amber;
     return C2.ink;
   }
   function textoDias(d2) {
-    if (d2 === null) return "Sin fecha";
+    if (d2 === null || d2 === void 0 || Number.isNaN(d2)) return "Sin fecha";
     if (d2 < 0) return `Se pas\xF3 hace ${Math.abs(d2)} d`;
     if (d2 === 0) return "\xA1Hoy!";
     if (d2 === 1) return "Ma\xF1ana";
@@ -122546,7 +122547,7 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
     setForm(blank);
     setEditingId(null);
   } }, "Cancelar"))), clientesDormidos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-2" }, "Clientes que hace tiempo que no vuelven"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1" }, clientesDormidos.slice(0, 6).map((c22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: c22.id, className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, c22.nombre, c22.telefono && ` \xB7 ${c22.telefono}`), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, c22.diasSinComprar, " d\xEDas")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Te compraron antes y llevan m\xE1s de 2 meses sin encargar nada. Una llamada o un WhatsApp puede recuperarlos.")), filtrosListado, listado.total === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: analisisClientes.length ? "No hay clientes que coincidan con la b\xFAsqueda y el estado." : "Todav\xEDa no tienes clientes registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2 mb-4" }, listado.filas.map((c22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: c22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold flex items-center gap-1.5" }, c22.nombre, c22.anonimizado && /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: C2.inkSoft }, "Anonimizado")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, [c22.telefono, c22.email].filter(Boolean).join(" \xB7 ")), c22.notas && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, c22.notas)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold" }, "\u20AC", fmt(c22.facturado)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, c22.nEncargos, " encargo(s)"))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, c22.ultima ? `\xDAltima compra: ${c22.ultima}` : "Sin compras registradas"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, c22.telefono && /* @__PURE__ */ import_react4.default.createElement(LinkBtn, { small: true, href: `https://wa.me/${c22.telefono.replace(/[^0-9]/g, "")}` }, /* @__PURE__ */ import_react4.default.createElement(MessageCircle, { size: 13 }), " WhatsApp"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", ariaLabel: `Descargar los datos de ${c22.nombre}`, onClick: () => exportarDatosCliente(c22) }, /* @__PURE__ */ import_react4.default.createElement(Download, { size: 13 })), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(c22) }, "Editar"), anonimizarCliente && !c22.anonimizado && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => {
-    if (typeof window !== "undefined" && window.confirm && !window.confirm(`\xBFAnonimizar a ${c22.nombre}? Se borran nombre, tel\xE9fono, email y notas; el historial de encargos se conserva sin datos identificativos. No se puede deshacer.`)) return;
+    if (typeof window === "undefined" || typeof window.confirm !== "function" || !window.confirm(`\xBFAnonimizar a ${c22.nombre}? Se borran nombre, tel\xE9fono, email y notas; el historial de encargos se conserva sin datos identificativos. No se puede deshacer.`)) return;
     const ok = anonimizarCliente(c22.id);
     if (!ok && typeof window !== "undefined" && window.alert) window.alert("No se pudo anonimizar el cliente.");
   } }, "Anonimizar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", ariaLabel: `Eliminar el cliente ${c22.nombre}`, onClick: () => {
