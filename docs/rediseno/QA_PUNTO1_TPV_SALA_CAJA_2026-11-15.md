@@ -15,8 +15,20 @@ Entorno `qjqorixtkilwsndqayyx`, QA-EMP-A / QA-A1, [Deploy Preview #225](https://
 
 Las mesas de ensayo y la zona vacía se cargaron como fixtures de QA. Las dos mesas y cuentas anteriores a esta tanda se dejaron disponibles para su propio ensayo.
 
+## Comprobaciones en el servidor de QA
+
+Transacciones de solo lectura en `QA-EMP-A / QA-A1` con el rol SQL `authenticated` y el contexto de las cuentas sintéticas con membresía efectiva. Se usaron los RPC del producto. La prueba no inició sesión en el navegador ni registró cobros, reembolsos o movimientos de caja.
+
+| Cargo y contexto del ensayo | Consulta de caja | Inicio de efectivo | Solicitud de reembolso | Aprobación de reembolso |
+| --- | --- | --- | --- | --- |
+| Camarero/a | Denegada | `abc_efectivo_no_autorizado` | Denegada | Denegada |
+| Cajero/a sin segundo factor | Denegada | `abc_cobro_no_autorizado` | Denegada | Denegada |
+| Cajero/a con contexto de segundo factor | Permitida | Supera la guarda y rechaza los identificadores vacíos con `cobro_parametros_requeridos` | Denegada | Denegada |
+
+`abc_recuperar_cuenta` devolvió las dos cuentas y sus pedidos como reanudables al utilizar los contextos de A1 y A2. Coincidieron la cuenta, el pedido y la revisión de cada mesa entre terminales. Interior quedó `ABIERTO` y Terraza `PREPARADO`. La ejecución del traspaso en dos perfiles independientes sigue pendiente.
+
 ## Verificaciones que siguen abiertas
 
 - Q07 y Q08 con los dos perfiles a la vez. En A2 hay que recuperar el pedido guardado de Interior, observar las mismas mesas y cuentas, y seguir por Cocina, servido y cobro simulado. Conservar los identificadores y contrastar el ticket, cambio y movimientos de stock con el servidor. Forzar el reintento sin duplicar efectos.
 - Q07 con un cargo de acceso limitado y entrada táctil en dispositivo. El modelo comercial persiste los pedidos guardados como `ABIERTO`. El proyecto carece de un estado independiente de cuenta aparcada; la aceptación debe contrastar esto con la especificación que pide usar el modelo real.
-- Acceso efectivo con una sesión restringida de QA-A1. Hay membresías activas de Camarero/a y Cajero/a en ese local. Contrastar las capacidades de caja, cobro y reembolso desde la sesión correspondiente y registrar los resultados reales.
+- Acceso desde un navegador con una cuenta restringida de QA-A1. La cuenta sintética de Cajero/a empleada en la prueba de servidor tiene membresía activa en el local y segundo factor registrado. Falta completar la autenticación en el segundo perfil y contrastar los controles y las operaciones de caja, cobro y reembolso en la suite.
