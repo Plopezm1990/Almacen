@@ -19576,6 +19576,14 @@ function Albaranes({
       setProcesandoEntrada(false);
     }
   }
+  const modalAnular = anularId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAnularId(null), title: "Anular entrada para poder editar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se restar\xE1 del stock lo que entr\xF3 con este albar\xE1n y se borrar\xE1n sus movimientos. El albar\xE1n volver\xE1 a estado borrador para que puedas corregirlo y darle entrada otra vez.", /* @__PURE__ */ import_react4.default.createElement("br", null), /* @__PURE__ */ import_react4.default.createElement("br", null), "Los costes de los productos ", /* @__PURE__ */ import_react4.default.createElement("b", null, "no se revierten"), ": quedar\xE1n con el \xFAltimo valor introducido hasta que vuelvas a confirmar el albar\xE1n corregido."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
+      const a22 = albaranes.find((x3) => x3.id === anularId);
+      if (a22) {
+        anularAlbaran(a22);
+      }
+      setAlb((previo) => previo && previo.id === anularId ? { ...previo, estado: "borrador" } : previo);
+      setAnularId(null);
+    } }, "S\xED, anular y editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAnularId(null) }, "Cancelar")));
   if (modo === "lista") {
     return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
       setMostrarPegar(true);
@@ -19680,14 +19688,7 @@ function Albaranes({
         const totalConIva = baseConCanon + ivaLineas + cargos + ivaCargos;
         return /* @__PURE__ */ import_react4.default.createElement(Card, { key: a22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold" }, prov ? prov.nombre : "Sin proveedor"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Albar\xE1n ", a22.numero || "s/n", " \xB7 ", a22.fecha, " \xB7 ", a22.lineas.length, " l\xEDnea(s)")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: a22.estado === "confirmado" ? C2.accent : C2.amber }, /* @__PURE__ */ import_react4.default.createElement(a22.estado === "confirmado" ? CircleCheck : Clock, { size: 11, style: { verticalAlign: "middle", marginRight: 3 } }), a22.estado === "confirmado" ? "Dado de entrada" : "Borrador"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-semibold mt-1" }, "\u20AC", fmt(totalConIva)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mono", style: { color: C2.inkSoft } }, "base \u20AC", fmt(base), " \xB7 IVA \u20AC", fmt(totalConIva - base)), albaranEsFacturaOperativaPM11(a22) && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-0.5" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: a22.pagada ? C2.inkSoft : C2.amber }, /* @__PURE__ */ import_react4.default.createElement(a22.pagada ? CircleCheck : Clock, { size: 11, style: { verticalAlign: "middle", marginRight: 3 } }), a22.pagada ? "Pagada" : "Sin pagar")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrir(a22) }, a22.estado === "confirmado" ? "Ver" : "Continuar editando"), a22.estado === "confirmado" && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setAnularId(a22.id) }, "Anular para editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmarId(a22.id) }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 13 }), " Eliminar")));
       }));
-    })(), anularId && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAnularId(null), title: "Anular entrada para poder editar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, "Se restar\xE1 del stock lo que entr\xF3 con este albar\xE1n y se borrar\xE1n sus movimientos. El albar\xE1n volver\xE1 a estado borrador para que puedas corregirlo y darle entrada otra vez.", /* @__PURE__ */ import_react4.default.createElement("br", null), /* @__PURE__ */ import_react4.default.createElement("br", null), "Los costes de los productos ", /* @__PURE__ */ import_react4.default.createElement("b", null, "no se revierten"), ": quedar\xE1n con el \xFAltimo valor introducido hasta que vuelvas a confirmar el albar\xE1n corregido."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => {
-      const a22 = albaranes.find((x3) => x3.id === anularId);
-      if (a22) {
-        anularAlbaran(a22);
-      }
-      setAlb((previo) => previo && previo.id === anularId ? { ...previo, estado: "borrador" } : previo);
-      setAnularId(null);
-    } }, "S\xED, anular y editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setAnularId(null) }, "Cancelar"))), confirmarId && (() => {
+    })(), modalAnular, confirmarId && (() => {
       const a22 = albaranes.find((x3) => x3.id === confirmarId);
       const yaEntrado = a22 && a22.estado === "confirmado";
       return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setConfirmarId(null), title: "Eliminar albar\xE1n" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-4" }, yaEntrado ? /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, "Este albar\xE1n ya dio entrada. Al eliminarlo se ", /* @__PURE__ */ import_react4.default.createElement("b", null, "restar\xE1 del stock"), " lo que trajo, se borrar\xE1n sus movimientos, y si ven\xEDa de un pedido, ese pedido volver\xE1 a quedar pendiente de lo que falte.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, "Se borrar\xE1 este borrador. No lleg\xF3 a afectar al stock, as\xED que no hay nada que revertir.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: () => {
@@ -19781,7 +19782,7 @@ function Albaranes({
     }
     return null;
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, modalAnular, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
     setModo("lista");
     setAlb(null);
     setFotoRevisionIA("");
