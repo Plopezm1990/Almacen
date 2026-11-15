@@ -113832,7 +113832,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         .eq("empresa_id", empresaId)
         .eq("local_id", localId)
         .eq("cuentas_comerciales.estado", "ABIERTA")
-        .in("estado", ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO"])
+        .in("estado", ["ABIERTO", "ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO"])
         .order("created_at", { ascending: true })
         .order("id", { ascending: true })
         .limit(150);

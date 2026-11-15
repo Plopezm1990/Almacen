@@ -71,6 +71,11 @@
 
   function etiquetaEstado(mesa) {
     var e = mesa && mesa.estado_efectivo;
+    if (e === "OCUPADA" && mesa.cuentas?.length === 1 && estado.totalPedidos === estado.pedidos?.length) {
+      var cuentaId = mesa.cuentas[0].cuenta_id;
+      var pedidos = (estado.pedidos || []).filter(function (pedido) { return pedido.cuenta_id === cuentaId; });
+      if (pedidos.length && pedidos.every(function (pedido) { return pedido.estado === "ABIERTO"; })) return "Pedido guardado";
+    }
     return ETIQUETA_ESTADO[e] || (e ? String(e) : "Estado desconocido");
   }
 
@@ -403,7 +408,8 @@
     PARCIALMENTE_PREPARADO: [1, "Parcialmente listo"],
     EN_PREPARACION: [2, "En preparación"],
     ENVIADO: [3, "Enviado a cocina"],
-    SERVIDO: [4, "Cuenta abierta"]
+    SERVIDO: [4, "Cuenta abierta"],
+    ABIERTO: [5, "Pedido guardado"]
   };
 
   function bloquePedidosTurno() {
@@ -421,23 +427,27 @@
           onclick: function () { estado.colaFiltro = opcion[0]; pintar(); } });
       }));
     var pedidos = estado.pedidos.filter(function (pedido) {
-      return estado.colaFiltro === "todas" || (estado.colaFiltro === "cuentas") === (pedido.estado === "SERVIDO");
+      var esCuenta = pedido.estado === "SERVIDO" || pedido.estado === "ABIERTO";
+      return estado.colaFiltro === "todas" || (estado.colaFiltro === "cuentas") === esCuenta;
     }).sort(function (a, b) {
       return (ESTADO_PEDIDO[a.estado]?.[0] ?? 9) - (ESTADO_PEDIDO[b.estado]?.[0] ?? 9)
         || String(a.created_at).localeCompare(String(b.created_at));
     });
-    var nombresMesa = new Map();
+    var mesasPorCuenta = new Map();
     mesasDe(estado.mapa).forEach(function (mesa) {
-      (mesa.cuentas || []).forEach(function (cuenta) { nombresMesa.set(cuenta.cuenta_id, mesa.nombre || mesa.codigo); });
+      (mesa.cuentas || []).forEach(function (cuenta) { mesasPorCuenta.set(cuenta.cuenta_id, mesa); });
     });
     var lista = el("ul", { class: "la-pase-cola" }, pedidos.slice(0, 8).map(function (pedido) {
+      var mesa = mesasPorCuenta.get(pedido.cuenta_id);
+      var esCuenta = pedido.estado === "ABIERTO" || pedido.estado === "SERVIDO";
       return el("li", {}, [
         el("div", { class: "q" }, [
-          document.createTextNode(nombresMesa.get(pedido.cuenta_id) || "Pedido"),
+          document.createTextNode(mesa?.nombre || mesa?.codigo || "Pedido"),
           el("span", { texto: String(pedido.id || "").slice(0, 8) })
         ]),
         el("span", { class: "la-pase-etiqueta", texto: ESTADO_PEDIDO[pedido.estado]?.[1] || pedido.estado }),
-        botonIrA("cocina", "Ver en Cocina", "la-pase-accion suave", { pedidoId: pedido.id })
+        esCuenta ? botonIrA("venta", mesa ? "Ver cuenta en el TPV" : "Abrir TPV", "la-pase-accion suave", mesa ? { mesaId: mesa.mesa_id } : null)
+          : botonIrA("cocina", "Ver en Cocina", "la-pase-accion suave", { pedidoId: pedido.id })
       ]);
     }));
     var parcial = estado.totalPedidos != null && estado.totalPedidos > estado.pedidos.length;
