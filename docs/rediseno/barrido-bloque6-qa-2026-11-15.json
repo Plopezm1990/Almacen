@@ -1,0 +1,33 @@
+{
+ "bloque": "6 - Compras con pedido de ensayo, y las sueltas alcanzables",
+ "cosas_bien_hechas_del_producto": [
+  "Recepcion explica las tres vias y lo que se pierde con cada una, en vez de ofrecer tres botones iguales.",
+  "Cerrar un pedido incompleto dice exactamente que falta por llegar y que no suma nada al stock.",
+  "La ficha de un albaran ya dado de entrada esta en solo lectura y explica como editarlo si hace falta.",
+  "El alta de producto desde el pedido vive dentro del selector, donde hace falta, no en otra pantalla.",
+  "Eliminar un producto con movimientos explica que el historico sigue mostrando su nombre."
+ ],
+ "defectos": [
+  {
+   "arreglo": "Se conserva el dato util -el escaneo solo funciona en Chrome para Android- y se quita la referencia a la herramienta.",
+   "donde": "Escaner de codigo de barras",
+   "que": "El mensaje de navegador no compatible decia «...y en tu web real, no aqui dentro de Claude». Unica aparicion de «Claude» en todo el paquete, y en texto que le llega al usuario final de un negocio de hosteleria."
+  },
+  {
+   "arreglo": "aria-label «Producto de la linea N del pedido». Cuarto campo de linea sin nombre en este trabajo.",
+   "donde": "Lineas del pedido de compra",
+   "que": "El selector de producto de cada linea no tenia nombre accesible. Sus vecinos de la misma fila, Cant. y Costo u., se salvan porque la capa la-tablas-fichas les copia el placeholder, pero un select no tiene placeholder que copiar, asi que este se quedaba mudo del todo."
+  }
+ ],
+ "escritura_no_intencionada": {
+  "leccion": "Leer el panel antes de pulsar no basta cuando no hay panel. En adelante, sobre cualquier accion que pueda mover stock o dinero, mirar primero en la fuente si confirma.",
+  "lo_que_no_se_reparo": "El aviso «Un cambio no se ha podido guardar (movimientos)» sigue, con el indicador en «Subiendo 1...» despues de pulsar Reintentar. Queda un movimiento en cola sin subir. Conviene saber que YA habia uno antes de esta sesion, «1 cosa sin subir todavia: productos», asi que la cola no es nueva, pero ahora hay trabajo mio dentro.",
+  "por_que_paso": "Ese boton actua sin confirmar, al contrario que practicamente todo lo demas que toca datos en este programa: eliminar proveedor, eliminar pedido, cerrar pedido, dar de baja un empleado, desactivar un local, cancelar un conteo y eliminar una freidora confirman todos. Este no. Y devuelve stock, que es tan serio como lo que si confirma.",
+  "que_paso": "Al medir com-19 pulse «Anular entrada y editar» sobre el albaran SIM-0001 esperando un panel de confirmacion, y la accion se ejecuto directamente: el albaran paso de «Dado de entrada» a «Borrador» y devolvio el stock de los dos quesos, que bajaron de 1 ud a 0.",
+  "reparado": "Si. Continuar editando y «Dar entrada al almacen» devolvieron el albaran a «Dado de entrada» con los mismos importes, y los dos quesos volvieron a 1 ud. Comprobado en la lista de productos."
+ },
+ "fecha": "2026-11-15",
+ "salvedad_de_metodo": "Las cabeceras se duplican en el DOM por punto de ruptura, y la copia que no toca deja botones de 0x0. Buscando por texto se puede pulsar la copia invisible, que es lo que me paso con «Modo empleado»: parecia que la pantalla no abria y era que estaba pulsando el duplicado oculto. Desde ahi, todos los clics filtran por tamano visible. No afecta a las mediciones de limpieza, que cuentan todos los controles.",
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-EMP-A / QA-A1; medida a 1440x900. Con un pedido de ensayo a Queseria Prueba Alb S.L. creado en esta pasada.",
+ "sha": "1c08fe5f; https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}
