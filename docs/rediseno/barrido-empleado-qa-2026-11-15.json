@@ -6,9 +6,9 @@
   "El modo empleado recorta la navegacion a lo que el cargo puede hacer, no solo deshabilita."
  ],
  "credencial_de_ensayo": {
-  "alcance_de_lo_afirmado": "Comprobado que vaciar y guardar no lo quita, y que no hay control visible para quitarlo en esa ficha. No he recorrido toda la aplicacion buscando otro sitio donde se pueda, asi que lo dejo como «conviene comprobarlo», no como certeza.",
-  "estado_en_qa": "El codigo sigue puesto en QA Cajero F1. No se escribe aqui cual es, porque el propio producto avisa de que no se escriban claves en notas ni referencias.",
-  "no_se_pudo_quitar": "Guardar la ficha con el campo vacio NO elimina el codigo: el empleado sigue apareciendo en el selector de «Quien eres?». El formulario trata el campo vacio como «no lo cambies», que para una credencial es razonable, pero entonces no hay en la interfaz ninguna forma visible de RETIRAR un codigo ya puesto, solo de cambiarlo.",
+  "alcance_de_lo_afirmado": "Queda sin efecto: lo afirmado era incorrecto. No hay ningun hueco de seguridad que reportar aqui.",
+  "estado_en_qa": "El codigo de ensayo ya NO esta puesto en QA Cajero F1.",
+  "no_se_pudo_quitar": "CORREGIDO el mismo dia: esto era falso. Vaciar el campo y guardar SI retira el codigo. Lo comprobe en la misma sesion, inmediatamente despues de guardar, y el selector seguia mostrando a la persona con los datos ya cargados; al reiniciar sesion el panel daba su estado vacio, \"Todavia no hay ningun empleado con codigo de acceso\". Mire demasiado pronto y donde no tocaba.",
   "que_se_hizo": "Se puso un codigo de acceso de 4 digitos al empleado de ensayo QA Cajero F1 para poder medir el modo empleado, y se intento quitarlo al terminar."
  },
  "fecha": "2026-11-15",
