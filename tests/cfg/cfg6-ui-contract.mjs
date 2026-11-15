@@ -157,7 +157,12 @@ const ficha = comp.slice(comp.indexOf("function ConfiguracionLocal("));
 assert.match(ficha, /if \(!esPropietario\) contenido = h\(Card, \{ className: "mb-4" \}, "Solo un usuario con rol Propietario puede ver y cambiar la configuración\."\);\s+else if \(!empresaId \|\| !localId\) contenido = h\(Card, \{ className: "mb-4" \}, "Selecciona un local concreto para configurarlo\."\);\s+else contenido = h\(/,
   "sin perfil Propietario o sin local concreto no se monta ninguna sección (y por tanto no se llama al servidor)");
 assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), "las secciones solo se montan en la rama con permiso");
-assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["terminales", "Terminales y cajas"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
+// La octava sección se añadió el 15/11/2026 con la política opcional de
+// verificación en dos pasos. Lo que hay dentro lo fija
+// tests/m03/m03-mfa-enforcement-contract.mjs; aquí solo se fija que está, en
+// este orden, y dentro de la rama con permiso como las otras siete.
+assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["terminales", "Terminales y cajas"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\], \["mfa", "Verificación en dos pasos"\]\];/);
+assert.ok(ficha.indexOf('ConfigMfa, {') > ficha.indexOf('else contenido = h('), 'la sección de verificación en dos pasos también se monta solo con permiso');
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
 assert.doesNotMatch(comp, /Barra[^.\n]*bloquead/i, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
