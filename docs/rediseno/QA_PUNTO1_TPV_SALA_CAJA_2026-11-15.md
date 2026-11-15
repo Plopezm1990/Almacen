@@ -31,6 +31,10 @@ En un ensayo revertido, Camarero/a marcó Terraza como servida desde A2 y A1 rec
 
 Una consulta posterior confirmó que Terraza volvió a `PREPARADO`, con cuenta `ABIERTA`, cero checkouts y cero asientos persistidos del ensayo. Esta prueba ejercitó los contratos reales del servidor y deja disponible el mismo pedido para el recorrido del navegador.
 
+## Traspaso comprobado en Chrome
+
+En el perfil de Chrome, el TPV se asignó al terminal **QA terminal A2 (ensayo punto 2)**. En Pase se vieron la zona vacía, Interior como «Pedido guardado» y Terraza como «Listo para servir» en la cola. Desde la ficha de Interior, el TPV recuperó la cuenta guardada previamente en A1 y se pulsó «Enviar pedido a preparación». El servidor registró la transición desde A2 sobre el mismo pedido `c0b7ec8c-e5a4-4397-9b59-57afd6a3b8ca`, con una comanda `2f9ae55b-78b7-4e7e-aebd-078760f52731` en Cocina QA-A1. Se conservaron cantidad 1, total 1,54 €, variante Pequeño, modificador Leche de avena y la nota de ensayo. El stock de esa línea quedó reservado. La sesión de A1 en el navegador de ChatGPT pidió iniciar sesión nuevamente.
+
 ## Verificaciones que siguen abiertas
 
 - Q07 y Q08 con los dos perfiles a la vez. En A2 hay que recuperar el pedido guardado de Interior, observar las mismas mesas y cuentas, y seguir por Cocina, servido y cobro simulado. Conservar los identificadores y contrastar el ticket, cambio y movimientos de stock con el servidor. Forzar el reintento sin duplicar efectos.

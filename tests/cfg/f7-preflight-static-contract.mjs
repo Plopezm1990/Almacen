@@ -166,6 +166,14 @@ const EXCLUIDAS = new Set([
   // sigue nombrandolo. Si alguien quita el nombre, se pone rojo.
   '20261113090000_rediseno_apariencia_empresa.sql',
   '20261113140000_rediseno_apariencia_delegaciones.sql',
+  // Politica opcional de verificacion en dos pasos (15/11/2026): reescribe la
+  // puerta maestra private.la_usuario_activo() que M-03 habia dejado exigiendo
+  // el segundo factor a tres cargos fijos. Ventana de promocion propia, porque
+  // cambia quien puede entrar y eso no se promueve dentro de la foto F7 del
+  // 3/10 sin decidirlo aparte. Lo que promete esta exclusion lo prueban:
+  //   tests/rediseno/p04-mfa-politica-pglite-contract.mjs  (Postgres de verdad)
+  //   tests/m03/m03-mfa-enforcement-contract.mjs            (los cinco puntos)
+  '20261115120000_mfa_politica_opcional.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -221,6 +229,10 @@ const JUSTIFICACION = {
   ],
   '20261113140000_rediseno_apariencia_delegaciones.sql': [
     'tests/rediseno/p01-capas-y-migraciones-contract.mjs',
+  ],
+  '20261115120000_mfa_politica_opcional.sql': [
+    'tests/rediseno/p04-mfa-politica-pglite-contract.mjs',
+    'tests/m03/m03-mfa-enforcement-contract.mjs',
   ],
 };
 

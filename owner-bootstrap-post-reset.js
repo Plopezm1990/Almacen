@@ -77,7 +77,7 @@
   // sincronización mientras la sesión siga en AAL1; de lo contrario, el
   // arranque histórico llegaría a las RPC protegidas antes de que el usuario
   // terminase el desafío MFA.
-  async function mfaAutorizadaParaAplicacion(supabase) {
+  async function mfaAutorizadaParaAplicacion(supabase, sesion) {
     if (!supabase || !supabase.auth || !supabase.auth.mfa) return false;
     var aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal && aal.error) throw aal.error;
@@ -88,7 +88,27 @@
     var hayFactorVerificado = totp.concat(phone).some(function (factor) {
       return factor && factor.status === "verified";
     });
-    return hayFactorVerificado && aal && aal.data && aal.data.currentLevel === "aal2";
+    // Quien tiene un factor inscrito completa su desafio siempre: se lo puso
+    // porque quiere que se le pida.
+    if (hayFactorVerificado) return aal && aal.data && aal.data.currentLevel === "aal2";
+    // Sin factor inscrito, desde el 15/11/2026 solo se bloquea si el servidor
+    // lo exige para esta persona. Por defecto no se exige a nadie.
+    return !(await mfaExigidaPorElServidorBootstrap(sesion));
+  }
+
+  // Si el servidor todavia no tiene la politica -cliente desplegado antes que
+  // la migracion- se mantiene la conducta de M-03 y se sigue exigiendo. Fallar
+  // hacia "no se exige" dejaria sin proteccion, durante esa ventana, justo a
+  // quien hoy la tiene.
+  async function mfaExigidaPorElServidorBootstrap(sesion) {
+    try {
+      var r = await rpcP4("mfa_politica_leer", sesion, {});
+      return !!(r && r.exigida_para_mi);
+    } catch (e) {
+      var m = String(e && e.message ? e.message : e || "");
+      if (/could not find the function|PGRST202|HTTP 404/i.test(m)) return true;
+      throw e;
+    }
   }
 
   async function rpcP4(nombre, sesion, cuerpo) {
@@ -266,7 +286,7 @@
     try {
       // M03: dejar visible la pantalla MFA, pero sin liberar el bootstrap ni
       // ejecutar ninguna RPC de contexto, hasta que la sesión esté elevada.
-      if (!(await mfaAutorizadaParaAplicacion(supabase))) {
+      if (!(await mfaAutorizadaParaAplicacion(supabase, sesion))) {
         if (miSecuencia !== secuencia) return;
         liberarVistaSinSesion();
         return;

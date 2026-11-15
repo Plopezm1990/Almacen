@@ -104034,11 +104034,268 @@ function ConfigFiscalidad({ empresaId, localId, localNombre = "", procesarColaFi
         h("div", null, h("div", { className: "text-[12px] font-semibold" }, `Versión del borrador: ${detalle.version || 0}`), h("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Conexión: no configurada · Emisión: deshabilitada")),
         h(Btn, { onClick: guardar, disabled: ocupado }, guardando ? "Guardando…" : "Guardar borrador fiscal")))) : null);
 }
+// ==== CONFIG_MFA ====
+// El segundo factor es voluntario desde el 15/11/2026. "MfaMiCuenta" la activa
+// o la quita y la alcanza cualquier rol desde el boton de la barra superior;
+// "MfaPoliticaCargos" solo la ve el Propietario y sirve para exigirla a un
+// cargo concreto. La exigencia vive en el servidor (private.mfa_politica): esta
+// pantalla solo la lee y la escribe por RPC, nunca decide por su cuenta.
+function clienteNubeMfa() {
+  if (typeof window === "undefined" || typeof window.getSupabaseClient !== "function") throw new Error("Esta pantalla necesita conexión con el servidor.");
+  return window.getSupabaseClient();
+}
+function esFaltaDeFuncionMfa(e2) {
+  return /could not find the function|PGRST202|HTTP 404/i.test(String(e2?.message || e2 || ""));
+}
+function MfaMiCuenta() {
+  const h = import_react4.default.createElement;
+  const [cargando, setCargando] = (0, import_react4.useState)(true);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [aviso, setAviso] = (0, import_react4.useState)("");
+  const [sinPolitica, setSinPolitica] = (0, import_react4.useState)(false);
+  const [exigidaParaMi, setExigidaParaMi] = (0, import_react4.useState)(false);
+  const [misFactores, setMisFactores] = (0, import_react4.useState)([]);
+  const [qr, setQr] = (0, import_react4.useState)("");
+  const [secreto, setSecreto] = (0, import_react4.useState)("");
+  const [factorId, setFactorId] = (0, import_react4.useState)("");
+  const [codigo, setCodigo] = (0, import_react4.useState)("");
+  const [confirmarQuitar, setConfirmarQuitar] = (0, import_react4.useState)(false);
+  const [ocupado, setOcupado] = (0, import_react4.useState)(false);
+  async function cargar() {
+    setCargando(true);
+    setError("");
+    try {
+      const c = await clienteNubeMfa();
+      const factores = await c.auth.mfa.listFactors();
+      if (factores.error) throw factores.error;
+      const todos = [...(factores.data?.totp || []), ...(factores.data?.phone || [])];
+      setMisFactores(todos.filter((f22) => f22 && f22.status === "verified"));
+      try {
+        const r = await c.rpc("mfa_politica_leer");
+        if (r.error) throw r.error;
+        setExigidaParaMi(!!(r.data && r.data.exigida_para_mi));
+        setSinPolitica(false);
+      } catch (e2) {
+        if (!esFaltaDeFuncionMfa(e2)) throw e2;
+        setSinPolitica(true);
+        setExigidaParaMi(true);
+      }
+    } catch (e2) {
+      setError(String(e2?.message || e2 || "No se pudo leer el estado de tu cuenta."));
+    }
+    setCargando(false);
+  }
+  (0, import_react4.useEffect)(() => {
+    cargar();
+  }, []);
+  async function empezarAlta() {
+    setError("");
+    setAviso("");
+    setOcupado(true);
+    try {
+      const c = await clienteNubeMfa();
+      const alta = await c.auth.mfa.enroll({ factorType: "totp", friendlyName: "L&A Suite " + new Date().toISOString().slice(0, 10) });
+      if (alta.error) throw alta.error;
+      setFactorId(alta.data?.id || "");
+      setQr(alta.data?.totp?.qr_code || "");
+      setSecreto(alta.data?.totp?.secret || "");
+    } catch (e2) {
+      setError(String(e2?.message || e2 || "No se ha podido empezar."));
+    }
+    setOcupado(false);
+  }
+  function cancelarAlta() {
+    setQr("");
+    setSecreto("");
+    setFactorId("");
+    setCodigo("");
+    setError("");
+  }
+  async function confirmarAlta() {
+    setError("");
+    setOcupado(true);
+    try {
+      const c = await clienteNubeMfa();
+      const reto = await c.auth.mfa.challenge({ factorId });
+      if (reto.error) throw reto.error;
+      const ok = await c.auth.mfa.verify({ factorId, challengeId: reto.data.id, code: String(codigo || "").replace(/[^0-9]/g, "") });
+      if (ok.error) throw ok.error;
+      setQr("");
+      setSecreto("");
+      setFactorId("");
+      setCodigo("");
+      setAviso("Ya está activada. A partir de ahora se te pedirá el código de tu aplicación al entrar.");
+      await cargar();
+    } catch (e2) {
+      setError(String(e2?.message || e2 || "Ese código no vale. Comprueba la hora de tu teléfono y prueba con el siguiente."));
+    }
+    setOcupado(false);
+  }
+  async function quitar() {
+    setError("");
+    setAviso("");
+    setOcupado(true);
+    try {
+      const c = await clienteNubeMfa();
+      for (const f22 of misFactores) {
+        const r = await c.auth.mfa.unenroll({ factorId: f22.id });
+        if (r.error) throw r.error;
+      }
+      setConfirmarQuitar(false);
+      setAviso("Desactivada. Tu cuenta queda protegida solo por la contraseña; puedes volver a activarla cuando quieras.");
+      await cargar();
+    } catch (e2) {
+      setError(String(e2?.message || e2 || "No se ha podido desactivar."));
+    }
+    setOcupado(false);
+  }
+  const tengoFactor = misFactores.length > 0;
+  if (cargando) return h(Card, null, "Comprobando tu cuenta…");
+  return h(
+    import_react4.default.Fragment,
+    null,
+    error ? h(Card, { className: "mb-3", style: { background: C2.redSoft, border: "none" } }, h("div", { className: "text-[12.5px]", role: "alert" }, error)) : null,
+    aviso ? h(Card, { className: "mb-3", style: { background: C2.accentSoft, border: "none" } }, h("div", { className: "text-[12.5px]" }, aviso)) : null,
+    h(
+      Card,
+      null,
+      h("div", { className: "text-[13px] font-semibold mb-1" }, "Verificación en dos pasos"),
+      h("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, tengoFactor ? "Está activada: al entrar se te pide un código de seis cifras de tu aplicación de autenticación." : "No la tienes puesta. Si la activas, para entrar en tu cuenta hará falta tu contraseña y además tu teléfono."),
+      sinPolitica ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "El servidor todavía no tiene la política de cargos aplicada, así que de momento sigue siendo obligatoria y no se puede quitar desde aquí.") : null,
+      !sinPolitica && exigidaParaMi ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Tu cargo la tiene exigida por el Propietario, así que no se puede quitar desde aquí.") : null,
+      !tengoFactor && !qr ? h(Btn, { onClick: empezarAlta, disabled: ocupado }, "Activar") : null,
+      qr ? h(
+        "div",
+        null,
+        h("div", { className: "text-[12.5px] mb-2" }, "Escanea el código con tu aplicación de autenticación —o escribe la clave a mano— y confirma con las seis cifras que te muestre."),
+        h("img", { src: qr, alt: "Código QR para la aplicación de autenticación", className: "mb-2 rounded-lg", style: { width: 168, height: 168, background: "#fff" } }),
+        secreto ? h("div", { className: "text-[12px] mb-3", style: { fontFamily: "ui-monospace, monospace", wordBreak: "break-all", color: C2.inkSoft } }, secreto) : null,
+        h(Field, { label: "Código de seis cifras" }, h(Input, { value: codigo, inputMode: "numeric", autoComplete: "one-time-code", maxLength: 6, onChange: (e2) => setCodigo(e2.target.value) })),
+        h(
+          "div",
+          { className: "flex gap-2" },
+          h(Btn, { onClick: confirmarAlta, disabled: ocupado || String(codigo || "").replace(/[^0-9]/g, "").length < 6 }, "Confirmar y activar"),
+          h(Btn, { variant: "ghost", onClick: cancelarAlta, disabled: ocupado }, "Cancelar")
+        )
+      ) : null,
+      tengoFactor && !exigidaParaMi && !confirmarQuitar ? h(Btn, { variant: "danger", onClick: () => setConfirmarQuitar(true), disabled: ocupado }, "Desactivar") : null,
+      tengoFactor && confirmarQuitar ? h(
+        "div",
+        null,
+        h("div", { className: "text-[12.5px] mb-2" }, "¿Seguro que quieres quitarla? Tu cuenta quedará protegida solo por la contraseña."),
+        h(
+          "div",
+          { className: "flex gap-2" },
+          h(Btn, { variant: "danger", onClick: quitar, disabled: ocupado }, "Sí, desactivar"),
+          h(Btn, { variant: "ghost", onClick: () => setConfirmarQuitar(false), disabled: ocupado }, "No, dejarla")
+        )
+      ) : null
+    )
+  );
+}
+function MfaPoliticaCargos() {
+  const h = import_react4.default.createElement;
+  const CARGOS_MFA = ["Propietario", "Encargado", "Cajero/a", "Camarero/a", "Churrero/a"];
+  const [cargando, setCargando] = (0, import_react4.useState)(true);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [aviso, setAviso] = (0, import_react4.useState)("");
+  const [sinPolitica, setSinPolitica] = (0, import_react4.useState)(false);
+  const [politica, setPolitica] = (0, import_react4.useState)([]);
+  const [soyPropietario, setSoyPropietario] = (0, import_react4.useState)(false);
+  const [ocupado, setOcupado] = (0, import_react4.useState)("");
+  async function cargar() {
+    setCargando(true);
+    setError("");
+    try {
+      const c = await clienteNubeMfa();
+      const r = await c.rpc("mfa_politica_leer");
+      if (r.error) throw r.error;
+      setPolitica(r.data && Array.isArray(r.data.politica) ? r.data.politica : []);
+      setSoyPropietario(!!(r.data && r.data.es_propietario));
+      setSinPolitica(false);
+    } catch (e2) {
+      if (esFaltaDeFuncionMfa(e2)) setSinPolitica(true);
+      else setError(String(e2?.message || e2 || "No se ha podido leer la política."));
+    }
+    setCargando(false);
+  }
+  (0, import_react4.useEffect)(() => {
+    cargar();
+  }, []);
+  async function cambiar(rol, exigida) {
+    setError("");
+    setAviso("");
+    setOcupado(rol);
+    try {
+      const c = await clienteNubeMfa();
+      const r = await c.rpc("mfa_politica_guardar", { p_rol: rol, p_exigida: exigida });
+      if (r.error) throw r.error;
+      setAviso(exigida ? "A partir de ahora se exige la verificación en dos pasos al cargo " + rol + "." : "El cargo " + rol + " vuelve a tenerla voluntaria.");
+      await cargar();
+    } catch (e2) {
+      setError(String(e2?.message || e2 || "No se ha podido guardar."));
+    }
+    setOcupado("");
+  }
+  const exigidaDe = (rol) => politica.some((p22) => p22 && p22.rol === rol && p22.exigida === true);
+  if (cargando) return h(Card, { className: "mt-4" }, "Cargando la política…");
+  if (sinPolitica) return h(Card, { className: "mt-4", style: { background: C2.amberSoft, border: "none" } }, h("div", { className: "text-[12.5px]" }, "El servidor de este entorno todavía no tiene aplicada la migración de la política por cargo. Hasta que se aplique, la verificación en dos pasos sigue siendo obligatoria para Propietario, Encargado y Cajero/a y no se puede cambiar desde aquí."));
+  return h(
+    import_react4.default.Fragment,
+    null,
+    error ? h(Card, { className: "mt-4", style: { background: C2.redSoft, border: "none" } }, h("div", { className: "text-[12.5px]", role: "alert" }, error)) : null,
+    aviso ? h(Card, { className: "mt-4", style: { background: C2.accentSoft, border: "none" } }, h("div", { className: "text-[12.5px]" }, aviso)) : null,
+    h(
+      Card,
+      { className: "mt-4" },
+      h("div", { className: "text-[13px] font-semibold mb-1" }, "Exigirla por cargo"),
+      h("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "De serie es voluntaria para todos: cada persona decide. Si marcas un cargo, quien lo tenga no podrá entrar sin el segundo factor, y si no lo tiene puesto el programa se lo pedirá al entrar."),
+      CARGOS_MFA.map((rol) => h(
+        "label",
+        { key: rol, className: "flex items-center gap-2 text-[12.5px] py-1.5", style: { minHeight: 24 } },
+        h("input", { type: "checkbox", checked: exigidaDe(rol), disabled: !soyPropietario || !!ocupado, onChange: (e2) => cambiar(rol, e2.target.checked) }),
+        rol,
+        ocupado === rol ? h("span", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "guardando…") : null
+      )),
+      !soyPropietario ? h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, "Solo el Propietario puede cambiar esto.") : null
+    )
+  );
+}
+function BotonSeguridadCuenta() {
+  const h = import_react4.default.createElement;
+  const [abierto, setAbierto] = (0, import_react4.useState)(false);
+  if (typeof window === "undefined" || !window.__nubeActiva) return null;
+  return h(
+    import_react4.default.Fragment,
+    null,
+    h(
+      "button",
+      {
+        onClick: () => setAbierto(true),
+        className: "text-[10.5px] font-semibold px-2 py-1 rounded-md whitespace-nowrap shrink-0",
+        style: { background: "rgba(255,255,255,0.08)", color: "#B9C7C0" },
+        title: "Seguridad de tu cuenta: verificación en dos pasos"
+      },
+      "\u{1F512} Seguridad"
+    ),
+    abierto ? h(Modal, { title: "Seguridad de tu cuenta", onClose: () => setAbierto(false) }, h(MfaMiCuenta, null)) : null
+  );
+}
+function ConfigMfa({ esPropietario = false }) {
+  const h = import_react4.default.createElement;
+  return h(
+    "div",
+    null,
+    h(MfaMiCuenta, null),
+    esPropietario ? h(MfaPoliticaCargos, null) : null
+  );
+}
+// ==== FIN CONFIG_MFA ====
 function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [], procesarColaFiscalQaC07D = null }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"]];
+  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"], ["mfa", "Verificación en dos pasos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -104052,7 +104309,8 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "terminales" ? h(ConfigTerminalesCajas, { empresaId, localId }) : null,
     seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre, procesarColaFiscalQaC07D }) : null,
     seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
-    seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null
+    seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null,
+    seccion === "mfa" ? h(ConfigMfa, { esPropietario }) : null
   );
   return h(
     "div",
@@ -116665,6 +116923,7 @@ function CabeceraClaro({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmp
     })),
     h("div", { className: "la-claro-usuario" },
       h(BotonTema, { temaOscuro, setTemaOscuro }),
+      h(BotonSeguridadCuenta, null),
       h(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))
   );
 }
@@ -116832,7 +117091,7 @@ function BuscadorRumbo({ grupos, tab, ambito, puedeNavegar, navegar }) {
 function SidebarGrupos(props) {
   if (props.diseno === "claro") return import_react4.default.createElement(CabeceraClaro, props);
   const { grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "", mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor } = props;
-  return /* @__PURE__ */ import_react4.default.createElement("aside", { style: { background: C2.chrome, color: "#fff" }, className: "hidden md:flex md:w-64 shrink-0 p-4 md:p-5 md:flex-col gap-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-xl px-3 py-3.5 mb-2.5", style: { background: "rgba(184,139,69,0.07)", border: "1px solid rgba(184,139,69,0.24)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "", style: { width: "100%", height: "auto", display: "block" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-widest uppercase mb-3", style: { color: "#9CB6A9" } }, LEMA_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-3", style: { color: "#E2D3B8" } }, contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))), grupos.map((g2, gi) => (g2.items || []).length === 0 ? null : /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-1" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold uppercase tracking-wide mt-3 mb-1 px-3", style: { color: "#7E9186" } }, g2.titulo), g2.items.map((it2) => {
+  return /* @__PURE__ */ import_react4.default.createElement("aside", { style: { background: C2.chrome, color: "#fff" }, className: "hidden md:flex md:w-64 shrink-0 p-4 md:p-5 md:flex-col gap-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-xl px-3 py-3.5 mb-2.5", style: { background: "rgba(184,139,69,0.07)", border: "1px solid rgba(184,139,69,0.24)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "", style: { width: "100%", height: "auto", display: "block" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-widest uppercase mb-3", style: { color: "#9CB6A9" } }, LEMA_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-3", style: { color: "#E2D3B8" } }, contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonSeguridadCuenta, null), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))), grupos.map((g2, gi) => (g2.items || []).length === 0 ? null : /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-1" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold uppercase tracking-wide mt-3 mb-1 px-3", style: { color: "#7E9186" } }, g2.titulo), g2.items.map((it2) => {
     const Icon2 = it2.icon;
     const active = tab === it2.id;
     return /* @__PURE__ */ import_react4.default.createElement(
@@ -116872,7 +117131,7 @@ function SidebarGrupos(props) {
   ))));
 }
 function BarraSuperiorMovil({ temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "" }) {
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden flex items-center justify-between px-4 py-2.5 shrink-0", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 min-w-0" }, /* @__PURE__ */ import_react4.default.createElement("img", { src: ICONO_PROYECTO, alt: "", style: { height: 30, width: 30, borderRadius: 7, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold truncate", style: { color: "#C69A52", letterSpacing: "0.02em" } }, NOMBRE_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-medium truncate", style: { color: "#E2D3B8" } }, contextoActivoPM15))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil })));
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "md:hidden flex items-center justify-between px-4 py-2.5 shrink-0", style: { background: C2.chrome, color: "#fff" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 min-w-0" }, /* @__PURE__ */ import_react4.default.createElement("img", { src: ICONO_PROYECTO, alt: "", style: { height: 30, width: 30, borderRadius: 7, flexShrink: 0 } }), /* @__PURE__ */ import_react4.default.createElement("div", { className: "min-w-0" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold truncate", style: { color: "#C69A52", letterSpacing: "0.02em" } }, NOMBRE_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-medium truncate", style: { color: "#E2D3B8" } }, contextoActivoPM15))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonSeguridadCuenta, null), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil })));
 }
 function BotonItemSheet({ it: it2, tab, onPick }) {
   const Icon2 = it2.icon;
@@ -129875,17 +130134,30 @@ var ErrorBoundaryGlobal = class extends import_react4.default.Component {
     return this.props.children;
   }
 };
-const MFA_REQUIRED_FOR_ALL_LA_SUITE = true;
+const MFA_EXIGIDA_SIN_POLITICA = true;
+function mfaPoliticaExigidaParaMi(cliente) {
+  return (async () => {
+    try {
+      const r = await cliente.rpc("mfa_politica_leer");
+      if (r.error) throw r.error;
+      return !!r.data?.exigida_para_mi;
+    } catch (e) {
+      const m = String(e?.message || e || "");
+      if (/could not find the function|PGRST202|HTTP 404/i.test(m)) return MFA_EXIGIDA_SIN_POLITICA;
+      throw e;
+    }
+  })();
+}
 function evaluarMfaSesion(cliente) {
   return (async () => {
-    if (!MFA_REQUIRED_FOR_ALL_LA_SUITE) return { modo: null };
     const aal = await cliente.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal.error) throw aal.error;
     if (aal.data?.nextLevel === "aal2" && aal.data?.currentLevel !== "aal2") return { modo: "challenge" };
     const factores = await cliente.auth.mfa.listFactors();
     if (factores.error) throw factores.error;
     const verificados = [...(factores.data?.totp || []), ...(factores.data?.phone || [])].filter((factor) => factor.status === "verified");
-    return { modo: verificados.length > 0 ? null : "enroll" };
+    if (verificados.length > 0) return { modo: null };
+    return { modo: await mfaPoliticaExigidaParaMi(cliente) ? "enroll" : null };
   })();
 }
 function MfaGate({ cliente, modo, onComplete, onSignOut }) {

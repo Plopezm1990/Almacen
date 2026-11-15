@@ -124,7 +124,7 @@
   // sesión. No puede validar la generación ni abrir la sincronización con una
   // sesión AAL1, porque prepararSesionPostReset() puede habilitar la cola y
   // subirPendientes() puede alcanzar RPC protegidas antes del desafío MFA.
-  async function mfaAutorizadaParaAplicacion(supabase) {
+  async function mfaAutorizadaParaAplicacion(supabase, sesion) {
     if (!supabase || !supabase.auth || !supabase.auth.mfa) return false;
     var aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal && aal.error) throw aal.error;
@@ -135,7 +135,29 @@
     var hayFactorVerificado = totp.concat(phone).some(function (factor) {
       return factor && factor.status === "verified";
     });
-    return hayFactorVerificado && aal && aal.data && aal.data.currentLevel === "aal2";
+    // Quien tiene un factor inscrito completa su desafio siempre: se lo puso
+    // porque quiere que se le pida.
+    if (hayFactorVerificado) return aal && aal.data && aal.data.currentLevel === "aal2";
+    // Sin factor inscrito, desde el 15/11/2026 solo se cierra la cola si el
+    // servidor exige el segundo factor a esta persona. Por defecto no lo exige
+    // a nadie, y entonces no hay nada que esperar antes de sincronizar.
+    return !(await mfaExigidaPorElServidorEdge(supabase, sesion));
+  }
+
+  // Si el servidor todavia no tiene la politica -cliente desplegado antes que
+  // la migracion- se mantiene la conducta de M-03 y se sigue exigiendo. Fallar
+  // hacia "no se exige" abriria la cola, durante esa ventana, a quien hoy la
+  // tiene cerrada.
+  async function mfaExigidaPorElServidorEdge(supabase, sesion) {
+    try {
+      var r = await supabase.rpc("mfa_politica_leer");
+      if (r && r.error) throw r.error;
+      return !!(r && r.data && r.data.exigida_para_mi);
+    } catch (e) {
+      var m = String(e && e.message ? e.message : e || "");
+      if (/could not find the function|PGRST202|HTTP 404/i.test(m)) return true;
+      throw e;
+    }
   }
 
   async function prepararSesionPostReset(supabase, sesion) {
@@ -199,7 +221,7 @@
     async function validar(sesion) {
       if (!sesion || recargar) return;
       try {
-        if (!(await mfaAutorizadaParaAplicacion(supabase))) {
+        if (!(await mfaAutorizadaParaAplicacion(supabase, sesion))) {
           window.__instalacionSyncPermitida = false;
           return;
         }
@@ -852,11 +874,38 @@ function modoLocalNoReclamado() {
   if (window.__laM03MfaGateInstalada) return;
   window.__laM03MfaGateInstalada = true;
 
+  // Desde el 15/11/2026 la exigencia del segundo factor NO la decide esta
+  // lista: la decide el servidor, en `private.mfa_politica`, y por defecto no
+  // se exige a nadie. El propietario puede exigirla por cargo desde
+  // Configuración.
+  //
+  // Esta lista se queda como respaldo para un caso concreto: que el cliente se
+  // despliegue antes que la migración. Mientras `mfa_politica_leer` no exista
+  // en el servidor se mantiene la conducta de M-03, que exige el segundo factor
+  // a estos tres cargos. Fallar hacia "no se exige" dejaría sin protección,
+  // durante esa ventana, justo a quien hoy la tiene.
   var ROLES_MFA_OBLIGATORIA = {
     "Propietario": true,
     "Encargado": true,
     "Cajero/a": true
   };
+
+  function esFuncionInexistente(e) {
+    var m = String(e && e.message ? e.message : e || "");
+    return /could not find the function|PGRST202|HTTP 404/i.test(m);
+  }
+
+  async function mfaExigidaPorElServidor(cliente, rol) {
+    try {
+      var r = await cliente.rpc("mfa_politica_leer");
+      if (r.error) throw r.error;
+      return !!(r.data && r.data.exigida_para_mi);
+    } catch (e) {
+      if (esFuncionInexistente(e)) return !!ROLES_MFA_OBLIGATORIA[rol];
+      throw e;
+    }
+  }
+
   var overlay = null;
   var supabase = null;
   var ejecucion = 0;
@@ -1034,7 +1083,9 @@ function modoLocalNoReclamado() {
         return;
       }
       var rol = perfil.data.rol;
-      if (!ROLES_MFA_OBLIGATORIA[rol]) { limpiarOverlay(); return; }
+      var exigida = await mfaExigidaPorElServidor(supabase, rol);
+      if (esta !== ejecucion) return;
+      if (!exigida) { limpiarOverlay(); return; }
       var aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aal.error) throw aal.error;
       if (aal.data && aal.data.currentLevel === "aal2") { limpiarOverlay(); return; }
