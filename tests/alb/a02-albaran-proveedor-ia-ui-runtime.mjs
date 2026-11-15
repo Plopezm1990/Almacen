@@ -21,6 +21,7 @@
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 const depsDir = process.env.CFG6E_UI_DEPS || process.env.CFG6_UI_DEPS;
 if (!depsDir) {
@@ -42,7 +43,7 @@ const React = require('react');
 const { createRoot } = require('react-dom/client');
 const act = React.act;
 
-const REPO = resolve(new URL('../../', import.meta.url).pathname);
+const REPO = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const origen = process.env.ALB_A02_FUENTE || join(REPO, 'source-recovery/fuente-recuperado.js');
 
 // ---------- carga del módulo real ----------

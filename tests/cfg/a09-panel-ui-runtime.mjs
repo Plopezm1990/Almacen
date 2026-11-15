@@ -14,6 +14,7 @@
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { crearServidorFalso } from './lib/servidor-caja-falso.mjs';
 import { SIN_ACCESO_QA } from './lib/tablas-sin-acceso-qa.mjs';
 
@@ -36,7 +37,7 @@ const React = require('react');
 const { createRoot } = require('react-dom/client');
 const act = React.act;
 
-const REPO = resolve(new URL('../../', import.meta.url).pathname);
+const REPO = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const origen = process.env.CFG_A09PN_FUENTE || join(REPO, 'source-recovery/fuente-recuperado.js');
 
 // ---------- carga del módulo real ----------
