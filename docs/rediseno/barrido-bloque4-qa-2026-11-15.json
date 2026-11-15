@@ -1,0 +1,36 @@
+{
+ "bloque": "4 - Equipo",
+ "cosas_bien_hechas_del_producto": [
+  "Registro horario explica la obligacion legal desde 2019, los cuatro anos de conservacion y la Inspeccion de Trabajo.",
+  "Coste de personal dice que no calcula nominas y que la gestoria es quien responde legalmente.",
+  "La entrevista asistida dice que la IA no debe puntuar, clasificar ni decidir una contratacion.",
+  "El prefiltro dice que la IA organiza la informacion para que una persona la revise, y que no puntua ni sustituye la entrevista.",
+  "La baja explica que no borra ficha, ausencias, documentos, fichajes ni nominas, y separa la anonimizacion como accion de privacidad."
+ ],
+ "defectos": [
+  {
+   "arreglo": "Btn acepta y reenvia ariaLabel. El mas de cada dia dice «Anadir turno el <dia> <fecha>» y la descarga de datos de cliente dice «Descargar los datos de <nombre>». +155 caracteres en cada copia, paridad exacta.",
+   "causa": "Btn no reenviaba ninguna prop: su firma solo aceptaba children, onClick, variant, type, small y disabled, asi que un aria-label pasado a Btn se caia en silencio. De 381 usos de Btn solo 2 son de solo icono, y nadie habia intentado nunca pasarle aria-label.",
+   "donde": "Cuadrante de turnos",
+   "que": "Siete botones de solo icono, uno por dia de la semana, 44x44 y sin nombre accesible: un lector de pantalla anuncia «boton» siete veces sin decir de que dia."
+  },
+  {
+   "arreglo": "aria-label «Justificante del registro horario del periodo seleccionado». +82 caracteres en cada copia, paridad exacta.",
+   "donde": "Exportar registro horario",
+   "que": "El cuadro de texto del justificante no tenia nombre accesible."
+  }
+ ],
+ "estado_dejado_en_qa": "Nada creado y nada modificado. Ningun fichaje, ninguna nomina, ningun turno, ninguna cuenta.",
+ "fecha": "2026-11-15",
+ "metodo": "Conducido con window.__laPuenteRediseno. Cada formulario se abre y se cancela; no se guardo nada.",
+ "recuento": {
+  "abiertas": 14,
+  "control_medido_accion_no_ejercitada": 2,
+  "defectos_encontrados": 2,
+  "escrituras_realizadas": 0,
+  "objetivo": 22,
+  "pendientes_por_dato_o_aislamiento": 6
+ },
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-EMP-A / QA-A1; medida a 1440x900",
+ "sha": "90b1bdee; https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}
