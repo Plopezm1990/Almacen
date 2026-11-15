@@ -120,6 +120,37 @@ que se ha pedido y es una decisión legítima del dueño del negocio, pero no es
 gratis. La pantalla lo dice con esas palabras, y el Propietario tiene la casilla
 para volver a exigirlo a su cargo cuando quiera, sin tocar código.
 
+## Comprobado en QA el 15/11/2026
+
+Con sesión real de Propietario (`pm07.smoke@qa.invalid`) en
+`deploy-preview-225--chic-entremet-9107cf.netlify.app`, proyecto
+`qjqorixtkilwsndqayyx`, commit `015bca59`.
+
+Lo primero que se comprobó es la condición: `mfa_politica_leer` responde
+`PGRST202 — Could not find the function`. Es decir, el servidor de QA **no**
+tiene la migración, así que lo que corrió es exactamente el camino de respaldo,
+y el mensaje de error casa con la expresión que usan los cuatro puntos de
+cliente para detectarlo.
+
+| Qué | Resultado |
+|---|---|
+| Entrar con el factor ya inscrito | sigue pidiendo el código, como antes de este cambio |
+| Botón «Seguridad» en la barra | está, en las dos barras (lateral y móvil), 82×24 px |
+| Pantalla personal | abre y dice que está activada y que el servidor aún no tiene la política, así que no se puede quitar desde ahí |
+| Botón de desactivar | **no aparece**, que es lo correcto mientras el respaldo la exija |
+| Botón de activar | no aparece, porque la cuenta ya tiene factor |
+| Octava sección de Configuración | está, y muestra el aviso de servidor sin migrar en vez de las casillas por cargo |
+| Medida a 1280×820 | 58 controles, ninguno sin nombre accesible, ninguno por debajo de 24×24, sin desbordamiento horizontal |
+| Medida a 375×812 táctil | ningún control por debajo de 44×44 en ninguna de las dos pantallas, sin desbordamiento |
+
+Lo que **no** se ha podido comprobar en vivo, porque depende de aplicar la
+migración: quitarse el factor, que un cargo no exigido entre sin segundo
+factor, y las casillas por cargo del Propietario. Esa mitad está probada contra
+un PostgreSQL de verdad en memoria (`p04`, 26/26), no contra QA.
+
+Estas dos pantallas son nuevas: no están entre las 267 del mockup, así que no
+se añaden a `MATRIZ-IMPLANTACION-QA.csv`, que cuenta esas 267 y solo esas.
+
 ## Lo que no puedo hacer
 
 No puedo aplicar la migración: el CLI del propietario apunta a producción y
