@@ -104812,7 +104812,7 @@ function GestionAlmacen() {
   const encargosPendientesDelLocalActivo = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
-    return encargosDelLocalActivo.filter((e2) => e2.estado !== "Entregado").map((e2) => {
+    return encargosDelLocalActivo.filter(esEncargoPendientePM14).map((e2) => {
       const f22 = new Date(e2.fechaEntrega);
       const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
       const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
@@ -105975,7 +105975,7 @@ function GestionAlmacen() {
   const encargosPendientes = (0, import_react4.useMemo)(() => {
     const hoy = /* @__PURE__ */ new Date();
     hoy.setHours(0, 0, 0, 0);
-    return encargos.filter((e2) => e2.estado !== "Entregado" && e2.estado !== "Cancelado" && e2.estado !== "Devuelto").map((e2) => {
+    return encargos.filter(esEncargoPendientePM14).map((e2) => {
       const f22 = new Date(e2.fechaEntrega);
       const dias = isNaN(f22) ? null : Math.round((f22 - hoy) / 864e5);
       const total = (e2.lineas || []).reduce((a22, ln2) => a22 + (Number(ln2.cantidad) || 0) * (Number(ln2.precioUnitario) || 0), 0);
@@ -111009,6 +111009,9 @@ function validarEncargoPM10(data, { productos = [], clientes = [], localActivoId
       total
     }
   };
+}
+function esEncargoPendientePM14(encargo) {
+  return !["Entregado", "Cancelado", "Devuelto"].includes(encargo.estado);
 }
 function historialEncargosPM14(encargos) {
   return (encargos || []).filter((e2) => e2.estado === "Cancelado" || e2.estado === "Devuelto").map((e2) => {
@@ -124918,6 +124921,59 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
+function TerminalNavegadorTpv({ empresaId, localId }) {
+  const h = import_react4.default.createElement;
+  const clave = `la_suite_abc_terminal_id_v1:${empresaId}:${localId}`;
+  const [terminales, setTerminales] = (0, import_react4.useState)(null);
+  const [terminalId, setTerminalId] = (0, import_react4.useState)("");
+  const [seleccion, setSeleccion] = (0, import_react4.useState)("");
+  const [error, setError] = (0, import_react4.useState)("");
+  (0, import_react4.useEffect)(() => {
+    let vigente = true;
+    async function cargar() {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data, error: consultaError } = await supabase.from("terminales_tpv").select("id,nombre")
+          .eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true).order("nombre");
+        if (consultaError) throw consultaError;
+        if (!vigente) return;
+        setTerminalId(localStorage.getItem(clave) || "");
+        setTerminales(data || []);
+      } catch {
+        if (vigente) setError("No se pudo consultar el terminal de este navegador.");
+      }
+    }
+    cargar();
+    return () => { vigente = false; };
+  }, [clave, empresaId, localId]);
+  function asignar() {
+    if (!terminales?.some((terminal) => terminal.id === seleccion)) return;
+    try {
+      const asignado = localStorage.getItem(clave) || seleccion;
+      localStorage.setItem(clave, asignado);
+      if (localStorage.getItem(clave) !== asignado) throw new Error("persistencia_terminal_no_disponible");
+      setTerminalId(asignado);
+      setError("");
+    } catch {
+      setError("El navegador no pudo guardar el terminal. Vuelve a intentarlo.");
+    }
+  }
+  const terminal = terminales?.find((item) => item.id === terminalId);
+  return h("div", { className: "mb-3 text-[12px]", style: { color: C2.inkSoft } },
+    terminal ? h("p", { role: "status" }, "Terminal de este navegador: ", terminal.nombre) : null,
+    terminales && terminalId && !terminal ? h("p", { role: "alert" }, "El terminal guardado en este navegador ya no está activo. Revísalo en Terminales y cajas.") : null,
+    !terminalId && terminales?.length > 1 ? h("div", { className: "flex flex-wrap items-end gap-2" },
+      h(Field, { label: "Terminal de este navegador" }, h("select", {
+        value: seleccion,
+        onChange: (evento) => setSeleccion(evento.target.value),
+        className: "min-h-[44px] max-w-full rounded-lg px-2",
+        style: { color: C2.ink, background: C2.surface, border: `1px solid ${C2.line}` }
+      }, h("option", { value: "" }, "Selecciona un terminal"), terminales.map((item) => h("option", { key: item.id, value: item.id }, item.nombre)))),
+      h(Btn, { onClick: asignar, disabled: !seleccion }, "Usar este terminal")
+    ) : null,
+    error ? h("p", { role: "alert" }, error) : null
+  );
+}
 function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino, cargarSalaDestino }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
@@ -128066,6 +128122,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setModoCajaTpv(!modoCajaTpv) }, modoCajaTpv ? "Salir del modo caja" : "Modo caja"), typeof setTemaOscuro === "function" ? /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }) : null), renderSelectorModoTPV(),
+  local?.id && configEmpresa?.id && typeof window.getSupabaseClient === "function" ? import_react4.default.createElement(TerminalNavegadorTpv, { key: `${configEmpresa.id}:${local.id}`, empresaId: configEmpresa.id, localId: local.id }) : null,
   estadoMesaDestino && mesaDestinoId ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
     /* @__PURE__ */ import_react4.default.createElement("div", { role: "status" },
       estadoMesaDestino.mesa && /* @__PURE__ */ import_react4.default.createElement("strong", { className: "block" },

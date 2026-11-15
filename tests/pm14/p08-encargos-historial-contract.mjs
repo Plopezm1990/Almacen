@@ -10,8 +10,8 @@ import assert from 'node:assert/strict';
 // alimenta la nueva sección "Ver historial" del componente Encargos.
 
 const src = fs.readFileSync('fuente.js', 'utf8');
-const ini = src.indexOf('function historialEncargosPM14(');
-assert.ok(ini >= 0, 'historialEncargosPM14 no encontrada en fuente.js');
+const ini = src.indexOf('function esEncargoPendientePM14(');
+assert.ok(ini >= 0, 'esEncargoPendientePM14 no encontrada en fuente.js');
 const fin = src.indexOf('function crearLogicaEncargos(', ini);
 assert.ok(fin > ini, 'no se pudo acotar historialEncargosPM14');
 
@@ -25,6 +25,16 @@ const base = {
   id: 'enc-1', clienteId: 'c1', numero: 'E-001', estado: 'Pendiente',
   lineas: [{ productoId: 'p1', descripcion: 'Tarta', cantidad: 2, precioUnitario: 10 }]
 };
+
+// Un estado cerrado no puede mostrar acciones pendientes en la vista de un local.
+{
+  assert.match(src, /encargosDelLocalActivo\.filter\(esEncargoPendientePM14\)/);
+  const estados = ['Pendiente', 'Entregado', 'Cancelado', 'Devuelto', undefined];
+  const encargos = estados.map((estado) => ({ ...base, estado }));
+  const pendientes = encargos.filter(ctx.esEncargoPendientePM14);
+  assert.deepEqual(pendientes.map((encargo) => encargo.estado), ['Pendiente', undefined]);
+  console.log('P08_PENDIENTES_LOCAL_EXCLUYE_ESTADOS_CERRADOS=PASS');
+}
 
 // ---- Positivo: cancelados y devueltos aparecen, con fecha/motivo mapeados desde los
 // campos reales que escriben cancelarEncargo/devolverEncargo (fechaCancelacion/
