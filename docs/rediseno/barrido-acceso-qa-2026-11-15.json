@@ -1,0 +1,9 @@
+{
+ "bloque": "Acceso, pasada con y sin sesion",
+ "fecha": "2026-11-15",
+ "hallazgo_de_alcance": "/restablecer-contrasena.html es una pagina independiente: carga solo su propio guion y NINGUNA de las seis capas del rediseno. Es decir, queda fuera de la capa de apariencia. Si el rediseno debe cubrir las 267 vistas, esta es visualmente ajena a el, y conviene decidirlo antes de darla por cerrada.",
+ "lo_que_no_se_ejercita_y_por_que": "acc-14 y acc-16 son estados de error de la puerta de sesion. Provocarlos exige fallar el acceso, y la cuenta tiene limitador de intentos y bloqueo M-04. No voy a arriesgar la unica cuenta de propietario de QA por medir una pantalla de error.",
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-EMP-A / QA-A1, y despues sin sesion; 1440x900 y 375x812",
+ "sha": "fbac5320; https://deploy-preview-225--chic-entremet-9107cf.netlify.app",
+ "suelo_tactil_acreditado": "Primera verificacion del suelo de 44 en la aplicacion real, no en el banco: a 375x812, de 82 controles visibles, cero por debajo de 44x44. Hasta hoy el suelo de 44 solo estaba comprobado en el banco de apariencia y en la medicion del 13/11, que ademas estaba mal hecha porque medi a 736 px creyendo que era anchura de ordenador."
+}
