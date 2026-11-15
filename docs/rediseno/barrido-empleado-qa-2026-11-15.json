@@ -1,0 +1,22 @@
+{
+ "bloque": "Modo empleado: acc-10, acc-11, acc-12 e ini-02",
+ "cosas_bien_hechas_del_producto": [
+  "El estado vacio de «Quien eres?» dice exactamente donde se pone el codigo.",
+  "Salir del modo empleado explica que sin PIN de propietario se sale sin escribir nada, y donde crearlo.",
+  "El modo empleado recorta la navegacion a lo que el cargo puede hacer, no solo deshabilita."
+ ],
+ "credencial_de_ensayo": {
+  "alcance_de_lo_afirmado": "Comprobado que vaciar y guardar no lo quita, y que no hay control visible para quitarlo en esa ficha. No he recorrido toda la aplicacion buscando otro sitio donde se pueda, asi que lo dejo como «conviene comprobarlo», no como certeza.",
+  "estado_en_qa": "El codigo sigue puesto en QA Cajero F1. No se escribe aqui cual es, porque el propio producto avisa de que no se escriban claves en notas ni referencias.",
+  "no_se_pudo_quitar": "Guardar la ficha con el campo vacio NO elimina el codigo: el empleado sigue apareciendo en el selector de «Quien eres?». El formulario trata el campo vacio como «no lo cambies», que para una credencial es razonable, pero entonces no hay en la interfaz ninguna forma visible de RETIRAR un codigo ya puesto, solo de cambiarlo.",
+  "que_se_hizo": "Se puso un codigo de acceso de 4 digitos al empleado de ensayo QA Cajero F1 para poder medir el modo empleado, y se intento quitarlo al terminar."
+ },
+ "fecha": "2026-11-15",
+ "hallazgo_de_navegacion": {
+  "gravedad": "No rompe nada. Es presentacion, que es justo el terreno de este rediseno.",
+  "por_que_pasa": "El cargo no alcanza ningun modulo de esas secciones, pero el titulo se pinta igual.",
+  "que": "En modo empleado, cuatro cabeceras de seccion se dibujan sin ninguna entrada debajo: COMPRAS, ALMACEN, COSTES Y PRODUCCION y CALIDAD."
+ },
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-EMP-A / QA-A1, a 1440x900. Con un codigo de acceso puesto al empleado de ensayo QA Cajero F1 para poder entrar en modo empleado.",
+ "sha": "fbac5320; https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}
