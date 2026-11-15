@@ -1,0 +1,10 @@
+{
+ "bloque": "Pantallas restringidas y entrevistas",
+ "fecha": "2026-11-15",
+ "nota": "La sesion caduco a los 15 minutos de inactividad mientras se escribia esto.",
+ "per21": "Bloqueada por aislamiento, comprobado en ejecucion: \"No se ha podido conectar con la IA\".",
+ "per22": "Medida y ejercitada creando y borrando una entrevista de ensayo.",
+ "sesion": "Propietario pm07.smoke@qa.invalid y modo empleado QA Cajero F1, QA-A1, a 1440x900",
+ "sha": "006122a7; https://deploy-preview-225--chic-entremet-9107cf.netlify.app",
+ "sis16": "No existe pantalla de denegacion. Comprobado forzando irA(\"productos\") en modo empleado de Cajero/a: la pestana sigue siendo dashboard. Ocultar el modulo y redirigir en silencio es la via elegida."
+}
