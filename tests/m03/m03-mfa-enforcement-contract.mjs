@@ -86,6 +86,18 @@ assert.match(evaluar, /return \{ modo: await mfaPoliticaExigidaParaMi\(cliente\)
 // opcional no sirve de nada.
 const miCuenta = trozo(source, 'function MfaMiCuenta()', '\nfunction MfaPoliticaCargos()', 'M03_MI_CUENTA');
 assert.match(miCuenta, /auth\.mfa\.enroll\(\{ factorType: "totp"/, 'M03_SELF_ENROLL_MISSING');
+
+// El nombre que la persona ve en su aplicacion de autenticacion lo pone el
+// emisor. Si no se pasa, Supabase usa la Site URL del proyecto: en QA el
+// apunte salia como "localhost:3000", que no le dice nada a nadie y se
+// confunde con cualquier otro. Se fija en las tres altas que existen.
+for (const [archivo, texto] of [['fuente.js', source], ['edge-auth-patch.js', edgeAuth]]) {
+  const altas = texto.match(/mfa\.enroll\(\{[^}]*\}/g) || [];
+  assert.ok(altas.length > 0, `M03_NO_HAY_ALTAS_DE_FACTOR_EN_${archivo}`);
+  for (const alta of altas) {
+    assert.match(alta, /issuer: "L&A Suite"/, `M03_ALTA_SIN_EMISOR_EN_${archivo}: ${alta.slice(0, 90)}`);
+  }
+}
 assert.match(miCuenta, /auth\.mfa\.unenroll\(\{ factorId: f22\.id \}\)/, 'M03_SELF_REMOVAL_MISSING');
 assert.match(miCuenta, /rpc\("mfa_politica_leer"\)/, 'M03_SELF_SCREEN_MUST_READ_THE_POLICY');
 // Quitarse el segundo factor baja la proteccion de la cuenta: se confirma antes.

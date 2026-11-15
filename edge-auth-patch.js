@@ -1055,7 +1055,7 @@ function modoLocalNoReclamado() {
 
   async function prepararEnrolamiento(tarjeta, rol) {
     try {
-      var alta = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "LA Suite - " + rol });
+      var alta = await supabase.auth.mfa.enroll({ factorType: "totp", issuer: "L&A Suite", friendlyName: "LA Suite - " + rol });
       if (alta.error || !alta.data || !alta.data.id) throw alta.error || new Error("No se pudo iniciar el alta MFA");
       factorActual = alta.data;
       renderEnrolamiento(tarjeta, rol, alta.data);

@@ -104094,7 +104094,7 @@ function MfaMiCuenta() {
     setOcupado(true);
     try {
       const c = await clienteNubeMfa();
-      const alta = await c.auth.mfa.enroll({ factorType: "totp", friendlyName: "L&A Suite " + new Date().toISOString().slice(0, 10) });
+      const alta = await c.auth.mfa.enroll({ factorType: "totp", issuer: "L&A Suite", friendlyName: "L&A Suite " + new Date().toISOString().slice(0, 10) });
       if (alta.error) throw alta.error;
       setFactorId(alta.data?.id || "");
       setQr(alta.data?.totp?.qr_code || "");
@@ -130191,7 +130191,7 @@ function MfaGate({ cliente, modo, onComplete, onSignOut }) {
             setFactorId(factorPendiente.id);
             setError("Hay una activación pendiente. Usa el código de la aplicación autenticadora que vinculaste anteriormente.");
           } else {
-            const { data, error: error2 } = await cliente.auth.mfa.enroll({ factorType: "totp", friendlyName: "L&A Suite" });
+            const { data, error: error2 } = await cliente.auth.mfa.enroll({ factorType: "totp", issuer: "L&A Suite", friendlyName: "L&A Suite" });
             if (error2) throw error2;
             if (!activo) return;
             setFactorId(data.id);
