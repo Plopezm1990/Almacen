@@ -27,6 +27,10 @@ Transacciones de solo lectura en `QA-EMP-A / QA-A1` con el rol SQL `authenticate
 
 `abc_recuperar_cuenta` devolvió las dos cuentas y sus pedidos como reanudables al utilizar los contextos de A1 y A2. Coincidieron la cuenta, el pedido y la revisión de cada mesa entre terminales. Interior quedó `ABIERTO` y Terraza `PREPARADO`. La ejecución del traspaso en dos perfiles independientes sigue pendiente.
 
+En un ensayo revertido, Camarero/a marcó Terraza como servida desde A2 y A1 recuperó el mismo pedido en `SERVIDO`. Cajero/a con contexto de segundo factor cobró 2,64 € desde A2, con 5,00 € recibidos y 2,36 € de cambio. La repetición de la misma confirmación devolvió el mismo pago. Hubo un pago, un asiento de caja y una instantánea de venta, con saldo 0 y cierre de cuenta confirmado. El stock conservó su único movimiento de consumo y el servidor denegó al Cajero/a la solicitud de reembolso del pago del ensayo. No se solicitó emisión fiscal.
+
+Una consulta posterior confirmó que Terraza volvió a `PREPARADO`, con cuenta `ABIERTA`, cero checkouts y cero asientos persistidos del ensayo. Esta prueba ejercitó los contratos reales del servidor y deja disponible el mismo pedido para el recorrido del navegador.
+
 ## Verificaciones que siguen abiertas
 
 - Q07 y Q08 con los dos perfiles a la vez. En A2 hay que recuperar el pedido guardado de Interior, observar las mismas mesas y cuentas, y seguir por Cocina, servido y cobro simulado. Conservar los identificadores y contrastar el ticket, cambio y movimientos de stock con el servidor. Forzar el reintento sin duplicar efectos.
