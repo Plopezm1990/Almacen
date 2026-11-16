@@ -106520,7 +106520,8 @@ function GestionAlmacen() {
       fallosCarga,
       estadoCargaDatosPM12,
       diagnosticoStock: diagnosticoStockInforme,
-      registrarSalida
+      registrarSalida,
+      almacenCongelado
     }
   )), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
     PanelDireccion,
@@ -109596,6 +109597,18 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
     return true;
   }
   return { addCliente, updateCliente, deleteCliente, anonimizarCliente };
+}
+function fechaCortaPM19(iso) {
+  const partes = String(iso == null ? "" : iso).split("-");
+  if (partes.length !== 3) return String(iso == null ? "" : iso);
+  return `${partes[2]}/${partes[1]}/${partes[0]}`;
+}
+function cuandoCaducaPM19(dias) {
+  const d2 = Number(dias);
+  if (!Number.isFinite(d2)) return "";
+  if (d2 < 0) return `caduc\xF3 hace ${Math.abs(d2)} d\xEDa${Math.abs(d2) === 1 ? "" : "s"}`;
+  if (d2 === 0) return "caduca hoy";
+  return `caduca dentro de ${d2} d\xEDa${d2 === 1 ? "" : "s"}`;
 }
 function movimientoIdMermaLotePM19(lote) {
   const productoId = String(lote && lote.productoId || "").trim();
@@ -117541,12 +117554,15 @@ function PanelDiseno({ diseno, contexto, tarjetas, puedeConsultar, navegar, abri
     )
   );
 }
-function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null, diseno, contexto, puedeVerPanelRediseno }) {
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, almacenCongelado = false, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null, diseno, contexto, puedeVerPanelRediseno }) {
   const entradas30 = movimientos.filter((m22) => esEntrada(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const salidas30 = movimientos.filter((m22) => esSalida(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const [abierta, setAbierta] = (0, import_react4.useState)(null);
   const [confirmarMermaLote, setConfirmarMermaLote] = (0, import_react4.useState)(null);
   const [procesandoMermaLote, setProcesandoMermaLote] = (0, import_react4.useState)(false);
+  // El resultado de la merma se queda en el dialogo en vez de cerrarlo sin decir
+  // nada: antes se cerraba igual hubiera descontado o no.
+  const [resultadoMermaLote, setResultadoMermaLote] = (0, import_react4.useState)(null);
   const diasTexto = (d2) => d2 < 0 ? `vencido hace ${Math.abs(d2)} d` : d2 === 0 ? "hoy" : `en ${d2} d`;
   const diasColor = (d2) => d2 < 0 ? C2.red : d2 <= 7 ? C2.amber : C2.inkSoft;
   const descuadresStock = diagnosticoStock.filter((d2) => !d2.coincide).sort((a22, b2) => Math.abs(b2.diferencia) - Math.abs(a22.diferencia));
@@ -117837,15 +117853,52 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
   }))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, "Movimiento reciente de almac\xE9n"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-6 mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1 text-[12px]", style: { color: C2.accent } }, /* @__PURE__ */ import_react4.default.createElement(CircleArrowUp, { size: 14 }), " Entradas totales"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono" }, entradas30)), /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1 text-[12px]", style: { color: C2.red } }, /* @__PURE__ */ import_react4.default.createElement(CircleArrowDown, { size: 14 }), " Salidas totales"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-xl font-semibold mono" }, salidas30))), movimientos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xFAn no hay movimientos registrados." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 max-h-40 overflow-y-auto" }, movimientos.slice(0, 8).map((m22) => {
     const p22 = productos.find((x3) => x3.id === m22.productoId);
     return /* @__PURE__ */ import_react4.default.createElement("div", { key: claveMovimientoDashboard(m22), className: "flex items-center justify-between text-[12px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, p22 ? p22.nombre : "\u2014", " \xB7 ", m22.motivo || m22.referencia), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono", style: { color: esEntrada(m22) ? C2.accent : esSalida(m22) ? C2.red : C2.inkSoft } }, esEntrada(m22) ? "+" : esSalida(m22) ? "-" : "\xB1", Math.abs(cantidadConSigno(m22))));
-  }))))), confirmarMermaLote && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoMermaLote && setConfirmarMermaLote(null), title: "Registrar como merma" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3" }, "Vas a registrar ", /* @__PURE__ */ import_react4.default.createElement("b", null, fmt(confirmarMermaLote.unidades), " ud. de ", confirmarMermaLote.nombre), confirmarMermaLote.lote ? ` (lote ${confirmarMermaLote.lote})` : "", " como merma por caducidad."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmarMermaLote(null), disabled: procesandoMermaLote }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(Btn, {
-    onClick: () => {
-      setProcesandoMermaLote(true);
-      registrarSalida(confirmarMermaLote.productoId, confirmarMermaLote.unidades, { motivo: "Merma / caducidad", referencia: confirmarMermaLote.lote ? `lote ${confirmarMermaLote.lote}` : "", movimientoId: movimientoIdMermaLotePM19(confirmarMermaLote) });
+  }))))), confirmarMermaLote && (() => {
+    const prodMerma = (productos || []).find((p22) => p22.id === confirmarMermaLote.productoId) || null;
+    const stockAntes = prodMerma ? Number(prodMerma.stock) || 0 : null;
+    const stockDespues = stockAntes === null ? null : Math.max(0, stockAntes - (Number(confirmarMermaLote.unidades) || 0));
+    const costeMerma = (prodMerma ? Number(prodMerma.costo) || 0 : 0) * (Number(confirmarMermaLote.unidades) || 0);
+    // Misma identidad que usa el motor para deduplicar: si ya existe ese
+    // movimiento, confirmar no descontaria nada y hay que decirlo ANTES.
+    const idMerma = movimientoIdMermaLotePM19(confirmarMermaLote);
+    const yaRegistrada = (movimientos || []).some((m22) => String(m22.id || "") === idMerma);
+    const cerrarMerma = () => {
       setConfirmarMermaLote(null);
-      setProcesandoMermaLote(false);
-    },
-    disabled: procesandoMermaLote
-  }, procesandoMermaLote ? "Registrando\u2026" : "Confirmar merma")))));
+      setResultadoMermaLote(null);
+    };
+    const cuerpoMerma = resultadoMermaLote ? [
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "res", className: "text-[13px] mb-4", role: "status" }, resultadoMermaLote.texto),
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "bot", className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: cerrarMerma }, "Entendido"))
+    ] : almacenCongelado ? [
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "cong", className: "text-[13px] mb-4" }, "El almac\xE9n est\xE1 congelado por un conteo en curso, as\xED que ahora mismo no se puede descontar nada de aqu\xED. Termina o cancela el conteo en Inventario ciego y vuelve a esta alerta."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "bot", className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: cerrarMerma }, "Entendido"))
+    ] : yaRegistrada ? [
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "ya", className: "text-[13px] mb-2" }, "Este lote ya se anot\xF3 como merma antes \u2014 mismo producto, mismo lote y misma caducidad \u2014, as\xED que confirmarlo otra vez no descontar\xEDa nada."),
+      stockAntes === null ? null : /* @__PURE__ */ import_react4.default.createElement("div", { key: "ya2", className: "text-[12.5px] mb-2 p-3 rounded-lg", style: { background: C2.bg } }, "El stock de ", confirmarMermaLote.nombre, " seguir\xEDa en ", /* @__PURE__ */ import_react4.default.createElement("b", null, fmt(stockAntes)), "."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "ya3", className: "text-[12px] mb-4", style: { color: C2.inkSoft } }, "Si ha vuelto a llegar este mismo lote y tambi\xE9n se ha estropeado, an\xF3talo desde Mermas: all\xED se puede repetir la misma mercanc\xEDa."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "bot", className: "flex gap-2" }, setTab ? /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => {
+        cerrarMerma();
+        setTab("mermas");
+      } }, "Ir a Mermas") : null, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: cerrarMerma }, "Entendido"))
+    ] : [
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "a", className: "text-[13px] mb-2" }, "Vas a registrar ", /* @__PURE__ */ import_react4.default.createElement("b", null, fmt(confirmarMermaLote.unidades), " ud. de ", confirmarMermaLote.nombre), confirmarMermaLote.lote ? ` (lote ${confirmarMermaLote.lote})` : "", " como merma por caducidad."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "b", className: "text-[12.5px] mb-2 p-3 rounded-lg", style: { background: C2.bg } }, confirmarMermaLote.caducidad ? /* @__PURE__ */ import_react4.default.createElement("div", null, "Caducidad ", /* @__PURE__ */ import_react4.default.createElement("b", null, fechaCortaPM19(confirmarMermaLote.caducidad)), ": ", cuandoCaducaPM19(confirmarMermaLote.dias), ".") : null, stockAntes === null ? null : /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1" }, "El stock baja de ", /* @__PURE__ */ import_react4.default.createElement("b", null, fmt(stockAntes)), " a ", /* @__PURE__ */ import_react4.default.createElement("b", null, fmt(stockDespues)), "."), costeMerma > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1" }, "El almac\xE9n pierde ", /* @__PURE__ */ import_react4.default.createElement("b", null, "\u20AC", fmt(costeMerma)), " a precio de coste.") : null),
+      confirmarMermaLote.parcial ? /* @__PURE__ */ import_react4.default.createElement("div", { key: "c", className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "La cantidad es aproximada: el programa reparte el stock que queda entre los lotes de este producto, empezando por el que antes caduca.") : null,
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "d", className: "text-[12px] mb-4", style: { color: C2.inkSoft } }, "Queda anotado como una salida por merma en el historial del producto, y desde esta pantalla no se deshace."),
+      /* @__PURE__ */ import_react4.default.createElement("div", { key: "bot", className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: cerrarMerma, disabled: procesandoMermaLote }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(Btn, {
+        onClick: () => {
+          setProcesandoMermaLote(true);
+          const hecho = registrarSalida(confirmarMermaLote.productoId, confirmarMermaLote.unidades, { motivo: "Merma / caducidad", referencia: confirmarMermaLote.lote ? `lote ${confirmarMermaLote.lote}` : "", movimientoId: movimientoIdMermaLotePM19(confirmarMermaLote) });
+          setProcesandoMermaLote(false);
+          setResultadoMermaLote(hecho ? { ok: true, texto: `Merma registrada: ${fmt(confirmarMermaLote.unidades)} ud. de ${confirmarMermaLote.nombre}${confirmarMermaLote.lote ? ` (lote ${confirmarMermaLote.lote})` : ""}.${stockDespues === null ? "" : ` El stock queda en ${fmt(stockDespues)}.`}` } : { ok: false, texto: "No se ha registrado la merma y el stock no se ha tocado. Comprueba que el producto sigue en este local y vuelve a intentarlo." });
+        },
+        disabled: procesandoMermaLote
+      }, procesandoMermaLote ? "Registrando\u2026" : "Confirmar merma"))
+    ];
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => {
+      if (!procesandoMermaLote) cerrarMerma();
+    }, title: "Registrar como merma" }, ...cuerpoMerma);
+  })()));
 }
 var DIAS_REPARTO = [
   { valor: 1, corta: "L", nombre: "Lunes" },
