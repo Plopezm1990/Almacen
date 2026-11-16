@@ -114581,7 +114581,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localActivoId });
       if (diaError) throw diaError;
       const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
-      if (!operatingDay) throw new Error("operating_day_servidor_ausente");
+      if (!operatingDay) return { ok: false, error: "El servidor no ha dicho qu\xE9 d\xEDa operativo es, y sin eso no se sabe qu\xE9 cuentas se pueden retomar. No se ha tocado nada; vuelve a intentarlo." };
       const minutos = Number(abandonoMinutos);
       const { data, error } = await supabase.rpc("abc_listar_cuentas_recuperables", {
         p_empresa_id: empresaId,
@@ -128303,8 +128303,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     }
     setModoTPV("SALA");
     setPedidoOperativoA05(resultado);
-    setMensajeAparcadasA06("Cuenta retomada. La tienes abajo, en el pedido operativo.");
+    // El refresco empieza limpiando mensajes, asi que va ANTES del aviso: al
+    // reves, el aviso de que ha salido bien se borraba solo.
     await cargarCuentasAparcadasA06();
+    setMensajeAparcadasA06("Cuenta retomada. El TPV ha pasado a Sala y la cuenta est\xE1 abajo, en el pedido operativo.");
   }
 
   function dondeEstaCuentaA06(cuenta) {

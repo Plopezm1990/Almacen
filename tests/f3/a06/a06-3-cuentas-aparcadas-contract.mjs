@@ -40,7 +40,10 @@ for (const [nombre, src] of [["bundle", bundle], ["fuente recuperado", recuperad
   // Supabase descarta las claves undefined, asi que la llamada salia sin ese
   // argumento y el servidor respondia que no conocia esa funcion.
   assert.match(lectura, /supabase\.rpc\("abc_obtener_dia_operativo_local"/, `${nombre}: el día operativo se le pregunta al servidor`);
-  assert.match(lectura, /if \(!operatingDay\) throw new Error\("operating_day_servidor_ausente"\)/, `${nombre}: y sin día no se llama, en vez de llamar con un hueco`);
+  assert.match(lectura, /if \(!operatingDay\) return \{ ok: false, error: "El servidor no ha dicho qu\\xE9 d\\xEDa operativo es/, `${nombre}: y sin día no se llama, en vez de llamar con un hueco`);
+  // La traducción compartida de ese código termina en «no se ha guardado el
+  // pedido», y aquí no se guarda ningún pedido: esta pantalla solo lee.
+  assert.doesNotMatch(lectura, /operating_day_servidor_ausente/, `${nombre}: no se toma prestada una frase que habla de guardar un pedido`);
   assert.match(lectura, /p_operating_day: operatingDay,/, `${nombre}: el día que se manda es ese`);
   assert.doesNotMatch(lectura, /terminal\.operatingDay/, `${nombre}: contextoTerminalA02 no tiene ese campo; leerlo de ahí deja el argumento en undefined`);
   assert.doesNotMatch(lectura, /leerContextoCuentaA02/, `${nombre}: esta pantalla tiene que abrirse sin ninguna cuenta en la mano, así que no puede depender del contexto persistido`);
@@ -70,6 +73,13 @@ for (const [nombre, src] of [["bundle", bundle], ["fuente recuperado", recuperad
   assert.match(retomar, /if \(!resultado\?\.ok\) \{/, `${nombre}: y mirarlo`);
   assert.match(retomar, /No se ha podido retomar la cuenta\. No se ha tocado nada\./, `${nombre}: cuando falla, se dice que no se tocó nada`);
   assert.match(retomar, /setPedidoOperativoA05\(resultado\)/, `${nombre}: y cuando sale bien, la cuenta queda abierta de verdad`);
+  // Esto tambien fallo al pulsarlo: el aviso se ponia antes del refresco, y el
+  // refresco empieza limpiando mensajes, asi que se borraba solo y la pantalla
+  // no decia nada despues de una operacion que si habia funcionado.
+  assert.ok(
+    retomar.indexOf("await cargarCuentasAparcadasA06()") < retomar.indexOf('setMensajeAparcadasA06("Cuenta retomada'),
+    `${nombre}: el aviso va después del refresco, o el refresco lo borra`
+  );
   const antesDelFallo = retomar.slice(0, retomar.indexOf("if (!resultado?.ok)"));
   assert.doesNotMatch(antesDelFallo, /setPedidoOperativoA05|setMensajeAparcadasA06\("Cuenta retomada/, `${nombre}: no se celebra antes de saber si salió bien`);
 
