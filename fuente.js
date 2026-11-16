@@ -102019,7 +102019,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
         cantidad: delta,
         cantidadFisica: Number(m4.cantidad) || Math.abs(delta),
         tipo: m4.tipo === "SALIDA_MANUAL" ? d2.tipoAplicacion : m4.tipo,
-        motivo: d2.motivo || m4.tipo,
+        motivo: (m4.tipo === "SALIDA_MANUAL" ? d2.referencia : null) || d2.motivo || m4.tipo,
         referencia: d2.referencia || "PM-07",
         costoUnitario: Number(d2.costoUnitario) || 0,
         ingresoUnitario: Number.isFinite(precioEnDatos) ? precioEnDatos : 0,
@@ -110011,14 +110011,15 @@ async function registrarSalidaServidorPM19({ empresaId, localActivoId, productoI
   try {
     const cliente = await window.getSupabaseClient();
     const contexto = { p_empresa_id: empresaId, p_local_id: localActivoId };
+    const motivoServidor = motivo === "Rotura / rechazo" ? "Rotura" : motivo === "Merma de producción" ? "Producción" : motivo;
     const respuesta = motivo === "Venta"
       ? await cliente.rpc("registrar_venta_stock_carrito_pm09", { ...contexto, p_operation_id: movimientoId,
         p_lineas: [{ productoId, localId: localActivoId, cantidad, motivo, referencia: referencia || motivo,
           costoUnitario: costo, ingresoUnitario, ivaVentaAplicado: iva, medioPago, ventaId: movimientoId }],
         p_fecha: todayISO(), p_datos: { medioPago } })
       : await cliente.rpc("registrar_salida_stock", { ...contexto, p_producto_id: productoId,
-        p_movimiento_id: movimientoId, p_cantidad: cantidad, p_motivo: motivo,
-        p_referencia: referencia || null, p_costo: costo, p_lote_id: loteId });
+        p_movimiento_id: movimientoId, p_cantidad: cantidad, p_motivo: motivoServidor,
+        p_referencia: referencia || (motivoServidor !== motivo ? motivo : null), p_costo: costo, p_lote_id: loteId });
     if (respuesta.error) throw respuesta.error;
     resultado = respuesta.data;
     if (resultado?.ok !== true) throw new Error("salida_respuesta_invalida");
@@ -110216,7 +110217,7 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     const prod = productos.find((p22) => p22.id === productoId);
     if (!prod || !productoEsDelLocalActivo(prod)) return { ok: false, error: "El producto no pertenece al local activo." };
     const esVenta2 = motivo === "Venta";
-    const esMermaMotivo = MOTIVOS_MERMA.includes(motivo) || motivo === "Merma / caducidad";
+    const esMermaMotivo = MOTIVOS_MERMA.includes(motivo) || ["Merma / caducidad", "Rotura / rechazo", "Merma de producción"].includes(motivo);
     const tipo = esVenta2 ? "VENTA" : esMermaMotivo ? "MERMA" : "OTRO";
     const ingresoUnitario = esVenta2 ? precioVentaUnitario !== null && precioVentaUnitario !== "" ? Number(precioVentaUnitario) || 0 : precioNeto(prod) : 0;
     if (typeof window !== "undefined" && (window.__nubeActiva || window.__modoPruebasQA || prod._pm07Servidor)) {
@@ -117823,7 +117824,8 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
         principal: l22.nombre,
         secundario: `${l22.lote ? `lote ${l22.lote} \xB7 ` : ""}${l22.caducidad}${l22.unidades ? ` \xB7 ${l22.parcial ? "quedan aprox. " : ""}${fmt(l22.unidades)} uds` : ""}`,
         derecha: diasTexto(l22.dias),
-        derechaColor: diasColor(l22.dias)
+        derechaColor: diasColor(l22.dias),
+        loteMerma: l22.dias <= 7 && l22.unidades > 0 ? l22 : null
       }))
     },
     {
@@ -118040,7 +118042,7 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-2xl font-semibold mono mt-1", style: { color: t22.color || C2.ink } }, t22.valor),
       t22.nota && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-0.5", style: { color: t22.notaColor || C2.inkSoft } }, t22.nota)
     );
-  })), tarjetaAbierta && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-6", style: { borderColor: C2.accent } }, /* @__PURE__ */ import_react4.default.createElement("span", { "data-la-panel-detalle": "", className: "sr-only", tabIndex: -1 }, tarjetaAbierta.titulo), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, tarjetaAbierta.titulo), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setAbierta(null), "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft }))), tarjetaAbierta.items.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "No hay nada pendiente aqu\xED ahora mismo.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3 max-h-72 overflow-y-auto" }, tarjetaAbierta.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.clave, className: "flex items-start justify-between py-1.5 border-b last:border-0", style: { borderColor: C2.divider } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "pr-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, it2.principal), it2.secundario && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, it2.secundario)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px] mono font-semibold whitespace-nowrap", style: { color: it2.derechaColor || C2.inkSoft } }, it2.derecha)))), setTab && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => {
+  })), tarjetaAbierta && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-6", style: { borderColor: C2.accent } }, /* @__PURE__ */ import_react4.default.createElement("span", { "data-la-panel-detalle": "", className: "sr-only", tabIndex: -1 }, tarjetaAbierta.titulo), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold" }, tarjetaAbierta.titulo), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setAbierta(null), "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft }))), tarjetaAbierta.items.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "No hay nada pendiente aqu\xED ahora mismo.") : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 mb-3 max-h-72 overflow-y-auto" }, tarjetaAbierta.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: it2.clave, className: "flex items-start justify-between py-1.5 border-b last:border-0", style: { borderColor: C2.divider } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "pr-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, it2.principal), it2.secundario && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, it2.secundario)), /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11.5px] mono font-semibold whitespace-nowrap", style: { color: it2.derechaColor || C2.inkSoft } }, it2.derecha), it2.loteMerma && registrarSalida && permitido("productos") && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => setConfirmarMermaLote(it2.loteMerma) }, "Registrar merma")))), setTab && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => {
     setTab(tarjetaAbierta.tab);
     setAbierta(null);
   } }, "Ir a ", tarjetaAbierta.tabNombre, " ", /* @__PURE__ */ import_react4.default.createElement(ChevronRight, { size: 13 }))), permitido("productos") && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-4" }, /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 15, color: C2.amber }), " Alertas de reposici\xF3n"), stockBajo.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "No hay productos por debajo de su stock m\xEDnimo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-2" }, stockBajo.map((p22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: p22.id, className: "flex items-center justify-between py-1.5 border-b last:border-0", style: { borderColor: C2.divider } }, /* @__PURE__ */ import_react4.default.createElement("span", null, p22.nombre), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono text-[12px]", style: { color: C2.amber } }, p22.stock, " / m\xEDn. ", p22.stockMinimo))))), /* @__PURE__ */ import_react4.default.createElement(Card, null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3 flex items-center gap-1.5" }, /* @__PURE__ */ import_react4.default.createElement(TriangleAlert, { size: 15, color: caducanPronto.some((l22) => l22.dias < 0) ? C2.red : C2.amber }), "Caducidades pr\xF3ximas"), caducanPronto.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Ning\xFAn lote caduca en los pr\xF3ximos 30 d\xEDas." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 max-h-48 overflow-y-auto" }, caducanPronto.slice(0, 12).map((l22) => {

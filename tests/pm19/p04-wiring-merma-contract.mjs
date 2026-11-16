@@ -63,6 +63,11 @@ const src = fs.readFileSync('fuente.js', 'utf8');
   await ctx.registrarSalidaServidorPM19({ ...opciones, motivo: 'Venta', ingresoUnitario: 1.5, iva: 10, medioPago: 'Efectivo' });
   assert.equal(llamadas[2].nombre, 'registrar_venta_stock_carrito_pm09');
   assert.equal(llamadas[2].params.p_lineas[0].ingresoUnitario, 1.5);
+  await ctx.registrarSalidaServidorPM19({ ...opciones, motivo: 'Rotura / rechazo', loteId: null, referencia: '' });
+  assert.equal(llamadas[3].params.p_motivo, 'Rotura');
+  assert.equal(llamadas[3].params.p_referencia, 'Rotura / rechazo');
+  await ctx.registrarSalidaServidorPM19({ ...opciones, motivo: 'Merma de producción', loteId: null, referencia: '' });
+  assert.equal(llamadas[4].params.p_motivo, 'Producción');
   console.log('P04_PM19_CONFIRMACION_SERVIDOR_REINTENTO_Y_VENTA=PASS');
 }
 

@@ -55,6 +55,9 @@ function corte(desde, hasta) {
 
 // ---- El dialogo de la alerta. ----
 const dialogo = corte('confirmarMermaLote && (() => {', '})()));');
+const detalleVisible = corte('tarjetaAbierta.items.map', 'setTab(tarjetaAbierta.tab);');
+assert.match(detalleVisible, /it2\.loteMerma && registrarSalida && permitido\("productos"\)/);
+assert.match(detalleVisible, /setConfirmarMermaLote\(it2\.loteMerma\)/);
 
 // 1. Antes de confirmar se ve la fecha, el stock y lo que cuesta.
 {
