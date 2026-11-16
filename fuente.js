@@ -105683,7 +105683,7 @@ function GestionAlmacen() {
   // montado y abierto, asi que el siguiente cambio tiene que volver a pedir
   // permiso.
   function confirmarCambioDeContextoPM15() {
-    const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de local o de empresa ahora, lo que estas escribiendo se guardara en el que elijas, no en el de antes. \xBFQuieres cambiar de todas formas?") : true;
+    const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de local o de empresa ahora, lo que estás escribiendo se guardará en el que elijas, no en el de antes. \xBFQuieres cambiar de todas formas?") : true;
     return decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar);
   }
   function seleccionarContextoLocal(id) {
