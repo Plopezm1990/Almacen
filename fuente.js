@@ -121852,9 +121852,21 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
           body: JSON.stringify({ historial, finalizar: !!finalizar, candidatoNombre: candidatoNombre || "" })
         }
       );
-      const r2 = await resp.json();
+      // Un 404 o un error del servidor no devuelven JSON, y resp.json()
+      // reventaba: el fallo acababa en el catch de abajo, que culpaba a la
+      // conexion del usuario pasara lo que pasara.
+      let r2 = null;
+      try {
+        r2 = await resp.json();
+      } catch {
+        r2 = null;
+      }
+      if (!resp.ok || !r2) {
+        setError(`El servicio de la IA ha contestado ${resp.status}${resp.statusText ? " " + resp.statusText : ""}, que no es una respuesta que se pueda usar. No es tu conexi\xF3n: esto se arregla en el servidor. La entrevista se queda como est\xE1 y no se pierde lo ya respondido.`);
+        return;
+      }
       if (!r2.ok) {
-        setError(r2.error || "No se ha podido conectar con la IA. Int\xE9ntalo otra vez.");
+        setError(r2.error || "El servicio de la IA no ha dicho por qu\xE9 no ha podido seguir. La entrevista se queda como est\xE1 y no se pierde lo ya respondido.");
         return;
       }
       if (r2.terminado) {
@@ -121865,7 +121877,10 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
         actualizarEntrevista(entrevistaId, { siguientePregunta: r2.siguiente_pregunta, tipoRespuesta: r2.tipo_respuesta || "abierta" });
       }
     } catch {
-      setError("No se ha podido conectar con la IA. Comprueba tu conexi\xF3n e int\xE9ntalo otra vez.");
+      // Sin conexion de verdad es una cosa; que el servicio no conteste es
+      // otra muy distinta, y mandar a alguien a revisar su wifi cuando el
+      // problema esta en el servidor le hace perder la tarde.
+      setError(typeof navigator !== "undefined" && navigator.onLine === false ? "Este equipo est\xE1 sin conexi\xF3n. Vuelve a intentarlo cuando tengas red: la entrevista se queda como est\xE1 y no se pierde lo ya respondido." : "No se ha podido hablar con el servicio de la IA. Tu conexi\xF3n parece estar bien, as\xED que lo m\xE1s probable es que ese servicio no est\xE9 disponible en este servidor. No es cosa tuya: habla con quien lleve el programa. La entrevista se queda como est\xE1 y no se pierde lo ya respondido.");
     } finally {
       setCargando(false);
     }
@@ -121900,7 +121915,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
         className: "w-full rounded-lg px-3 py-2 text-[13px] mb-3",
         style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 90 }
       }
-    ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarRespuesta(), disabled: !respuestaActual.trim() }, "Siguiente pregunta"))), activa.historial.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: finalizarAhora }, "Finalizar entrevista ahora"))) : null, error && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, error)));
+    ), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => enviarRespuesta(), disabled: !respuestaActual.trim() }, "Siguiente pregunta"))), activa.historial.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: finalizarAhora }, "Finalizar entrevista ahora"))) : null, error && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.redSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", role: "alert" }, error)));
   }
   if (verInforme && verInforme.informe) {
     const inf = verInforme.informe;
