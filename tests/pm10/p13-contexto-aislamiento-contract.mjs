@@ -176,9 +176,20 @@ const selectorIni = src.indexOf('function seleccionarContextoLocal(id)');
 const selectorTxt = src.slice(selectorIni, selectorIni + 700);
 assert.ok(selectorIni >= 0);
 assert.match(selectorTxt, /setLocalInformeId\(siguiente\)/);
-assert.match(selectorTxt, /if \(siguiente && locales\.some/);
-assert.match(selectorTxt, /cambiarLocalActivo\(siguiente\)/);
+// El local de escritura solo se mueve si se elige uno de verdad, distinto del
+// que ya esta en uso, activo y sin fusionar. "Todos los locales" manda el valor
+// vacio: entonces cambia la vista de informes y nada mas.
+assert.match(selectorTxt, /const cambiaDeLocalActivo = !!siguiente && siguiente !== localActivoId && locales\.some/);
+assert.match(selectorTxt, /if \(cambiaDeLocalActivo\) \{\s*cambiarLocalActivo\(siguiente\);/);
 assert.doesNotMatch(selectorTxt, /if \(!siguiente\)[\s\S]{0,200}setLocalActivoId/);
+// Desde el 16/11/2026, con un formulario abierto se pregunta antes de mover el
+// contexto, y la pregunta va ANTES de tocar nada: si la persona dice que no,
+// ni el informe ni el local de escritura se mueven.
+assert.match(selectorTxt, /if \(cambiaDeLocalActivo && !confirmarCambioDeContextoPM15\(\)\) return;/);
+assert.ok(
+  selectorTxt.indexOf('confirmarCambioDeContextoPM15()') < selectorTxt.indexOf('setLocalInformeId(siguiente)'),
+  'la pregunta tiene que ir antes de cambiar la vista de informes',
+);
 
 // Wiring real: las cinco fronteras reciben locales; Pedidos/Personal/Encargos reciben empresa activa.
 assert.match(src, /crearLogicaProductos\(\{[^\n]*localActivoId, locales, empresaId:/);
