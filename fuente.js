@@ -102009,7 +102009,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
         ...(ticketHistorico.importeVenta != null ? { importeVenta: Number(ticketHistorico.importeVenta) } : {})
       };
       return {
-        id: `pm07-${m4.id}`,
+        id: m4.tipo === "SALIDA_MANUAL" ? d2.movimientoId || `pm07-${m4.id}` : `pm07-${m4.id}`,
         operationId: m4.operation_id,
         ventaId: datosEnriquecidos.ventaId || (m4.tipo === "VENTA" ? m4.operation_id : datosEnriquecidos.anulaVentaId || null),
         anulaVentaId: d2.anulaVentaId || null,
@@ -102018,7 +102018,7 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
         empresaId: m4.empresa_id,
         cantidad: delta,
         cantidadFisica: Number(m4.cantidad) || Math.abs(delta),
-        tipo: m4.tipo,
+        tipo: m4.tipo === "SALIDA_MANUAL" ? d2.tipoAplicacion : m4.tipo,
         motivo: d2.motivo || m4.tipo,
         referencia: d2.referencia || "PM-07",
         costoUnitario: Number(d2.costoUnitario) || 0,
@@ -102042,7 +102042,11 @@ async function sincronizarStockPm07({ setProductos, setMovimientos, empresaId = 
         _pm07Servidor: true
       };
     });
-    setMovimientos((prev) => [...server, ...(prev || []).filter((m4) => !m4._pm07Servidor)]);
+    const idsServidor = new Set(server.map((movimiento) => movimiento.id));
+    setMovimientos((prev) => [...server, ...(prev || []).filter((m4) => {
+      const mismoContexto = (!empresaId || m4.empresaId === empresaId) && (!localActivoId || m4.localId === localActivoId);
+      return !mismoContexto || (!m4._pm07Servidor && !idsServidor.has(m4.id));
+    })]);
   }
   return { ok: true, stocks: stocks.length, movimientos: movs.length };
 }
@@ -105743,7 +105747,7 @@ function GestionAlmacen() {
     return !cerrado;
   }) || null, [conteosDelLocalActivo]);
   const almacenCongelado = !!conteoAbierto;
-  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
+  const { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro } = crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null, esContextoVigente: () => localActivoIdRefPm07.current === localActivoId });
   const { diagnosticarStock, corregirProducto, movimientosParaReconciliar } = crearLogicaReconciliacion({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, localActivoId });
   const { buscarEnCatalogo, aprenderReferencia, guardarAlbaran, eliminarAlbaran, marcarPagada, confirmarAlbaran, anularAlbaran, recibirConAlbaran, recibirConFotoIA, duplicadosDe, desviacionesDePrecio, procesarRecepcion } = crearLogicaAlbaranes({
     catalogoProv,
@@ -106083,11 +106087,18 @@ function GestionAlmacen() {
       if (!porProducto[key]) porProducto[key] = [];
       porProducto[key].push(l22);
     });
+    const mermasPorLote = new Map();
+    for (const movimiento of movimientos) {
+      const loteId = movimiento.datos?.loteId || movimiento.loteId;
+      if (loteId && esMerma(movimiento)) mermasPorLote.set(loteId, (mermasPorLote.get(loteId) || 0) + Math.abs(cantidadConSigno(movimiento)));
+    }
     const filasAjustadas = [];
     Object.entries(porProducto).forEach(([key, lotes]) => {
       const prod = productos.find((p22) => p22.id === key);
       const stockActual = prod ? Number(prod.stock) || 0 : lotes.reduce((a22, l22) => a22 + l22.unidades, 0);
-      const ordenados = [...lotes].sort((x3, y22) => x3.dias - y22.dias);
+      const ordenados = lotes.map((lote) => ({
+        ...lote, unidades: Math.max(0, lote.unidades - (mermasPorLote.get(lote.id) || 0))
+      })).sort((x3, y22) => x3.dias - y22.dias);
       const totalNominal = ordenados.reduce((a22, l22) => a22 + l22.unidades, 0);
       let porDescontar = Math.max(0, totalNominal - stockActual);
       ordenados.forEach((l22) => {
@@ -106101,7 +106112,7 @@ function GestionAlmacen() {
       });
     });
     return filasAjustadas.sort((x3, y22) => x3.dias - y22.dias);
-  }, [albaranes, productos]);
+  }, [albaranes, productos, movimientos]);
   const caducanPronto = (0, import_react4.useMemo)(() => lotesCaducidad.filter((l22) => l22.dias <= 30), [lotesCaducidad]);
   (0, import_react4.useEffect)(() => {
     if (!ready || typeof window === "undefined" || !window.__nubeActiva) return;
@@ -109992,7 +110003,65 @@ function validarProductoPM10(data, { parcial = false } = {}) {
   }
   return { ok: true, datos: salida };
 }
-function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales = [], empresaId = null }) {
+async function registrarSalidaServidorPM19({ empresaId, localActivoId, productoId, cantidad, movimientoId, motivo, referencia, loteId, costo, ingresoUnitario, iva, medioPago, setProductos, setMovimientos, esContextoVigente }) {
+  if (!empresaId || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
+    return { ok: false, error: "Conéctate al servidor para confirmar esta salida." };
+  }
+  let resultado;
+  try {
+    const cliente = await window.getSupabaseClient();
+    const contexto = { p_empresa_id: empresaId, p_local_id: localActivoId };
+    const respuesta = motivo === "Venta"
+      ? await cliente.rpc("registrar_venta_stock_carrito_pm09", { ...contexto, p_operation_id: movimientoId,
+        p_lineas: [{ productoId, localId: localActivoId, cantidad, motivo, referencia: referencia || motivo,
+          costoUnitario: costo, ingresoUnitario, ivaVentaAplicado: iva, medioPago, ventaId: movimientoId }],
+        p_fecha: todayISO(), p_datos: { medioPago } })
+      : await cliente.rpc("registrar_salida_stock", { ...contexto, p_producto_id: productoId,
+        p_movimiento_id: movimientoId, p_cantidad: cantidad, p_motivo: motivo,
+        p_referencia: referencia || null, p_costo: costo, p_lote_id: loteId });
+    if (respuesta.error) throw respuesta.error;
+    resultado = respuesta.data;
+    if (resultado?.ok !== true) throw new Error("salida_respuesta_invalida");
+  } catch (error) {
+    const mensaje = String(error?.message || "");
+    if (mensaje.includes("stock_insuficiente")) return { ok: false, error: "No hay stock disponible suficiente. Puede haber unidades reservadas para pedidos." };
+    if (mensaje.includes("unidad_indivisible") || mensaje.includes("precision_cantidad_excedida")) return { ok: false, error: "La cantidad no coincide con la unidad o los decimales admitidos para este producto." };
+    if (mensaje.includes("no_autorizad")) return { ok: false, error: "Tu cargo no permite registrar esta salida en el local." };
+    if (mensaje.includes("local_inactivo") || mensaje.includes("stock_no_configurado")) return { ok: false, error: "El stock de este producto no está operativo en el local." };
+    if (mensaje.includes("operation_id_conflict")) return { ok: false, error: "Esta salida ya se registró con otros datos. Actualiza el stock antes de volver a intentarlo." };
+    return { ok: false, error: "No se pudo confirmar la salida con el servidor. Reintenta la misma operación para comprobar su estado." };
+  }
+  try {
+    await sincronizarStockPm07({ setProductos, setMovimientos, empresaId, localActivoId, esContextoVigente });
+  } catch {
+    return { ...resultado, aviso: "Salida confirmada. Recarga la pantalla para ver el stock actualizado." };
+  }
+  return resultado;
+}
+
+function usarEnvioSalidaPM19(registrarSalida) {
+  const [procesando, setProcesando] = (0, import_react4.useState)(false);
+  const intento = (0, import_react4.useRef)(null);
+  async function enviar(productoId, cantidad, opciones) {
+    const firma = JSON.stringify([productoId, Number(cantidad), opciones]);
+    if (intento.current?.promesa) return intento.current.promesa;
+    if (intento.current?.firma !== firma) intento.current = { firma, id: uid() };
+    const actual = intento.current;
+    setProcesando(true);
+    actual.promesa = Promise.resolve().then(() => registrarSalida(productoId, cantidad, { ...opciones, movimientoId: opciones.movimientoId || actual.id }));
+    try {
+      const resultado = await actual.promesa;
+      if (resultado?.ok) intento.current = null;
+      return resultado;
+    } finally {
+      actual.promesa = null;
+      setProcesando(false);
+    }
+  }
+  return { enviar, procesando };
+}
+
+function crearLogicaProductos({ productos, setProductos, movimientos, setMovimientos, registrarAuditoria, almacenCongelado, addGasto, localActivoId, locales = [], empresaId = null, esContextoVigente = () => true }) {
   function productoEsDelLocalActivo(prod) {
     if (!prod) return false;
     if (!localActivoId) return true;
@@ -110138,18 +110207,24 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
     setProductos((s22) => s22.map((pr) => pr.id === id ? { ...pr, activo: true, eliminadoEn: null } : pr));
   }
   function registrarSalida(productoId, cantidad, opciones = {}) {
-    if (!validarContextoEscrituraPM10({ localActivoId, locales }).ok) return false;
-    if (almacenCongelado) return false;
+    const contexto = validarContextoEscrituraPM10({ localActivoId, locales });
+    if (!contexto.ok) return contexto;
+    if (almacenCongelado) return { ok: false, error: "Termina o cancela el conteo abierto antes de retirar stock." };
     const cant = Number(cantidad);
-    if (!cant || cant <= 0) return false;
-    const { motivo = "Venta", precioVentaUnitario = null, referencia = "", medioPago = "Efectivo", movimientoId } = opciones;
+    if (!Number.isFinite(cant) || cant <= 0) return { ok: false, error: "Indica una cantidad mayor que cero." };
+    const { motivo = "Venta", precioVentaUnitario = null, referencia = "", medioPago = "Efectivo", movimientoId, loteId = null } = opciones;
     const prod = productos.find((p22) => p22.id === productoId);
-    if (!prod || !productoEsDelLocalActivo(prod)) return false;
+    if (!prod || !productoEsDelLocalActivo(prod)) return { ok: false, error: "El producto no pertenece al local activo." };
     const esVenta2 = motivo === "Venta";
-    const esMermaMotivo = MOTIVOS_MERMA.includes(motivo);
+    const esMermaMotivo = MOTIVOS_MERMA.includes(motivo) || motivo === "Merma / caducidad";
     const tipo = esVenta2 ? "VENTA" : esMermaMotivo ? "MERMA" : "OTRO";
     const ingresoUnitario = esVenta2 ? precioVentaUnitario !== null && precioVentaUnitario !== "" ? Number(precioVentaUnitario) || 0 : precioNeto(prod) : 0;
-    const r2 = aplicarMovimientoStock({
+    if (typeof window !== "undefined" && (window.__nubeActiva || window.__modoPruebasQA || prod._pm07Servidor)) {
+      return registrarSalidaServidorPM19({ empresaId, localActivoId, productoId, cantidad: cant,
+        movimientoId: movimientoId || uid(), motivo, referencia, loteId, costo: Number(prod.costo) || 0,
+        ingresoUnitario, iva: ivaDe(prod), medioPago, setProductos, setMovimientos, esContextoVigente });
+    }
+    return aplicarMovimientoStock({
       productoId,
       cantidad: -cant,
       tipo,
@@ -110162,10 +110237,10 @@ function crearLogicaProductos({ productos, setProductos, movimientos, setMovimie
         costoUnitario: Number(prod.costo) || 0,
         ingresoUnitario,
         ivaVentaAplicado: ivaDe(prod),
-        medioPago: esVenta2 ? medioPago : null
+        medioPago: esVenta2 ? medioPago : null,
+        loteId
       }
     });
-    return r2.ok;
   }
   return { addProducto, updateProducto, deleteProducto, reactivarProducto, registrarSalida, ajustarProductoPorOtro };
 }
@@ -118008,11 +118083,16 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
       confirmarMermaLote.parcial ? /* @__PURE__ */ import_react4.default.createElement("div", { key: "c", className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "La cantidad es aproximada: el programa reparte el stock que queda entre los lotes de este producto, empezando por el que antes caduca.") : null,
       /* @__PURE__ */ import_react4.default.createElement("div", { key: "d", className: "text-[12px] mb-4", style: { color: C2.inkSoft } }, "Queda anotado como una salida por merma en el historial del producto, y desde esta pantalla no se deshace."),
       /* @__PURE__ */ import_react4.default.createElement("div", { key: "bot", className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: cerrarMerma, disabled: procesandoMermaLote }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(Btn, {
-        onClick: () => {
+        onClick: async () => {
+          if (procesandoMermaLote) return;
           setProcesandoMermaLote(true);
-          const hecho = registrarSalida(confirmarMermaLote.productoId, confirmarMermaLote.unidades, { motivo: "Merma / caducidad", referencia: confirmarMermaLote.lote ? `lote ${confirmarMermaLote.lote}` : "", movimientoId: movimientoIdMermaLotePM19(confirmarMermaLote) });
-          setProcesandoMermaLote(false);
-          setResultadoMermaLote(hecho ? { ok: true, texto: `Merma registrada: ${fmt(confirmarMermaLote.unidades)} ud. de ${confirmarMermaLote.nombre}${confirmarMermaLote.lote ? ` (lote ${confirmarMermaLote.lote})` : ""}.${stockDespues === null ? "" : ` El stock queda en ${fmt(stockDespues)}.`}` } : { ok: false, texto: "No se ha registrado la merma y el stock no se ha tocado. Comprueba que el producto sigue en este local y vuelve a intentarlo." });
+          try {
+            const hecho = await registrarSalida(confirmarMermaLote.productoId, confirmarMermaLote.unidades, { motivo: "Merma / caducidad", referencia: confirmarMermaLote.lote ? `lote ${confirmarMermaLote.lote}` : "", movimientoId: movimientoIdMermaLotePM19(confirmarMermaLote), loteId: confirmarMermaLote.id });
+            const saldoConfirmado = hecho?.total ?? stockDespues;
+            setResultadoMermaLote(hecho?.ok ? { ok: true, texto: hecho.aviso || `${hecho.replayed ? "Merma ya registrada" : "Merma registrada"}: ${fmt(confirmarMermaLote.unidades)} ud. de ${confirmarMermaLote.nombre}.${saldoConfirmado === null ? "" : ` El stock queda en ${fmt(saldoConfirmado)}.`}` } : { ok: false, texto: hecho?.error || "No se pudo confirmar la merma." });
+          } finally {
+            setProcesandoMermaLote(false);
+          }
         },
         disabled: procesandoMermaLote
       }, procesandoMermaLote ? "Registrando\u2026" : "Confirmar merma"))
@@ -118175,6 +118255,8 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
   const blank = { codigo: "", codigoBarras: "", nombre: "", categoria: "", unidad: "unidad", tipo: "materia_prima", requierePreparacion: true, alergenos: [], costo: "", ivaCompra: 10, udsPorCaja: 1, nombreEmpaque: "caja", precioVenta: "", ivaVenta: 10, stock: "", stockMinimo: "", stockPisoVenta: 0, stockMinimoPisoVenta: "", zona: "", ubicacion: "", proveedorId: "", contenido: "", unidadContenido: "", departamento: "Obrador" };
   const [form, setForm] = (0, import_react4.useState)(blank);
   const [salidaFor, setSalidaFor] = (0, import_react4.useState)(null);
+  const [errorSalida, setErrorSalida] = (0, import_react4.useState)("");
+  const { enviar: enviarSalida, procesando: procesandoSalida } = usarEnvioSalidaPM19(registrarSalida);
   const [salidaCant, setSalidaCant] = (0, import_react4.useState)("");
   const [salidaMotivo, setSalidaMotivo] = (0, import_react4.useState)("Venta");
   const [salidaMedioPago, setSalidaMedioPago] = (0, import_react4.useState)("Efectivo");
@@ -118388,6 +118470,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
         small: true,
         variant: "ghost",
         onClick: () => {
+          setErrorSalida("");
           setSalidaFor(p22.id);
           setSalidaMotivo("Venta");
           setSalidaPrecio(Number(p22.precioVenta) > 0 ? String(precioNeto(p22).toFixed(2)) : "");
@@ -118396,6 +118479,7 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
       "Registrar salida"
     ), p22.activo === false ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => reactivarProducto(p22.id) }, "Reactivar") : /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setConfirmarEliminarProducto(p22), "aria-label": "Eliminar producto" }, /* @__PURE__ */ import_react4.default.createElement(Trash2, { size: 14, color: C2.inkSoft })))));
   }))))), salidaFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => {
+    if (procesandoSalida) return;
     setSalidaFor(null);
     setSalidaCant("");
   }, title: "Registrar salida de almac\xE9n" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" }, /* @__PURE__ */ import_react4.default.createElement(
@@ -118423,14 +118507,21 @@ function Productos({ productos, proveedores, proveedorPorId, addProducto, update
   )), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad a retirar" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: salidaCant, onChange: (e2) => setSalidaCant(e2.target.value), autoFocus: true })), salidaMotivo === "Venta" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Precio de venta unitario, sin IVA (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: salidaPrecio, onChange: (e2) => setSalidaPrecio(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: salidaMedioPago, onChange: (e2) => setSalidaMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro")))), salidaMotivo !== "Venta" && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Esto se contar\xE1 como p\xE9rdida al coste, no como venta, cuando mires Resultados."), /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
-      onClick: () => {
-        registrarSalida(salidaFor, salidaCant, { motivo: salidaMotivo, precioVentaUnitario: salidaMotivo === "Venta" ? salidaPrecio : 0, medioPago: salidaMedioPago });
+      disabled: procesandoSalida,
+      onClick: async () => {
+        setErrorSalida("");
+        const resultado = await enviarSalida(salidaFor, salidaCant, { motivo: salidaMotivo, precioVentaUnitario: salidaMotivo === "Venta" ? salidaPrecio : 0, medioPago: salidaMedioPago });
+        if (!resultado?.ok || resultado.aviso) {
+          setErrorSalida(resultado?.error || resultado?.aviso || "No se pudo confirmar la salida.");
+          if (resultado?.aviso) setSalidaCant("");
+          return;
+        }
         setSalidaFor(null);
         setSalidaCant("");
       }
     },
-    "Confirmar salida"
-  )), editFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEditFor(null), title: "Editar producto", ancho: "max-w-2xl" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nombre, onChange: (e2) => setEditForm({ ...editForm, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo / SKU" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.codigo, onChange: (e2) => setEditForm({ ...editForm, codigo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(CampoCategoria, { value: editForm.categoria, onChange: (v22) => setEditForm({ ...editForm, categoria: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Departamento" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.departamento, onChange: (e2) => setEditForm({ ...editForm, departamento: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, DEPARTAMENTOS.map((d2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: d2, value: d2 }, d2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad de medida" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.unidad, onChange: (e2) => setEditForm({ ...editForm, unidad: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo de producto" }, /* @__PURE__ */ import_react4.default.createElement(
+    procesandoSalida ? "Registrando…" : "Confirmar salida"
+  ), errorSalida && import_react4.default.createElement("p", { role: "alert", className: "text-[12px] mt-2" }, errorSalida)), editFor && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setEditFor(null), title: "Editar producto", ancho: "max-w-2xl" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Nombre" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.nombre, onChange: (e2) => setEditForm({ ...editForm, nombre: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "C\xF3digo / SKU" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.codigo, onChange: (e2) => setEditForm({ ...editForm, codigo: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Categor\xEDa" }, /* @__PURE__ */ import_react4.default.createElement(CampoCategoria, { value: editForm.categoria, onChange: (v22) => setEditForm({ ...editForm, categoria: v22 }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Departamento" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: editForm.departamento, onChange: (e2) => setEditForm({ ...editForm, departamento: e2.target.value }), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, DEPARTAMENTOS.map((d2) => /* @__PURE__ */ import_react4.default.createElement("option", { key: d2, value: d2 }, d2)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Unidad de medida" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: editForm.unidad, onChange: (e2) => setEditForm({ ...editForm, unidad: e2.target.value }) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo de producto" }, /* @__PURE__ */ import_react4.default.createElement(
     "select",
     {
       value: editForm.tipo || "materia_prima",
@@ -125308,6 +125399,7 @@ var MOTIVOS_MERMA_FORMULARIO = [
   "Otro"
 ];
 function Mermas({ productos, movimientos, registrarSalida, almacenCongelado }) {
+  const { enviar: enviarMerma, procesando: procesandoMerma } = usarEnvioSalidaPM19(registrarSalida);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
   const [productoId, setProductoId] = (0, import_react4.useState)("");
   const [cantidad, setCantidad] = (0, import_react4.useState)("");
@@ -125332,7 +125424,7 @@ function Mermas({ productos, movimientos, registrarSalida, almacenCongelado }) {
     });
     return Object.entries(mapa).sort((a22, b2) => b2[1] - a22[1]);
   }, [registros]);
-  function submit() {
+  async function submit() {
     if (!productoId) {
       setError("Elige un producto.");
       return;
@@ -125341,9 +125433,14 @@ function Mermas({ productos, movimientos, registrarSalida, almacenCongelado }) {
       setError("Indica una cantidad mayor que cero.");
       return;
     }
-    const ok = registrarSalida(productoId, cantidad, { motivo, referencia: observaciones ? `${motivo} \xB7 ${observaciones}` : motivo });
-    if (!ok) {
-      setError("No se ha podido registrar \u2014 comprueba que el almac\xE9n no est\xE9 congelado por un conteo en curso.");
+    const resultado = await enviarMerma(productoId, cantidad, { motivo, referencia: observaciones ? `${motivo} \xB7 ${observaciones}` : motivo });
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se pudo confirmar la merma.");
+      return;
+    }
+    if (resultado.aviso) {
+      setCantidad("");
+      setError(resultado.aviso);
       return;
     }
     setShowForm(false);
@@ -125353,7 +125450,7 @@ function Mermas({ productos, movimientos, registrarSalida, almacenCongelado }) {
     setObservaciones("");
     setError("");
   }
-  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Registrar merma") }, "Mermas"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, 'Todo lo que se ha perdido \u2014caducidad, roturas, deterioro, autoconsumo, degustaciones, errores...\u2014 en un solo sitio, en vez de enterrado dentro de "Salida manual" de cada producto.')), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, "Registrar merma"), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Producto" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: productoId, onChange: (e2) => setProductoId(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona un producto"), productos.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: cantidad, onChange: (e2) => setCantidad(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: motivo, onChange: (e2) => setMotivo(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, MOTIVOS_MERMA_FORMULARIO.map((m22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: m22, value: m22 }, m22)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Observaciones (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: observaciones, onChange: (e2) => setObservaciones(e2.target.value), placeholder: "Ej. se qued\xF3 fuera de la c\xE1mara toda la noche" })), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "El almac\xE9n est\xE1 congelado por un conteo en curso \u2014 no se puede registrar hasta que termine."), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowForm(false) }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit, disabled: almacenCongelado }, "Registrar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, { action: /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setShowForm((s22) => !s22) }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 15 }), " Registrar merma") }, "Mermas"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, 'Todo lo que se ha perdido \u2014caducidad, roturas, deterioro, autoconsumo, degustaciones, errores...\u2014 en un solo sitio, en vez de enterrado dentro de "Salida manual" de cada producto.')), showForm && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] font-semibold mb-3" }, "Registrar merma"), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Producto" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: productoId, onChange: (e2) => setProductoId(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona un producto"), productos.map((p22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: p22.id, value: p22.id }, p22.nombre)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cantidad" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", value: cantidad, onChange: (e2) => setCantidad(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: motivo, onChange: (e2) => setMotivo(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, MOTIVOS_MERMA_FORMULARIO.map((m22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: m22, value: m22 }, m22)))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Observaciones (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: observaciones, onChange: (e2) => setObservaciones(e2.target.value), placeholder: "Ej. se qued\xF3 fuera de la c\xE1mara toda la noche" })), almacenCongelado && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "El almac\xE9n est\xE1 congelado por un conteo en curso \u2014 no se puede registrar hasta que termine."), error && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setShowForm(false), disabled: procesandoMerma }, "Cancelar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: submit, disabled: almacenCongelado || procesandoMerma }, procesandoMerma ? "Registrando…" : "Registrar"))), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-2 mb-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) }))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(
     "button",
     {
       onClick: () => setFiltroMotivo("todos"),

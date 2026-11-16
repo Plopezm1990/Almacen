@@ -94,14 +94,14 @@ const dialogo = corte('confirmarMermaLote && (() => {', '})()));');
 
 // 4. El resultado de la escritura ya no se tira, y el dialogo cuenta como acabo.
 {
-  assert.match(dialogo, /const hecho = registrarSalida\(confirmarMermaLote\.productoId, confirmarMermaLote\.unidades, \{ motivo: "Merma \/ caducidad"/, 'hay que quedarse con lo que devuelve registrarSalida');
-  assert.match(dialogo, /setResultadoMermaLote\(hecho \? \{ ok: true/, 'y contar el resultado, no cerrar y callar');
-  assert.match(dialogo, /no se ha tocado/, 'y cuando no se registra, decir que el stock sigue igual');
+  assert.match(dialogo, /const hecho = await registrarSalida\(confirmarMermaLote\.productoId, confirmarMermaLote\.unidades, \{ motivo: "Merma \/ caducidad"/, 'hay que esperar al resultado de registrarSalida');
+  assert.match(dialogo, /setResultadoMermaLote\(hecho\?\.ok \? \{ ok: true/, 'y contar el resultado, no cerrar y callar');
+  assert.match(dialogo, /hecho\?\.error \|\| "No se pudo confirmar la merma\."/, 'y si la respuesta se pierde, no afirmar que el servidor no registró nada');
   assert.match(dialogo, /role: "status"/, 'el resultado se anuncia, no solo se ve');
 
   // La prueba de que ya no se cierra a ciegas: tras la llamada no hay ningun
   // setConfirmarMermaLote(null) que la siga sin mirar el resultado.
-  const traslallamada = dialogo.slice(dialogo.indexOf('const hecho = registrarSalida('));
+  const traslallamada = dialogo.slice(dialogo.indexOf('const hecho = await registrarSalida('));
   assert.doesNotMatch(traslallamada.slice(0, traslallamada.indexOf('setResultadoMermaLote(')), /setConfirmarMermaLote\(null\)/, 'el diálogo no puede cerrarse antes de saber si se descontó algo');
   console.log('P06_EL_RESULTADO_NO_SE_TIRA=PASS');
 }
