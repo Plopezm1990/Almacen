@@ -84,10 +84,10 @@ for (const [nombre, src] of [["bundle", bundle], ["fuente recuperado", recuperad
   assert.doesNotMatch(antesDelFallo, /setPedidoOperativoA05|setMensajeAparcadasA06\("Cuenta retomada/, `${nombre}: no se celebra antes de saber si salió bien`);
 
   // ---- 6. Cableado completo, de la lógica a la pantalla. ----
-  assert.ok(src.includes("respuestaErrorA06, listarCuentasAparcadasA06, ensayarCierreSesionCajaC12 };"), `${nombre}: la lógica la entrega`);
-  assert.ok(src.includes("moverCantidadLineaCuentaA08, listarCuentasAparcadasA06 } = crearLogicaVenta("), `${nombre}: la aplicación la recibe`);
-  assert.ok(src.includes("cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06 }"), `${nombre}: y se la pasa al TPV`);
-  assert.ok(src.includes("mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null }"), `${nombre}: el TPV la declara`);
+  assert.ok(src.includes("respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };"), `${nombre}: la lógica la entrega`);
+  assert.ok(src.includes("moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta("), `${nombre}: la aplicación la recibe`);
+  assert.ok(src.includes("cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06, unirCuentasA08 }"), `${nombre}: y se la pasa al TPV`);
+  assert.ok(src.includes("mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null, unirCuentasA08 = null }"), `${nombre}: el TPV la declara`);
   assert.ok(src.includes("renderCuentasAparcadasA06(), renderSalaA07(), renderRepartoProductosA08()"), `${nombre}: y la pinta, delante del plano de sala`);
 }
 

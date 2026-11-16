@@ -4538,7 +4538,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -5622,7 +5622,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino: mesaDestinoTpv, cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "", pedidoDestino: pedidoDestinoCocina, limpiarPedidoDestino: () => setPedidoDestinoCocina(null) }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino: mesaDestinoTpv, cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06, unirCuentasA08 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "", pedidoDestino: pedidoDestinoCocina, limpiarPedidoDestino: () => setPedidoDestinoCocina(null) }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -11110,7 +11110,21 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("motivo_reasignacion_requerido")) return "Indica el motivo del cambio de responsable.";
     if (msg.includes("reparto_cuenta_no_autorizado") || msg.includes("reparto_consultar_no_autorizado")) return "Tu perfil no tiene permiso para repartir productos entre cuentas.";
     if (msg.includes("cuentas_recuperables_no_autorizadas")) return "Tu perfil no puede consultar las cuentas abiertas de este local.";
-    if (msg.includes("cuenta_origen_version_conflict") || msg.includes("cuenta_destino_version_conflict")) return "Una de las cuentas cambió en otro terminal. Recarga el reparto antes de repetir la operación.";
+    if (msg.includes("cuenta_origen_version_conflict") || msg.includes("cuenta_destino_version_conflict")) return "Una de las cuentas cambi\xF3 en otro terminal. Recarga el reparto antes de repetir la operaci\xF3n.";
+    // Esta la levanta abc_unir_cuentas y solo estaba traducida en el camino de
+    // cobro, no en este: habria salido el codigo crudo en pantalla.
+    if (msg.includes("terminal_sesion_no_operativa")) return "Este terminal no tiene ahora mismo una sesión de caja operativa. Ábrela antes de unir cuentas.";
+    if (msg.includes("cuentas_unir_no_autorizado")) return "Tu cargo no puede unir cuentas en este local. No se ha tocado nada.";
+    if (msg.includes("cuentas_unir_parametros_invalidos")) return "Faltan datos para unir las cuentas, o es la misma cuenta dos veces. No se ha tocado nada.";
+    if (msg.includes("cuentas_unir_no_encontradas")) return "Una de las dos cuentas ya no est\xE1 en este local. Actualiza la lista.";
+    if (msg.includes("cuentas_unir_no_abiertas")) return "Las dos cuentas tienen que estar abiertas, y alguna ya no lo est\xE1. Actualiza la lista.";
+    if (msg.includes("cuentas_unir_moneda_incompatible")) return "Las dos cuentas no est\xE1n en la misma moneda, as\xED que no se pueden unir.";
+    if (msg.includes("cuentas_unir_operating_day_incompatible")) return "Solo se unen cuentas del d\xEDa operativo de hoy. Alguna es de otro d\xEDa.";
+    if (msg.includes("cuentas_unir_con_fiscalizacion")) return "Alguna de las dos cuentas ya tiene una venta fiscal emitida. Unirlas cambiar\xEDa un documento ya expedido, as\xED que el servidor no lo permite.";
+    if (msg.includes("cuentas_unir_con_cuotas_activas")) return "Hay un reparto de importe activo entre estas cuentas. Resu\xE9lvelo antes de unirlas.";
+    if (msg.includes("cuenta_origen_con_pedido_editable")) return "La cuenta que se funde todav\xEDa tiene un pedido en borrador o abierto. Env\xEDalo o cancelalo antes de unir.";
+    if (msg.includes("cuenta_origen_con_lineas_no_terminales")) return "La cuenta que se funde tiene productos a medias en cocina. Espera a que se sirvan o canc\xE9lalos antes de unir.";
+    if (msg.includes("cuentas_unir_mesas_distintas")) return "Las dos cuentas est\xE1n sentadas en mesas distintas. El servidor solo une cuentas de la misma mesa: mueve una de las dos antes.";
     if (msg.includes("reparto_cuenta_no_encontrada")) return "La cuenta origen o destino ya no está disponible.";
     if (msg.includes("reparto_cuenta_no_abierta")) return "El reparto solo puede hacerse entre cuentas abiertas.";
     if (msg.includes("reparto_moneda_incompatible")) return "Las cuentas usan monedas distintas y no pueden repartirse entre sí.";
@@ -13437,6 +13451,70 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  async function unirCuentasA08(cuentaOrigenId, motivo, expectedOrigenVersion, expectedDestinoVersion) {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de unir cuentas." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const origenId = String(cuentaOrigenId || "").trim();
+    const razon = String(motivo || "").trim();
+    // El servidor exige motivo y lo guarda en la relacion FUSION; pedirlo aqui
+    // evita que el unico aviso sea una negativa suya.
+    if (!origenId) return { ok: false, error: "Elige qu\xE9 cuenta se funde en esta." };
+    if (!razon) return { ok: false, error: "Escribe el motivo: queda guardado con la fusi\xF3n." };
+
+    try {
+      const contexto = leerContextoCuentaA02(empresaId, localActivoId);
+      if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
+      if (String(contexto.cuentaId) === origenId) throw new Error("cuentas_unir_parametros_invalidos");
+      const origenVersion = versionServidorA02(expectedOrigenVersion, "a08.unir.cuenta_origen_version");
+      const destinoVersion = versionServidorA02(expectedDestinoVersion, "a08.unir.cuenta_destino_version");
+
+      const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+      if (!hayConexion) return { ok: false, error: "Unir cuentas lo hace el servidor, as\xED que hace falta conexi\xF3n. No se ha tocado nada." };
+      const supabase = await window.getSupabaseClient();
+      const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      const operationSeed = JSON.stringify({
+        empresaId,
+        localId: localActivoId,
+        cuentaOrigenId: origenId,
+        cuentaDestinoId: contexto.cuentaId,
+        motivo: razon,
+        expectedOrigenVersion: origenVersion,
+        expectedDestinoVersion: destinoVersion,
+        terminalId: terminal.terminalId,
+        sessionId: terminal.sessionId,
+        operatingDay: contexto.operatingDay
+      });
+      const operationDigest = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(operationSeed));
+      const operationHash = Array.from(new Uint8Array(operationDigest))
+        .map((byte) => byte.toString(16).padStart(2, "0"))
+        .join("");
+      const operationId = "a08.2.unir:" + operationHash;
+
+      const fusion = await rpcA02ConRecuperacion(supabase, "abc_unir_cuentas", {
+        p_operation_id: operationId,
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_cuenta_origen_id: origenId,
+        p_cuenta_destino_id: contexto.cuentaId,
+        p_motivo: razon,
+        p_expected_origen_version: origenVersion,
+        p_expected_destino_version: destinoVersion,
+        p_terminal_id: terminal.terminalId,
+        p_session_id: terminal.sessionId,
+        p_operating_day: contexto.operatingDay
+      }, empresaId, localActivoId, operationId);
+      if (!fusion?.ok) throw new Error("cuentas_unir_respuesta_invalida");
+
+      registrarAuditoria("Unir cuentas", `${origenId} \u2192 ${contexto.cuentaId} \xB7 ${razon}`);
+      const recuperada = await recuperarCuentaA06();
+      const estado = await listarCuentasRepartoA08();
+      return { ok: true, fusion, cuenta: recuperada, estado };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function listarCuentasAparcadasA06({ abandonoMinutos = 30 } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local antes de buscar cuentas abiertas." };
     const empresaId = empresaDelLocalActivo?.id || null;
@@ -13958,7 +14036,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.listarPedidosTurno = listarPedidosTurnoRediseno;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -24357,7 +24435,7 @@ function TerminalNavegadorTpv({ empresaId, localId }) {
     error ? h("p", { role: "alert" }, error) : null
   );
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null, unirCuentasA08 = null }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
       const host = window.location.hostname;
@@ -25035,6 +25113,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorAparcadasA06, setErrorAparcadasA06] = (0, import_react4.useState)("");
   const [mensajeAparcadasA06, setMensajeAparcadasA06] = (0, import_react4.useState)("");
   const [retomandoCuentaA06, setRetomandoCuentaA06] = (0, import_react4.useState)("");
+  const [unirAbiertoA08, setUnirAbiertoA08] = (0, import_react4.useState)(false);
+  const [cuentaAUnirA08, setCuentaAUnirA08] = (0, import_react4.useState)("");
+  const [motivoUnirA08, setMotivoUnirA08] = (0, import_react4.useState)("");
+  const [uniendoCuentasA08, setUniendoCuentasA08] = (0, import_react4.useState)(false);
+  const [errorUnirA08, setErrorUnirA08] = (0, import_react4.useState)("");
+  const [mensajeUnirA08, setMensajeUnirA08] = (0, import_react4.useState)("");
   const [descuentoAbiertoA09, setDescuentoAbiertoA09] = (0, import_react4.useState)(false);
   const [tipoDescuentoA09, setTipoDescuentoA09] = (0, import_react4.useState)("PERCENT");
   const [valorDescuentoA09, setValorDescuentoA09] = (0, import_react4.useState)("");
@@ -27228,6 +27312,77 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   }
 
+  async function abrirUnirCuentasA08() {
+    if (typeof listarCuentasRepartoA08 !== "function") return;
+    setErrorUnirA08("");
+    setMensajeUnirA08("");
+    const resultado = await listarCuentasRepartoA08();
+    if (!resultado?.ok) {
+      setErrorUnirA08(resultado?.error || "No se ha podido leer qu\xE9 cuentas hay abiertas.");
+      setUnirAbiertoA08(true);
+      return;
+    }
+    aplicarEstadoRepartoA08(resultado);
+    setUnirAbiertoA08(true);
+  }
+
+  async function confirmarUnirCuentasA08() {
+    if (typeof unirCuentasA08 !== "function") return;
+    const origen = (estadoRepartoA08?.destinos || []).find((c22) => String(c22.cuenta_id) === String(cuentaAUnirA08));
+    if (!origen) {
+      setErrorUnirA08("Elige qu\xE9 cuenta se funde en esta.");
+      return;
+    }
+    setUniendoCuentasA08(true);
+    setErrorUnirA08("");
+    setMensajeUnirA08("");
+    const resultado = await unirCuentasA08(origen.cuenta_id, motivoUnirA08, origen.version, estadoRepartoA08?.origen?.version);
+    setUniendoCuentasA08(false);
+    if (!resultado?.ok) {
+      setErrorUnirA08(resultado?.error || "No se han unido las cuentas. No se ha tocado nada.");
+      return;
+    }
+    if (resultado.cuenta?.ok) setPedidoOperativoA05(resultado.cuenta);
+    if (resultado.estado?.ok) aplicarEstadoRepartoA08(resultado.estado);
+    setCuentaAUnirA08("");
+    setMotivoUnirA08("");
+    setMensajeUnirA08(`Cuentas unidas. ${dondeEstaCuentaA06(origen)} se ha cerrado y sus productos est\xE1n ahora en esta cuenta.`);
+  }
+
+  function renderUnirCuentasA08() {
+    if (modoTPV === "RAPIDA") return null;
+    if (typeof unirCuentasA08 !== "function") return null;
+    if (!pedidoOperativoA05?.cuentaId) return null;
+    const candidatas = Array.isArray(estadoRepartoA08?.destinos) ? estadoRepartoA08.destinos : [];
+    const elegida = candidatas.find((c22) => String(c22.cuenta_id) === String(cuentaAUnirA08)) || null;
+
+    return /* @__PURE__ */ import_react4.default.createElement(
+      Card,
+      { className: "mb-4" },
+      /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between gap-2" },
+        /* @__PURE__ */ import_react4.default.createElement("div", null,
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Unir cuentas"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Pasa los productos de otra cuenta a esta y cierra la otra. Lo decide el servidor: solo del mismo d\xEDa, en la misma moneda y en la misma mesa.")
+        ),
+        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: unirAbiertoA08 ? "ghost" : undefined, onClick: abrirUnirCuentasA08, disabled: uniendoCuentasA08 }, unirAbiertoA08 ? "Actualizar" : "Buscar cuentas que se puedan unir")
+      ),
+      errorUnirA08 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mt-2 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorUnirA08) : null,
+      mensajeUnirA08 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[12px] mt-2 p-2 rounded-lg", style: { background: C2.bg, color: C2.ink } }, mensajeUnirA08) : null,
+      !unirAbiertoA08 ? null : candidatas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-3", style: { color: C2.inkSoft } }, "No hay otra cuenta abierta de hoy con la que unir esta.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Cuenta que se funde en esta (se cierra)" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: cuentaAUnirA08, onChange: (e2) => {
+          setCuentaAUnirA08(e2.target.value);
+          setErrorUnirA08("");
+          setMensajeUnirA08("");
+        }, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } },
+          /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Elige una cuenta"),
+          candidatas.map((c22) => /* @__PURE__ */ import_react4.default.createElement("option", { key: String(c22.cuenta_id), value: String(c22.cuenta_id) }, dondeEstaCuentaA06(c22), " \xB7 \u20AC", fmt(Number(c22.total_comercial) || 0), " \xB7 ", Number(c22.lineas_activas_count) || 0, " l\xEDnea(s)")))),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo (obligatorio, queda guardado con la fusi\xF3n)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoUnirA08, onChange: (e2) => setMotivoUnirA08(e2.target.value), placeholder: "Se han juntado dos grupos en la misma mesa" })),
+        elegida ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-3 p-3 rounded-lg", style: { background: C2.bg } }, "Al unir: ", /* @__PURE__ */ import_react4.default.createElement("b", null, dondeEstaCuentaA06(elegida)), " se cierra y sus ", Number(elegida.lineas_activas_count) || 0, " l\xEDnea(s) y \u20AC", fmt(Number(elegida.total_comercial) || 0), " pasan a esta cuenta. Los comensales de las dos se suman. No se deshace desde aqu\xED.") : null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarUnirCuentasA08, disabled: uniendoCuentasA08 || !cuentaAUnirA08 || !motivoUnirA08.trim() }, uniendoCuentasA08 ? "Uniendo\u2026" : "Unir cuentas"))
+      )
+    );
+  }
+
   function renderRepartoProductosA08() {
     if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
@@ -27700,7 +27855,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "mono text-center rounded-md py-1",
       style: { width: 54, border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, fontSize: 13, minHeight: 44 }
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), "aria-label": "Añadir una unidad", className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `F9 · Guardar pedido \u20AC${fmt(total)}`), renderCuentasAparcadasA06(), renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4())), renderEditorCategoriasTpv(), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), "aria-label": "Añadir una unidad", className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `F9 · Guardar pedido \u20AC${fmt(total)}`), renderCuentasAparcadasA06(), renderSalaA07(), renderRepartoProductosA08(), renderUnirCuentasA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09(), renderCobroF4())), renderEditorCategoriasTpv(), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       onClick: confirmarCobro,
