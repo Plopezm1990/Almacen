@@ -27,6 +27,8 @@ programa todavía no tiene. Conviene no confundirlas con las bloqueadas.
 
 ### 1.1 · No hay forma de apuntar una salida de stock en el servidor
 
+**Actualización del 16/11.** La migración `20261116171854_salida_stock_manual` ya está aplicada en QA. Los tres recorridos se han probado desde el preview y los movimientos sobreviven a la recarga. Queda el contraste en un perfil de navegador independiente. Los resultados están en las filas `ini-06`, `inv-02`, `inv-33` e `inv-34` de la matriz. La descripción siguiente documenta el fallo anterior a la corrección.
+
 **A quién afecta:** `ini-06` (registrar merma desde la alerta de caducidad), la
 pantalla **Mermas** entera, y la salida manual de **Productos**. Las tres llaman
 a la misma función, `registrarSalida`.

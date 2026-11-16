@@ -185,7 +185,9 @@ with objetos(migracion, nombre, tipo, esquema, objeto) as (
     ('20261017160000','pm13_p04_cargo_pantallas','tabla','public','abc_cargo_pantallas'),
     ('20261017193000','pm13_p05_cargo_action_resolver','tabla','private','pm13_p05_acciones_catalogo'),
     ('20261017193000','pm13_p05_cargo_action_resolver','tabla','public','abc_cargo_permisos'),
-    ('20261018120000','pm13_p06_excepciones_permiso','tabla','public','abc_permiso_excepciones')
+    ('20261018120000','pm13_p06_excepciones_permiso','tabla','public','abc_permiso_excepciones'),
+    ('20261116171854','salida_stock_manual','funcion','private','registrar_salida_stock'),
+    ('20261116171854','salida_stock_manual','funcion','public','registrar_salida_stock')
 ),
 estado as (
   select o.migracion, o.nombre, o.tipo, o.esquema, o.objeto,
