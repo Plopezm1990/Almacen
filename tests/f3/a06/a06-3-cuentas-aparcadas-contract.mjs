@@ -36,7 +36,13 @@ for (const [nombre, src] of [["bundle", bundle], ["fuente recuperado", recuperad
 
   // ---- 1. La lista la lleva el servidor. ----
   assert.match(lectura, /supabase\.rpc\("abc_listar_cuentas_recuperables"/, `${nombre}: la lista se le pide al servidor`);
-  assert.match(lectura, /p_operating_day: terminal\.operatingDay/, `${nombre}: el día operativo lo pone el servidor, vía contextoTerminalA02`);
+  // Esto fallo al pulsarlo: contextoTerminalA02 no devuelve operatingDay, y
+  // Supabase descarta las claves undefined, asi que la llamada salia sin ese
+  // argumento y el servidor respondia que no conocia esa funcion.
+  assert.match(lectura, /supabase\.rpc\("abc_obtener_dia_operativo_local"/, `${nombre}: el día operativo se le pregunta al servidor`);
+  assert.match(lectura, /if \(!operatingDay\) throw new Error\("operating_day_servidor_ausente"\)/, `${nombre}: y sin día no se llama, en vez de llamar con un hueco`);
+  assert.match(lectura, /p_operating_day: operatingDay,/, `${nombre}: el día que se manda es ese`);
+  assert.doesNotMatch(lectura, /terminal\.operatingDay/, `${nombre}: contextoTerminalA02 no tiene ese campo; leerlo de ahí deja el argumento en undefined`);
   assert.doesNotMatch(lectura, /leerContextoCuentaA02/, `${nombre}: esta pantalla tiene que abrirse sin ninguna cuenta en la mano, así que no puede depender del contexto persistido`);
   assert.match(lectura, /if \(!data\?\.ok \|\| !Array\.isArray\(data\.cuentas\)\) throw new Error\("cuentas_aparcadas_respuesta_invalida"\)/, `${nombre}: una respuesta que no se entiende no se da por buena`);
 
@@ -44,7 +50,7 @@ for (const [nombre, src] of [["bundle", bundle], ["fuente recuperado", recuperad
   assert.match(lectura, /retomable: String\(cuenta\.estado \|\| ""\) === "ABIERTA"/, `${nombre}: primera condición del servidor`);
   assert.match(lectura, /&& cuenta\.reanudable_mismo_dia !== false/, `${nombre}: segunda condición del servidor`);
   assert.match(lectura, /&& cuenta\.requires_operating_day_resolution !== true/, `${nombre}: tercera condición del servidor`);
-  assert.match(lectura, /&& String\(cuenta\.opened_operating_day \|\| ""\) === String\(terminal\.operatingDay\)/, `${nombre}: y el día tiene que ser el de hoy`);
+  assert.match(lectura, /&& String\(cuenta\.opened_operating_day \|\| ""\) === String\(operatingDay\)/, `${nombre}: y el día tiene que ser el de hoy`);
 
   // ---- 3. Sin conexión se dice sin fingir, y sin alarmar de más. ----
   assert.match(lectura, /La lista de cuentas abiertas la lleva el servidor/, `${nombre}: se dice de quién es la lista`);

@@ -114576,13 +114576,19 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       // contextoTerminalA02 trae el dia operativo del servidor, no del equipo:
       // esta pantalla tiene que poder abrirse sin ninguna cuenta en la mano.
       const terminal = await contextoTerminalA02(supabase, empresaId, localActivoId);
+      // El dia operativo lo dice el servidor con su propia RPC: contextoTerminalA02
+      // no lo trae, y pasarlo como undefined deja la llamada sin ese argumento.
+      const { data: dia, error: diaError } = await supabase.rpc("abc_obtener_dia_operativo_local", { p_empresa_id: empresaId, p_local_id: localActivoId });
+      if (diaError) throw diaError;
+      const operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
+      if (!operatingDay) throw new Error("operating_day_servidor_ausente");
       const minutos = Number(abandonoMinutos);
       const { data, error } = await supabase.rpc("abc_listar_cuentas_recuperables", {
         p_empresa_id: empresaId,
         p_local_id: localActivoId,
         p_terminal_id: terminal.terminalId,
         p_session_id: terminal.sessionId,
-        p_operating_day: terminal.operatingDay,
+        p_operating_day: operatingDay,
         p_abandono_minutos: Number.isFinite(minutos) && minutos > 0 ? Math.floor(minutos) : 30
       });
       if (error) throw error;
@@ -114595,9 +114601,9 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         retomable: String(cuenta.estado || "") === "ABIERTA"
           && cuenta.reanudable_mismo_dia !== false
           && cuenta.requires_operating_day_resolution !== true
-          && String(cuenta.opened_operating_day || "") === String(terminal.operatingDay)
+          && String(cuenta.opened_operating_day || "") === String(operatingDay)
       })).sort((a22, b2) => String(b2.last_activity_at || "").localeCompare(String(a22.last_activity_at || "")));
-      return { ok: true, cuentas, operatingDay: terminal.operatingDay };
+      return { ok: true, cuentas, operatingDay };
     } catch (error) {
       return respuestaErrorA06(error);
     }
