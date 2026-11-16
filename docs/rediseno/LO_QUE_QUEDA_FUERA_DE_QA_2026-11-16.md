@@ -27,7 +27,7 @@ programa todavía no tiene. Conviene no confundirlas con las bloqueadas.
 
 ### 1.1 · No hay forma de apuntar una salida de stock en el servidor
 
-**Actualización del 16/11.** La migración `20261116171854_salida_stock_manual` ya está aplicada en QA. Los tres recorridos se han probado desde el preview y los movimientos sobreviven a la recarga. Queda el contraste en un perfil de navegador independiente. Los resultados están en las filas `ini-06`, `inv-02`, `inv-33` e `inv-34` de la matriz. La descripción siguiente documenta el fallo anterior a la corrección.
+**Actualización del 16/11.** La migración `20261116171854_salida_stock_manual` ya está aplicada en QA. Los tres recorridos se probaron en el preview. Los movimientos sobreviven a la recarga y se confirmaron en Firefox desde un perfil independiente, con tres salidas de 2, 1 y 6 unidades, un coste total de 18,00 EUR y un saldo de 3 unidades en Productos. Los resultados están en las filas `ini-06`, `inv-02`, `inv-33` e `inv-34` de la matriz. La descripción siguiente documenta el fallo anterior a la corrección.
 
 **A quién afecta:** `ini-06` (registrar merma desde la alerta de caducidad), la
 pantalla **Mermas** entera, y la salida manual de **Productos**. Las tres llaman
