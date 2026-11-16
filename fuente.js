@@ -112805,7 +112805,19 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           .order("completed_at", { ascending: false })
           .limit(1);
         if (!checkoutsError && checkouts?.[0]?.id) {
-          data.qr = await prepararTicketFiscalQa(cuenta, data, checkouts[0].id);
+          const checkoutIdTicket = checkouts[0].id;
+          data.qr = await prepararTicketFiscalQa(cuenta, data, checkoutIdTicket);
+          if (data.qr?.ok) {
+            const { data: lineasTicket, error: lineasError } = await supabase
+              .from("venta_fiscal_lineas")
+              .select("id,cantidad,base,impuesto,total,pedido_lineas!abc_venta_linea_source_fk(producto_id,snapshot_comercial)")
+              .eq("empresa_id", empresaId)
+              .eq("local_id", localActivoId)
+              .eq("venta_fiscal_id", data.documentos[0].venta_fiscal_id)
+              .order("created_at");
+            data.checkoutIdTicket = checkoutIdTicket;
+            data.lineasTicket = lineasError ? [] : lineasTicket || [];
+          }
         }
       }
       return data;
@@ -125918,11 +125930,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const mapa = /* @__PURE__ */ new Map();
     (v22 && v22.lineas || []).forEach((l22) => {
       const cantidad = Math.abs(cantidadConSigno(l22));
-      const base = cantidad * Math.abs(Number(l22.ingresoUnitario) || 0);
+      const base = l22.baseFiscal ?? cantidad * Math.abs(Number(l22.ingresoUnitario) || 0);
       const pct = Number(l22.ivaVentaAplicado) || 0;
       const actual = mapa.get(pct) || { pct, base: 0, iva: 0 };
       actual.base += base;
-      actual.iva += base * pct / 100;
+      actual.iva += l22.impuestosFiscales ?? base * pct / 100;
       mapa.set(pct, actual);
     });
     return [...mapa.values()].sort((a22, b2) => a22.pct - b2.pct);
@@ -126033,14 +126045,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           const prod = productos.find((x3) => x3.id === l22.productoId);
           const cantidad = Math.abs(cantidadConSigno(l22));
           const iva = Number(l22.ivaVentaAplicado) || 0;
-          const precio = Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + iva / 100);
+          const precio = l22.totalFiscal == null ? Math.abs(Number(l22.ingresoUnitario) || 0) * (1 + iva / 100) : l22.totalFiscal / cantidad;
           return h3(
             "div",
             { key: l22.id || i33, className: "grid grid-cols-[1fr_44px_58px_62px] gap-1 text-[10.5px] py-1.5", style: { borderBottom: `1px dotted ${C2.line}` } },
-            h3("span", { className: "font-medium break-words" }, prod?.nombre || "Producto"),
+            h3("span", { className: "font-medium break-words" }, l22.nombreFiscal || prod?.nombre || "Producto"),
             h3("span", { className: "text-right" }, fmt(cantidad)),
             h3("span", { className: "text-right" }, fmt(precio)),
-            h3("span", { className: "text-right font-semibold" }, fmt(cantidad * precio))
+            h3("span", { className: "text-right font-semibold" }, fmt(l22.totalFiscal ?? cantidad * precio))
           );
         })),
         h3(
@@ -127684,44 +127696,55 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const qr = fiscal?.qr;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId || !documento || !qr?.ok || typeof qr.qr_url !== "string" || !/^https:\/\//u.test(qr.qr_url)) return null;
-    const lineas = Array.isArray(pedido.lineas) ? pedido.lineas.map((linea, indice) => {
-      const cantidad = Number(linea.cantidad) || 0;
-      const totalLinea = Number(linea.total) || 0;
-      const ingresoUnitario = Number(linea.ingresoUnitario ?? linea.precioUnitario ?? linea.precio_unitario);
-      const baseLinea = Number(linea.base ?? linea.baseLinea);
-      const impuestosLinea = Number(linea.impuestos ?? linea.impuestosLinea);
-      const ivaLinea = ivaTicketDesdeImportes(Number(linea.ivaVentaAplicado ?? linea.iva ?? linea.iva_pct), baseLinea, impuestosLinea);
-      const netoUnitario = Number.isFinite(ingresoUnitario) && ingresoUnitario >= 0 ? ingresoUnitario : Number.isFinite(baseLinea) && baseLinea >= 0 && cantidad > 0 ? baseLinea / cantidad : cantidad > 0 ? totalLinea / cantidad / (1 + ivaLinea / 100) : 0;
+    const lineas = (fiscal.lineasTicket || []).map((linea) => {
+      const cantidad = Number(linea.cantidad);
+      const base = Number(linea.base);
+      const impuestos = Number(linea.impuesto);
+      const ivaLinea = ivaTicketDesdeImportes(NaN, base, impuestos);
       return {
-      id: linea.id || `checkout-linea-${indice}`,
-      productoId: linea.productoId || linea.producto_id,
-      cantidad,
-      ingresoUnitario: netoUnitario,
-      ivaVentaAplicado: ivaLinea
+        id: linea.id,
+        productoId: linea.pedido_lineas?.producto_id,
+        nombreFiscal: linea.pedido_lineas?.snapshot_comercial?.nombre,
+        cantidad,
+        ingresoUnitario: base / cantidad,
+        ivaVentaAplicado: ivaLinea,
+        baseFiscal: base,
+        impuestosFiscales: impuestos,
+        totalFiscal: Number(linea.total)
       };
-    }).filter((linea) => linea.productoId && linea.cantidad > 0) : [];
+    });
     if (lineas.length === 0) return null;
-    const importe = Number(estado.total) || lineas.reduce((total, linea) => total + Math.abs(linea.cantidad * linea.ingresoUnitario) * (1 + linea.ivaVentaAplicado / 100), 0);
+    const importe = lineas.reduce((total, linea) => total + linea.totalFiscal, 0);
+    const pagos = (estado.pagos || []).filter((pago) =>
+      pago.checkout_id === fiscal.checkoutIdTicket && ["CONFIRMADO", "REEMBOLSADO"].includes(pago.estado));
+    const medios = [...new Set(pagos.map((pago) => pago.medio))];
+    const efectivo = pagos.filter((pago) => pago.medio === "EFECTIVO");
+    const sumarPago = (grupo, campo) => grupo.reduce((total, pago) => total + (Number(pago[campo]) || 0), 0);
+    const medioPago = medios.length > 1 ? "Mixto" : ({ EFECTIVO: "Efectivo", TARJETA: "Tarjeta", TRANSFERENCIA: "Transferencia", OTRO: "Otro" })[medios[0]] || null;
+    const detallePago = medios.length > 1 ? {
+      efectivo: sumarPago(efectivo, "importe_objetivo"),
+      tarjeta: sumarPago(pagos.filter((pago) => pago.medio === "TARJETA"), "importe_objetivo")
+    } : null;
     const numero = documento.numero == null ? "" : String(documento.numero).padStart(6, "0");
     const fecha = String(qr.fecha_expedicion || new Date().toISOString().slice(0, 10));
     return {
       ventaId: documento.venta_fiscal_id || pedido.cuentaId,
       referencia: `V-${fecha.replaceAll("-", "")}-${String(documento.documento_id || pedido.cuentaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`,
       fecha,
-      marcaTiempo: pedido.completed_at || new Date().toISOString(),
+      marcaTiempo: documento.created_at || fecha,
       lineas,
-      resumen: lineas.map((linea) => productos.find((producto) => producto.id === linea.productoId)?.nombre || "Producto").slice(0, 3).join(", "),
+      resumen: lineas.map((linea) => linea.nombreFiscal || productos.find((producto) => producto.id === linea.productoId)?.nombre || "Producto").slice(0, 3).join(", "),
       importe,
       importeOriginal: importe,
       importeNetoGestion: importe,
       estado: "ACTIVA",
       trazabilidad: [],
-      medioPago: "Efectivo",
-      detallePago: null,
+      medioPago,
+      detallePago,
       usuario: "",
       anulada: false,
-      mesa: "",
-      zona: "",
+      mesa: pedido.ubicacion?.mesa_nombre || "",
+      zona: pedido.ubicacion?.zona_nombre || "",
       numeroFiscal: `${documento.codigo_serie || "TPV"}-${numero}`,
       qrFiscal: {
         url: qr.qr_url,
@@ -127735,8 +127758,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         },
         production: false
       },
-      entregado: importe,
-      cambio: 0
+      entregado: efectivo.length ? sumarPago(efectivo, "importe_recibido") : null,
+      cambio: efectivo.length ? sumarPago(efectivo, "cambio_entregado") : null
     };
   }
   async function refrescarCobroF4() {
