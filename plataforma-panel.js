@@ -272,6 +272,11 @@
     ".lap-campo{display:block;margin-top:12px}.lap-campo>span{display:block;font-size:13px;font-weight:700;color:#263b30;margin-bottom:4px}" +
     ".lap-campo input,.lap-campo textarea{width:100%;padding:11px;border-radius:10px;border:1px solid #b7b0a0;background:#fff;font:inherit;color:#102018}" +
     ".lap-campo .lap-ayuda{font-size:12px;color:#4B5A54;margin-top:3px;font-weight:400}.lap-campo .lap-err{font-size:12px;color:#8d2e1f;margin-top:3px;font-weight:600}" +
+    // Mismo suelo de dos alturas que el resto del programa: 24 siempre, 44
+    // en cuanto el puntero es un dedo. Estas pantallas cuelgan de <body>,
+    // no de #root, asi que las reglas generales no llegaban hasta aqui.
+    ".lap-root button,.lap-root .lap-btn{min-height:24px;min-width:24px}" +
+    "@media (max-width:760px),(any-pointer:coarse){.lap-root button,.lap-root .lap-btn{min-height:44px;min-width:44px}.lap-campo input,.lap-campo textarea,.lap-campo select{min-height:44px}}" +
     ".lap-pie{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}" +
     ".lap-caja{background:#fff;border:1px dashed #b7b0a0;border-radius:10px;padding:10px 12px;margin-top:10px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;word-break:break-all}" +
     ".lap-codigo{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:26px;letter-spacing:.12em;font-weight:700;text-align:center;background:#fff;border:1px solid #b7b0a0;border-radius:10px;padding:10px;margin-top:10px}" +
@@ -480,10 +485,19 @@
   }
 
   function campo(etiqueta, input, ayuda, clave) {
-    var err = h("div", { class: "lap-err", style: "display:none", "data-error-de": clave || "" });
+    // role="alert" para que el aviso se oiga cuando aparece, y aria-invalid
+    // para que el campo se note mal puesto al volver a el. Antes el aviso solo
+    // se veia: pulsabas "Guardar" y, sin mirar, no pasaba nada.
+    var err = h("div", { class: "lap-err", role: "alert", style: "display:none", "data-error-de": clave || "" });
     return {
       nodo: h("label", { class: "lap-campo" }, h("span", null, etiqueta), input, ayuda ? h("div", { class: "lap-ayuda" }, ayuda) : null, err),
-      error: function (msg) { err.textContent = msg || ""; err.style.display = msg ? "block" : "none"; }
+      error: function (msg) {
+        err.textContent = msg || "";
+        err.style.display = msg ? "block" : "none";
+        if (msg) input.setAttribute("aria-invalid", "true");
+        else input.removeAttribute("aria-invalid");
+      },
+      enfocar: function () { try { input.focus(); } catch (e) {} }
     };
   }
 
@@ -1102,7 +1116,9 @@
       c1.error(""); c2.error("");
       var motivo = validarCambioContrasena(i1.value, i2.value, email);
       if (motivo) {
-        (motivo.indexOf("coinciden") !== -1 ? c2 : c1).error(motivo);
+        var campoMal = motivo.indexOf("coinciden") !== -1 ? c2 : c1;
+        campoMal.error(motivo);
+        campoMal.enfocar();
         return;
       }
       enCurso = true;
