@@ -4546,20 +4546,36 @@ function GestionAlmacen() {
   const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo } = crearLogicaLocales({ locales, setLocales, localActivoId, setLocalActivoId, registrarAuditoria });
+  // Cambiar de local o de empresa con un formulario abierto no perdia nada,
+  // pero movia el contexto por debajo: lo que estabas escribiendo pasaba a
+  // guardarse en el local nuevo sin que nadie te avisara. En «Empresas y
+  // locales» conviven el alta de local y el boton «Usar este», asi que la
+  // situacion se da de verdad. Se pregunta igual que al cambiar de pantalla.
+  // A diferencia de alli, aqui NO se baja la bandera: el formulario sigue
+  // montado y abierto, asi que el siguiente cambio tiene que volver a pedir
+  // permiso.
+  function confirmarCambioDeContextoPM15() {
+    const confirmar = () => typeof window !== "undefined" && typeof window.confirm === "function" ? window.confirm("Tienes un formulario abierto sin guardar. Si cambias de local o de empresa ahora, lo que estas escribiendo se guardara en el que elijas, no en el de antes. \xBFQuieres cambiar de todas formas?") : true;
+    return decidirCambioTabPM15(formularioAbiertoPM15Ref.current, confirmar);
+  }
   function seleccionarContextoLocal(id) {
     const siguiente = id || "";
+    const cambiaDeLocalActivo = !!siguiente && siguiente !== localActivoId && locales.some((l22) => l22.id === siguiente && l22.activo !== false && !l22.fusionadoEn);
+    if (cambiaDeLocalActivo && !confirmarCambioDeContextoPM15()) return;
     setLocalInformeId(siguiente);
-    if (siguiente && locales.some((l22) => l22.id === siguiente && l22.activo !== false && !l22.fusionadoEn)) {
+    if (cambiaDeLocalActivo) {
       cambiarLocalActivo(siguiente);
     }
   }
   function seleccionarContextoEmpresaPM32(empresaId) {
     const destino = locales.find((l22) => l22 && String(l22.empresaId || "") === String(empresaId || "") && l22.activo !== false && !l22.fusionadoEn);
     if (!destino) return;
+    if (destino.id !== localActivoId && !confirmarCambioDeContextoPM15()) return;
     cambiarLocalActivo(destino.id);
     setLocalInformeId("");
   }
   function cambiarLocalActivoConVista(id) {
+    if (id !== localActivoId && !confirmarCambioDeContextoPM15()) return;
     cambiarLocalActivo(id);
     if (locales.some((l22) => l22.id === id && l22.activo !== false && !l22.fusionadoEn)) setLocalInformeId(id);
   }
