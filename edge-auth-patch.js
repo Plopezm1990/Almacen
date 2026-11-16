@@ -188,7 +188,7 @@
     // barrera de sincronización no se abre en esta pasada.
     var copiaCambiada = false;
     if (typeof window.__laOwnerBootstrapSepararCopiaLocal === "function") {
-      copiaCambiada = window.__laOwnerBootstrapSepararCopiaLocal(sesion.user.id).cambio === true;
+      copiaCambiada = (await window.__laOwnerBootstrapSepararCopiaLocal(sesion.user.id)).cambio === true;
     }
 
     // Este punto solo decide si la copia local pertenece a la instalación

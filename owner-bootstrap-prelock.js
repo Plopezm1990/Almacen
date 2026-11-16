@@ -166,6 +166,9 @@
   var CLAVE_DUENO_COPIA = "la_suite_copia_cuenta_dueno_v1";
   var CLAVE_INDICE_COPIAS = "la_suite_copia_cuenta_indice_v1";
   var CLAVE_CONTEXTO_SEGURO_COPIA = "chocoloyos_contexto_operativo_seguro_v1";
+  var CLAVE_GENERACION_COPIA = "la_suite_installation_generation_v1";
+  var BD_COPIAS_CUENTA = "la_suite_copias_cuenta";
+  var ALMACEN_COPIAS_CUENTA = "copias";
   var COPIA_SIN_DUENO = "sin-dueno";
 
   function leerNativo(clave) { return storageGetNativo.call(window.localStorage, clave); }
@@ -251,6 +254,109 @@
     }
   }
 
+  function conBloqueoCopias(accion) {
+    return navigator.locks ? navigator.locks.request(BD_COPIAS_CUENTA, accion) : accion();
+  }
+
+  function abrirArchivoCopias() {
+    return new Promise(function (resolve, reject) {
+      var solicitud = window.indexedDB.open(BD_COPIAS_CUENTA, 1);
+      solicitud.onupgradeneeded = function () { solicitud.result.createObjectStore(ALMACEN_COPIAS_CUENTA); };
+      solicitud.onsuccess = function () { resolve(solicitud.result); };
+      solicitud.onerror = function () { reject(solicitud.error); };
+    });
+  }
+
+  function transaccionCopias(bd, ejecutar) {
+    return new Promise(function (resolve, reject) {
+      var tx = bd.transaction(ALMACEN_COPIAS_CUENTA, "readwrite", { durability: "strict" });
+      tx.oncomplete = function () { resolve(); };
+      tx.onabort = function () { reject(tx.error || new Error("No se pudo guardar la copia local")); };
+      ejecutar(tx.objectStore(ALMACEN_COPIAS_CUENTA));
+    });
+  }
+
+  // Se confirma el archivo duradero antes de quitar originales de localStorage.
+  // También recoge las copias con el formato anterior que consumían la misma cuota.
+  async function separarConArchivo(userId, generacion) {
+    var bd = await abrirArchivoCopias();
+    try {
+      if (leerNativo(CLAVE_GENERACION_COPIA) !== generacion) throw new Error("La instalación cambió. Reintenta la comprobación.");
+      var vivas = clavesDonde(esClaveDeCopiaLocal);
+      var dueno = duenoDeLaCopiaViva(vivas);
+      var marcaAnterior = leerNativo(CLAVE_DUENO_COPIA);
+      var porCuenta = new Map();
+      var originales = new Map();
+      var movidas = 0;
+      var restauradas = 0;
+
+      function archivar(cuenta, clave, original) {
+        var valor = leerNativo(original);
+        if (valor === null) return;
+        if (!porCuenta.has(cuenta)) porCuenta.set(cuenta, new Map());
+        porCuenta.get(cuenta).set(clave, valor);
+        originales.set(original, valor);
+      }
+
+      clavesDonde(function (k) { return k.indexOf(PREFIJO_COPIA_CUENTA) === 0; }).forEach(function (k) {
+        var resto = k.slice(PREFIJO_COPIA_CUENTA.length);
+        var separador = resto.indexOf(":");
+        var original = resto.slice(separador + 1);
+        if (separador > 0 && esClaveDeCopiaLocal(original)) archivar(resto.slice(0, separador), original, k);
+      });
+      if (dueno && dueno !== userId) {
+        vivas.forEach(function (k) { archivar(dueno, k, k); });
+        movidas = vivas.length;
+      }
+
+      var copiaPropia = [];
+      await transaccionCopias(bd, function (almacen) {
+        var antiguas = almacen.openKeyCursor();
+        antiguas.onsuccess = function () {
+          var cursor = antiguas.result;
+          if (!cursor) return;
+          if (cursor.key[0] !== generacion) almacen.delete(cursor.primaryKey);
+          cursor.continue();
+        };
+        if (!porCuenta.has(userId)) porCuenta.set(userId, new Map());
+        porCuenta.forEach(function (nuevas, cuenta) {
+          var id = [generacion, cuenta];
+          var lectura = almacen.get(id);
+          lectura.onsuccess = function () {
+            var entradas = new Map(lectura.result || []);
+            nuevas.forEach(function (valor, clave) { entradas.set(clave, valor); });
+            if (nuevas.size) almacen.put(Array.from(entradas), id);
+            if (cuenta === userId) copiaPropia = Array.from(entradas);
+          };
+        });
+      });
+
+      if (leerNativo(CLAVE_GENERACION_COPIA) !== generacion || leerNativo(CLAVE_DUENO_COPIA) !== marcaAnterior ||
+          Array.from(originales).some(function (entrada) { return leerNativo(entrada[0]) !== entrada[1]; })) {
+        throw new Error("La copia local cambió mientras se archivaba. Reintenta la comprobación.");
+      }
+      if (dueno && dueno !== userId && clavesDonde(esClaveDeCopiaLocal).some(function (k) { return !originales.has(k); })) {
+        throw new Error("La copia local cambió mientras se archivaba. Reintenta la comprobación.");
+      }
+
+      originales.forEach(function (_, k) { quitarNativo(k); });
+      if (originales.size) quitarNativo(CLAVE_INDICE_COPIAS);
+      if (marcaAnterior !== userId) escribirNativo(CLAVE_DUENO_COPIA, userId);
+      copiaPropia.forEach(function (entrada) {
+        if (leerNativo(entrada[0]) === null) {
+          escribirNativo(entrada[0], entrada[1]);
+          restauradas++;
+        }
+      });
+      if (copiaPropia.length) {
+        await transaccionCopias(bd, function (almacen) { almacen.delete([generacion, userId]); });
+      }
+      return { cambio: movidas > 0 || restauradas > 0, movidas: movidas, restauradas: restauradas, duenoAnterior: dueno || null };
+    } finally {
+      bd.close();
+    }
+  }
+
   window.__laOwnerBootstrapSepararCopiaLocal = function (userId) {
     if (!storageGetNativo || !storageSetNativo || !storageRemoveNativo || !window.localStorage) {
       throw new Error("Almacenamiento local no disponible para separar la copia local");
@@ -258,6 +364,11 @@
     if (typeof userId !== "string" || !userId || userId.indexOf(":") !== -1) {
       throw new Error("Cuenta no válida para la copia local");
     }
+    var generacion = leerNativo(CLAVE_GENERACION_COPIA);
+    if (window.indexedDB && generacion) {
+      return conBloqueoCopias(function () { return separarConArchivo(userId, generacion); });
+    }
+
     var vivas = clavesDonde(esClaveDeCopiaLocal);
     var dueno = duenoDeLaCopiaViva(vivas);
     var movidas = 0;
