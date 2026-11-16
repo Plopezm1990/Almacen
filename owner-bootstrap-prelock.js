@@ -229,24 +229,23 @@
     }
     throw new Error("No hay espacio en el navegador para separar la copia local");
   }
-  // El historial de respaldos es una copia local grande y ya tiene el estado
-  // completo del programa. Si el navegador no puede contener origen y destino
-  // a la vez, moverlo (quitar origen y escribir destino) conserva exactamente
-  // los mismos bytes sin relajar el fallo cerrado para el resto de claves.
-  // Si el destino tampoco cabe, se restaura el origen antes de propagar el
-  // error. Las demás colecciones siguen requiriendo duplicación atómica.
-  function moverRespaldoConEspacio(origen, destino, valor, protegidos) {
+  // Una copia grande de historial o auditoría puede caber en una sola clave,
+  // pero no en dos simultáneas. En ese caso se traslada tal cual. Si la nueva
+  // clave tampoco cabe, se repone el origen y se mantiene el fallo cerrado.
+  function moverCopiaConEspacio(origen, destino, original, valor, protegidos) {
     try {
       escribirConEspacio(destino, valor, protegidos);
       return;
     } catch (e) {
-      if (origen !== "almacen:historialRespaldos") throw e;
+      var cuota = e && (e.name === "QuotaExceededError" || e.code === 22);
+      var copiaGrande = original === "almacen:historialRespaldos" || original === "almacen:auditoria" ||
+        original.indexOf("almacen:auditoria::usuario:") === 0;
+      if (!cuota || !copiaGrande) throw e;
       quitarNativo(origen);
       try {
         escribirConEspacio(destino, valor, protegidos);
       } catch (e2) {
-        try { quitarNativo(destino); } catch (e3) {}
-        try { escribirNativo(origen, valor); } catch (e4) {}
+        escribirNativo(origen, valor);
         throw e2;
       }
     }
@@ -270,7 +269,7 @@
       var protegidos = [dueno, userId];
       vivas.forEach(function (k) {
         var valor = leerNativo(k);
-        if (valor !== null) moverRespaldoConEspacio(k, PREFIJO_COPIA_CUENTA + dueno + ":" + k, valor, protegidos);
+        if (valor !== null) moverCopiaConEspacio(k, PREFIJO_COPIA_CUENTA + dueno + ":" + k, k, valor, protegidos);
         quitarNativo(k);
         movidas++;
       });
@@ -290,7 +289,7 @@
     clavesDonde(function (k) { return k.indexOf(prefijoPropio) === 0; }).forEach(function (k) {
       var original = k.slice(prefijoPropio.length);
       if (leerNativo(original) === null) {
-        escribirConEspacio(original, leerNativo(k), [userId]);
+        moverCopiaConEspacio(k, original, original, leerNativo(k), [userId]);
         restauradas++;
       }
       quitarNativo(k);
