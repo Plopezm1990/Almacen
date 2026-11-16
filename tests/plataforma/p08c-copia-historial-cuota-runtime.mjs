@@ -37,7 +37,14 @@ function conCuota(base, margen, comprobar) {
   }
 }
 
-for (const clave of ['almacen:historialRespaldos', 'almacen:auditoria', `almacen:auditoria::usuario:${A}`]) {
+for (const clave of [
+  'almacen:historialRespaldos',
+  'almacen:auditoria',
+  `almacen:auditoria::usuario:${A}`,
+  `almacen:gastosGenerales::usuario:${B}`,
+  'almacen:productos',
+  'almacen__pendientes'
+]) {
   const apartada = `la_suite_copia_cuenta_v1:${A}:${clave}`;
   conCuota({ [clave]: contenido, [claveDueno]: A }, 100, (separar, leer) => {
     assert.equal(separar(B).movidas, 1, clave);

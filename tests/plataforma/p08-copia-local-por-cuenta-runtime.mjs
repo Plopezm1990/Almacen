@@ -204,7 +204,12 @@ const COPIA_A = {
     JSON.stringify({ B: Object.keys(p.crudo.apartadas(B)), C: Object.keys(p.crudo.apartadas(C)), A: Object.keys(p.crudo.apartadas(A)) }));
 
   // Si no hay nada que descartar y no cabe, falla cerrado: no se abre la sincronización y la copia viva sigue intacta.
-  const q = await pagina({ almacenInicial: { 'almacen:productos': grande('z'), la_suite_copia_cuenta_dueno_v1: A }, cuota: 1300 + 60, generacionLocal: GENERACION });
+  const sinMargen = {
+    'almacen:productos': grande('z'), la_suite_copia_cuenta_dueno_v1: A,
+    la_suite_installation_generation_v1: GENERACION
+  };
+  const cuotaSinMargen = Object.entries(sinMargen).reduce((n, [k, v]) => n + k.length + v.length, 0);
+  const q = await pagina({ almacenInicial: sinMargen, cuota: cuotaSinMargen, generacionLocal: GENERACION });
   let error = null;
   try { await q.entrar(B); } catch (e) { error = e; }
   ok('7b. si no cabe y no hay nada que descartar, falla cerrado: error, sincronización cerrada y la copia de A intacta', !!error && q.w.__instalacionSyncPermitida !== true && q.crudo.vivas()['almacen:productos'] === grande('z') && q.crudo.get('la_suite_copia_cuenta_dueno_v1') === A, error && error.message);

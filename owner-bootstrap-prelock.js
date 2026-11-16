@@ -222,25 +222,25 @@
     escribirIndiceCopias(indice);
     return true;
   }
+  function esErrorDeCuota(e) {
+    return e && (e.name === "QuotaExceededError" || e.code === 22);
+  }
   function escribirConEspacio(clave, valor, protegidos) {
     for (var intento = 0; intento < 12; intento++) {
       try { escribirNativo(clave, valor); return; }
-      catch (e) { if (!liberarCopiaApartadaMasAntigua(protegidos)) throw e; }
+      catch (e) { if (!esErrorDeCuota(e) || !liberarCopiaApartadaMasAntigua(protegidos)) throw e; }
     }
     throw new Error("No hay espacio en el navegador para separar la copia local");
   }
-  // Una copia grande de historial o auditoría puede caber en una sola clave,
-  // pero no en dos simultáneas. En ese caso se traslada tal cual. Si la nueva
-  // clave tampoco cabe, se repone el origen y se mantiene el fallo cerrado.
-  function moverCopiaConEspacio(origen, destino, original, valor, protegidos) {
+  // La cuota es común a toda la copia local. Si no cabe duplicar una entrada,
+  // se traslada con su valor intacto. Si el destino tampoco cabe, se repone el
+  // origen antes de propagar el error. Los demás errores no eliminan el origen.
+  function moverCopiaConEspacio(origen, destino, valor, protegidos) {
     try {
       escribirConEspacio(destino, valor, protegidos);
       return;
     } catch (e) {
-      var cuota = e && (e.name === "QuotaExceededError" || e.code === 22);
-      var copiaGrande = original === "almacen:historialRespaldos" || original === "almacen:auditoria" ||
-        original.indexOf("almacen:auditoria::usuario:") === 0;
-      if (!cuota || !copiaGrande) throw e;
+      if (!esErrorDeCuota(e)) throw e;
       quitarNativo(origen);
       try {
         escribirConEspacio(destino, valor, protegidos);
@@ -269,7 +269,7 @@
       var protegidos = [dueno, userId];
       vivas.forEach(function (k) {
         var valor = leerNativo(k);
-        if (valor !== null) moverCopiaConEspacio(k, PREFIJO_COPIA_CUENTA + dueno + ":" + k, k, valor, protegidos);
+        if (valor !== null) moverCopiaConEspacio(k, PREFIJO_COPIA_CUENTA + dueno + ":" + k, valor, protegidos);
         quitarNativo(k);
         movidas++;
       });
@@ -289,7 +289,7 @@
     clavesDonde(function (k) { return k.indexOf(prefijoPropio) === 0; }).forEach(function (k) {
       var original = k.slice(prefijoPropio.length);
       if (leerNativo(original) === null) {
-        moverCopiaConEspacio(k, original, original, leerNativo(k), [userId]);
+        moverCopiaConEspacio(k, original, leerNativo(k), [userId]);
         restauradas++;
       }
       quitarNativo(k);
