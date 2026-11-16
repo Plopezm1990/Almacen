@@ -112250,7 +112250,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("cuentas_unir_operating_day_incompatible")) return "Solo se unen cuentas del d\xEDa operativo de hoy. Alguna es de otro d\xEDa.";
     if (msg.includes("cuentas_unir_con_fiscalizacion")) return "Alguna de las dos cuentas ya tiene una venta fiscal emitida. Unirlas cambiar\xEDa un documento ya expedido, as\xED que el servidor no lo permite.";
     if (msg.includes("cuentas_unir_con_cuotas_activas")) return "Hay un reparto de importe activo entre estas cuentas. Resu\xE9lvelo antes de unirlas.";
-    if (msg.includes("cuenta_origen_con_pedido_editable")) return "La cuenta que se funde todav\xEDa tiene un pedido en borrador o abierto. Env\xEDalo o cancelalo antes de unir.";
+    if (msg.includes("cuenta_origen_con_pedido_editable")) return "La cuenta que se funde todav\xEDa tiene un pedido en borrador o abierto. Env\xEDalo o canc\xE9lalo antes de unir.";
     if (msg.includes("cuenta_origen_con_lineas_no_terminales")) return "La cuenta que se funde tiene productos a medias en cocina. Espera a que se sirvan o canc\xE9lalos antes de unir.";
     if (msg.includes("cuentas_unir_mesas_distintas")) return "Las dos cuentas est\xE1n sentadas en mesas distintas. El servidor solo une cuentas de la misma mesa: mueve una de las dos antes.";
     if (msg.includes("reparto_cuenta_no_encontrada")) return "La cuenta origen o destino ya no está disponible.";
