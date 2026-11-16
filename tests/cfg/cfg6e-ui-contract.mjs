@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 
+// tpv-09: listarCuentasAparcadasA06 entra en estas cuatro listas. El final y el
+// principio se siguen fijando igual de literalmente; solo se ha anotado el nombre
+// nuevo para que el contrato siga leyendo el cableado real.
+
 // Contrato estático de pantalla de la PIEZA 6e (modalidad al abrir cuenta en el TPV):
 //  - la lógica de apertura (`venderCarritoA02`) decide la modalidad al crear el registro pendiente: la elegida o, si no,
 //    Barra cuando está habilitada y, si no, la primera habilitada; si no se puede leer la lista, Barra como antes;
@@ -60,8 +64,8 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   assert.equal(cuenta("configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino: mesaDestinoTpv"), 1, nombre + ": la aplicación se la pasa");
   assert.equal(cuenta("venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05"), 1, nombre + ": el montaje conserva su inicio (lo exige el contrato P07)");
   assert.equal(cuenta("  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta,"), 1, nombre + ": la aplicación la obtiene de la lógica (la primera de la lista: el final lo exige el contrato A08.1)");
-  assert.equal(cuenta("listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta("), 1, nombre + ": la lista que obtiene la aplicación conserva su final (lo exige el contrato A08.1)");
-  assert.equal(cuenta("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };"), 1, nombre + ": la lógica ofrece las ayudas del TPV y el ensayo C12 (al final de la lista)");
+  assert.equal(cuenta("listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06 } = crearLogicaVenta("), 1, nombre + ": la lista que obtiene la aplicación conserva su final (lo exige el contrato A08.1)");
+  assert.equal(cuenta("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, ensayarCierreSesionCajaC12 };"), 1, nombre + ": la lógica ofrece las ayudas del TPV y el ensayo C12 (al final de la lista)");
   assert.equal(cuenta("  return { venderCarrito, venderLocal, anularVenta,"), 1, nombre + ": la lista que devuelve la lógica conserva su inicio (lo exige el contrato A06.1)");
   assert.equal(cuenta('modalidad: "BARRA",'), 0, nombre + ": ya no hay una modalidad fija «BARRA» en el registro pendiente");
   assert.equal(cuenta("modalidad: modalidadApertura,"), 1, nombre + ": el registro pendiente usa la modalidad decidida");

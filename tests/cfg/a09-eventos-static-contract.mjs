@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile } from "node:fs/promises";
 
+// tpv-09: listarCuentasAparcadasA06 entra en estas cuatro listas. El final y el
+// principio se siguen fijando igual de literalmente; solo se ha anotado el nombre
+// nuevo para que el contrato siga leyendo el cableado real.
+
 // Contrato estático del historial de descuentos del TPV (A09), arreglo del 3/10/2026:
 //  - la función del servidor `abc_listar_eventos_descuento_cuenta` (migración 20261003120000): solo lectura, SECURITY DEFINER, permisos solo de
 //    `authenticated`, exige poder operar cuentas en el local, filtra por empresa, local, cuenta y tipo de evento, últimos 100, seis columnas;
@@ -82,9 +86,9 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
 // las dos ayudas que usan los cargadores del panel (viven en crearLogicaVenta) llegan hasta el TPV: la lógica las entrega, la aplicación las recibe y se las pasa
 for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
   const unico = (s, texto) => assert.equal(t.split(s).length - 1, 1, `${nombre}: ${texto}`);
-  unico("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };\n}\nfunction crearLogicaTraspasos(", "crearLogicaVenta entrega las ayudas del TPV y el ensayo C12 (al final de su lista)");
+  unico("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, ensayarCierreSesionCajaC12 };\n}\nfunction crearLogicaTraspasos(", "crearLogicaVenta entrega las ayudas del TPV y el ensayo C12 (al final de su lista)");
   unico("  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta,", "la aplicación recibe las dos ayudas de la lógica (al principio de su lista: el final lo exige el contrato A08.1)");
-  unico("listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta({", "y el final de esa lista no cambia");
+  unico("listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06 } = crearLogicaVenta({", "y el final de esa lista no cambia");
   unico("configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino: mesaDestinoTpv", "la aplicación se las pasa al TPV");
   unico("local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino", "el TPV las declara entre sus propiedades");
 }
