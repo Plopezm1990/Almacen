@@ -93,6 +93,31 @@ cierra las filas de permisos: todavía hace falta entrar con
 demostrar que el servidor deniega caja, cobro y reembolso y que la interfaz
 mantiene los pagos intactos.
 
+## Sesión restringida · 17/11/2026
+
+La cuenta `qa.permisos.20261116@qa.invalid` entró correctamente como
+**Camarero/a** en **QA-EMP-A / Local A1**. El selector comenzó en «Todos los
+locales» y se fijó manualmente en «Local A1» antes de probar nada; no se dejó la
+sesión en contexto consolidado.
+
+En TPV, el navegador conserva la lista de terminales A1/A2, pero el cargo no
+puede operar el terminal: el cobro aparece deshabilitado y la fiscalización
+responde `C07D_CONFIG_NO_AUTORIZADO`, con el aviso visible «No tienes permiso
+para operar este TPV en el local seleccionado». El QR queda pendiente y no se
+registró ningún pago, cobro ni documento nuevo. El modo caja se pudo abrir y
+cerrar como vista, pero no apareció ningún control autorizado para abrir sesión,
+introducir movimientos o hacer arqueo.
+
+El menú «Más» del cargo restringido solo muestra «Apariencia»; no expone
+«Devoluciones», Caja ni otros módulos financieros. No se seleccionó venta, no se
+introdujo importe y no se pulsó ninguna acción económica.
+
+Esta tanda prueba el bloqueo de interfaz y la permanencia de los pagos, pero no
+se presenta como una prueba RPC completa: para cerrar `caj-11`–`caj-13`,
+`tpv-03` y `tpv-06` todavía hay que capturar en QA la respuesta explícita del
+servidor (`abc_efectivo_no_autorizado`, `abc_cobro_no_autorizado` o equivalente)
+para caja, cobro y reembolso.
+
 ## Tanda Codex · 17/11/2026 · membresía y enlace Pase → TPV
 
 La cuenta `qa.permisos.20261116@qa.invalid` ya tiene una membresía efectiva y

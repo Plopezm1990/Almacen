@@ -281,3 +281,23 @@ Servido. Después se ejecutó el cierre formal; la cuenta
 `a8549e71-534b-4ba7-a2e8-96f5ba79febf` ya no aparece en cuentas abiertas. No se
 usó tarjeta, no hubo reembolso y no se cerró la caja. Este recorrido de Q08
 queda cerrado.
+
+## Sesión Camarero/a · 17/11/2026 · evidencia live
+
+La cuenta `qa.permisos.20261116@qa.invalid` entró como Camarero/a en QA-A1.
+Se corrigió el contexto inicial de «Todos los locales» seleccionando
+explícitamente «Local A1» antes del ensayo. El TPV muestra los terminales A1/A2,
+pero el cobro queda deshabilitado y la fiscalización devuelve
+`C07D_CONFIG_NO_AUTORIZADO` con el aviso «No tienes permiso para operar este
+TPV en el local seleccionado»; el QR queda pendiente y no se creó ningún pago
+ni documento.
+
+El modo caja solo permite entrar y salir de la vista; no aparecen controles
+autorizados de apertura, movimientos o arqueo. En «Más», el cargo restringido
+solo ve «Apariencia» y no ve Devoluciones ni módulos financieros. No se
+seleccionó venta ni se pulsó ninguna operación económica.
+
+Esto cierra la evidencia de bloqueo de interfaz, pero no sustituye la prueba
+RPC. Quedan pendientes las respuestas explícitas del servidor para caja, cobro
+y reembolso y su registro en `caj-11`–`caj-13`, `tpv-03` y `tpv-06`. Mantener el
+PR #225 en borrador y no conceder delegaciones durante esta comprobación.
