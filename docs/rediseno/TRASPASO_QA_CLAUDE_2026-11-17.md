@@ -124,3 +124,57 @@ no, `ABC_REEMBOLSO_CONFIRMAR` no, `ABC_CAJA_OPERAR` no, `ABC_EMISOR_CAMBIAR` no.
 4. Aplicar `20261115120000` en QA haría que a Camarero/a no se le exija segundo
    factor, que es la intención de esa migración; mientras no esté, cada cuenta
    nueva tiene que inscribirlo.
+
+## Q07 en táctil · 17/11, Claude Code
+
+Hecho con la sesión de Propietario, no con el cargo restringido, que sigue sin
+local operativo. El diseño activo en QA era **orbita**, así que Pase no se
+montaba; se activó con **«Probar en la suite»**, que es temporal y no toca la
+apariencia guardada de la empresa.
+
+La diferencia con la pasada anterior está en el puntero. Antes se midió a 390 px
+de ancho; esta vez además con **puntero grueso**: `any-pointer: coarse` cierto,
+cinco puntos de contacto y agente de usuario de Android. Es lo que activa el
+suelo táctil de 44 px, que con una ventana estrecha de escritorio no se aplica.
+
+**Medido así, Pase pasa:** 54 controles, **ninguno por debajo de 44×44**,
+ninguno sin nombre accesible y sin desbordamiento horizontal.
+
+Lo funcional, con el plano y la cola:
+
+- Zonas: Todas, Sala QA-A1, Terraza · Ensayo punto 1, Zona vacía · Ensayo
+  punto 1. Interior muestra `M-QA-01`, `M-QA-02` y `QA-P1-I01` con cuenta
+  abierta y `QA-P1-I02` libre; Terraza, `QA-P1-T01` con cuenta abierta y
+  `QA-P1-T02` libre.
+- El filtro de zona vacía responde y deja «Esta zona no tiene mesas activas».
+- La cola tiene Todos / Cocina / Cuentas y el filtro cambia de verdad lo que se
+  ve: con **Cocina** salen ocho «Ver en Cocina» con estados «Listo para servir»,
+  «Parcialmente listo» y «En preparación»; con **Cuentas** desaparecen los ocho
+  y aparecen entradas «Cuenta abierta» con «Abrir TPV».
+
+### Lo que no pasa: el enlace no lleva a la cuenta que se pide
+
+Probados tres accesos distintos y los tres acaban en la **misma** cuenta, que es
+la que el terminal ya tenía activa:
+
+| Desde | Lo que se pidió | Dónde acabó |
+| --- | --- | --- |
+| Cola · Cuentas, fila 1 | pedido `9d10ccfc` | cuenta `c1efab29`, pedido `fc83122f` |
+| Cola · Cuentas, fila 2 | pedido `5c214429` | cuenta `c1efab29`, pedido `fc83122f` |
+| «Lleva más tiempo abierta» → Ver cuenta | Mesa QA-A1-02 | cuenta `c1efab29`, pedido `fc83122f` |
+
+El TPV se abre, pero sobre otra cuenta, **y no lo dice**. El acta del 15/11
+registraba «enlace exacto a la mesa» y «navegación exacta de Pase al TPV», así
+que o bien algo cambió desde entonces, o aquella vez la cuenta pedida coincidía
+con la que el terminal ya tenía.
+
+No he separado todavía las dos causas posibles: que el enlace no lleve el
+destino, o que el TPV se niegue a cambiar de cuenta —`recuperarCuentaA06`
+rechaza el cambio si la cuenta actual tiene un cobro pendiente— y se quede
+callado. Sea cual sea, el silencio es defecto por sí solo: quien toca una mesa
+acaba en otra cuenta sin que nada se lo advierta. Queda como **candidato
+confirmado en los síntomas y sin causa aislada**, con la reproducción de arriba.
+
+Nota de método: los toques los da el panel como clics de ratón sobre una
+emulación táctil, no un dedo sobre cristal. El suelo de 44 px y las medias
+queries sí se evalúan como en un móvil; el gesto, no.
