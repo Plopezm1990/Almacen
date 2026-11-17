@@ -4,6 +4,8 @@ Continuar en `Plopezm1990/Almacen`, rama `rediseno/f0-base-qa`, [PR #225 en borr
 
 ## Reanudar por aquí
 
+> **Estado vigente (17/11/2026):** la lista histórica de este apartado queda sustituida por «Cierre formal del punto 1» al final del documento. Q07, Q08, albarán, anticipos, permisos de Camarero/a y regresión Pase → TPV ya están cerrados con evidencia de QA; no reabrirlos. Solo siguen opcionales los puntos indicados allí.
+
 1. **Completar la cuenta restringida de QA-A1.** La ficha sintética **QA Permisos TPV 20261116** ya se creó en Personal. El alta quedó preparada con `qa.permisos.20261116@qa.invalid`, rol **Camarero/a** y campo de contraseña inicial pendiente. El propietario autorizó crearla. La consulta de QA del 17/11 confirmó que todavía no existe en Auth. Completar el alta por la vía autorizada, con la credencial en el navegador o el canal seguro del equipo. Comprobar después que tiene membresía activa con `local_id = 'QA-A1'`, `todos_locales = false` y rol Camarero/a. Las altas anteriores desde Personal llegaron a tener acceso a la empresa y carecían de local operativo. Si ocurre otra vez, resolver únicamente la membresía de la cuenta sintética en QA por el procedimiento autorizado y confirmar que el selector muestra **Local A1**.
 2. **Probar permisos con una sesión real.** Usar Chrome o Edge para la sesión restringida y el navegador integrado para conservar el control de Propietario. Verificar acceso a Sala/Pase donde corresponda la capacidad y las restricciones sobre consulta de caja, inicio de cobro y solicitud/aprobación de reembolso. Registrar qué controles aparecen, qué mensaje devuelve el producto y que los intentos denegados dejan intactos pagos, caja y reembolsos. Los ensayos SQL previos ya verificaron las respuestas del servidor. Para comprobar el caso positivo de Cajero/a hacen falta una cuenta de QA-A1 operativa y su segundo factor cuando se exija. Las credenciales de los ensayos MFA anteriores ya no están disponibles.
 3. **Cerrar Q07 en un dispositivo táctil.** Probar Interior/Terraza, zona vacía, ficha y enlace exacto, filtros de cola y estados visibles con el cargo real. A 390 px y con movimiento reducido se verificaron selección y ancho sin desbordamiento. En teclado se probaron filtros con Enter. El modelo usa `ABIERTO` para el pedido guardado, y la lista de cuentas abiertas y aparcadas consulta al servidor. Registrar lo que muestra el producto en ese caso. Q08 ya tiene el recorrido, conciliación y reintento verificados con dos terminales de Propietario.
@@ -368,3 +370,22 @@ se pudo hacer clic en la fila desde la cola visible de Pase porque esta limita
 la muestra a 8 de 78 pedidos; la cuenta sintética queda fuera de esa ventana.
 La limitación queda como pendiente independiente de paginación/búsqueda de la
 cola. No se hizo ningún cobro, reembolso ni cierre de la cuenta.
+
+## Cierre formal del punto 1 · 17/11/2026
+
+La matriz se actualizó en `ini-01`, `tpv-03`, `tpv-06`, `tpv-09`, `tpv-18`,
+`tpv-20`, `caj-11`, `caj-12`, `caj-13` y `caj-22` con la evidencia de QA ya
+obtenida. El punto 1 queda **cerrado funcionalmente en QA**: Q07 táctil, Q08
+con A1/A2, sala, TPV, caja, cobro simulado, ticket, albarán, anticipos y las
+denegaciones server-side/UI de Camarero/a están cubiertos.
+
+Se mantienen separados como opcionales: positivo de Cajero/a con MFA,
+paginación/búsqueda de la cola de Pase y el registro de las migraciones de
+Apariencia en el historial. La cuenta sintética
+`d802aad8-0099-4092-945b-01adfbb9a569` y el pedido
+`87cf1dad-ea65-4970-a2b8-0e96899441f8` siguen abiertos en QA, sin cobro ni
+reembolso, para conservar la evidencia. No usar `sis-13` ni restablecer QA;
+limpiar esa cuenta solo mediante un procedimiento de QA separado.
+
+El PR #225 continúa en borrador, la rama sigue siendo `rediseno/f0-base-qa` y
+no se tocó producción.

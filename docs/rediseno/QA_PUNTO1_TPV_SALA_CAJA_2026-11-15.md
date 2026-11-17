@@ -46,6 +46,8 @@ En el perfil de Chrome, el TPV se asignó al terminal **QA terminal A2 (ensayo p
 
 ## Verificaciones que siguen abiertas
 
+> **Actualización 17/11/2026:** este listado conserva el histórico del ensayo inicial. Las comprobaciones que allí figuraban como pendientes ya están cerradas en QA o sustituidas por evidencia posterior; el estado normativo es «Cierre formal del punto 1» al final de este acta. Permanecen opcionales únicamente el positivo de Cajero/a con MFA, la paginación/búsqueda de Pase y el bookkeeping de migraciones de Apariencia.
+
 Consultar la [continuación del 17 de noviembre](TRASPASO_QA_CLAUDE_2026-11-17.md) para el estado del alta de Camarero/a y el orden de verificación.
 
 - Q07 con un cargo de acceso limitado y entrada táctil en dispositivo. El modelo comercial persiste los pedidos guardados como `ABIERTO`. El proyecto carece de un estado independiente de cuenta aparcada; la aceptación debe contrastar esto con la especificación que pide usar el modelo real.
@@ -232,3 +234,20 @@ panel limita la muestra a 8 pedidos de 78 y ordena los estados; la cuenta
 sintética queda fuera de esa ventana. La limitación está documentada como
 pendiente de producto (paginación o búsqueda de la cola), no como fallo del
 destino `cuentaId`.
+
+## Cierre formal del punto 1 · 17/11/2026
+
+Con la evidencia acumulada en esta acta, el punto 1 queda **cerrado
+funcionalmente en QA**. Q07 táctil, Q08 con los terminales A1/A2, albarán,
+anticipos de Encargos, caja/TPV, cobro simulado, ticket, permisos de
+Camarero/a y los tres destinos Pase → TPV tienen evidencia live o server-side.
+La matriz se actualizó en `ini-01`, `tpv-03`, `tpv-06`, `tpv-09`, `tpv-18`,
+`tpv-20`, `caj-11`, `caj-12`, `caj-13` y `caj-22`.
+
+Quedan fuera del cierre funcional y se mantienen como opcionales o trabajo
+posterior: el flujo positivo de Cajero/a con MFA, la paginación/búsqueda de la
+cola de Pase y el registro contable de las migraciones de Apariencia. La cuenta
+sintética `d802aad8-0099-4092-945b-01adfbb9a569` / pedido
+`87cf1dad-ea65-4970-a2b8-0e96899441f8` permanece abierta en QA, sin cobro ni
+reembolso, para no borrar la evidencia; debe limpiarse mediante un procedimiento
+de QA separado antes de restablecer el entorno.
