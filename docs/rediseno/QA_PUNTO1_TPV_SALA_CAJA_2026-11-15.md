@@ -77,6 +77,22 @@ pruebas de denegación/autorización con la cuenta Camarero/a efectiva en QA-A1,
 las comprobaciones explícitas de caja, cobro y reembolso y la repetición de los
 tres enlaces Pase → TPV con una cuenta distinta ya activa en cada terminal.
 
+## Lectura de Caja y Devoluciones · 17/11/2026
+
+Sin efectuar ninguna mutación adicional, el propietario en QA-A1 pudo abrir la
+vista **Arqueo de caja** y la vista **Devoluciones**. Caja muestra el día
+cerrado por arqueo, el contado `0,00 €`, el esperado `109,90 €` y el botón
+«Anular cierre con motivo»; no se pulsó ese botón y no se registraron entradas,
+retiradas ni reembolsos. Devoluciones muestra el selector de venta, cantidad,
+motivo, importe y medio de reintegro, además del botón «Registrar devolución»;
+no se seleccionó venta ni se confirmó una devolución.
+
+Esta observación confirma la superficie disponible para el propietario, pero no
+cierra las filas de permisos: todavía hace falta entrar con
+`qa.permisos.20261116@qa.invalid` (Camarero/a, QA-A1, sin delegación) y
+demostrar que el servidor deniega caja, cobro y reembolso y que la interfaz
+mantiene los pagos intactos.
+
 ## Tanda Codex · 17/11/2026 · membresía y enlace Pase → TPV
 
 La cuenta `qa.permisos.20261116@qa.invalid` ya tiene una membresía efectiva y
