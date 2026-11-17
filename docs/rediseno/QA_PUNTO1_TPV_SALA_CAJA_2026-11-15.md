@@ -50,3 +50,31 @@ Consultar la [continuación del 17 de noviembre](TRASPASO_QA_CLAUDE_2026-11-17.m
 
 - Q07 con un cargo de acceso limitado y entrada táctil en dispositivo. El modelo comercial persiste los pedidos guardados como `ABIERTO`. El proyecto carece de un estado independiente de cuenta aparcada; la aceptación debe contrastar esto con la especificación que pide usar el modelo real.
 - Acceso desde un navegador con una cuenta restringida de QA-A1. La cuenta sintética de Cajero/a empleada en la prueba de servidor tiene membresía activa en el local y segundo factor registrado. Falta completar la autenticación en el segundo perfil y contrastar los controles y las operaciones de caja, cobro y reembolso en la suite.
+
+## Tanda Codex · 17/11/2026 · membresía y enlace Pase → TPV
+
+La cuenta `qa.permisos.20261116@qa.invalid` ya tiene una membresía efectiva y
+operativa en QA: empresa `QA-EMP-A`, `local_id='QA-A1'`,
+`todos_locales=false`, rol `Camarero/a`, activa. Se verificó por consulta de
+solo lectura en el proyecto `qjqorixtkilwsndqayyx`; no se hizo una escritura
+redundante. El ensayo de navegador queda pendiente para confirmar que el
+selector refleja ese registro y no fabrica «Local principal».
+
+Se aisló y corrigió el defecto del enlace de Pase. El panel enviaba únicamente
+la mesa, por lo que el TPV podía conservar la cuenta activa del terminal. En
+`88bb28ac`, los accesos de prioridad, ficha de mesa y cola de cuentas envían
+`mesaId`, `cuentaId` y `operatingDay`. El TPV valida la cuenta contra el mapa
+real, recupera la cuenta exacta y muestra un aviso explícito si el destino ya
+no pertenece a la mesa. La corrección se mantiene idéntica en
+`fuente.js`/`source-recovery/fuente-recuperado.js` y el contrato A06 cubre el
+transporte y el caso obsoleto.
+
+Regresión que queda para QA tras el despliegue: con otra cuenta ya activa en el
+terminal, repetir los tres casos documentados (dos filas de Cuentas y «Lleva
+más tiempo abierta») y comprobar que cada uno abre su cuenta/pedido, no la
+cuenta previa, y que un destino desaparecido ya no falla en silencio.
+
+Verificación local de esta tanda: paridad de `fuente.js` PASS; contratos A06-1,
+A06-2, A06-3, CFG6E, A09 y P08 PASS. La batería completa no se pudo lanzar en
+este Windows por el runner Bash/MSYS; el entorno de batería debe incluir
+`fake-indexeddb` desde `be0b722a`.

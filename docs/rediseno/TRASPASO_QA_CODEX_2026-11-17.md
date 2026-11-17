@@ -10,7 +10,7 @@ que está roto, lo que sigue y lo que falta.
 | --- | --- |
 | Repositorio | `Plopezm1990/Almacen` |
 | Rama | `rediseno/f0-base-qa` |
-| Último commit | `f378292d` |
+| Último commit | `88bb28ac` |
 | PR | [#225 contra `release`](https://github.com/Plopezm1990/Almacen/pull/225), **en borrador, no fusionar** |
 | Preview | `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/` |
 | Supabase QA | `qjqorixtkilwsndqayyx`, empresa `QA-EMP-A`, local `QA-A1` |
@@ -137,7 +137,27 @@ Tu acta del 15/11 registraba «enlace exacto a la mesa» y «navegación exacta 
 Pase al TPV», así que o cambió algo desde entonces, o aquella vez la cuenta
 pedida coincidía con la que el terminal ya tenía.
 
-**No aislé la causa.** Las dos hipótesis, sin descartar ninguna:
+**Causa aislada y corrección integrada (commit `88bb28ac`).** Pase solo enviaba
+`mesaId`; el TPV recuperaba la mesa y, cuando el destino no se resolvía o había
+más de una cuenta, conservaba la cuenta que el terminal ya tenía activa. No
+había comprobación explícita de que la cuenta mostrada fuera la solicitada.
+
+Ahora los tres accesos transportan `mesaId`, `cuentaId` y `operatingDay`.
+`navegarRediseno` valida esos valores, `VentaRapida` busca la cuenta exacta en
+el mapa real antes de llamar a `recuperarCuentaA06`, y si la cuenta ya no está
+en la mesa muestra «La cuenta solicitada ya no está en esta mesa. Vuelve a Pase
+y actualiza el estado.» La misma lógica queda reflejada en
+`source-recovery/fuente-recuperado.js`; la paridad del cuerpo sigue siendo
+exacta. El contrato A06 comprueba tanto el transporte de `cuenta_id` desde la
+cola como el mensaje de desajuste.
+
+La reproducción anterior queda como regresión: las dos filas de Cuentas y
+«Lleva más tiempo abierta» terminaban en `c1efab29`/`fc83122f`, la cuenta activa
+del terminal. Falta repetir esos tres clics en el preview desplegado desde
+`88bb28ac`; hasta entonces el arreglo está probado en contrato y código, no
+cerrado todavía como recorrido visual en QA.
+
+Las dos hipótesis originales eran:
 
 1. El enlace no lleva el destino hasta el TPV.
 2. `recuperarCuentaA06` se niega a cambiar de cuenta —rechaza si la actual tiene
@@ -168,8 +188,18 @@ desde el navegador con ninguno de los dos roles** —responde «permission denie
 for function la_usuario_activo»—, así que confirmar y reparar la membresía
 necesita acceso a la base de QA. Ahí se me acabó el diagnóstico.
 
-**Lo que hace falta:** que esa cuenta tenga `local_id = 'QA-A1'`,
-`todos_locales = false` y rol Camarero/a.
+**Estado actualizado (17/11): cerrado en servidor.** La membresía real se
+comprobó directamente en QA con una consulta de solo lectura sobre
+`auth.users`, `public.membresias_usuario` y `public.empleados`. Para
+`qa.permisos.20261116@qa.invalid` la fila activa es `id=221`, con
+`empresa_id='QA-EMP-A'`, `local_id='QA-A1'`, `todos_locales=false` y
+`rol='Camarero/a'`. No se hizo una escritura redundante. La ausencia de una
+fila coincidente en `empleados.datos->>email` no cambia la membresía efectiva;
+la cuenta ya tiene el local operativo correcto en `membresias_usuario`.
+
+El ensayo funcional con esa cuenta aún debe repetirse en el preview para
+confirmar que el selector muestra QA-A1 y no vuelve a crear un «Local
+principal» en el cliente.
 
 ### C · Candidato sin confirmar: caja ofrecida a quien no puede operarla
 
@@ -197,19 +227,20 @@ Para referencia, lo que el servidor concede a **Camarero/a**:
 
 ## Lo que sigue, por orden
 
-1. **Reparar la membresía** de `qa.permisos.20261116@qa.invalid` en QA (B). Sin
-   esto, los puntos 2 y 4 de tu acta no se pueden hacer. Necesita base de datos.
-2. **Los ensayos de permisos** del punto 2 de tu acta: acceso a Sala/Pase,
+1. **Publicar el commit `88bb28ac` en el Deploy Preview #225 y repetir los tres
+   casos de Pase** de la tabla A con un terminal que ya tenga otra cuenta
+   activa. Confirmar que cada botón abre la cuenta/pedido pedido y que una
+   cuenta obsoleta produce el aviso explícito, nunca un cambio silencioso.
+2. **Completar los ensayos de permisos** con
+   `qa.permisos.20261116@qa.invalid` en QA-A1: acceso a Sala/Pase,
    consulta de caja, inicio de cobro, solicitud y aprobación de reembolso.
-   Registrar qué controles aparecen, qué dice el producto y que los intentos
-   denegados dejan intactos pagos, caja y reembolsos. Con eso se confirma o se
-   descarta C.
-3. **Aislar la causa del enlace de Pase** (A) y, en todo caso, quitarle el
-   silencio.
-4. **Cerrar el punto 1** en la matriz con las evidencias de 2 y 3: `ini-01`,
-   `tpv-03`, `tpv-06`, `tpv-09`, `tpv-18`, `tpv-20`, `caj-11` a `caj-13` y
-   `caj-22`.
-5. **Aplicar `20261115120000`** (MFA opcional) en QA. Mientras no esté, a cada
+   Registrar controles, mensajes y que las negativas dejan intactos pagos,
+   caja y reembolsos. La membresía ya está reparada; solo falta el recorrido
+   navegador.
+3. **Cerrar el punto 1** en la matriz con las evidencias de los puntos 1 y 2:
+   `ini-01`, `tpv-03`, `tpv-06`, `tpv-09`, `tpv-18`, `tpv-20`, `caj-11` a
+   `caj-13` y `caj-22`.
+4. **Aplicar `20261115120000`** (MFA opcional) en QA solo si se autoriza. Mientras no esté, a cada
    cuenta nueva se le exige segundo factor aunque su cargo no lo requiera, que
    es justo lo contrario de lo que esa migración quiere.
 

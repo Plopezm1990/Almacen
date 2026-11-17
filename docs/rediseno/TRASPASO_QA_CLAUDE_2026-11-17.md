@@ -185,3 +185,22 @@ queries sí se evalúan como en un móvil; el gesto, no.
 autónomo, en [`TRASPASO_QA_CODEX_2026-11-17.md`](TRASPASO_QA_CODEX_2026-11-17.md):
 qué se hizo, qué está roto con su reproducción, qué sigue por orden y qué falta.
 Empieza por ahí.
+
+## Addendum Codex · 17/11/2026
+
+La membresía de `qa.permisos.20261116@qa.invalid` ya está correcta en QA:
+`QA-EMP-A`, `QA-A1`, `todos_locales=false`, rol `Camarero/a`, activa. Se
+confirmó por SQL de solo lectura; no hace falta otra reparación de datos.
+
+El defecto de Pase → TPV quedó aislado y corregido en `88bb28ac`: el panel
+transporta ahora `mesaId`, `cuentaId` y `operatingDay`, y el TPV valida la
+cuenta exacta o muestra un aviso explícito si el destino ya no existe. Se
+mantiene la paridad con `source-recovery/fuente-recuperado.js`. Falta repetir en
+el preview los tres casos que antes acababan silenciosamente en la cuenta activa
+del terminal.
+
+La matriz y el acta de punto 1 se actualizaron con este estado. El orden actual
+es: desplegar y repetir los tres casos de Pase; ejecutar en QA-A1 los ensayos de
+permisos de caja, cobro y reembolso con la cuenta Camarero/a; cerrar las filas
+del punto 1; y solo después valorar la migración MFA opcional. Mantén el PR #225
+en borrador y trabaja únicamente contra QA.
