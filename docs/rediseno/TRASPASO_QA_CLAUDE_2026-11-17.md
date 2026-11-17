@@ -333,3 +333,22 @@ los dos elementos de cola sin mesa. Hay que decidir y construir el contrato
 de cuenta independiente (pasar `cuentaId`/`operatingDay` sin `mesaId`) o
 deshabilitar esos accesos con un mensaje claro. No cerrar `tpv-03` hasta que
 los dos primeros casos dejen de conservar el contexto del terminal.
+
+### Cierre de la regresión · commit e0fe9ebb
+
+Se implementó la opción de cuenta independiente: la cola transmite
+`cuentaId`/`operatingDay` aunque no exista `mesaId`; el TPV recupera la cuenta
+autoritativamente y muestra el estado también cuando el destino no tiene mesa.
+Mientras el servidor resuelve o rechaza el destino, quedan bloqueados cobro y
+venta rápida. Se mantuvo la paridad de `fuente.js` con
+`source-recovery/fuente-recuperado.js` y pasaron `tests/f3/a06/a06-1-ui-contract.mjs`,
+`a06-2-ui-contract.mjs` y el verificador de paridad.
+
+En Deploy Preview 225 se repitieron los tres casos con el propietario en
+`QA-A1`, terminal A1 y Pase temporal. Las dos filas sin mesa (`9d10ccfc` y
+`5c214429`) y el acceso prioritario de `QA-A1-02` mostraron el aviso explícito
+«La cuenta pertenece a otro día operativo y requiere resolución antes de
+continuar»; ninguno conservó la cuenta previa del terminal. No hubo cobros,
+cierres ni otras mutaciones. La regresión de aislamiento queda cerrada; solo
+queda opcional crear una cuenta del día actual para probar el camino positivo
+de recuperación sin mesa.

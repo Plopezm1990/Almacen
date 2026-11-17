@@ -178,3 +178,28 @@ independiente, o (b) deshabilitar el acceso y mostrar «La cuenta no tiene una
 mesa operativa; ábrela desde Cuentas» en vez de conservar el contexto del
 terminal. La matriz queda abierta para `tpv-03` hasta esa corrección y una
 repetición live con cuenta distinta activa en el terminal.
+
+## Corrección y repetición live · 17/11/2026 · commit e0fe9ebb
+
+La cola de cuentas sin mesa ya no navega al TPV sin contexto. `la-pase-panel.js`
+envía `cuentaId` y el día operativo aun cuando no hay mesa; `navegarRediseno`
+lo conserva; y `VentaRapida` llama a `abc_recuperar_cuenta` para comprobar la
+cuenta exacta. El estado se pinta también sin mesa y bloquea cobro y venta
+rápida mientras el servidor resuelve el destino. `fuente.js` y
+`source-recovery/fuente-recuperado.js` mantienen paridad exacta.
+
+Publicado en Deploy Preview 225 con `e0fe9ebb`. Con la misma sesión de
+propietario, `QA-A1` y terminal A1, se repitieron los tres accesos sin cobrar,
+cerrar cuentas ni tocar caja:
+
+| Caso | Resultado tras la corrección |
+| --- | --- |
+| Cola · `9d10ccfc` sin mesa | **Sin fallback**: el TPV muestra «La cuenta pertenece a otro día operativo y requiere resolución antes de continuar»; no pinta TPV-37 ni otra cuenta del terminal. |
+| Cola · `5c214429` sin mesa | **Sin fallback**: mismo aviso explícito de día operativo; no reutiliza la cuenta previa de 1,54 €. |
+| «Lleva más tiempo abierta» → «Ver cuenta» (`QA-A1-02`) | **Sin fallback**: muestra la mesa y el mismo aviso explícito de otro día operativo. |
+
+La prueba confirma aislamiento y bloqueo honesto para los tres casos. No se
+creó, cobró, cerró ni modificó ninguna cuenta. La matriz puede cerrar la
+regresión de `tpv-03`; queda como mejora futura un ensayo con una cuenta nueva
+del día actual para acreditar también la recuperación positiva de una cuenta
+sin mesa, sin reutilizar datos históricos.
