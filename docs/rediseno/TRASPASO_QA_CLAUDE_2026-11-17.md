@@ -220,3 +220,20 @@ control operativo autorizado para Camarero/a. Queda pendiente que Claude
 recorra las RPC de caja/cobro/reembolso de forma explícita, abra Q07 y Q08 en
 dos perfiles y cierre la evidencia de `caj-11`–`caj-13`, `caj-22`, `tpv-03` y
 `tpv-06` sin fusionar el PR #225.
+
+## Tanda de propietario añadida · 17/11/2026
+
+Con `pm07.smoke@qa.invalid` abierta en QA-A1, el servidor indicó que ya había
+una sesión de caja activa. El arqueo se confirmó con contado `0,00 €` y cerró
+el día: esperado `109,90 €`, descuadre `-109,90 €`. No se registraron entradas,
+retiradas ni reembolsos.
+
+Pase se activó solo con «Probar en la suite» y se restauró al salir. El panel
+cargó 4/6 mesas con cuenta abierta, 77 pedidos en servicio y el plano real de
+QA-A1. «Ver cuenta»/la mesa no dejaron una navegación TPV observable en esta
+sesión; repetir con cuenta activa y terminal diferente.
+
+QA mostró avisos de almacenamiento local lleno (`historialRespaldos` y
+`productos`), incidencia separada del rediseño. Los dos perfiles IAB comparten
+el terminal guardado A1; Q07/Q08 con A1 y A2 requiere Firefox/Chrome separado o
+limpiar el terminal por «Terminales y cajas».

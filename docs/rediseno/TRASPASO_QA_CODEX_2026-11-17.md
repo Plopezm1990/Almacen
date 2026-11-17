@@ -308,3 +308,30 @@ un control operativo autorizado para este rol. La prueba demuestra la
 denegación live del terminal, pero siguen pendientes caja con Propietario o
 Cajero, Q07/Q08 en dos perfiles y el recorrido explícito de las RPC de
 cobro/reembolso para el rol Camarero/a.
+
+## Tanda de propietario · caja y Pase · 17/11/2026
+
+Con `pm07.smoke@qa.invalid` en QA-A1 se comprobó el cierre de caja desde
+**Arqueo de caja**. Ya había una sesión operativa activa; el intento de abrir
+otra devolvió «La caja o el terminal ya tienen una sesión activa». Se registró
+el arqueo con contado `0,00 €` y el servidor confirmó el cierre del día:
+esperado `109,90 €`, contado `0,00 €`, descuadre `-109,90 €`. La pantalla quedó
+en «Día cerrado por arqueo». No se hicieron entradas, retiradas ni reembolsos.
+
+Se activó **Pase** únicamente con «Probar en la suite» y se retiró al terminar;
+no se guardó la apariencia de la empresa. El panel cargó datos reales de
+`QA-EMP-A · QA-A1`: 4 de 6 mesas con cuenta abierta, 77 pedidos en servicio,
+plano con M-QA-01, M-QA-02, QA-P1-I01/I02 y QA-P1-T01/T02, y estados de cocina
+reales. El enlace «Ver cuenta» y el botón de mesa no produjeron una navegación
+observable a TPV en esta sesión; repetir con una cuenta activa y terminal
+distinto.
+
+La aplicación mostró avisos de reserva local: `historialRespaldos` y
+`productos` no caben en el almacenamiento del equipo y quedan guardados solo
+localmente. Es una incidencia separada del rediseño que puede contaminar
+pruebas de persistencia.
+
+Los dos perfiles IAB abiertos comparten el mismo `localStorage` y conservan
+`QA terminal A1`; el selector de terminal solo aparece cuando el navegador no
+tiene uno guardado. Q07/Q08 con A1 y A2 requiere Firefox/Chrome separado o
+limpiar el terminal guardado por la interfaz de «Terminales y cajas».
