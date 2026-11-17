@@ -252,3 +252,8 @@ siendo `localStorage`. Después del despliegue, repetir Q07/Q08 en dos pestañas
 del preview seleccionando explícitamente `QA terminal A1 (siembra etapa 1)` y
 `QA terminal A2 (ensayo punto 2)`. Esto evita depender del control remoto de
 Firefox, que está bloqueado por la política de URL del navegador de Codex.
+
+Publicado en Deploy Preview 225 con `31e7aef3997d77c1979f46394996dcd73c2e1470`.
+La verificación live en QA-A1 confirma que el selector ofrece A1 y A2 incluso
+cuando A1 ya estaba guardado. Falta ejecutar la batería económica Q07/Q08 con
+una sesión de caja válida en cada terminal.

@@ -357,3 +357,9 @@ Tras el despliegue, abre dos pestañas del preview, entra en QA-A1, elige
 en la otra. No hace falta controlar Firefox ni desactivar la seguridad del
 navegador. La sesión de caja de A2 debe existir para ejecutar cobros o cierres;
 el selector por pestaña solo resuelve el contexto del terminal.
+
+El cambio está publicado en el Deploy Preview 225 con commit
+`31e7aef3997d77c1979f46394996dcd73c2e1470`. Verificación live: en QA-A1 el
+preview muestra el estado «Terminal de este navegador: QA terminal A1» y el
+selector contiene A1 y A2. La prueba de mutaciones económicas sigue pendiente:
+seleccionar un terminal no abre caja ni cobra por sí solo.
