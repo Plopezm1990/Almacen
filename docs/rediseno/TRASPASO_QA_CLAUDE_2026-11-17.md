@@ -414,7 +414,7 @@ verificable. El control de navegador de Windows bloqueó la
 reapertura del preview en esta tanda por política de URL, sin tocar sesiones ni
 datos económicos.
 
-El último corte de esta tanda es `1c35267d84e5c7aefe4a788faaffeb1e4850c565`.
+El último corte de esta tanda es `57cf1c84`.
 P01–P05, el manifiesto, la paridad de fuente y `git diff --check` están en
 verde localmente; el PR #225 permanece en borrador y sin fusionar. El preview
 de Netlify para este SHA está listo. La puerta de CI general aún tiene trabajos
