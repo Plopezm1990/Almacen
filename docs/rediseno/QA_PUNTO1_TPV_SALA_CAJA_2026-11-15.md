@@ -51,6 +51,32 @@ Consultar la [continuación del 17 de noviembre](TRASPASO_QA_CLAUDE_2026-11-17.m
 - Q07 con un cargo de acceso limitado y entrada táctil en dispositivo. El modelo comercial persiste los pedidos guardados como `ABIERTO`. El proyecto carece de un estado independiente de cuenta aparcada; la aceptación debe contrastar esto con la especificación que pide usar el modelo real.
 - Acceso desde un navegador con una cuenta restringida de QA-A1. La cuenta sintética de Cajero/a empleada en la prueba de servidor tiene membresía activa en el local y segundo factor registrado. Falta completar la autenticación en el segundo perfil y contrastar los controles y las operaciones de caja, cobro y reembolso en la suite.
 
+## Resultado Q08 · 17/11/2026 · recorrido completo en QA
+
+En el Deploy Preview #225 se repitió el ensayo con dos perfiles de navegador
+en QA-A1, usando los terminales `QA terminal A1 (siembra etapa 1)` y
+`QA terminal A2 (ensayo punto 2)`. Pase abrió la mesa libre `QA-P1-I02` y el
+TPV recuperó la misma cuenta en el terminal activo, sin reutilizar una cuenta
+previa del navegador.
+
+La cuenta `a8549e71-534b-4ba7-a2e8-96f5ba79febf` quedó con un Café con leche
+(QA), variante Pequeño, extra Leche de avena y la nota `QA Q08 A1-A2 · ensayo
+selector terminal`. Su pedido `d1a47ffa-f5c6-4fd8-b458-7996993f67e7` produjo una
+sola comanda y recorrió `Enviado a cocina` → `En preparación` → `Listo para
+servir` → `Servido`.
+
+Con autorización puntual del propietario se cobró **1,54 € en efectivo
+simulado** (`SIMULADOR_C07D`). El servidor confirmó pendiente `0,00 €`, generó
+el ticket `TPV-37` (secuencia 33) y dejó preparado el QR fiscal de QA; AEAT real
+permaneció desactivada. El cierre formal de la cuenta se completó y la cuenta
+dejó de aparecer en «Cuentas abiertas y aparcadas». No se usó tarjeta, no se
+solicitó reembolso y no se cerró la caja.
+
+Este recorrido cierra Q08 en el perfil de propietario. Siguen abiertas las
+pruebas de denegación/autorización con la cuenta Camarero/a efectiva en QA-A1,
+las comprobaciones explícitas de caja, cobro y reembolso y la repetición de los
+tres enlaces Pase → TPV con una cuenta distinta ya activa en cada terminal.
+
 ## Tanda Codex · 17/11/2026 · membresía y enlace Pase → TPV
 
 La cuenta `qa.permisos.20261116@qa.invalid` ya tiene una membresía efectiva y
