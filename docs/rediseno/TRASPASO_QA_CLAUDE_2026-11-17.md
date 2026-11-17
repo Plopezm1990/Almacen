@@ -408,8 +408,8 @@ detalle de alcance y las comprobaciones pendientes está en
 El Punto 2 **no se declara cerrado todavía**: falta repetir en el preview
 autenticado la persistencia y el salto concreto de Rumbo, y medir las nueve
 composiciones en sus recorridos desktop/móvil con la marca nueva. Órbita
-expone los indicadores reales actualmente disponibles (margen, pedidos y
-stock bajo); ventas, ocupación y comandas no se añaden hasta disponer de un
-contrato/contexto verificable. El control de navegador de Windows bloqueó la
+expone ahora también las ventas registradas calculadas del ledger real;
+ocupación y comandas no se añaden hasta disponer de un contrato/contexto
+verificable. El control de navegador de Windows bloqueó la
 reapertura del preview en esta tanda por política de URL, sin tocar sesiones ni
 datos económicos.

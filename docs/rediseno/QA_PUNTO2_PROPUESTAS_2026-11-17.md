@@ -64,7 +64,7 @@ el despliegue.
 | Patio | Panel orientado a turno y accesos táctiles amplios | Repetir recorrido completo en preview |
 | Rumbo | Ctrl/⌘K, búsqueda por permiso/sinónimo, teclado, foco, fijadas y recientes en `localStorage` por contexto | Falta repetir en preview la persistencia y el salto a un registro concreto; el control de navegador quedó bloqueado por la política URL de Windows en esta tanda |
 | Sello | Cabecera corporativa, serif de títulos, agrupación Ventas/Almacén/Equipo/Control y panel de gestión | Repetir recorrido completo en preview |
-| Órbita | Carbón/acero/coral, titular degradado, cristal, iconos, entrada al hacer scroll, línea de puntero y alternativa de movimiento reducido | El panel actual expone margen, pedidos y stock bajo. Ventas, ocupación y comandas solo deben añadirse cuando exista un contrato/contexto de datos verificable; no se inventan cifras |
+| Órbita | Carbón/acero/coral, titular degradado, cristal, iconos, entrada al hacer scroll, línea de puntero y alternativa de movimiento reducido; ahora expone ventas registradas calculadas del ledger y enlaza a Resultados | Ocupación y comandas solo deben añadirse cuando exista un contrato/contexto de datos verificable; no se inventan cifras |
 | Ascua | Esfera de ocupación, sala, caja y accesos sobre los contratos reales de Pase | Repetir recorrido completo en preview con lectura de datos reales |
 | Pase | Plano de sala, estados, cola, filtros, accesos y protección del destino mesa/cuenta | Repetir live los tres destinos con la marca nueva; la regresión ya está corregida y no debe haber fallback silencioso |
 
@@ -93,9 +93,10 @@ se ha ejecutado una operación económica para compensarlo.
    económicos.
 3. En Rumbo, fijar un destino permitido, recargar, abrirlo y comprobar el
    retorno de foco; repetir en un segundo contexto.
-4. En Órbita, decidir primero qué RPC o prop proporcionará ventas, ocupación y
-   comandas. Si no existe, mantener el indicador fuera del panel y documentar
-   la dependencia, nunca presentar ceros como datos reales.
+4. En Órbita, decidir qué RPC o prop proporcionará ocupación y comandas. Las
+   ventas ya usan el ledger real; si no existe contrato para los otros dos,
+   mantenerlos fuera del panel y documentar la dependencia, nunca presentar
+   ceros como datos reales.
 5. Actualizar la matriz y este acta con el SHA del preview. Mantener PR #225 en
    borrador y no tocar producción.
 
