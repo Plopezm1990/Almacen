@@ -178,3 +178,10 @@ confirmado en los síntomas y sin causa aislada**, con la reproducción de arrib
 Nota de método: los toques los da el panel como clics de ratón sobre una
 emulación táctil, no un dedo sobre cristal. El suelo de 44 px y las medias
 queries sí se evalúan como en un móvil; el gesto, no.
+
+---
+
+**Traspaso de vuelta.** Todo lo de esta tarde está reunido, completo y
+autónomo, en [`TRASPASO_QA_CODEX_2026-11-17.md`](TRASPASO_QA_CODEX_2026-11-17.md):
+qué se hizo, qué está roto con su reproducción, qué sigue por orden y qué falta.
+Empieza por ahí.
