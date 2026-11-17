@@ -38,7 +38,7 @@ for (const pieza of [
   assert.ok(fuente.includes(pieza), `Rumbo ha perdido la pieza ${pieza}.`);
 }
 
-for (const pieza of ['mesaId', 'cuentaId', 'operatingDay', 'No se puede abrir la cuenta destino']) {
+for (const pieza of ['mesaId', 'cuentaId', 'operatingDay', 'destinoMesa', 'destinoCuenta']) {
   assert.ok(panel.includes(pieza), `Pase ha perdido la protección de destino ${pieza}.`);
 }
 
