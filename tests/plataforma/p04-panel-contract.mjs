@@ -167,8 +167,13 @@ const J = (x) => JSON.parse(JSON.stringify(x));
 {
   const bloque = prelock.match(/var RPC_PERMITIDOS = \{([\s\S]*?)\n  \};/)[1];
   const permitidos = [...bloque.matchAll(/^\s*([a-z_0-9]+):\s*true/gm)].map((m) => m[1]).sort();
+  // 17/11/2026: entra `mfa_politica_leer`. El arranque ya la llamaba desde que existe la MFA
+  // opcional, pero no estaba aquí, así que la llamada moría en el navegador y cualquier cuenta sin
+  // segundo factor inscrito se quedaba en «Instalación bloqueada de forma segura». Como
+  // `plataforma_mi_estado_password`, responde siempre sobre quien llama y nunca sobre otra cuenta.
+  // Esta lista se fija a propósito: añadir una RPC al canal previo a la barrera se mira a mano.
   assert.deepEqual(permitidos, [
-    'bootstrap_owner_instalacion', 'obtener_contexto_instalacion_ui', 'obtener_estado_instalacion',
+    'bootstrap_owner_instalacion', 'mfa_politica_leer', 'obtener_contexto_instalacion_ui', 'obtener_estado_instalacion',
     'plataforma_crear_empresa', 'plataforma_desactivar_empresa', 'plataforma_eliminar_empresa', 'plataforma_estado',
     'plataforma_exportar_empresa', 'plataforma_listar_empresas', 'plataforma_mi_estado_password', 'plataforma_preparar_eliminacion',
     'plataforma_reactivar_empresa', 'plataforma_resumen_eliminacion'
