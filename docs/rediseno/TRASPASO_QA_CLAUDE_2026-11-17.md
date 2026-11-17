@@ -269,3 +269,13 @@ avena y la nota «QA Q08 A1-A2 · ensayo selector terminal». La cuenta es
 `Enviado a cocina`. No se cobró ni se cerró caja. Falta comprobar la
 recuperación en A2, los estados de cocina y el cobro final con autorización
 puntual antes de la operación financiera.
+
+## Resultado Q08 · 17/11/2026
+
+El efectivo simulado de 1,54 € fue confirmado en Firefox: pendiente 0,00 €,
+QR fiscal QA preparado y `TPV-37`, secuencia 33, con AEAT real desactivada. La
+comanda se avanzó por Enviado a cocina, En preparación, Listo para servir y
+Servido. Después se ejecutó el cierre formal; la cuenta
+`a8549e71-534b-4ba7-a2e8-96f5ba79febf` ya no aparece en cuentas abiertas. No se
+usó tarjeta, no hubo reembolso y no se cerró la caja. Este recorrido de Q08
+queda cerrado.

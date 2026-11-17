@@ -379,3 +379,16 @@ envió una única comanda a cocina; el TPV quedó en `Enviado a cocina`, sin
 cobro, reembolso, documento fiscal ni cierre. Falta recuperar esta misma
 cuenta desde el terminal A2 en Firefox, recorrer cocina y llegar al punto de
 cobro; la confirmación financiera queda pendiente de autorización puntual.
+
+## Cierre live de Q08 · 17/11/2026
+
+La autorización de QA para el efectivo simulado se ejecutó en Firefox. El TPV
+confirmó `1,54 €`, dejó `Pendiente 0,00 €`, preparó el QR fiscal y mostró
+`TPV-37 · cola PENDIENTE · secuencia 33` con AEAT real desactivada.
+
+La misma cuenta pasó después por `Enviado a cocina → En preparación → Listo
+para servir → Servido`. Se ejecutó el cierre formal de la cuenta pagada desde
+el TPV y la cuenta `a8549e71-534b-4ba7-a2e8-96f5ba79febf` dejó de aparecer en
+«Cuentas abiertas y aparcadas». Resultado: cuenta pagada y cerrada, un pedido,
+una comanda y un documento fiscal simulado; sin tarjeta, reembolso ni cierre
+de caja. Q08 queda cerrado para este recorrido.
