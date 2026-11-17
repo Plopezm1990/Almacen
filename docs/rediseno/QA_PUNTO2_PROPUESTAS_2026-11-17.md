@@ -112,9 +112,9 @@ MANIFEST_VALIDATION=PASS (370 entradas)
 git diff --check=PASS
 ```
 
-## Corte de esta tanda · SHA `f05032af`
+## Corte de esta tanda · SHA `1c35267d`
 
-La matriz queda fijada al commit `f05032af55caea945c99658704127d5e1adcf994`,
+La matriz queda fijada al commit `1c35267d84e5c7aefe4a788faaffeb1e4850c565`,
 publicado en la rama del PR y con Deploy Preview listo. P01, P02 (49/49),
 P03, P04, P05, el validador de manifiesto, su self-test y la paridad de
 `source-recovery` pasan localmente.
