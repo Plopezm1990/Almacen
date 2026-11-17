@@ -10,7 +10,7 @@ que está roto, lo que sigue y lo que falta.
 | --- | --- |
 | Repositorio | `Plopezm1990/Almacen` |
 | Rama | `rediseno/f0-base-qa` |
-| Último commit | `7d19e7ba` (código Pase en `88bb28ac`) |
+| Último commit | `0fcd0f0d` (código Pase en `88bb28ac`) |
 | PR | [#225 contra `release`](https://github.com/Plopezm1990/Almacen/pull/225), **en borrador, no fusionar** |
 | Preview | `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/` |
 | Supabase QA | `qjqorixtkilwsndqayyx`, empresa `QA-EMP-A`, local `QA-A1` |
