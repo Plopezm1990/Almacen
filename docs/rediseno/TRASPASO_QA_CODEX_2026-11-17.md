@@ -267,6 +267,19 @@ llamaba el cliente; `public.abc_unir_cuentas` llevaba meses escrita en las
 migraciones, con catorce motivos de negativa, y nadie la había llamado nunca. La
 fuente buena son las 211 migraciones, no el bundle.
 
+## Estado al reanudar · verificación adicional
+
+La revisión estática no encuentra ningún acceso de Pase a TPV que siga
+enviando solo `mesaId`: los tres caminos de cuenta usan `destinoMesa(...)` y
+transportan `cuenta_id`; los botones genéricos «Abrir TPV» de zona vacía no
+pretenden abrir una cuenta concreta. A06-1, A06-2, A06-3, CFG6E (77/77), P08
+(32/32) y P08C pasan, y la paridad de fuente sigue en PASS.
+
+En esta reanudación la superficie de navegador de Codex no estaba disponible,
+por lo que no se introdujeron credenciales ni se simuló una sesión. Queda como
+acción manual en el preview repetir los tres casos de Pase y ejecutar el
+recorrido de permisos con la cuenta Camarero/a ya vinculada a QA-A1.
+
 ## Convenciones de la casa, por si acaso
 
 - `fuente.js` y `source-recovery/fuente-recuperado.js` se editan **siempre a la
