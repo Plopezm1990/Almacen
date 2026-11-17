@@ -27044,7 +27044,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }, [pedidoOperativoA05?.cuentaId, pedidoOperativoA05?.cuentaVersion, pedidoOperativoA05?.pedidoEstado, local?.id, configEmpresa?.id]);
 
   async function confirmarCobro() {
-    if (mesaDestinoId && (!estadoMesaDestino || estadoMesaDestino.cargando || estadoMesaDestino.bloquea)) {
+    if ((mesaDestinoId || cuentaDestinoId) && (!estadoMesaDestino || estadoMesaDestino.cargando || estadoMesaDestino.bloquea)) {
       setErrorVenta(estadoMesaDestino?.mensaje || "Espera a que se confirme la mesa.");
       return;
     }
@@ -27694,7 +27694,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           type: "button",
           "aria-pressed": esRapida,
           onClick: () => setModoTPV("RAPIDA"),
-          disabled: Boolean(mesaDestinoId),
+          disabled: Boolean(mesaDestinoId || cuentaDestinoId),
           className: "rounded-lg px-3 py-2 text-[12px] font-semibold",
           style: { minHeight: 44, background: esRapida ? C2.accentFill : "transparent", color: esRapida ? C2.onAccent : C2.ink, border: `1px solid ${esRapida ? C2.accentFill : C2.line}` }
         }, "Venta rápida"),
@@ -27710,7 +27710,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   async function confirmarVentaRapida() {
-    if (mesaDestinoId) {
+    if (mesaDestinoId || cuentaDestinoId) {
       setErrorVenta("Continúa la mesa desde Sala. Para venta rápida, abre TPV desde el menú.");
       return;
     }
@@ -27932,7 +27932,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setModoCajaTpv(!modoCajaTpv) }, modoCajaTpv ? "Salir del modo caja" : "Modo caja"), typeof setTemaOscuro === "function" ? /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }) : null), renderSelectorModoTPV(),
   local?.id && configEmpresa?.id && typeof window.getSupabaseClient === "function" ? import_react4.default.createElement(TerminalNavegadorTpv, { key: `${configEmpresa.id}:${local.id}`, empresaId: configEmpresa.id, localId: local.id }) : null,
-  estadoMesaDestino && mesaDestinoId ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
+  estadoMesaDestino && (mesaDestinoId || cuentaDestinoId) ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
     /* @__PURE__ */ import_react4.default.createElement("div", { role: "status" },
       estadoMesaDestino.mesa && /* @__PURE__ */ import_react4.default.createElement("strong", { className: "block" },
         estadoMesaDestino.mesa.nombre || estadoMesaDestino.mesa.codigo),
