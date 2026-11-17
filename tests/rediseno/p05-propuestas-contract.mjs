@@ -33,7 +33,7 @@ for (const regla of [
 }
 
 for (const pieza of [
-  'la-rumbo:v1:', 'Control+K', 'Meta+K', 'la-rumbo-guardadas', 'la-rumbo-fijar',
+  'la-rumbo:v1:', 'ctrlKey', 'metaKey', 'la-rumbo-guardadas', 'la-rumbo-fijar',
 ]) {
   assert.ok(fuente.includes(pieza), `Rumbo ha perdido la pieza ${pieza}.`);
 }
