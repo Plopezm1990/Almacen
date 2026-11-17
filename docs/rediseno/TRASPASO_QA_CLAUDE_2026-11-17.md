@@ -389,3 +389,27 @@ limpiar esa cuenta solo mediante un procedimiento de QA separado.
 
 El PR #225 continúa en borrador, la rama sigue siendo `rediseno/f0-base-qa` y
 no se tocó producción.
+
+## Addendum Punto 2 · nueve propuestas visuales · 17/11/2026
+
+El catálogo y el sistema visual quedan fijados por el contrato
+`tests/rediseno/p05-propuestas-contract.mjs`: nueve diseños, seis paletas,
+54 combinaciones diseño × paleta, Rumbo (teclado, fijadas y recientes), Pase
+(destinos mesa/cuenta) y reglas responsive/movimiento reducido. P05 pasa y se
+ha incorporado al manifiesto CI; el inventario queda en 370 entradas y 353
+contratos activos. P01, P02 (49/49), P03 y P04 siguen en verde.
+
+También se corrigió la marca de caché de `la-pase-panel.js` en `index.html`:
+el cambio de destinos exactos ya se sirve con
+`qa-destinos-exactos-20261117`, y P01 fija la huella correspondiente. El
+detalle de alcance y las comprobaciones pendientes está en
+`docs/rediseno/QA_PUNTO2_PROPUESTAS_2026-11-17.md`.
+
+El Punto 2 **no se declara cerrado todavía**: falta repetir en el preview
+autenticado la persistencia y el salto concreto de Rumbo, y medir las nueve
+composiciones en sus recorridos desktop/móvil con la marca nueva. Órbita
+expone los indicadores reales actualmente disponibles (margen, pedidos y
+stock bajo); ventas, ocupación y comandas no se añaden hasta disponer de un
+contrato/contexto verificable. El control de navegador de Windows bloqueó la
+reapertura del preview en esta tanda por política de URL, sin tocar sesiones ni
+datos económicos.
