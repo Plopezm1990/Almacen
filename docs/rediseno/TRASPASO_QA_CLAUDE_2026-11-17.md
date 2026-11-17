@@ -36,3 +36,91 @@ Identificadores para la comprobación del ticket existente en QA. Mesa `QA-P1-I0
 - [Matriz de implantación](MATRIZ-IMPLANTACION-QA.csv) para la cobertura de las 267 vistas y su evidencia por fila.
 - [Traspaso inicial](TRASPASO_QA_CLAUDE_2026-11-13.md) y [base de QA](F0_BASE_QA_2026-11-13.md) para la historia de Apariencia, Pase, despliegue y contratos.
 - Paquete original `LA-Suite-Traspaso-QA`, en particular `01-PLAN-INTEGRACION-QA.md`, `03-ESPECIFICACION-FUNCIONAL.md` y `04-PRUEBAS-Y-ACEPTACION.md`, para el alcance del rediseño y los casos Q07/Q08.
+
+## Resultado del 17/11 por la tarde · Claude Code
+
+Lo de este tramo salió casi todo del punto 1, y lo que salió no era un permiso
+mal puesto.
+
+### Completada el alta de la cuenta restringida
+
+`qa.permisos.20261116@qa.invalid`, rol **Camarero/a**, creada desde Personal →
+«QA Permisos TPV 20261116» → Crear cuenta de acceso. La credencial queda en el
+fichero local de credenciales, fuera de git.
+
+### Dos defectos que impedían usarla, los dos corregidos
+
+**1 · Ninguna cuenta nueva podía entrar en el programa.** Al entrar con ella,
+la aplicación no abría:
+
+```
+L&A SUITE · INSTALACIÓN INICIAL
+Instalación bloqueada de forma segura
+RPC bootstrap no permitido
+```
+
+Instrumentando el canal: el arranque llama a `mfa_politica_leer` y ese nombre
+nunca se anotó en `RPC_PERMITIDOS` de `owner-bootstrap-prelock.js`. La llamada
+no salía del navegador.
+
+El código ya preveía que esa función pudiera faltar en el servidor —la
+migración `20261115120000` sigue sin aplicarse en QA— y en ese caso falla
+cerrado, que es lo correcto; pero ese cuidado no se ejercía nunca, porque el
+error no se parecía a un «función no encontrada». Y solo golpeaba a quien **no**
+tiene factor inscrito: con factor, el arranque ni pregunta. Pasaba desapercibido
+con las cuentas veteranas y tumbaba exactamente a las recién creadas.
+
+Contrato nuevo `tests/arranque/canal-bootstrap-sin-huecos`, que compara lo que
+el arranque llama por ese canal con la lista blanca. Comprobado que se pone rojo
+contra la versión de antes. `tests/plataforma/p04` fija esa lista a mano y se
+anotó allí el motivo.
+
+**2 · Una activación de segundo factor a medias dejaba sin salida.** El intento
+bloqueado había dejado un factor TOTP sin verificar. Al volver a entrar, la
+pantalla decía «usa el código de la aplicación autenticadora que vinculaste
+anteriormente» a alguien que nunca vinculó nada: sin QR, sin clave y sin salida.
+Ahora se retira el factor a medias —no da acceso a nada— y se empieza de cero;
+si el servidor no deja retirarlo, se vuelve a la conducta anterior pero diciendo
+lo que pasa. El contrato de M-03 pasa a fijar la conducta nueva.
+
+Verificado sobre el preview: la cuenta recibió QR y clave nuevos, se inscribió
+el factor y entró.
+
+### El punto 1 sigue bloqueado, y ahora se sabe dónde
+
+Con la sesión de Camarero/a dentro, el menú es el esperado —Panel general, TPV,
+Cocina— pero **el selector de local ofrece «Local principal», no «Local A1»**.
+Ese local lleva un identificador generado en el cliente, no `QA-A1`, y el
+historial de ventas sale a cero. Es decir, la cuenta tiene acceso a la empresa y
+no tiene local operativo: justo lo que esta acta avisaba que había pasado antes.
+
+La membresía la escribe `pm11_finalizar_creacion_cuenta_empleado` a partir de
+`empleado.local_id`, según `supabase/functions/qa-crear-empleado`. Desde la
+sesión de Propietario la ficha se ve en el Personal de QA-A1, así que por el
+lado del cliente el dato parece correcto; `membresias_usuario` no se puede leer
+desde el navegador con ninguno de los dos roles, así que confirmar y reparar la
+membresía necesita a alguien con acceso a la base de QA.
+
+Lo que sí se midió con el cargo restringido, aunque sea sobre el local vacío:
+el TPV le ofrece **«Caja del TPV» con «Abrir fondo» y «Ver arqueo y cierre»**,
+siendo que `ABC_CAJA_OPERAR` es solo de Propietario, Encargado y Cajero/a según
+`20260923233000_abc_f2_m03a_autoridad_transaccional.sql`. Al pulsar «Abrir
+fondo» la negativa que vuelve es «No hay ningún terminal TPV activo configurado
+para este local», que es el bloqueo del local vacío y no el del cargo, así que
+no se puede separar una cosa de la otra hasta tener QA-A1. Queda anotado como
+candidato a defecto de pantalla, no confirmado.
+
+Para referencia, lo que el servidor concede a **Camarero/a**: `ABC_CUENTA_OPERAR`
+sí, `ABC_COBRO_INICIAR` sí, `ABC_COBRO_EFECTIVO` no, `ABC_REEMBOLSO_SOLICITAR`
+no, `ABC_REEMBOLSO_CONFIRMAR` no, `ABC_CAJA_OPERAR` no, `ABC_EMISOR_CAMBIAR` no.
+
+### Lo que queda, por orden
+
+1. Reparar la membresía de `qa.permisos.20261116@qa.invalid` en QA para que
+   tenga `local_id = 'QA-A1'`, `todos_locales = false` y rol Camarero/a.
+   Necesita acceso a la base: no se puede desde la aplicación.
+2. Con eso, los ensayos de caja, cobro y reembolso del punto 2 del acta.
+3. Q07 en dispositivo táctil, sin empezar.
+4. Aplicar `20261115120000` en QA haría que a Camarero/a no se le exija segundo
+   factor, que es la intención de esa migración; mientras no esté, cada cuenta
+   nueva tiene que inscribirlo.
