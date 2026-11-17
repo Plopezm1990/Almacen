@@ -148,7 +148,16 @@ assert.match(source, /Cerrar sesión/, 'M03_MFA_LOCKOUT_ACTION_MISSING');
 assert.match(mfaGate, /const factores = await cliente\.auth\.mfa\.listFactors\(\);[\s\S]*?const factorPendiente =/, 'M03_ENROLL_MUST_LIST_EXISTING_FACTORS');
 assert.match(mfaGate, /factores\.data\?\.all \|\| \[\]/, 'M03_ENROLL_MUST_INSPECT_ALL_FACTORS');
 assert.match(mfaGate, /factor\.factor_type === "totp" && factor\.status === "unverified" && factor\.friendly_name === "L&A Suite"/, 'M03_ENROLL_MUST_RECOGNIZE_PENDING_FACTOR');
-assert.match(mfaGate, /setFactorId\(factorPendiente\.id\)/, 'M03_ENROLL_MUST_REUSE_PENDING_FACTOR');
+// 17/11/2026. Hasta hoy esto exigía REUTILIZAR el factor pendiente y pedir «el código de la
+// aplicación autenticadora que vinculaste anteriormente». Medido en QA: quien cierra la pestaña
+// sin llegar a escanear el QR no vinculó nada, así que se quedaba sin QR, sin secreto y sin
+// salida. Un factor sin verificar no da acceso a nada, de modo que ahora se retira y se empieza
+// de cero. Lo que el contrato sigue defendiendo es lo mismo: que el factor pendiente se
+// RECONOZCA y no se llame a enroll() a ciegas, que es lo que Supabase rechaza.
+assert.match(mfaGate, /const retirado = await cliente\.auth\.mfa\.unenroll\(\{ factorId: factorPendiente\.id \}\);/, 'M03_ENROLL_MUST_RETIRE_PENDING_FACTOR');
+assert.match(mfaGate, /if \(retirado\?\.error\) pendienteIrretirable = factorPendiente;/, 'M03_ENROLL_RETIRE_FAILURE_MUST_FALL_BACK');
+assert.match(mfaGate, /setFactorId\(pendienteIrretirable\.id\)/, 'M03_ENROLL_FALLBACK_MUST_REUSE_PENDING_FACTOR');
+assert.doesNotMatch(mfaGate, /Usa el c\\xF3digo de la aplicaci\\xF3n autenticadora que vinculaste anteriormente/, 'M03_ENROLL_MUST_NOT_CLAIM_A_LINK_THAT_MAY_NOT_EXIST');
 
 // --------------------------------------- 5. arranque historico (bootstrap)
 assert.match(bootstrap, /function mfaAutorizadaParaAplicacion\(supabase, sesion\)/, 'M03_BOOTSTRAP_MFA_GATE_MISSING');

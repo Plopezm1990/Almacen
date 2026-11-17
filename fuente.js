@@ -130804,10 +130804,23 @@ function MfaGate({ cliente, modo, onComplete, onSignOut }) {
           const factores = await cliente.auth.mfa.listFactors();
           if (factores.error) throw factores.error;
           const factorPendiente = [...(factores.data?.all || [])].find((factor) => factor.factor_type === "totp" && factor.status === "unverified" && factor.friendly_name === "L&A Suite");
+          // Un intento interrumpido deja un factor TOTP `unverified`, y Supabase
+          // rechaza enroll() otra vez con el mismo nombre. Antes se reutilizaba
+          // y se pedia "el codigo de la aplicacion que vinculaste
+          // anteriormente", pero quien cerro la pestana sin llegar a escanear no
+          // vinculo nada: se quedaba sin QR, sin secreto y sin salida. Un factor
+          // sin verificar no da acceso a nada, asi que se retira y se empieza de
+          // cero. Solo si el servidor no deja retirarlo se vuelve a la conducta
+          // de antes, y entonces se dice lo que de verdad pasa.
+          let pendienteIrretirable = null;
           if (factorPendiente) {
+            const retirado = await cliente.auth.mfa.unenroll({ factorId: factorPendiente.id });
+            if (retirado?.error) pendienteIrretirable = factorPendiente;
+          }
+          if (pendienteIrretirable) {
             if (!activo) return;
-            setFactorId(factorPendiente.id);
-            setError("Hay una activación pendiente. Usa el código de la aplicación autenticadora que vinculaste anteriormente.");
+            setFactorId(pendienteIrretirable.id);
+            setError("Hay una activaci\xF3n a medias y el servidor no ha dejado retirarla para empezar de nuevo. Si llegaste a guardar el c\xF3digo en tu aplicaci\xF3n autenticadora, \xFAsalo; si no, pide que retiren esa activaci\xF3n.");
           } else {
             const { data, error: error2 } = await cliente.auth.mfa.enroll({ factorType: "totp", issuer: "L&A Suite", friendlyName: "L&A Suite" });
             if (error2) throw error2;
