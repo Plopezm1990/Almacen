@@ -105496,6 +105496,7 @@ function GestionAlmacen() {
       const mismo = (a3, b3) => JSON.stringify(a3) === JSON.stringify(b3);
       if (Array.isArray(d3.empresas)) setEmpresas((prev) => mismo(prev, d3.empresas) ? prev : d3.empresas);
       if (Array.isArray(d3.locales)) setLocales((prev) => mismo(prev, d3.locales) ? prev : d3.locales);
+      if (typeof d3.localActivoId === "string" && d3.localActivoId) setLocalActivoId((prev) => prev === d3.localActivoId ? prev : d3.localActivoId);
     }
     window.addEventListener("contexto-ui-actualizado", onContextoUiPM29);
     return () => window.removeEventListener("contexto-ui-actualizado", onContextoUiPM29);

@@ -40,6 +40,22 @@
     return { key: key, value: value, shared: false };
   }
 
+  function publicarContextoConfirmado(contexto, userId) {
+    if (typeof window.__laOwnerBootstrapSeedUiContext !== "function") {
+      throw new Error("Semilla segura del contexto UI no disponible");
+    }
+    window.__laOwnerBootstrapSeedUiContext(contexto, userId);
+    try {
+      window.dispatchEvent(new CustomEvent("contexto-ui-actualizado", {
+        detail: {
+          empresas: contexto.empresas,
+          locales: contexto.locales,
+          localActivoId: contexto.local_id || null
+        }
+      }));
+    } catch (e) {}
+  }
+
   async function clienteConSesion() {
     if (typeof window.getSupabaseClient !== "function") {
       throw new Error("Cliente Supabase no disponible");
@@ -103,6 +119,22 @@
         var localPermitido = typeof parsed === "string" && parsed.length > 0 && localesPermitidos.some(function (local) {
           return local && local.activo !== false && !local.fusionadoEn && String(local.id) === parsed;
         });
+        // Una copia local anterior puede contener el «Local principal»
+        // generado por el cliente. Si la sesión ya tiene un local canónico
+        // autorizado, adopta ese valor y publica el contexto para que la UI
+        // no se quede mostrando una instalación fantasma.
+        if (parsed !== null && !localPermitido) {
+          var localCanonico = typeof contexto.data.local_id === "string" ? contexto.data.local_id : "";
+          var canonicoPermitido = localCanonico && localesPermitidos.some(function (local) {
+            return local && local.activo !== false && !local.fusionadoEn && String(local.id) === localCanonico;
+          });
+          if (canonicoPermitido) {
+            var valorCanonico = JSON.stringify(localCanonico);
+            guardarLocal(key, valorCanonico);
+            publicarContextoConfirmado(contexto.data, actual.sesion.user.id);
+            return respuesta(key, valorCanonico);
+          }
+        }
         if (parsed === null ? !permiteTodos : !localPermitido) {
           throw new Error("Local no autorizado para esta cuenta");
         }
@@ -118,10 +150,7 @@
         throw new Error("El servidor no confirmó el contexto empresa/local");
       }
 
-      if (typeof window.__laOwnerBootstrapSeedUiContext !== "function") {
-        throw new Error("Semilla segura del contexto UI no disponible");
-      }
-      window.__laOwnerBootstrapSeedUiContext(r.data, actual.sesion.user.id);
+      publicarContextoConfirmado(r.data, actual.sesion.user.id);
 
       // El servidor puede devolver algo distinto de lo que se le mando: al dar
       // de baja una empresa desactiva tambien sus locales. La semilla de arriba
@@ -131,7 +160,7 @@
       // anuncia el contexto confirmado para que la UI adopte el del servidor.
       try {
         window.dispatchEvent(new CustomEvent("contexto-ui-actualizado", {
-          detail: { empresas: r.data.empresas, locales: r.data.locales }
+          detail: { empresas: r.data.empresas, locales: r.data.locales, localActivoId: r.data.local_id || null }
         }));
       } catch (e) {}
 
