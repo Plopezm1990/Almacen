@@ -297,7 +297,14 @@ autorizados de apertura, movimientos o arqueo. En «Más», el cargo restringido
 solo ve «Apariencia» y no ve Devoluciones ni módulos financieros. No se
 seleccionó venta ni se pulsó ninguna operación económica.
 
-Esto cierra la evidencia de bloqueo de interfaz, pero no sustituye la prueba
-RPC. Quedan pendientes las respuestas explícitas del servidor para caja, cobro
-y reembolso y su registro en `caj-11`–`caj-13`, `tpv-03` y `tpv-06`. Mantener el
-PR #225 en borrador y no conceder delegaciones durante esta comprobación.
+Después se capturaron las respuestas RPC con los claims de esta misma cuenta,
+en transacciones revertidas para no persistir datos: `abc_abrir_sesion_caja`
+devolvió `abc_caja_no_autorizado`, `abc_iniciar_cobro` devolvió
+`abc_efectivo_no_autorizado` y `abc_solicitar_reembolso` devolvió
+`abc_reembolso_no_autorizado`. La consulta posterior confirmó cero operaciones,
+cero sesión ficticia, cero reembolso ficticio y el pago de referencia intacto.
+La denegación server-side de Camarero/a para caja, cobro y reembolso queda
+cerrada. Falta únicamente actualizar las celdas históricas de
+`caj-11`–`caj-13`, `tpv-03` y `tpv-06` con este addendum y completar la
+repetición de los tres destinos Pase → TPV. Mantener el PR #225 en borrador y
+no conceder delegaciones durante esta comprobación.

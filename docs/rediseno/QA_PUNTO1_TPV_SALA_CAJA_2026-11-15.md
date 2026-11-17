@@ -112,11 +112,21 @@ El menú «Más» del cargo restringido solo muestra «Apariencia»; no expone
 «Devoluciones», Caja ni otros módulos financieros. No se seleccionó venta, no se
 introdujo importe y no se pulsó ninguna acción económica.
 
-Esta tanda prueba el bloqueo de interfaz y la permanencia de los pagos, pero no
-se presenta como una prueba RPC completa: para cerrar `caj-11`–`caj-13`,
-`tpv-03` y `tpv-06` todavía hay que capturar en QA la respuesta explícita del
-servidor (`abc_efectivo_no_autorizado`, `abc_cobro_no_autorizado` o equivalente)
-para caja, cobro y reembolso.
+La comprobación server-side se completó después, con los claims de esta misma
+cuenta y dentro de transacciones revertidas para no persistir ningún ensayo.
+Las respuestas exactas fueron:
+
+| RPC | Respuesta QA |
+| --- | --- |
+| `abc_abrir_sesion_caja` | `abc_caja_no_autorizado` |
+| `abc_iniciar_cobro` | `abc_efectivo_no_autorizado` |
+| `abc_solicitar_reembolso` | `abc_reembolso_no_autorizado` |
+
+La verificación posterior confirmó cero operaciones de ensayo, cero sesión de
+caja ficticia, cero reembolso ficticio y que el pago de referencia continuaba
+intacto. Con esto queda cerrada la denegación server-side del Camarero/a para
+caja, cobro y solicitud de reembolso; la autorización positiva de Cajero/a y
+la repetición de los tres destinos Pase → TPV siguen siendo tareas separadas.
 
 ## Tanda Codex · 17/11/2026 · membresía y enlace Pase → TPV
 
