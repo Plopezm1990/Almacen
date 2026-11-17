@@ -413,3 +413,11 @@ ocupación y comandas no se añaden hasta disponer de un contrato/contexto
 verificable. El control de navegador de Windows bloqueó la
 reapertura del preview en esta tanda por política de URL, sin tocar sesiones ni
 datos económicos.
+
+El último corte de esta tanda es `f05032af55caea945c99658704127d5e1adcf994`.
+P01–P05, el manifiesto, la paridad de fuente y `git diff --check` están en
+verde localmente; el PR #225 permanece en borrador y sin fusionar. El preview
+de Netlify para este SHA está listo. La puerta de CI general aún tiene trabajos
+en curso y un `p2-p06` histórico en rojo; no se presenta el conjunto como CI
+global verde. Queda pendiente la pasada autenticada del preview: persistencia
+y salto de Rumbo y recorrido desktop/móvil de las nueve composiciones.

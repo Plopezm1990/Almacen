@@ -111,3 +111,14 @@ MFA_POLITICA=PASS (26/26)
 MANIFEST_VALIDATION=PASS (370 entradas)
 git diff --check=PASS
 ```
+
+## Corte de esta tanda · SHA `f05032af`
+
+La matriz queda fijada al commit `f05032af55caea945c99658704127d5e1adcf994`,
+publicado en la rama del PR y con Deploy Preview listo. P01, P02 (49/49),
+P03, P04, P05, el validador de manifiesto, su self-test y la paridad de
+`source-recovery` pasan localmente.
+
+El PR sigue en borrador, abierto y sin fusionar. La puerta de CI general aún
+tiene trabajos en curso y un `p2-p06` histórico en rojo, fuera del alcance de
+este Punto 2; no se declara un falso verde global.
