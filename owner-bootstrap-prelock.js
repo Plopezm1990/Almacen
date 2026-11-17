@@ -18,6 +18,13 @@
     // Blindaje de la contraseña inicial (D01, decisión 3): cualquier cuenta autenticada, no solo el
     // administrador. Siempre responde sobre quien llama (auth.uid()), nunca sobre una cuenta ajena.
     plataforma_mi_estado_password: true,
+    // MFA opcional: el arranque pregunta si a esta persona se le exige el segundo factor, y lo
+    // pregunta por este mismo canal, antes de la barrera. Como plataforma_mi_estado_password,
+    // responde siempre sobre quien llama (auth.uid()) y nunca sobre una cuenta ajena.
+    // Faltaba aqui, asi que la llamada ni siquiera salia del navegador: cualquier cuenta sin
+    // segundo factor inscrito -es decir, toda cuenta recien creada- se quedaba en «Instalacion
+    // bloqueada de forma segura», que es una pantalla de instalador, no de camarero.
+    mfa_politica_leer: true,
     plataforma_listar_empresas: true,
     plataforma_crear_empresa: true,
     plataforma_desactivar_empresa: true,
