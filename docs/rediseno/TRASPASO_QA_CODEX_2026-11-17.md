@@ -363,3 +363,19 @@ El cambio está publicado en el Deploy Preview 225 con commit
 preview muestra el estado «Terminal de este navegador: QA terminal A1» y el
 selector contiene A1 y A2. La prueba de mutaciones económicas sigue pendiente:
 seleccionar un terminal no abre caja ni cobra por sí solo.
+
+## Ensayo live adicional A1 · Q07/Q08 · 17/11/2026
+
+Con `pm07.smoke@qa.invalid` en Local A1 y `QA terminal A1`, se activó Pase
+solo con «Probar en la suite» y se restauró al terminar. El plano cargó 4 de 6
+mesas con cuenta abierta, 77 pedidos en servicio y la mesa libre `QA-P1-I02`.
+Se abrió esa mesa en TPV sin asignarla todavía, se añadió Café con leche (QA)
+con variante `Pequeño`, extra `Leche de avena` y nota «QA Q08 A1-A2 · ensayo
+selector terminal», y se guardó como cuenta Mesa de 1,54 €.
+
+Resultado de servidor: cuenta `a8549e71-534b-4ba7-a2e8-96f5ba79febf`, pedido
+`d1a47ffa-f5c6-4fd8-b458-7996993f67e7`, estado operativo `Abierto`. Después se
+envió una única comanda a cocina; el TPV quedó en `Enviado a cocina`, sin
+cobro, reembolso, documento fiscal ni cierre. Falta recuperar esta misma
+cuenta desde el terminal A2 en Firefox, recorrer cocina y llegar al punto de
+cobro; la confirmación financiera queda pendiente de autorización puntual.

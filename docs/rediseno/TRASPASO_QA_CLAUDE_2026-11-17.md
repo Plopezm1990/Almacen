@@ -257,3 +257,15 @@ Publicado en Deploy Preview 225 con `31e7aef3997d77c1979f46394996dcd73c2e1470`.
 La verificación live en QA-A1 confirma que el selector ofrece A1 y A2 incluso
 cuando A1 ya estaba guardado. Falta ejecutar la batería económica Q07/Q08 con
 una sesión de caja válida en cada terminal.
+
+## Ensayo live adicional A1 · 17/11/2026
+
+Codex repitió la primera mitad de Q07/Q08 con `pm07.smoke@qa.invalid` en A1.
+Pase mostró el plano real y se abrió la mesa libre `QA-P1-I02`. En TPV se
+guardó una cuenta Mesa de 1,54 € con Café con leche (QA), Pequeño, Leche de
+avena y la nota «QA Q08 A1-A2 · ensayo selector terminal». La cuenta es
+`a8549e71-534b-4ba7-a2e8-96f5ba79febf` y el pedido
+`d1a47ffa-f5c6-4fd8-b458-7996993f67e7`; se envió una única comanda y quedó
+`Enviado a cocina`. No se cobró ni se cerró caja. Falta comprobar la
+recuperación en A2, los estados de cocina y el cobro final con autorización
+puntual antes de la operación financiera.
