@@ -155,3 +155,26 @@ Verificación local de esta tanda: paridad de `fuente.js` PASS; contratos A06-1,
 A06-2, A06-3, CFG6E, A09 y P08 PASS. La batería completa no se pudo lanzar en
 este Windows por el runner Bash/MSYS; el entorno de batería debe incluir
 `fake-indexeddb` desde `be0b722a`.
+
+## Regresión live Pase → TPV · 17/11/2026
+
+Se activó **Pase** solo con «Probar en la suite» para no cambiar la apariencia
+guardada de `QA-EMP-A`. Sesión de propietario `pm07.smoke@qa.invalid`,
+`QA-A1`, terminal `QA terminal A1 (siembra etapa 1)`. No se cobró, no se
+cerró ninguna cuenta y no se tocó la caja.
+
+| Caso | Destino que debía abrir | Resultado observado |
+| --- | --- | --- |
+| Cola · Cuentas, fila `9d10ccfc` | cuenta/pedido de la fila (`aa53c595-293d-4b5c-8df8-eaf8a3b0fd6a` / `9d10ccfc-2e31-4ca0-9524-1043c514dcd5`) | **Falla**: la fila no tiene mesa asignada en el mapa; el botón navega al TPV sin `mesaId`/`cuentaId` y conserva la cuenta previa del terminal (TPV-37, cerrada, 1,54 €). |
+| Cola · Cuentas, fila `5c214429` | cuenta/pedido de la fila (`3a9bb395-4b86-4640-9ac8-40391469966b` / `5c214429-b712-4f4f-9c42-dd074a1aab0b`) | **Falla**: misma ausencia de mesa; el TPV queda en la cuenta previa abierta del terminal (1,54 €), no en la cuenta de la fila (3,85 €). |
+| «Lleva más tiempo abierta» → «Ver cuenta» | Mesa `QA-A1-02` / cuenta prioritaria del plano | **Aviso correcto**: el TPV comprueba el destino y muestra «La cuenta pertenece a otro día operativo y requiere resolución antes de continuar»; no cae silenciosamente en la cuenta previa. |
+
+La corrección `88bb28ac` funciona cuando existe una mesa de destino, pero los
+dos elementos de la cola que no tienen mesa siguen llamando a `irA("venta")`
+sin un destino de cuenta. El próximo cambio debe resolver una de estas dos
+opciones de forma explícita: (a) transportar también `cuentaId` y
+`operatingDay` aunque no haya mesa, si el TPV puede recuperar una cuenta
+independiente, o (b) deshabilitar el acceso y mostrar «La cuenta no tiene una
+mesa operativa; ábrela desde Cuentas» en vez de conservar el contexto del
+terminal. La matriz queda abierta para `tpv-03` hasta esa corrección y una
+repetición live con cuenta distinta activa en el terminal.

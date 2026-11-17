@@ -308,3 +308,28 @@ cerrada. Falta únicamente actualizar las celdas históricas de
 `caj-11`–`caj-13`, `tpv-03` y `tpv-06` con este addendum y completar la
 repetición de los tres destinos Pase → TPV. Mantener el PR #225 en borrador y
 no conceder delegaciones durante esta comprobación.
+
+## Regresión live de los tres destinos Pase → TPV · 17/11/2026
+
+Con el propietario `pm07.smoke@qa.invalid` en `QA-A1`, terminal A1 y Pase
+activo únicamente con «Probar en la suite», se repitieron los tres accesos
+sin cobrar ni cerrar cuentas.
+
+- **Cuentas / `9d10ccfc`**: el pedido corresponde a la cuenta
+  `aa53c595-293d-4b5c-8df8-eaf8a3b0fd6a`, pero no tiene fila de mesa vigente.
+  El botón se renderiza como «Abrir TPV» sin destino y el TPV conserva la
+  cuenta previa del terminal (TPV-37, 1,54 €). Falla el aislamiento.
+- **Cuentas / `5c214429`**: la cuenta de la fila es
+  `3a9bb395-4b86-4640-9ac8-40391469966b`, total de líneas 3,85 €, también sin
+  mesa vigente. El TPV vuelve a la cuenta previa abierta (1,54 €), no a la
+  cuenta de la fila. Falla el aislamiento.
+- **«Lleva más tiempo abierta» → «Ver cuenta»**: el destino sí transporta
+  mesa y cuenta. El TPV no reutiliza la cuenta previa y muestra el aviso
+  explícito «La cuenta pertenece a otro día operativo y requiere resolución
+  antes de continuar». El caso obsoleto deja de fallar en silencio.
+
+Conclusión: `88bb28ac` corrige el enlace cuando hay mesa de destino, pero no
+los dos elementos de cola sin mesa. Hay que decidir y construir el contrato
+de cuenta independiente (pasar `cuentaId`/`operatingDay` sin `mesaId`) o
+deshabilitar esos accesos con un mensaje claro. No cerrar `tpv-03` hasta que
+los dos primeros casos dejen de conservar el contexto del terminal.
