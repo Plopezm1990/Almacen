@@ -204,3 +204,19 @@ es: desplegar y repetir los tres casos de Pase; ejecutar en QA-A1 los ensayos de
 permisos de caja, cobro y reembolso con la cuenta Camarero/a; cerrar las filas
 del punto 1; y solo después valorar la migración MFA opcional. Mantén el PR #225
 en borrador y trabaja únicamente contra QA.
+
+## Evidencia live añadida por Codex · 17/11/2026
+
+La cuenta `qa.permisos.20261116@qa.invalid` ya entra en el local operativo
+correcto: **Local A1**, no «Local principal». El arreglo está desplegado en
+`a97841eb` y mantiene paridad exacta entre `fuente.js` y
+`source-recovery/fuente-recuperado.js`.
+
+En TPV con `QA terminal A1` el servidor devuelve el mensaje visible «No tienes
+permiso para operar este TPV en el local seleccionado» y mantiene el QR fiscal
+pendiente. Se abrió **Anular venta** hasta la confirmación y se canceló; no se
+confirmó ninguna mutación económica. El intento de modo caja tampoco mostró un
+control operativo autorizado para Camarero/a. Queda pendiente que Claude
+recorra las RPC de caja/cobro/reembolso de forma explícita, abra Q07 y Q08 en
+dos perfiles y cierre la evidencia de `caj-11`–`caj-13`, `caj-22`, `tpv-03` y
+`tpv-06` sin fusionar el PR #225.

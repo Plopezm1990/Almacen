@@ -292,3 +292,19 @@ recorrido de permisos con la cuenta Camarero/a ya vinculada a QA-A1.
 - Varios contratos fijan por texto literal tramos del cableado del TPV y del
   arranque. Están puestos a propósito: cuando un cambio los rompe, se actualiza
   el texto fijado con el motivo escrito, no se esquiva el ancla.
+
+## Verificación live añadida · 17/11/2026
+
+La cuenta `qa.permisos.20261116@qa.invalid` entra como **Camarero/a** y el
+selector real muestra `Local A1 · QA Empresa A, S.L.`. El arreglo del estado
+antiguo «Local principal» está en `a97841eb`, desplegado en el preview 225;
+`fuente.js` y `source-recovery/fuente-recuperado.js` conservan paridad exacta.
+
+En TPV, con `QA terminal A1 (siembra etapa 1)`, el servidor muestra «No tienes
+permiso para operar este TPV en el local seleccionado» y deja la cola fiscal
+pendiente. Se abrió el flujo **Anular venta** hasta la confirmación y se pulsó
+«Cancelar»; no se creó cobro, reembolso ni anulación. El modo caja no mostró
+un control operativo autorizado para este rol. La prueba demuestra la
+denegación live del terminal, pero siguen pendientes caja con Propietario o
+Cajero, Q07/Q08 en dos perfiles y el recorrido explícito de las RPC de
+cobro/reembolso para el rol Camarero/a.
