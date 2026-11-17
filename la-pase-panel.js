@@ -236,8 +236,17 @@
         el("span", { class: "val", texto: (m.nombre || m.codigo || "Mesa") + " · " + (m.__zona || "") })
       ]),
       el("div", { class: "hueco" }),
-      botonIrA("venta", "Ver cuenta", "la-pase-accion", { mesaId: m.mesa_id })
+      botonIrA("venta", "Ver cuenta", "la-pase-accion", destinoMesa(m, m.cuentas?.[0]?.cuenta_id))
     ]);
+  }
+
+  function destinoMesa(mesa, cuentaId) {
+    if (!mesa || !mesa.mesa_id) return null;
+    return {
+      mesaId: mesa.mesa_id,
+      cuentaId: cuentaId || null,
+      diaDestino: estado.mapa?.operatingDay || null
+    };
   }
 
   function bloquePlano() {
@@ -341,7 +350,7 @@
       ]),
       inoperable
         ? el("span", { class: "txt", texto: "Esta mesa no admite servicio ahora mismo." })
-        : botonIrA("venta", abierta ? "Ver cuenta en el TPV" : "Abrir mesa en el TPV", "la-pase-accion", { mesaId: mesa.mesa_id })
+        : botonIrA("venta", abierta ? "Ver cuenta en el TPV" : "Abrir mesa en el TPV", "la-pase-accion", destinoMesa(mesa, mesa.cuentas?.[0]?.cuenta_id))
     ]);
   }
 
@@ -446,7 +455,7 @@
           el("span", { texto: String(pedido.id || "").slice(0, 8) })
         ]),
         el("span", { class: "la-pase-etiqueta", texto: ESTADO_PEDIDO[pedido.estado]?.[1] || pedido.estado }),
-        esCuenta ? botonIrA("venta", mesa ? "Ver cuenta en el TPV" : "Abrir TPV", "la-pase-accion suave", mesa ? { mesaId: mesa.mesa_id } : null)
+        esCuenta ? botonIrA("venta", mesa ? "Ver cuenta en el TPV" : "Abrir TPV", "la-pase-accion suave", mesa ? destinoMesa(mesa, pedido.cuenta_id) : null)
           : botonIrA("cocina", "Ver en Cocina", "la-pase-accion suave", { pedidoId: pedido.id })
       ]);
     }));

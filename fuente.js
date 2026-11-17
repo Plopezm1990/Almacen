@@ -106979,7 +106979,10 @@ function GestionAlmacen() {
     }
     if (id === "venta" && typeof destino?.mesaId === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(destino.mesaId)) {
       if (localInformeId !== localActivoId) return true;
-      setMesaDestinoTpv({ id: destino.mesaId, empresaId: empresaDelLocalActivo?.id, localId: localActivoId });
+      const cuentaId = typeof destino.cuentaId === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(destino.cuentaId)
+        ? destino.cuentaId : null;
+      const diaDestino = /^\d{4}-\d{2}-\d{2}$/.test(String(destino.diaDestino || "")) ? destino.diaDestino : null;
+      setMesaDestinoTpv({ id: destino.mesaId, cuentaId, diaDestino, empresaId: empresaDelLocalActivo?.id, localId: localActivoId });
     }
     return true;
   }
@@ -126322,6 +126325,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [errorSalaA07, setErrorSalaA07] = (0, import_react4.useState)("");
   const [mesaSeleccionadaA07, setMesaSeleccionadaA07] = (0, import_react4.useState)(null);
   const mesaDestinoId = mesaDestino?.localId === local?.id && mesaDestino?.empresaId === configEmpresa?.id ? mesaDestino?.id : null;
+  const cuentaDestinoId = mesaDestino?.localId === local?.id && mesaDestino?.empresaId === configEmpresa?.id && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(String(mesaDestino?.cuentaId || "")) ? mesaDestino.cuentaId : null;
+  const diaDestino = /^\d{4}-\d{2}-\d{2}$/.test(String(mesaDestino?.diaDestino || "")) ? mesaDestino.diaDestino : null;
   const [estadoMesaDestino, setEstadoMesaDestino] = (0, import_react4.useState)(null);
   const cargarSalaDestinoRef = (0, import_react4.useRef)(cargarSalaDestino);
   const recuperarMesaDestinoRef = (0, import_react4.useRef)(recuperarCuentaA06);
@@ -126447,7 +126452,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   (0, import_react4.useEffect)(() => {
     let activo = true;
     const fixture = c07dD24PedidoFixtureInicial();
-    if (fixture) {
+    if (fixture && !mesaDestinoId && !cuentaDestinoId) {
       setPedidoOperativoA05(fixture);
       return () => { activo = false; };
     }
@@ -126463,10 +126468,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           return;
         }
         const cuentas = mesa.cuentas || [];
-        if (mesa.estado_efectivo === "OCUPADA" && cuentas.length === 1 && typeof recuperarMesaDestinoRef.current === "function") {
+        const cuentaObjetivoId = cuentaDestinoId || (cuentas.length === 1 ? cuentas[0].cuenta_id : null);
+        const cuentaObjetivo = cuentaObjetivoId ? cuentas.find((cuenta) => String(cuenta.cuenta_id) === String(cuentaObjetivoId)) : null;
+        if (mesa.estado_efectivo === "OCUPADA" && cuentaObjetivoId && cuentaObjetivo && typeof recuperarMesaDestinoRef.current === "function") {
           const cuenta = await recuperarMesaDestinoRef.current({
-            cuentaIdDestino: cuentas[0].cuenta_id,
-            diaDestino: resultado.operatingDay,
+            cuentaIdDestino: cuentaObjetivoId,
+            diaDestino: diaDestino || resultado.operatingDay,
             mesaIdDestino: mesaDestinoId,
             sigueVigente: () => activo
           });
@@ -126480,7 +126487,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           }
           return;
         }
-        const mensaje = mesa.estado_efectivo === "LIBRE"
+        const mensaje = cuentaDestinoId && !cuentaObjetivo
+          ? "La cuenta solicitada ya no está en esta mesa. Vuelve a Pase y actualiza el estado."
+          : mesa.estado_efectivo === "LIBRE"
           ? "Mesa libre. Guarda el pedido antes de confirmar la asignación."
           : cuentas.length > 1 ? "Hay varias cuentas abiertas en esta mesa. Revisa sus referencias antes de continuar."
           : "La mesa no está disponible para abrir una cuenta desde este acceso.";
@@ -126511,7 +126520,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     return () => {
       activo = false;
     };
-  }, [local?.id, configEmpresa?.id, mesaDestinoId]);
+  }, [local?.id, configEmpresa?.id, mesaDestinoId, cuentaDestinoId, diaDestino]);
 
   async function refrescarSalaA07() {
     if (typeof cargarMapaSalaA07 !== "function") return;
