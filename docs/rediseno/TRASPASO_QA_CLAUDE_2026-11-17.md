@@ -352,3 +352,19 @@ continuar»; ninguno conservó la cuenta previa del terminal. No hubo cobros,
 cierres ni otras mutaciones. La regresión de aislamiento queda cerrada; solo
 queda opcional crear una cuenta del día actual para probar el camino positivo
 de recuperación sin mesa.
+
+### Ensayo positivo completado · cuenta del día actual sin mesa
+
+Se creó la cuenta QA `d802aad8-0099-4092-945b-01adfbb9a569` con el pedido
+`87cf1dad-ea65-4970-a2b8-0e96899441f8`, una línea de Café con leche (QA) por
+1,32 €, día operativo `2026-11-17` y `mesa_id = NULL`. Se envió a cocina y se
+marcó `SERVIDO`, sin cobro ni cierre. Desde **Cuentas abiertas y aparcadas** se
+usó **Retomar**: el preview mostró «Cuenta retomada. El TPV ha pasado a Sala y
+la cuenta está abajo, en el pedido operativo». La consulta de solo lectura
+confirmó `ABIERTA`, el mismo día y ningún vínculo de mesa.
+
+La recuperación positiva queda verificada a nivel servidor y de interfaz. No
+se pudo hacer clic en la fila desde la cola visible de Pase porque esta limita
+la muestra a 8 de 78 pedidos; la cuenta sintética queda fuera de esa ventana.
+La limitación queda como pendiente independiente de paginación/búsqueda de la
+cola. No se hizo ningún cobro, reembolso ni cierre de la cuenta.

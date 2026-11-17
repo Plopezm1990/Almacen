@@ -203,3 +203,32 @@ creó, cobró, cerró ni modificó ninguna cuenta. La matriz puede cerrar la
 regresión de `tpv-03`; queda como mejora futura un ensayo con una cuenta nueva
 del día actual para acreditar también la recuperación positiva de una cuenta
 sin mesa, sin reutilizar datos históricos.
+
+## Ensayo positivo de cuenta sin mesa · 17/11/2026
+
+Se creó en QA, sin cobro, una cuenta sintética del día actual desde el TPV de
+`QA-A1` con el propietario `pm07.smoke@qa.invalid`:
+
+| Dato | Valor |
+| --- | --- |
+| Cuenta | `d802aad8-0099-4092-945b-01adfbb9a569` |
+| Pedido | `87cf1dad-ea65-4970-a2b8-0e96899441f8` |
+| Día operativo | `2026-11-17` |
+| Ubicación | Barra; `mesa_id = NULL` |
+| Línea | 1 × Café con leche (QA), 1,32 € |
+
+El pedido se envió a cocina y se llevó a `SERVIDO` sin abrir caja, cobrar,
+emitir ticket ni cerrar la cuenta. En **Cuentas abiertas y aparcadas**, la
+primera fila del día actual apareció como «Barra» y **Retomar** mostró el
+mensaje «Cuenta retomada. El TPV ha pasado a Sala y la cuenta está abajo, en el
+pedido operativo». La consulta independiente al servidor confirmó la misma
+cuenta, el mismo pedido, `ABIERTA`, `opened_operating_day = 2026-11-17` y
+`mesa_id = NULL`.
+
+Esto acredita la recuperación positiva server-side de una cuenta sin mesa y
+que no se reutiliza el contexto económico anterior del terminal. El enlace
+visible de la cola de Pase no pudo apuntar a esta fila en esta tanda porque el
+panel limita la muestra a 8 pedidos de 78 y ordena los estados; la cuenta
+sintética queda fuera de esa ventana. La limitación está documentada como
+pendiente de producto (paginación o búsqueda de la cola), no como fallo del
+destino `cuentaId`.
