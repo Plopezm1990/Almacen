@@ -1,5 +1,7 @@
 # L&A Suite · Traspaso de integración a Claude Code
 
+**Continuación vigente.** Empezar por el [traspaso del 17 de noviembre](TRASPASO_QA_CLAUDE_2026-11-17.md). Este documento conserva el corte inicial del 13 de noviembre.
+
 13 de noviembre de 2026, hora de Madrid. Trabajar en Almacen-qa-rediseno, rama rediseno/f0-base-qa, PR #225 contra release en borrador. Preview https://deploy-preview-225--chic-entremet-9107cf.netlify.app. Supabase QA qjqorixtkilwsndqayyx. Mantener el PR sin fusionar y las pruebas en QA.
 
 ## Cambios publicados

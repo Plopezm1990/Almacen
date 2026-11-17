@@ -46,5 +46,7 @@ En el perfil de Chrome, el TPV se asignó al terminal **QA terminal A2 (ensayo p
 
 ## Verificaciones que siguen abiertas
 
+Consultar la [continuación del 17 de noviembre](TRASPASO_QA_CLAUDE_2026-11-17.md) para el estado del alta de Camarero/a y el orden de verificación.
+
 - Q07 con un cargo de acceso limitado y entrada táctil en dispositivo. El modelo comercial persiste los pedidos guardados como `ABIERTO`. El proyecto carece de un estado independiente de cuenta aparcada; la aceptación debe contrastar esto con la especificación que pide usar el modelo real.
 - Acceso desde un navegador con una cuenta restringida de QA-A1. La cuenta sintética de Cajero/a empleada en la prueba de servidor tiene membresía activa en el local y segundo factor registrado. Falta completar la autenticación en el segundo perfil y contrastar los controles y las operaciones de caja, cobro y reembolso en la suite.

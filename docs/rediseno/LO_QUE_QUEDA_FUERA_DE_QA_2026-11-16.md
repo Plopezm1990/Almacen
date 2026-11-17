@@ -1,5 +1,7 @@
 # Lo que queda, y por qué no lo puedo hacer yo
 
+**Corte de referencia.** Consultar el [traspaso del 17 de noviembre](TRASPASO_QA_CLAUDE_2026-11-17.md) para el recuento vigente de la matriz y los avances posteriores de TPV, stock y migraciones.
+
 16 de noviembre de 2026 · commit `69797c90` · PR #225 (borrador) · preview de QA
 `https://deploy-preview-225--chic-entremet-9107cf.netlify.app`
 
