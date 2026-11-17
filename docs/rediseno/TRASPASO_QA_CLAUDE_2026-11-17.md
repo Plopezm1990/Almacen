@@ -199,11 +199,13 @@ mantiene la paridad con `source-recovery/fuente-recuperado.js`. Falta repetir en
 el preview los tres casos que antes acababan silenciosamente en la cuenta activa
 del terminal.
 
-La matriz y el acta de punto 1 se actualizaron con este estado. El orden actual
-es: desplegar y repetir los tres casos de Pase; ejecutar en QA-A1 los ensayos de
-permisos de caja, cobro y reembolso con la cuenta Camarero/a; cerrar las filas
-del punto 1; y solo después valorar la migración MFA opcional. Mantén el PR #225
-en borrador y trabaja únicamente contra QA.
+El acta de punto 1 se actualizó con este estado en `302237a1`; la matriz CSV
+conserva todavía sus notas de pendiente y debe actualizarse cuando se cierre la
+evidencia de permisos y de los tres casos Pase → TPV. El orden actual es:
+desplegar y repetir esos tres casos; ejecutar en QA-A1 los ensayos de permisos
+de caja, cobro y reembolso con la cuenta Camarero/a; cerrar las filas del punto
+1; y solo después valorar la migración MFA opcional. Mantén el PR #225 en
+borrador y trabaja únicamente contra QA.
 
 ## Evidencia live añadida por Codex · 17/11/2026
 
