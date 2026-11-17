@@ -5850,12 +5850,13 @@ function GestionAlmacen() {
     if (id === "cocina" && typeof destino?.pedidoId === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(destino.pedidoId)) {
       setPedidoDestinoCocina({ id: destino.pedidoId, empresaId: empresaDelLocalActivo?.id, localId: localActivoId });
     }
-    if (id === "venta" && typeof destino?.mesaId === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(destino.mesaId)) {
+    const mesaIdDestinoValido = typeof destino?.mesaId === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(destino.mesaId);
+    const cuentaIdDestinoValido = typeof destino?.cuentaId === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(destino.cuentaId);
+    if (id === "venta" && (mesaIdDestinoValido || cuentaIdDestinoValido)) {
       if (localInformeId !== localActivoId) return true;
-      const cuentaId = typeof destino.cuentaId === "string" && /^[0-9a-f]{8}(?:-[0-9a-f]{4}){3}-[0-9a-f]{12}$/i.test(destino.cuentaId)
-        ? destino.cuentaId : null;
+      const cuentaId = cuentaIdDestinoValido ? destino.cuentaId : null;
       const diaDestino = /^\d{4}-\d{2}-\d{2}$/.test(String(destino.diaDestino || "")) ? destino.diaDestino : null;
-      setMesaDestinoTpv({ id: destino.mesaId, cuentaId, diaDestino, empresaId: empresaDelLocalActivo?.id, localId: localActivoId });
+      setMesaDestinoTpv({ id: mesaIdDestinoValido ? destino.mesaId : null, cuentaId, diaDestino, empresaId: empresaDelLocalActivo?.id, localId: localActivoId });
     }
     return true;
   }
@@ -25354,6 +25355,28 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const fixture = c07dD24PedidoFixtureInicial();
     if (fixture && !mesaDestinoId && !cuentaDestinoId) {
       setPedidoOperativoA05(fixture);
+      return () => { activo = false; };
+    }
+    if (cuentaDestinoId && !mesaDestinoId && typeof recuperarCuentaA06 === "function") {
+      setPedidoOperativoA05(null);
+      setEstadoMesaDestino({ mensaje: "Comprobando la cuenta seleccionada…", mesa: null, cargando: true });
+      (async () => {
+        const cuenta = await recuperarCuentaA06({
+          cuentaIdDestino: cuentaDestinoId,
+          diaDestino,
+          sigueVigente: () => activo
+        });
+        if (!activo) return;
+        if (cuenta?.ok && cuenta.cuentaId === cuentaDestinoId) {
+          setModoTPV("SALA");
+          setPedidoOperativoA05(cuenta);
+          setEstadoMesaDestino({ mensaje: "Cuenta recuperada desde la cola.", mesa: null });
+        } else {
+          setEstadoMesaDestino({ mensaje: cuenta?.error || "La cuenta seleccionada no se puede recuperar.", mesa: null, bloquea: true });
+        }
+      })().catch(() => {
+        if (activo) setEstadoMesaDestino({ mensaje: "No se pudo comprobar la cuenta seleccionada.", mesa: null, bloquea: true });
+      });
       return () => { activo = false; };
     }
     if (mesaDestinoId && typeof cargarSalaDestinoRef.current === "function") {

@@ -249,6 +249,13 @@
     };
   }
 
+  function destinoCuenta(cuentaId) {
+    return cuentaId ? {
+      cuentaId: cuentaId,
+      diaDestino: estado.mapa?.operatingDay || null
+    } : null;
+  }
+
   function bloquePlano() {
     var cab = el("div", { class: "la-pase-plano-cab" }, [el("h3", { texto: "Plano de sala" })]);
 
@@ -455,7 +462,7 @@
           el("span", { texto: String(pedido.id || "").slice(0, 8) })
         ]),
         el("span", { class: "la-pase-etiqueta", texto: ESTADO_PEDIDO[pedido.estado]?.[1] || pedido.estado }),
-        esCuenta ? botonIrA("venta", mesa ? "Ver cuenta en el TPV" : "Abrir TPV", "la-pase-accion suave", mesa ? destinoMesa(mesa, pedido.cuenta_id) : null)
+        esCuenta ? botonIrA("venta", mesa ? "Ver cuenta en el TPV" : "Abrir TPV", "la-pase-accion suave", mesa ? destinoMesa(mesa, pedido.cuenta_id) : destinoCuenta(pedido.cuenta_id))
           : botonIrA("cocina", "Ver en Cocina", "la-pase-accion suave", { pedidoId: pedido.id })
       ]);
     }));

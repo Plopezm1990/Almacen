@@ -131,6 +131,19 @@ assert.ok(
   pase.includes('destinoMesa(mesa, pedido.cuenta_id)'),
   "A06.1: Pase no transmite la cuenta concreta del pedido"
 );
+assert.ok(
+  pase.includes("function destinoCuenta(cuentaId)")
+    && pase.includes("destinoMesa(mesa, pedido.cuenta_id) : destinoCuenta(pedido.cuenta_id)"),
+  "A06.1: Pase no conserva el destino de una cuenta sin mesa"
+);
+for (const required of [
+  "if (cuentaDestinoId && !mesaDestinoId && typeof recuperarCuentaA06 === \"function\")",
+  "cuentaIdDestino: cuentaDestinoId",
+  "Cuenta recuperada desde la cola.",
+  "La cuenta seleccionada no se puede recuperar."
+]) {
+  assert.ok(recovered.includes(required), `A06.1: recuperación de cuenta sin mesa incompleta: ${required}`);
+}
 
 // A06.1 no habilita pagos, facturación, stock ni reapertura de cuentas cerradas.
 for (const forbidden of [
