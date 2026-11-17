@@ -117699,7 +117699,7 @@ const PANELES_REDISENO = {
   pulso: { titulo: "Control operativo", indicadores: ["saldo", "margen", "pedidos", "stockbajo", "descuadresstock"], accesos: ["venta", "cocina", "caja", "resumen_almacen"] },
   patio: { titulo: "Mi turno", indicadores: ["pedidos", "caducidades", "conteos"], accesos: ["venta", "cocina", "recepcion", "fichaje"] },
   sello: { titulo: "Panel de gesti\xF3n", indicadores: ["saldo", "margen", "pedidos", "personal"], accesos: ["clientes", "facturas", "reportes"] },
-  orbita: { titulo: "El pulso", destacado: "del negocio.", indicadores: ["margen", "pedidos", "stockbajo"], accesos: ["venta", "cocina", "resultados"] }
+  orbita: { titulo: "El pulso", destacado: "del negocio.", indicadores: ["ventas", "margen", "pedidos", "stockbajo"], accesos: ["venta", "cocina", "resultados"] }
 };
 const ACCESOS_PANEL_REDISENO = {
   venta: ["Abrir TPV", ShoppingBag],
@@ -117795,6 +117795,15 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
       titulo: "Margen promedio",
       valor: `${fmt(margenPromedio)}%`,
       color: C2.accent,
+      tab: "resultados",
+      tabNombre: "Resultados",
+      items: []
+    },
+    {
+      id: "ventas",
+      titulo: "Ventas registradas",
+      valor: `€${fmt(movimientos.reduce((total, movimiento) => total + unidadesVentaConSignoPM09(movimiento) * Math.abs(Number(movimiento.ingresoUnitario) || 0) * (1 + (Number(movimiento.ivaVentaAplicado) || 0) / 100), 0))}`,
+      nota: "importe bruto de los movimientos de venta cargados",
       tab: "resultados",
       tabNombre: "Resultados",
       items: []

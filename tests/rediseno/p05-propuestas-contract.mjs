@@ -43,6 +43,8 @@ for (const pieza of ['mesaId', 'cuentaId', 'operatingDay', 'destinoMesa', 'desti
 }
 
 assert.match(fuente, /orbita:\s*\{\s*titulo:\s*"El pulso"/);
+assert.match(fuente, /orbita:[^\n]*indicadores:\s*\["ventas"/);
+assert.ok(fuente.includes('id: "ventas"') && fuente.includes('unidadesVentaConSignoPM09(movimiento)'), 'Órbita debe usar ventas reales del ledger, no una cifra inventada.');
 assert.ok(html.includes('la-apariencia.css?v='), 'La hoja de apariencia no tiene marca de caché.');
 
 console.log('REDISENO_P05_PROPUESTAS_OK=1 disenos=9 paletas=6 rumbo=PASS pase=PASS responsive=PASS reduced_motion=PASS');
