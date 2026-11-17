@@ -237,3 +237,18 @@ QA mostró avisos de almacenamiento local lleno (`historialRespaldos` y
 `productos`), incidencia separada del rediseño. Los dos perfiles IAB comparten
 el terminal guardado A1; Q07/Q08 con A1 y A2 requiere Firefox/Chrome separado o
 limpiar el terminal por «Terminales y cajas».
+
+## Ajuste Codex para dos terminales en QA · 17/11/2026
+
+El bloqueo de los dos perfiles IAB quedó resuelto en la rama del PR #225. En
+Deploy Preview, el componente de TPV vuelve a mostrar el selector de terminal
+aunque la pestaña ya tenga uno persistido. La elección de cada pestaña se
+guarda en `sessionStorage` con una clave de preview, por lo que una pestaña
+puede quedarse en A1 y otra en A2 sin compartir la selección. La resolución de
+contexto de caja, movimientos, ventas y reembolsos usa la misma fuente.
+
+Fuera de `deploy-preview-*` no cambia la persistencia de producción: continúa
+siendo `localStorage`. Después del despliegue, repetir Q07/Q08 en dos pestañas
+del preview seleccionando explícitamente `QA terminal A1 (siembra etapa 1)` y
+`QA terminal A2 (ensayo punto 2)`. Esto evita depender del control remoto de
+Firefox, que está bloqueado por la política de URL del navegador de Codex.

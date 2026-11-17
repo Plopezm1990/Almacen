@@ -108742,7 +108742,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
     const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localActivoId}`;
     let terminalId = null;
     try {
-      terminalId = localStorage.getItem(storageKey) || null;
+      terminalId = leerTerminalNavegadorQA(storageKey) || null;
     } catch {
       throw new Error("persistencia_terminal_no_disponible");
     }
@@ -108756,8 +108756,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
       if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
       terminalId = terminales[0].id;
       try {
-        localStorage.setItem(storageKey, terminalId);
-        if (localStorage.getItem(storageKey) !== terminalId) throw new Error("persistencia_terminal_no_disponible");
+        guardarTerminalNavegadorQA(storageKey, terminalId);
       } catch {
         throw new Error("persistencia_terminal_no_disponible");
       }
@@ -108983,7 +108982,7 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
     const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localActivoId}`;
     let terminalId = null;
     try {
-      terminalId = localStorage.getItem(storageKey) || null;
+      terminalId = leerTerminalNavegadorQA(storageKey) || null;
     } catch {
       throw new Error("persistencia_terminal_no_disponible");
     }
@@ -109002,8 +109001,7 @@ function crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arque
       if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
       terminalId = terminales[0].id;
       try {
-        localStorage.setItem(storageKey, terminalId);
-        if (localStorage.getItem(storageKey) !== terminalId) throw new Error("persistencia_terminal_no_disponible");
+        guardarTerminalNavegadorQA(storageKey, terminalId);
       } catch {
         throw new Error("persistencia_terminal_no_disponible");
       }
@@ -112192,7 +112190,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localId}`;
     let terminalId = null;
     try {
-      terminalId = localStorage.getItem(storageKey) || null;
+      terminalId = leerTerminalNavegadorQA(storageKey) || null;
     } catch (e2) {
       throw new Error("persistencia_terminal_no_disponible");
     }
@@ -112214,8 +112212,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
       terminalId = terminales[0].id;
       try {
-        localStorage.setItem(storageKey, terminalId);
-        if (localStorage.getItem(storageKey) !== terminalId) {
+        guardarTerminalNavegadorQA(storageKey, terminalId);
+        if (leerTerminalNavegadorQA(storageKey) !== terminalId) {
           throw new Error("persistencia_terminal_no_disponible");
         }
       } catch (e2) {
@@ -123873,7 +123871,7 @@ async function contextoTerminalReembolsoB08(supabase, empresaId, localId, requie
   const storageKey = `la_suite_abc_terminal_id_v1:${empresaId}:${localId}`;
   let terminalId = null;
   try {
-    terminalId = localStorage.getItem(storageKey) || null;
+    terminalId = leerTerminalNavegadorQA(storageKey) || null;
   } catch {
     throw new Error("persistencia_terminal_no_disponible");
   }
@@ -123887,7 +123885,7 @@ async function contextoTerminalReembolsoB08(supabase, empresaId, localId, requie
     if (terminales.length > 1) throw new Error("terminal_contexto_ambiguo");
     terminalId = terminales[0].id;
     try {
-      localStorage.setItem(storageKey, terminalId);
+      guardarTerminalNavegadorQA(storageKey, terminalId);
     } catch {
       throw new Error("persistencia_terminal_no_disponible");
     }
@@ -125625,6 +125623,36 @@ function guardarBorradorTpvA06(empresaId, localId, lineas, ahoraMs = Date.now())
     return { estado: "NO_DISPONIBLE", lineas: normalizadas, error: "No se pudo guardar el borrador local del TPV." };
   }
 }
+function esPreviewTerminalQA() {
+  try {
+    return typeof window !== "undefined" && /^deploy-preview-\d+--/u.test(window.location.hostname);
+  } catch {
+    return false;
+  }
+}
+function leerTerminalNavegadorQA(clave) {
+  try {
+    if (esPreviewTerminalQA()) {
+      return window.sessionStorage.getItem(`${clave}:preview`) || window.localStorage.getItem(clave) || "";
+    }
+    return window.localStorage.getItem(clave) || "";
+  } catch {
+    throw new Error("persistencia_terminal_no_disponible");
+  }
+}
+function guardarTerminalNavegadorQA(clave, terminalId) {
+  try {
+    if (esPreviewTerminalQA()) {
+      window.sessionStorage.setItem(`${clave}:preview`, terminalId);
+      if (window.sessionStorage.getItem(`${clave}:preview`) !== terminalId) throw new Error("persistencia_terminal_no_disponible");
+      return;
+    }
+    window.localStorage.setItem(clave, terminalId);
+    if (window.localStorage.getItem(clave) !== terminalId) throw new Error("persistencia_terminal_no_disponible");
+  } catch {
+    throw new Error("persistencia_terminal_no_disponible");
+  }
+}
 function TerminalNavegadorTpv({ empresaId, localId }) {
   const h = import_react4.default.createElement;
   const clave = `la_suite_abc_terminal_id_v1:${empresaId}:${localId}`;
@@ -125641,7 +125669,7 @@ function TerminalNavegadorTpv({ empresaId, localId }) {
           .eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true).order("nombre");
         if (consultaError) throw consultaError;
         if (!vigente) return;
-        setTerminalId(localStorage.getItem(clave) || "");
+        setTerminalId(leerTerminalNavegadorQA(clave));
         setTerminales(data || []);
       } catch {
         if (vigente) setError("No se pudo consultar el terminal de este navegador.");
@@ -125653,9 +125681,8 @@ function TerminalNavegadorTpv({ empresaId, localId }) {
   function asignar() {
     if (!terminales?.some((terminal) => terminal.id === seleccion)) return;
     try {
-      const asignado = localStorage.getItem(clave) || seleccion;
-      localStorage.setItem(clave, asignado);
-      if (localStorage.getItem(clave) !== asignado) throw new Error("persistencia_terminal_no_disponible");
+      const asignado = seleccion;
+      guardarTerminalNavegadorQA(clave, asignado);
       setTerminalId(asignado);
       setError("");
     } catch {
@@ -125666,13 +125693,13 @@ function TerminalNavegadorTpv({ empresaId, localId }) {
   return h("div", { className: "mb-3 text-[12px]", style: { color: C2.inkSoft } },
     terminal ? h("p", { role: "status" }, "Terminal de este navegador: ", terminal.nombre) : null,
     terminales && terminalId && !terminal ? h("p", { role: "alert" }, "El terminal guardado en este navegador ya no está activo. Revísalo en Terminales y cajas.") : null,
-    !terminalId && terminales?.length > 1 ? h("div", { className: "flex flex-wrap items-end gap-2" },
+    ((esPreviewTerminalQA() || !terminalId) && terminales?.length > 1) ? h("div", { className: "flex flex-wrap items-end gap-2" },
       h(Field, { label: "Terminal de este navegador" }, h("select", {
-        value: seleccion,
+        value: seleccion || terminalId || "",
         onChange: (evento) => setSeleccion(evento.target.value),
         className: "min-h-[44px] max-w-full rounded-lg px-2",
         style: { color: C2.ink, background: C2.surface, border: `1px solid ${C2.line}` }
-      }, h("option", { value: "" }, "Selecciona un terminal"), terminales.map((item) => h("option", { key: item.id, value: item.id }, item.nombre)))),
+      }, !terminalId ? h("option", { value: "" }, "Selecciona un terminal") : null, terminales.map((item) => h("option", { key: item.id, value: item.id }, item.nombre)))),
       h(Btn, { onClick: asignar, disabled: !seleccion }, "Usar este terminal")
     ) : null,
     error ? h("p", { role: "alert" }, error) : null

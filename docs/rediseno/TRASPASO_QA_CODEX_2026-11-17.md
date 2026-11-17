@@ -335,3 +335,25 @@ Los dos perfiles IAB abiertos comparten el mismo `localStorage` y conservan
 `QA terminal A1`; el selector de terminal solo aparece cuando el navegador no
 tiene uno guardado. Q07/Q08 con A1 y A2 requiere Firefox/Chrome separado o
 limpiar el terminal guardado por la interfaz de «Terminales y cajas».
+
+## Ajuste para ensayo de dos terminales · 17/11/2026
+
+Se corrigió el bloqueo que impedía ensayar Q07/Q08 con dos pestañas del mismo
+preview. En hosts `deploy-preview-*`, TPV muestra siempre el selector
+«Terminal de este navegador» cuando hay más de un terminal activo, aunque la
+pestaña ya tuviera un terminal guardado. Al pulsar «Usar este terminal», la
+selección se guarda en `sessionStorage` de esa pestaña; cada pestaña puede usar
+A1 o A2 sin sobrescribir la otra. Si no hay selección de pestaña, se conserva
+el valor anterior de `localStorage` como valor inicial.
+
+El cambio se aplica también a los contextos de caja, movimientos, venta y
+reembolso, y mantiene el comportamiento de producción sin cambios: fuera de
+Deploy Preview se sigue usando `localStorage` y el selector conserva su lógica
+anterior. `fuente.js` y `source-recovery/fuente-recuperado.js` siguen con
+`PARIDAD_CUERPO_EXACTA=1`. Contratos A02, A06 y CFG6E pasan.
+
+Tras el despliegue, abre dos pestañas del preview, entra en QA-A1, elige
+`QA terminal A1 (siembra etapa 1)` en una y `QA terminal A2 (ensayo punto 2)`
+en la otra. No hace falta controlar Firefox ni desactivar la seguridad del
+navegador. La sesión de caja de A2 debe existir para ejecutar cobros o cierres;
+el selector por pestaña solo resuelve el contexto del terminal.
