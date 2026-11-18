@@ -939,9 +939,13 @@ UUID de operación y versión esperada.
 
 La pantalla muestra el mapa real, zonas, mesas, capacidad, estado efectivo y
 versiones, y ofrece formularios responsive de creación/edición. No se ha
-pulsado ningún guardado en QA todavía. Las tarifas horarias quedan claramente
-fuera de alcance porque no existe contrato server-side; no se ha inventado una
-RPC ni se ha usado la tabla de zonas de almacén.
+pulsado ningún guardado en QA todavía. Al contrastar el esquema QA directamente
+se corrigió una nota inicial: T8 pieza 3 sí está desplegada en QA, con las
+tablas `catalogo_tpv_tarifas_horario` y `catalogo_tpv_tarifa_precios` y las RPC
+`abc_guardar_tarifa_horario`/`abc_guardar_tarifa_precio`. La UI ahora lee esas
+tablas y muestra el editor con motivo obligatorio; si otro entorno no tiene la
+migración, conserva el aviso de contrato ausente. Las tarifas se aplican al
+local completo, no por zona.
 
 Contrato local: `tests/rediseno/org33-sala-contract.mjs` (`PASS`). La paridad de
 `source-recovery` también pasa. El plan y las condiciones para cerrar la
