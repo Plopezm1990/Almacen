@@ -249,3 +249,38 @@ No cambia ningún RPC, permiso ni operación económica. La marca de caché de
 muestra ocho comandas recientes por defecto y ofrece **Mostrar todas** sin
 perder el filtro de estación. Se sincroniza `source-recovery` y se mantienen
 P01, P05, sintaxis y `git diff --check`.
+
+## Addendum advertencia de guardado al arrancar · 18/11/2026 · SHA `45ea4b11`
+
+La advertencia que aparecía en el panel no era un aviso visual de Órbita. Se
+reprodujo en el preview con una sesión real de QA y el detalle de **Guardado**
+mostró tres claves distintas: `conteos`, `movimientos` e
+`historialRespaldos`. La investigación separó las causas:
+
+- `historialRespaldos` era una copia automática grande que se intentaba meter
+  en `localStorage`; cuando el navegador alcanzaba su cuota se marcaba como
+  fallo aunque la copia no fuera una edición del usuario.
+- `conteos` y `movimientos` se volvían a guardar desde los efectos reactivos
+  después de hidratar el estado con datos autoritativos de servidor. Ese
+  segundo envío no aportaba cambios y podía quedar pendiente si QA tardaba o
+  agotaba el `statement_timeout`.
+- Los logs de QA confirmaron el síntoma de backend (`57014`, timeout) en
+  escrituras de `almacen_kv` y en la RPC del día operativo. No se tocó esa
+  configuración del servidor ni producción porque el aviso específico se
+  elimina evitando las escrituras redundantes.
+
+La corrección mueve el historial de copias a IndexedDB, limpia la marca de
+pendiente antigua cuando IndexedDB confirma la copia, no sube la
+normalización de compatibilidad de conteos/movimientos durante el arranque y
+suprime únicamente el siguiente guardado reactivo provocado por la
+sincronización autoritativa inicial. Las ediciones reales posteriores siguen
+guardándose y conservan el reintento si el servidor falla. También se cambió
+la marca de caché de `fuente.js` a `qa-persistencia-sin-advertencias-v1-20261118`.
+
+Contratos de código: `node --check fuente.js`,
+`node --check index-storage-bootstrap.js`,
+`python source-recovery/recuperar_candidato.py --check` y
+`git diff --check` pasan. Falta la verificación final en el nuevo Deploy
+Preview: recargar con una sesión limpia, comprobar que no aparece la franja
+amarilla ni el contador de pendientes y confirmar que una edición real sigue
+produciendo su confirmación normal.

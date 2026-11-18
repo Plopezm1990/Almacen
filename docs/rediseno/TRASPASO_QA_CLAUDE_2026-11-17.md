@@ -574,6 +574,34 @@ Pendiente de cierre visual: una pasada dirigida por TPV, Pase, Cocina y Caja en
 1440×900, 1024, 430, 390 y 320 px; el PR #225 permanece en borrador y QA sigue
 aislado de producción.
 
+## Incidencia corregida: advertencia de guardado en el arranque · 18/11/2026
+
+En el preview se observó una advertencia con tres pendientes:
+`conteos`, `movimientos` e `historialRespaldos`. No era un problema del tema
+Órbita. `historialRespaldos` agotaba la cuota de `localStorage` al guardar la
+copia automática; `conteos` y `movimientos` eran escrituras redundantes
+provocadas por la hidratación autoritativa de stock/inventario al iniciar. QA
+además registró `57014 canceling statement due to statement timeout` en
+escrituras de `almacen_kv` y en `abc_obtener_dia_operativo_local`, lo que hacía
+visible el problema pero no cambiaba la causa del cliente.
+
+En `45ea4b11` se movió el historial automático a IndexedDB y se limpian las
+marcas de pendiente antiguas cuando la escritura IndexedDB termina. La
+hidratación inicial ya no reescribe el historial de movimientos ni de conteos,
+y sus efectos reactivos consumen una marca de supresión solo para los cambios
+que provienen de esa sincronización; cualquier edición real posterior sigue
+usando el guardado normal. La caché de `fuente.js` se renovó a
+`qa-persistencia-sin-advertencias-v1-20261118`.
+
+Verificación local completada: sintaxis de `fuente.js` y
+`index-storage-bootstrap.js`, paridad `source-recovery` y `git diff --check`.
+Pendiente de esta tanda: confirmar en el nuevo Deploy Preview que una recarga
+limpia no muestra advertencia/contador de pendientes y que una edición real
+continúa confirmándose. No ejecutar cobros, reembolsos ni cierres para esta
+verificación. Si vuelve a aparecer un timeout sin que exista una escritura de
+arranque, tratarlo como incidencia separada de rendimiento de QA y no ocultar
+el aviso.
+
 ## Addendum TPV · historial de ventas en pantalla propia · 18/11/2026 · SHA `acbf303c`
 
 Para evitar que el TPV quede excesivamente largo, el historial se ha separado
