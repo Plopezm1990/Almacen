@@ -1,14 +1,14 @@
 {
   "pm": "PM-01",
-  "commit_rama_validada": "3dc156961c77a6f968bc7471d7f8d5613a2d836a",
+  "commit_rama_validada": "06ca0aa92ec4aa5a2818baf2c3f4e6758ba60896",
   "bundle": "fuente.js",
-  "bundle_bytes": 6407504,
+  "bundle_bytes": 6407827,
   "marca_fuente_linea": 101144,
-  "lineas_cuerpo_aplicacion": 32554,
-  "bytes_cuerpo_aplicacion": 2462550,
-  "sha256_cuerpo_bundle": "e7d1a46757f44004c7d4f4c9fd033100120423a9d2e0c5205a9d10c9d6e355ce",
-  "sha256_cuerpo_recuperado": "e7d1a46757f44004c7d4f4c9fd033100120423a9d2e0c5205a9d10c9d6e355ce",
+  "lineas_cuerpo_aplicacion": 32559,
+  "bytes_cuerpo_aplicacion": 2462873,
+  "sha256_cuerpo_bundle": "155f6354541d7c557f0dae9a49154f04ed8658107f6dfd34c507eda1035cf7c4",
+  "sha256_cuerpo_recuperado": "155f6354541d7c557f0dae9a49154f04ed8658107f6dfd34c507eda1035cf7c4",
   "paridad_cuerpo_exacta": true,
-  "fuente_recuperada_bytes": 2496427,
+  "fuente_recuperada_bytes": 2496755,
   "nota": "Espejo regenerado desde la frontera var C2 del bundle local porque el objeto Git del baseline histórico no está disponible en este checkout."
 }
