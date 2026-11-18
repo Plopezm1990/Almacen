@@ -113,3 +113,13 @@ Una pantalla no se marca como alineada con Órbita solo porque usa los colores. 
 ## Decisión pendiente mínima
 
 La propuesta de este documento aplica **Órbita también al marco de Pase**. El panel operativo de Pase conservará sus estados y datos, pero adoptará la cabecera, tarjetas, coral, acero y navegación de Órbita. Si se quiere conservar la estética verde especializada de Pase dentro del panel, debe tratarse como una excepción explícita y no como el diseño predeterminado.
+
+## Addendum · marco común implementado · 18/11/2026
+
+El punto 1 del orden de implementación queda ejecutado en la capa compartida
+`la-orbita-shell.js`: todas las rutas autenticadas dentro de `#root` reciben la
+misma cabecera, lateral de escritorio, barra móvil, contexto, búsqueda, avisos,
+estado QA y Apariencia. La propuesta `claro` ya no conserva su cabecera superior
+alternativa; su navegación se presenta en el lateral Órbita y mantiene los
+handlers originales. El plan, las excepciones y el contrato de cierre están en
+`docs/rediseno/PLAN_MARCO_ORBITA_COMUN_2026-11-18.md`.

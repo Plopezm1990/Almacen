@@ -4,12 +4,12 @@ import assert from 'node:assert/strict';
 
 // Por qué existe este contrato.
 //
-// El rediseño de la apariencia se hace con seis capas sobre el paquete, no
-// editándolo: dos hojas de estilo y cuatro guiones, enlazados desde
-// `index.html`. Hasta hoy, 14/11/2026, **ninguna de las seis aparecía en ningún
+// El rediseño de la apariencia se hace con siete capas sobre el paquete, no
+// editándolo: dos hojas de estilo y cinco guiones, enlazados desde
+// `index.html`. Hasta hoy, 14/11/2026, **ninguna de las siete aparecía en ningún
 // contrato ni en ningún flujo de trabajo**. Se comprobó midiendo: una búsqueda
 // de cada nombre de archivo en `tests/`, en `.github/` y en los guiones de
-// `docs/rediseno` no devolvía nada para las seis.
+// `docs/rediseno` no devolvía nada para las siete.
 //
 // Peor: `tests/cfg/f7-preflight-static-contract.mjs` excluye las dos
 // migraciones del rediseño de su foto histórica diciendo que «se valida con su
@@ -21,7 +21,7 @@ import assert from 'node:assert/strict';
 //
 // Lo que vigila, y por qué cada cosa:
 //
-//   1. Las seis capas existen, están enlazadas desde `index.html` una sola vez
+//   1. Las siete capas existen, están enlazadas desde `index.html` una sola vez
 //      y ninguna queda huérfana en el árbol.
 //   2. Cada enlace lleva su marca `?v=`. Una capa sin marca se sirve desde la
 //      caché vieja del CDN y el despliegue miente.
@@ -40,10 +40,11 @@ import assert from 'node:assert/strict';
 // son más baratas que un despliegue que sirve lo de ayer y lo da por bueno.
 
 const CAPAS = [
-  { archivo: 'la-apariencia.css', marca: 'qa-orbita-shell-pase-v5-20261118', huella: '215b01cb259f8ebb', etiqueta: 'link' },
+  { archivo: 'la-apariencia.css', marca: 'qa-orbita-shell-v6-20261118', huella: 'ccee7884a117bc43', etiqueta: 'link' },
   { archivo: 'la-pase.css', marca: 'qa-ascua-20261113', huella: '1def5771bce1f9e4', etiqueta: 'link' },
   { archivo: 'la-apariencia.js', marca: 'qa-apariencia-contexto-20261113', huella: 'da220cc43c9544bc', etiqueta: 'script' },
   { archivo: 'la-apariencia-editor.js', marca: 'qa-apariencia-contexto-20261113', huella: '423e462949e5edea', etiqueta: 'script' },
+  { archivo: 'la-orbita-shell.js', marca: 'qa-orbita-shell-v1-20261118', huella: '98a3818b9cb4d198', etiqueta: 'script' },
   { archivo: 'la-pase-panel.js', marca: 'qa-orbita-pase-20261118', huella: '00a951bb2691a431', etiqueta: 'script' },
   { archivo: 'la-tablas-fichas.js', marca: 'qa-tablas-fichas-20261113', huella: 'bea4568d3b696332', etiqueta: 'script' },
 ];

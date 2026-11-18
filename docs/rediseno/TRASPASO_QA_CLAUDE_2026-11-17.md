@@ -1004,3 +1004,22 @@ supersedidas por este estado vigente. Se mantienen separados, sin bloquear el
 cierre, el positivo de Cajero/a con MFA, la paginación/búsqueda ampliada de la
 cola de Pase y el registro contable de las migraciones de Apariencia. No se
 tocó producción y el PR #225 permanece en borrador.
+
+## Addendum marco común Órbita · 18/11/2026
+
+Se implementó la unificación estructural solicitada en
+`docs/rediseno/PLAN_MARCO_ORBITA_COMUN_2026-11-18.md`. El código nuevo es
+`la-orbita-shell.js`, cargado desde `index.html`, y su contrato es
+`tests/rediseno/marco-orbita-contract.mjs`.
+
+La raíz autenticada usa ahora un único grid responsive. En escritorio mantiene
+un lateral Órbita plegable y una cabecera común; en móvil usa cabecera compacta
+y la barra inferior existente. Se exponen contexto empresa/local, estado QA,
+buscador Ctrl/Cmd-K, avisos, Perfil y Apariencia. El caso `claro` se convierte
+al mismo lateral y el buscador de `rumbo` deja de aparecer como una excepción
+visual. Los handlers y permisos siguen siendo los del programa.
+
+Pendiente de la siguiente pasada: validar el preview publicado en los cinco
+anchos indicados en el plan y actualizar la evidencia con su SHA. No ejecutar
+operaciones económicas; PR #225 continúa en borrador y producción permanece
+fuera de alcance.

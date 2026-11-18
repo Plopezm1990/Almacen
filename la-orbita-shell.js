@@ -1,0 +1,292 @@
+/*
+ * L&A Suite · marco común Órbita
+ *
+ * Esta capa no duplica la lógica de navegación ni de permisos. Observa el
+ * contenedor React que ya existe y le da una única composición visual:
+ * cabecera, barra lateral, contenido y navegación móvil. Los controles
+ * existentes siguen siendo los que reciben el clic; aquí solo se les ofrece
+ * un punto de entrada común.
+ */
+(function () {
+  "use strict";
+  if (window.__laOrbitaShell) return;
+  window.__laOrbitaShell = true;
+
+  var root = null;
+  var marco = null;
+  var cabecera = null;
+  var dialogo = null;
+  var observador = null;
+  var ultimoContexto = "";
+
+  function h(tag, props, children) {
+    var node = document.createElement(tag);
+    Object.keys(props || {}).forEach(function (key) {
+      var value = props[key];
+      if (key === "texto") node.textContent = value;
+      else if (key.indexOf("on") === 0 && typeof value === "function") node.addEventListener(key.slice(2), value);
+      else if (value != null) node.setAttribute(key, value);
+    });
+    (children || []).forEach(function (child) { if (child) node.appendChild(child); });
+    return node;
+  }
+
+  function textoVisible(node) { return String(node && node.textContent || "").replace(/\s+/g, " ").trim(); }
+
+  function activarBotonOriginal(clon, original) {
+    clon.addEventListener("click", function () { original.click(); });
+    clon.addEventListener("keydown", function (event) {
+      if (event.key === "Enter" || event.key === " ") { event.preventDefault(); original.click(); }
+    });
+  }
+
+  function botonesNavegacion() {
+    if (!marco) return [];
+    return Array.prototype.slice.call(marco.querySelectorAll("[data-la-orbita-nav-item]"));
+  }
+
+  function contextoActual() {
+    var sidebar = marco && marco.querySelector(".la-orbita-sidebar");
+    if (!sidebar) return ultimoContexto || "Selecciona empresa y local";
+    var candidato = Array.prototype.slice.call(sidebar.querySelectorAll("div,span"))
+      .map(textoVisible)
+      .find(function (texto) { return /^Local\s+/i.test(texto) && texto.length < 180; });
+    return candidato || ultimoContexto || "Selecciona empresa y local";
+  }
+
+  function selectorsContexto() {
+    return Array.prototype.slice.call((root || document).querySelectorAll("select")).filter(function (select) {
+      var options = Array.prototype.slice.call(select.options || []).map(function (option) { return option.textContent; }).join(" ").toLowerCase();
+      return /todos los locales|local a|local/.test(options);
+    });
+  }
+
+  function abrirContexto() {
+    var selects = selectorsContexto();
+    var menu = document.getElementById("la-orbita-context-menu");
+    if (menu) { menu.remove(); return; }
+    menu = h("div", { id: "la-orbita-context-menu", class: "la-orbita-context-menu", role: "menu" });
+    if (!selects.length) {
+      menu.appendChild(h("p", { class: "la-orbita-context-empty", texto: "El selector de empresa y local aparece en Panel general, Resultados e IVA." }));
+    } else {
+      var select = selects[0];
+      Array.prototype.slice.call(select.options).forEach(function (option) {
+        var button = h("button", { type: "button", role: "menuitem", texto: option.textContent });
+        button.addEventListener("click", function () {
+          var setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
+          setter.call(select, option.value);
+          select.dispatchEvent(new Event("change", { bubbles: true }));
+          menu.remove();
+          actualizarCabecera();
+        });
+        menu.appendChild(button);
+      });
+    }
+    cabecera.appendChild(menu);
+  }
+
+  function abrirBusqueda() {
+    if (dialogo && dialogo.isConnected) { dialogo.querySelector("input")?.focus(); return; }
+    dialogo = h("dialog", { class: "la-orbita-search-dialog", "aria-labelledby": "la-orbita-search-title" });
+    var cerrar = h("button", { type: "button", class: "la-orbita-dialog-close", "aria-label": "Cerrar buscador", texto: "×" });
+    cerrar.addEventListener("click", function () { dialogo.close(); });
+    var input = h("input", { type: "search", class: "la-orbita-search-input", placeholder: "Busca una pantalla, módulo o tarea", autocomplete: "off", "aria-label": "Buscar en la suite" });
+    var lista = h("div", { class: "la-orbita-search-list", role: "listbox" });
+    var items = botonesNavegacion().map(function (button) {
+      return { label: textoVisible(button), button: button };
+    }).filter(function (item) { return item.label; });
+    function render() {
+      var consulta = input.value.trim().toLocaleLowerCase("es");
+      lista.replaceChildren();
+      var encontrados = items.filter(function (item) { return !consulta || item.label.toLocaleLowerCase("es").includes(consulta); });
+      encontrados.slice(0, 24).forEach(function (item) {
+        var option = h("button", { type: "button", role: "option", class: "la-orbita-search-option", texto: item.label });
+        option.addEventListener("click", function () { item.button.click(); dialogo.close(); });
+        lista.appendChild(option);
+      });
+      if (!encontrados.length) lista.appendChild(h("p", { class: "la-orbita-context-empty", texto: "No hay pantallas que coincidan." }));
+    }
+    input.addEventListener("input", render);
+    var cab = h("div", { class: "la-orbita-dialog-head" }, [h("h2", { id: "la-orbita-search-title", texto: "Buscar en L&A Suite" }), cerrar]);
+    dialogo.append(cab, input, lista);
+    dialogo.addEventListener("close", function () { dialogo.remove(); dialogo = null; });
+    document.body.appendChild(dialogo);
+    render();
+    dialogo.showModal();
+    input.focus();
+  }
+
+  function marcarNavegacion(sidebar) {
+    if (!sidebar) return;
+    var grupos = sidebar.querySelectorAll(":scope > div:not(:first-child) button");
+    Array.prototype.forEach.call(grupos, function (button) {
+      if (button.closest(".la-orbita-shell-tools")) return;
+      button.setAttribute("data-la-orbita-nav-item", "");
+      Array.prototype.forEach.call(button.querySelectorAll("span"), function (span) { span.classList.add("la-shell-label"); });
+    });
+  }
+
+  function crearSidebarParaClaro(legacy) {
+    if (!legacy || marco.querySelector(".la-orbita-sidebar")) return marco.querySelector(".la-orbita-sidebar");
+    var sidebar = h("aside", { class: "la-orbita-sidebar", "aria-label": "Navegación principal" });
+    var marca = legacy.querySelector(".la-claro-marca");
+    if (marca) sidebar.appendChild(marca.cloneNode(true));
+    var areas = legacy.querySelectorAll(".la-claro-area");
+    Array.prototype.forEach.call(areas, function (area) {
+      var titulo = area.querySelector(":scope > button");
+      var section = h("section", { class: "la-orbita-sidebar-group" });
+      if (titulo) section.appendChild(h("div", { class: "la-orbita-sidebar-title la-shell-label", texto: textoVisible(titulo) }));
+      Array.prototype.forEach.call(area.querySelectorAll(".la-claro-destinos > button"), function (original) {
+        var clone = original.cloneNode(true);
+        clone.removeAttribute("aria-current");
+        clone.removeAttribute("style");
+        clone.setAttribute("data-la-orbita-nav-item", "");
+        clone.className = "la-orbita-sidebar-item";
+        Array.prototype.forEach.call(clone.querySelectorAll("span"), function (span) { span.classList.add("la-shell-label"); });
+        activarBotonOriginal(clone, original);
+        section.appendChild(clone);
+      });
+      if (section.querySelector("[data-la-orbita-nav-item]")) sidebar.appendChild(section);
+    });
+    marco.appendChild(sidebar);
+    return sidebar;
+  }
+
+  function sincronizarSidebarClaro(legacy, sidebar) {
+    if (!legacy || !sidebar) return;
+    var originales = Array.prototype.slice.call(legacy.querySelectorAll(".la-claro-destinos > button"));
+    var porTexto = new Map(originales.map(function (button) { return [textoVisible(button), button]; }));
+    Array.prototype.forEach.call(sidebar.querySelectorAll("[data-la-orbita-nav-item]"), function (clone) {
+      var original = porTexto.get(textoVisible(clone));
+      if (original) {
+        if (original.getAttribute("aria-current") === "page") clone.setAttribute("aria-current", "page");
+        else clone.removeAttribute("aria-current");
+      }
+    });
+  }
+
+  function prepararSidebar() {
+    var legacy = marco.querySelector(":scope > .la-claro-cabecera");
+    if (legacy) {
+      legacy.classList.add("la-orbita-legacy-header");
+      var sidebarClaro = crearSidebarParaClaro(legacy);
+      sincronizarSidebarClaro(legacy, sidebarClaro);
+      return sidebarClaro;
+    }
+    var sidebar = marco.querySelector(":scope > aside");
+    if (sidebar) {
+      sidebar.classList.add("la-orbita-sidebar");
+      marcarNavegacion(sidebar);
+    }
+    return sidebar;
+  }
+
+  function alternarSidebar(sidebar, toggle) {
+    var cerrado = !sidebar.classList.contains("la-orbita-colapsada");
+    sidebar.classList.toggle("la-orbita-colapsada", cerrado);
+    marco.classList.toggle("la-orbita-sidebar-cerrada", cerrado);
+    toggle.setAttribute("aria-expanded", String(!cerrado));
+    toggle.textContent = cerrado ? "»" : "«";
+    try { localStorage.setItem("la-orbita:sidebar", cerrado ? "cerrado" : "abierto"); } catch (_) {}
+  }
+
+  function prepararToggle(sidebar) {
+    if (!sidebar || sidebar.querySelector("[data-la-orbita-sidebar-toggle]")) return;
+    var toggle = h("button", { type: "button", class: "la-orbita-sidebar-toggle", "data-la-orbita-sidebar-toggle": "", "aria-label": "Contraer navegación", "aria-expanded": "true", texto: "«" });
+    toggle.addEventListener("click", function () { alternarSidebar(sidebar, toggle); });
+    var marca = sidebar.firstElementChild;
+    if (marca) marca.appendChild(toggle); else sidebar.prepend(toggle);
+    try {
+      if (localStorage.getItem("la-orbita:sidebar") === "cerrado") alternarSidebar(sidebar, toggle);
+    } catch (_) {}
+  }
+
+  function actualizarCabecera() {
+    if (!cabecera) return;
+    var contexto = contextoActual();
+    ultimoContexto = contexto;
+    var texto = cabecera.querySelector("[data-la-orbita-context-label]");
+    if (texto) texto.textContent = contexto;
+    var qa = cabecera.querySelector("[data-la-orbita-qa]");
+    if (qa) {
+      var esQa = window.__modoPruebasQA === true || /deploy-preview-/i.test(location.hostname);
+      qa.textContent = esQa ? "QA" : "Producción";
+      qa.dataset.qa = esQa ? "qa" : "produccion";
+    }
+    var avisos = cabecera.querySelector("[data-la-orbita-alertas]");
+    if (avisos) {
+      var cantidad = marco.querySelectorAll(".la-orbita-alert").length;
+      avisos.textContent = cantidad ? "Avisos " + cantidad : "Avisos";
+    }
+  }
+
+  function crearCabecera(sidebar) {
+    if (marco.querySelector("[data-la-orbita-header]")) return marco.querySelector("[data-la-orbita-header]");
+    cabecera = h("header", { class: "la-orbita-header", "data-la-orbita-header": "", role: "banner" });
+    var contexto = h("button", { type: "button", class: "la-orbita-context", "aria-haspopup": "menu", texto: "Selecciona empresa y local" });
+    contexto.setAttribute("data-la-orbita-context-label", "");
+    contexto.addEventListener("click", abrirContexto);
+    var izquierda = h("div", { class: "la-orbita-header-context" }, [h("span", { class: "la-orbita-brand", texto: "L&A Suite" }), contexto]);
+    var qa = h("span", { class: "la-orbita-qa", "data-la-orbita-qa": "", texto: "QA" });
+    izquierda.appendChild(qa);
+    var derecha = h("div", { class: "la-orbita-header-actions" });
+    var buscar = h("button", { type: "button", class: "la-orbita-header-button", "aria-label": "Buscar (Ctrl K)", texto: "⌕ Buscar" });
+    buscar.addEventListener("click", abrirBusqueda);
+    var alertas = h("button", { type: "button", class: "la-orbita-header-button", "data-la-orbita-alertas": "", texto: "Avisos" });
+    alertas.addEventListener("click", function () {
+      var aviso = marco.querySelector(".la-orbita-alert");
+      if (aviso) aviso.scrollIntoView({ block: "nearest" });
+    });
+    var perfil = h("button", { type: "button", class: "la-orbita-header-button", texto: "Perfil" });
+    perfil.addEventListener("click", function () {
+      var original = Array.prototype.slice.call((sidebar || marco).querySelectorAll("button")).find(function (button) { return /seguridad|perfil/i.test(textoVisible(button)); });
+      if (original) original.click();
+    });
+    var apariencia = h("button", { type: "button", class: "la-orbita-header-button la-orbita-appearance", texto: "Apariencia" });
+    apariencia.addEventListener("click", function () { if (typeof window.LAApariencia?.abrirEditor === "function") window.LAApariencia.abrirEditor(); });
+    derecha.append(buscar, alertas, perfil, apariencia);
+    cabecera.append(izquierda, derecha);
+    marco.appendChild(cabecera);
+    actualizarCabecera();
+    return cabecera;
+  }
+
+  function prepararMarco() {
+    var encontrado = document.querySelector("#root > [data-la-contenedor]");
+    if (!encontrado) return;
+    if (marco !== encontrado) { marco = encontrado; }
+    marco.classList.add("la-orbita-shell");
+    Array.prototype.forEach.call(marco.children, function (child) {
+      if (child.tagName === "STYLE") child.classList.add("la-orbita-runtime-style");
+      if (child.tagName === "DIV" && /sticky/.test(String(child.getAttribute("style") || ""))) child.classList.add("la-orbita-alert");
+      if (child.classList.contains("md:hidden") && child.querySelector("img")) child.classList.add("la-orbita-legacy-mobile");
+    });
+    var sidebar = prepararSidebar();
+    if (!sidebar) return;
+    prepararToggle(sidebar);
+    crearCabecera(sidebar);
+    var main = marco.querySelector(":scope > main");
+    if (main) main.classList.add("la-orbita-main");
+    var bottom = marco.querySelector(":scope > [data-la-barra-inferior]");
+    if (bottom) bottom.classList.add("la-orbita-bottom-nav");
+    var rumbo = marco.querySelector(":scope > main .la-rumbo-acceso");
+    if (rumbo) rumbo.classList.add("la-orbita-legacy-search");
+    actualizarCabecera();
+  }
+
+  document.addEventListener("keydown", function (event) {
+    if (event.defaultPrevented || event.repeat || event.altKey || event.shiftKey || !(event.ctrlKey || event.metaKey) || event.key.toLowerCase() !== "k") return;
+    if (event.target && /input|textarea|select/i.test(event.target.tagName)) return;
+    event.preventDefault();
+    abrirBusqueda();
+  });
+
+  function iniciar() {
+    prepararMarco();
+    observador = new MutationObserver(function () { prepararMarco(); });
+    observador.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
+    window.addEventListener("la-apariencia:contexto-cambiado", actualizarCabecera);
+    window.addEventListener("resize", actualizarCabecera);
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();
+})();
