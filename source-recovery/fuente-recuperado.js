@@ -24919,6 +24919,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
   const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
   const [historialVentasAbierto, setHistorialVentasAbierto] = (0, import_react4.useState)(false);
+  const [operacionesCuentaAbiertas, setOperacionesCuentaAbiertas] = (0, import_react4.useState)(false);
   function datoCorreccionHistorialPM09(m22, clave) {
     if (!m22) return void 0;
     if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
@@ -25402,7 +25403,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h3("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total vigente"), h3("div", { className: "font-bold mono text-[14px]" }, "€", fmt(resumenHistorialVentas.total))),
         h3("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Ticket medio"), h3("div", { className: "font-bold mono text-[14px]" }, "€", fmt(resumenHistorialVentas.ticketMedio)))
       ),
-      h3(Btn, { small: true, onClick: () => setHistorialVentasAbierto(true), "aria-label": "Abrir historial completo de ventas" }, "Ver historial completo")
+      h3("div", { className: "flex gap-2 flex-wrap" },
+        h3(Btn, { small: true, onClick: () => setHistorialVentasAbierto(true), "aria-label": "Abrir historial completo de ventas" }, "Ver historial completo"),
+        h3(Btn, { small: true, variant: "ghost", onClick: () => setOperacionesCuentaAbiertas((actual) => !actual), "aria-expanded": operacionesCuentaAbiertas }, operacionesCuentaAbiertas ? "Ocultar operaciones de cuenta" : "Mostrar operaciones de cuenta")
+      )
     );
   }
   function renderPantallaHistorialVentas() {
@@ -27568,6 +27572,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
 
   function renderDescuentoCuentaA09() {
+    if (!operacionesCuentaAbiertas) return null;
     if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
@@ -27736,6 +27741,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderCuentasAparcadasA06() {
+    if (!operacionesCuentaAbiertas) return null;
     if (typeof listarCuentasAparcadasA06 !== "function") return null;
     const cargado = cuentasAparcadasA06 && Array.isArray(cuentasAparcadasA06.cuentas);
     const cuentas = cargado ? cuentasAparcadasA06.cuentas : [];
@@ -27813,6 +27819,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderUnirCuentasA08() {
+    if (!operacionesCuentaAbiertas) return null;
     if (modoTPV === "RAPIDA") return null;
     if (typeof unirCuentasA08 !== "function") return null;
     if (!pedidoOperativoA05?.cuentaId) return null;
@@ -27847,6 +27854,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderRepartoProductosA08() {
+    if (!operacionesCuentaAbiertas) return null;
     if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido?.cuentaId) return null;
@@ -27912,6 +27920,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
 
   function renderPedidoOperativoA05() {
+    if (!operacionesCuentaAbiertas) return null;
     if (modoTPV === "RAPIDA") return null;
     const pedido = pedidoOperativoA05;
     if (!pedido || !pedido.pedidoId) return null;
