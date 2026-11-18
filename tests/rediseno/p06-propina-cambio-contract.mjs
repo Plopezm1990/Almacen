@@ -15,6 +15,9 @@ for (const [nombre, contenido] of [['fuente', fuente], ['espejo', espejo]]) {
   assert.ok(confirmar > 0 && propina > confirmar, `${nombre}: la propina debe registrarse después del efectivo confirmado`);
   assert.match(contenido, /El cambio sigue pendiente de devolver/, `${nombre}: falta el camino honesto de error`);
   assert.match(contenido, /const errorCobro = resultado\?\.error \|\| "No se pudo iniciar el cobro\.";[\s\S]*await refrescarCobroF4\(\);[\s\S]*setErrorCobroF4\(errorCobro\)/, `${nombre}: la recarga no debe borrar el error del cobro`);
+  assert.match(contenido, /function limpiarContextoCuentaA02\(empresaId, localId\)/, `${nombre}: falta limpiar el puntero local de una cuenta de día cerrado`);
+  assert.match(contenido, /limpiarContextoCuentaA02\(empresaId, localActivoId\);[\s\S]*cuenta_recuperacion_otro_dia/, `${nombre}: una cuenta de día cerrado no debe quedar activa en el TPV`);
+  assert.match(contenido, /String\(resultado\.error\)\.includes\("otro día operativo"\)[\s\S]*setPedidoOperativoA05\(null\)/, `${nombre}: el TPV debe retirar los controles de cobro de una cuenta obsoleta`);
 }
 
 assert.match(migracion, /create or replace function public\.abc_registrar_propina_efectivo/);

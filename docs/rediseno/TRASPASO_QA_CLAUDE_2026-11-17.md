@@ -744,3 +744,22 @@ La corrección conserva el error después de refrescar y cubre también
 regresiones. Pendiente todavía: publicar el código corregido, repetir la
 prueba solo después de observar el error visible y no crear otra operación
 económica antes de esa publicación.
+
+## Addendum estado obsoleto de cuenta · 18/11/2026
+
+La causa del aviso observado en el TPV quedó acotada: el navegador conservaba
+un contexto de cuenta de un día operativo anterior. El servidor rechaza la
+recuperación con `cuenta_recuperacion_otro_dia`; el cliente mostraba el aviso
+solo dentro de «Mostrar operaciones de cuenta» y mantenía los controles de F4
+activos, aunque cobrar esa cuenta no era válido.
+
+La corrección añadida en `8cf7d2b0` se amplía en la siguiente revisión: cuando
+el servidor devuelve ese rechazo, se elimina solo la clave local del contexto y
+se retira la cuenta de `pedidoOperativoA05`. No se borra ni modifica la cuenta
+de QA: permanece en el servidor y en la lista de cuentas abiertas como «Día
+cerrado». Esto evita nuevos clics de cobro sobre el contexto antiguo y permite
+elegir una cuenta del día operativo actual. Se mantiene `fuente.js` ↔
+`source-recovery/fuente-recuperado.js` byte a byte y P06 cubre la regla.
+
+No se ejecutó ningún cobro adicional; P06 funcional sigue pendiente de un
+fixture del día actual y una autorización explícita.

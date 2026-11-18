@@ -11159,6 +11159,17 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (!releido) throw new Error("persistencia_contexto_cuenta_no_disponible");
     return releido;
   }
+  // Una cuenta de un día operativo ya cerrado no se puede reanudar desde este
+  // terminal. Quitamos solo el puntero local para que el TPV no deje activos
+  // los botones de cobro sobre una cuenta obsoleta; la cuenta y su evidencia
+  // siguen en el servidor y aparecen como "Día cerrado" en cuentas abiertas.
+  function limpiarContextoCuentaA02(empresaId, localId) {
+    try {
+      localStorage.removeItem(claveUltimaCuentaA02(empresaId, localId));
+    } catch (e2) {
+      // La limpieza es una ayuda de interfaz; no ocultamos el error original.
+    }
+  }
   async function contextoTerminalA02(supabase, empresaId, localId, opciones = {}) {
     const permitirSinSesion = opciones.permitirSinSesion === true;
     const { data: authData, error: authError } = await supabase.auth.getSession();
@@ -12626,6 +12637,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (cuentaIdDestino && data.cuenta.estado !== "ABIERTA") return { ok: false, recuperable: false, error: "La cuenta seleccionada ya no está abierta." };
       if (mesaIdDestino && data.ubicacion?.mesa_id !== mesaIdDestino) return { ok: false, recuperable: false, error: "La cuenta ya se trasladó a otra mesa. Actualiza la sala." };
       if (data.requires_operating_day_resolution || (data.reanudable === false && data.cuenta.estado !== "CERRADA")) {
+        limpiarContextoCuentaA02(empresaId, localActivoId);
         throw new Error("cuenta_recuperacion_otro_dia");
       }
 
@@ -25805,6 +25817,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           setPedidoOperativoA05(resultado);
           setErrorA05("");
         } else if (resultado.error) {
+          if (String(resultado.error).includes("otro día operativo")) {
+            // No mantengas visible una cuenta que el servidor ya ha declarado
+            // fuera del día actual: sus controles de cobro no son utilizables.
+            setPedidoOperativoA05(null);
+          }
           setErrorA05(resultado.error);
         }
       }).catch(() => {

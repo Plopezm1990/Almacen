@@ -117,3 +117,24 @@ la cuenta y vuelve a pintar el error después de la recarga. Se aplica también 
 la recuperación de un cobro pendiente. `fuente.js` y
 `source-recovery/fuente-recuperado.js` mantienen paridad exacta, y P06 ahora
 comprueba el orden que evita borrar el error.
+
+## Incidencia de día operativo · corrección preparada · 18/11/2026
+
+La cuenta que permanecía seleccionada en el preview pertenecía a un día
+operativo anterior. `abc_recuperar_cuenta` la devuelve con
+`requires_operating_day_resolution`/`reanudable=false`; no es un fallo de la
+propina ni una autorización para cerrar o cobrar esa cuenta. El cliente, sin
+embargo, conservaba el contexto de cuenta en `localStorage`, por lo que dejaba
+visible el panel F4 y sus botones de cobro. El aviso solo aparecía al abrir
+«Mostrar operaciones de cuenta».
+
+La corrección es local y no toca QA: al recibir ese rechazo, elimina únicamente
+el puntero de contexto del navegador y retira `pedidoOperativoA05` de la
+pantalla. La cuenta, sus pedidos y la evidencia permanecen en el servidor y
+siguen apareciendo en «Cuentas abiertas y aparcadas» como **Día cerrado**. Así
+el TPV no vuelve a ofrecer cobro sobre una cuenta que el servidor ha bloqueado y
+el operador puede seleccionar una cuenta del día actual. La paridad con
+`source-recovery` se mantiene y P06 incluye aserciones para este comportamiento.
+
+Estado de publicación: pendiente de commit y deploy posterior a esta
+corrección. No se ejecutó ningún cobro adicional.
