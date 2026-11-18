@@ -3170,28 +3170,68 @@ function ConfigMfa({ esPropietario = false }) {
 function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
   const h = import_react4.default.createElement;
   const [mapa, setMapa] = (0, import_react4.useState)(null);
+  const [tarifas, setTarifas] = (0, import_react4.useState)([]);
+  const [productosTarifa, setProductosTarifa] = (0, import_react4.useState)([]);
+  const [preciosTarifa, setPreciosTarifa] = (0, import_react4.useState)([]);
+  const [tarifasDisponibles, setTarifasDisponibles] = (0, import_react4.useState)(true);
   const [cargando, setCargando] = (0, import_react4.useState)(false);
   const [guardando, setGuardando] = (0, import_react4.useState)(false);
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
   const [modalZona, setModalZona] = (0, import_react4.useState)(null);
   const [modalMesa, setModalMesa] = (0, import_react4.useState)(null);
+  const [modalTarifa, setModalTarifa] = (0, import_react4.useState)(null);
+  const [modalPrecio, setModalPrecio] = (0, import_react4.useState)(null);
   const [zonaForm, setZonaForm] = (0, import_react4.useState)({ id: "", codigo: "", nombre: "", tipo: "SALA", orden: "0", activo: true, version: 1 });
   const [mesaForm, setMesaForm] = (0, import_react4.useState)({ id: "", zonaId: "", codigo: "", nombre: "", capacidad: "4", orden: "0", activo: true, notas: "", version: 1 });
+  const [tarifaForm, setTarifaForm] = (0, import_react4.useState)({ id: "", nombre: "", dias: [1, 2, 3, 4, 5, 6, 7], horaInicio: "16:00", horaFin: "18:00", activo: true, version: 1, motivo: "" });
+  const [precioForm, setPrecioForm] = (0, import_react4.useState)({ tarifaId: "", productoId: "", currency: "EUR", precio: "", activo: true, motivo: "" });
   const tiposZona = ["SALA", "TERRAZA", "BARRA", "EXTERIOR", "OTRO"];
+  const diasSemana = [[1, "L"], [2, "M"], [3, "X"], [4, "J"], [5, "V"], [6, "S"], [7, "D"]];
   const zonas = Array.isArray(mapa?.zonas) ? mapa.zonas : [];
+  const cargarTarifas = async () => {
+    if (!empresaId || !localId) return;
+    try {
+      const supabase = await configCliente();
+      const [tarifasResp, productosResp, preciosResp] = await Promise.all([
+        supabase.from("catalogo_tpv_tarifas_horario").select("id,nombre,dias_semana,hora_inicio,hora_fin,activo,version").eq("empresa_id", empresaId).eq("local_id", localId).order("nombre"),
+        supabase.from("catalogo_tpv_productos").select("producto_id,currency_code,nombre,precio_unitario,activo").eq("empresa_id", empresaId).eq("local_id", localId).eq("activo", true).order("nombre"),
+        supabase.from("catalogo_tpv_tarifa_precios").select("tarifa_id,producto_id,currency_code,precio_unitario,activo,version").eq("empresa_id", empresaId).eq("local_id", localId)
+      ]);
+      const primeraError = tarifasResp.error || productosResp.error || preciosResp.error;
+      if (primeraError) {
+        const texto = String(primeraError.message || primeraError);
+        if (/PGRST205|42P01|could not find the table|relation .* does not exist/i.test(texto)) {
+          setTarifasDisponibles(false);
+          setTarifas([]); setProductosTarifa([]); setPreciosTarifa([]);
+          return;
+        }
+        throw primeraError;
+      }
+      setTarifasDisponibles(true);
+      setTarifas(tarifasResp.data || []);
+      setProductosTarifa(productosResp.data || []);
+      setPreciosTarifa(preciosResp.data || []);
+    } catch (e2) {
+      setTarifasDisponibles(false);
+      if (!/PGRST205|42P01|could not find the table|relation .* does not exist/i.test(String(e2?.message || e2 || ""))) throw e2;
+    }
+  };
   const cargar = async () => {
     setError("");
     setConfirmacion("");
-    if (!empresaId || !localId || typeof cargarMapaSala !== "function") {
+    if (!empresaId || !localId) {
       setMapa(null);
       return;
     }
     setCargando(true);
     try {
-      const resultado = await cargarMapaSala({ paraPanel: true });
-      if (!resultado?.ok) throw new Error(resultado?.error || "No se pudo leer la sala del servidor.");
-      setMapa(resultado);
+      if (typeof cargarMapaSala === "function") {
+        const resultado = await cargarMapaSala({ paraPanel: true });
+        if (!resultado?.ok) throw new Error(resultado?.error || "No se pudo leer la sala del servidor.");
+        setMapa(resultado);
+      }
+      await cargarTarifas();
     } catch (e2) {
       setError(e2?.message || String(e2 || "No se pudo leer la sala del servidor."));
     } finally {
@@ -3224,6 +3264,23 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
     setMesaForm({ id: mesa.mesa_id || mesa.id || "", zonaId: zona.zona_id || zona.id || "", codigo: mesa.codigo || "", nombre: mesa.nombre || "", capacidad: String(mesa.capacidad ?? 4), orden: String(mesa.orden ?? 0), activo: mesa.activo !== false, notas: mesa.notas || "", version: Number(mesa.version) || 1 });
     setModalMesa("editar");
     setError("");
+  };
+  const abrirNuevaTarifa = () => {
+    setTarifaForm({ id: configUuid(), nombre: "", dias: [1, 2, 3, 4, 5, 6, 7], horaInicio: "16:00", horaFin: "18:00", activo: true, version: 1, motivo: "" });
+    setModalTarifa("crear"); setError("");
+  };
+  const abrirEditarTarifa = (tarifa) => {
+    setTarifaForm({ id: tarifa.id, nombre: tarifa.nombre || "", dias: Array.isArray(tarifa.dias_semana) ? tarifa.dias_semana.map(Number) : [], horaInicio: String(tarifa.hora_inicio || "").slice(0, 5), horaFin: String(tarifa.hora_fin || "").slice(0, 5), activo: tarifa.activo !== false, version: Number(tarifa.version) || 1, motivo: "" });
+    setModalTarifa("editar"); setError("");
+  };
+  const abrirNuevoPrecio = (tarifa) => {
+    const producto = productosTarifa[0];
+    setPrecioForm({ tarifaId: tarifa.id, productoId: producto?.producto_id || "", currency: producto?.currency_code || "EUR", precio: "", activo: true, motivo: "" });
+    setModalPrecio("crear"); setError("");
+  };
+  const abrirEditarPrecio = (tarifa, precio) => {
+    setPrecioForm({ tarifaId: tarifa.id, productoId: precio.producto_id, currency: precio.currency_code, precio: String(precio.precio_unitario ?? ""), activo: precio.activo !== false, motivo: "" });
+    setModalPrecio("editar"); setError("");
   };
   const guardarZona = async () => {
     if (guardando) return;
@@ -3262,6 +3319,27 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
       setModalMesa(null); setConfirmacion(modalMesa === "crear" ? "Mesa creada en el servidor." : "Mesa actualizada en el servidor."); await cargar();
     } catch (e2) { setError(configMensajeError(e2)); } finally { setGuardando(false); }
   };
+  const guardarTarifa = async () => {
+    if (guardando) return;
+    const nombre = String(tarifaForm.nombre || "").trim();
+    const dias = (tarifaForm.dias || []).map(Number).filter((v2) => Number.isInteger(v2));
+    if (!nombre || !dias.length || !tarifaForm.horaInicio || !tarifaForm.horaFin || tarifaForm.horaFin <= tarifaForm.horaInicio || !String(tarifaForm.motivo || "").trim()) { setError("Indica nombre, días, horario válido y un motivo para la tarifa."); return; }
+    setGuardando(true); setError(""); setConfirmacion("");
+    try {
+      await configRpc("abc_guardar_tarifa_horario", { p_operation_id: configOperacion(`sala.tarifa.${modalTarifa}`), p_empresa_id: empresaId, p_local_id: localId, p_tarifa_id: tarifaForm.id || configUuid(), p_nombre: nombre, p_dias_semana: dias, p_hora_inicio: tarifaForm.horaInicio, p_hora_fin: tarifaForm.horaFin, p_activo: tarifaForm.activo, p_motivo: String(tarifaForm.motivo).trim() });
+      setModalTarifa(null); setConfirmacion(modalTarifa === "crear" ? "Tarifa horaria creada en el servidor." : "Tarifa horaria actualizada en el servidor."); await cargarTarifas();
+    } catch (e2) { setError(configMensajeError(e2)); } finally { setGuardando(false); }
+  };
+  const guardarPrecio = async () => {
+    if (guardando) return;
+    const precio = Number(precioForm.precio);
+    if (!precioForm.tarifaId || !precioForm.productoId || !Number.isFinite(precio) || precio < 0 || !String(precioForm.motivo || "").trim()) { setError("Selecciona producto, precio válido y un motivo para el precio especial."); return; }
+    setGuardando(true); setError(""); setConfirmacion("");
+    try {
+      await configRpc("abc_guardar_tarifa_precio", { p_operation_id: configOperacion(`sala.tarifa.precio.${modalPrecio}`), p_empresa_id: empresaId, p_local_id: localId, p_tarifa_id: precioForm.tarifaId, p_producto_id: precioForm.productoId, p_currency_code: precioForm.currency, p_precio_unitario: precio, p_activo: precioForm.activo, p_motivo: String(precioForm.motivo).trim() });
+      setModalPrecio(null); setConfirmacion("Precio especial guardado en el servidor."); await cargarTarifas();
+    } catch (e2) { setError(configMensajeError(e2)); } finally { setGuardando(false); }
+  };
   const campoSelect = (valor, onChange, opciones, disabled = false) => h("select", { value: valor, onChange: (e2) => onChange(e2.target.value), disabled, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, opciones.map(([value, label]) => h("option", { key: value, value }, label)));
   return h(
     "div",
@@ -3274,7 +3352,24 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
       h("div", { className: "flex flex-wrap gap-2 mt-3" }, h(Btn, { small: true, onClick: abrirNuevaZona, disabled: cargando || !mapa }, "Nueva zona"), h("span", { className: "inline-flex items-center rounded-lg px-2.5 py-1.5 text-[12px]", style: { border: `1px solid ${C2.line}`, color: C2.inkSoft } }, `${zonas.length} zona(s) · día ${mapa?.operatingDay || "—"}`))
     ),
     h(Card, { className: "mb-4" },
-      h("div", { className: "flex items-start justify-between gap-3 mb-3" }, h("div", null, h("div", { className: "text-[13px] font-semibold" }, "Tarifas horarias"), h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "No disponible en este entorno: el servidor no expone un contrato de tarifas horarias. No se muestra un formulario que no pueda guardar de forma fiable.")), h("span", { className: "text-[11px] rounded-full px-2 py-1", style: { background: C2.bg, color: C2.inkSoft, border: `1px solid ${C2.line}` } }, "Fuera de alcance actual"))
+      h("div", { className: "flex flex-wrap items-start justify-between gap-3 mb-3" },
+        h("div", null, h("div", { className: "text-[13px] font-semibold" }, "Tarifas horarias"), h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, tarifasDisponibles ? "Las tarifas se aplican al local completo según día y hora. Cada cambio exige un motivo y queda en la auditoría." : "Este entorno todavía no expone el contrato de tarifas horarias; no se muestra un formulario que no pueda guardar de forma fiable.")),
+        tarifasDisponibles ? h(Btn, { small: true, onClick: abrirNuevaTarifa, disabled: cargando }, "Nueva tarifa") : h("span", { className: "text-[11px] rounded-full px-2 py-1", style: { background: C2.bg, color: C2.inkSoft, border: `1px solid ${C2.line}` } }, "No disponible")
+      ),
+      tarifasDisponibles && tarifas.length === 0 ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "No hay tarifas configuradas en este local.") : null,
+      tarifasDisponibles ? tarifas.map((tarifa) => {
+        const precios = preciosTarifa.filter((precio) => precio.tarifa_id === tarifa.id);
+        return h("div", { key: tarifa.id, className: "rounded-lg p-3 mb-2", style: { background: C2.bg, border: `1px solid ${C2.line}` } },
+          h("div", { className: "flex flex-wrap items-start justify-between gap-2" },
+            h("div", null, h("div", { className: "text-[13px] font-semibold" }, tarifa.nombre), h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, `Días ${(tarifa.dias_semana || []).join(", ")} · ${String(tarifa.hora_inicio || "").slice(0, 5)}–${String(tarifa.hora_fin || "").slice(0, 5)} · versión ${tarifa.version || 1}${tarifa.activo === false ? " · inactiva" : ""}`)),
+            h("div", { className: "flex gap-2" }, h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditarTarifa(tarifa) }, "Editar"), h(Btn, { small: true, variant: "ghost", onClick: () => abrirNuevoPrecio(tarifa), disabled: tarifa.activo === false || !productosTarifa.length }, "Añadir precio"))
+          ),
+          precios.length ? h("div", { className: "grid gap-2 mt-2", style: { gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))" } }, precios.map((precio) => {
+            const producto = productosTarifa.find((item) => item.producto_id === precio.producto_id && item.currency_code === precio.currency_code);
+            return h("div", { key: `${precio.producto_id}-${precio.currency_code}`, className: "rounded-lg p-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } }, h("div", { className: "text-[12px] font-semibold" }, producto?.nombre || precio.producto_id), h("div", { className: "text-[12px] mt-1" }, `${Number(precio.precio_unitario).toFixed(2)} ${precio.currency_code}`, precio.activo === false ? " · inactivo" : ""), h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditarPrecio(tarifa, precio) }, "Editar precio"));
+          })) : h("div", { className: "text-[11px] mt-2", style: { color: C2.inkSoft } }, "Sin precios especiales configurados.")
+        );
+      }) : null
     ),
     !mapa && !cargando ? h(Card, null, "No hay mapa de sala cargado. Comprueba que el local tenga un terminal con sesión de caja abierta.") : null,
     zonas.map((zona) => h(
@@ -3307,7 +3402,9 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
       )
     )),
     modalZona ? h(Modal, { title: modalZona === "crear" ? "Nueva zona" : "Editar zona", onClose: () => setModalZona(null) }, h(Field, { label: "Código" }, h(Input, { value: zonaForm.codigo, onChange: (e2) => setZonaForm({ ...zonaForm, codigo: e2.target.value }), placeholder: "SALA-01", disabled: guardando })), h(Field, { label: "Nombre" }, h(Input, { value: zonaForm.nombre, onChange: (e2) => setZonaForm({ ...zonaForm, nombre: e2.target.value }), placeholder: "Sala principal", disabled: guardando })), h(Field, { label: "Tipo" }, campoSelect(zonaForm.tipo, (v2) => setZonaForm({ ...zonaForm, tipo: v2 }), tiposZona.map((v2) => [v2, v2]), guardando)), h(Field, { label: "Orden" }, h(Input, { type: "number", min: 0, value: zonaForm.orden, onChange: (e2) => setZonaForm({ ...zonaForm, orden: e2.target.value }), disabled: guardando })), modalZona === "editar" ? h(Field, { label: "Estado" }, campoSelect(zonaForm.activo ? "ACTIVA" : "INACTIVA", (v2) => setZonaForm({ ...zonaForm, activo: v2 === "ACTIVA" }), [["ACTIVA", "Activa"], ["INACTIVA", "Inactiva"]], guardando)) : null, h("div", { className: "flex justify-end gap-2" }, h(Btn, { variant: "ghost", onClick: () => setModalZona(null), disabled: guardando }, "Cancelar"), h(Btn, { onClick: guardarZona, disabled: guardando }, guardando ? "Guardando…" : "Guardar zona"))) : null,
-    modalMesa ? h(Modal, { title: modalMesa === "crear" ? "Nueva mesa" : "Editar mesa", onClose: () => setModalMesa(null) }, h(Field, { label: "Zona" }, campoSelect(mesaForm.zonaId, (v2) => setMesaForm({ ...mesaForm, zonaId: v2 }), zonas.filter((z2) => z2.activo !== false).map((z2) => [z2.zona_id || z2.id, z2.nombre || z2.codigo]), guardando || modalMesa === "editar")), h(Field, { label: "Código" }, h(Input, { value: mesaForm.codigo, onChange: (e2) => setMesaForm({ ...mesaForm, codigo: e2.target.value }), placeholder: "MESA-01", disabled: guardando })), h(Field, { label: "Nombre" }, h(Input, { value: mesaForm.nombre, onChange: (e2) => setMesaForm({ ...mesaForm, nombre: e2.target.value }), placeholder: "Mesa 1", disabled: guardando })), h("div", { className: "grid grid-cols-2 gap-3" }, h(Field, { label: "Capacidad" }, h(Input, { type: "number", min: 1, max: 999, value: mesaForm.capacidad, onChange: (e2) => setMesaForm({ ...mesaForm, capacidad: e2.target.value }), disabled: guardando })), h(Field, { label: "Orden" }, h(Input, { type: "number", min: 0, value: mesaForm.orden, onChange: (e2) => setMesaForm({ ...mesaForm, orden: e2.target.value }), disabled: guardando }))), h(Field, { label: "Notas" }, h(Input, { value: mesaForm.notas, onChange: (e2) => setMesaForm({ ...mesaForm, notas: e2.target.value }), placeholder: "Opcional", maxLength: 500, disabled: guardando })), modalMesa === "editar" ? h(Field, { label: "Estado" }, campoSelect(mesaForm.activo ? "ACTIVA" : "INACTIVA", (v2) => setMesaForm({ ...mesaForm, activo: v2 === "ACTIVA" }), [["ACTIVA", "Activa"], ["INACTIVA", "Inactiva"]], guardando)) : null, h("div", { className: "flex justify-end gap-2" }, h(Btn, { variant: "ghost", onClick: () => setModalMesa(null), disabled: guardando }, "Cancelar"), h(Btn, { onClick: guardarMesa, disabled: guardando }, guardando ? "Guardando…" : "Guardar mesa"))) : null
+    modalMesa ? h(Modal, { title: modalMesa === "crear" ? "Nueva mesa" : "Editar mesa", onClose: () => setModalMesa(null) }, h(Field, { label: "Zona" }, campoSelect(mesaForm.zonaId, (v2) => setMesaForm({ ...mesaForm, zonaId: v2 }), zonas.filter((z2) => z2.activo !== false).map((z2) => [z2.zona_id || z2.id, z2.nombre || z2.codigo]), guardando || modalMesa === "editar")), h(Field, { label: "Código" }, h(Input, { value: mesaForm.codigo, onChange: (e2) => setMesaForm({ ...mesaForm, codigo: e2.target.value }), placeholder: "MESA-01", disabled: guardando })), h(Field, { label: "Nombre" }, h(Input, { value: mesaForm.nombre, onChange: (e2) => setMesaForm({ ...mesaForm, nombre: e2.target.value }), placeholder: "Mesa 1", disabled: guardando })), h("div", { className: "grid grid-cols-2 gap-3" }, h(Field, { label: "Capacidad" }, h(Input, { type: "number", min: 1, max: 999, value: mesaForm.capacidad, onChange: (e2) => setMesaForm({ ...mesaForm, capacidad: e2.target.value }), disabled: guardando })), h(Field, { label: "Orden" }, h(Input, { type: "number", min: 0, value: mesaForm.orden, onChange: (e2) => setMesaForm({ ...mesaForm, orden: e2.target.value }), disabled: guardando }))), h(Field, { label: "Notas" }, h(Input, { value: mesaForm.notas, onChange: (e2) => setMesaForm({ ...mesaForm, notas: e2.target.value }), placeholder: "Opcional", maxLength: 500, disabled: guardando })), modalMesa === "editar" ? h(Field, { label: "Estado" }, campoSelect(mesaForm.activo ? "ACTIVA" : "INACTIVA", (v2) => setMesaForm({ ...mesaForm, activo: v2 === "ACTIVA" }), [["ACTIVA", "Activa"], ["INACTIVA", "Inactiva"]], guardando)) : null, h("div", { className: "flex justify-end gap-2" }, h(Btn, { variant: "ghost", onClick: () => setModalMesa(null), disabled: guardando }, "Cancelar"), h(Btn, { onClick: guardarMesa, disabled: guardando }, guardando ? "Guardando…" : "Guardar mesa"))) : null,
+    modalTarifa ? h(Modal, { title: modalTarifa === "crear" ? "Nueva tarifa horaria" : "Editar tarifa horaria", onClose: () => setModalTarifa(null) }, h(Field, { label: "Nombre" }, h(Input, { value: tarifaForm.nombre, onChange: (e2) => setTarifaForm({ ...tarifaForm, nombre: e2.target.value }), placeholder: "Hora feliz", disabled: guardando })), h(Field, { label: "Días de la semana" }, h("div", { className: "flex flex-wrap gap-2" }, diasSemana.map(([dia, etiqueta]) => h("button", { type: "button", key: dia, className: "rounded-lg px-3 py-2 text-[12px] font-semibold", style: { minHeight: 44, background: tarifaForm.dias.includes(dia) ? C2.accentFill : C2.surface, color: tarifaForm.dias.includes(dia) ? C2.onAccent : C2.ink, border: `1px solid ${C2.line}` }, onClick: () => setTarifaForm({ ...tarifaForm, dias: tarifaForm.dias.includes(dia) ? tarifaForm.dias.filter((v2) => v2 !== dia) : [...tarifaForm.dias, dia] }) }, etiqueta)))), h("div", { className: "grid grid-cols-2 gap-3" }, h(Field, { label: "Desde" }, h(Input, { type: "time", value: tarifaForm.horaInicio, onChange: (e2) => setTarifaForm({ ...tarifaForm, horaInicio: e2.target.value }), disabled: guardando })), h(Field, { label: "Hasta" }, h(Input, { type: "time", value: tarifaForm.horaFin, onChange: (e2) => setTarifaForm({ ...tarifaForm, horaFin: e2.target.value }), disabled: guardando }))), modalTarifa === "editar" ? h(Field, { label: "Estado" }, campoSelect(tarifaForm.activo ? "ACTIVA" : "INACTIVA", (v2) => setTarifaForm({ ...tarifaForm, activo: v2 === "ACTIVA" }), [["ACTIVA", "Activa"], ["INACTIVA", "Inactiva"]], guardando)) : null, h(ConfigMotivo, { valor: tarifaForm.motivo, onCambio: (v2) => setTarifaForm({ ...tarifaForm, motivo: v2 }), deshabilitado: guardando }), h("div", { className: "flex justify-end gap-2" }, h(Btn, { variant: "ghost", onClick: () => setModalTarifa(null), disabled: guardando }, "Cancelar"), h(Btn, { onClick: guardarTarifa, disabled: guardando }, guardando ? "Guardando…" : "Guardar tarifa"))) : null,
+    modalPrecio ? h(Modal, { title: "Precio especial de la tarifa", onClose: () => setModalPrecio(null) }, h(Field, { label: "Producto" }, campoSelect(precioForm.productoId, (v2) => { const producto = productosTarifa.find((item) => item.producto_id === v2); setPrecioForm({ ...precioForm, productoId: v2, currency: producto?.currency_code || precioForm.currency }); }, productosTarifa.map((producto) => [producto.producto_id, `${producto.nombre || producto.producto_id} · ${producto.currency_code}`]), guardando || modalPrecio === "editar")), h("div", { className: "grid grid-cols-2 gap-3" }, h(Field, { label: "Precio unitario" }, h(Input, { type: "number", min: 0, step: "0.01", value: precioForm.precio, onChange: (e2) => setPrecioForm({ ...precioForm, precio: e2.target.value }), disabled: guardando })), h(Field, { label: "Moneda" }, h(Input, { value: precioForm.currency, disabled: true }))), h(Field, { label: "Estado" }, campoSelect(precioForm.activo ? "ACTIVO" : "INACTIVO", (v2) => setPrecioForm({ ...precioForm, activo: v2 === "ACTIVO" }), [["ACTIVO", "Activo"], ["INACTIVO", "Inactivo"]], guardando)), h(ConfigMotivo, { valor: precioForm.motivo, onCambio: (v2) => setPrecioForm({ ...precioForm, motivo: v2 }), deshabilitado: guardando }), h("div", { className: "flex justify-end gap-2" }, h(Btn, { variant: "ghost", onClick: () => setModalPrecio(null), disabled: guardando }, "Cancelar"), h(Btn, { onClick: guardarPrecio, disabled: guardando }, guardando ? "Guardando…" : "Guardar precio"))) : null
   );
 }
 // ==== FIN CONFIG_SALA ====
