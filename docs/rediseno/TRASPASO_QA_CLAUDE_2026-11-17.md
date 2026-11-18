@@ -611,5 +611,7 @@ borradores de movimientos fuerzan la apertura del bloque para reintentar de
 forma segura.
 
 El cambio es solo de composición: no toca permisos, RPC ni datos financieros.
-Cache actual de `fuente.js`: `qa-orbita-cocina-caja-v3-20261118`. PR #225 sigue
-en borrador y QA continúa aislado de producción.
+Cache actual de `fuente.js`: `qa-orbita-cocina-caja-v4-20261118`. La cola de
+Cocina queda limitada a las ocho comandas recientes al entrar, con **Mostrar
+todas** para ampliar la lista cuando haga falta. PR #225 sigue en borrador y
+QA continúa aislado de producción.

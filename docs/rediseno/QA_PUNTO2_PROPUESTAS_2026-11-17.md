@@ -245,5 +245,7 @@ bajo demanda. Un borrador pendiente vuelve a abrir automáticamente los
 movimientos para permitir el reintento sin duplicar.
 
 No cambia ningún RPC, permiso ni operación económica. La marca de caché de
-`fuente.js` queda en `qa-orbita-cocina-caja-v3-20261118`; se sincroniza
-`source-recovery` y se mantienen P01, P05, sintaxis y `git diff --check`.
+`fuente.js` queda en `qa-orbita-cocina-caja-v4-20261118`; la cola de Cocina
+muestra ocho comandas recientes por defecto y ofrece **Mostrar todas** sin
+perder el filtro de estación. Se sincroniza `source-recovery` y se mantienen
+P01, P05, sintaxis y `git diff --check`.
