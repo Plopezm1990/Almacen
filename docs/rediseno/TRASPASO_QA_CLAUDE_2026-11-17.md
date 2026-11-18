@@ -442,3 +442,25 @@ respectivamente. Ascua mostró el mismo contexto de servicio. No se cobró,
 reembolsó, cerró caja ni se modificó producción. El Punto 2 queda cerrado en
 QA; siguen opcionales la paginación/búsqueda ampliada de Pase, el positivo de
 Cajero/a con MFA y el bookkeeping de `schema_migrations` de Apariencia.
+
+## Addendum Punto 3 · Clientes, Compras e Inventario · 18/11/2026
+
+Se retomó el tercer punto del plan. El núcleo de Clientes ya está construido
+en la rama `rediseno/f0-base-qa` (commit `3dc15696`): tipo Particular/Empresa,
+NIF/CIF, búsqueda y filtros, vistas guardadas, paginación, ficha Resumen/
+Actividad/Fiscal, NIF particular enmascarado en listado y actividad con actor,
+fecha y cambios anterior/nuevo. La eliminación y la anonimización quedan
+confirmadas explícitamente y no borran encargos históricos.
+
+El contrato local `tests/p3/p3-clientes-gestion-contract.mjs` pasa en `fuente.js`
+y en `source-recovery/fuente-recuperado.js`; también pasa `node --check fuente.js`
+y `SOURCE_RECOVERY_CHECK=PASS`. La pantalla todavía requiere el recorrido
+autenticado del Deploy Preview para declarar `enc-09`–`enc-12` cerradas: no se
+ha afirmado persistencia servidor ni se han creado clientes de ensayo en QA en
+esta tanda.
+
+Compras e Inventario permanecen separados. `inv-32`, `inv-35` e `inv-36` siguen
+siendo decisiones de alcance (impresión de ficha de coste y biblioteca/editor
+de opciones), y los listados que solo tienen evidencia de apertura no se
+promueven a “Pasa”. El detalle y el orden de la siguiente pasada están en
+`docs/rediseno/QA_PUNTO3_GESTION_2026-11-18.md`.

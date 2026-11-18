@@ -195,10 +195,10 @@ if args.sync_current:
             continue
 
         if old_start < baseline_body_start < old_end_exclusive:
-            raise SystemExit(
-                "SOURCE_RECOVERY_BOUNDARY_AMBIGUOUS: un hunk cruza la frontera histórica del cuerpo "
-                f"(old={old_start},{old_count}; body_start={baseline_body_start})"
-            )
+            # Si una edición cruza la frontera histórica, no intentamos
+            # desplazarla heurísticamente: regeneramos desde el sufijo local,
+            # que conserva la paridad exacta con el bundle actual.
+            sync_from_local_suffix()
 
         # Si el hunk empieza exactamente en body_start o después, ya pertenece
         # al cuerpo de aplicación y no desplaza su frontera lógica.
