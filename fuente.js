@@ -105673,7 +105673,7 @@ function GestionAlmacen() {
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
   const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
-  const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null });
+  const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, actorNombre: nombreActivoEmpleado || "Propietario/a" });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
   const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
@@ -106782,7 +106782,7 @@ function GestionAlmacen() {
       marcarFormularioAbiertoPM15
     }
   ), tab === "clientes" && /* @__PURE__ */ import_react4.default.createElement(
-    Clientes,
+    ClientesPunto3,
     {
       analisisClientes,
       clientesDormidos,
@@ -106791,6 +106791,7 @@ function GestionAlmacen() {
       updateCliente,
       deleteCliente,
       anonimizarCliente,
+      auditoria,
       contextoActivoPM15,
       marcarFormularioAbiertoPM15
     }
@@ -109538,7 +109539,26 @@ function crearLogicaDevoluciones({ productos, setProductos, movimientos, setMovi
   }
   return { registrarDevolucionCliente, registrarDevolucionProveedor, leerBorradorDevolucion };
 }
-function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId }) {
+const TIPOS_CLIENTE_SUITE = ["Particular", "Empresa"];
+const CAMPOS_ACTIVIDAD_CLIENTE_SUITE = {
+  nombre: "Nombre", tipoCliente: "Tipo de cliente", nif: "NIF/CIF", telefono: "Teléfono",
+  email: "Correo", direccion: "Dirección", datosFiscales: "Datos fiscales", notas: "Notas"
+};
+function normalizarClienteSuite(data = {}) {
+  const tipoCliente = TIPOS_CLIENTE_SUITE.includes(data.tipoCliente) ? data.tipoCliente : "Particular";
+  const nif = String(data.nif || "").trim().toUpperCase();
+  return {
+    ...data,
+    tipoCliente,
+    nif,
+    direccion: String(data.direccion || "").trim(),
+    datosFiscales: String(data.datosFiscales || "").trim()
+  };
+}
+function actorClienteSuite(actorNombre) {
+  return actorNombre || "Usuario actual";
+}
+function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId, actorNombre = "" }) {
   function hayConexionNubeClientes() {
     return typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
   }
@@ -109566,7 +109586,12 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
   }
   function addCliente(data) {
     if (!empresaId) return { ok: false, codigo: "contexto_no_autorizado", error: "No se pudo determinar la empresa activa." };
-    const nuevo = { id: uid(), fechaAlta: todayISO(), ...data, empresaId };
+    const normalizado = normalizarClienteSuite(data);
+    const ahora = new Date().toISOString();
+    const nuevo = {
+      id: uid(), fechaAlta: todayISO(), ...normalizado, empresaId,
+      actividad: [{ fecha: ahora, actor: actorClienteSuite(actorNombre), accion: "Alta", cambios: [{ campo: "Ficha", anterior: "—", nuevo: "Cliente creado" }] }]
+    };
     setClientes((s22) => [...s22, nuevo]);
     sincronizarClienteNube(nuevo).catch(() => {});
     return nuevo;
@@ -109580,7 +109605,9 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
     setClientes(
       (s22) => s22.map((c22) => {
         if (c22.id !== id || c22.empresaId !== empresaId) return c22;
-        actualizado = { ...c22, ...data, id: c22.id, empresaId: c22.empresaId };
+        const normalizado = normalizarClienteSuite(data);
+        const cambios = Object.keys(CAMPOS_ACTIVIDAD_CLIENTE_SUITE).filter((campo) => String(c22[campo] || "") !== String(normalizado[campo] || "")).map((campo) => ({ campo: CAMPOS_ACTIVIDAD_CLIENTE_SUITE[campo], anterior: c22[campo] || "—", nuevo: normalizado[campo] || "—" }));
+        actualizado = { ...c22, ...normalizado, id: c22.id, empresaId: c22.empresaId, actividad: cambios.length ? [...(Array.isArray(c22.actividad) ? c22.actividad : []), { fecha: new Date().toISOString(), actor: actorClienteSuite(actorNombre), accion: "Edición", cambios }] : c22.actividad };
         return actualizado;
       })
     );
@@ -109603,7 +109630,7 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
     setClientes(
       (s22) => s22.map((cli) => {
         if (cli.id !== id || cli.empresaId !== empresaId) return cli;
-        actualizado = { ...cli, nombre: "Cliente anonimizado", telefono: "", email: "", notas: "", anonimizado: true };
+        actualizado = { ...cli, nombre: "Cliente anonimizado", telefono: "", email: "", nif: "", direccion: "", datosFiscales: "", notas: "", anonimizado: true, actividad: [...(Array.isArray(cli.actividad) ? cli.actividad : []), { fecha: new Date().toISOString(), actor: actorClienteSuite(actorNombre), accion: "Anonimización", cambios: [{ campo: "Datos identificativos", anterior: "Conservados", nuevo: "Eliminados" }] }] };
         return actualizado;
       })
     );
@@ -123164,8 +123191,14 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     } }, "S\xED, cancelar encargo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Volver")));
   })());
 }
-function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
-  const blank = { nombre: "", telefono: "", email: "", notas: "" };
+function enmascararNifClienteSuite(nif, tipoCliente) {
+  const limpio = String(nif || "").trim();
+  if (!limpio) return "";
+  if (tipoCliente === "Empresa") return limpio;
+  return limpio.length <= 4 ? "••••" : `••••${limpio.slice(-4)}`;
+}
+function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, auditoria = [] }) {
+  const blank = { nombre: "", tipoCliente: "Particular", nif: "", telefono: "", email: "", direccion: "", datosFiscales: "", notas: "" };
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
   import_react4.default.useEffect(() => {
     marcarFormularioAbiertoPM15(showForm);
@@ -123177,13 +123210,21 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
   const [errorEliminar, setErrorEliminar] = (0, import_react4.useState)("");
   const [busqueda, setBusqueda] = (0, import_react4.useState)("");
   const [filtroEstado, setFiltroEstado] = (0, import_react4.useState)("todos");
+  const [filtroTipo, setFiltroTipo] = (0, import_react4.useState)("todos");
   const [pagina, setPagina] = (0, import_react4.useState)(1);
+  const [clienteAbierto, setClienteAbierto] = (0, import_react4.useState)(null);
+  const [fichaTab, setFichaTab] = (0, import_react4.useState)("Resumen");
+  const [vistasGuardadas, setVistasGuardadas] = (0, import_react4.useState)(() => {
+    try { return JSON.parse(localStorage.getItem("la_clientes_vistas") || "[]"); } catch { return []; }
+  });
   (0, import_react4.useEffect)(() => {
     setBusqueda("");
     setFiltroEstado("todos");
+    setFiltroTipo("todos");
     setPagina(1);
+    setClienteAbierto(null);
   }, [contextoActivoPM15]);
-  const listado = paginarClientesSuite(analisisClientes, busqueda, filtroEstado, pagina);
+  const listado = paginarClientesSuite(analisisClientes, busqueda, filtroEstado, filtroTipo, pagina);
   (0, import_react4.useEffect)(() => {
     if (pagina > listado.pagina) setPagina(listado.pagina);
   }, [pagina, listado.pagina]);
@@ -123203,7 +123244,7 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
     setShowForm(false);
   }
   function abrirEdicion(c22) {
-    setForm({ nombre: c22.nombre || "", telefono: c22.telefono || "", email: c22.email || "", notas: c22.notas || "" });
+    setForm({ nombre: c22.nombre || "", tipoCliente: c22.tipoCliente || "Particular", nif: c22.nif || "", telefono: c22.telefono || "", email: c22.email || "", direccion: c22.direccion || "", datosFiscales: c22.datosFiscales || "", notas: c22.notas || "" });
     setEditingId(c22.id);
     setError("");
     setShowForm(true);
@@ -123215,8 +123256,12 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
       "",
       "=== FICHA ===",
       `Nombre: ${c22.nombre}`,
+      `Tipo de cliente: ${c22.tipoCliente || "Particular"}`,
+      `NIF/CIF: ${c22.nif || "—"}`,
       `Tel\xE9fono: ${c22.telefono || "\u2014"}`,
       `Email: ${c22.email || "\u2014"}`,
+      `Direcci\xF3n: ${c22.direccion || "\u2014"}`,
+      `Datos fiscales: ${c22.datosFiscales || "\u2014"}`,
       `Notas: ${c22.notas || "\u2014"}`,
       "",
       "=== ACTIVIDAD ===",
@@ -123234,6 +123279,23 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
     document.body.removeChild(a22);
     URL.revokeObjectURL(url);
   }
+  function guardarVistaActual() {
+    const nombre = window.prompt("Nombre de la vista", "Mi vista de clientes");
+    if (!nombre || !nombre.trim()) return;
+    const vista = { id: uid(), nombre: nombre.trim(), busqueda, filtroEstado, filtroTipo };
+    const siguiente = [...vistasGuardadas.filter((v22) => v22.nombre !== vista.nombre), vista];
+    setVistasGuardadas(siguiente);
+    try { localStorage.setItem("la_clientes_vistas", JSON.stringify(siguiente)); } catch {}
+  }
+  function aplicarVista(vista) {
+    if (!vista) return;
+    if (vista.id === "todos") { setBusqueda(""); setFiltroEstado("todos"); setFiltroTipo("todos"); }
+    else if (vista.id === "particulares") { setBusqueda(""); setFiltroEstado("todos"); setFiltroTipo("particulares"); }
+    else if (vista.id === "empresas") { setBusqueda(""); setFiltroEstado("todos"); setFiltroTipo("empresas"); }
+    else if (vista.id === "activos") { setBusqueda(""); setFiltroEstado("activos"); setFiltroTipo("todos"); }
+    else { setBusqueda(vista.busqueda || ""); setFiltroEstado(vista.filtroEstado || "todos"); setFiltroTipo(vista.filtroTipo || "todos"); }
+    setPagina(1);
+  }
   const h = import_react4.default.createElement;
   const filtrosListado = analisisClientes.length > 0 && h(Card, { className: "mb-3" },
     h("div", { className: "grid sm:grid-cols-2 gap-3" },
@@ -123247,9 +123309,17 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
         style: { background: C2.surface, color: C2.ink, border: "1px solid " + C2.line, minHeight: 44 },
         onChange: (e2) => { setFiltroEstado(e2.target.value); setPagina(1); }
       }, h("option", { value: "todos" }, "Todos"), h("option", { value: "activos" }, "Activos"),
-      h("option", { value: "anonimizados" }, "Anonimizados")))
+      h("option", { value: "anonimizados" }, "Anonimizados"))),
+      h(Field, { label: "Tipo de cliente" }, h("select", {
+        value: filtroTipo, "aria-label": "Tipo de cliente",
+        className: "w-full rounded-lg px-3 py-2 text-[13px]",
+        style: { background: C2.surface, color: C2.ink, border: "1px solid " + C2.line, minHeight: 44 },
+        onChange: (e2) => { setFiltroTipo(e2.target.value); setPagina(1); }
+      }, h("option", { value: "todos" }, "Todos"), h("option", { value: "particulares" }, "Particulares"), h("option", { value: "empresas" }, "Empresas")))
     )
   );
+  const vistas = [{ id: "todos", nombre: "Todos" }, { id: "particulares", nombre: "Particulares" }, { id: "empresas", nombre: "Empresas" }, { id: "activos", nombre: "Activos" }, ...vistasGuardadas];
+  const barraVistas = h(Card, { className: "mb-3" }, h("div", { className: "flex flex-wrap items-center gap-2", role: "group", "aria-label": "Vistas guardadas de clientes" }, vistas.map((vista) => h(Btn, { key: vista.id, small: true, variant: "ghost", onClick: () => aplicarVista(vista) }, vista.nombre)), h(Btn, { small: true, onClick: guardarVistaActual }, "Guardar vista")));
   const paginadorListado = analisisClientes.length > 0 && h("nav", { "aria-label": "Paginaci\xF3n de clientes", className: "flex flex-wrap items-center gap-2 mb-4" },
     h("span", { role: "status", className: "text-[12px] mr-auto", style: { color: C2.inkSoft } },
       listado.total ? listado.inicio + "\u2013" + listado.fin + " de " + listado.total + " clientes" : "0 clientes"),
@@ -123280,6 +123350,82 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
     setErrorEliminar("");
     setConfirmDeleteId(null);
   } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
+}
+function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCruzada = { base: 0, filas: [] }, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
+  const h = import_react4.default.createElement;
+  const blank = { nombre: "", tipoCliente: "Particular", nif: "", telefono: "", email: "", direccion: "", datosFiscales: "", notas: "" };
+  const [showForm, setShowForm] = (0, import_react4.useState)(false);
+  const [form, setForm] = (0, import_react4.useState)(blank);
+  const [editingId, setEditingId] = (0, import_react4.useState)(null);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [busqueda, setBusqueda] = (0, import_react4.useState)("");
+  const [filtroEstado, setFiltroEstado] = (0, import_react4.useState)("todos");
+  const [filtroTipo, setFiltroTipo] = (0, import_react4.useState)("todos");
+  const [pagina, setPagina] = (0, import_react4.useState)(1);
+  const [clienteAbierto, setClienteAbierto] = (0, import_react4.useState)(null);
+  const [fichaTab, setFichaTab] = (0, import_react4.useState)("Resumen");
+  const [vistasGuardadas, setVistasGuardadas] = (0, import_react4.useState)(() => {
+    try { return JSON.parse(localStorage.getItem("la_clientes_vistas") || "[]"); } catch { return []; }
+  });
+  (0, import_react4.useEffect)(() => { marcarFormularioAbiertoPM15(showForm); }, [showForm]);
+  (0, import_react4.useEffect)(() => { setPagina(1); setClienteAbierto(null); }, [contextoActivoPM15]);
+  const texto = normalizarParaComparar(busqueda);
+  const filtradas = analisisClientes.filter((c22) => {
+    if (filtroEstado === "anonimizados" && !c22.anonimizado || filtroEstado === "activos" && c22.anonimizado) return false;
+    if (filtroTipo === "particulares" && (c22.tipoCliente || "Particular") !== "Particular") return false;
+    if (filtroTipo === "empresas" && (c22.tipoCliente || "Particular") !== "Empresa") return false;
+    return !texto || [c22.nombre, c22.email, c22.telefono, c22.nif].some((valor) => normalizarParaComparar(valor).includes(texto));
+  });
+  const porPagina = 8;
+  const paginas = Math.max(1, Math.ceil(filtradas.length / porPagina));
+  const paginaSegura = Math.min(pagina, paginas);
+  const filas = filtradas.slice((paginaSegura - 1) * porPagina, paginaSegura * porPagina);
+  function reiniciarForm() { setForm(blank); setEditingId(null); setError(""); }
+  function guardar() {
+    if (!form.nombre.trim()) { setError("Escribe el nombre del cliente."); return; }
+    const nif = String(form.nif || "").trim().toUpperCase();
+    if (nif && !/^([A-Z0-9]{5,20})$/.test(nif)) { setError("El NIF/CIF solo puede contener letras y números."); return; }
+    const datos = { ...form, nif };
+    const resultado = editingId ? updateCliente(editingId, datos) : addCliente(datos);
+    if (!resultado || resultado.ok === false) { setError(resultado?.error || "No se pudo guardar el cliente."); return; }
+    reiniciarForm(); setShowForm(false);
+  }
+  function editar(c22) { setForm({ ...blank, ...c22 }); setEditingId(c22.id); setError(""); setShowForm(true); }
+  function guardarVista() {
+    const nombre = typeof window !== "undefined" && window.prompt ? window.prompt("Nombre de la vista", "Mi vista de clientes") : "";
+    if (!nombre || !nombre.trim()) return;
+    const siguiente = [...vistasGuardadas.filter((v22) => v22.nombre !== nombre.trim()), { id: uid(), nombre: nombre.trim(), busqueda, filtroEstado, filtroTipo }];
+    setVistasGuardadas(siguiente); try { localStorage.setItem("la_clientes_vistas", JSON.stringify(siguiente)); } catch {}
+  }
+  function aplicarVista(vista) {
+    if (!vista) return;
+    const presets = { todos: ["", "todos", "todos"], particulares: ["", "todos", "particulares"], empresas: ["", "todos", "empresas"], activos: ["", "activos", "todos"] };
+    const valores = presets[vista.id] || [vista.busqueda || "", vista.filtroEstado || "todos", vista.filtroTipo || "todos"];
+    setBusqueda(valores[0]); setFiltroEstado(valores[1]); setFiltroTipo(valores[2]); setPagina(1);
+  }
+  const vistas = [{ id: "todos", nombre: "Todos" }, { id: "particulares", nombre: "Particulares" }, { id: "empresas", nombre: "Empresas" }, { id: "activos", nombre: "Activos" }, ...vistasGuardadas];
+  const viewBar = h(Card, { className: "mb-3" }, h("div", { className: "flex flex-wrap gap-2 items-center", role: "group", "aria-label": "Vistas guardadas" }, vistas.map((v22) => h(Btn, { key: v22.id, small: true, variant: "ghost", onClick: () => aplicarVista(v22) }, v22.nombre)), h(Btn, { small: true, onClick: guardarVista }, "Guardar vista")));
+  const filterBar = h(Card, { className: "mb-3" }, h("div", { className: "grid sm:grid-cols-3 gap-3" },
+    h(Field, { label: "Buscar clientes" }, h(Input, { type: "search", "aria-label": "Buscar clientes", placeholder: "Nombre, correo, teléfono o NIF", value: busqueda, onChange: (e2) => { setBusqueda(e2.target.value); setPagina(1); } })),
+    h(Field, { label: "Estado" }, h("select", { value: filtroEstado, "aria-label": "Estado de clientes", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { background: C2.surface, color: C2.ink, border: "1px solid " + C2.line, minHeight: 44 }, onChange: (e2) => { setFiltroEstado(e2.target.value); setPagina(1); } }, h("option", { value: "todos" }, "Todos"), h("option", { value: "activos" }, "Activos"), h("option", { value: "anonimizados" }, "Anonimizados"))),
+    h(Field, { label: "Tipo de cliente" }, h("select", { value: filtroTipo, "aria-label": "Tipo de cliente", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { background: C2.surface, color: C2.ink, border: "1px solid " + C2.line, minHeight: 44 }, onChange: (e2) => { setFiltroTipo(e2.target.value); setPagina(1); } }, h("option", { value: "todos" }, "Todos"), h("option", { value: "particulares" }, "Particulares"), h("option", { value: "empresas" }, "Empresas")))
+  ));
+  const formView = showForm && h(Card, { className: "mb-4" }, h("div", { className: "grid md:grid-cols-3 gap-x-3" },
+    h(Field, { label: "Nombre" }, h(Input, { value: form.nombre, onChange: (e2) => setForm({ ...form, nombre: e2.target.value }) })),
+    h(Field, { label: "Tipo de cliente" }, h("select", { value: form.tipoCliente, "aria-label": "Tipo de cliente", className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { background: C2.surface, color: C2.ink, border: "1px solid " + C2.line, minHeight: 44 }, onChange: (e2) => setForm({ ...form, tipoCliente: e2.target.value }) }, h("option", null, "Particular"), h("option", null, "Empresa"))),
+    h(Field, { label: "NIF/CIF (opcional)" }, h(Input, { value: form.nif, onChange: (e2) => setForm({ ...form, nif: e2.target.value }), placeholder: "12345678Z" })),
+    h(Field, { label: "Teléfono" }, h(Input, { value: form.telefono, onChange: (e2) => setForm({ ...form, telefono: e2.target.value }), placeholder: "+34 600 000 000" })),
+    h(Field, { label: "Correo (opcional)" }, h(Input, { type: "email", value: form.email, onChange: (e2) => setForm({ ...form, email: e2.target.value }) })),
+    h(Field, { label: "Dirección (opcional)" }, h(Input, { value: form.direccion, onChange: (e2) => setForm({ ...form, direccion: e2.target.value }) })),
+    h(Field, { label: "Datos fiscales (opcional)" }, h(Input, { value: form.datosFiscales, onChange: (e2) => setForm({ ...form, datosFiscales: e2.target.value }) })),
+    h(Field, { label: "Notas (gustos, alergias, empresa…)" }, h(Input, { value: form.notas, onChange: (e2) => setForm({ ...form, notas: e2.target.value }) })),
+    error && h("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error),
+    h("div", { className: "flex gap-2 md:col-span-3" }, h(Btn, { onClick: guardar }, editingId ? "Guardar cambios" : "Guardar cliente"), h(Btn, { variant: "ghost", onClick: () => { setShowForm(false); reiniciarForm(); } }, "Cancelar"))
+  ));
+  const listView = h("div", { className: "space-y-2 mb-4" }, filas.map((c22) => h(Card, { key: c22.id }, h("div", { className: "flex items-start justify-between gap-3" }, h("div", null, h("div", { className: "font-semibold flex items-center gap-1.5" }, c22.nombre, h(Pill2, { color: c22.tipoCliente === "Empresa" ? C2.accent : C2.inkSoft }, c22.tipoCliente || "Particular"), c22.anonimizado && h(Pill2, { color: C2.inkSoft }, "Anonimizado")), h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, [c22.telefono, c22.email].filter(Boolean).join(" · ")), c22.nif && h("div", { className: "text-[11.5px] mono mt-1", style: { color: C2.inkSoft } }, "NIF/CIF: ", enmascararNifClienteSuite(c22.nif, c22.tipoCliente))), h("div", { className: "text-right" }, h("div", { className: "mono font-semibold" }, "€", fmt(c22.facturado)), h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, c22.nEncargos, " encargo(s)"))), h("div", { className: "mt-2 flex flex-wrap items-center gap-2" }, h("span", { className: "text-[11.5px] mr-auto", style: { color: C2.inkSoft } }, c22.ultima ? `Última compra: ${c22.ultima}` : "Sin compras registradas"), h(Btn, { small: true, onClick: () => { setClienteAbierto(c22); setFichaTab("Resumen"); } }, "Abrir ficha"), h(Btn, { small: true, variant: "ghost", onClick: () => editar(c22) }, "Editar"), anonimizarCliente && !c22.anonimizado && h(Btn, { small: true, variant: "danger", onClick: () => { if (window.confirm(`¿Anonimizar a ${c22.nombre}? Se borran los datos identificativos y no se puede deshacer.`)) anonimizarCliente(c22.id); } }, "Anonimizar"), h(Btn, { small: true, variant: "danger", ariaLabel: `Eliminar el cliente ${c22.nombre}`, onClick: () => { if (window.confirm(`¿Eliminar la ficha de ${c22.nombre}? Los encargos históricos se conservarán sin asociar esta ficha.`)) deleteCliente(c22.id); } }, h(Trash2, { size: 13 })) ))));
+  const ficha = clienteAbierto && h(Card, { className: "mb-4", style: { border: "2px solid " + C2.accent } }, h("div", { className: "flex items-center justify-between gap-2 mb-3" }, h("div", null, h("div", { className: "font-semibold text-[16px]" }, clienteAbierto.nombre), h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, clienteAbierto.tipoCliente || "Particular", clienteAbierto.nif ? " · NIF/CIF protegido en el listado" : "")), h(Btn, { small: true, variant: "ghost", onClick: () => setClienteAbierto(null) }, "Cerrar ficha")), h("div", { className: "flex flex-wrap gap-2 mb-3", role: "tablist", "aria-label": "Secciones de la ficha" }, ["Resumen", "Actividad", "Fiscal"].map((tab2) => h(Btn, { key: tab2, small: true, variant: fichaTab === tab2 ? "primary" : "ghost", onClick: () => setFichaTab(tab2), role: "tab", "aria-selected": fichaTab === tab2 }, tab2))), fichaTab === "Resumen" && h("div", { className: "grid md:grid-cols-2 gap-2 text-[12.5px]" }, h("div", null, h("b", null, "Teléfono: "), clienteAbierto.telefono || "—"), h("div", null, h("b", null, "Correo: "), clienteAbierto.email || "—"), h("div", null, h("b", null, "Dirección: "), clienteAbierto.direccion || "—"), h("div", null, h("b", null, "Última compra: "), clienteAbierto.ultima || "Sin compras registradas"), h("div", null, h("b", null, "Facturado: "), "€", fmt(clienteAbierto.facturado || 0)), h("div", null, h("b", null, "Encargos entregados: "), clienteAbierto.nEncargos || 0)), fichaTab === "Fiscal" && h("div", { className: "text-[12.5px]" }, h("div", { className: "mb-2" }, h("b", null, "NIF/CIF: "), clienteAbierto.nif || "No indicado"), h("div", { className: "mb-2" }, h("b", null, "Datos fiscales: "), clienteAbierto.datosFiscales || "No indicados"), h("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "El NIF particular se muestra enmascarado en el listado; el dato completo solo aparece dentro de la ficha autorizada.")), fichaTab === "Actividad" && h("div", { className: "space-y-2" }, (clienteAbierto.actividad || []).length ? (clienteAbierto.actividad || []).slice().reverse().map((evento, i33) => h("div", { key: i33, className: "p-2 rounded-lg", style: { background: C2.bg } }, h("div", { className: "text-[12px] font-semibold" }, evento.accion || "Cambio", " · ", new Date(evento.fecha).toLocaleString("es-ES")), h("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Actor: ", evento.actor || "Usuario actual"), (evento.cambios || []).map((cambio, j2) => h("div", { key: j2, className: "text-[11.5px]" }, cambio.campo, ": ", cambio.anterior, " → ", cambio.nuevo)))) : h(Empty, { text: "Todavía no hay actividad registrada." })));
+  const paginator = h("nav", { "aria-label": "Paginación de clientes", className: "flex flex-wrap items-center gap-2 mb-4" }, h("span", { role: "status", className: "text-[12px] mr-auto", style: { color: C2.inkSoft } }, filtradas.length ? `${(paginaSegura - 1) * porPagina + 1}–${Math.min(paginaSegura * porPagina, filtradas.length)} de ${filtradas.length} clientes` : "0 clientes"), h(Btn, { variant: "ghost", disabled: paginaSegura <= 1, onClick: () => setPagina(paginaSegura - 1) }, "Anterior"), h(Btn, { variant: "ghost", disabled: paginaSegura >= paginas, onClick: () => setPagina(paginaSegura + 1) }, "Siguiente"));
+  return h("div", null, h(SectionTitle, { action: h(Btn, { onClick: () => { reiniciarForm(); setShowForm(true); } }, h(Plus, { size: 15 }), " Nuevo cliente") }, "Clientes"), viewBar, formView, filterBar, clientesDormidos.length > 0 && h(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, h("div", { className: "text-[12.5px] font-semibold mb-2" }, "Clientes que hace tiempo que no vuelven"), h("div", { className: "space-y-1" }, clientesDormidos.slice(0, 6).map((c22) => h("div", { key: c22.id, className: "flex items-center justify-between text-[12px]" }, h("span", null, c22.nombre), h("span", { className: "mono" }, c22.diasSinComprar, " días")))), filas.length ? listView : h(Empty, { text: analisisClientes.length ? "No hay clientes que coincidan con los filtros." : "Todavía no tienes clientes registrados." }), paginator, ficha, h("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Productos que se piden juntos"), ventaCruzada.base < 3 ? h(Card, { style: { background: C2.bg } }, h("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Con ", ventaCruzada.base, " encargo(s) entregado(s) todavía no se puede sacar ninguna conclusión fiable.")) : h("div", { className: "space-y-1.5" }, ventaCruzada.filas.map((f22, i33) => h(Card, { key: i33 }, h("div", { className: "flex items-center justify-between gap-3" }, h("span", null, f22.a.nombre, " + ", f22.b.nombre), h("span", { className: "mono font-semibold" }, f22.veces, "×")))))));
 }
 function paginarClientesSuite(clientes, consulta, estado, paginaSolicitada) {
   const texto = normalizarParaComparar(consulta);

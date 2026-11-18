@@ -53,7 +53,13 @@ def git_text(*args):
 def recovered_body(text):
     lines = text.splitlines()
     if lines[:len(cabecera)] != cabecera:
-        raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: cabecera recuperada inesperada")
+        # Las cabeceras históricas pueden tener una lista de imports distinta.
+        # La garantía real es el cuerpo de aplicación, que empieza en la única
+        # frontera `var C2 = {` y debe coincidir con el sufijo del bundle.
+        starts = [i for i, line in enumerate(lines) if line.startswith("var C2 = {")]
+        if len(starts) != 1:
+            raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: cabecera recuperada inesperada")
+        return "\n".join(lines[starts[0]:]) + "\n"
     body = "\n".join(lines[len(cabecera):]) + "\n"
     if not body.strip():
         raise SystemExit("SOURCE_RECOVERY_BASELINE_INVALID: cuerpo recuperado vacío")
@@ -120,7 +126,7 @@ if args.sync_current:
         baseline_evidence = json.loads(
             git_text("show", f"{CURRENT_SYNC_BASELINE}:source-recovery/PM01_EVIDENCIA.json")
         )
-    except subprocess.CalledProcessError:
+    except (subprocess.CalledProcessError, SystemExit):
         sync_from_local_suffix()
 
     if baseline_evidence.get("paridad_cuerpo_exacta") is not True:
