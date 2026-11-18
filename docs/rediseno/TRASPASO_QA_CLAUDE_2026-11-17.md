@@ -680,13 +680,13 @@ las tres como `SECURITY DEFINER`, con `EXECUTE` para `authenticated` y sin
 acceso para `anon`/`public`. También existe
 `abc_registrar_propina_efectivo(...)` con el mismo cierre de permisos.
 
-La sonda no ejecutó ninguna de esas RPC. La función de propina no aparece en
-la fuente de esta rama (su implementación histórica está en un commit
-revertido), y las versiones candidatas C06/C08/B06 no constan en
-`supabase_migrations.schema_migrations`, aunque sus objetos existen en QA.
-Por tanto, `tpv-31`, `caj-16` y la propina siguen siendo trabajo P1: primero hay
-que reconciliar el contrato de servidor con la rama y definir fixtures
-reversibles; después se hará la capa visual con el marco Órbita de la maqueta.
+La sonda no ejecutó ninguna de esas RPC. En ese momento la función de propina
+no aparecía en la fuente de la rama; la implementación ya se reincorporó en
+`2f9679f8` y está descrita en el addendum P1 de este documento. Las versiones
+candidatas C06/C08/B06 no constan en `supabase_migrations.schema_migrations`,
+aunque sus objetos existen en QA. Por tanto, `tpv-31` y `caj-16` siguen siendo
+trabajo P1: primero hay que reconciliar esos contratos con la rama y definir
+fixtures reversibles; después se hará la capa visual con el marco Órbita.
 No se debe aplicar una migración candidata ni probar un cobro, reembolso o
 propina sin autorización explícita.
 
@@ -699,4 +699,4 @@ Se añadió el contrato P06, la migración reproducible y el plan detallado en
 `docs/rediseno/PLAN_P1_PROPINA_ORBITA_2026-11-18.md`. No se ejecutaron cobros,
 reembolsos, propinas ni migraciones en QA. Antes del cierre manual hace falta
 un fixture reversible y autorización explícita para un único cobro simulado.
-Commit publicado: `2f9679f8`.
+Commit de código: `2f9679f8`; documentación final: `83679580`.
