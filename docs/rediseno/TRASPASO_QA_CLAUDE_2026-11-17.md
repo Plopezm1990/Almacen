@@ -858,3 +858,30 @@ emitió factura, no se rectificó ningún documento y no se ejecutó cobro nuevo
 Pendiente para cerrar `tpv-31`/`caj-16`: preparar un fixture reversible,
 autorizar explícitamente una emisión/clasificación y disponer de un documento
 rectificativo válido para probar la vinculación y la persistencia en QA.
+
+## Addendum validación live P1 y corrección de identificador · 18/11/2026
+
+En el primer recorrido con propietario, el TPV sí mostraba el documento
+`TPV-38` (C07-D, secuencia 34, QR QA), pero las tarjetas P1 no aparecían. La
+causa era una suposición estricta del cliente sobre el nombre del identificador
+del documento. Se corrigió en `321743d1`/`ae77bfd4`: la interfaz acepta
+`documento_id`, `id` o `documento.id`, se regeneró el espejo de
+`source-recovery` y el preview `6afdb01ec74b1938b7558316` quedó `ready` con
+SHA `ae77bfd462d07899fe690a07166c2bd315beeb40`.
+
+Con el preview actualizado se abrió «Solicitar factura a empresa» y se
+introdujeron datos sintéticos QA (`QA Empresa Factura P1`, `B12345678`,
+`Calle QA 1`). El servidor rechazó correctamente el intento con
+`documento_tipo_ya_definido`: `TPV-38` ya está clasificado como
+`FACTURA_SIMPLIFICADA`, por lo que no se creó una clasificación duplicada ni
+una conservación. La consulta posterior confirma `abc_c06_documentos_clasificados`
+en 40 filas, `abc_c08_documento_versiones` en 0 y
+`abc_c08_correcciones_documentales` en 0.
+
+La rectificación no se ejecutó: QA no tiene ningún documento rectificativo
+válido y la única factura emitida sin clasificación está ligada a una cuenta
+del 26/10/2026, día operativo cerrado, que el TPV no permite retomar. No se
+creó otro cobro ni se modificó ninguna cuenta. Para cerrar P1 falta un fixture
+reversible del día actual con documento fiscal aún no clasificado y, después,
+un documento rectificativo emitido/clasificado; ambos deben probarse desde la
+UI y mantenerse en QA.
