@@ -5,6 +5,11 @@ Rama: `rediseno/f0-base-qa`
 PR: #225, borrador, sin fusionar  
 Entorno permitido: Deploy Preview / Supabase QA. Producción no se ha tocado.
 
+Deploy más reciente para el recorrido de esta tanda: `6afd50dfec4c454497a53772`,
+[URL directa](https://6afd50dfec4c454497a53772--chic-entremet-9107cf.netlify.app/?cache=p3-clientes-final).
+El alias estable de PR #225 puede tardar en apuntar al último deploy; no se
+debe usar para certificar esta pantalla si todavía muestra el listado antiguo.
+
 ## Alcance del punto
 
 El Punto 3 se ocupa de cerrar Gestión y decidir qué trabajo pendiente de
