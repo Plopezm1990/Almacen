@@ -15,4 +15,8 @@ for (const archivo of archivos) {
   assert.match(codigo, /actorClienteSuite\(actorNombre\)/, `${archivo}: falta el actor de actividad`);
 }
 
+const bootstrap = await readFile("index-storage-bootstrap.js", "utf8");
+assert.match(bootstrap, /tabla !== "clientes_empresa" && tabla !== "proveedores_empresa"/, "bootstrap: las tablas empresariales legacy no deben ordenar por updated_at");
+assert.match(bootstrap, /if \(tabla !== "clientes_empresa" && tabla !== "proveedores_empresa"\) fila\.updated_at/, "bootstrap: no debe enviar updated_at a clientes_empresa/proveedores_empresa");
+
 console.log("p3-clientes-gestion-contract: OK");
