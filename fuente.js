@@ -104863,7 +104863,7 @@ function GestionAlmacen() {
     (async () => {
       try {
         const supabase = await window.getSupabaseClient();
-        const { data, error } = await supabase.from("clientes_empresa").select("id,empresa_id,datos").eq("empresa_id", empresaId).order("updated_at", { ascending: true });
+        const { data, error } = await supabase.from("clientes_empresa").select("id,empresa_id,datos").eq("empresa_id", empresaId);
         if (!activo || error) return;
         const remotos = (data || []).map((fila) => {
           const datos = fila?.datos && typeof fila.datos === "object" ? fila.datos : {};

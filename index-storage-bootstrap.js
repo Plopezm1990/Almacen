@@ -453,7 +453,15 @@
   }
 
   async function leerColeccionEmpresa(tabla) {
-    var r = await window.__nubeCliente.from(tabla).select("id,empresa_id,datos").order("updated_at", { ascending: true });
+    // clientes_empresa y proveedores_empresa son tablas legacy con solo
+    // id/empresa_id/datos. No se puede ordenar por updated_at porque esa
+    // columna no existe en QA y PostgREST devuelve un error; en ese caso el
+    // bootstrap caía a la caché local vacía y ocultaba registros válidos.
+    var consulta = window.__nubeCliente.from(tabla).select("id,empresa_id,datos");
+    if (tabla !== "clientes_empresa" && tabla !== "proveedores_empresa") {
+      consulta = consulta.order("updated_at", { ascending: true });
+    }
+    var r = await consulta;
     if (r.error) throw r.error;
     return (r.data || []).map(function (fila) {
       var d = fila.datos || {};
@@ -470,7 +478,11 @@
     if (rLee.error) throw rLee.error;
     var remotos = rLee.data || [];
     var porId = {}; remotos.forEach(function (r) { porId[r.id] = r; });
-    var filas = listaLocal.map(function (x) { return { id: x.id, empresa_id: x.empresaId, datos: x, updated_at: new Date().toISOString() }; });
+    var filas = listaLocal.map(function (x) {
+      var fila = { id: x.id, empresa_id: x.empresaId, datos: x };
+      if (tabla !== "clientes_empresa" && tabla !== "proveedores_empresa") fila.updated_at = new Date().toISOString();
+      return fila;
+    });
     if (filas.length) {
       var rUp = await window.__nubeCliente.from(tabla).upsert(filas);
       if (rUp.error) throw rUp.error;
