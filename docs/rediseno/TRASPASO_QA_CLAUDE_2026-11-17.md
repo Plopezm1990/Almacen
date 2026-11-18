@@ -779,6 +779,17 @@ cerrado. No se pulsó «Cerrar cuenta pagada» ni se realizó otro movimiento
 económico; el cierre queda pendiente de autorización separada. La incidencia
 de mensaje perdido ya no se reproduce en este camino confirmado.
 
+## Addendum intento de cierre formal · 18/11/2026
+
+Con autorización explícita se pulsó una sola vez «Cerrar cuenta pagada» para
+la cuenta del ensayo de propina. La UI no confirmó el cierre: mantuvo
+«Cuenta comercial: Abierta» y, después de recargar, Pase siguió mostrando la
+cuenta abierta. No se repitió la acción ni se tocó ninguna otra cuenta.
+
+El cobro y la propina permanecen confirmados; el cierre formal queda pendiente
+de servir/cerrar el pedido o de obtener el error server-side que explique por
+qué la operación no se aplica.
+
 ## Verificación live de la corrección · 18/11/2026
 
 El commit `2c281607` se publicó en el Deploy Preview `6afd9ed0c74b1938b74eb0d3`

@@ -159,3 +159,15 @@ La cuenta quedó pagada pero abierta porque su pedido aún no estaba servido o
 cerrado. El cierre formal es una operación separada y no se ejecuta sin una
 autorización específica. P06 queda validado para el camino de confirmación y
 registro de propina; la conciliación contable/fiscal sigue siendo opcional.
+
+## Intento de cierre formal autorizado · 18/11/2026
+
+Con autorización explícita se pulsó **una sola vez** «Cerrar cuenta pagada»
+para la cuenta anterior. La pantalla no mostró una confirmación de cierre:
+conservó el estado «Cuenta comercial: Abierta» y, tras recargar el preview,
+el panel Pase siguió mostrando la cuenta abierta. No se repitió la acción.
+
+Resultado: el cobro y la propina sí están confirmados, pero el cierre formal
+no queda probado. El pedido asociado todavía necesita quedar servido/cerrado o
+el servidor debe exponer el motivo concreto del rechazo antes de volver a
+intentarlo. No se modificó ninguna otra cuenta ni producción.
