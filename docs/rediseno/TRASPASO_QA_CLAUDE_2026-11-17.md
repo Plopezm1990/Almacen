@@ -893,3 +893,21 @@ ligado a la cuenta `16cae507-2855-4c02-8d35-5a98abcf3b68` del día operativo
 Por tanto, el siguiente paso requiere autorización separada para una venta de
 ensayo nueva del día actual; no se debe crear por SQL ni reutilizar un cobro
 existente.
+
+## Addendum cierre positivo `tpv-31` · 18/11/2026
+
+Se autorizó y ejecutó una sola venta sintética de `1,00 €` en QA-A1 mediante
+efectivo simulado. Generó el ticket simplificado `TPV-39` (secuencia 35),
+cuenta `3043de61-52f6-4e49-a847-ec850666b5f6` y documento original
+`a178ad98-3d20-43a7-a681-dc9a0d415b3c`.
+
+La UI se corrigió porque el primer intento trataba de cambiar el tipo del
+documento simplificado y el servidor devolvía `documento_tipo_ya_definido`.
+Ahora reserva un documento nuevo, resuelve su emisión, lo clasifica como
+`FACTURA_COMPLETA` y conserva la revisión mediante las RPC C05/C06/C08.
+
+La validación positiva quedó confirmada en QA: factura completa `TPV-40`,
+documento `92067547-0938-4844-929b-13fd91be69df`, estado `EMITIDO`, revisión 1,
+receptor sintético `QA Empresa Factura P1 / B12345678 / Calle QA 1` y snapshot
+con `documento_original_id` apuntando al ticket simplificado. El documento
+original no cambió, no se cobró de nuevo y AEAT real permaneció desactivada.

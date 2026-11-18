@@ -117,3 +117,23 @@ el TPV lo expone como «Día cerrado» y no permite retomarlo. Para obtener una
 prueba positiva de `tpv-31` hace falta una venta de ensayo nueva del día
 actual, expresamente autorizada, y después dejar la cuenta pagada/cerrada sin
 reutilizarla en producción.
+
+## Validación positiva de `tpv-31` · 18/11/2026
+
+Se autorizó una única venta sintética de `1,00 €` en QA-A1 mediante efectivo
+simulado. Resultado: ticket simplificado `TPV-39`, cuenta
+`3043de61-52f6-4e49-a847-ec850666b5f6` cerrada, documento original
+`a178ad98-3d20-43a7-a681-dc9a0d415b3c` y secuencia 35.
+
+La primera implementación intentaba reclasificar ese documento y el servidor
+la rechazó correctamente con `documento_tipo_ya_definido`. Se corrigió la
+interfaz para reservar un documento nuevo (`abc_reservar_numero_documental`),
+resolverlo como emitido (`abc_resolver_emision_documental`), clasificarlo como
+`FACTURA_COMPLETA` y conservarlo (`abc_conservar_documento_emitido`).
+
+La segunda prueba fue positiva: factura completa `TPV-40`, documento
+`92067547-0938-4844-929b-13fd91be69df`, estado `EMITIDO`, revisión inmutable
+1, receptor sintético `QA Empresa Factura P1 / B12345678 / Calle QA 1`, y
+`snapshot.documento_original_id` apuntando a `TPV-39`. El documento
+simplificado original no se modificó. El resultado es QA simulado; no se
+transmitió nada a AEAT.
