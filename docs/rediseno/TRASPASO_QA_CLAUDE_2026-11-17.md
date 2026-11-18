@@ -699,3 +699,4 @@ Se añadió el contrato P06, la migración reproducible y el plan detallado en
 `docs/rediseno/PLAN_P1_PROPINA_ORBITA_2026-11-18.md`. No se ejecutaron cobros,
 reembolsos, propinas ni migraciones en QA. Antes del cierre manual hace falta
 un fixture reversible y autorización explícita para un único cobro simulado.
+Commit publicado: `2f9679f8`.

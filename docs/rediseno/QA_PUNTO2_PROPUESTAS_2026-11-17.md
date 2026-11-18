@@ -324,4 +324,5 @@ espejo de recuperación permanecen byte a byte en paridad.
 La migración reproducible y el contrato P06 quedan documentados en
 `docs/rediseno/PLAN_P1_PROPINA_ORBITA_2026-11-18.md`. La prueba funcional en QA
 queda pendiente de una autorización explícita para un cobro simulado y de un
-fixture reversible; la prueba contable/fiscal sigue separada.
+fixture reversible; la prueba contable/fiscal sigue separada. Implementación
+publicada en `2f9679f8`.

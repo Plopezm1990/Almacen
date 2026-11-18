@@ -3,6 +3,9 @@
 Fecha: 18 de noviembre de 2026  
 Rama: `rediseno/f0-base-qa` · PR #225 en borrador · solo QA
 
+Implementación publicada en `2f9679f8` (`feat(qa): integrar propina del
+cambio en orbita`).
+
 ## Objetivo
 
 Reincorporar en el TPV la opción **«El cambio es propina»** manteniendo el
