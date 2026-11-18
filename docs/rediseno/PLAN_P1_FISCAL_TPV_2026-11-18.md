@@ -108,3 +108,12 @@ formas antes de mostrar y ejecutar `tpv-31`/`caj-16`; no cambia el contrato
 server-side ni permite operar sin un identificador. Se regeneró el espejo de
 `source-recovery` y el contrato de P1 sigue pasando. La validación live de la
 emisión queda pendiente de repetir en el preview actualizado.
+
+La consulta posterior de QA no encuentra otro fixture utilizable: solo queda
+sin clasificación el documento `dee9ca1a-79ac-4d53-a902-69976686d497`
+(`TPV-6`), ligado a la cuenta `16cae507-2855-4c02-8d35-5a98abcf3b68` del día
+operativo `2026-10-26`. El servidor lo mantiene abierto históricamente, pero
+el TPV lo expone como «Día cerrado» y no permite retomarlo. Para obtener una
+prueba positiva de `tpv-31` hace falta una venta de ensayo nueva del día
+actual, expresamente autorizada, y después dejar la cuenta pagada/cerrada sin
+reutilizarla en producción.

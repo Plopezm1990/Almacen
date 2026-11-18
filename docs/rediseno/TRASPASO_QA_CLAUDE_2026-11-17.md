@@ -885,3 +885,11 @@ creó otro cobro ni se modificó ninguna cuenta. Para cerrar P1 falta un fixture
 reversible del día actual con documento fiscal aún no clasificado y, después,
 un documento rectificativo emitido/clasificado; ambos deben probarse desde la
 UI y mantenerse en QA.
+
+La sonda de solo lectura posterior confirma que no hay otro documento apto:
+el único sin clasificación es `TPV-6` (`dee9ca1a-79ac-4d53-a902-69976686d497`),
+ligado a la cuenta `16cae507-2855-4c02-8d35-5a98abcf3b68` del día operativo
+`2026-10-26`. El TPV la muestra como «Día cerrado» y no permite retomarla.
+Por tanto, el siguiente paso requiere autorización separada para una venta de
+ensayo nueva del día actual; no se debe crear por SQL ni reutilizar un cobro
+existente.
