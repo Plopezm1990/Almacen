@@ -945,7 +945,10 @@ tablas `catalogo_tpv_tarifas_horario` y `catalogo_tpv_tarifa_precios` y las RPC
 `abc_guardar_tarifa_horario`/`abc_guardar_tarifa_precio`. La UI ahora lee esas
 tablas y muestra el editor con motivo obligatorio; si otro entorno no tiene la
 migración, conserva el aviso de contrato ausente. Las tarifas se aplican al
-local completo, no por zona.
+local completo, no por zona. En QA queda un fixture previo inactivo en
+`QA-EMP-A/QA-A1` (`11111111-1111-1111-1111-111111111111`, «VERIF Hora feliz
+temporal», sábado 21:00–23:59, versión 1, un precio especial); no se ha tocado
+en esta tanda.
 
 Contrato local: `tests/rediseno/org33-sala-contract.mjs` (`PASS`). La paridad de
 `source-recovery` también pasa. El plan y las condiciones para cerrar la

@@ -86,8 +86,11 @@ validación QA**.
 - `git diff --check`: limpio
 
 Descubrimiento QA de T8 pieza 3: las tablas existen y hay 1 fila de tarifa en
-el proyecto `qjqorixtkilwsndqayyx`; las RPC públicas aceptan los contratos de
-guardado descritos arriba. Todavía no se ha pulsado ningún guardado de tarifa.
+`QA-EMP-A/QA-A1`: `11111111-1111-1111-1111-111111111111`, nombre `VERIF Hora
+feliz temporal`, sábado 21:00–23:59, inactiva, versión 1 y un precio especial.
+La fila es un fixture previo y se conserva sin modificar. Las RPC públicas
+aceptan los contratos de guardado descritos arriba. Todavía no se ha pulsado
+ningún guardado de tarifa en esta tanda.
 
 SHA de implementación: `4abbc0ea`
 SHA de contrato y espejo: `df03c029`
