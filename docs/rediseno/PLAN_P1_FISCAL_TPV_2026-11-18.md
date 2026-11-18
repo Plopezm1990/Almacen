@@ -96,3 +96,15 @@ real ni afirmar cumplimiento AEAT.
 - `docs/rediseno/PLAN_P1_PROPINA_ORBITA_2026-11-18.md` — cobro único de 4,95 €, propina 0,05 €, ticket `TPV-38`, secuencia 34 y cierre formal tras servir el pedido.
 - `docs/rediseno/CIERRE-ALCANCE-PENDIENTES-2026-11-18.md` — orden global de las 21 filas no construidas.
 - `tests/rediseno/p06-propina-cambio-contract.mjs` — contrato de propina y mensaje honesto de cierre.
+
+## Corrección de interoperabilidad de respuesta · 18/11/2026
+
+En la primera revisión live de QA el documento C07-D se veía (serie, número,
+cola y QR), pero no aparecían las acciones P1. La causa era una suposición
+demasiado estricta del cliente: la tarjeta exigía que el identificador viniera
+únicamente en `documento_id`, aunque el contrato de lectura también puede
+entregarlo como `id` o anidado en `documento.id`. La UI ahora normaliza esas
+formas antes de mostrar y ejecutar `tpv-31`/`caj-16`; no cambia el contrato
+server-side ni permite operar sin un identificador. Se regeneró el espejo de
+`source-recovery` y el contrato de P1 sigue pasando. La validación live de la
+emisión queda pendiente de repetir en el preview actualizado.

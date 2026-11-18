@@ -25581,7 +25581,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return;
     }
     const documento = Array.isArray(fiscalActual?.documentos) ? fiscalActual.documentos[0] : null;
-    const documentoId = String(documento?.documento_id || "").trim();
+    const documentoId = String(documento?.documento_id || documento?.id || documento?.documento?.id || "").trim();
     if (!documentoId || !configEmpresa?.id || !local?.id) {
       setErrorFacturaEmpresaP1("El documento fiscal todavía no está disponible para clasificarlo.");
       return;
@@ -25629,7 +25629,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   async function registrarRectificacionP1(fiscalActual) {
     if (procesandoRectificacionP1) return;
     const documentoOriginal = Array.isArray(fiscalActual?.documentos) ? fiscalActual.documentos[0] : null;
-    const documentoOriginalId = String(documentoOriginal?.documento_id || "").trim();
+    const documentoOriginalId = String(documentoOriginal?.documento_id || documentoOriginal?.id || documentoOriginal?.documento?.id || "").trim();
     const documentoCorreccionId = String(datosRectificacionP1.documentoCorreccionId || "").trim();
     const motivo = String(datosRectificacionP1.motivo || "").trim();
     if (!documentoOriginalId || !documentoCorreccionId || !motivo) {
@@ -27425,7 +27425,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[9px] mt-1", style: { color: C2.inkSoft } }, "Matriz generada desde el payload verificable de QA; presentación AEAT real desactivada.")
         ) : fiscal.qr?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.ink } }, "QR fiscal pendiente: ", fiscal.qr.error || "actualiza para reintentar.") : null,
         ticketCobroFiscalC07D() ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", className: "mt-2", "data-ticket-c07d-live": "qa", onClick: () => setTicketVenta(ticketCobroFiscalC07D()) }, "Ver ticket con QR") : null,
-        fiscal.documentos[0]?.documento_id ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 p-2 rounded-lg", "data-tpv31-factura-empresa": "1", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        (fiscal.documentos[0]?.documento_id || fiscal.documentos[0]?.id || fiscal.documentos[0]?.documento?.id) ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 p-2 rounded-lg", "data-tpv31-factura-empresa": "1", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Factura completa a empresa"),
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Clasifica y conserva este documento con los datos fiscales del cliente. La emisión es QA simulada; no se envía a AEAT."),
           resultadoFacturaEmpresaP1 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[10.5px] mb-2", style: { color: C2.accent } }, "Factura completa clasificada y conservada en el servidor. Revisión inmutable creada.") : null,
