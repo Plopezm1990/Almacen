@@ -552,3 +552,24 @@ marco temporal de Órbita; la configuración persistida de QA no se cambió.
 Antes de fusionar hay que repetir la comprobación visual de TPV, Pase, Cocina y
 Caja en 1440×900, 1024, 430, 390 y 320 px y actualizar la matriz con el SHA
 final. PR #225 continúa en borrador y producción sigue fuera de alcance.
+
+## Addendum corrección visual de Órbita · 18/11/2026 · SHA `ac4731aa`
+
+La pasada de escritorio/móvil había confirmado la composición de las nueve
+propuestas, pero el TPV conservaba verde del shell histórico al activar Órbita.
+La causa no estaba en la selección de apariencia: `[data-tema="oscuro"]`
+redefinía los tokens CSS en el contenedor y el botón seleccionado «Sala /
+restaurante» llevaba un color literal. `la-apariencia.css` fija ahora los tokens
+de Órbita en el contenedor operativo (carbón, acero y coral) y normaliza esa
+acción a `#FF4B32`; `index.html` usa la marca de caché
+`qa-orbita-shell-pase-v4-20261118`.
+
+Comprobación live en preview #225: prueba temporal de Órbita en TPV móvil con
+fondo carbón, superficies oscuras, precios coral, chips y acción seleccionada
+coral, sin desbordamiento. No se guardó la apariencia en la empresa ni se
+realizaron operaciones económicas. Contratos tras el cambio: P01 PASS, P05
+PASS, sintaxis de `la-pase-panel.js` PASS y `git diff --check` PASS.
+
+Pendiente de cierre visual: una pasada dirigida por TPV, Pase, Cocina y Caja en
+1440×900, 1024, 430, 390 y 320 px; el PR #225 permanece en borrador y QA sigue
+aislado de producción.

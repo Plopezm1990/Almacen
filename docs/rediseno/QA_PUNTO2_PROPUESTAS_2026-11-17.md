@@ -176,3 +176,26 @@ Verificaciones de la tanda: `REDISENO_P05_PROPUESTAS_OK=1`,
 `la-pase-panel.js=PASS` y paridad `source-recovery=PASS`. El detalle de shell
 se fija con la marca de caché `qa-orbita-shell-pase-20261118`; el panel de Pase
 con `qa-orbita-pase-20261118`.
+
+## Addendum corrección visual del shell · 18/11/2026 · SHA `ac4731aa`
+
+La primera captura del TPV todavía conservaba verde en el fondo, las tarjetas y
+la acción seleccionada aunque el editor indicaba Órbita. La causa fue concreta:
+el shell histórico declaraba sus propios tokens en la regla `[data-tema="oscuro"]`
+y algunos botones del TPV usaban el verde de marca como color literal, por lo
+que no bastaba con cambiar el fondo del diseño.
+
+Se corrigió en `la-apariencia.css` sin tocar la lógica de negocio: Órbita fija en
+el contenedor operativo sus tokens carbón/acero/coral (`#17191C`, `#929DA7`,
+`#FF4B32`) con superficie, texto, línea, foco y estados derivados; además la
+acción seleccionada «Sala / restaurante» usa ahora el coral de Órbita en vez del
+verde literal. La marca de caché de `index.html` queda en
+`qa-orbita-shell-pase-v4-20261118` para evitar servir el bundle anterior.
+
+Evidencia live en el preview #225: con «Apariencia → Órbita → Probar en la
+suite», el TPV móvil muestra shell carbón, tarjetas oscuras, precios coral,
+chips de categoría y «Sala / restaurante» coral, sin overflow. La prueba fue
+temporal y no aplicó la apariencia a QA-EMP-A; no se ejecutaron cobros ni otras
+operaciones económicas. El siguiente control visual sigue siendo recorrer en
+este mismo marco TPV, Pase, Cocina y Caja en escritorio y las cuatro anchuras
+móviles antes de cerrar la revisión estética final.
