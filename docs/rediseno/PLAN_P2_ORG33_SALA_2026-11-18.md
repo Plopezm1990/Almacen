@@ -97,8 +97,36 @@ Con autorización explícita se creó el fixture reversible siguiente:
 
 El contrato funcional de zonas, mesas, tarifas, control de versión y limpieza
 reversible queda validado. La revisión visual en el navegador de escritorio fue
-correcta; la medición específica en viewport móvil 390×844 queda como pasada
-visual pendiente antes de marcar el renglón como completamente cerrado.
+correcta.
+
+## Cierre de revisión móvil · 390×844 · 18/11/2026
+
+La pasada autenticada se realizó en el Deploy Preview #225 con el propietario
+de `QA-EMP-A`, contexto `Local A1`, sobre el commit `89b4bfa83dc0ec14d381387377cf3d9b262a40c8`.
+Se forzó un viewport de 390×844 y se recorrió la pantalla completa de
+`Configuración → Sala y mesas`, incluyendo las tres zonas, la tarifa inactiva,
+el precio especial y las seis mesas reales.
+
+Resultados medidos en el DOM real:
+
+- `innerWidth=390`, `innerHeight=844`.
+- `document.documentElement.scrollWidth=390` y `body.scrollWidth=390`:
+  **sin desbordamiento horizontal**.
+- El contenedor principal conserva el desplazamiento vertical interno
+  (`scrollHeight=1931`, `clientHeight=900`) y permite llegar a la última zona
+  sin cortar el contenido.
+- Se midieron **todos los botones, campos y selectores visibles**: 0 controles
+  por debajo de 44×44 px.
+- La barra inferior conserva sus cuatro áreas táctiles de aproximadamente
+  98×54 px.
+- Se comprobó visualmente el tramo superior y el tramo inferior, incluida la
+  zona vacía `QA-P1-VACIA` y el estado «Esta zona todavía no tiene mesas.».
+- No se creó, editó, reactivó ni eliminó ningún dato durante esta pasada.
+
+Con esta evidencia, la revisión móvil queda **cerrada**. Los fixtures
+`QA-P2-ZONA-01` (`00853c8f-8a5d-4e12-997c-8ede808b3714`) y
+`QA-P2-MESA-01` (`f00d03d7-6c10-4a33-899f-988db44aab86`) permanecen inactivos
+en QA para conservar la evidencia de concurrencia y limpieza reversible.
 
 ## Verificación local
 
@@ -117,4 +145,7 @@ ningún guardado de tarifa en esta tanda.
 
 SHA de implementación: `4abbc0ea`
 SHA de contrato y espejo: `df03c029`
-SHA de la corrección de tarifas: pendiente de commit
+SHA de la corrección de tarifas: `89b4bfa83dc0ec14d381387377cf3d9b262a40c8`
+
+Estado de cierre: **Pasa en QA**, pendiente únicamente de sincronizar la fila
+correspondiente de la matriz y el traspaso general.

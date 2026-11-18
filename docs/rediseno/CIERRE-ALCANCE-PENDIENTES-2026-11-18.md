@@ -104,3 +104,18 @@ que C06/C08 ya están aplicadas y que sus RPC están cerradas a
 lo que falta la interfaz y un fixture reversible, no SQL nuevo. El plan
 técnico y sus condiciones de cierre quedan en
 `PLAN_P1_FISCAL_TPV_2026-11-18.md`.
+
+## Addendum de actualización posterior · org-33 · 18/11/2026
+
+La revisión móvil de `org-33` queda cerrada en el Deploy Preview #225 sobre el
+commit `89b4bfa83dc0ec14d381387377cf3d9b262a40c8`. En viewport 390×844 se
+verificó la pantalla completa de `Configuración → Sala y mesas`: tres zonas,
+tarifa T8 inactiva, precio especial y seis mesas reales. El DOM informó
+`scrollWidth=390` con `innerWidth=390`, scroll vertical interno completo y cero
+controles por debajo de 44×44 px. No se realizaron mutaciones durante esta
+pasada; los fixtures de `org-33` permanecen inactivos.
+
+Por tanto, `org-33` pasa de «Validada en QA; revisión móvil pendiente» a
+`Pasa`. La cifra histórica de filas `No construida` debe volver a revisarse
+contra la matriz después de promover también las evidencias live de `tpv-31` y
+`caj-16`, que ya cuentan con filas de cierre específicas.

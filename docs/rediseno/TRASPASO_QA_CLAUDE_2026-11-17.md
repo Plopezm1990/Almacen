@@ -965,7 +965,23 @@ primero la mesa (versión 2) y después la zona (versión 4). La consulta poster
 confirma ambos registros inactivos y que ninguna zona o mesa real fue tocada.
 
 La lectura live mostró las tres zonas, seis mesas, estados efectivos y la tarifa
-T8 previa inactiva. El contrato funcional de `org-33` queda validado en QA. La
-única comprobación pendiente para cerrar visualmente la fila es una pasada en
-viewport móvil 390×844; el estado se mantiene como `Pendiente visual` hasta
-hacerla.
+T8 previa inactiva. El contrato funcional de `org-33` queda validado en QA.
+
+### Addendum cierre visual móvil org-33 · 18/11/2026 · commit `89b4bfa8`
+
+La pasada autenticada se completó en el Deploy Preview #225 con el propietario
+de `QA-EMP-A`, `Local A1` y el viewport emulado de 390×844. Se recorrió la
+pantalla completa de `Configuración → Sala y mesas`, incluyendo las tres zonas,
+la tarifa inactiva, el precio especial y las seis mesas reales.
+
+La medición del DOM dio `innerWidth=390`, `innerHeight=844`,
+`document.documentElement.scrollWidth=390` y `body.scrollWidth=390`, por lo que
+no hay desbordamiento horizontal. El contenedor principal conserva su scroll
+vertical interno (`scrollHeight=1931`, `clientHeight=900`) y permite llegar a
+la última zona. Todos los botones, campos y selectores medidos tienen al menos
+44×44 px; la barra inferior mantiene sus cuatro áreas táctiles.
+
+No se ejecutó ninguna mutación durante la revisión. Los fixtures
+`QA-P2-ZONA-01` y `QA-P2-MESA-01` permanecen inactivos para conservar la
+evidencia de concurrencia y limpieza reversible. `org-33` queda cerrado como
+`Pasa` en QA; producción sigue fuera de alcance.
