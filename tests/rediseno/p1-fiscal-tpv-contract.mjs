@@ -12,6 +12,8 @@ for (const [nombre, source] of [["fuente.js", fuente], ["fuente-recuperado.js", 
   assert.match(source, /Solicitar factura a empresa/, `${nombre}: falta la acción de factura completa`);
   assert.match(source, /abc_clasificar_documento/, `${nombre}: falta el RPC C06 de clasificación`);
   assert.match(source, /FACTURA_COMPLETA/, `${nombre}: falta el tipo documental completo`);
+  assert.match(source, /abc_reservar_numero_documental/, `${nombre}: falta reservar el nuevo documento completo`);
+  assert.match(source, /abc_resolver_emision_documental/, `${nombre}: falta resolver la emisión del nuevo documento completo`);
   assert.match(source, /abc_conservar_documento_emitido/, `${nombre}: falta el RPC C08 de conservación`);
   assert.match(source, /qa_only: true/, `${nombre}: la UI fiscal debe declarar el alcance QA`);
   assert.match(source, /aeat_transport: "DISABLED"/, `${nombre}: la UI no debe insinuar transporte AEAT real`);
