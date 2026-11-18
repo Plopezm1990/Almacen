@@ -5,8 +5,8 @@ Rama: `rediseno/f0-base-qa`
 PR: #225, borrador, sin fusionar  
 Entorno permitido: Deploy Preview / Supabase QA. Producción no se ha tocado.
 
-Deploy más reciente para el recorrido de esta tanda: `6afd50dfec4c454497a53772`,
-[URL directa](https://6afd50dfec4c454497a53772--chic-entremet-9107cf.netlify.app/?cache=p3-clientes-final).
+Deploy más reciente para el recorrido de esta tanda: `6afd583a12363dd68f86a062`,
+[URL directa](https://6afd583a12363dd68f86a062--chic-entremet-9107cf.netlify.app/?cache=p3-clientes-final).
 El alias estable de PR #225 puede tardar en apuntar al último deploy; no se
 debe usar para certificar esta pantalla si todavía muestra el listado antiguo.
 
@@ -99,7 +99,7 @@ operaciones destructivas nuevas.
 - El espejo recuperado se regenera desde el sufijo exacto del bundle cuando la
   cabecera histórica no coincide; no se relaja la comparación del cuerpo.
 
-## Addendum de cierre live · 18/11/2026 · SHA `a13d5dd7`
+## Addendum de cierre live · 18/11/2026 · SHA `9034d97e`
 
 El recorrido autenticado ya está cerrado en el Deploy Preview #225:
 [preview estable](https://deploy-preview-225--chic-entremet-9107cf.netlify.app/?cache=p3-array-a13d5dd7-reload)

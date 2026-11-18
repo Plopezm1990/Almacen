@@ -424,7 +424,8 @@ y salto de Rumbo y recorrido desktop/móvil de las nueve composiciones.
 
 ## Addendum de cierre del Punto 3 · Codex · 18/11/2026
 
-La rama `rediseno/f0-base-qa` queda en `a13d5dd7` y el Deploy Preview #225
+La rama `rediseno/f0-base-qa` queda en `9034d97e` (la corrección de código del
+listado está en `a13d5dd7`) y el Deploy Preview #225
 correspondiente está listo en
 `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/?cache=p3-array-a13d5dd7-reload`.
 El PR #225 sigue en borrador y no se ha tocado producción.
