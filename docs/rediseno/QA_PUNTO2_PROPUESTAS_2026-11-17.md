@@ -296,3 +296,18 @@ y **Arranque: datos que no se pudieron cargar 0**. No aparecen las claves
 continúa cargando sus datos reales (4/6 mesas con cuenta, 78 pedidos y caja
 abierta). La verificación fue de lectura; no se ejecutaron cobros,
 reembolsos, cierres ni cambios económicos nuevos.
+
+## Addendum Órbita fijada en QA · 18/11/2026 · SHA `1932b106`
+
+La sesión de propietario confirmó que QA-EMP-A estaba mostrando Ascua, no
+Órbita, aunque la propuesta acordada era el parecido exacto con la maqueta.
+Se probó Órbita y se aplicó a la empresa mediante el editor, con confirmación
+del servidor en la revisión 12. Tras recargar, `data-la-diseno="orbita"` se
+resuelve desde el servidor y no desde una copia local.
+
+La revisión visual encontró además que la cabecera móvil seguía verde: la
+regla del shell tenía el escape CSS duplicado en `.md\\:hidden`. Se corrigió
+el selector a `.md\:hidden`, se renovó la marca de caché a
+`qa-orbita-shell-pase-v5-20261118` y los contratos P01/P05 y `git diff --check`
+quedaron en verde. No se ejecutaron cobros, reembolsos, cierres ni cambios de
+datos económicos.

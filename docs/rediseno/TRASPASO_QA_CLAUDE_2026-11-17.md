@@ -655,3 +655,18 @@ Cache actual de `fuente.js`: `qa-orbita-cocina-caja-v4-20261118`. La cola de
 Cocina queda limitada a las ocho comandas recientes al entrar, con **Mostrar
 todas** para ampliar la lista cuando haga falta. PR #225 sigue en borrador y
 QA continúa aislado de producción.
+
+## Addendum Órbita fijada en QA · 18/11/2026 · SHA `1932b106`
+
+La apariencia persistida de QA-EMP-A estaba en Ascua; el propietario la
+seleccionó y aplicó como **Órbita**, revisión de servidor 12. La recarga del
+preview confirma `data-la-diseno="orbita"`, así que TPV, Pase, Cocina y Caja
+parten ahora del marco de la maqueta: carbón `#17191C`, superficie `#202328`,
+acero `#929DA7`, coral `#FF4B32`, dos columnas en escritorio y tarjetas/barra
+de tareas en móvil.
+
+Se corrigió la última discrepancia visual del shell móvil: el selector CSS
+duplicaba el escape de `.md:hidden` y dejaba la cabecera verde histórica. El
+commit `1932b106` lo corrige y renueva la marca a
+`qa-orbita-shell-pase-v5-20261118`. P01, P05, sintaxis, paridad y
+`git diff --check` pasan. No se hicieron cobros, reembolsos ni cierres nuevos.
