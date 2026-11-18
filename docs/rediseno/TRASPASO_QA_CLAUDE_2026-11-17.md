@@ -574,7 +574,7 @@ Pendiente de cierre visual: una pasada dirigida por TPV, Pase, Cocina y Caja en
 1440×900, 1024, 430, 390 y 320 px; el PR #225 permanece en borrador y QA sigue
 aislado de producción.
 
-## Addendum TPV · historial de ventas en pantalla propia · 18/11/2026 · SHA `ee936bfc`
+## Addendum TPV · historial de ventas en pantalla propia · 18/11/2026 · SHA `acbf303c`
 
 Para evitar que el TPV quede excesivamente largo, el historial se ha separado
 de la operación de venta. En el TPV queda un resumen compacto (ventas, total
@@ -585,5 +585,6 @@ No se duplicó la lógica: siguen funcionando la trazabilidad, los estados de
 anulación/devolución, el ticket con QR y las acciones existentes. El cambio es
 de composición y navegación local, sin nuevas operaciones económicas. La marca
 de caché de `fuente.js` es `qa-orbita-ventas-history-v1-20261118`; la paridad
-con `source-recovery` y los contratos P01/P05 están en verde. Pendiente:
-confirmarlo en el Deploy Preview en móvil y escritorio.
+con `source-recovery` y los contratos P01/P05 están en verde. Se confirmó en
+el Deploy Preview #225 con Local A1: el resumen permanece en el TPV, el botón
+abre la pantalla propia y «← Volver al TPV» restaura la pantalla operativa.

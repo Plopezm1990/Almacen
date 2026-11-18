@@ -200,7 +200,7 @@ operaciones económicas. El siguiente control visual sigue siendo recorrer en
 este mismo marco TPV, Pase, Cocina y Caja en escritorio y las cuatro anchuras
 móviles antes de cerrar la revisión estética final.
 
-## Addendum separación del historial del TPV · 18/11/2026 · SHA `ee936bfc`
+## Addendum separación del historial del TPV · 18/11/2026 · SHA `acbf303c`
 
 El bloque largo de «Historial de ventas» ya no se muestra dentro de la pantalla
 operativa del TPV. Se conserva su lógica existente —filtros por texto, fechas,
@@ -215,5 +215,6 @@ el mero hecho de abrirla. Se renovó la marca de caché de `fuente.js` a
 
 Contratos tras el cambio: `node --check fuente.js`, `node --check
 source-recovery/fuente-recuperado.js`, `SOURCE_RECOVERY_CHECK=PASS`, P01 PASS,
-P05 PASS y `git diff --check=PASS`. Falta la comprobación visual live del botón
-en el preview recién desplegado.
+P05 PASS y `git diff --check=PASS`. En el preview #225 se comprobó el flujo
+completo en Local A1: resumen compacto → «Ver historial completo» → pantalla
+independiente con filtros → «← Volver al TPV», sin perder el contexto del local.
