@@ -661,6 +661,33 @@ html[data-la-diseno="orbita"] .tpv-layout {
    al diseño y llevan !important para ganar al estilo en línea sin tocar la
    lógica ni los tokens de los otros ocho diseños. */
 html[data-la-diseno="orbita"] #root [data-la-contenedor] {
+  /* El bundle histórico vuelve a declarar sus tokens sobre el shell
+     `[data-tema="oscuro"]`. Si solo cambiamos `background`, los valores de
+     C2 (que usan `var(--c-*)`) siguen resolviendo el verde antiguo. Reaplicamos
+     aquí los tokens de Órbita con !important para que el marco sea realmente
+     carbón/acero/coral también en TPV, Pase, Cocina y Caja. */
+  --c-bg: #17191C !important;
+  --c-surface: #202328 !important;
+  --c-ink: #F1F3F6 !important;
+  --c-ink-soft: #929DA7 !important;
+  --c-line: #737D88 !important;
+  --c-border-control: #737D88 !important;
+  --c-divider: #343941 !important;
+  --c-badge-ring: #FFFFFF !important;
+  --c-focus-ring: #A6BBFF !important;
+  --c-accent: #FF8E7D !important;
+  --c-accent-fill: #FF4B32 !important;
+  --c-on-accent: #17191C !important;
+  --c-accent-soft: #342727 !important;
+  --c-amber: #FFCE89 !important;
+  --c-amber-fill: #6B4A00 !important;
+  --c-on-amber: #FFFFFF !important;
+  --c-amber-soft: #362727 !important;
+  --c-red: #FFB5A9 !important;
+  --c-red-fill: #8E2A1E !important;
+  --c-on-red: #FFFFFF !important;
+  --c-red-soft: #3B2627 !important;
+  --c-chrome: #15171B !important;
   background: var(--c-bg) !important;
   color: var(--c-ink) !important;
   font-family: var(--la-font) !important;
