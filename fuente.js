@@ -126679,6 +126679,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
   const [procesandoIncidenciaB04, setProcesandoIncidenciaB04] = (0, import_react4.useState)(false);
   const [showCobro, setShowCobro] = (0, import_react4.useState)(false);
+  const [facturaEmpresaAbiertaP1, setFacturaEmpresaAbiertaP1] = (0, import_react4.useState)(false);
+  const [datosFacturaEmpresaP1, setDatosFacturaEmpresaP1] = (0, import_react4.useState)({ nombre: "", identificador_fiscal: "", direccion: "" });
+  const [procesandoFacturaEmpresaP1, setProcesandoFacturaEmpresaP1] = (0, import_react4.useState)(false);
+  const [errorFacturaEmpresaP1, setErrorFacturaEmpresaP1] = (0, import_react4.useState)("");
+  const [resultadoFacturaEmpresaP1, setResultadoFacturaEmpresaP1] = (0, import_react4.useState)(null);
   const [modalidadesA02, setModalidadesA02] = (0, import_react4.useState)([]);
   const [modalidadElegidaA02, setModalidadElegidaA02] = (0, import_react4.useState)("");
   const cargarModalidadesA02 = async () => {
@@ -126689,6 +126694,61 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     } catch (e2) {
     }
   };
+  async function solicitarFacturaEmpresaP1(fiscalActual) {
+    if (procesandoFacturaEmpresaP1) return;
+    const nombre = String(datosFacturaEmpresaP1.nombre || "").trim();
+    const identificadorFiscal = String(datosFacturaEmpresaP1.identificador_fiscal || "").trim().toUpperCase();
+    const direccion = String(datosFacturaEmpresaP1.direccion || "").trim();
+    if (!nombre || !identificadorFiscal) {
+      setErrorFacturaEmpresaP1("Escribe la razón social y el identificador fiscal de la empresa.");
+      return;
+    }
+    const documento = Array.isArray(fiscalActual?.documentos) ? fiscalActual.documentos[0] : null;
+    const documentoId = String(documento?.documento_id || "").trim();
+    if (!documentoId || !configEmpresa?.id || !local?.id) {
+      setErrorFacturaEmpresaP1("El documento fiscal todavía no está disponible para clasificarlo.");
+      return;
+    }
+    if (typeof window?.getSupabaseClient !== "function") {
+      setErrorFacturaEmpresaP1("La factura completa necesita conexión con el servidor.");
+      return;
+    }
+    setProcesandoFacturaEmpresaP1(true);
+    setErrorFacturaEmpresaP1("");
+    setResultadoFacturaEmpresaP1(null);
+    try {
+      const supabase = await window.getSupabaseClient();
+      const receptor = { nombre, identificador_fiscal: identificadorFiscal, ...(direccion ? { direccion } : {}) };
+      const baseOperacion = `p1.tpv31.factura-completa:${documentoId}`;
+      const { data: clasificacion, error: errorClasificacion } = await supabase.rpc("abc_clasificar_documento", {
+        p_operation_id: `${baseOperacion}:clasificar`,
+        p_empresa_id: configEmpresa.id,
+        p_local_id: local.id,
+        p_documento_id: documentoId,
+        p_tipo_documental: "FACTURA_COMPLETA",
+        p_documento_referencia_id: null,
+        p_datos_receptor: receptor
+      });
+      if (errorClasificacion) throw errorClasificacion;
+      const { data: conservacion, error: errorConservacion } = await supabase.rpc("abc_conservar_documento_emitido", {
+        p_operation_id: `${baseOperacion}:conservar`,
+        p_empresa_id: configEmpresa.id,
+        p_local_id: local.id,
+        p_documento_id: documentoId,
+        p_snapshot: { documento_id: documentoId, cuenta_id: pedidoOperativoA05?.cuentaId || null, receptor, qa_only: true, aeat_transport: "DISABLED" },
+        p_emisor: { empresa_id: configEmpresa.id, local_id: local.id },
+        p_receptor: receptor,
+        p_respuesta_fiscal: { qa_only: true, aeat_transport: "DISABLED" }
+      });
+      if (errorConservacion) throw errorConservacion;
+      setResultadoFacturaEmpresaP1({ clasificacion, conservacion });
+      setFacturaEmpresaAbiertaP1(false);
+    } catch (error) {
+      setErrorFacturaEmpresaP1(error?.message || String(error || "No se pudo solicitar la factura completa."));
+    } finally {
+      setProcesandoFacturaEmpresaP1(false);
+    }
+  }
   (0, import_react4.useEffect)(() => {
     setModalidadesA02([]);
     setModalidadElegidaA02("");
@@ -128449,7 +128509,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[8.5px] break-all mt-2", style: { color: C2.inkSoft } }, fiscal.qr.qr_url),
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[9px] mt-1", style: { color: C2.inkSoft } }, "Matriz generada desde el payload verificable de QA; presentación AEAT real desactivada.")
         ) : fiscal.qr?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-2", style: { color: C2.ink } }, "QR fiscal pendiente: ", fiscal.qr.error || "actualiza para reintentar.") : null,
-        ticketCobroFiscalC07D() ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", className: "mt-2", "data-ticket-c07d-live": "qa", onClick: () => setTicketVenta(ticketCobroFiscalC07D()) }, "Ver ticket con QR") : null
+        ticketCobroFiscalC07D() ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", className: "mt-2", "data-ticket-c07d-live": "qa", onClick: () => setTicketVenta(ticketCobroFiscalC07D()) }, "Ver ticket con QR") : null,
+        fiscal.documentos[0]?.documento_id ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 p-2 rounded-lg", "data-tpv31-factura-empresa": "1", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Factura completa a empresa"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Clasifica y conserva este documento con los datos fiscales del cliente. La emisión es QA simulada; no se envía a AEAT."),
+          resultadoFacturaEmpresaP1 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[10.5px] mb-2", style: { color: C2.accent } }, "Factura completa clasificada y conservada en el servidor. Revisión inmutable creada.") : null,
+          errorFacturaEmpresaP1 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[10.5px] mb-2", style: { color: C2.red } }, errorFacturaEmpresaP1) : null,
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => { setErrorFacturaEmpresaP1(""); setFacturaEmpresaAbiertaP1(true); }, disabled: procesandoFacturaEmpresaP1 || !!resultadoFacturaEmpresaP1 }, resultadoFacturaEmpresaP1 ? "Factura completa registrada" : "Solicitar factura a empresa")
+        ) : null
       ) : fiscal?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "pending", style: { background: C2.amberSoft, color: C2.ink } }, "Cobro confirmado. Fiscalización C07-D pendiente: ", fiscal.error || "actualiza para reintentar.") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
@@ -128501,6 +128568,17 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Cierre de cuenta pagada"),
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "El saldo ya está confirmado. Ejecuta el cierre formal en el servidor para dejar la cuenta y sus pedidos cerrados."),
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: 0, importeRecibido: 0, cambioEntregado: 0 }), disabled: fixtureSoloLectura || procesandoCobroF4 }, procesandoCobroF4 ? "Cerrando…" : "Cerrar cuenta pagada")
+      ) : null,
+      facturaEmpresaAbiertaP1 ? /* @__PURE__ */ import_react4.default.createElement(Modal, { title: "Solicitar factura completa", onClose: () => !procesandoFacturaEmpresaP1 && setFacturaEmpresaAbiertaP1(false) },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El servidor exige razón social e identificador fiscal. La operación clasifica el documento emitido y crea su conservación inmutable; no modifica el cobro."),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Razón social" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: datosFacturaEmpresaP1.nombre, maxLength: 160, onChange: (e2) => setDatosFacturaEmpresaP1((actual) => ({ ...actual, nombre: e2.target.value })), autoFocus: true })),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "NIF/CIF" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: datosFacturaEmpresaP1.identificador_fiscal, maxLength: 32, onChange: (e2) => setDatosFacturaEmpresaP1((actual) => ({ ...actual, identificador_fiscal: e2.target.value.toUpperCase() })) })),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Dirección (opcional)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: datosFacturaEmpresaP1.direccion, maxLength: 220, onChange: (e2) => setDatosFacturaEmpresaP1((actual) => ({ ...actual, direccion: e2.target.value })) })),
+        errorFacturaEmpresaP1 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] mb-2", style: { color: C2.red } }, errorFacturaEmpresaP1) : null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => solicitarFacturaEmpresaP1(fiscal), disabled: procesandoFacturaEmpresaP1 }, procesandoFacturaEmpresaP1 ? "Guardando…" : "Confirmar factura completa"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setFacturaEmpresaAbiertaP1(false), disabled: procesandoFacturaEmpresaP1 }, "Cancelar")
+        )
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
