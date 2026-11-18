@@ -790,6 +790,19 @@ El cobro y la propina permanecen confirmados; el cierre formal queda pendiente
 de servir/cerrar el pedido o de obtener el error server-side que explique por
 qué la operación no se aplica.
 
+## Addendum diagnóstico y corrección del mensaje de cierre · 18/11/2026
+
+La migración `abc_cerrar_cuenta_pagada` rechaza correctamente una cuenta si
+alguno de sus pedidos no está en `SERVIDO`, `CERRADO` o `CANCELADO`, con el
+motivo `cuenta_pedido_no_cerrable`. El pedido del fixture de propina aún no
+estaba servido/cerrado.
+
+La pantalla ocultaba ese motivo: la rama de cierre temprano de
+`iniciarCobroCuentaF4` devolvía el estado pagado sin asignar `mensaje`, por lo
+que la UI enseñaba el texto genérico de cobro confirmado. Se corrigieron ambos
+archivos con paridad exacta para construir el mensaje de cuenta abierta junto
+al error del servidor; el contrato P06 lo comprueba. No se ejecutó otro cierre.
+
 ## Verificación live de la corrección · 18/11/2026
 
 El commit `2c281607` se publicó en el Deploy Preview `6afd9ed0c74b1938b74eb0d3`

@@ -171,3 +171,24 @@ Resultado: el cobro y la propina sí están confirmados, pero el cierre formal
 no queda probado. El pedido asociado todavía necesita quedar servido/cerrado o
 el servidor debe exponer el motivo concreto del rechazo antes de volver a
 intentarlo. No se modificó ninguna otra cuenta ni producción.
+
+## Diagnóstico del cierre no confirmado · 18/11/2026
+
+La ruta del servidor exige que todos los pedidos de la cuenta estén en
+`SERVIDO`, `CERRADO` o `CANCELADO`; si encuentra otro estado devuelve
+`cuenta_pedido_no_cerrable`. La cuenta de este ensayo conservaba un pedido no
+servido/cerrado, por lo que el rechazo es correcto y protege contra cerrar una
+venta incompleta.
+
+Encontré además un defecto de presentación en el cliente: el botón de cierre
+llama al mismo flujo `iniciarCobroCuentaF4` con importe cero, y la rama que
+intenta el cierre temprano devolvía el estado de cobro sin construir `mensaje`.
+La UI caía entonces en el texto genérico «Cobro en efectivo confirmado por el
+servidor», ocultando el motivo real y haciendo parecer que el clic no había
+tenido respuesta.
+
+Corregido en `fuente.js` y `source-recovery/fuente-recuperado.js`: la rama de
+cierre ahora muestra «Efectivo confirmado, pero la cuenta sigue abierta» junto
+al error devuelto por el servidor, y mantiene el mensaje de cierre cuando sí se
+cierra. P06 añade una aserción para impedir que vuelva el silencio. No se ha
+reintentado el cierre en QA.

@@ -11920,6 +11920,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           estadoCerrado.cuentaEstado = "CERRADA";
           estadoCerrado.cuentaVersion = Number(cierreCuenta.cuenta_version);
           estadoCerrado.mensaje = "Cuenta pagada cerrada formalmente por el servidor.";
+        } else {
+          estadoCerrado.mensaje = `Efectivo confirmado, pero la cuenta sigue abierta: ${cierreCuenta?.error || "el cierre requiere revisión"}`;
         }
         return estadoCerrado;
       }
