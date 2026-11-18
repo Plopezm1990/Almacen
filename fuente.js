@@ -104295,11 +104295,155 @@ function ConfigMfa({ esPropietario = false }) {
   );
 }
 // ==== FIN CONFIG_MFA ====
-function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [], procesarColaFiscalQaC07D = null }) {
+function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
+  const h = import_react4.default.createElement;
+  const [mapa, setMapa] = (0, import_react4.useState)(null);
+  const [cargando, setCargando] = (0, import_react4.useState)(false);
+  const [guardando, setGuardando] = (0, import_react4.useState)(false);
+  const [error, setError] = (0, import_react4.useState)("");
+  const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [modalZona, setModalZona] = (0, import_react4.useState)(null);
+  const [modalMesa, setModalMesa] = (0, import_react4.useState)(null);
+  const [zonaForm, setZonaForm] = (0, import_react4.useState)({ id: "", codigo: "", nombre: "", tipo: "SALA", orden: "0", activo: true, version: 1 });
+  const [mesaForm, setMesaForm] = (0, import_react4.useState)({ id: "", zonaId: "", codigo: "", nombre: "", capacidad: "4", orden: "0", activo: true, notas: "", version: 1 });
+  const tiposZona = ["SALA", "TERRAZA", "BARRA", "EXTERIOR", "OTRO"];
+  const zonas = Array.isArray(mapa?.zonas) ? mapa.zonas : [];
+  const cargar = async () => {
+    setError("");
+    setConfirmacion("");
+    if (!empresaId || !localId || typeof cargarMapaSala !== "function") {
+      setMapa(null);
+      return;
+    }
+    setCargando(true);
+    try {
+      const resultado = await cargarMapaSala({ paraPanel: true });
+      if (!resultado?.ok) throw new Error(resultado?.error || "No se pudo leer la sala del servidor.");
+      setMapa(resultado);
+    } catch (e2) {
+      setError(e2?.message || String(e2 || "No se pudo leer la sala del servidor."));
+    } finally {
+      setCargando(false);
+    }
+  };
+  (0, import_react4.useEffect)(() => { cargar(); }, [empresaId, localId]);
+  const contextoOperativo = () => {
+    if (!mapa?.terminalId || !mapa?.sessionId || !/^\d{4}-\d{2}-\d{2}$/.test(String(mapa?.operatingDay || ""))) {
+      throw new Error("La sala necesita un terminal con sesión de caja abierta y día operativo.");
+    }
+    return { p_terminal_id: mapa.terminalId, p_session_id: mapa.sessionId, p_operating_day: mapa.operatingDay };
+  };
+  const abrirNuevaZona = () => {
+    setZonaForm({ id: "", codigo: "", nombre: "", tipo: "SALA", orden: String(zonas.length), activo: true, version: 1 });
+    setModalZona("crear");
+    setError("");
+  };
+  const abrirEditarZona = (zona) => {
+    setZonaForm({ id: zona.zona_id || zona.id || "", codigo: zona.codigo || "", nombre: zona.nombre || "", tipo: zona.tipo || "SALA", orden: String(zona.orden ?? 0), activo: zona.activo !== false, version: Number(zona.version) || 1 });
+    setModalZona("editar");
+    setError("");
+  };
+  const abrirNuevaMesa = (zona) => {
+    setMesaForm({ id: "", zonaId: zona.zona_id || zona.id || "", codigo: "", nombre: "", capacidad: "4", orden: String((zona.mesas || []).length), activo: true, notas: "", version: 1 });
+    setModalMesa("crear");
+    setError("");
+  };
+  const abrirEditarMesa = (zona, mesa) => {
+    setMesaForm({ id: mesa.mesa_id || mesa.id || "", zonaId: zona.zona_id || zona.id || "", codigo: mesa.codigo || "", nombre: mesa.nombre || "", capacidad: String(mesa.capacidad ?? 4), orden: String(mesa.orden ?? 0), activo: mesa.activo !== false, notas: mesa.notas || "", version: Number(mesa.version) || 1 });
+    setModalMesa("editar");
+    setError("");
+  };
+  const guardarZona = async () => {
+    if (guardando) return;
+    const codigo = String(zonaForm.codigo || "").trim().toUpperCase();
+    const nombre = String(zonaForm.nombre || "").trim();
+    const orden = Number(zonaForm.orden);
+    if (!codigo || !nombre || !Number.isInteger(orden) || orden < 0) { setError("Indica código, nombre y un orden válido para la zona."); return; }
+    setGuardando(true); setError(""); setConfirmacion("");
+    try {
+      const contexto = contextoOperativo();
+      const parametros = { p_operation_id: configOperacion(`sala.zona.${modalZona}`), p_empresa_id: empresaId, p_local_id: localId, p_codigo: codigo, p_nombre: nombre, p_tipo: zonaForm.tipo, p_orden: orden, ...contexto };
+      if (modalZona === "crear") {
+        await configRpc("abc_crear_zona", { ...parametros, p_zona_id: configUuid() });
+      } else {
+        await configRpc("abc_actualizar_zona", { ...parametros, p_zona_id: zonaForm.id, p_activo: zonaForm.activo, p_expected_version: Number(zonaForm.version) });
+      }
+      setModalZona(null); setConfirmacion(modalZona === "crear" ? "Zona creada en el servidor." : "Zona actualizada en el servidor."); await cargar();
+    } catch (e2) { setError(configMensajeError(e2)); } finally { setGuardando(false); }
+  };
+  const guardarMesa = async () => {
+    if (guardando) return;
+    const codigo = String(mesaForm.codigo || "").trim().toUpperCase();
+    const nombre = String(mesaForm.nombre || "").trim();
+    const capacidad = Number(mesaForm.capacidad);
+    const orden = Number(mesaForm.orden);
+    if (!mesaForm.zonaId || !codigo || !nombre || !Number.isInteger(capacidad) || capacidad < 1 || capacidad > 999 || !Number.isInteger(orden) || orden < 0) { setError("Indica zona, código, nombre, capacidad y orden válidos para la mesa."); return; }
+    setGuardando(true); setError(""); setConfirmacion("");
+    try {
+      const contexto = contextoOperativo();
+      const parametros = { p_operation_id: configOperacion(`sala.mesa.${modalMesa}`), p_empresa_id: empresaId, p_local_id: localId, p_zona_id: mesaForm.zonaId, p_codigo: codigo, p_nombre: nombre, p_capacidad: capacidad, p_orden: orden, ...contexto };
+      if (modalMesa === "crear") {
+        await configRpc("abc_crear_mesa", { ...parametros, p_mesa_id: configUuid() });
+      } else {
+        await configRpc("abc_actualizar_mesa", { ...parametros, p_mesa_id: mesaForm.id, p_activo: mesaForm.activo, p_notas: String(mesaForm.notas || "").trim() || null, p_expected_version: Number(mesaForm.version) });
+      }
+      setModalMesa(null); setConfirmacion(modalMesa === "crear" ? "Mesa creada en el servidor." : "Mesa actualizada en el servidor."); await cargar();
+    } catch (e2) { setError(configMensajeError(e2)); } finally { setGuardando(false); }
+  };
+  const campoSelect = (valor, onChange, opciones, disabled = false) => h("select", { value: valor, onChange: (e2) => onChange(e2.target.value), disabled, className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44 } }, opciones.map(([value, label]) => h("option", { key: value, value }, label)));
+  return h(
+    "div",
+    null,
+    h(SectionTitle, { action: h(Btn, { small: true, variant: "ghost", onClick: cargar, disabled: cargando }, cargando ? "Actualizando…" : "Actualizar") }, "Sala y mesas"),
+    h(ConfigAviso, { error, confirmacion }),
+    h(Card, { className: "mb-4", style: { background: C2.accentSoft } },
+      h("div", { className: "text-[13px] font-semibold" }, "Configuración de sala"),
+      h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "Las zonas y mesas se guardan en el servidor y alimentan Pase y TPV. Cada edición usa versión esperada para evitar pisar cambios de otro terminal."),
+      h("div", { className: "flex flex-wrap gap-2 mt-3" }, h(Btn, { small: true, onClick: abrirNuevaZona, disabled: cargando || !mapa }, "Nueva zona"), h("span", { className: "inline-flex items-center rounded-lg px-2.5 py-1.5 text-[12px]", style: { border: `1px solid ${C2.line}`, color: C2.inkSoft } }, `${zonas.length} zona(s) · día ${mapa?.operatingDay || "—"}`))
+    ),
+    h(Card, { className: "mb-4" },
+      h("div", { className: "flex items-start justify-between gap-3 mb-3" }, h("div", null, h("div", { className: "text-[13px] font-semibold" }, "Tarifas horarias"), h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "No disponible en este entorno: el servidor no expone un contrato de tarifas horarias. No se muestra un formulario que no pueda guardar de forma fiable.")), h("span", { className: "text-[11px] rounded-full px-2 py-1", style: { background: C2.bg, color: C2.inkSoft, border: `1px solid ${C2.line}` } }, "Fuera de alcance actual"))
+    ),
+    !mapa && !cargando ? h(Card, null, "No hay mapa de sala cargado. Comprueba que el local tenga un terminal con sesión de caja abierta.") : null,
+    zonas.map((zona) => h(
+      Card,
+      { key: zona.zona_id || zona.id, className: "mb-3" },
+      h("div", { className: "flex flex-wrap items-start justify-between gap-2 mb-3" },
+        h("div", null,
+          h("div", { className: "text-[14px] font-semibold" }, zona.nombre || zona.codigo),
+          h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, zona.codigo, " · ", zona.tipo, " · versión ", zona.version ?? "—", zona.activo === false ? " · inactiva" : "")
+        ),
+        h("div", { className: "flex gap-2" },
+          h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditarZona(zona) }, "Editar"),
+          h(Btn, { small: true, variant: "ghost", onClick: () => abrirNuevaMesa(zona), disabled: zona.activo === false }, "Nueva mesa")
+        )
+      ),
+      h("div", { className: "grid gap-2", style: { gridTemplateColumns: "repeat(auto-fit,minmax(190px,1fr))" } },
+        (zona.mesas || []).length
+          ? zona.mesas.map((mesa) => h(
+            "div",
+            { key: mesa.mesa_id || mesa.id, className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+            h("div", { className: "flex items-start justify-between gap-2" },
+              h("div", null,
+                h("div", { className: "text-[13px] font-semibold" }, mesa.nombre || mesa.codigo),
+                h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, mesa.codigo, " · ", Number(mesa.capacidad) || 0, " plazas · ", mesa.estado_efectivo || "LIBRE")
+              ),
+              h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditarMesa(zona, mesa) }, "Editar")
+            )
+          ))
+          : h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Esta zona todavía no tiene mesas.")
+      )
+    )),
+    modalZona ? h(Modal, { title: modalZona === "crear" ? "Nueva zona" : "Editar zona", onClose: () => setModalZona(null) }, h(Field, { label: "Código" }, h(Input, { value: zonaForm.codigo, onChange: (e2) => setZonaForm({ ...zonaForm, codigo: e2.target.value }), placeholder: "SALA-01", disabled: guardando })), h(Field, { label: "Nombre" }, h(Input, { value: zonaForm.nombre, onChange: (e2) => setZonaForm({ ...zonaForm, nombre: e2.target.value }), placeholder: "Sala principal", disabled: guardando })), h(Field, { label: "Tipo" }, campoSelect(zonaForm.tipo, (v2) => setZonaForm({ ...zonaForm, tipo: v2 }), tiposZona.map((v2) => [v2, v2]), guardando)), h(Field, { label: "Orden" }, h(Input, { type: "number", min: 0, value: zonaForm.orden, onChange: (e2) => setZonaForm({ ...zonaForm, orden: e2.target.value }), disabled: guardando })), modalZona === "editar" ? h(Field, { label: "Estado" }, campoSelect(zonaForm.activo ? "ACTIVA" : "INACTIVA", (v2) => setZonaForm({ ...zonaForm, activo: v2 === "ACTIVA" }), [["ACTIVA", "Activa"], ["INACTIVA", "Inactiva"]], guardando)) : null, h("div", { className: "flex justify-end gap-2" }, h(Btn, { variant: "ghost", onClick: () => setModalZona(null), disabled: guardando }, "Cancelar"), h(Btn, { onClick: guardarZona, disabled: guardando }, guardando ? "Guardando…" : "Guardar zona"))) : null,
+    modalMesa ? h(Modal, { title: modalMesa === "crear" ? "Nueva mesa" : "Editar mesa", onClose: () => setModalMesa(null) }, h(Field, { label: "Zona" }, campoSelect(mesaForm.zonaId, (v2) => setMesaForm({ ...mesaForm, zonaId: v2 }), zonas.filter((z2) => z2.activo !== false).map((z2) => [z2.zona_id || z2.id, z2.nombre || z2.codigo]), guardando || modalMesa === "editar")), h(Field, { label: "Código" }, h(Input, { value: mesaForm.codigo, onChange: (e2) => setMesaForm({ ...mesaForm, codigo: e2.target.value }), placeholder: "MESA-01", disabled: guardando })), h(Field, { label: "Nombre" }, h(Input, { value: mesaForm.nombre, onChange: (e2) => setMesaForm({ ...mesaForm, nombre: e2.target.value }), placeholder: "Mesa 1", disabled: guardando })), h("div", { className: "grid grid-cols-2 gap-3" }, h(Field, { label: "Capacidad" }, h(Input, { type: "number", min: 1, max: 999, value: mesaForm.capacidad, onChange: (e2) => setMesaForm({ ...mesaForm, capacidad: e2.target.value }), disabled: guardando })), h(Field, { label: "Orden" }, h(Input, { type: "number", min: 0, value: mesaForm.orden, onChange: (e2) => setMesaForm({ ...mesaForm, orden: e2.target.value }), disabled: guardando }))), h(Field, { label: "Notas" }, h(Input, { value: mesaForm.notas, onChange: (e2) => setMesaForm({ ...mesaForm, notas: e2.target.value }), placeholder: "Opcional", maxLength: 500, disabled: guardando })), modalMesa === "editar" ? h(Field, { label: "Estado" }, campoSelect(mesaForm.activo ? "ACTIVA" : "INACTIVA", (v2) => setMesaForm({ ...mesaForm, activo: v2 === "ACTIVA" }), [["ACTIVA", "Activa"], ["INACTIVA", "Inactiva"]], guardando)) : null, h("div", { className: "flex justify-end gap-2" }, h(Btn, { variant: "ghost", onClick: () => setModalMesa(null), disabled: guardando }, "Cancelar"), h(Btn, { onClick: guardarMesa, disabled: guardando }, guardando ? "Guardando…" : "Guardar mesa"))) : null
+  );
+}
+// ==== FIN CONFIG_SALA ====
+function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [], procesarColaFiscalQaC07D = null, cargarMapaSala = null }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"], ["mfa", "Verificación en dos pasos"]];
+  const secciones = [["dia", "Día y cajas"], ["sala", "Sala y mesas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"], ["mfa", "Verificación en dos pasos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -104308,6 +104452,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     null,
     h("div", { className: "flex gap-2 flex-wrap mb-4" }, secciones.map(([id, texto]) => h(Btn, { key: id, small: true, variant: seccion === id ? "primary" : "ghost", onClick: () => setSeccion(id) }, texto))),
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
+    seccion === "sala" ? h(ConfigSala, { empresaId, localId, cargarMapaSala }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
     seccion === "terminales" ? h(ConfigTerminalesCajas, { empresaId, localId }) : null,
@@ -106937,7 +107082,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria, cargarPaginaAuditoria, auditoriaDesdeServidor, auditoriaHayMas, auditoriaCargando, auditoriaError }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria, cargarPaginaAuditoria, auditoriaDesdeServidor, auditoriaHayMas, auditoriaCargando, auditoriaError }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D, cargarMapaSala: cargarMapaSalaA07 }));
   // PM13-P04.2: claves estables de capacidad de consulta, separadas del texto visible y de la navegacion.
   const CAPACIDADES_CONSULTA_PANTALLA = Object.freeze({
     dashboard: "ABC_PANTALLA_DASHBOARD_CONSULTAR",
