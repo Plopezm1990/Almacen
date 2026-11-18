@@ -928,3 +928,21 @@ independiente confirma una sola fila en `abc_c08_correcciones_documentales`,
 la vinculación exacta y que `TPV-40` continúa `EMITIDO` con su revisión
 inmutable. QA simuló todo el flujo con `aeat_transport=DISABLED`; no hubo
 cobro, reembolso ni acceso a producción.
+
+## Addendum inicio P2 `org-33` · 18/11/2026
+
+Se inició el bloque P2 con una primera superficie Órbita para `org-33` en
+`Configuración → Sala y mesas`. La rama utiliza los contratos reales de QA
+`abc_listar_mapa_sala`, `abc_crear_zona`, `abc_actualizar_zona`,
+`abc_crear_mesa` y `abc_actualizar_mesa`, con sesión de terminal, día operativo,
+UUID de operación y versión esperada.
+
+La pantalla muestra el mapa real, zonas, mesas, capacidad, estado efectivo y
+versiones, y ofrece formularios responsive de creación/edición. No se ha
+pulsado ningún guardado en QA todavía. Las tarifas horarias quedan claramente
+fuera de alcance porque no existe contrato server-side; no se ha inventado una
+RPC ni se ha usado la tabla de zonas de almacén.
+
+Contrato local: `tests/rediseno/org33-sala-contract.mjs` (`PASS`). La paridad de
+`source-recovery` también pasa. El plan y las condiciones para cerrar la
+validación live están en `docs/rediseno/PLAN_P2_ORG33_SALA_2026-11-18.md`.
