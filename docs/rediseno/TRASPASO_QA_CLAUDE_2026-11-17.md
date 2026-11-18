@@ -790,6 +790,18 @@ El cobro y la propina permanecen confirmados; el cierre formal queda pendiente
 de servir/cerrar el pedido o de obtener el error server-side que explique por
 qué la operación no se aplica.
 
+## Addendum cierre formal completado · 18/11/2026
+
+Se continuó solo el pedido del fixture de propina
+`318d1423-d673-4640-bcb3-c5f8038bb387` por la secuencia operativa completa:
+`Enviado a cocina → En preparación → Listo para servir → Servido`. Después se
+ejecutó una sola vez «Cerrar cuenta pagada».
+
+Resultado confirmado por el servidor: cuenta `Cerrada`, `4,95 €` confirmados,
+`0,00 €` pendientes y mensaje visible «Cuenta pagada cerrada formalmente por
+el servidor». Se conserva el ticket QA `TPV-38` (secuencia `34`) y el QR
+fiscal C07-D. No se tocó ninguna otra comanda, cuenta ni producción.
+
 ## Addendum diagnóstico y corrección del mensaje de cierre · 18/11/2026
 
 La migración `abc_cerrar_cuenta_pagada` rechaza correctamente una cuenta si

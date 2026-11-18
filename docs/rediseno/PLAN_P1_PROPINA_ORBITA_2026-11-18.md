@@ -192,3 +192,16 @@ cierre ahora muestra «Efectivo confirmado, pero la cuenta sigue abierta» junto
 al error devuelto por el servidor, y mantiene el mensaje de cierre cuando sí se
 cierra. P06 añade una aserción para impedir que vuelva el silencio. No se ha
 reintentado el cierre en QA.
+
+## Cierre formal completado tras servir el pedido · 18/11/2026
+
+Con autorización del propietario se continuó únicamente el pedido del fixture
+de propina (`318d1423-d673-4640-bcb3-c5f8038bb387`): **Enviado a cocina → En
+preparación → Listo para servir → Servido**. No se tocaron las otras comandas.
+
+Después se pulsó una sola vez «Cerrar cuenta pagada». El servidor confirmó el
+cierre y la UI mostró «Cuenta pagada cerrada formalmente por el servidor».
+Estado final visible: `4,95 €` confirmado, `0,00 €` pendiente, cuenta
+comercial `Cerrada`, ticket QA `TPV-38`, secuencia `34`, QR fiscal QA listo.
+El bloqueo anterior queda resuelto por la condición correcta del servidor; no
+se ejecutó ningún cobro o cierre adicional.
