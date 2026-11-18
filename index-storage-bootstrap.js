@@ -1321,6 +1321,12 @@
         try {
           await guardarHistorialRespaldosIndexedDb(value);
           try { localStorage.removeItem("almacen:" + key); } catch (e) {}
+          // Una versión anterior podía dejar esta clave en la cola después
+          // de agotar la cuota de localStorage. IndexedDB ya la confirmó en
+          // este equipo, así que retirar la marca evita que reaparezca el
+          // aviso antiguo en cada recarga.
+          quitarPendiente(key);
+          quitarDenegado(key);
           return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
         } catch (e) {
           // Se continúa con localStorage como fallback explícito.

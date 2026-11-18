@@ -104743,6 +104743,13 @@ function GestionAlmacen() {
   const [nominas, setNominas] = (0, import_react4.useState)([]);
   const [entrevistas, setEntrevistas] = (0, import_react4.useState)([]);
   const skipSaveRef = import_react4.default.useRef(true);
+  // La sincronización autoritativa de stock e inventario actualiza el estado
+  // React al entrar o cambiar de local. No es una edición del usuario y no
+  // debe volver a escribirse en almacen_kv/las tablas de historial: hacerlo
+  // genera avisos de "pendiente" durante el arranque cuando QA está lento.
+  const suprimirGuardadoMovimientosRef = import_react4.default.useRef(0);
+  const suprimirGuardadoConteosRef = import_react4.default.useRef(0);
+  const primeraSincronizacionContextoRef = import_react4.default.useRef(true);
   const ultimaFirmaProductosGuardadaRef = import_react4.default.useRef(null);
   const autoSnapshotRef = import_react4.default.useRef(false);
   const [proveedores, setProveedores] = (0, import_react4.useState)([]);
@@ -104812,6 +104819,16 @@ function GestionAlmacen() {
     const esContextoVigente = () => activo && contextoPm07SolicitudRef.current === solicitud && contextoPm07ClaveRef.current === claveContexto && localActivoIdRefPm07.current === localActivoId;
     const perfilContextoListo = !!miPerfil?.rol;
     const sincronizarContextoCompleto = perfilContextoListo && miPerfil.rol === "Propietario" && !contextoPm07InicializadoRef.current;
+    const esHidratacionInicial = perfilContextoListo && primeraSincronizacionContextoRef.current;
+    if (esHidratacionInicial) primeraSincronizacionContextoRef.current = false;
+    const setMovimientosContexto = (updater) => {
+      if (esHidratacionInicial) suprimirGuardadoMovimientosRef.current += 1;
+      setMovimientos(updater);
+    };
+    const setConteosContexto = (updater) => {
+      if (esHidratacionInicial) suprimirGuardadoConteosRef.current += 1;
+      setConteos(updater);
+    };
     if (perfilContextoListo) contextoPm07InicializadoRef.current = true;
     (async () => {
       try {
@@ -104824,9 +104841,9 @@ function GestionAlmacen() {
           });
         }
         if (!esContextoVigente()) return;
-        await sincronizarStockPm07({ setProductos, setMovimientos, empresaId: empresaContexto, localActivoId, esContextoVigente });
+        await sincronizarStockPm07({ setProductos, setMovimientos: setMovimientosContexto, empresaId: empresaContexto, localActivoId, esContextoVigente });
         if (!esContextoVigente()) return;
-        await sincronizarConteosPm12({ setConteos, empresaId: empresaContexto, localActivoId, esContextoVigente });
+        await sincronizarConteosPm12({ setConteos: setConteosContexto, empresaId: empresaContexto, localActivoId, esContextoVigente });
         if (!esContextoVigente()) return;
         await sincronizarCajaPm08({ setArqueos, setMovimientosCaja, setDevoluciones, empresaId: empresaContexto, localActivoId, esContextoVigente });
       } catch (e2) {
@@ -105218,9 +105235,9 @@ function GestionAlmacen() {
         const completo = ajustes.length > 0 && ajustes.every((m) => m.pm12PlanCantidad === ajustes.length && m.operationId === ajustes[0].operationId && m.pm12Resultado);
         return completo ? { ...c22, ajustesAplicados: true, ajustesOperationId: ajustes[0].operationId, ajustesCantidad: ajustes[0].pm12Resultado.ajustados, ajustesTraspasados: ajustes[0].pm12Resultado.traspasados } : ajustes.length ? { ...c22, ajustesPendientesRevision: true } : c22;
       });
-      if (coMigrado.some((c22, i33) => c22 !== (co || [])[i33])) {
-        await saveKey("conteos", coMigrado);
-      }
+      // La normalización de compatibilidad se aplica en memoria durante la
+      // hidratación. No es una acción del usuario: no la subimos aquí porque
+      // el efecto reactivo se encargará de guardar solo una edición real.
       setConteos(coMigrado);
       setFichasCosto(fc);
       setHistorial(hi);
@@ -105390,7 +105407,9 @@ function GestionAlmacen() {
         }
         await saveKey("productos", productosFinales);
       }
-      if (JSON.stringify(movimientosFinales) !== JSON.stringify(mo || [])) await saveKey("movimientos", movimientosFinales);
+      // Igual que con los conteos, los movimientos antiguos se normalizan en
+      // memoria. Reescribir todo el historial al arrancar solo crea una cola
+      // de sincronización innecesaria y puede provocar un aviso por timeout.
       if (JSON.stringify(albaranesFinales) !== JSON.stringify(alLimpios || [])) await saveKey("albaranes", albaranesFinales);
       if (JSON.stringify(pedidosFinales) !== JSON.stringify(pe2 || [])) await saveKey("pedidos", pedidosFinales);
       if (JSON.stringify(encargosFinales) !== JSON.stringify(en || [])) await saveKey("encargos", encargosFinales);
@@ -105474,10 +105493,20 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("pedidos", pedidos2);
   }, [pedidos2, ready]);
   (0, import_react4.useEffect)(() => {
-    if (ready && !skipSaveRef.current) saveKey("movimientos", movimientos);
+    if (!ready || skipSaveRef.current) return;
+    if (suprimirGuardadoMovimientosRef.current > 0) {
+      suprimirGuardadoMovimientosRef.current -= 1;
+      return;
+    }
+    saveKey("movimientos", movimientos);
   }, [movimientos, ready]);
   (0, import_react4.useEffect)(() => {
-    if (ready && !skipSaveRef.current) saveKey("conteos", conteos);
+    if (!ready || skipSaveRef.current) return;
+    if (suprimirGuardadoConteosRef.current > 0) {
+      suprimirGuardadoConteosRef.current -= 1;
+      return;
+    }
+    saveKey("conteos", conteos);
   }, [conteos, ready]);
   (0, import_react4.useEffect)(() => {
     if (ready && !skipSaveRef.current) saveKey("fichasCosto", fichasCosto);
