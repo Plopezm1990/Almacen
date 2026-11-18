@@ -126684,6 +126684,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [procesandoFacturaEmpresaP1, setProcesandoFacturaEmpresaP1] = (0, import_react4.useState)(false);
   const [errorFacturaEmpresaP1, setErrorFacturaEmpresaP1] = (0, import_react4.useState)("");
   const [resultadoFacturaEmpresaP1, setResultadoFacturaEmpresaP1] = (0, import_react4.useState)(null);
+  const [rectificacionAbiertaP1, setRectificacionAbiertaP1] = (0, import_react4.useState)(false);
+  const [datosRectificacionP1, setDatosRectificacionP1] = (0, import_react4.useState)({ documentoCorreccionId: "", motivo: "" });
+  const [procesandoRectificacionP1, setProcesandoRectificacionP1] = (0, import_react4.useState)(false);
+  const [errorRectificacionP1, setErrorRectificacionP1] = (0, import_react4.useState)("");
+  const [resultadoRectificacionP1, setResultadoRectificacionP1] = (0, import_react4.useState)(null);
   const [modalidadesA02, setModalidadesA02] = (0, import_react4.useState)([]);
   const [modalidadElegidaA02, setModalidadElegidaA02] = (0, import_react4.useState)("");
   const cargarModalidadesA02 = async () => {
@@ -126747,6 +126752,44 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       setErrorFacturaEmpresaP1(error?.message || String(error || "No se pudo solicitar la factura completa."));
     } finally {
       setProcesandoFacturaEmpresaP1(false);
+    }
+  }
+  async function registrarRectificacionP1(fiscalActual) {
+    if (procesandoRectificacionP1) return;
+    const documentoOriginal = Array.isArray(fiscalActual?.documentos) ? fiscalActual.documentos[0] : null;
+    const documentoOriginalId = String(documentoOriginal?.documento_id || "").trim();
+    const documentoCorreccionId = String(datosRectificacionP1.documentoCorreccionId || "").trim();
+    const motivo = String(datosRectificacionP1.motivo || "").trim();
+    if (!documentoOriginalId || !documentoCorreccionId || !motivo) {
+      setErrorRectificacionP1("Indica el documento rectificativo emitido y un motivo.");
+      return;
+    }
+    if (!configEmpresa?.id || !local?.id || typeof window?.getSupabaseClient !== "function") {
+      setErrorRectificacionP1("La rectificación necesita conexión con el servidor.");
+      return;
+    }
+    setProcesandoRectificacionP1(true);
+    setErrorRectificacionP1("");
+    setResultadoRectificacionP1(null);
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_registrar_correccion_documental", {
+        p_operation_id: `p1.caj16.rectificacion:${documentoOriginalId}:${documentoCorreccionId}`,
+        p_empresa_id: configEmpresa.id,
+        p_local_id: local.id,
+        p_documento_original_id: documentoOriginalId,
+        p_tipo_correccion: "RECTIFICACION",
+        p_documento_correccion_id: documentoCorreccionId,
+        p_motivo: motivo,
+        p_detalle: { qa_only: true, aeat_transport: "DISABLED" }
+      });
+      if (error) throw error;
+      setResultadoRectificacionP1(data);
+      setRectificacionAbiertaP1(false);
+    } catch (error) {
+      setErrorRectificacionP1(error?.message || String(error || "No se pudo registrar la rectificación."));
+    } finally {
+      setProcesandoRectificacionP1(false);
     }
   }
   (0, import_react4.useEffect)(() => {
@@ -128516,7 +128559,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           resultadoFacturaEmpresaP1 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[10.5px] mb-2", style: { color: C2.accent } }, "Factura completa clasificada y conservada en el servidor. Revisión inmutable creada.") : null,
           errorFacturaEmpresaP1 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[10.5px] mb-2", style: { color: C2.red } }, errorFacturaEmpresaP1) : null,
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => { setErrorFacturaEmpresaP1(""); setFacturaEmpresaAbiertaP1(true); }, disabled: procesandoFacturaEmpresaP1 || !!resultadoFacturaEmpresaP1 }, resultadoFacturaEmpresaP1 ? "Factura completa registrada" : "Solicitar factura a empresa")
-        ) : null
+        ) : null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-3 p-2 rounded-lg", "data-caj16-rectificacion": "1", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Rectificación fiscal"),
+          /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "Requiere un documento rectificativo ya emitido y clasificado. El documento original no se modifica; el vínculo queda registrado en el servidor."),
+          resultadoRectificacionP1 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[10.5px] mb-2", style: { color: C2.accent } }, "Rectificación registrada y vinculada al documento original.") : null,
+          errorRectificacionP1 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[10.5px] mb-2", style: { color: C2.red } }, errorRectificacionP1) : null,
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => { setErrorRectificacionP1(""); setRectificacionAbiertaP1(true); }, disabled: procesandoRectificacionP1 || !!resultadoRectificacionP1 }, resultadoRectificacionP1 ? "Rectificación registrada" : "Registrar rectificación")
+        )
       ) : fiscal?.ok === false ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "p-2 rounded-lg mb-2", "data-c07d-qa-status": "pending", style: { background: C2.amberSoft, color: C2.ink } }, "Cobro confirmado. Fiscalización C07-D pendiente: ", fiscal.error || "actualiza para reintentar.") : null,
       bloqueado ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] p-2 rounded-lg mb-2", style: { background: C2.amberSoft, color: C2.ink } }, "Existe un intento pendiente, autorizado o desconocido. No se permite iniciar otro cobro sobre ese saldo.") : null,
       bloqueado && !incidenciaActiva ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "p-2 rounded-lg mb-2", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
@@ -128578,6 +128628,16 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
           /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => solicitarFacturaEmpresaP1(fiscal), disabled: procesandoFacturaEmpresaP1 }, procesandoFacturaEmpresaP1 ? "Guardando…" : "Confirmar factura completa"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setFacturaEmpresaAbiertaP1(false), disabled: procesandoFacturaEmpresaP1 }, "Cancelar")
+        )
+      ) : null,
+      rectificacionAbiertaP1 ? /* @__PURE__ */ import_react4.default.createElement(Modal, { title: "Registrar rectificación fiscal", onClose: () => !procesandoRectificacionP1 && setRectificacionAbiertaP1(false) },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El documento original se toma del ticket visible. Introduce el ID del documento rectificativo que ya haya sido emitido y clasificado como FACTURA_RECTIFICATIVA."),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "ID documento rectificativo" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: datosRectificacionP1.documentoCorreccionId, maxLength: 80, onChange: (e2) => setDatosRectificacionP1((actual) => ({ ...actual, documentoCorreccionId: e2.target.value })) , autoFocus: true })),
+        /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo" }, /* @__PURE__ */ import_react4.default.createElement("textarea", { value: datosRectificacionP1.motivo, maxLength: 300, rows: 3, onChange: (e2) => setDatosRectificacionP1((actual) => ({ ...actual, motivo: e2.target.value })), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } })),
+        errorRectificacionP1 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[11.5px] mb-2", style: { color: C2.red } }, errorRectificacionP1) : null,
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => registrarRectificacionP1(fiscal), disabled: procesandoRectificacionP1 }, procesandoRectificacionP1 ? "Guardando…" : "Confirmar rectificación"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setRectificacionAbiertaP1(false), disabled: procesandoRectificacionP1 }, "Cancelar")
         )
       ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
