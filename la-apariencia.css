@@ -666,6 +666,15 @@ html[data-la-diseno="orbita"] #root [data-la-contenedor] {
   font-family: var(--la-font) !important;
 }
 
+/* En la navegación base `data-la-contenedor` puede estar ausente. El primer
+   div hijo de #root sigue siendo el shell de la suite; cubrirlo evita que el
+   tema verde histórico gane por estilo en línea en Caja y TPV. */
+html[data-la-diseno="orbita"] #root > div {
+  background: var(--c-bg) !important;
+  color: var(--c-ink) !important;
+  font-family: var(--la-font) !important;
+}
+
 html[data-la-diseno="orbita"] #root [data-la-contenedor] > aside,
 html[data-la-diseno="orbita"] #root [data-la-contenedor] > .md\\:hidden {
   background: var(--c-chrome) !important;
@@ -674,6 +683,19 @@ html[data-la-diseno="orbita"] #root [data-la-contenedor] > .md\\:hidden {
 
 html[data-la-diseno="orbita"] #root [data-la-contenedor] main {
   background: var(--c-bg) !important;
+}
+
+html[data-la-diseno="orbita"] #root > div main {
+  background: var(--c-bg) !important;
+}
+
+html[data-la-diseno="orbita"] #root > div main input,
+html[data-la-diseno="orbita"] #root > div main select,
+html[data-la-diseno="orbita"] #root > div main textarea,
+html[data-la-diseno="orbita"] #root > div main .rounded-lg:not(button),
+html[data-la-diseno="orbita"] #root > div main .rounded-xl:not(button) {
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
 }
 
 html[data-la-diseno="orbita"] #root [data-la-contenedor] .rounded-xl,
