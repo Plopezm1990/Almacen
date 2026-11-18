@@ -77,3 +77,13 @@ Una fila solo pasa a “Pasa” cuando tiene contrato de datos y permisos, opera
 ## Próximo paso solicitado al propietario
 
 Aprobar o modificar los cuatro grupos del orden recomendado. Hasta esa decisión, la rama queda en modo documentación: no se añaden pantallas especulativas, no se aplican migraciones candidatas y no se modifica ningún dato de QA.
+
+## Addendum de contrato QA · 18/11/2026
+
+Una sonda de solo lectura confirmó que QA contiene las RPC documentales C06/C08
+y `abc_registrar_propina_efectivo`, todas cerradas a usuarios autenticados.
+La propina, sin embargo, no está integrada en la fuente de esta rama y las
+migraciones candidatas no tienen registro en `schema_migrations`. Se mantiene
+la decisión de no construir una UI fiscal especulativa: el siguiente trabajo
+debe reconciliar primero rama, migración y fixture, y luego vestir la pantalla
+con el marco Órbita exacto aprobado.

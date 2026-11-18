@@ -670,3 +670,22 @@ duplicaba el escape de `.md:hidden` y dejaba la cabecera verde histórica. El
 commit `1932b106` lo corrige y renueva la marca a
 `qa-orbita-shell-pase-v5-20261118`. P01, P05, sintaxis, paridad y
 `git diff --check` pasan. No se hicieron cobros, reembolsos ni cierres nuevos.
+
+## Addendum sonda P1 fiscal · 18/11/2026
+
+Antes de construir las pantallas pendientes se hizo una consulta **solo de
+lectura** al proyecto QA. El servidor expone `abc_clasificar_documento`,
+`abc_conservar_documento_emitido` y `abc_registrar_correccion_documental`,
+las tres como `SECURITY DEFINER`, con `EXECUTE` para `authenticated` y sin
+acceso para `anon`/`public`. También existe
+`abc_registrar_propina_efectivo(...)` con el mismo cierre de permisos.
+
+La sonda no ejecutó ninguna de esas RPC. La función de propina no aparece en
+la fuente de esta rama (su implementación histórica está en un commit
+revertido), y las versiones candidatas C06/C08/B06 no constan en
+`supabase_migrations.schema_migrations`, aunque sus objetos existen en QA.
+Por tanto, `tpv-31`, `caj-16` y la propina siguen siendo trabajo P1: primero hay
+que reconciliar el contrato de servidor con la rama y definir fixtures
+reversibles; después se hará la capa visual con el marco Órbita de la maqueta.
+No se debe aplicar una migración candidata ni probar un cobro, reembolso o
+propina sin autorización explícita.
