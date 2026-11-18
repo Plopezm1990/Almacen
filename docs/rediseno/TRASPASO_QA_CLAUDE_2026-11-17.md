@@ -700,3 +700,18 @@ Se añadió el contrato P06, la migración reproducible y el plan detallado en
 reembolsos, propinas ni migraciones en QA. Antes del cierre manual hace falta
 un fixture reversible y autorización explícita para un único cobro simulado.
 Commit de código: `2f9679f8`; documentación final: `83679580`.
+
+## Addendum comprobación de previews y TPV · 18/11/2026
+
+El propietario confirmó que abrió ambos enlaces de QA. La revisión manual dejó
+constancia de que el preview estable carga Órbita, Pase, Local A1 y el TPV con
+`QA terminal A1`; el despliegue directo también carga Órbita y Pase, pero avisa
+que ese origen aún no tiene un terminal inequívocamente asignado. No se trata
+de una caída del backend ni de un fallo del diseño.
+
+En la cuenta visible del TPV había `1,32 €` pendientes y pago exacto, sin cambio
+positivo. La ausencia de «El cambio es propina» es por tanto correcta: la
+casilla solo se ofrece cuando el cambio es mayor que cero. Esta tanda no hizo
+cobros, reembolsos, cierres ni otras escrituras económicas. La validación
+server-side de P06 sigue separada y necesita fixture reversible más autorización
+explícita para un único cobro simulado.

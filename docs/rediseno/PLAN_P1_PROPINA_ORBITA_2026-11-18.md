@@ -63,3 +63,24 @@ simulado**. Debe comprobarse: propina registrada en caja, mensaje honesto,
 idempotencia al reintentar y rechazo de un cargo sin `ABC_COBRO_INICIAR`.
 
 La conciliación contable/fiscal de la propina permanece opcional y separada.
+
+## Comprobación manual de los previews · 18/11/2026
+
+El propietario confirmó la apertura de los dos enlaces de QA y se revisaron
+sin ejecutar operaciones económicas:
+
+- `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`: sesión de
+  propietario en `QA-EMP-A / Local A1`, propuesta Órbita, Pase con datos reales,
+  acceso al TPV y terminal `QA terminal A1`.
+- `https://6afd8c3882695f87aa8c261a--chic-entremet-9107cf.netlify.app/`:
+  propuesta Órbita y Pase cargados. Este origen muestra correctamente que el
+  dispositivo todavía no tiene un terminal inequívocamente asignado; no es un
+  error de datos del local.
+- En el TPV se observó una cuenta pendiente de `1,32 €` con pago exacto y sin
+  cambio positivo. Por ello la casilla **«El cambio es propina»** no aparece,
+  que es el comportamiento previsto. Esta comprobación es visual; no cierra
+  la prueba server-side de propina.
+
+La prueba funcional de propina sigue requiriendo un fixture reversible con
+cambio positivo y autorización explícita para un único cobro simulado. No se
+crearon movimientos, no se cobraron cuentas y no se modificó producción.
