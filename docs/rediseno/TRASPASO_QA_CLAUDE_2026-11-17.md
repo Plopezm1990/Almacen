@@ -422,6 +422,48 @@ en curso y un `p2-p06` histórico en rojo; no se presenta el conjunto como CI
 global verde. Queda pendiente la pasada autenticada del preview: persistencia
 y salto de Rumbo y recorrido desktop/móvil de las nueve composiciones.
 
+## Addendum de cierre del Punto 3 · Codex · 18/11/2026
+
+La rama `rediseno/f0-base-qa` queda en `a13d5dd7` y el Deploy Preview #225
+correspondiente está listo en
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/?cache=p3-array-a13d5dd7-reload`.
+El PR #225 sigue en borrador y no se ha tocado producción.
+
+### Clientes ya verificados en QA
+
+Con `pm07.smoke@qa.invalid` (Propietario, `QA-EMP-A` / `QA-A1`) se recargó la
+pantalla y se vieron los dos clientes de ensayo existentes. Se verificaron
+vistas predefinidas, filtros de estado/tipo, búsqueda, paginación `1–2 de 2`,
+ficha Resumen/Actividad/Fiscal y el estado vacío de Empresas. El NIF particular
+queda enmascarado en listado (`••••678Z`) y completo solo dentro de Fiscal. La
+actividad conserva actor, fecha del servidor y anterior/nuevo. El registro
+`mwlsn5vplu6tvn` (`QA Punto3 Particular`) queda en QA para reproducibilidad.
+
+El primer despliegue de P3 ocultaba filas porque `clientes_empresa` es una
+tabla legacy sin `updated_at` y el bootstrap ordenaba por una columna
+inexistente; además el retorno largo de `ClientesPunto3` dejaba el árbol React
+incompleto. `a13d5dd7` corrige ambas cosas y añade la regresión al contrato P3.
+
+### Decisión de Compras e Inventario
+
+No se deben reabrir ni inventar pantallas: `com-28`–`com-30` (factura directa,
+pago y anulación) y `inv-04`, `inv-15`–`inv-17` (ajuste, aplicación y
+reversión) ya tienen evidencia QA en la matriz. `inv-32`, `inv-35` e `inv-36`
+siguen fuera del alcance implementado porque no existe superficie en el
+bundle; permanecen como decisiones de producto, no como fallos de QA.
+`enc-12` se acepta solo como control no destructivo: no se anonimiza ni elimina
+el cliente sintético sin autorización explícita.
+
+### Verificaciones ejecutadas
+
+`node --check fuente.js`, `node --check index-storage-bootstrap.js`,
+`node tests/p3/p3-clientes-gestion-contract.mjs`,
+`node tests/pm14/p06-clientes-aislamiento-contract.mjs`,
+`python source-recovery/recuperar_candidato.py --check` y `git diff --check`
+quedan en verde. La batería adicional de inventario/compras mantiene las
+salvedades históricas ya documentadas; no se ejecutaron cobros, reembolsos,
+anonimizaciones, eliminaciones ni `sis-13` en esta tanda.
+
 ## Addendum de cierre del Punto 2 · 18/11/2026 · SHA `107aed65`
 
 La pasada pendiente ya está realizada en Deploy Preview #225 con el propietario

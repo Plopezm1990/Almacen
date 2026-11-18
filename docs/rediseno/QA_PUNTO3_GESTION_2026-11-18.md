@@ -98,3 +98,68 @@ operaciones destructivas nuevas.
 - Paridad: `SOURCE_RECOVERY_CHECK=PASS`.
 - El espejo recuperado se regenera desde el sufijo exacto del bundle cuando la
   cabecera histórica no coincide; no se relaja la comparación del cuerpo.
+
+## Addendum de cierre live · 18/11/2026 · SHA `a13d5dd7`
+
+El recorrido autenticado ya está cerrado en el Deploy Preview #225:
+[preview estable](https://deploy-preview-225--chic-entremet-9107cf.netlify.app/?cache=p3-array-a13d5dd7-reload)
+y [deploy directo](https://6afd57204c51f7b78ba1de05--chic-entremet-9107cf.netlify.app/).
+La sesión fue `pm07.smoke@qa.invalid`, Propietario de `QA-EMP-A`, local
+`QA-A1`. El despliegue está en modo QA; no se tocó producción.
+
+### Clientes: cierre funcional
+
+La pantalla muestra tras recargar los dos registros que ya existían en QA:
+`QA Cliente SOLO A` y `QA Punto3 Particular`. El listado conserva las vistas
+`Todos`, `Particulares`, `Empresas` y `Activos`, la búsqueda, los filtros de
+estado/tipo y la paginación real (`1–2 de 2 clientes`). El filtro `Empresas`
+devuelve el estado vacío explícito «No hay clientes que coincidan con los
+filtros.»; no se confunde con una carga vacía.
+
+La ficha de `QA Punto3 Particular` pasó por `Resumen`, `Actividad` y `Fiscal`.
+En el listado el NIF `12345678Z` aparece como `••••678Z`; dentro de Fiscal se
+ve el valor completo. Actividad muestra `Alta`, fecha del servidor, actor
+`PM07 Smoke QA` y el cambio `Ficha: — → Cliente creado`. El cliente se leyó
+desde `clientes_empresa` después de una recarga, por lo que la persistencia
+servidor quedó comprobada.
+
+### Defecto encontrado y corrección
+
+La primera publicación ocultaba tanto las filas como el estado vacío. La tabla
+legacy `clientes_empresa` no tiene columna `updated_at`, pero el bootstrap
+intentaba ordenar por ella y caía a una colección local vacía. Además, el
+componente de Clientes construía un retorno largo de hijos que dejaba el árbol
+React cortado después de los filtros en el runtime desplegado. La corrección
+quita el orden/campo inexistente para las tablas legacy y construye el contenido
+de `ClientesPunto3` como una lista explícita de hijos; se añadió una aserción
+regresiva al contrato P3. Los bancos locales pasan y el preview ya muestra las
+filas reales.
+
+### Alcance decidido para Compras e Inventario
+
+No se inventan pantallas nuevas para cerrar el Punto 3. Las operaciones que ya
+tienen evidencia real se conservan como cerradas: factura directa y su pago /
+anulación (`com-28`–`com-30`), ajustes y reversiones de inventario
+(`inv-04`, `inv-15`–`inv-17`) y salidas/mermas (`inv-02`, `inv-33`, `inv-34`).
+`inv-32` (detalle/impresión de ficha de coste) y `inv-35`/`inv-36` (biblioteca y
+editor de opciones reutilizables) quedan fuera de esta tanda como decisiones
+de producto: no existe superficie en el bundle aunque el servidor conozca
+variantes. Se mantienen en la matriz como `No construida`, con la decisión
+pendiente separada de la aceptación de Clientes.
+
+`enc-12` queda como **control no destructivo**: la confirmación y el contrato
+están cubiertos, pero no se pulsa anonimizar/eliminar sin autorización
+específica porque sería irreversible y destruiría la evidencia sintética.
+Las vistas guardadas se mantienen locales al navegador y se documentan así; no
+se presentan como configuración compartida de empresa. La paginación/búsqueda
+ampliada de la cola de Pase, el positivo de Cajero/a con MFA y el bookkeeping
+de migraciones de Apariencia siguen siendo opcionales y no bloquean este cierre.
+
+### Estado de cierre
+
+`enc-09`, `enc-10` y `enc-11` quedan cerradas en QA; `enc-12` queda cerrada
+como control no destructivo con ensayo destructivo opcional. El acta no declara
+cerradas las pantallas que siguen sin construir. La cuenta sintética
+`QA Punto3 Particular` (`mwlsn5vplu6tvn`) se conserva para reproducibilidad; no
+se borró ni se anonimizó. El PR #225 sigue en borrador y QA sigue siendo el
+único entorno permitido.

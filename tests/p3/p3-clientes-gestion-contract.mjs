@@ -13,6 +13,9 @@ for (const archivo of archivos) {
   assert.match(codigo, /clienteAbierto.*Actividad|Secciones de la ficha/, `${archivo}: falta la ficha con actividad`);
   assert.match(codigo, /CAMPOS_ACTIVIDAD_CLIENTE_SUITE/, `${archivo}: falta el registro de cambios`);
   assert.match(codigo, /actorClienteSuite\(actorNombre\)/, `${archivo}: falta el actor de actividad`);
+  assert.match(codigo, /function ClientesPunto3/, `${archivo}: falta la superficie P3 de Clientes`);
+  assert.match(codigo, /const contenido = \[/, `${archivo}: el listado debe construir hijos explícitos`);
+  assert.match(codigo, /No hay clientes que coincidan con los filtros\./, `${archivo}: falta el estado vacío filtrado`);
 }
 
 const bootstrap = await readFile("index-storage-bootstrap.js", "utf8");
