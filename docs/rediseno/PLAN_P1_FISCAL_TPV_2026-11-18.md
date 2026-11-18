@@ -65,12 +65,31 @@ conecta con AEAT.
 ## Siguiente acción
 
 La disponibilidad del contrato ya está comprobada en QA. La siguiente acción
-de implementación es construir el adaptador cliente y la superficie Órbita
-para `tpv-31`/`caj-16`, sin DML directo: leer documentos con RPC autorizadas,
-emitir/clasificar/conservar mediante sus contratos, y dejar la rectificación
-detrás de una confirmación propia. Antes de pulsar cualquier operación en QA
-se debe preparar un fixture reversible y pedir autorización explícita; no se
-debe usar una venta real ni afirmar cumplimiento AEAT.
+de implementación ya está realizada en la rama: la tarjeta fiscal de Órbita
+incluye `tpv-31` («Solicitar factura a empresa») y `caj-16` («Registrar
+rectificación»). No hay DML directo: la primera usa
+`abc_clasificar_documento` + `abc_conservar_documento_emitido` y la segunda
+usa `abc_registrar_correccion_documental`, siempre detrás de confirmación
+propia y con `qa_only`/`aeat_transport=DISABLED`.
+
+Queda pendiente la validación live. Antes de pulsar cualquier operación en QA
+se debe preparar un fixture reversible, comprobar que existe un documento
+rectificativo válido y pedir autorización explícita; no se debe usar una venta
+real ni afirmar cumplimiento AEAT.
+
+## Implementación de interfaz · 18/11/2026
+
+- `tpv-31` se muestra cuando la cuenta tiene documento fiscal emitido. Pide
+  razón social, identificador fiscal y dirección opcional; exige nombre e
+  identificador antes de llamar al servidor; conserva la revisión inmutable y
+  muestra el resultado sin cerrar ni modificar el cobro.
+- `caj-16` se muestra junto al documento original. Pide el ID del documento
+  rectificativo ya emitido/clasificado y un motivo obligatorio; el mensaje
+  explica que el original no se modifica y que el vínculo queda en servidor.
+- La vista es responsive porque reutiliza `Modal`, `Field`, `Input` y `Btn`
+  del TPV, con áreas táctiles del sistema Órbita.
+- Contrato nuevo: `tests/rediseno/p1-fiscal-tpv-contract.mjs`.
+- Paridad `fuente.js` ↔ `source-recovery/fuente-recuperado.js`: exacta.
 
 ## Evidencia relacionada
 
