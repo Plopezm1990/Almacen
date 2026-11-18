@@ -96,10 +96,11 @@ con una única operación autorizada. La cuenta del fixture quedó pagada,
 servida y cerrada formalmente; la evidencia completa está en
 `PLAN_P1_PROPINA_ORBITA_2026-11-18.md` y en el traspaso de QA.
 
-La parte de vale regalo sigue sin contrato y no se simula. El siguiente grupo
-de trabajo es P1 fiscal/TPV: `tpv-31` (factura completa a empresa) y `caj-16`
-(rectificación fiscal). La auditoría de migraciones encontró los contratos
-C06/C08, pero su existencia en el repositorio no demuestra que estén
-publicados en QA. Se mantiene la regla de no aplicar SQL candidato ni crear
-una factura local falsa. El plan técnico y sus condiciones de cierre quedan
-en `PLAN_P1_FISCAL_TPV_2026-11-18.md`.
+La parte de vale regalo sigue separada de la aceptación de esta tanda. El
+siguiente grupo de trabajo es P1 fiscal/TPV: `tpv-31` (factura completa a
+empresa) y `caj-16` (rectificación fiscal). La lectura de QA del 18/11 confirma
+que C06/C08 ya están aplicadas y que sus RPC están cerradas a
+`authenticated`; las tablas de conservación y correcciones están a cero, por
+lo que falta la interfaz y un fixture reversible, no SQL nuevo. El plan
+técnico y sus condiciones de cierre quedan en
+`PLAN_P1_FISCAL_TPV_2026-11-18.md`.

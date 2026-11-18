@@ -14,19 +14,27 @@ migraciones, no contra nombres de pantallas de la maqueta.
 |---|---|---|---|
 | `tpv-31` | Solicitar factura a empresa | El servidor contempla `FACTURA_COMPLETA` y exige `datos_receptor.nombre` e `identificador_fiscal` mediante `abc_clasificar_documento`. | Selector de cliente/empresa, formulario fiscal, llamada RPC, conservación del documento y presentación del resultado. |
 | `caj-16` | Rectificación fiscal | El servidor contempla `FACTURA_RECTIFICATIVA`; `abc_registrar_correccion_documental` exige documento original conservado, documento rectificativo emitido y motivo no vacío. | Listado de documentos emitidos, formulario de motivo, vínculo original→rectificativa y trazabilidad visible. |
-| `tpv-29` | Propina y vale regalo | Propina de cambio verificada en QA y cerrada en `TPV-38`; el vale regalo no tiene contrato ni saldo. | Mantener propina cerrada; separar vale regalo como futura, sin simularlo como medio de pago. |
+| `tpv-29` | Propina y vale regalo | Propina de cambio verificada en QA y cerrada en `TPV-38`; QA también expone `abc_emitir_vale_regalo` y `abc_consultar_vale_regalo`, pero no hay superficie Órbita ejercitada. | Mantener propina cerrada; tratar el vale como trabajo separado con saldo, emisión, canje, devolución y auditoría antes de darlo por construido. |
 
 ## Contratos encontrados
 
-- `supabase/migrations/20261001160000_abc_f5_c06_document_types.sql`
+- `supabase/migrations/20261001160000_abc_f5_c06_document_types.sql` (registrada en QA como `20261002060700`).
   - `abc_clasificar_documento(operation_id, empresa_id, local_id, documento_id, tipo_documental, documento_referencia_id, datos_receptor)`.
   - Tipos aceptados: `FACTURA_COMPLETA` y `FACTURA_RECTIFICATIVA`, entre otros.
   - Una factura completa necesita nombre e identificador fiscal del receptor.
   - Una rectificativa necesita referencia a otra factura y el original debe estar emitido.
-- `supabase/migrations/20261001180000_abc_f5_c08_document_retention.sql`
+- `supabase/migrations/20261001180000_abc_f5_c08_document_retention.sql` (registrada en QA como `20261002060718`).
   - `abc_conservar_documento_emitido(...)` conserva una versión inmutable.
   - `abc_registrar_correccion_documental(...)` registra rectificación, cancelación operativa o reembolso con motivo y trazabilidad.
-- Ambas migraciones se identifican como candidatas aisladas y no deben aplicarse en QA desde esta tanda sin autorización expresa. Que el SQL exista no demuestra que la capacidad esté publicada en el entorno.
+- La consulta de solo lectura de QA del 18/11/2026 confirma que ambas están
+  aplicadas: existen `abc_c06_documentos_clasificados` (40 filas),
+  `abc_c08_documento_versiones` (0 filas) y
+  `abc_c08_correcciones_documentales` (0 filas). Los cinco RPC relevantes
+  (`abc_clasificar_documento`, `abc_conservar_documento_emitido`,
+  `abc_registrar_correccion_documental`, `abc_emitir_vale_regalo` y
+  `abc_consultar_vale_regalo`) existen, son `SECURITY DEFINER` y solo tienen
+  `EXECUTE` para `authenticated`. No hay que aplicar una migración para esta
+  tanda; hay que construir la interfaz y usar fixtures reversibles.
 
 ## Decisión de producto para construir
 
@@ -56,11 +64,13 @@ conecta con AEAT.
 
 ## Siguiente acción
 
-Antes de escribir UI o aplicar SQL hay que comprobar en el preview, en solo
-lectura, si C06/C08 están publicadas y si existen documentos de ensayo. Si no
-están publicadas, la siguiente acción correcta es preparar el adaptador y la
-pantalla detrás de una capacidad explícita, dejando la prueba live bloqueada;
-no crear una falsa factura local.
+La disponibilidad del contrato ya está comprobada en QA. La siguiente acción
+de implementación es construir el adaptador cliente y la superficie Órbita
+para `tpv-31`/`caj-16`, sin DML directo: leer documentos con RPC autorizadas,
+emitir/clasificar/conservar mediante sus contratos, y dejar la rectificación
+detrás de una confirmación propia. Antes de pulsar cualquier operación en QA
+se debe preparar un fixture reversible y pedir autorización explícita; no se
+debe usar una venta real ni afirmar cumplimiento AEAT.
 
 ## Evidencia relacionada
 
