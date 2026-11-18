@@ -8432,6 +8432,18 @@ function actorClienteSuite(actorNombre) {
   return actorNombre || "Usuario actual";
 }
 function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId, actorNombre = "" }) {
+  const normalizar = typeof normalizarClienteSuite === "function" ? normalizarClienteSuite : (data = {}) => ({
+    ...data,
+    tipoCliente: data.tipoCliente === "Empresa" ? "Empresa" : "Particular",
+    nif: String(data.nif || "").trim().toUpperCase(),
+    direccion: String(data.direccion || "").trim(),
+    datosFiscales: String(data.datosFiscales || "").trim()
+  });
+  const camposActividad = typeof CAMPOS_ACTIVIDAD_CLIENTE_SUITE === "object" ? CAMPOS_ACTIVIDAD_CLIENTE_SUITE : {
+    nombre: "Nombre", tipoCliente: "Tipo de cliente", nif: "NIF/CIF", telefono: "Teléfono",
+    email: "Correo", direccion: "Dirección", datosFiscales: "Datos fiscales", notas: "Notas"
+  };
+  const actor = typeof actorClienteSuite === "function" ? actorClienteSuite : (nombre) => nombre || "Usuario actual";
   function hayConexionNubeClientes() {
     return typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
   }
@@ -8459,11 +8471,11 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
   }
   function addCliente(data) {
     if (!empresaId) return { ok: false, codigo: "contexto_no_autorizado", error: "No se pudo determinar la empresa activa." };
-    const normalizado = normalizarClienteSuite(data);
+    const normalizado = normalizar(data);
     const ahora = new Date().toISOString();
     const nuevo = {
       id: uid(), fechaAlta: todayISO(), ...normalizado, empresaId,
-      actividad: [{ fecha: ahora, actor: actorClienteSuite(actorNombre), accion: "Alta", cambios: [{ campo: "Ficha", anterior: "—", nuevo: "Cliente creado" }] }]
+      actividad: [{ fecha: ahora, actor: actor(actorNombre), accion: "Alta", cambios: [{ campo: "Ficha", anterior: "—", nuevo: "Cliente creado" }] }]
     };
     setClientes((s22) => [...s22, nuevo]);
     sincronizarClienteNube(nuevo).catch(() => {});
@@ -8478,9 +8490,9 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
     setClientes(
       (s22) => s22.map((c22) => {
         if (c22.id !== id || c22.empresaId !== empresaId) return c22;
-        const normalizado = normalizarClienteSuite(data);
-        const cambios = Object.keys(CAMPOS_ACTIVIDAD_CLIENTE_SUITE).filter((campo) => String(c22[campo] || "") !== String(normalizado[campo] || "")).map((campo) => ({ campo: CAMPOS_ACTIVIDAD_CLIENTE_SUITE[campo], anterior: c22[campo] || "—", nuevo: normalizado[campo] || "—" }));
-        actualizado = { ...c22, ...normalizado, id: c22.id, empresaId: c22.empresaId, actividad: cambios.length ? [...(Array.isArray(c22.actividad) ? c22.actividad : []), { fecha: new Date().toISOString(), actor: actorClienteSuite(actorNombre), accion: "Edición", cambios }] : c22.actividad };
+        const normalizado = normalizar(data);
+        const cambios = Object.keys(camposActividad).filter((campo) => String(c22[campo] || "") !== String(normalizado[campo] || "")).map((campo) => ({ campo: camposActividad[campo], anterior: c22[campo] || "—", nuevo: normalizado[campo] || "—" }));
+        actualizado = { ...c22, ...normalizado, id: c22.id, empresaId: c22.empresaId, actividad: cambios.length ? [...(Array.isArray(c22.actividad) ? c22.actividad : []), { fecha: new Date().toISOString(), actor: actor(actorNombre), accion: "Edición", cambios }] : c22.actividad };
         return actualizado;
       })
     );
@@ -8503,7 +8515,7 @@ function crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empres
     setClientes(
       (s22) => s22.map((cli) => {
         if (cli.id !== id || cli.empresaId !== empresaId) return cli;
-        actualizado = { ...cli, nombre: "Cliente anonimizado", telefono: "", email: "", nif: "", direccion: "", datosFiscales: "", notas: "", anonimizado: true, actividad: [...(Array.isArray(cli.actividad) ? cli.actividad : []), { fecha: new Date().toISOString(), actor: actorClienteSuite(actorNombre), accion: "Anonimización", cambios: [{ campo: "Datos identificativos", anterior: "Conservados", nuevo: "Eliminados" }] }] };
+        actualizado = { ...cli, nombre: "Cliente anonimizado", telefono: "", email: "", nif: "", direccion: "", datosFiscales: "", notas: "", anonimizado: true, actividad: [...(Array.isArray(cli.actividad) ? cli.actividad : []), { fecha: new Date().toISOString(), actor: actor(actorNombre), accion: "Anonimización", cambios: [{ campo: "Datos identificativos", anterior: "Conservados", nuevo: "Eliminados" }] }] };
         return actualizado;
       })
     );
