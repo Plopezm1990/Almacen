@@ -446,7 +446,7 @@ Cajero/a con MFA y el bookkeeping de `schema_migrations` de Apariencia.
 ## Addendum Punto 3 · Clientes, Compras e Inventario · 18/11/2026
 
 Se retomó el tercer punto del plan. El núcleo de Clientes ya está construido
-en la rama `rediseno/f0-base-qa` (commit `3dc15696`): tipo Particular/Empresa,
+en la rama `rediseno/f0-base-qa` (SHA `3800030e`): tipo Particular/Empresa,
 NIF/CIF, búsqueda y filtros, vistas guardadas, paginación, ficha Resumen/
 Actividad/Fiscal, NIF particular enmascarado en listado y actividad con actor,
 fecha y cambios anterior/nuevo. La eliminación y la anonimización quedan

@@ -86,7 +86,8 @@ operaciones destructivas nuevas.
 
 ## Evidencia técnica de esta tanda
 
-- Commit de implementación: `3dc15696`.
+- SHA de la rama al cierre de esta tanda: `3800030e` (incluye la implementación,
+  el aislamiento por empresa de las vistas y la sincronización del espejo).
 - Prueba: `node tests/p3/p3-clientes-gestion-contract.mjs` → `OK`.
 - Sintaxis: `node --check fuente.js` → `OK`.
 - Paridad: `SOURCE_RECOVERY_CHECK=PASS`.
