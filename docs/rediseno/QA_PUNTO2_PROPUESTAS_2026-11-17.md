@@ -326,3 +326,16 @@ La migración reproducible y el contrato P06 quedan documentados en
 queda pendiente de una autorización explícita para un cobro simulado y de un
 fixture reversible; la prueba contable/fiscal sigue separada. Implementación
 publicada en `2f9679f8`.
+
+## Estado vigente de cierre · 18/11/2026 · commit `27f74c61`
+
+El texto histórico de las secciones anteriores queda supersedido por la
+evidencia live del 18/11: el **Punto 2 está terminado en QA**. Las nueve
+propuestas y seis paletas se recorrieron en escritorio y móvil, Rumbo conserva
+Fijadas/Recientes tras recarga, Órbita muestra ventas del ledger y Pase/Ascua
+conservan el contexto real de sala. La matriz ya marca
+`qa-20261117-punto2-apariencia` y `qa-20261118-punto2-live` como `Pasa`.
+
+Siguen fuera del cierre, sin bloquearlo, únicamente la paginación/búsqueda
+ampliada de la cola de Pase, el positivo de Cajero/a con MFA y el bookkeeping
+de las migraciones de Apariencia en `schema_migrations`.

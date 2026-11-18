@@ -157,3 +157,25 @@ vinculada a la factura completa `TPV-40`. Se usaron los RPC oficiales C05/C06
 La lectura independiente de QA confirma una corrección documental y la
 vinculación exacta original→rectificativa. `TPV-40` sigue `EMITIDO`, conserva
 su revisión 1 y no se modificó. No hubo cobro, reembolso ni transmisión a AEAT.
+
+## Addendum de cierre P1 · 18/11/2026 · commit `27f74c61`
+
+Las dos superficies fiscales quedan cerradas en QA:
+
+- `tpv-31`: factura completa `TPV-40` emitida, clasificada como
+  `FACTURA_COMPLETA`, conservada con revisión inmutable 1 y vinculada al
+  documento original `TPV-39`. El receptor sintético quedó validado y no hubo
+  transmisión a AEAT.
+- `caj-16`: rectificativa `TPV-41` emitida, clasificada como
+  `FACTURA_RECTIFICATIVA`, conservada y vinculada a `TPV-40`; el original
+  permanece `EMITIDO` y con revisión 1.
+
+La evidencia live está en `qa-20261118-tpv31-live` y
+`qa-20261118-p1-fiscal-ui` de la matriz. La interfaz utiliza el marco Órbita,
+confirmación propia y los RPC C06/C08; QA opera con `SIMULADOR_C07D` y
+`aeat_transport=DISABLED`.
+
+El Punto 1 fiscal queda cerrado. No se emitirán más documentos ni se harán
+nuevas rectificaciones, cobros o reembolsos sin autorización explícita. El
+vale regalo de `tpv-29`, la conciliación contable/fiscal y las pruebas
+económicas móviles permanecen separados como trabajo opcional/futuro.

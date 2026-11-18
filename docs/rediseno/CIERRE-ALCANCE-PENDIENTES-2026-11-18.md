@@ -119,3 +119,18 @@ Por tanto, `org-33` pasa de «Validada en QA; revisión móvil pendiente» a
 `Pasa`. La cifra histórica de filas `No construida` debe volver a revisarse
 contra la matriz después de promover también las evidencias live de `tpv-31` y
 `caj-16`, que ya cuentan con filas de cierre específicas.
+
+## Addendum de cierre de la sincronización · 18/11/2026 · commit `27f74c61`
+
+La revisión indicada arriba ya se completó. La matriz se actualizó y las filas
+`tpv-31` (factura completa a empresa), `caj-16` (rectificación fiscal) y las
+dos evidencias del Punto 2 (`qa-20261117-punto2-apariencia` y
+`qa-20261118-punto2-live`) figuran como `Pasa`, con sus evidencias live y
+condiciones de cierre. Por tanto, la cifra histórica de 21/23 filas abiertas
+no describe el estado actual y no debe reutilizarse sin recalcular la matriz.
+
+El cierre no convierte en obligatorios los trabajos expresamente separados:
+vale regalo/contabilidad fiscal, paginación o búsqueda ampliada de la cola de
+Pase, positivo de Cajero/a con MFA y el bookkeeping de migraciones de
+Apariencia. No se ejecutaron cobros, reembolsos ni documentos adicionales para
+esta actualización; QA sigue aislado y producción fuera de alcance.

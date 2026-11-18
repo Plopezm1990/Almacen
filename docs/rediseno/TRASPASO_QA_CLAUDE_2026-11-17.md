@@ -985,3 +985,22 @@ No se ejecutó ninguna mutación durante la revisión. Los fixtures
 `QA-P2-ZONA-01` y `QA-P2-MESA-01` permanecen inactivos para conservar la
 evidencia de concurrencia y limpieza reversible. `org-33` queda cerrado como
 `Pasa` en QA; producción sigue fuera de alcance.
+
+## Estado vigente de sincronización · 18/11/2026 · commit `27f74c61`
+
+Queda cerrada la actualización documental solicitada:
+
+- `tpv-31` está en `Pasa`: TPV-40 es la factura completa emitida,
+  clasificada y conservada en QA; TPV-39 permanece conservado como original.
+- `caj-16` está en `Pasa`: TPV-41 es la rectificativa emitida, clasificada,
+  conservada y vinculada a TPV-40; el documento original no se modifica.
+- El Punto 2 está en `Pasa`: las nueve propuestas y seis paletas se verificaron
+  en escritorio y móvil, incluyendo Rumbo, Órbita, Pase y Ascua con contexto
+  real. La matriz conserva ambas evidencias (`qa-20261117-punto2-apariencia`
+  y `qa-20261118-punto2-live`) como cerradas.
+
+Las notas históricas que describían esas tres superficies como pendientes quedan
+supersedidas por este estado vigente. Se mantienen separados, sin bloquear el
+cierre, el positivo de Cajero/a con MFA, la paginación/búsqueda ampliada de la
+cola de Pase y el registro contable de las migraciones de Apariencia. No se
+tocó producción y el PR #225 permanece en borrador.
