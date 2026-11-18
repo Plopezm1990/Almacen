@@ -3720,6 +3720,43 @@ function GestionAlmacen() {
     return empresas.length === 1 ? principal || configEmpresa || null : null;
   }, [empresas, locales, localActivoId, configEmpresa]);
   (0, import_react4.useEffect)(() => {
+    // Punto 3: el listado de clientes debe hidratarse desde la tabla
+    // empresarial también cuando la caché local del navegador está vacía o
+    // desfasada. El bootstrap de almacenamiento puede arrancar antes de que
+    // la sesión y el contexto de empresa estén resueltos; en ese caso su
+    // primera lectura devuelve la copia local (a menudo []). Sin esta segunda
+    // lectura, un cliente creado en otro dispositivo —o justo antes de una
+    // recarga— sí existe en clientes_empresa pero nunca llega al listado.
+    let activo = true;
+    const empresaId = empresaDelLocalActivo?.id ? String(empresaDelLocalActivo.id) : "";
+    if (!ready || typeof window === "undefined" || !window.__nubeActiva || !empresaId || typeof window.getSupabaseClient !== "function") {
+      return () => { activo = false; };
+    }
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data, error } = await supabase.from("clientes_empresa").select("id,empresa_id,datos").eq("empresa_id", empresaId).order("updated_at", { ascending: true });
+        if (!activo || error) return;
+        const remotos = (data || []).map((fila) => {
+          const datos = fila?.datos && typeof fila.datos === "object" ? fila.datos : {};
+          return { ...datos, id: datos.id || fila.id, empresaId: datos.empresaId || fila.empresa_id };
+        }).filter((cliente) => cliente.id && String(cliente.empresaId || "") === empresaId);
+        setClientes((actuales) => {
+          const remotosPorId = new Map(remotos.map((cliente) => [String(cliente.id), cliente]));
+          const localesDeOtraEmpresa = (actuales || []).filter((cliente) => String(cliente?.empresaId || "") !== empresaId);
+          const localesSoloPendientes = (actuales || []).filter((cliente) => {
+            const id = String(cliente?.id || "");
+            return String(cliente?.empresaId || "") === empresaId && id && !remotosPorId.has(id);
+          });
+          return [...localesDeOtraEmpresa, ...remotos, ...localesSoloPendientes];
+        });
+      } catch (e2) {
+        // La copia local sigue siendo válida si la red cae; no se borra nada.
+      }
+    })();
+    return () => { activo = false; };
+  }, [ready, empresaDelLocalActivo?.id, miPerfilUsuarioId]);
+  (0, import_react4.useEffect)(() => {
     let activo = true;
     if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil) {
       setPermisosConsultaPM13({ personal: null, fichaje: null, ausencias: null });
