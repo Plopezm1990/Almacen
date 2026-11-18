@@ -190,7 +190,9 @@ el contenedor operativo sus tokens carbón/acero/coral (`#17191C`, `#929DA7`,
 `#FF4B32`) con superficie, texto, línea, foco y estados derivados; además la
 acción seleccionada «Sala / restaurante» usa ahora el coral de Órbita en vez del
 verde literal. La marca de caché de `index.html` queda en
-`qa-orbita-shell-pase-v4-20261118` para evitar servir el bundle anterior.
+`qa-orbita-shell-pase-v5-20261118` para evitar servir el bundle anterior y
+corregir el escape del encabezado móvil `.md:hidden`, que impedía aplicar el
+carbón de Órbita al shell responsive.
 
 Evidencia live en el preview #225: con «Apariencia → Órbita → Probar en la
 suite», el TPV móvil muestra shell carbón, tarjetas oscuras, precios coral,

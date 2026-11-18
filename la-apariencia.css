@@ -703,7 +703,7 @@ html[data-la-diseno="orbita"] #root > div {
 }
 
 html[data-la-diseno="orbita"] #root [data-la-contenedor] > aside,
-html[data-la-diseno="orbita"] #root [data-la-contenedor] > .md\\:hidden {
+html[data-la-diseno="orbita"] #root [data-la-contenedor] > .md\:hidden {
   background: var(--c-chrome) !important;
   color: var(--c-ink) !important;
 }

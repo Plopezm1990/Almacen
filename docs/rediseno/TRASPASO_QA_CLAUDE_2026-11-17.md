@@ -562,7 +562,8 @@ redefinía los tokens CSS en el contenedor y el botón seleccionado «Sala /
 restaurante» llevaba un color literal. `la-apariencia.css` fija ahora los tokens
 de Órbita en el contenedor operativo (carbón, acero y coral) y normaliza esa
 acción a `#FF4B32`; `index.html` usa la marca de caché
-`qa-orbita-shell-pase-v4-20261118`.
+`qa-orbita-shell-pase-v5-20261118`; esta revisión corrige además el escape
+CSS de `.md:hidden` para que el encabezado móvil use el carbón de Órbita.
 
 Comprobación live en preview #225: prueba temporal de Órbita en TPV móvil con
 fondo carbón, superficies oscuras, precios coral, chips y acción seleccionada
