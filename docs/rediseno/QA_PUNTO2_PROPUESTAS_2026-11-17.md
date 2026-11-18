@@ -199,3 +199,21 @@ temporal y no aplicó la apariencia a QA-EMP-A; no se ejecutaron cobros ni otras
 operaciones económicas. El siguiente control visual sigue siendo recorrer en
 este mismo marco TPV, Pase, Cocina y Caja en escritorio y las cuatro anchuras
 móviles antes de cerrar la revisión estética final.
+
+## Addendum separación del historial del TPV · 18/11/2026 · SHA `ee936bfc`
+
+El bloque largo de «Historial de ventas» ya no se muestra dentro de la pantalla
+operativa del TPV. Se conserva su lógica existente —filtros por texto, fechas,
+medio de pago y estado, trazabilidad, ticket/QR y anulación—, pero el TPV ahora
+presenta solo un resumen compacto de ventas, total vigente y ticket medio.
+
+El botón **Ver historial completo** abre una pantalla propia a pantalla completa,
+con el contexto del local activo y **← Volver al TPV**. La pantalla usa el mismo
+marco Órbita, funciona en móvil y escritorio, y no cambia datos ni permisos por
+el mero hecho de abrirla. Se renovó la marca de caché de `fuente.js` a
+`qa-orbita-ventas-history-v1-20261118`.
+
+Contratos tras el cambio: `node --check fuente.js`, `node --check
+source-recovery/fuente-recuperado.js`, `SOURCE_RECOVERY_CHECK=PASS`, P01 PASS,
+P05 PASS y `git diff --check=PASS`. Falta la comprobación visual live del botón
+en el preview recién desplegado.
