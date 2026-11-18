@@ -106791,6 +106791,7 @@ function GestionAlmacen() {
       updateCliente,
       deleteCliente,
       anonimizarCliente,
+      empresaId: empresaDelLocalActivo?.id || "",
       auditoria,
       contextoActivoPM15,
       marcarFormularioAbiertoPM15
@@ -123351,7 +123352,7 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
     setConfirmDeleteId(null);
   } }, "S\xED, eliminar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Cancelar"))));
 }
-function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCruzada = { base: 0, filas: [] }, addCliente, updateCliente, deleteCliente, anonimizarCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
+function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCruzada = { base: 0, filas: [] }, addCliente, updateCliente, deleteCliente, anonimizarCliente, empresaId = "", contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
   const h = import_react4.default.createElement;
   const blank = { nombre: "", tipoCliente: "Particular", nif: "", telefono: "", email: "", direccion: "", datosFiscales: "", notas: "" };
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
@@ -123364,11 +123365,15 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
   const [pagina, setPagina] = (0, import_react4.useState)(1);
   const [clienteAbierto, setClienteAbierto] = (0, import_react4.useState)(null);
   const [fichaTab, setFichaTab] = (0, import_react4.useState)("Resumen");
+  const vistaStorageKey = `la_clientes_vistas:${empresaId || "sin-empresa"}`;
   const [vistasGuardadas, setVistasGuardadas] = (0, import_react4.useState)(() => {
-    try { return JSON.parse(localStorage.getItem("la_clientes_vistas") || "[]"); } catch { return []; }
+    try { return JSON.parse(localStorage.getItem(vistaStorageKey) || "[]"); } catch { return []; }
   });
   (0, import_react4.useEffect)(() => { marcarFormularioAbiertoPM15(showForm); }, [showForm]);
   (0, import_react4.useEffect)(() => { setPagina(1); setClienteAbierto(null); }, [contextoActivoPM15]);
+  (0, import_react4.useEffect)(() => {
+    try { setVistasGuardadas(JSON.parse(localStorage.getItem(vistaStorageKey) || "[]")); } catch { setVistasGuardadas([]); }
+  }, [vistaStorageKey]);
   const texto = normalizarParaComparar(busqueda);
   const filtradas = analisisClientes.filter((c22) => {
     if (filtroEstado === "anonimizados" && !c22.anonimizado || filtroEstado === "activos" && c22.anonimizado) return false;
@@ -123395,7 +123400,7 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
     const nombre = typeof window !== "undefined" && window.prompt ? window.prompt("Nombre de la vista", "Mi vista de clientes") : "";
     if (!nombre || !nombre.trim()) return;
     const siguiente = [...vistasGuardadas.filter((v22) => v22.nombre !== nombre.trim()), { id: uid(), nombre: nombre.trim(), busqueda, filtroEstado, filtroTipo }];
-    setVistasGuardadas(siguiente); try { localStorage.setItem("la_clientes_vistas", JSON.stringify(siguiente)); } catch {}
+    setVistasGuardadas(siguiente); try { localStorage.setItem(vistaStorageKey, JSON.stringify(siguiente)); } catch {}
   }
   function aplicarVista(vista) {
     if (!vista) return;
