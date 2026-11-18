@@ -136,5 +136,8 @@ el TPV no vuelve a ofrecer cobro sobre una cuenta que el servidor ha bloqueado y
 el operador puede seleccionar una cuenta del día actual. La paridad con
 `source-recovery` se mantiene y P06 incluye aserciones para este comportamiento.
 
-Estado de publicación: pendiente de commit y deploy posterior a esta
-corrección. No se ejecutó ningún cobro adicional.
+Estado de publicación: commit `2c281607` desplegado en el Deploy Preview
+`6afd9ed0c74b1938b74eb0d3` (`ready`). En la comprobación live, al abrir la
+cuenta desde Pase el TPV mostró el aviso en la zona de contexto, retiró la
+cuenta obsoleta y ya no renderizó «Cobro · F4» ni botones de cobro. No se
+ejecutó ningún cobro adicional.

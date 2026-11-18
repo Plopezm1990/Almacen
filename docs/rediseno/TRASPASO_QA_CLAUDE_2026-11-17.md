@@ -763,3 +763,12 @@ elegir una cuenta del día operativo actual. Se mantiene `fuente.js` ↔
 
 No se ejecutó ningún cobro adicional; P06 funcional sigue pendiente de un
 fixture del día actual y una autorización explícita.
+
+## Verificación live de la corrección · 18/11/2026
+
+El commit `2c281607` se publicó en el Deploy Preview `6afd9ed0c74b1938b74eb0d3`
+(`ready`). Al abrir desde Pase la cuenta antigua de Mesa QA-A1-02, el TPV
+mostró el rechazo en el contexto de la mesa, retiró la cuenta obsoleta y dejó
+solo la caja del TPV; no aparecieron «Cobro · F4» ni los botones «Cobrar
+efectivo»/«Iniciar tarjeta simulada». La cuenta y su evidencia siguen en QA;
+no se borró ningún registro servidor y no se ejecutó otro cobro.
