@@ -833,9 +833,28 @@ pedido y se cerró formalmente la cuenta en el servidor. La matriz lo registra
 como `qa-20261118-p06-propina-cierre`; no se ejecutaron cobros ni reembolsos
 adicionales.
 
-La siguiente tanda no es vale regalo. Es la auditoría y, si el contrato está
-publicado en QA, la construcción de `tpv-31` (factura completa a empresa) y
-`caj-16` (rectificación fiscal). Las migraciones C06/C08 existen en el
-repositorio, pero no se deben aplicar desde este traspaso ni confundir con una
-capacidad live. El detalle y las condiciones de cierre están en
-`docs/rediseno/PLAN_P1_FISCAL_TPV_2026-11-18.md`.
+La siguiente tanda es la construcción de `tpv-31` (factura completa a empresa)
+y `caj-16` (rectificación fiscal). La lectura de QA confirma que C06/C08 ya
+están aplicadas; no se requiere SQL nuevo.
+
+## Addendum implementación P1 fiscal · 18/11/2026 · SHA `860c69d8`
+
+La rama ya contiene la primera superficie Órbita para `tpv-31` y `caj-16`.
+Cuando el TPV tiene un documento fiscal emitido, aparece la tarjeta «Factura
+completa a empresa»: pide razón social, identificador fiscal y dirección
+opcional y, tras confirmación, llama a `abc_clasificar_documento` con
+`FACTURA_COMPLETA` y a `abc_conservar_documento_emitido`. La tarjeta
+«Rectificación fiscal» pide el ID de un documento rectificativo ya emitido y
+clasificado, más un motivo; al confirmar llama a
+`abc_registrar_correccion_documental`. No se hace DML directo y todos los
+payloads declaran `qa_only`/`aeat_transport=DISABLED`.
+
+El contrato estático `tests/rediseno/p1-fiscal-tpv-contract.mjs` pasa junto al
+de P06 y la paridad `fuente.js` ↔ `source-recovery` es exacta. El Deploy
+Preview #225 del SHA `860c69d8` terminó `ready`; el escaneo de secretos quedó
+sin coincidencias. Solo se comprobó que la aplicación carga sin sesión: no se
+emitió factura, no se rectificó ningún documento y no se ejecutó cobro nuevo.
+
+Pendiente para cerrar `tpv-31`/`caj-16`: preparar un fixture reversible,
+autorizar explícitamente una emisión/clasificación y disponer de un documento
+rectificativo válido para probar la vinculación y la persistencia en QA.
