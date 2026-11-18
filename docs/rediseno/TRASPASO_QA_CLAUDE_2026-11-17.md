@@ -953,3 +953,19 @@ en esta tanda.
 Contrato local: `tests/rediseno/org33-sala-contract.mjs` (`PASS`). La paridad de
 `source-recovery` también pasa. El plan y las condiciones para cerrar la
 validación live están en `docs/rediseno/PLAN_P2_ORG33_SALA_2026-11-18.md`.
+
+### Addendum validación live org-33 · 18/11/2026
+
+Con autorización se creó en QA-A1 la zona `QA-P2-ZONA-01`
+(`00853c8f-8a5d-4e12-997c-8ede808b3714`) y la mesa `QA-P2-MESA-01`
+(`f00d03d7-6c10-4a33-899f-988db44aab86`). La segunda sesión actualizó la zona
+y la primera, conservando la versión 1, fue rechazada con
+`zona_version_conflict`; no hubo pérdida silenciosa de cambios. Se desactivó
+primero la mesa (versión 2) y después la zona (versión 4). La consulta posterior
+confirma ambos registros inactivos y que ninguna zona o mesa real fue tocada.
+
+La lectura live mostró las tres zonas, seis mesas, estados efectivos y la tarifa
+T8 previa inactiva. El contrato funcional de `org-33` queda validado en QA. La
+única comprobación pendiente para cerrar visualmente la fila es una pasada en
+viewport móvil 390×844; el estado se mantiene como `Pendiente visual` hasta
+hacerla.

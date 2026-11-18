@@ -77,6 +77,29 @@ mutaciones reversibles:
 Hasta completar ese recorrido, el estado es **Construida en código; pendiente
 validación QA**.
 
+## Evidencia QA de la primera tanda
+
+La lectura live se comprobó como propietario en QA-A1 y mostró las tres zonas,
+las seis mesas reales, estados `OCUPADA`/`LIBRE`, día operativo `2026-11-18` y
+la tarifa previa inactiva de T8 pieza 3.
+
+Con autorización explícita se creó el fixture reversible siguiente:
+
+- zona `QA-P2-ZONA-01`, id `00853c8f-8a5d-4e12-997c-8ede808b3714`;
+- mesa `QA-P2-MESA-01`, id `f00d03d7-6c10-4a33-899f-988db44aab86`, capacidad 4;
+- ambos nacieron activos en versión 1 y aparecieron en Pase/Configuración;
+- un segundo terminal actualizó la zona y la dejó en versión 3;
+- el primer terminal intentó guardar con la versión 1 y recibió
+  `zona_version_conflict`, sin pisar el cambio remoto;
+- se desactivó primero la mesa (versión 2) y después la zona (versión 4);
+- la consulta posterior confirma ambos `activo=false`; no se tocó ninguna zona
+  o mesa real.
+
+El contrato funcional de zonas, mesas, tarifas, control de versión y limpieza
+reversible queda validado. La revisión visual en el navegador de escritorio fue
+correcta; la medición específica en viewport móvil 390×844 queda como pasada
+visual pendiente antes de marcar el renglón como completamente cerrado.
+
 ## Verificación local
 
 - `REDISENO_ORG33_SALA_CONTRACT=PASS`
