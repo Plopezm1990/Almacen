@@ -218,3 +218,16 @@ source-recovery/fuente-recuperado.js`, `SOURCE_RECOVERY_CHECK=PASS`, P01 PASS,
 P05 PASS y `git diff --check=PASS`. En el preview #225 se comprobó el flujo
 completo en Local A1: resumen compacto → «Ver historial completo» → pantalla
 independiente con filtros → «← Volver al TPV», sin perder el contexto del local.
+
+## Addendum organización del TPV · 18/11/2026 · SHA `582e2a07`
+
+La revisión de composición detectó un segundo exceso: el TPV cargaba siempre
+reparto de productos, unión de cuentas, pedido operativo, descuentos y cuentas
+aparcadas debajo de la venta. Esas funciones no se eliminan, pero pasan a estar
+plegadas por defecto detrás de **Mostrar operaciones de cuenta**; mesas, venta,
+cobro y el resumen permanecen visibles. El botón cambia a **Ocultar operaciones
+de cuenta** al abrirlas y conserva los controles y permisos originales.
+
+La marca de caché de `fuente.js` queda en
+`qa-orbita-tpv-organization-v2-20261118`. Se mantiene la paridad con
+`source-recovery`; P01, P05, sintaxis y `git diff --check` siguen en verde.

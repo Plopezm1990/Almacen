@@ -588,3 +588,13 @@ de caché de `fuente.js` es `qa-orbita-ventas-history-v1-20261118`; la paridad
 con `source-recovery` y los contratos P01/P05 están en verde. Se confirmó en
 el Deploy Preview #225 con Local A1: el resumen permanece en el TPV, el botón
 abre la pantalla propia y «← Volver al TPV» restaura la pantalla operativa.
+
+## Addendum organización del TPV · 18/11/2026 · SHA `582e2a07`
+
+Para que el TPV se acerque a la maqueta y no parezca una pantalla interminable,
+las operaciones secundarias de cuenta (aparcar, repartir, unir, pedido
+operativo y descuentos) quedan plegadas al entrar. El operador las muestra con
+**Mostrar operaciones de cuenta** cuando las necesita; no se ha eliminado
+ningún flujo ni se han cambiado permisos. Mesas, productos, cobro y resumen
+siguen visibles en la pantalla inicial. Cache de `fuente.js`:
+`qa-orbita-tpv-organization-v2-20261118`.
