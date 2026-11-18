@@ -156,3 +156,23 @@ movimiento reducido cubiertos por el preview y los contratos locales. Quedan
 fuera del cierre los opcionales ya separados: paginación/búsqueda ampliada de
 la cola de Pase, positivo de Cajero/a con MFA y el registro contable de las
 migraciones de Apariencia en `schema_migrations`.
+
+## Addendum marco operativo Órbita · 18/11/2026
+
+Por decisión de producto, Órbita queda como marco visual predeterminado para
+TPV, Pase, Cocina y Caja, con el parecido exacto a la maqueta: carbón,
+acero/coral, cabecera contextual, dos columnas en escritorio y tarjetas
+apiladas en móvil. El cambio es de presentación; no modifica permisos, RPC,
+estados, fiscalidad ni operaciones económicas.
+
+El panel de servicio de Pase ahora también se monta cuando el diseño activo es
+Órbita y recibe la clase `la-orbita-pase`, de modo que plano, cola y accesos
+Sala/TPV → Cocina → Caja comparten el mismo marco. La prueba temporal live de
+Órbita mostró el panel con datos reales y mantuvo Local A1; no se aplicó la
+apariencia a la empresa ni se hicieron cobros, reembolsos o cierres nuevos.
+
+Verificaciones de la tanda: `REDISENO_P05_PROPUESTAS_OK=1`,
+`REDISENO_P01_CAPAS_Y_MIGRACIONES_OK=1`, `git diff --check=PASS`, sintaxis de
+`la-pase-panel.js=PASS` y paridad `source-recovery=PASS`. El detalle de shell
+se fija con la marca de caché `qa-orbita-shell-pase-20261118`; el panel de Pase
+con `qa-orbita-pase-20261118`.

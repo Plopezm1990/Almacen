@@ -49,6 +49,8 @@ assert.ok(fuente.includes('la-operacion la-operacion-cocina'), 'Cocina debe expo
 assert.ok(fuente.includes('la-operacion la-operacion-caja'), 'Caja debe exponer la raíz visual compartida de Órbita.');
 assert.ok(css.includes('html[data-la-diseno="orbita"] .tpv-layout'), 'TPV debe tener composición Órbita explícita.');
 assert.ok(css.includes('html[data-la-diseno="orbita"] #la-pase:not(.la-ascua)'), 'Pase debe heredar la composición Órbita cuando sea el marco activo.');
+assert.match(panel, /diseno === "pase" \|\| diseno === "ascua" \|\| diseno === "orbita"/);
+assert.ok(panel.includes('la-orbita-pase'), 'Pase debe montarse dentro del marco Órbita.');
 assert.ok(html.includes('la-apariencia.css?v='), 'La hoja de apariencia no tiene marca de caché.');
 
 console.log('REDISENO_P05_PROPUESTAS_OK=1 disenos=9 paletas=6 rumbo=PASS pase=PASS responsive=PASS reduced_motion=PASS');

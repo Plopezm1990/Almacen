@@ -536,3 +536,19 @@ producto, y `enc-05`/`org-25` se reencuadran bajo sus pantallas existentes.
 No se inició construcción ni se modificaron datos de QA. El siguiente paso
 requiere aprobación del alcance por grupo; el PR #225 sigue en borrador y
 producción no se ha tocado.
+
+## Addendum Codex · marco Órbita común · 18/11/2026
+
+La recomendación aprobada es usar Órbita como marco común de TPV, Pase, Cocina
+y Caja, manteniendo los contratos de negocio intactos. `la-pase-panel.js`
+monta ahora el panel operativo también con `data-la-diseno="orbita"` y le da la
+clase `la-orbita-pase`; el CSS de Órbita normaliza además el shell histórico
+que usaba estilos en línea del tema base. Esto evita que el panel nuevo parezca
+Órbita mientras la barra, el fondo y las tarjetas siguen verdes.
+
+La selección se probó mediante «Apariencia → Probar en la suite», sin guardar
+la empresa. La evidencia live mostró Local A1, ventas reales del ledger y el
+marco temporal de Órbita; la configuración persistida de QA no se cambió.
+Antes de fusionar hay que repetir la comprobación visual de TPV, Pase, Cocina y
+Caja en 1440×900, 1024, 430, 390 y 320 px y actualizar la matriz con el SHA
+final. PR #225 continúa en borrador y producción sigue fuera de alcance.

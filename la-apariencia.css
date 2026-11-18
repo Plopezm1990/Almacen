@@ -655,6 +655,32 @@ html[data-la-diseno="orbita"] .tpv-layout {
   color: var(--c-ink);
 }
 
+/* El shell histórico pinta fondo, tipografía y panel lateral con estilos en
+   línea calculados por el tema base. Órbita debe ser visible también ahí, no
+   solo en los componentes nuevos; estas reglas son deliberadamente locales
+   al diseño y llevan !important para ganar al estilo en línea sin tocar la
+   lógica ni los tokens de los otros ocho diseños. */
+html[data-la-diseno="orbita"] #root [data-la-contenedor] {
+  background: var(--c-bg) !important;
+  color: var(--c-ink) !important;
+  font-family: var(--la-font) !important;
+}
+
+html[data-la-diseno="orbita"] #root [data-la-contenedor] > aside,
+html[data-la-diseno="orbita"] #root [data-la-contenedor] > .md\\:hidden {
+  background: var(--c-chrome) !important;
+  color: var(--c-ink) !important;
+}
+
+html[data-la-diseno="orbita"] #root [data-la-contenedor] main {
+  background: var(--c-bg) !important;
+}
+
+html[data-la-diseno="orbita"] #root [data-la-contenedor] .rounded-xl,
+html[data-la-diseno="orbita"] #root [data-la-contenedor] .rounded-lg {
+  border-color: var(--c-border-control) !important;
+}
+
 html[data-la-diseno="orbita"] .la-operacion > h2,
 html[data-la-diseno="orbita"] .la-operacion > .text-\[16px\].font-semibold {
   letter-spacing: -.025em;

@@ -40,11 +40,11 @@ import assert from 'node:assert/strict';
 // son más baratas que un despliegue que sirve lo de ayer y lo da por bueno.
 
 const CAPAS = [
-  { archivo: 'la-apariencia.css', marca: 'qa-orbita-operacion-20261118', huella: '825189989abed592', etiqueta: 'link' },
+  { archivo: 'la-apariencia.css', marca: 'qa-orbita-shell-pase-20261118', huella: 'f1c1141e3b7561d5', etiqueta: 'link' },
   { archivo: 'la-pase.css', marca: 'qa-ascua-20261113', huella: '1def5771bce1f9e4', etiqueta: 'link' },
   { archivo: 'la-apariencia.js', marca: 'qa-apariencia-contexto-20261113', huella: 'da220cc43c9544bc', etiqueta: 'script' },
   { archivo: 'la-apariencia-editor.js', marca: 'qa-apariencia-contexto-20261113', huella: '423e462949e5edea', etiqueta: 'script' },
-  { archivo: 'la-pase-panel.js', marca: 'qa-destinos-exactos-20261117', huella: '85b345ed8c929c8c', etiqueta: 'script' },
+  { archivo: 'la-pase-panel.js', marca: 'qa-orbita-pase-20261118', huella: '00a951bb2691a431', etiqueta: 'script' },
   { archivo: 'la-tablas-fichas.js', marca: 'qa-tablas-fichas-20261113', huella: 'bea4568d3b696332', etiqueta: 'script' },
 ];
 

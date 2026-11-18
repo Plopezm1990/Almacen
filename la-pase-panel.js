@@ -45,7 +45,7 @@
   }
 
   function esPanelServicio(diseno) {
-    return diseno === "pase" || diseno === "ascua";
+    return diseno === "pase" || diseno === "ascua" || diseno === "orbita";
   }
 
   /* ------------------------------------------------------------ utilidades */
@@ -524,7 +524,8 @@
     if (!destino) return;
     actualizarContexto(claveContexto(p));
 
-    var nodo = el("div", { id: ID, class: diseno === "ascua" ? "la-pase la-ascua" : "la-pase" }, [
+    var clasePanel = diseno === "ascua" ? "la-pase la-ascua" : diseno === "orbita" ? "la-pase la-orbita-pase" : "la-pase";
+    var nodo = el("div", { id: ID, class: clasePanel }, [
       diseno === "ascua" ? bloqueAscua() : bloqueTurno(),
       el("div", { class: "la-pase-abajo" }, [bloqueCola(), bloqueAccesos()])
     ]);
