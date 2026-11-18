@@ -1,0 +1,22 @@
+ID;Estado actual;Propuesta;Prioridad;Condición de cierre / construcción;Referencia
+tpv-24;No construida;Mantener futura;P2;Contrato de funciones rápidas, permisos, fixture QA y desktop/móvil;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+tpv-28;No construida;Mantener futura;P1 si negocio lo exige;Proveedor Bizum, webhook, idempotencia, conciliación y permisos;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+tpv-29;No construida;Dividir propina / vale regalo;P1/P2;Propina con contrato fiscal; vale con saldo, emisión, canje y devolución;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+tpv-31;No construida;Candidata a construir;P1;Factura completa, receptor, permisos, emisión QA y ticket;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+tpv-32;No construida;Futura bloqueada por backend;P2;Aplicar entrega documental autorizada, correo, estados, reintento y no duplicación;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+tpv-33;No construida;Mantener futura;P2;Contrato de pantalla cliente, privacidad, actualización y cierre de sesión;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+enc-05;No construida;Reencuadrar bajo Encargos;Decisión;Confirmación propia o bloqueo sin diálogo nativo; no crear superficie independiente;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+caj-16;No construida;Candidata a construir;P1;Motivo, documento original, permisos, cola fiscal y trazabilidad;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+caj-20;No construida;Mantener futura;P2 fiscal;Formato/proveedor, validación, firma/entrega y estados interoperables;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+inv-32;No construida;Decidir o retirar;Decisión;Solo construir si impresión de receta es requisito; si no, retirar fila;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+inv-35;No construida;Candidata a construir;P2;CRUD de grupos/opciones, versiones, límites, permisos y snapshot;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+inv-36;No construida;Unificar con inv-35;P2;Cerrar como parte de biblioteca o retirar fila separada;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+org-23;No construida;Mantener futura;P2 hardware;Puente local, permisos, protocolo y prueba de conexión;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+org-25;No construida;Reencuadrar bajo org-22/terminales;Decisión;Ampliar contrato de asociación o retirar vista duplicada;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+org-33;No construida;Candidata a construir;P2;CRUD de zonas/mesas/tarifas, concurrencia y regresión Pase/TPV;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+org-34;No construida;Mantener futura o retirar;Decisión;Catálogo de plantillas y efectos explícitos antes de UI;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+org-35;No construida;Mantener futura o retirar;Decisión;Personalización por cargo, precedencia y restauración;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+org-36;No construida;Mantener futura bloqueada;P2;Contrato de integración, secretos, health-check y desconexión;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+sis-14;No construida;Retirar de matriz de producto;N/A;Conservar solo como herramienta de demo/QA;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+sis-15;No construida;Retirar de matriz de producto;N/A;No construir reset/comparador dentro de la suite;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md
+sis-16;No construida;Retirar como pantalla;N/A;Cerrar con ocultación, redirección y RPC denegada;CIERRE-ALCANCE-PENDIENTES-2026-11-18.md

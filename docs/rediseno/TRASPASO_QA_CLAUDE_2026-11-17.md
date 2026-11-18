@@ -507,3 +507,32 @@ siendo decisiones de alcance (impresión de ficha de coste y biblioteca/editor
 de opciones), y los listados que solo tienen evidencia de apertura no se
 promueven a “Pasa”. El detalle y el orden de la siguiente pasada están en
 `docs/rediseno/QA_PUNTO3_GESTION_2026-11-18.md`.
+
+## Addendum de cierre de alcance · 18/11/2026
+
+Se contrastaron las filas pendientes de la matriz contra la fuente y las 211
+migraciones del repositorio. La matriz actual contiene **21 filas exactas con
+estado `No construida`**; la cifra histórica de 23 mezclaba además bloqueos de
+QA y pantallas no ejercitadas a propósito. El inventario y las decisiones
+propuestas están en:
+
+- `docs/rediseno/CIERRE-ALCANCE-PENDIENTES-2026-11-18.md`
+- `docs/rediseno/MATRIZ-DECISIONES-PENDIENTES-2026-11-18.csv`
+
+La revisión confirma soporte de servidor parcial para propinas, facturas
+completas/rectificativas, variantes/modificadores y zonas/mesas, pero no una
+pantalla equivalente; la entrega documental por correo es una migración
+candidata aislada y no aplicada en QA/producción. Equipos es solo registro,
+no puente de hardware. Bizum, vales regalo, pantalla de cliente, factura
+electrónica interoperable, plantillas, teclas por cargo e integraciones no
+tienen contrato identificable.
+
+Propuesta de orden: primero `tpv-31`, `caj-16` y propina de `tpv-29`; después
+`org-33`, `inv-35`/`inv-36`, `tpv-24` y `tpv-33`; luego integraciones y pagos
+externos cuando exista backend aprobado. `sis-14`/`sis-15` se retiran como
+andamio de maqueta, `sis-16` se cierra con el comportamiento fail-closed del
+producto, y `enc-05`/`org-25` se reencuadran bajo sus pantallas existentes.
+
+No se inició construcción ni se modificaron datos de QA. El siguiente paso
+requiere aprobación del alcance por grupo; el PR #225 sigue en borrador y
+producción no se ha tocado.
