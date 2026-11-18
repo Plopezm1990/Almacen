@@ -45,6 +45,10 @@ for (const pieza of ['mesaId', 'cuentaId', 'operatingDay', 'destinoMesa', 'desti
 assert.match(fuente, /orbita:\s*\{\s*titulo:\s*"El pulso"/);
 assert.match(fuente, /orbita:[^\n]*indicadores:\s*\["ventas"/);
 assert.ok(fuente.includes('id: "ventas"') && fuente.includes('unidadesVentaConSignoPM09(movimiento)'), 'Órbita debe usar ventas reales del ledger, no una cifra inventada.');
+assert.ok(fuente.includes('la-operacion la-operacion-cocina'), 'Cocina debe exponer la raíz visual compartida de Órbita.');
+assert.ok(fuente.includes('la-operacion la-operacion-caja'), 'Caja debe exponer la raíz visual compartida de Órbita.');
+assert.ok(css.includes('html[data-la-diseno="orbita"] .tpv-layout'), 'TPV debe tener composición Órbita explícita.');
+assert.ok(css.includes('html[data-la-diseno="orbita"] #la-pase:not(.la-ascua)'), 'Pase debe heredar la composición Órbita cuando sea el marco activo.');
 assert.ok(html.includes('la-apariencia.css?v='), 'La hoja de apariencia no tiene marca de caché.');
 
 console.log('REDISENO_P05_PROPUESTAS_OK=1 disenos=9 paletas=6 rumbo=PASS pase=PASS responsive=PASS reduced_motion=PASS');

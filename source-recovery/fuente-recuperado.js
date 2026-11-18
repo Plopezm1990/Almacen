@@ -28876,7 +28876,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     return h3(Card, { className: "p-5" }, h3("div", { className: "text-[16px] font-semibold mb-2" }, "Cocina y comandas"), h3("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "Selecciona un local concreto para consultar estaciones y comandas."));
   }
 
-  return h3("div", null,
+  return h3("div", { className: "la-operacion la-operacion-cocina" },
     h3("div", { className: "flex items-center justify-between mb-3" }, h3("h2", { className: "text-[16px] font-semibold" }, "Cocina y comandas"), h3(Btn, { small: true, variant: "ghost", onClick: () => { refrescarEstaciones(); refrescarComandas(); }, disabled: !!procesando || cargando }, cargando ? "Actualizando…" : "Actualizar")),
     h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, h3("div", { className: "text-[12px]" }, "La cocina enruta comandas por estación mediante el servidor. ", h3("b", null, "No mueve stock, no cobra ni emite fiscalidad."))),
     error ? h3("div", { role: "alert", className: "text-[12px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "⚠ ", error) : null,
@@ -29136,7 +29136,7 @@ function Traspasos({ productos, productosEmpresa = [], locales = [], localActivo
   }
   return h3(
     "div",
-    null,
+    { className: "la-operacion la-operacion-caja" },
     h3(SectionTitle, null, "Traspasos"),
     h3(
       Card,

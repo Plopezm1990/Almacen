@@ -642,6 +642,174 @@ html[data-la-paleta] body {
   #root table.la-tabla-fichas > tbody > tr[data-la-sin-ficha] > td { display: table-cell; }
 }
 
+/* ========================================================================
+   Órbita · marco de operación para TPV, Pase, Cocina y Caja
+   ------------------------------------------------------------------------
+   La capa es solo de presentación. Las clases la-operacion se añaden a los
+   dos componentes que no tenían una raíz estable; TPV y Pase ya exponen sus
+   propias raíces. No se cambian estados, permisos ni llamadas al servidor.
+   ======================================================================== */
+
+html[data-la-diseno="orbita"] .la-operacion,
+html[data-la-diseno="orbita"] .tpv-layout {
+  color: var(--c-ink);
+}
+
+html[data-la-diseno="orbita"] .la-operacion > h2,
+html[data-la-diseno="orbita"] .la-operacion > .text-\[16px\].font-semibold {
+  letter-spacing: -.025em;
+}
+
+html[data-la-diseno="orbita"] .la-operacion-cocina > .flex.items-center.justify-between,
+html[data-la-diseno="orbita"] .la-operacion-caja > h2 {
+  padding: 14px 16px;
+  margin-block-end: 14px;
+  border: 1px solid var(--c-divider);
+  border-block-start: 2px solid var(--c-accent-fill);
+  border-radius: var(--la-radio);
+  background: color-mix(in srgb, var(--c-surface) 92%, transparent);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, .16);
+}
+
+html[data-la-diseno="orbita"] .la-operacion-cocina > .flex.items-center.justify-between h2,
+html[data-la-diseno="orbita"] .la-operacion-caja > h2 {
+  font-size: clamp(20px, 3vw, 28px);
+  font-weight: 700;
+}
+
+html[data-la-diseno="orbita"] .la-operacion-cocina > .flex.items-center.justify-between h2::after,
+html[data-la-diseno="orbita"] .la-operacion-caja > h2::after {
+  content: "";
+  display: block;
+  width: 56px;
+  height: 2px;
+  margin-block-start: 7px;
+  background: linear-gradient(90deg, var(--c-accent-fill), #8CC3FF);
+  border-radius: 99px;
+}
+
+html[data-la-diseno="orbita"] .tpv-layout {
+  gap: 16px;
+}
+
+html[data-la-diseno="orbita"] .tpv-main > .relative,
+html[data-la-diseno="orbita"] .tpv-main > .tpv-rejilla,
+html[data-la-diseno="orbita"] .tpv-side > * {
+  border-color: var(--c-divider) !important;
+}
+
+html[data-la-diseno="orbita"] .tpv-rejilla > * {
+  border: 1px solid var(--c-divider) !important;
+  border-block-start: 2px solid var(--c-accent-fill) !important;
+  border-radius: var(--la-radio) !important;
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent) !important;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, .14);
+  transition: transform .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+
+html[data-la-diseno="orbita"] .tpv-rejilla > *:hover {
+  transform: translateY(-2px);
+  border-color: var(--c-accent) !important;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .2);
+}
+
+html[data-la-diseno="orbita"] .tpv-side > * {
+  background: color-mix(in srgb, var(--c-surface) 96%, transparent) !important;
+  border-radius: var(--la-radio) !important;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .15);
+}
+
+html[data-la-diseno="orbita"] .tpv-dock {
+  border-color: var(--c-accent-fill) !important;
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent) !important;
+  box-shadow: 0 12px 28px rgba(0, 0, 0, .25);
+  backdrop-filter: blur(12px);
+}
+
+html[data-la-diseno="orbita"] .la-operacion-cocina > .rounded-lg,
+html[data-la-diseno="orbita"] .la-operacion-cocina > [role="status"],
+html[data-la-diseno="orbita"] .la-operacion-caja > .rounded-lg,
+html[data-la-diseno="orbita"] .la-operacion-caja > [role="status"] {
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radio);
+}
+
+html[data-la-diseno="orbita"] .la-operacion-cocina .rounded-lg,
+html[data-la-diseno="orbita"] .la-operacion-caja .rounded-lg {
+  border-radius: var(--la-radio);
+}
+
+html[data-la-diseno="orbita"] .la-operacion-caja > .grid,
+html[data-la-diseno="orbita"] .la-operacion-caja > .flex {
+  gap: 12px;
+}
+
+html[data-la-diseno="orbita"] .la-operacion-caja > .mb-4,
+html[data-la-diseno="orbita"] .la-operacion-caja > .mb-5 {
+  border: 1px solid var(--c-divider) !important;
+  border-block-start: 2px solid var(--c-accent-fill) !important;
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent) !important;
+  box-shadow: 0 10px 26px rgba(0, 0, 0, .14);
+}
+
+html[data-la-diseno="orbita"] #la-pase.la-orbita-pase,
+html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) {
+  --pase-fondo: var(--c-surface);
+  --pase-panel: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  --pase-tarjeta: color-mix(in srgb, var(--c-surface) 88%, #FFFFFF);
+  --pase-tinta: var(--c-ink);
+  --pase-tinta-suave: var(--c-ink-soft);
+  --pase-acento: var(--c-accent-fill);
+}
+
+html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-turno,
+html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-caja,
+html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-plano {
+  border: 1px solid var(--c-divider);
+  border-block-start: 2px solid var(--c-accent-fill);
+  border-radius: var(--la-radio);
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  color: var(--c-ink);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .14);
+}
+
+html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-titulo {
+  background: linear-gradient(105deg, #D0ABFF, #B0A6FF 45%, #8CC3FF);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-titulo em {
+  color: var(--c-accent);
+  -webkit-text-fill-color: currentColor;
+}
+
+html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-mesa,
+html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-accion {
+  border-color: var(--c-divider);
+  border-radius: var(--la-radio);
+}
+
+html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-accion {
+  background: var(--c-accent-fill);
+  color: var(--c-on-accent);
+}
+
+@media (max-width: 760px) {
+  html[data-la-diseno="orbita"] .la-operacion-cocina > .flex.items-center.justify-between,
+  html[data-la-diseno="orbita"] .la-operacion-caja > h2 {
+    padding: 12px;
+  }
+
+  html[data-la-diseno="orbita"] .tpv-side > * {
+    box-shadow: 0 8px 22px rgba(0, 0, 0, .16);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-la-diseno="orbita"] .tpv-rejilla > * { transition: none; }
+}
+
 /* ==========================================================================
    Campos de formulario en anchos tactiles.
    --------------------------------------------------------------------------
