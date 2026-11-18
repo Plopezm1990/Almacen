@@ -764,6 +764,21 @@ elegir una cuenta del día operativo actual. Se mantiene `fuente.js` ↔
 No se ejecutó ningún cobro adicional; P06 funcional sigue pendiente de un
 fixture del día actual y una autorización explícita.
 
+## Addendum cobro único de propina confirmado · 18/11/2026
+
+Con autorización explícita del propietario se usó el fixture del día actual
+`b23f583e-01b4-4329-8502-95c14734bb47` (pedido
+`318d1423-d673-4640-bcb3-c5f8038bb387`) en QA-A1. Se ejecutó una sola vez
+«Cobrar efectivo» con total `4,95 €`, efectivo recibido `5,00 €` y «El cambio
+es propina» activado. Resultado server-side confirmado: `4,95 €` pagados,
+`0,00 €` pendientes y propina registrada de `0,05 €`, sin devolución de
+cambio. Se emitió `TPV-38`, secuencia `34`, con QR fiscal QA C07-D.
+
+La cuenta quedó pagada pero abierta porque el pedido aún no estaba servido o
+cerrado. No se pulsó «Cerrar cuenta pagada» ni se realizó otro movimiento
+económico; el cierre queda pendiente de autorización separada. La incidencia
+de mensaje perdido ya no se reproduce en este camino confirmado.
+
 ## Verificación live de la corrección · 18/11/2026
 
 El commit `2c281607` se publicó en el Deploy Preview `6afd9ed0c74b1938b74eb0d3`

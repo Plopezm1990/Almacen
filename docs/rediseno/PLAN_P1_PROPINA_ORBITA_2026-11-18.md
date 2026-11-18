@@ -141,3 +141,21 @@ Estado de publicación: commit `2c281607` desplegado en el Deploy Preview
 cuenta desde Pase el TPV mostró el aviso en la zona de contexto, retiró la
 cuenta obsoleta y ya no renderizó «Cobro · F4» ni botones de cobro. No se
 ejecutó ningún cobro adicional.
+
+## Cobro único de propina autorizado · 18/11/2026
+
+Con autorización explícita del propietario se preparó una cuenta del día
+actual en QA-A1 y se ejecutó **una sola vez** el cobro simulado en efectivo.
+La cuenta es `b23f583e-01b4-4329-8502-95c14734bb47` y el pedido es
+`318d1423-d673-4640-bcb3-c5f8038bb387`. Total: `4,95 €`; efectivo recibido:
+`5,00 €`; cambio positivo: `0,05 €`; casilla «El cambio es propina» activada.
+
+El servidor confirmó el cobro y la propina: `4,95 €` confirmados, `0,00 €`
+pendientes y mensaje visible «Propina de €0.05 registrada; no se devuelve
+cambio». Se emitió el ticket QA `TPV-38`, secuencia `34`, con QR fiscal
+simulado C07-D. No se repitió el clic ni se ejecutaron otros cobros.
+
+La cuenta quedó pagada pero abierta porque su pedido aún no estaba servido o
+cerrado. El cierre formal es una operación separada y no se ejecuta sin una
+autorización específica. P06 queda validado para el camino de confirmación y
+registro de propina; la conciliación contable/fiscal sigue siendo opcional.
