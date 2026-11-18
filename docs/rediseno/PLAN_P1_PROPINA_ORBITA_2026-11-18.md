@@ -84,3 +84,21 @@ sin ejecutar operaciones económicas:
 La prueba funcional de propina sigue requiriendo un fixture reversible con
 cambio positivo y autorización explícita para un único cobro simulado. No se
 crearon movimientos, no se cobraron cuentas y no se modificó producción.
+
+## Intento funcional autorizado · resultado no confirmado · 18/11/2026
+
+Con autorización explícita del propietario se preparó una única operación en
+QA-A1: total `1,32 €`, efectivo `5,00 €`, cambio positivo `3,68 €` y la casilla
+**«El cambio es propina»** activada. Se pulsó una sola vez **«Cobrar efectivo»**.
+
+El botón pasó brevemente a «Procesando…», pero la pantalla volvió a los
+valores iniciales sin mostrar ticket, confirmación, error ni movimiento de
+propina. Una actualización posterior consultó de nuevo el servidor y devolvió
+la cuenta en `0,00 € confirmado / 1,32 € pendiente`; la propina tampoco aparece
+como registrada. Por seguridad no se repitió el clic: no hay prueba de que el
+servidor haya aceptado la operación y repetir podría duplicarla.
+
+Estado: **P06 no cerrado funcionalmente**. Queda una incidencia de diagnóstico
+sobre el camino de cobro en el preview (respuesta o error no expuesto por la
+UI). La evidencia visual queda en la sesión del preview; no se modificó
+producción ni se ejecutó un segundo intento.

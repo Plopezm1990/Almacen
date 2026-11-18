@@ -715,3 +715,18 @@ casilla solo se ofrece cuando el cambio es mayor que cero. Esta tanda no hizo
 cobros, reembolsos, cierres ni otras escrituras económicas. La validación
 server-side de P06 sigue separada y necesita fixture reversible más autorización
 explícita para un único cobro simulado.
+
+## Addendum intento P06 autorizado · 18/11/2026
+
+Se preparó y se ejecutó una sola vez el cobro simulado de `1,32 €` con `5,00 €`
+en efectivo y **«El cambio es propina»** activado (`3,68 €` de cambio). El
+botón pasó por «Procesando…», pero la vista regresó al estado inicial sin ticket,
+confirmación ni error visible. La actualización posterior confirmó desde el
+servidor `0,00 €` confirmado y `1,32 €` pendiente; no aparece movimiento de
+propina. No se repitió la operación para evitar una posible duplicidad.
+
+P06 queda bloqueado como **fallo de validación funcional**, no como éxito. El
+siguiente paso es instrumentar o revisar el error de la ruta
+`abc_iniciar_cobro`/`abc_confirmar_efectivo` y su llamada posterior a
+`abc_registrar_propina_efectivo`, manteniendo el PR en borrador y sin nuevos
+movimientos hasta explicar por qué la UI no expone la respuesta del servidor.
