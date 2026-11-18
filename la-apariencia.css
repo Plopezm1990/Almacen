@@ -767,6 +767,15 @@ html[data-la-diseno="orbita"] .tpv-layout {
   gap: 16px;
 }
 
+/* El selector de modo del TPV usa `C2.chrome` literal para el modo activo,
+   no `--c-accent-fill`. En Órbita el estado seleccionado debe ser coral, como
+   el resto de acciones primarias, y no el verde histórico de la marca. */
+html[data-la-diseno="orbita"] #root [role="group"][aria-label="Modo de venta"] button[aria-pressed="true"] {
+  background: var(--c-accent-fill) !important;
+  border-color: var(--c-accent-fill) !important;
+  color: var(--c-on-accent) !important;
+}
+
 html[data-la-diseno="orbita"] .tpv-main > .relative,
 html[data-la-diseno="orbita"] .tpv-main > .tpv-rejilla,
 html[data-la-diseno="orbita"] .tpv-side > * {
