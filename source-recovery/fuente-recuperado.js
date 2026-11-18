@@ -27098,8 +27098,12 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const resultado = await iniciarCobroCuentaF4(medio, opcionesServidor);
     setProcesandoCobroF4(false);
     if (!resultado?.ok) {
-      setErrorCobroF4(resultado?.error || "No se pudo iniciar el cobro.");
+      const errorCobro = resultado?.error || "No se pudo iniciar el cobro.";
       await refrescarCobroF4();
+      // La recarga limpia el mensaje cuando la lectura del estado sí funciona.
+      // Conservamos el motivo de la operación fallida para no dejar al operador
+      // ante una pantalla que vuelve al estado inicial sin explicación.
+      setErrorCobroF4(errorCobro);
       return;
     }
     setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
@@ -27115,7 +27119,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const resultado = await reintentarCobroF4();
     setProcesandoCobroF4(false);
     if (!resultado?.ok) {
-      setErrorCobroF4(resultado?.error || "No se pudo recuperar el cobro.");
+      const errorCobro = resultado?.error || "No se pudo recuperar el cobro.";
+      setErrorCobroF4(errorCobro);
       return;
     }
     setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));

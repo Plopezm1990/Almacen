@@ -730,3 +730,17 @@ siguiente paso es instrumentar o revisar el error de la ruta
 `abc_iniciar_cobro`/`abc_confirmar_efectivo` y su llamada posterior a
 `abc_registrar_propina_efectivo`, manteniendo el PR en borrador y sin nuevos
 movimientos hasta explicar por qué la UI no expone la respuesta del servidor.
+
+## Addendum causa del mensaje perdido · 18/11/2026
+
+La revisión del código encontró el motivo de la pantalla silenciosa: tras un
+resultado `{ ok: false }`, `ejecutarCobroF4()` guardaba el error, llamaba a
+`refrescarCobroF4()` y esa función limpiaba el mismo estado si la lectura de la
+cuenta era correcta. La operación fallida quedaba así sin mensaje aunque el
+servidor no hubiera confirmado ningún pago.
+
+La corrección conserva el error después de refrescar y cubre también
+`recuperarCobroF4UI()`. Se añadió una aserción al contrato P06 para bloquear
+regresiones. Pendiente todavía: publicar el código corregido, repetir la
+prueba solo después de observar el error visible y no crear otra operación
+económica antes de esa publicación.

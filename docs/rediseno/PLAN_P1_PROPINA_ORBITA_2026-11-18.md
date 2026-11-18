@@ -102,3 +102,18 @@ Estado: **P06 no cerrado funcionalmente**. Queda una incidencia de diagnóstico
 sobre el camino de cobro en el preview (respuesta o error no expuesto por la
 UI). La evidencia visual queda en la sesión del preview; no se modificó
 producción ni se ejecutó un segundo intento.
+
+## Causa localizada y corrección preparada · 18/11/2026
+
+La respuesta fallida sí llegaba a `ejecutarCobroF4()`, pero el flujo hacía
+`setErrorCobroF4(resultado.error)` y, acto seguido, llamaba a
+`refrescarCobroF4()`. Cuando la lectura posterior del estado funcionaba,
+`refrescarCobroF4()` limpiaba el mensaje con `setErrorCobroF4("")`. El resultado
+visible era exactamente el observado: el formulario volvía a sus valores
+iniciales y no quedaba explicación.
+
+La corrección conserva el motivo en una variable local, actualiza el estado de
+la cuenta y vuelve a pintar el error después de la recarga. Se aplica también a
+la recuperación de un cobro pendiente. `fuente.js` y
+`source-recovery/fuente-recuperado.js` mantienen paridad exacta, y P06 ahora
+comprueba el orden que evita borrar el error.
