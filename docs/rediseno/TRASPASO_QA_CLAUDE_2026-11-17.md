@@ -823,3 +823,19 @@ mostró el rechazo en el contexto de la mesa, retiró la cuenta obsoleta y dejó
 solo la caja del TPV; no aparecieron «Cobro · F4» ni los botones «Cobrar
 efectivo»/«Iniciar tarjeta simulada». La cuenta y su evidencia siguen en QA;
 no se borró ningún registro servidor y no se ejecutó otro cobro.
+
+## Addendum de continuidad · cierre P06 y siguiente P1 · 18/11/2026
+
+El estado histórico de «propina pendiente» queda supersedido por la evidencia
+posterior: con autorización explícita se registró una única propina de cambio
+de `0,05 €` sobre `4,95 €` en el ticket `TPV-38` (secuencia 34), se sirvió el
+pedido y se cerró formalmente la cuenta en el servidor. La matriz lo registra
+como `qa-20261118-p06-propina-cierre`; no se ejecutaron cobros ni reembolsos
+adicionales.
+
+La siguiente tanda no es vale regalo. Es la auditoría y, si el contrato está
+publicado en QA, la construcción de `tpv-31` (factura completa a empresa) y
+`caj-16` (rectificación fiscal). Las migraciones C06/C08 existen en el
+repositorio, pero no se deben aplicar desde este traspaso ni confundir con una
+capacidad live. El detalle y las condiciones de cierre están en
+`docs/rediseno/PLAN_P1_FISCAL_TPV_2026-11-18.md`.

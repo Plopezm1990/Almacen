@@ -87,3 +87,19 @@ migraciones candidatas no tienen registro en `schema_migrations`. Se mantiene
 la decisión de no construir una UI fiscal especulativa: el siguiente trabajo
 debe reconciliar primero rama, migración y fixture, y luego vestir la pantalla
 con el marco Órbita exacto aprobado.
+
+## Addendum de cierre P06 y preparación P1 fiscal · 18/11/2026
+
+El addendum anterior queda **histórico y supersedido** para la parte de
+propina: la propina de cambio sí está integrada en la rama y se verificó en QA
+con una única operación autorizada. La cuenta del fixture quedó pagada,
+servida y cerrada formalmente; la evidencia completa está en
+`PLAN_P1_PROPINA_ORBITA_2026-11-18.md` y en el traspaso de QA.
+
+La parte de vale regalo sigue sin contrato y no se simula. El siguiente grupo
+de trabajo es P1 fiscal/TPV: `tpv-31` (factura completa a empresa) y `caj-16`
+(rectificación fiscal). La auditoría de migraciones encontró los contratos
+C06/C08, pero su existencia en el repositorio no demuestra que estén
+publicados en QA. Se mantiene la regla de no aplicar SQL candidato ni crear
+una factura local falsa. El plan técnico y sus condiciones de cierre quedan
+en `PLAN_P1_FISCAL_TPV_2026-11-18.md`.
