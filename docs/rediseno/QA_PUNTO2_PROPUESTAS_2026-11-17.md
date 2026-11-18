@@ -122,3 +122,37 @@ P03, P04, P05, el validador de manifiesto, su self-test y la paridad de
 El PR sigue en borrador, abierto y sin fusionar. La puerta de CI general aún
 tiene trabajos en curso y un `p2-p06` histórico en rojo, fuera del alcance de
 este Punto 2; no se declara un falso verde global.
+
+## Cierre live actualizado · 18/11/2026 · SHA `107aed65`
+
+La pasada autenticada del Deploy Preview #225 se completó con el propietario
+de QA-EMP-A en Local A1. El marcador de caché de `fuente.js` se renovó a
+`qa-orbita-ventas-20261118`; el preview nuevo sirve el indicador **Ventas
+registradas €311,66**, calculado del ledger real, junto a margen, pedidos y
+stock bajo. El cambio corrige la discrepancia que mostraba el bundle anterior
+sin ventas aunque el código ya las calculaba.
+
+Se recorrieron las nueve propuestas en el editor y en la suite, en escritorio
+(1440×900) y móvil (390×844). Cada una activó su composición esperada, sin
+desbordamiento horizontal; en móvil las nueve conservaron la barra inferior.
+Rumbo mostró «Ir a una pantalla» y navegó a Clientes por búsqueda; tras
+aplicar Rumbo temporalmente en QA, **Clientes** quedó en Fijadas y Panel
+general en Recientes después de recargar. Rumbo se restauró después mediante
+el botón oficial, como revisión 10, dejando QA-EMP-A de nuevo en Órbita.
+
+Pase se probó temporalmente con datos reales: 4 de 6 mesas con cuenta abierta,
+78 pedidos en servicio y caja abierta. «Sala y TPV» abrió TPV, «Cocina» abrió
+«Cocina y comandas» y «Caja» abrió «Arqueo de caja». Ascua mostró el panel de
+servicio con esos mismos datos. La vista previa del editor confirmó móvil sin
+overflow y el aviso de contraste cuando una paleta requiere ajustar enlaces o
+borde funcional; no se pulsó «Aplicar a la empresa» para esas pruebas y no se
+ejecutó ninguna operación económica.
+
+Con esta evidencia, el Punto 2 queda **cerrado en QA**: selector de nueve
+propuestas, seis paletas, prueba temporal y restauración, Rumbo con fijadas y
+recientes, Órbita con ventas reales, Pase/Ascua con navegación y contexto,
+responsive de escritorio/móvil/tablet, controles táctiles, contraste y
+movimiento reducido cubiertos por el preview y los contratos locales. Quedan
+fuera del cierre los opcionales ya separados: paginación/búsqueda ampliada de
+la cola de Pase, positivo de Cajero/a con MFA y el registro contable de las
+migraciones de Apariencia en `schema_migrations`.

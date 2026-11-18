@@ -421,3 +421,24 @@ de Netlify para este SHA está listo. La puerta de CI general aún tiene trabajo
 en curso y un `p2-p06` histórico en rojo; no se presenta el conjunto como CI
 global verde. Queda pendiente la pasada autenticada del preview: persistencia
 y salto de Rumbo y recorrido desktop/móvil de las nueve composiciones.
+
+## Addendum de cierre del Punto 2 · 18/11/2026 · SHA `107aed65`
+
+La pasada pendiente ya está realizada en Deploy Preview #225 con el propietario
+de QA-EMP-A en QA-A1. Se actualizó el marcador de `fuente.js` a
+`qa-orbita-ventas-20261118` para que el navegador no sirviera el bundle antiguo;
+Órbita muestra ahora **Ventas registradas €311,66** desde los movimientos reales.
+
+Las nueve propuestas (Oliva, Claro, Pulso, Patio, Rumbo, Sello, Órbita, Ascua y
+Pase) se recorrieron en la suite en 1440×900 y 390×844: composición esperada,
+sin overflow y barra inferior móvil. También se midió 1024 px sin overflow. En
+Rumbo, la búsqueda «Clientes» abrió la pantalla correcta; aplicado en QA,
+«Clientes» quedó en Fijadas y Panel general en Recientes tras recargar. Se
+restauró Órbita con el botón oficial como revisión 10.
+
+Pase temporal mostró 4/6 mesas con cuenta abierta, 78 pedidos y caja abierta;
+Sala y TPV, Cocina y Caja llegaron a TPV, Cocina y comandas y Arqueo de caja,
+respectivamente. Ascua mostró el mismo contexto de servicio. No se cobró,
+reembolsó, cerró caja ni se modificó producción. El Punto 2 queda cerrado en
+QA; siguen opcionales la paginación/búsqueda ampliada de Pase, el positivo de
+Cajero/a con MFA y el bookkeeping de `schema_migrations` de Apariencia.
