@@ -911,3 +911,20 @@ documento `92067547-0938-4844-929b-13fd91be69df`, estado `EMITIDO`, revisión 1,
 receptor sintético `QA Empresa Factura P1 / B12345678 / Calle QA 1` y snapshot
 con `documento_original_id` apuntando al ticket simplificado. El documento
 original no cambió, no se cobró de nuevo y AEAT real permaneció desactivada.
+
+## Addendum cierre positivo `caj-16` · 18/11/2026
+
+Con autorización explícita se creó una única rectificativa sintética en
+QA-A1, vinculada a `TPV-40`, y se registró desde la tarjeta fiscal de Órbita.
+La rectificativa es `TPV-41`, documento
+`039e1b03-a502-479a-8e06-8a4fccfb9f8a`, estado `EMITIDO`, clasificada como
+`FACTURA_RECTIFICATIVA` con referencia a
+`92067547-0938-4844-929b-13fd91be69df`. La revisión conservada es la 1
+(`3140f81f-20e3-4674-98e3-7b396bae5377`).
+
+La UI registró una corrección `RECTIFICACION` con motivo
+`Ensayo QA autorizado de rectificación fiscal: TPV-40`. La comprobación
+independiente confirma una sola fila en `abc_c08_correcciones_documentales`,
+la vinculación exacta y que `TPV-40` continúa `EMITIDO` con su revisión
+inmutable. QA simuló todo el flujo con `aeat_transport=DISABLED`; no hubo
+cobro, reembolso ni acceso a producción.

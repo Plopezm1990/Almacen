@@ -137,3 +137,23 @@ La segunda prueba fue positiva: factura completa `TPV-40`, documento
 `snapshot.documento_original_id` apuntando a `TPV-39`. El documento
 simplificado original no se modificó. El resultado es QA simulado; no se
 transmitió nada a AEAT.
+
+## Validación positiva de `caj-16` · 18/11/2026
+
+Con autorización explícita se creó en QA-A1 una única rectificativa sintética
+vinculada a la factura completa `TPV-40`. Se usaron los RPC oficiales C05/C06
+/C08 con la sesión del propietario, `qa_only=true` y
+`aeat_transport=DISABLED`:
+
+- Rectificativa: `TPV-41`, documento
+  `039e1b03-a502-479a-8e06-8a4fccfb9f8a`, estado `EMITIDO`.
+- Clasificación: `FACTURA_RECTIFICATIVA`, con
+  `documento_referencia_id=92067547-0938-4844-929b-13fd91be69df` (`TPV-40`).
+- Conservación: revisión inmutable 1, versión
+  `3140f81f-20e3-4674-98e3-7b396bae5377`.
+- Registro desde la tarjeta `caj-16`: corrección `RECTIFICACION` con motivo
+  `Ensayo QA autorizado de rectificación fiscal: TPV-40`.
+
+La lectura independiente de QA confirma una corrección documental y la
+vinculación exacta original→rectificativa. `TPV-40` sigue `EMITIDO`, conserva
+su revisión 1 y no se modificó. No hubo cobro, reembolso ni transmisión a AEAT.
