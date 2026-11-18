@@ -23,6 +23,16 @@ apuntando a una carpeta con `node_modules` que tenga `react@18.3.1`,
 desde tu `be0b722a` y no estaba; la instalé en mi copia, pero si montas el
 entorno de cero, tenla en cuenta.
 
+### Addendum de batería final del rediseño · 18/11/2026
+
+La batería específica del rediseño queda cerrada: 8/8 contratos de
+`tests/rediseno` pasan y la batería PGlite pasa 4/4. La batería Node compartida
+se ejecutó con las dependencias oficiales fuera del árbol y registra 305/319
+contratos activos en verde, 14 fallos heredados de otras áreas, 0 fallos de
+infraestructura y el límite de publicación Netlify en `PASS`. El detalle de
+los 14 contratos pendientes y la decisión de no mezclarlos con este cierre está
+en `docs/rediseno/ACTA_CIERRE_REDISENO_2026-11-18.md`.
+
 Y se niega a correr con el árbol sucio en los ficheros que toca: confirma antes
 de lanzarla.
 
