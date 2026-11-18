@@ -689,3 +689,13 @@ que reconciliar el contrato de servidor con la rama y definir fixtures
 reversibles; después se hará la capa visual con el marco Órbita de la maqueta.
 No se debe aplicar una migración candidata ni probar un cobro, reembolso o
 propina sin autorización explícita.
+
+## Addendum Codex · P1 propina del cambio · 18/11/2026
+
+Se reincorporó la opción «El cambio es propina» sobre el contrato real de QA.
+La llamada a `abc_registrar_propina_efectivo` ocurre después de confirmar el
+efectivo, conserva el cierre/fiscalización y usa un `operation_id` idempotente.
+Se añadió el contrato P06, la migración reproducible y el plan detallado en
+`docs/rediseno/PLAN_P1_PROPINA_ORBITA_2026-11-18.md`. No se ejecutaron cobros,
+reembolsos, propinas ni migraciones en QA. Antes del cierre manual hace falta
+un fixture reversible y autorización explícita para un único cobro simulado.

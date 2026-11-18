@@ -112685,6 +112685,13 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("cuenta_cierre_no_autorizado")) return "Tu usuario no tiene permiso para cerrar esta cuenta.";
     if (msg.includes("abc_cobro_no_autorizado") || msg.includes("abc_efectivo_no_autorizado") || msg.includes("abc_checkout_no_autorizado")) return "Tu usuario no tiene permiso para realizar este cobro.";
     if (msg.includes("abc_cobro_resolver_no_autorizado")) return "Solo un Propietario o Encargado puede resolver esta incidencia.";
+    if (msg.includes("abc_propina_no_autorizada")) return "Tu usuario no tiene permiso para registrar propinas.";
+    if (msg.includes("abc_propina_importe_invalido") || msg.includes("abc_propina_parametros_requeridos")) return "No se pudo calcular el importe de la propina.";
+    if (msg.includes("abc_propina_pago_no_encontrado") || msg.includes("abc_propina_pago_no_confirmado")) return "No se encontró el pago en efectivo para registrar la propina.";
+    if (msg.includes("abc_propina_solo_efectivo")) return "La propina del cambio solo está disponible para pagos en efectivo.";
+    if (msg.includes("abc_propina_sin_cambio")) return "Este pago no tiene cambio que convertir en propina.";
+    if (msg.includes("abc_propina_importe_no_coincide")) return "El importe de la propina no coincide con el cambio de este pago.";
+    if (msg.includes("abc_propina_ya_registrada")) return "Ya se registró una propina para este pago.";
     if (msg.includes("evidencia_datos_tarjeta_prohibidos")) return "La evidencia no puede contener PAN, CVV ni datos completos de tarjeta.";
     if (msg.includes("abc_f4_b04") || msg.includes("abc_abrir_incidencia_cobro") || msg.includes("abc_resolver_incidencia_cobro")) return "La gestión B04 todavía no está disponible en este servidor.";
     if (msg.includes("cobro_incidencia_ya_abierta")) return "Este cobro ya tiene una incidencia abierta.";
@@ -113051,6 +113058,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           prepareOperationId: "f4.b02b03.prepare." + checkoutId,
           payOperationId: "f4.b02b03.pay." + intentoId,
           cashOperationId: "f4.b02b03.cash." + intentoId,
+          propinaOperationId: "f4.b02b03.propina." + intentoId,
           importeObjetivo: null, createdAt: new Date().toISOString()
         };
         guardarPendienteCobroF4(pendiente);
@@ -113085,6 +113093,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       }
       const importe = Number(pendiente.importeObjetivo);
       if (!Number.isFinite(importe) || importe <= 0 || importe > saldo) throw new Error("saldo_insuficiente");
+      let propinaResultado = null;
       if (medio === "EFECTIVO") {
         const recibido = pendiente.importeRecibido == null
           ? (opciones?.importeRecibido == null || opciones.importeRecibido === "" ? importe : Number(opciones.importeRecibido))
@@ -113131,6 +113140,27 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           p_session_id: terminal.sessionId, p_terminal_id: terminal.terminalId,
           p_operating_day: recuperada.operatingDay
         }, empresaId, localActivoId, pendiente.cashOperationId);
+        // T6: el cambio se convierte en propina mediante una operación
+        // separada, después de que el pago en efectivo ya esté confirmado.
+        // El cobro y el cierre siguen siendo válidos aunque esta segunda
+        // operación falle; el resultado se comunica al usuario.
+        if (opciones?.propina && Number(pendiente.cambioEntregado) > 0) {
+          const propinaOperationId = pendiente.propinaOperationId || ("f4.b02b03.propina." + pendiente.intentoId);
+          pendiente.propinaOperationId = propinaOperationId;
+          try {
+            await rpcA02ConRecuperacion(supabase, "abc_registrar_propina_efectivo", {
+              p_operation_id: propinaOperationId,
+              p_empresa_id: empresaId, p_local_id: localActivoId,
+              p_pago_id: pendiente.pagoId, p_caja_id: cajaSesion.caja_id,
+              p_session_id: terminal.sessionId, p_terminal_id: terminal.terminalId,
+              p_operating_day: recuperada.operatingDay,
+              p_importe: pendiente.cambioEntregado
+            }, empresaId, localActivoId, propinaOperationId);
+            propinaResultado = { ok: true, importe: pendiente.cambioEntregado };
+          } catch (errorPropina) {
+            propinaResultado = { ok: false, error: mensajeErrorCobroF4(errorPropina) };
+          }
+        }
         limpiarPendienteCobroF4(empresaId, localActivoId, recuperada.cuentaId);
       }
       const estadoFinal = await leerEstadoCobroF4();
@@ -113169,13 +113199,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         }
       }
       if (medio === "EFECTIVO" && estadoFinal.ok) {
-        estadoFinal.mensaje = Number(estadoFinal.saldo) > 0
+        const mensajeBase = Number(estadoFinal.saldo) > 0
           ? `Efectivo confirmado. Saldo restante calculado por el servidor: €${Number(estadoFinal.saldo).toFixed(2)}. Puedes completar el pago con tarjeta.`
           : estadoFinal.cuentaCierre?.ok === false
             ? `Efectivo confirmado, pero la cuenta sigue abierta: ${estadoFinal.cuentaCierre.error || "el cierre requiere revisión"}`
           : estadoFinal.fiscal?.ok === false
             ? "Efectivo confirmado y cuenta cerrada. La fiscalización QA queda pendiente de reintento."
             : "Efectivo confirmado, cuenta cerrada y documento fiscal QA encolado.";
+        estadoFinal.mensaje = propinaResultado?.ok
+          ? `${mensajeBase} Propina de €${Number(propinaResultado.importe).toFixed(2)} registrada; no se devuelve cambio.`
+          : propinaResultado
+            ? `${mensajeBase} La propina no se pudo registrar: ${propinaResultado.error} El cambio sigue pendiente de devolver.`
+            : mensajeBase;
       }
       if (medio === "TARJETA" && estadoFinal.ok) {
         estadoFinal.mensaje = "Tarjeta iniciada en modo simulado: el intento queda pendiente hasta que el adaptador de proveedor lo resuelva.";
@@ -126626,6 +126661,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [mensajeCobroF4, setMensajeCobroF4] = (0, import_react4.useState)("");
   const [importeCobroF4, setImporteCobroF4] = (0, import_react4.useState)("");
   const [efectivoRecibidoCobroF4, setEfectivoRecibidoCobroF4] = (0, import_react4.useState)("");
+  const [propinaCambioF4, setPropinaCambioF4] = (0, import_react4.useState)(false);
   const [formularioIncidenciaB04, setFormularioIncidenciaB04] = (0, import_react4.useState)({ motivo: "Respuesta del proveedor perdida", providerCode: "", providerReference: "", estado: "CONFIRMADO", autorizado: "", capturado: "", liquidado: "", evidencia: "" });
   const [procesandoIncidenciaB04, setProcesandoIncidenciaB04] = (0, import_react4.useState)(false);
   const [showCobro, setShowCobro] = (0, import_react4.useState)(false);
@@ -128197,6 +128233,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     setEstadoCobroF4(await adjuntarEstadoFiscalC07D(resultado));
     sincronizarImporteCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
+    if (medio === "EFECTIVO") setPropinaCambioF4(false);
   }
   async function recuperarCobroF4UI() {
     if (procesandoCobroF4 || typeof reintentarCobroF4 !== "function") return;
@@ -128427,9 +128464,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Exacto para este pago (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0.01", max: saldoVisible, value: importeCobroF4, onChange: (e2) => setImporteCobroF4(e2.target.value), placeholder: saldoVisible.toFixed(2) })),
           /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo recibido (€)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", value: efectivoRecibidoCobroF4, onChange: (e2) => setEfectivoRecibidoCobroF4(e2.target.value), placeholder: importeVisible > 0 ? importeVisible.toFixed(2) : "0.00" }))
         ),
-        cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2 p-2 rounded-lg", style: { background: cambioVisible < 0 ? C2.redSoft : C2.accentSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] uppercase tracking-wide", style: { color: C2.inkSoft } }, cambioVisible < 0 ? "Falta" : "Cambio a devolver"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-bold text-[24px] leading-none", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, "€", fmt(Math.abs(cambioVisible)))) : null,
+        cambioVisible !== null ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2 p-2 rounded-lg", style: { background: cambioVisible < 0 ? C2.redSoft : C2.accentSoft } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] uppercase tracking-wide", style: { color: C2.inkSoft } }, cambioVisible < 0 ? "Falta" : propinaCambioF4 ? "Propina (no se devuelve cambio)" : "Cambio a devolver"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "mono font-bold text-[24px] leading-none", style: { color: cambioVisible < 0 ? C2.red : C2.accent } }, "€", fmt(Math.abs(cambioVisible)))) : null,
+        cambioVisible !== null && cambioVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement("label", { className: "flex items-center gap-2 text-[11.5px] mb-2 cursor-pointer" }, /* @__PURE__ */ import_react4.default.createElement("input", { type: "checkbox", checked: propinaCambioF4, onChange: (e2) => setPropinaCambioF4(e2.target.checked) }), "El cambio es propina") : null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" },
-          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible, codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV" }), disabled: fixtureSoloLectura || procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => ejecutarCobroF4("EFECTIVO", { importeObjetivo: importeVisible, importeRecibido: recibidoVisible == null ? importeVisible : recibidoVisible, cambioEntregado: cambioVisible == null ? 0 : cambioVisible, propina: propinaCambioF4 && cambioVisible > 0, codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV" }), disabled: fixtureSoloLectura || procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 || cambioVisible !== null && cambioVisible < 0 }, procesandoCobroF4 ? "Procesando…" : "Cobrar efectivo"),
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: importeVisible, codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV" }), disabled: fixtureSoloLectura || procesandoCobroF4 || !Number.isFinite(importeVisible) || importeVisible <= 0 }, "Iniciar tarjeta simulada"),
           confirmadoVisible > 0 && saldoVisible > 0 ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => ejecutarCobroF4("TARJETA", { importeObjetivo: saldoVisible, codigoSerie: configEmpresa?.fiscal?.serieVenta || configEmpresa?.serieFiscal || "TPV" }), disabled: fixtureSoloLectura || procesandoCobroF4 }, "Completar pago mixto con tarjeta") : null
         ),

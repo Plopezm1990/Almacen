@@ -311,3 +311,17 @@ el selector a `.md\:hidden`, se renovó la marca de caché a
 `qa-orbita-shell-pase-v5-20261118` y los contratos P01/P05 y `git diff --check`
 quedaron en verde. No se ejecutaron cobros, reembolsos, cierres ni cambios de
 datos económicos.
+
+## Addendum propina del cambio · 18/11/2026
+
+La capa de propina ya está integrada en Órbita, sin ejecutar cobros. La casilla
+solo aparece cuando el cambio es positivo y llama a
+`abc_registrar_propina_efectivo` después de `abc_confirmar_efectivo`, con
+operación idempotente y mensajes de error honestos. El cierre de cuenta y la
+fiscalización no se saltan si la segunda operación falla. La fuente y su
+espejo de recuperación permanecen byte a byte en paridad.
+
+La migración reproducible y el contrato P06 quedan documentados en
+`docs/rediseno/PLAN_P1_PROPINA_ORBITA_2026-11-18.md`. La prueba funcional en QA
+queda pendiente de una autorización explícita para un cobro simulado y de un
+fixture reversible; la prueba contable/fiscal sigue separada.
