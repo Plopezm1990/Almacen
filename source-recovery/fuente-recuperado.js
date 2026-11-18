@@ -24918,6 +24918,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [filtroVentasHasta, setFiltroVentasHasta] = (0, import_react4.useState)("");
   const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
   const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
+  const [historialVentasAbierto, setHistorialVentasAbierto] = (0, import_react4.useState)(false);
   function datoCorreccionHistorialPM09(m22, clave) {
     if (!m22) return void 0;
     if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
@@ -25237,7 +25238,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       h3("div", { className: "mt-3 flex gap-2 flex-wrap no-imprimir" }, h3(Btn, { onClick: imprimirTicketVenta }, "Imprimir / Guardar PDF"), h3(Btn, { variant: "ghost", onClick: () => setTicketVenta(null) }, "Cerrar ticket"))
     );
   }
-  function renderHistorialVentas() {
+  function renderHistorialVentasDetalle() {
     const h3 = import_react4.default.createElement;
     const controles = h3(
       Card,
@@ -25358,6 +25359,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
     return h3(import_react4.default.Fragment, null, controles, detalle, renderTicketVenta());
   }
+  function renderHistorialVentas() {
+    return historialVentasAbierto ? renderPantallaHistorialVentas() : renderResumenHistorialVentas();
+  }
   async function confirmarAnulacion() {
     if (procesandoAnulacion) return;
     if (!confirmAnular || !anularVenta) return;
@@ -25380,6 +25384,53 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     } finally {
       setProcesandoAnulacion(false);
     }
+  }
+  function renderResumenHistorialVentas() {
+    const h3 = import_react4.default.createElement;
+    return h3(
+      Card,
+      { className: "mt-5", "data-tpv-history-summary": "1" },
+      h3("div", { className: "flex items-start justify-between gap-3" },
+        h3("div", null,
+          h3("div", { className: "text-[14px] font-semibold" }, "Ventas del día"),
+          h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Resumen rápido. El detalle completo está en su propia pantalla.")
+        ),
+        h3("div", { className: "text-[10.5px] text-right", style: { color: C2.inkSoft } }, historialVentas.length, " registrada(s)")
+      ),
+      h3("div", { className: "grid grid-cols-3 gap-2 my-3" },
+        h3("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Ventas"), h3("div", { className: "font-bold mono text-[14px]" }, resumenHistorialVentas.activas)),
+        h3("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Total vigente"), h3("div", { className: "font-bold mono text-[14px]" }, "€", fmt(resumenHistorialVentas.total))),
+        h3("div", { className: "rounded-lg p-2", style: { background: C2.surface2 || C2.surface } }, h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, "Ticket medio"), h3("div", { className: "font-bold mono text-[14px]" }, "€", fmt(resumenHistorialVentas.ticketMedio)))
+      ),
+      h3(Btn, { small: true, onClick: () => setHistorialVentasAbierto(true), "aria-label": "Abrir historial completo de ventas" }, "Ver historial completo")
+    );
+  }
+  function renderPantallaHistorialVentas() {
+    if (!historialVentasAbierto) return null;
+    const h3 = import_react4.default.createElement;
+    return h3(
+      "div",
+      {
+        role: "dialog",
+        "aria-modal": "true",
+        "aria-label": "Historial completo de ventas",
+        "data-tpv-history-screen": "1",
+        style: {
+          position: "fixed",
+          inset: 0,
+          zIndex: 1200,
+          overflowY: "auto",
+          background: C2.bg,
+          color: C2.ink,
+          padding: "max(1rem, env(safe-area-inset-top)) max(1rem, env(safe-area-inset-right)) max(1.25rem, env(safe-area-inset-bottom)) max(1rem, env(safe-area-inset-left))"
+        }
+      },
+      h3("div", { className: "flex items-center justify-between gap-3 mb-2", style: { maxWidth: 980, margin: "0 auto" } },
+        h3(Btn, { small: true, variant: "ghost", onClick: () => { setVentaDetalle(null); setTicketVenta(null); setHistorialVentasAbierto(false); }, "aria-label": "Volver al TPV" }, "← Volver al TPV"),
+        h3("div", { className: "text-[10.5px] text-right", style: { color: C2.inkSoft } }, local?.nombre || "Local activo")
+      ),
+      h3("div", { style: { maxWidth: 980, margin: "0 auto" } }, renderHistorialVentasDetalle())
+    );
   }
   const inputEscaneoRef = (0, import_react4.useRef)(null);
   // Para que "Ver ticket" de la barra movil lleve a la columna del ticket,
