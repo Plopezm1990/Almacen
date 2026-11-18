@@ -284,3 +284,13 @@ Contratos de código: `node --check fuente.js`,
 Preview: recargar con una sesión limpia, comprobar que no aparece la franja
 amarilla ni el contador de pendientes y confirmar que una edición real sigue
 produciendo su confirmación normal.
+
+### Verificación live posterior · 18/11/2026
+
+La comprobación autenticada ya está cerrada en el preview con el propietario
+de QA-EMP-A y `Local A1`: el panel muestra **Guardado: cambios sin confirmar 0**
+y **Arranque: datos que no se pudieron cargar 0**. No aparecen las claves
+`conteos`, `movimientos` ni `historialRespaldos` en la cola y el panel Pase
+continúa cargando sus datos reales (4/6 mesas con cuenta, 78 pedidos y caja
+abierta). La verificación fue de lectura; no se ejecutaron cobros,
+reembolsos, cierres ni cambios económicos nuevos.

@@ -602,6 +602,17 @@ verificación. Si vuelve a aparecer un timeout sin que exista una escritura de
 arranque, tratarlo como incidencia separada de rendimiento de QA y no ocultar
 el aviso.
 
+### Cierre live · 18/11/2026
+
+Con el propietario de QA-EMP-A en `Local A1`, el Deploy Preview actualizado
+mostró **Guardado: cambios sin confirmar 0** y **Arranque: datos que no se
+pudieron cargar 0**. La cola ya no contiene `conteos`, `movimientos` ni
+`historialRespaldos`; Pase sigue mostrando sus datos reales. No se ejecutaron
+operaciones económicas para esta comprobación. La advertencia de arranque
+queda cerrada; cualquier aviso futuro deberá corresponder a una edición real
+que no haya podido confirmarse, no a la hidratación inicial ni a la cuota de
+`localStorage`.
+
 ## Addendum TPV · historial de ventas en pantalla propia · 18/11/2026 · SHA `acbf303c`
 
 Para evitar que el TPV quede excesivamente largo, el historial se ha separado
