@@ -598,3 +598,18 @@ operativo y descuentos) quedan plegadas al entrar. El operador las muestra con
 ningún flujo ni se han cambiado permisos. Mesas, productos, cobro y resumen
 siguen visibles en la pantalla inicial. Cache de `fuente.js`:
 `qa-orbita-tpv-organization-v2-20261118`.
+
+## Addendum Cocina y Caja compactas · 18/11/2026 · SHA `d7b2cd9f`
+
+Se extendió la organización progresiva al resto del flujo operativo. Cocina
+abre con comandas y acciones del turno; sesión, responsable, terminales, cierre,
+estaciones y rutas quedan detrás de **Mostrar gestión avanzada**, con apertura
+automática si hay apertura o cierre obligatorio en curso. Caja abre con la
+información y el arqueo esencial; movimientos de entrada, retirada y reembolso
+e historial quedan bajo **Mostrar movimientos** y **Mostrar historial**. Los
+borradores de movimientos fuerzan la apertura del bloque para reintentar de
+forma segura.
+
+El cambio es solo de composición: no toca permisos, RPC ni datos financieros.
+Cache actual de `fuente.js`: `qa-orbita-cocina-caja-v3-20261118`. PR #225 sigue
+en borrador y QA continúa aislado de producción.

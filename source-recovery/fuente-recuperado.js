@@ -23745,6 +23745,8 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const [abriendoSesion, setAbriendoSesion] = (0, import_react4.useState)(false);
   const [errorSesion, setErrorSesion] = (0, import_react4.useState)("");
   const [exitoSesion, setExitoSesion] = (0, import_react4.useState)("");
+  const [mostrarMovimientosCaja, setMostrarMovimientosCaja] = (0, import_react4.useState)(false);
+  const [mostrarHistorialCaja, setMostrarHistorialCaja] = (0, import_react4.useState)(false);
   const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
   const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   encargos.forEach((e2) => {
@@ -23814,6 +23816,9 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     setMostrarDenominaciones(Object.keys(pendiente.denominaciones || {}).length > 0);
     setNotas(pendiente.notas || "");
     setBorradorRecuperado(true);
+  }, [fecha]);
+  (0, import_react4.useEffect)(() => {
+    if (typeof leerBorradorMovimientoCaja === "function" && leerBorradorMovimientoCaja()) setMostrarMovimientosCaja(true);
   }, [fecha]);
   async function submit() {
     if (enviando || yaArqueado) return;
@@ -23928,7 +23933,15 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
       ),
       h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · anulaciones venta €${fmt(ajustesVentaEfectivo)} · ajustes/reembolsos caja €${fmt(netoCaja)}`),
-      h3(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado: !!yaArqueado }),
+      h3(
+        "div",
+        { className: "mb-3" },
+        h3("div", { className: "flex items-center justify-between gap-2" },
+          h3("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Movimientos y ajustes de caja"),
+          h3(Btn, { small: true, variant: "ghost", onClick: () => setMostrarMovimientosCaja((v) => !v) }, mostrarMovimientosCaja ? "Ocultar movimientos" : "Mostrar movimientos")
+        ),
+        mostrarMovimientosCaja ? h3(BloqueEntradasSalidas, { fecha, movimientosCajaDelDia, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja, periodoCerrado: !!yaArqueado }) : h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, "Las entradas, retiradas y reembolsos están ocultos hasta que los necesites.")
+      ),
       yaArqueado ? h3(
         "div",
         { className: "p-2 rounded-lg text-[12.5px]", style: { background: C2.bg } },
@@ -23972,8 +23985,15 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       error && h3("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, error),
       exito && h3("div", { className: "text-[12px] mt-2", style: { color: C2.accent } }, exito)
     ),
-    h3("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Historial de arqueos"),
-    historial
+    h3(
+      "div",
+      { className: "mt-2" },
+      h3("div", { className: "flex items-center justify-between gap-2 mb-2" },
+        h3("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Historial de arqueos"),
+        h3(Btn, { small: true, variant: "ghost", onClick: () => setMostrarHistorialCaja((v) => !v) }, mostrarHistorialCaja ? "Ocultar historial" : "Mostrar historial")
+      ),
+      mostrarHistorialCaja ? historial : h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "El historial queda disponible bajo demanda para mantener el cierre despejado.")
+    )
   );
 }
 var PLANTILLAS_TURNO = [
@@ -28419,7 +28439,9 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [ensayoCierre, setEnsayoCierre] = (0, import_react4.useState)(null);
   const [motivoDiferencia, setMotivoDiferencia] = (0, import_react4.useState)("");
   const [motivoDecision, setMotivoDecision] = (0, import_react4.useState)("");
+  const [mostrarGestionCocina, setMostrarGestionCocina] = (0, import_react4.useState)(false);
   const bloqueosDiferencia = Array.isArray(cierreInfo?.bloqueos) ? cierreInfo.bloqueos : [];
+  const gestionCocinaVisible = mostrarGestionCocina || requiereApertura || estadoCierre !== "ABIERTA";
 
   const productosActivos = (productos || []).filter((producto) => producto && producto.activo !== false);
   const estacionSeleccionada = estaciones.find((estacion) => String(estacion.id) === String(estacionId)) || null;
@@ -28947,7 +28969,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       h3(Field, { label: "Fondo inicial (€)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: fondoInicial, onChange: (e2) => setFondoInicial(e2.target.value) })),
       h3(Btn, { small: true, onClick: abrirSesion, disabled: !!procesando || !String(fondoInicial).trim() }, procesando === "abrir-sesion" ? "Abriendo…" : "Abrir sesión")
     ) : null,
-    !requiereApertura && estadoCierre === "ABIERTA" && sesionCajaC01 ? h3(Card, { className: "mb-4", "data-c01-sesion": "1" },
+    gestionCocinaVisible && !requiereApertura && estadoCierre === "ABIERTA" && sesionCajaC01 ? h3(Card, { className: "mb-4", "data-c01-sesion": "1" },
       h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Sesión, responsable y terminales"),
       h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Sesión ", String(sesionCajaC01.sesion?.id || "").slice(-8), " · ", String(sesionCajaC01.sesion?.estado || "ABIERTA"), " · Responsable: ", responsableActivoC01?.nombre || "Usuario activo"),
       sesionCajaC01.responsablesError ? h3("div", { className: "text-[11px] mb-2", style: { color: C2.amber } }, "No se pudo cargar la lista de responsables: ", sesionCajaC01.responsablesError) : null,
@@ -28966,7 +28988,11 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
         h3(Btn, { small: true, onClick: vincularTerminalC01, disabled: !!procesando || !terminalCajaC01 }, procesando === "vincular-terminal-c01" ? "Vinculando…" : "Vincular terminal")
       ) : h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "No hay otros terminales activos disponibles en este local.")
     ) : null,
-    !requiereApertura && iniciarCierreSesionCajaA10 ? h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
+    h3("div", { className: "mb-4 flex items-center justify-between gap-2" },
+      h3("div", { className: "text-[12px] font-medium", style: { color: C2.inkSoft } }, "Gestión de sesión, estaciones y cierre"),
+      h3(Btn, { small: true, variant: "ghost", onClick: () => setMostrarGestionCocina((v) => !v), "aria-expanded": gestionCocinaVisible }, gestionCocinaVisible ? "Ocultar gestión avanzada" : "Mostrar gestión avanzada")
+    ),
+    gestionCocinaVisible && !requiereApertura && iniciarCierreSesionCajaA10 ? h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
       h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cierre de sesión de caja · ", estadoCierre),
       estadoCierre === "ABIERTA" ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Inicia el cierre cuando dejes de operar. El servidor comprobará los pagos y efectos pendientes antes de permitir el cierre provisional.") : null,
       estadoCierre === "EN_CIERRE" ? h3("div", null,
@@ -29001,7 +29027,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
         )
       ) : null
     ) : null,
-    h3(Card, { className: "mb-4" },
+    gestionCocinaVisible && h3(Card, { className: "mb-4" },
       h3("div", { className: "text-[12.5px] font-semibold mb-2" }, "Estaciones y rutas"),
       h3("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-2" },
         h3(Field, { label: "Código" }, h3(Input, { value: codigo, onChange: (e2) => setCodigo(e2.target.value), placeholder: "COCINA" })),
@@ -29011,7 +29037,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       h3(Btn, { small: true, onClick: guardarEstacion, disabled: !!procesando || !codigo.trim() || !nombre.trim() }, procesando === "crear-estacion" ? "Creando…" : "Crear estación"),
       h3("div", { className: "mt-3 space-y-1.5" }, estaciones.length === 0 ? h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "No hay estaciones configuradas todavía.") : estaciones.map((estacion) => h3("div", { key: estacion.id, className: "flex items-center justify-between gap-2 p-2 rounded-lg", style: { border: "1px solid " + C2.line, opacity: estacion.activo ? 1 : 0.6 } }, h3("div", null, h3("div", { className: "text-[11.5px] font-semibold" }, estacion.codigo, " · ", estacion.nombre), h3("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, estacion.tipo, " · ", rutas.filter((ruta) => String(ruta.estacion_id) === String(estacion.id)).length, " ruta(s)")), h3(Btn, { small: true, variant: "ghost", onClick: () => cambiarActivo(estacion), disabled: !!procesando }, estacion.activo ? "Desactivar" : "Activar"))))
     ),
-    h3(Card, { className: "mb-4" },
+    gestionCocinaVisible && h3(Card, { className: "mb-4" },
       h3("div", { className: "text-[12.5px] font-semibold mb-2" }, "Asignar producto a estación"),
       h3("div", { className: "grid grid-cols-1 md:grid-cols-3 gap-2" },
         h3(Field, { label: "Producto" }, h3("select", { value: productoId, onChange: (e2) => setProductoId(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } }, h3("option", { value: "" }, "Selecciona…"), productosActivos.map((producto) => h3("option", { key: producto.id, value: producto.id }, producto.nombre)))),

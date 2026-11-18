@@ -231,3 +231,19 @@ de cuenta** al abrirlas y conserva los controles y permisos originales.
 La marca de caché de `fuente.js` queda en
 `qa-orbita-tpv-organization-v2-20261118`. Se mantiene la paridad con
 `source-recovery`; P01, P05, sintaxis y `git diff --check` siguen en verde.
+
+## Addendum Cocina y Caja compactas · 18/11/2026 · SHA `d7b2cd9f`
+
+La misma jerarquía progresiva se aplica ahora a Cocina y Caja. En Cocina quedan
+visibles el turno, el aviso de seguridad y las comandas; la gestión de sesión,
+responsable, terminales, cierre, estaciones y rutas queda detrás de
+**Mostrar gestión avanzada**. Si hace falta abrir sesión o ya existe un cierre
+en curso, el bloque se abre automáticamente para no ocultar una acción
+obligatoria. En Caja siguen visibles la apertura, el esperado, el contado y el
+arqueo; entradas, retiradas, reembolsos y el historial de arqueos se muestran
+bajo demanda. Un borrador pendiente vuelve a abrir automáticamente los
+movimientos para permitir el reintento sin duplicar.
+
+No cambia ningún RPC, permiso ni operación económica. La marca de caché de
+`fuente.js` queda en `qa-orbita-cocina-caja-v3-20261118`; se sincroniza
+`source-recovery` y se mantienen P01, P05, sintaxis y `git diff --check`.
