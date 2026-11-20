@@ -1107,3 +1107,197 @@ html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-accion {
     scroll-margin-block-start: 72px;
   }
 }
+
+/* ========================================================================
+   Órbita · contrato único de componentes comunes
+   ------------------------------------------------------------------------
+   Las vistas históricas siguen usando muchas clases utilitarias distintas.
+   Esta capa les da una misma semántica visual sin tocar sus handlers: los
+   primitivos React reciben la clase la-ui-* y los elementos nativos heredan
+   el mismo tratamiento por rol. Así botones, formularios, tablas, tarjetas,
+   pestañas, modales, alertas, estados, paginación y filtros dejan de depender
+   del nombre CSS antiguo que tuviera cada pantalla.
+   ======================================================================== */
+html[data-la-diseno] #root {
+  --la-ui-control-bg: var(--c-surface);
+  --la-ui-control-border: var(--c-border-control, var(--c-line));
+  --la-ui-control-hover: var(--c-accent-soft);
+  --la-ui-shadow: 0 8px 24px rgba(0, 0, 0, .12);
+}
+
+html[data-la-diseno] #root .la-ui-button,
+html[data-la-diseno] #root .la-ui-link-button {
+  box-sizing: border-box;
+  min-height: 44px;
+  border: 1px solid transparent !important;
+  border-radius: 10px !important;
+  font-family: var(--la-font) !important;
+  font-weight: 650;
+  line-height: 1.2;
+  transition: background-color .16s ease, border-color .16s ease, color .16s ease, box-shadow .16s ease, transform .16s ease;
+}
+html[data-la-diseno] #root .la-ui-button-primary {
+  background: var(--c-accent-fill) !important;
+  border-color: var(--c-accent-fill) !important;
+  color: var(--c-on-accent) !important;
+}
+html[data-la-diseno] #root .la-ui-button-ghost {
+  background: transparent !important;
+  border-color: var(--la-ui-control-border) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root .la-ui-button-danger {
+  background: var(--c-red-soft) !important;
+  border-color: var(--c-red) !important;
+  color: var(--c-red) !important;
+}
+html[data-la-diseno] #root .la-ui-button:hover:not(:disabled),
+html[data-la-diseno] #root .la-ui-link-button:hover {
+  border-color: var(--c-accent) !important;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .14);
+  transform: translateY(-1px);
+}
+html[data-la-diseno] #root .la-ui-button-small { min-height: 40px; }
+html[data-la-diseno] #root .la-ui-button:focus-visible,
+html[data-la-diseno] #root .la-ui-link-button:focus-visible,
+html[data-la-diseno] #root .la-ui-icon-button:focus-visible,
+html[data-la-diseno] #root input:focus-visible,
+html[data-la-diseno] #root select:focus-visible,
+html[data-la-diseno] #root textarea:focus-visible {
+  outline: 3px solid var(--c-focus-ring);
+  outline-offset: 2px;
+}
+
+html[data-la-diseno] #root .la-ui-input,
+html[data-la-diseno] #root .la-ui-select,
+html[data-la-diseno] #root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-la-diseno] #root select,
+html[data-la-diseno] #root textarea {
+  box-sizing: border-box;
+  min-height: 44px;
+  border: 1px solid var(--la-ui-control-border) !important;
+  border-radius: 10px !important;
+  background: var(--la-ui-control-bg) !important;
+  color: var(--c-ink) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root input::placeholder,
+html[data-la-diseno] #root textarea::placeholder { color: var(--c-ink-soft); opacity: 1; }
+html[data-la-diseno] #root .la-ui-field-label { color: var(--c-ink-soft) !important; letter-spacing: .01em; }
+
+html[data-la-diseno] #root .la-ui-card,
+html[data-la-diseno] #root .rounded-xl:not(.la-orbita-shell):not(.la-ui-modal) {
+  border-color: var(--c-divider) !important;
+  border-radius: 12px !important;
+  box-shadow: var(--la-ui-shadow);
+}
+html[data-la-diseno] #root .la-ui-section-title {
+  gap: 12px;
+  border-bottom: 1px solid var(--c-divider);
+  padding-bottom: 10px;
+}
+html[data-la-diseno] #root .la-ui-section-title-heading {
+  color: var(--c-ink) !important;
+  letter-spacing: -.02em;
+}
+
+html[data-la-diseno] #root table {
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--c-ink);
+  font-family: var(--la-font);
+}
+html[data-la-diseno] #root table thead th {
+  background: var(--c-surface-soft, var(--c-bg));
+  border-bottom: 1px solid var(--c-divider);
+  color: var(--c-ink-soft);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .02em;
+  text-transform: uppercase;
+}
+html[data-la-diseno] #root table tbody tr:hover { background: var(--c-accent-soft); }
+html[data-la-diseno] #root table td { border-bottom: 1px solid var(--c-divider); }
+
+html[data-la-diseno] #root [role="tablist"] {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  border-bottom: 1px solid var(--c-divider);
+  padding-bottom: 6px;
+}
+html[data-la-diseno] #root [role="tab"] {
+  min-height: 40px;
+  border: 1px solid var(--la-ui-control-border);
+  border-radius: 9px;
+  background: transparent;
+  color: var(--c-ink-soft);
+  font-weight: 650;
+}
+html[data-la-diseno] #root [role="tab"][aria-selected="true"] {
+  background: var(--c-accent-soft);
+  border-color: var(--c-accent-fill);
+  color: var(--c-accent);
+}
+
+html[data-la-diseno] #root .la-ui-alert,
+html[data-la-diseno] #root [role="alert"] {
+  border: 1px solid color-mix(in srgb, currentColor 35%, var(--c-divider));
+  border-radius: 10px;
+  line-height: 1.45;
+}
+html[data-la-diseno] #root .la-ui-empty {
+  border: 1px dashed var(--c-divider);
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--c-surface) 76%, transparent);
+  color: var(--c-ink-soft) !important;
+}
+html[data-la-diseno] #root .la-ui-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 24px;
+  border: 1px solid color-mix(in srgb, currentColor 35%, transparent);
+  letter-spacing: .01em;
+  line-height: 1;
+}
+html[data-la-diseno] #root .la-ui-modal-backdrop {
+  background: color-mix(in srgb, var(--c-chrome) 68%, transparent) !important;
+  backdrop-filter: blur(3px);
+}
+html[data-la-diseno] #root .la-ui-modal {
+  border: 1px solid var(--c-border-control);
+  background: var(--c-surface) !important;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, .32);
+  color: var(--c-ink);
+}
+html[data-la-diseno] #root .la-ui-modal-head { border-bottom: 1px solid var(--c-divider); padding-bottom: 10px; }
+html[data-la-diseno] #root .la-ui-modal-title { color: var(--c-ink); }
+html[data-la-diseno] #root .la-ui-icon-button {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  min-height: 44px;
+  border: 1px solid var(--la-ui-control-border);
+  border-radius: 9px;
+  background: var(--c-bg);
+  color: var(--c-ink);
+}
+html[data-la-diseno] #root nav[aria-label*="Paginación"],
+html[data-la-diseno] #root nav[aria-label*="paginación"] {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+  border-top: 1px solid var(--c-divider);
+  padding-top: 12px;
+}
+html[data-la-diseno] #root [title] { cursor: help; }
+html[data-la-diseno] #root button[aria-label]:not(.la-ui-icon-button) { min-width: 44px; }
+
+@media (prefers-reduced-motion: reduce) {
+  html[data-la-diseno] #root .la-ui-button,
+  html[data-la-diseno] #root .la-ui-link-button { transition: none; }
+}

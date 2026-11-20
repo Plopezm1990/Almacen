@@ -117936,10 +117936,10 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
   )))));
 }
 function Card({ children, className = "", style = {} }) {
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: `rounded-xl p-4 ${className}`, style: { background: C2.surface, border: `1px solid ${C2.line}`, ...style } }, children);
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: `la-ui-card rounded-xl p-4 ${className}`, style: { background: C2.surface, border: `1px solid ${C2.line}`, ...style } }, children);
 }
 function SectionTitle({ children, action }) {
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[18px] font-semibold" }, children), action);
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-ui-section-title flex items-center justify-between mb-4" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "la-ui-section-title-heading text-[18px] font-semibold" }, children), action);
 }
 function Btn({ children, onClick, variant = "primary", type = "button", small, disabled = false, ariaLabel }) {
   const styles = {
@@ -117954,7 +117954,8 @@ function Btn({ children, onClick, variant = "primary", type = "button", small, d
       onClick,
       disabled,
       "aria-label": ariaLabel,
-      className: `inline-flex items-center gap-1.5 rounded-lg font-medium ${small ? "px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
+      className: `la-ui-button la-ui-button-${variant} inline-flex items-center gap-1.5 rounded-lg font-medium ${small ? "la-ui-button-small px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
+      "data-ui-variant": variant,
       style: { ...styles[variant], minHeight: small ? void 0 : 44, opacity: disabled ? 0.45 : 1, cursor: disabled ? "not-allowed" : "pointer" }
     },
     children
@@ -117971,7 +117972,8 @@ function LinkBtn({ children, href, variant = "ghost", small, newTab = true }) {
     {
       href,
       ...newTab ? { target: "_blank", rel: "noopener noreferrer" } : {},
-      className: `inline-flex items-center gap-1.5 rounded-lg font-medium no-underline ${small ? "px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
+      className: `la-ui-button la-ui-link-button la-ui-button-${variant} inline-flex items-center gap-1.5 rounded-lg font-medium no-underline ${small ? "la-ui-button-small px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
+      "data-ui-variant": variant,
       style: { ...styles[variant], minHeight: small ? void 0 : 44 }
     },
     children
@@ -117982,7 +117984,7 @@ function Input(props) {
     "input",
     {
       ...props,
-      className: `w-full rounded-lg px-3 py-2 text-[13px] ${props.className || ""}`,
+      className: `la-ui-input w-full rounded-lg px-3 py-2 text-[13px] ${props.className || ""}`,
       style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 44, ...props.style || {} }
     }
   );
@@ -118026,7 +118028,7 @@ async function convertirPDFFacturaAImagenes(file) {
   return paginas;
 }
 function Field({ label, children }) {
-  return /* @__PURE__ */ import_react4.default.createElement("label", { className: "block mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, label), children);
+  return /* @__PURE__ */ import_react4.default.createElement("label", { className: "la-ui-field block mb-3" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-ui-field-label text-[12px] font-medium mb-1", style: { color: C2.inkSoft } }, label), children);
 }
 var CATEGORIAS_GASTO = [
   "Alquiler",
@@ -118057,7 +118059,7 @@ function CampoCategoria({ value, onChange, opciones = CATEGORIAS_PRODUCTO }) {
           onChange(v22);
         }
       },
-      className: "w-full rounded-lg px-3 py-2 text-[13px]",
+      className: "la-ui-select w-full rounded-lg px-3 py-2 text-[13px]",
       style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink }
     },
     /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Sin categor\xEDa"),
@@ -118074,7 +118076,7 @@ function CampoCategoria({ value, onChange, opciones = CATEGORIAS_PRODUCTO }) {
   ));
 }
 function Empty({ text: text2 }) {
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center py-10 text-[13px]", role: "status", style: { color: C2.inkSoft } }, text2);
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-ui-empty text-center py-10 text-[13px]", role: "status", style: { color: C2.inkSoft } }, text2);
 }
 var clavesMovimientoDashboardLegacy = /* @__PURE__ */ new WeakMap();
 var secuenciaMovimientoDashboardLegacy = 0;
@@ -118098,10 +118100,10 @@ function EstadoCargaDatosPM12({ estado = "cargado_con_datos", etiqueta = "Datos"
     pendiente_sincronizar: { texto: `Hay cambios de ${etiqueta.toLowerCase()} pendientes de sincronizar.`, color: C2.amber, fondo: C2.amberSoft }
   };
   const info = pendiente && estado !== "error" && estado !== "cargando" ? estados.pendiente_sincronizar : estados[estado] || estados.error;
-  return /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "mb-3 rounded-lg px-3 py-2 text-[11.5px]", style: { background: info.fondo, color: info.color } }, info.texto);
+  return /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: `la-ui-alert la-ui-alert-${estado} mb-3 rounded-lg px-3 py-2 text-[11.5px]`, style: { background: info.fondo, color: info.color } }, info.texto);
 }
 function Pill2({ children, color }) {
-  return /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px] font-semibold px-2 py-0.5 rounded-full", style: { background: color + "22", color } }, children);
+  return /* @__PURE__ */ import_react4.default.createElement("span", { className: "la-ui-badge text-[11px] font-semibold px-2 py-0.5 rounded-full", style: { background: color + "22", color } }, children);
 }
 function InicioEmpleado({ nombre, rol, contextoLocal, empleadoIdResuelto, turnoHoy, fichajesHoyEmpleado = [], fichar, itemsPermitidos = null, setTab }) {
   const permitido = (id) => !Array.isArray(itemsPermitidos) || itemsPermitidos.includes(id);
@@ -119145,7 +119147,7 @@ function Modal({ children, onClose, title, ancho = "max-w-md", claseImpresion = 
     document.addEventListener("keydown", alTecla);
     return () => document.removeEventListener("keydown", alTecla);
   }, []);
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: `fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto ${claseImpresion}`.trim(), style: { background: "rgba(20,32,28,0.45)" } }, /* @__PURE__ */ import_react4.default.createElement(
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: `la-ui-modal-backdrop fixed inset-0 z-50 flex items-start justify-center p-4 overflow-y-auto ${claseImpresion}`.trim(), style: { background: "rgba(20,32,28,0.45)" } }, /* @__PURE__ */ import_react4.default.createElement(
     "div",
     {
       ref: cajaRef,
@@ -119153,10 +119155,10 @@ function Modal({ children, onClose, title, ancho = "max-w-md", claseImpresion = 
       role: "dialog",
       "aria-modal": "true",
       "aria-label": title,
-      className: `rounded-xl p-5 w-full ${ancho} my-4 ${claseImpresion ? `${claseImpresion}-dialog` : ""}`.trim(),
+      className: `la-ui-modal rounded-xl p-5 w-full ${ancho} my-4 ${claseImpresion ? `${claseImpresion}-dialog` : ""}`.trim(),
       style: { background: C2.surface, outline: "none" }
     },
-    /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold text-[15px]" }, title), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: onClose, "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 17 }))),
+    /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-ui-modal-head flex items-center justify-between mb-4 no-imprimir" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-ui-modal-title font-semibold text-[15px]" }, title), /* @__PURE__ */ import_react4.default.createElement("button", { className: "la-ui-icon-button", onClick: onClose, "aria-label": "Cerrar" }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 17 }))),
     children
   ));
 }
