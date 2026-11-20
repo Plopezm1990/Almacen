@@ -582,3 +582,94 @@ Además, a media sesión el panel del navegador quedó oculto y la página pasó
 segundo plano: `read_page`, `screenshot` y la ejecución de JavaScript agotan el
 tiempo de espera, aunque la consola y la red sí se leen. Con el panel a la vista
 se puede seguir.
+
+### 20/11/2026 · El veredicto descarta los datos, y la causa es la barrera
+
+`DIAGNOSTICO_CONTEXTO_UI_QA.sql`, ejecutado en QA:
+
+```
+3 EMPRESA QA-EMP-A           id QA-EMP-A · nombre QA Empresa A, S.L. · activo true
+4 LOCALES DE QA-EMP-A        id QA-A1 · nombre Local A1 · activo true
+4 LOCALES DE QA-EMP-A        id QA-A2 · nombre Local recuperado · activo true
+5 RPC v_empresa_principal    QA-EMP-A
+6 RPC v_local_activo         QA-A1
+7 RPC v_locales              id QA-A1 · activo true
+8 GENERACION DEL SERVIDOR    17aac47e…53011c
+9 VEREDICTO                  DESCARTADO
+```
+
+Todo activo. La RPC devuelve empresa y local, así que **no se niega por los
+datos** y la semilla tenía material para escribir. Queda descartada también la
+sospecha sobre QA-A2: existe y está activo, así que la UI no se rompe por él
+(que su nombre coincida con el que inventa `fuente.js:105564` sigue mereciendo
+una mirada, pero no es esto).
+
+**La causa está en la barrera de sincronización, y es un defecto de forma.**
+Leído en el código, de abajo arriba:
+
+`edge-auth-patch.js:163` · `prepararSesionPostReset` cierra la barrera
+(`__instalacionSyncPermitida = false`), valida la generación contra el servidor
+y, si la copia local era de otra cuenta, la aparta entera (D01, copia local por
+cuenta). Entonces:
+
+```js
+if (!copiaCambiada) window.__instalacionSyncPermitida = true;
+```
+
+es decir: **si la copia cambió, la barrera no se abre en esa pasada**. Y en un
+navegador nuevo la copia cambia siempre, porque `reset-pruebas-preview.js`
+—que solo corre en el Deploy Preview— siembra `almacen:empresas`,
+`almacen:locales`, `almacen:localActivoId` y `almacen:productos` en la pantalla
+de acceso, antes de que exista ninguna cuenta. Al entrar, esa copia es de nadie
+y se aparta.
+
+`ui-context-bridge.js:79` · mientras la barrera está cerrada, la lectura de las
+tres claves de contexto hace esto:
+
+```js
+if (CLAVES_CONTEXTO[key]) {
+  await esperarBarrera();
+  return respuesta(key, leerLocal(key));
+}
+```
+
+**Se espera a la barrera y se tira el resultado.** `esperarBarrera()` devuelve
+`false` tras 400 intentos de 25 ms —diez segundos justos— y la función responde
+igualmente con lo que haya en localStorage, que acaba de ser apartado: vacío.
+No dice «todavía no lo sé»; dice «no hay locales». Son dos cosas distintas y
+aquí se confunden.
+
+`fuente.js:105556` · y quien recibe ese «no hay locales» lo interpreta como
+«esto es una instalación antigua de un solo local» e **inventa** uno:
+`{ id: uid(), nombre: "Local principal" }`.
+
+Después, cuando la segunda pasada abre la barrera, el arranque todavía está
+corriendo y llega a guardar el local inventado (`fuente.js:105639`). Esta vez
+sí pasa `esperarBarrera()`, llega a la comprobación de autoridad y recibe la
+negativa que se ve en consola: **«Local no autorizado para esta cuenta»**. Por
+eso el mensaje es el de autoridad y no «Instalación no validada»: la barrera ya
+estaba abierta para la escritura, pero había estado cerrada para la lectura.
+
+Y por eso el síntoma es intermitente, que es lo que hizo que el 17/11 pareciera
+arreglado: depende de si la barrera se abre antes o después de esos diez
+segundos.
+
+**El arreglo tiene dos partes, las dos en código de producto.** Primero, la
+lectura de contexto no debe responder con un valor vacío cuando la barrera no
+llegó a abrirse: un «no lo sé» tiene que distinguirse de un «no hay». Segundo,
+el cliente no debe inventar locales cuando el servidor manda; esa ruta de
+migración solo tiene sentido en una instalación sin servidor.
+
+**Lo que falta por confirmar, y no me lo salto.** Toda la cadena está leída en
+el código, pero el eslabón de la ejecución —el estado de la barrera y el
+contenido de `almacen:locales` en el instante de la invención— no lo he
+observado en marcha: a media sesión el panel del navegador quedó oculto y la
+página dejó de responder (`1 + 1` en la consola agota los 45 s de espera),
+aunque la consola y la red sí se leen. Una sola llamada con el panel a la vista
+lo cierra: `__laOwnerBootstrapSyncState()`,
+`__laPostResetEarlyGateEstado()` y `localStorage.getItem('almacen:locales')`.
+
+No toco `fuente.js` ni el puente hasta tener eso. Es exactamente la lección de
+`bb20bcc2`, tres párrafos más arriba: cambié código por una hipótesis razonada,
+el contrato se puso verde y la conducta viva se rompió. La hipótesis de hoy es
+mejor, pero sigue siendo una hipótesis hasta que la vea correr.
