@@ -398,6 +398,28 @@
     "usuarioActivoId", "localActivoId", "movimientos", "fichajes"
   ];
 
+  // Claves que cualquier cargo puede LEER, aunque no pueda escribirlas.
+  //
+  // `locales` estaba solo en CLAVES_ENCARGADO, y Camarero/a no figura en
+  // ninguna de las cuatro listas de cargo, así que Camarero/a, Cajero/a y
+  // Churrero/a tenían negada la lista de los locales de su propia membresía.
+  // Negarla no protegía nada —el servidor la da de buen grado, ya filtrada a la
+  // membresía de quien pregunta, en `obtener_contexto_instalacion_ui`— y en
+  // cambio desencadenaba el «Local principal» fantasma: la lectura respondía
+  // vacío, `loadKey` lo convertía en `[]` sin reintento y el arranque lo leía
+  // como una instalación antigua de un solo local, así que se inventaba uno.
+  // Medido en vivo el 20/11/2026 con la cuenta `qa.permisos.20261116` en el
+  // Deploy Preview #225; el contrato está en
+  // tests/rediseno/locales-visibles-para-su-cargo-contract.mjs.
+  //
+  // Saber en qué local se está es lo primero que condiciona todo lo demás, así
+  // que es lectura para todos. La ESCRITURA no se toca: sigue siendo del
+  // Propietario (y del Encargado, que ya la tenía), y además el puente la
+  // enruta por una RPC reservada.
+  var CLAVES_LECTURA_CUALQUIER_CARGO = [
+    "locales"
+  ];
+
   var CLAVES_ENCARGADO = [
     "proveedores", "pedidos", "conteos", "fichasCosto", "albaranes",
     "catalogoProv", "registrosAppcc", "puntosControl", "arqueos", "turnos",
@@ -443,6 +465,7 @@
   function puedeLeer(rol, key) {
     if (rol === "Propietario") return !!CLAVES_CONTROLADAS[key];
     if (estaEn(CLAVES_COMUNES, key)) return true;
+    if (estaEn(CLAVES_LECTURA_CUALQUIER_CARGO, key)) return true;
     if (rol === "Encargado" && estaEn(CLAVES_ENCARGADO, key)) return true;
     if (rol === "Cajero/a" && estaEn(CLAVES_CAJERO, key)) return true;
     if (rol === "Churrero/a" && estaEn(CLAVES_CHURRERO, key)) return true;
