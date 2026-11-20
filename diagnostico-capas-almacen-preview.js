@@ -141,6 +141,43 @@
         volcar();
       } catch (e) {}
 
+      // BISECCIÓN DEL ATASCO (solo preview, y solo si se pide a mano).
+      //
+      // La traza dice que lo último que hace el programa antes de quedarse sin
+      // responder es `set historialRespaldos (639560 car.)` a los 4244 ms, y el
+      // latido se detiene a los 5007. Eso es el respaldo automático diario que
+      // monta el arranque: una copia completa de 24 colecciones, `movimientos`
+      // incluido.
+      //
+      // Para saber si es la causa y no una coincidencia, se puede saltar: el
+      // arranque solo crea el respaldo si no hay ya uno automático de hoy
+      // (`yaHayUnoDeHoy`), así que devolviendo un historial con una entrada de
+      // hoy, no lo crea. Si con eso la página deja de atascarse, está
+      // confirmado; si se atasca igual, el culpable es otro y se descarta.
+      //
+      // No se activa solo: hay que ponerlo a mano desde otra pestaña del mismo
+      // origen, con
+      //     localStorage.setItem('diag_saltar_respaldo_v1', '1')
+      // y se quita borrando esa clave. Es un experimento, no una conducta.
+      if (key === "historialRespaldos") {
+        var saltar = null;
+        try { saltar = localStorage.getItem("diag_saltar_respaldo_v1"); } catch (e) {}
+        if (saltar === "1") {
+          var hoy = new Date().toISOString();
+          try {
+            registro.ultima_llamada = { tipo: "get-falseado", clave: key, ms: Date.now() - t0 };
+            if (!registro.traza) registro.traza = [];
+            registro.traza.push((Date.now() - t0) + "ms get historialRespaldos FALSEADO (bisección: se evita el respaldo diario)");
+            volcar();
+          } catch (e) {}
+          return {
+            key: key,
+            value: JSON.stringify([{ id: "diag-biseccion", fecha: hoy, automatica: true, motivo: "biseccion-diagnostico", backupVersion: 3, data: {} }]),
+            shared: false
+          };
+        }
+      }
+
       if (!VIGILADAS[key] || !window.__diagCapasAlmacenV1) return inner(key, shared);
 
       var enDispositivo;
