@@ -123904,7 +123904,7 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
       )
     )
   ];
-  return h("div", null, contenido);
+  return h("div", null, contenido.map((elemento, indice) => h(import_react4.default.Fragment, { key: `clientes-contenido-${indice}` }, elemento)));
 }
 function paginarClientesSuite(clientes, consulta, estado, paginaSolicitada) {
   const texto = normalizarParaComparar(consulta);
