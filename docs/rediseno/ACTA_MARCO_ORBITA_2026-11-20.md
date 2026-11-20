@@ -94,3 +94,24 @@ restantes queda pendiente de una sesión QA activa: la sesión del navegador
 integrado había caducado y la pestaña quedó preparada en el acceso para que el
 propietario introduzca sus credenciales directamente, sin compartirlas en el
 chat. En esta tanda no se ejecutaron cobros, reembolsos ni mutaciones de QA.
+
+## Cierre de revisión visual autenticada · 20/11/2026 · commit `614c5580`
+
+Con sesión real de QA-A1 se recorrieron en escritorio los módulos generales
+Productos, Proveedores, Pedidos, Recepción, Albaranes, Facturas, Clientes,
+Locales y Configuración, además de TPV, Cocina y Arqueo de caja. Todos
+conservaron el shell `.la-orbita-shell`, la cabecera y el lateral comunes, con
+marcadores de ruta/superficie y sin desbordamiento horizontal.
+
+En viewport móvil `390×844` se comprobó Clientes y Arqueo de caja: lateral
+oculto, cabecera visible, barra inferior `.la-orbita-bottom-nav` visible y
+`scrollWidth === innerWidth`.
+
+Durante la comprobación apareció una advertencia React en `ClientesPunto3` por
+los hijos de una lista sin `key`. Se corrigió de forma simétrica en `fuente.js`
+y `source-recovery/fuente-recuperado.js`; la pestaña limpia abierta después de
+la publicación no registra errores ni advertencias nuevas.
+
+Referencia publicada: commit `614c5580970dd9cae8ab2f07e19227df5b5fa71c`,
+Deploy Preview `6b00b89c879fb38200eafb4a` (`ready`). No se ejecutaron cobros,
+reembolsos ni cambios de datos durante la revisión.

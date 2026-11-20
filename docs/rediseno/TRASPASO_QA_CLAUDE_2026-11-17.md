@@ -1135,3 +1135,20 @@ no se pudo cerrar porque el navegador integrado ya no conservaba la sesión QA;
 el preview sí carga y la pestaña quedó preparada en el acceso para que el
 propietario inicie sesión directamente. No se ejecutaron cobros, reembolsos ni
 escrituras de negocio en esta tanda.
+
+## Cierre de revisión visual autenticada · 20/11/2026
+
+Con sesión QA-A1 se recorrieron Productos, Proveedores, Pedidos, Recepción,
+Albaranes, Facturas, Clientes, Locales, Configuración, TPV, Cocina y Arqueo de
+caja. En escritorio todos conservaron la cabecera y el lateral Órbita; en
+móvil (390×844) Clientes y Caja conservaron la cabecera y la barra inferior,
+ocultaron el lateral y mantuvieron `scrollWidth === innerWidth`.
+
+La única advertencia observada fue un `key` ausente en la lista de
+`ClientesPunto3`. Se corrigió simétricamente en `fuente.js` y
+`source-recovery/fuente-recuperado.js`; una pestaña limpia posterior al deploy
+no registra errores ni advertencias nuevas.
+
+Código verificado: `614c5580970dd9cae8ab2f07e19227df5b5fa71c`. Deploy de código:
+`6b00b89c879fb38200eafb4a` (`ready`). PR #225 continúa en borrador y producción
+permanece fuera de alcance.
