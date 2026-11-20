@@ -728,3 +728,86 @@ eslabón sin ver la ejecución, y además lo contaminé yo al dejar dos pestaña
 abiertas sobre el mismo localStorage. Lo honesto es decir que el defecto
 arreglado es real y se sostiene solo, y que su relación con el fantasma de QA
 está por confirmar con el panel a la vista.
+
+### 20/11/2026 · tarde · El arreglo no quita el síntoma, y hay que decirlo
+
+Con el panel del navegador a la vista, la observación que faltaba. Y desmiente
+la parte de mi explicación que había dejado marcada como sin confirmar.
+
+**El preview ya sirve el arreglo.** La consola lo dice sin ambigüedad: el error
+de autoridad ahora salta en `ui-context-bridge.js:193`, no en `:151`. Ese
+desplazamiento de cuarenta y dos líneas es exactamente el de mi cambio.
+
+**Y el síntoma sigue igual.** Mismo error, mismo sitio de llamada
+(`fuente.js:105639`), con el mismo origen: un local inventado que el puente
+rechaza.
+
+**El dato que lo cambia todo.** Leyendo el almacén del navegador desde un
+documento trivial del mismo origen —la página de la aplicación bloquea su hilo,
+así que no se la puede interrogar, pero `localStorage` es del origen y se lee
+desde cualquier página de él—:
+
+```
+almacen:locales        [{"id":"QA-A1","activo":true,"nombre":"Local A1","empresaId":"QA-EMP-A"}]
+almacen:localActivoId  "QA-A1"
+almacen__ui_context_seed  {"generation":"17aac47e…","userId":"53117178…","seededAt":  14:50:59.247}
+la_suite_installation_generation_v1  17aac47e…53011c   (idéntica a la del servidor)
+chocoloyos_contexto_operativo_seguro_v1
+                       {"localIdSolicitado":"mwp3jsaynt6b7g",
+                        "contexto":{"rol":"Camarero/a","localId":null,"empresaId":null},
+                        "verificadoEn": 14:51:01.538}
+```
+
+Es decir: **la semilla escribió bien**, con el nombre del servidor («Local A1»,
+no «QA Local A1» que es el del guion de pruebas del preview), y la generación
+del dispositivo coincide con la del servidor. Dos segundos y tres décimas
+después, la aplicación pidió contexto para `mwp3jsaynt6b7g`, otro identificador
+inventado —distinto del `mwp0e1ua2qbqk0` de la sesión anterior, así que se acuña
+uno nuevo en cada arranque— y el servidor le devolvió, con razón, un contexto
+vacío.
+
+Borré las dos cachés sospechosas (`chocoloyos_contexto_operativo_seguro_v1` y
+una clave de modo TPV que llevaba otro inventado, `…:mwkdgowz9s0l1z`) y recargué
+con `almacen:locales` correcto: **mismo error**. Así que el fantasma no sale de
+una caché envenenada; se acuña en cada arranque.
+
+**Lo que esto prueba por deducción.** El guardado del arranque es
+`if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal)`:
+solo escribe si el valor difiere del cargado. Hubo escritura, luego la
+aplicación **no recibió** el `[QA-A1]` que estaba escrito en el dispositivo. El
+problema no es que el almacén esté vacío: es que lo que la aplicación lee en el
+instante de decidir no es lo que hay.
+
+**Y el amplificador, que sí es un defecto de libro.** `fuente.js:101783`:
+
+```js
+if (!res || !res.value) return fallback;
+```
+
+Una respuesta vacía se convierte en el valor por defecto —`[]` para locales—
+**en el acto y sin reintento**. El bucle de `loadKey` reintenta tres veces, con
+350 ms de espera, pero **solo si la lectura lanza**. Un vacío no lanza. Así que
+cualquier vacío momentáneo es indistinguible de «esta cuenta no tiene locales»
+y se actúa sobre él de inmediato. Es la misma confusión que arreglé en el
+puente, otra vez, un piso más arriba.
+
+**Corrección, entonces.** El defecto que arreglé en `ui-context-bridge.js` es
+real y está demostrado por contrato: con la barrera agotada, la lectura
+respondía un vacío inventado. Pero **no es la causa del fantasma de QA**: aquí
+la copia del dispositivo está bien sembrada antes de la invención. Mi cadena del
+mediodía era coherente y era falsa en su eslabón final, el mismo que había
+dejado anotado como no observado. El arreglo se queda —no por orgullo, sino
+porque el contrato lo justifica solo—, pero no cierra esto.
+
+**Dónde se atasca ahora.** La página bloquea su hilo principal: en el panel,
+`1 + 1` agota los 45 segundos, mientras que en una página trivial del mismo
+panel responde al instante. No es el panel: es la página. El almacén de este
+navegador tiene 639 KB en `almacen:movimientos` y 199 KB en `almacen:pagosFacturas`,
+y el arranque recorre y reserializa esas listas para relocalizarlas contra el
+local activo —que es el fantasma—. Es una explicación plausible del bloqueo y
+no está confirmada.
+
+Mientras la página bloquee no se puede instrumentar el arranque, y sin eso no
+puedo decir de dónde sale el identificador inventado. Las pruebas de caja,
+cobro y reembolso siguen sin hacerse, por lo de siempre: la cuenta no está en un
+local real.
