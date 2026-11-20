@@ -812,7 +812,37 @@ puedo decir de dónde sale el identificador inventado. Las pruebas de caja,
 cobro y reembolso siguen sin hacerse, por lo de siempre: la cuenta no está en un
 local real.
 
-### 20/11/2026 · noche · Causa encontrada, y era de autoridad
+### 20/11/2026 · noche · Un defecto de autoridad real, pero NO era la causa
+
+> **Aviso escrito después de comprobar en vivo.** Esta sección se tituló «Causa
+> encontrada» y ese título era falso. Con el arreglo ya desplegado en el Deploy
+> Preview —comprobado: el fichero servido contiene
+> `CLAVES_LECTURA_CUALQUIER_CARGO`— la medida se repite **idéntica**:
+>
+> ```
+> window.storage.get('locales')        ->  { value: "" }
+> window.storage.get('localActivoId')  ->  { value: "\"QA-A1\"" }
+> window.storage.get('empresas')       ->  { value: "[{\"id\":\"QA-EMP-A\",…}]" }
+> ```
+>
+> y se acuña otro local inventado (`mwp5ncr99qmuqz`). Así que el vacío de
+> `locales` **no lo produce (solo) `puedeLeer`**. Quedan dos explicaciones y no
+> he podido separarlas: o la página siguió ejecutando una copia anterior del
+> fichero —`/edge-auth-patch.js` lleva `no-cache, must-revalidate` en `_headers`,
+> así que debería revalidar, pero «debería» no es «lo hace»—, o hay una segunda
+> puerta con la misma forma, más abajo. La envoltura de autoridad es síncrona y
+> se instala al cargar su script, así que el puente de contexto queda por fuera
+> de ella; eso descarta que el puente sea quien responde ese vacío, pero no dice
+> quién es.
+>
+> Lo que sigue en pie de esta sección: **la asimetría de autorización es real y
+> está corregida**, con su contrato y la batería entera en verde, y las medidas
+> del servidor y del dispositivo son firmes. Lo que no está establecido es que
+> fuera la causa del fantasma. Van dos veces hoy que una explicación coherente
+> no sobrevive a la comprobación; dejo las dos escritas, con su desmentido, en
+> lugar de reescribir la historia.
+
+#### Lo que se midió (vale igualmente)
 
 Dejé de razonar y me puse a medir. La causa del «Local principal» fantasma es
 que **un cargo restringido tiene negada la lista de los locales de su propia
