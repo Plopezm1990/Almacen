@@ -477,3 +477,108 @@ tablas hermanas. La migración escribe `numeric` a secas, que es lo que el volca
 dijo literalmente y además el lado permisivo: acepta todo lo que acepta QA. Queda
 anotado aquí porque es el único dato de los cuatro objetos que no está confirmado
 columna a columna, y se cierra con una consulta de dos líneas cuando haya ocasión.
+
+## 20/11/2026 · tarde · El «Local principal» fantasma, reproducido y explicado
+
+Con la membresía descartada como causa (ver la corrección de más arriba), entré
+en el Deploy Preview #225 con la cuenta restringida y **el síntoma está vivo**.
+Sesión limpia, pestaña nueva, segundo factor incluido. Lo que la pantalla ofrece
+a una cuenta cuya membresía es QA-A1:
+
+```
+combobox "Local principal"
+  option "Todos los locales"
+  option "Local principal" (selected) value="mwp0e1ua2qbqk0"
+```
+
+No aparece «Local A1». El identificador `mwp0e1ua2qbqk0` no existe en QA: lo
+acaba de generar el navegador. Y en la consola, en los dos intentos:
+
+```
+Error guardando localActivoId Error: Local no autorizado para esta cuenta
+  at window.storage.set (ui-context-bridge.js:151)
+  at async saveKey (fuente.js:101807)
+  at async (fuente.js:105639)
+```
+
+### La cadena, leída en el código
+
+1. **`empresas`, `locales` y `localActivoId` se leen SOLO de localStorage.**
+   `ui-context-bridge.js` intercepta esas tres claves (`CLAVES_CONTEXTO`) y su
+   lectura devuelve `leerLocal(key)`: nunca se piden al servidor al leer. Quien
+   las deja escritas es la semilla del arranque,
+   `__laOwnerBootstrapSeedUiContext`, alimentada por la RPC
+   `obtener_contexto_instalacion_ui`.
+2. **Si la semilla no escribe, en un dispositivo nuevo la lista sale vacía.**
+3. **Con la lista vacía, el cliente inventa un local.** `fuente.js:105556`:
+   `if (localesFinales.length === 0 && hayDatosOperativosLegacy)` →
+   `{ id: uid(), nombre: "Local principal", migradoDesdeDatosLegacy: true }`.
+   Es una ruta de migración para instalaciones antiguas de un solo local, y su
+   premisa —«no hay locales, luego esto es una instalación vieja»— es falsa para
+   una cuenta de empleado contra un servidor multi-local: ahí la lista está
+   vacía porque la semilla falló, no porque no haya locales.
+4. **Acto seguido intenta persistirlo** (`fuente.js:105639`) y el puente lo
+   rechaza. El rechazo es correcto: ese local no es de la cuenta.
+
+### Esto lo volví a romper yo el 18/11, y conviene decirlo
+
+`a97841eb` (17/11) hacía que el puente **sanara** cualquier local no autorizado
+cambiándolo por el canónico. Eso tapaba el síntoma: el empleado acababa en Local
+A1, y así quedó anotado ese día. Pero tapaba de más —una cuenta que *elegía* un
+local ajeno recibía otro en silencio— y puso en rojo el contrato que defiende
+justo eso.
+
+En `bb20bcc2` (18/11) estreché la condición añadiendo `&& leerLocal(key) === value`:
+sanar solo cuando lo que se escribe es idéntico a lo ya guardado, que es la
+firma de un arrastre y no de una elección. El contrato se puso verde y la
+distinción es la correcta. Lo que no comprobé es si la rama seguía siendo
+alcanzable en el arranque real. No lo es: el único guardado de `localActivoId`
+al arrancar es
+
+```js
+if (localActivoFinal !== (lai || null)) await saveKey("localActivoId", localActivoFinal);
+```
+
+es decir, **solo escribe cuando el valor es distinto del guardado** — exactamente
+lo contrario de la condición que pide la rama de saneo. Así que dejé una rama
+muerta en esa ruta y el fantasma volvió.
+
+El arreglo **no es revertir**: el saneo silencioso era un defecto real. El
+arreglo es que el cliente no invente locales cuando el servidor manda, y que el
+contexto real llegue a sembrarse. Eso toca `fuente.js:105556`, con su contrato,
+y queda por hacer.
+
+### Lo que falta por saber antes de tocar nada
+
+Por qué la semilla no escribe. `obtener_contexto_instalacion_ui`
+(`20260915043000_ui_context_bridge.sql`) tiene dos negativas y las dos exigen
+`activo = true`: el join de `empresas` para `v_empresa_principal` y el de
+`locales` para `v_local_activo`; si cualquiera sale nulo lanza «Contexto
+empresarial incompleto». Si QA-EMP-A o QA-A1 tuvieran `activo = false`, saldría
+este síntoma exacto. El volcado de membresías del 20/11 no lo descarta: pedía el
+nombre del local, no su `activo`.
+
+Para eso está [`DIAGNOSTICO_CONTEXTO_UI_QA.sql`](DIAGNOSTICO_CONTEXTO_UI_QA.sql),
+de solo lectura, que emula los tres `select` de la RPC con el `user_id` de esa
+cuenta y dicta veredicto en una línea: culpa a la empresa, culpa al local, o
+descarta esa vía y manda mirar la generación de instalación. Comprobado contra
+PostgreSQL de verdad (PGlite) en cuatro casos —todo activo, empresa desactivada,
+local desactivado, cuenta inexistente— y acierta en los cuatro.
+
+**Una sospecha que ese volcado también resuelve.** El local QA-A2 de QA se llama
+«Local recuperado», y «Local recuperado» es literalmente el nombre que inventa
+`fuente.js:105564` para un local huérfano. Si se confirma, esta misma ruta de
+invención ya ha escrito datos inventados en QA, no solo en el navegador.
+
+### Por qué el recorrido de permisos sigue sin hacerse
+
+No por la membresía, que estaba bien, sino porque **la cuenta no llega a un
+local real**: opera sobre un local fantasma, así que cualquier negativa de caja,
+cobro o reembolso que midiera ahí sería la del local vacío y no la del cargo —
+que es justo la confusión que Codex ya anotó el 17/11 al pulsar «Abrir fondo».
+Medirlo antes de arreglar esto daría evidencia falsa.
+
+Además, a media sesión el panel del navegador quedó oculto y la página pasó a
+segundo plano: `read_page`, `screenshot` y la ejecución de JavaScript agotan el
+tiempo de espera, aunque la consola y la red sí se leen. Con el panel a la vista
+se puede seguir.
