@@ -20,6 +20,16 @@
 -- responde bien en los tres. Es SQL de una sola vez, así que la comprobación no
 -- se ha metido en la batería de CI; queda dicho aquí que se hizo.
 --
+-- RESULTADO, ejecutado en QA el 20/11/2026: la membresía YA ERA CORRECTA.
+--   2 LA CUENTA EXISTE  → si · user_id 53117178-d2e9-400e-8a9b-d82debcc3e1b
+--   3 SUS MEMBRESIAS    → empresa QA-EMP-A · local QA-A1 · todos_locales false
+--                         · rol Camarero/a · activo true · id 221   (una sola fila)
+--   4 SU PERFIL         → rol Camarero/a · empleado_id mwjqacgeiamvpk · activo true
+--   5 SU EMPLEADO       → estado activo
+--   6 LOCALES QA-EMP-A  → QA-A1 «Local A1», QA-A2 «Local recuperado»
+-- Es la misma fila `id=221` que ya constaba en TRASPASO_QA_CODEX_2026-11-17.md.
+-- Por tanto REPARAR_MEMBRESIA_QA.sql NO debe ejecutarse: lleva el aviso puesto.
+--
 -- Nota: aquí no se usa `::regclass` a propósito, por lo mismo que en
 -- VOLCAR_TARIFAS_DESDE_QA.sql: el autocompletado del editor en el móvil llegó a
 -- cambiar un nombre de tabla al pegar, y esa forma revienta si el nombre no

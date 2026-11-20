@@ -440,14 +440,35 @@ propósito. Paridad de cuerpo comprobada: `PARIDAD_CUERPO_EXACTA=1`,
 El workflow, el manifiesto y `validar-manifiesto-ci.mjs` llevaban números
 distintos entre sí; los tres cuadrados.
 
-**Lo que sigue sin hacerse, y por qué.** La cuenta restringida
-`qa.permisos.20261116@qa.invalid` sigue sin membresía de QA-A1: la pantalla le
-genera un «Local principal» del lado del cliente y `membresias_usuario` no se
-puede leer desde el navegador con ninguno de los dos roles. Arreglarlo necesita
-acceso a la base. Hasta entonces las pruebas de permisos de caja, cobro y
-reembolso con esa cuenta no se pueden hacer, y no se han hecho. Tampoco está
-aislada la causa de que el enlace Pase→TPV caiga siempre en la cuenta actual del
-terminal: hay dos hipótesis anotadas y ninguna descartada.
+**Lo que sigue sin hacerse, y por qué.**
+
+> **Corrección del 20/11.** El párrafo que seguía aquí decía que la cuenta
+> `qa.permisos.20261116@qa.invalid` «sigue sin membresía de QA-A1». **Era
+> falso.** Repetí una nota de la mañana del 17/11 sin ver que el addendum de esa
+> misma tarde, en este mismo repositorio
+> ([`TRASPASO_QA_CODEX_2026-11-17.md`](TRASPASO_QA_CODEX_2026-11-17.md), «cerrado
+> en servidor»), ya decía que la fila activa era `id=221` con `QA-EMP-A` /
+> `QA-A1` / `todos_locales=false` / `Camarero/a`. El volcado de solo lectura del
+> 20/11 devuelve exactamente esa fila, con el mismo `id=221`. No había avería que
+> arreglar, y por tanto el bloqueo que escribí aquí no existía: las pruebas de
+> permisos estaban pendientes de hacerse, no impedidas.
+>
+> Dejo el párrafo tachado en vez de borrarlo, porque lo que importa no es que
+> estuviera mal escrito sino de dónde salió: una nota heredada repetida sin
+> cotejarla con el resto del propio repositorio. El dato que la desmentía estaba
+> a dos ficheros de distancia.
+
+~~La cuenta restringida `qa.permisos.20261116@qa.invalid` sigue sin membresía de
+QA-A1: la pantalla le genera un «Local principal» del lado del cliente y
+`membresias_usuario` no se puede leer desde el navegador con ninguno de los dos
+roles. Arreglarlo necesita acceso a la base. Hasta entonces las pruebas de
+permisos de caja, cobro y reembolso con esa cuenta no se pueden hacer, y no se
+han hecho.~~
+
+Lo que sí sigue sin hacerse: **las pruebas de permisos de caja, cobro y
+reembolso** con esa cuenta en el navegador, que es trabajo pendiente y no
+bloqueado. Y no está aislada la causa de que el enlace Pase→TPV caiga siempre en
+la cuenta actual del terminal: hay dos hipótesis anotadas y ninguna descartada.
 
 **Una nota sobre la precisión de `precio_unitario`.** El volcado devolvió
 `numeric` sin precisión porque la consulta pedía `data_type` y no

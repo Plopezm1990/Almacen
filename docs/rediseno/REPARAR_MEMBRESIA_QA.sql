@@ -1,3 +1,26 @@
+-- ============================================================================
+-- NO EJECUTAR. No hace falta.
+--
+-- El 20/11/2026 se ejecutó DIAGNOSTICO_MEMBRESIA_QA.sql contra QA y la
+-- membresía ya era la correcta: fila activa `id=221`, `QA-EMP-A` / `QA-A1` /
+-- `todos_locales=false` / `rol='Camarero/a'`. Es la misma fila que Codex ya
+-- había confirmado el 17/11 («cerrado en servidor», en
+-- TRASPASO_QA_CODEX_2026-11-17.md). Nunca hubo nada que reparar: este fichero
+-- se escribió a partir de una nota heredada que no cotejé con el resto del
+-- repositorio.
+--
+-- Si se ejecutase ahora, el bloque no rompería nada —encuentra la fila buena,
+-- la reescribe con los mismos valores y la comprobación final pasa—, pero
+-- tocaría `updated_at` de una fila sana sin motivo. Así que no.
+--
+-- Se conserva, sin borrarlo, por dos razones: porque el patrón (bloque `do`
+-- atómico, cuatro negativas antes de escribir, comprobación final que deshace)
+-- sirve de plantilla para la próxima reparación de datos que sí haga falta, y
+-- porque deja constancia de la equivocación en lugar de hacerla desaparecer.
+-- Antes de reutilizarlo: cambiar el correo, el local y el rol esperados, y
+-- volver a pasarlo por PGlite.
+-- ============================================================================
+
 -- Reparación de la membresía de la cuenta de ensayo
 -- qa.permisos.20261116@qa.invalid → Empresa QA-EMP-A, Local QA-A1,
 -- todos_locales false, Rol Camarero/a.
