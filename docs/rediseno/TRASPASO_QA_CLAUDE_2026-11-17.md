@@ -1105,3 +1105,18 @@ Pendiente de la siguiente pasada: revisión visual manual de las rutas Clientes,
 Inventario, Compras, Organización y de los cinco anchos del plan. No se
 ejecutaron cobros, reembolsos ni escrituras de negocio; PR #225 sigue en
 borrador y producción permanece fuera de alcance.
+
+## Addendum marco Órbita · títulos homogéneos de módulos · 20/11/2026
+
+La pasada de Clientes, Inventario, Compras y Organización encontró que el
+contenido ya compartía el shell, pero sus `SectionTitle` quedaban visualmente
+anidados de forma distinta según la pantalla. Se añadió una marca de
+presentación idempotente (`la-orbita-page-title` y
+`la-orbita-page-title-wrap`) sobre el primer título visible de cada vista. La
+hoja Órbita aplica la misma escala, línea de acento, separación y adaptación
+móvil; las acciones del título siguen siendo los botones React originales.
+
+No se editó `fuente.js` ni se cambió lógica de negocio. Resultado: contrato del
+marco `21/21`, contrato de rutas `20 rutas`, P01/P03/P05, org-33, paridad y
+`git diff --check` en verde. La revisión autenticada de cinco anchos queda
+como comprobación visual final cuando haya una sesión QA disponible.

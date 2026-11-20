@@ -274,6 +274,19 @@
         main.querySelector(".la-operacion-cocina") ? "cocina" :
         main.querySelector(".la-operacion-caja") ? "caja" : "general";
       main.setAttribute("data-la-orbita-surface", superficie);
+      /* Los módulos históricos comparten SectionTitle, pero su composición
+         queda anidada en raíces distintas. Marcar el primer h2 visible da a
+         Órbita un ancla estable para la misma jerarquía en Clientes,
+         Inventario, Compras y Organización, sin reemplazar el componente ni
+         sus acciones. */
+      Array.prototype.forEach.call(main.querySelectorAll(".la-orbita-page-title"), function (tituloViejo) {
+        tituloViejo.classList.remove("la-orbita-page-title");
+      });
+      var titulo = main.querySelector("h2");
+      if (titulo && !titulo.closest(".la-operacion-cocina, .la-operacion-caja, #la-pase, .tpv-layout")) {
+        titulo.classList.add("la-orbita-page-title");
+        if (titulo.parentElement) titulo.parentElement.classList.add("la-orbita-page-title-wrap");
+      }
     }
   }
 

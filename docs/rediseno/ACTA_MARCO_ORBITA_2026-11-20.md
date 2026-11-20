@@ -40,6 +40,20 @@ handlers de negocio, permisos, contratos de TPV ni datos de QA.
 - `SOURCE_RECOVERY_CHECK=PASS`.
 - `git diff --check` sin salida.
 
+### Pasada visual de módulos generales
+
+La pasada final añadió una ancla visual común para los títulos de módulo que
+siguen viniendo del `SectionTitle` histórico. El shell marca el primer título
+de cada vista con `la-orbita-page-title` y su envolvente con
+`la-orbita-page-title-wrap`; así Clientes, Productos, Inventario, Proveedores,
+Pedidos, Recepción, Albaranes, Facturas, Locales y Configuración comparten la
+misma jerarquía, línea de acento y separación responsive sin duplicar sus
+acciones ni tocar el bundle de negocio.
+
+El contrato del marco queda en `21/21`, además de las 20 rutas cubiertas. La
+hoja y el shell se publican con las marcas `qa-orbita-shell-v9-20261120` y
+`qa-orbita-shell-v5-20261120` para evitar caché antigua.
+
 ## Evidencia live · Deploy Preview 225
 
 - Commit final de esta tanda: `9d132d72f996c54177f48cb14031b301b2570f05`.

@@ -126,6 +126,34 @@ html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
   border-radius: 99px;
   background: linear-gradient(90deg, var(--c-accent-fill), #8CC3FF);
 }
+.la-orbita-page-title-wrap {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-block-end: 18px;
+  padding-block-end: 2px;
+  border-block-end: 1px solid var(--c-divider);
+}
+.la-orbita-page-title {
+  position: relative;
+  margin: 0 !important;
+  padding-block-end: 10px;
+  color: var(--c-ink) !important;
+  font-size: clamp(20px, 2.6vw, 30px) !important;
+  font-weight: 700 !important;
+  letter-spacing: -.025em;
+}
+.la-orbita-page-title::after {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  inset-block-end: -3px;
+  width: 52px;
+  height: 3px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--c-accent-fill), #8CC3FF);
+}
 .la-orbita-main[data-la-orbita-surface="pase"] #la-pase,
 .la-orbita-main[data-la-orbita-surface="tpv"] .tpv-layout,
 .la-orbita-main[data-la-orbita-surface="cocina"] .la-operacion-cocina,
@@ -167,6 +195,7 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
   .la-orbita-bottom-nav { grid-column: 1; grid-row: 3; min-height: 56px; }
   .la-orbita-context-menu { inset-block-start: 58px; inset-inline-start: 10px; }
   .la-orbita-profile-menu { inset-block-start: 58px; inset-inline-end: 10px; }
+  .la-orbita-page-title-wrap { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
 }
 @media (prefers-reduced-motion: reduce) { .la-orbita-sidebar { transition: none; } }
 
