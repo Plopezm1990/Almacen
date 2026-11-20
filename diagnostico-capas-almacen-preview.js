@@ -309,6 +309,54 @@
     }, cuando);
   });
 
+  // CUÁNTAS VECES SE REPINTA EL PUENTE
+  // ----------------------------------
+  // `fuente.js` publica `window.__laPuenteRediseno` dentro de un `useEffect`
+  // **sin array de dependencias**, así que se ejecuta después de CADA render:
+  // el cleanup borra el puente, el efecto lo vuelve a crear y emite
+  // `la-puente:actualizado`. `la-pase-panel.js` escucha ese evento y, cuando la
+  // clave de contexto `[empresaId, localId, rol, modoEmpleado]` cambia,
+  // reinicia su estado y vuelve a cargar sala, pedidos y caja.
+  //
+  // Si eso ocurre muchas veces por segundo, o si la clave oscila —por ejemplo
+  // entre el contexto real y el vacío que deja el cleanup—, el panel no termina
+  // nunca de cargar y el hilo se satura. Que es exactamente lo que se ve:
+  // «Cargando la sala…», «Cargando los pedidos…» y el aviso de Firefox de que
+  // la página ralentiza el navegador.
+  //
+  // Esto se cuenta en el propio manejador del evento, que corre de forma
+  // síncrona, así que queda registrado aunque el hilo esté saturado.
+  try {
+    var eventosPuente = 0;
+    var primerEvento = 0;
+    var clavesVistas = Object.create(null);
+    registro.puente = { eventos: 0, por_segundo: 0, claves: [] };
+    window.addEventListener("la-puente:actualizado", function () {
+      eventosPuente++;
+      if (!primerEvento) primerEvento = Date.now();
+      try {
+        var p = window.__laPuenteRediseno || null;
+        var clave = p
+          ? JSON.stringify([p.empresaId, p.localId, p.rol, p.modoEmpleado, p.tabActual])
+          : "(puente borrado)";
+        clavesVistas[clave] = (clavesVistas[clave] || 0) + 1;
+      } catch (e) {}
+      // No se vuelca en cada evento: si son miles por segundo, escribir en
+      // localStorage cada vez falsearía la medida y agravaría el atasco.
+      if (eventosPuente % 25 !== 0) return;
+      var transcurrido = Math.max(1, (Date.now() - primerEvento) / 1000);
+      registro.puente = {
+        eventos: eventosPuente,
+        segundos: Math.round(transcurrido),
+        por_segundo: Math.round(eventosPuente / transcurrido),
+        claves: Object.keys(clavesVistas).slice(0, 8).map(function (k) {
+          return clavesVistas[k] + "x " + k.slice(0, 90);
+        })
+      };
+      volcar();
+    });
+  } catch (e) {}
+
   // Latido, con reloj de pared y en su propia clave.
   //
   // Para qué: el panel del navegador agota el tiempo de espera en `read_page`,
