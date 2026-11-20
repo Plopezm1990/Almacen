@@ -114,15 +114,17 @@
   // del catálogo TPV y a los 2386 la puerta de autoridad. Un sondeo fijo queda
   // enterrado y no ve lo que recibe la aplicación. Así que este se vuelve a
   // poner encima cada vez que lo desplazan, y anota a quién delegó.
-  var dentro = null;
-  var nombreDentro = null;
-
   function envolver(motivo) {
-    dentro = window.storage.get.bind(window.storage);
-    nombreDentro = nombrarCapa(window.storage.get);
+    // La capa de debajo se captura AQUÍ, en el ámbito de esta instalación. La
+    // primera versión de este guion la guardaba en una variable compartida y la
+    // reasignaba en cada vuelta, así que las envolturas antiguas acababan
+    // apuntando a la nueva y se llamaban en círculo: «Maximum call stack size
+    // exceeded», 606 veces en una sola carga. Un fallo mío de cierre, no del
+    // programa.
+    var inner = window.storage.get.bind(window.storage);
+    var nombre = nombrarCapa(window.storage.get);
+    var nombreDentro = nombre;
     window.storage.get = async function (key, shared) {
-      var inner = dentro;
-      var nombre = nombreDentro;
       if (!VIGILADAS[key] || !window.__diagCapasAlmacenV1) return inner(key, shared);
 
       var enDispositivo;
@@ -133,7 +135,7 @@
       try { respuesta = await inner(key, shared); }
       catch (e) { fallo = (e && e.message) ? e.message : String(e); }
 
-      registro.lecturas.push({
+      if (registro.lecturas.length < 40) registro.lecturas.push({
         ms: Date.now() - t0,
         clave: key,
         respondio: nombre,
