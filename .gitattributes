@@ -1,0 +1,24 @@
+# Finales de línea: LF en el repositorio, siempre.
+#
+# El 18/11/2026 un commit de documentación reescribió
+# `source-recovery/fuente-recuperado.js` entero con CRLF. No cambió ni una
+# palabra del código, pero seis contratos que recortan ese fichero por anclas
+# del tipo "\n  }\n" dejaron de encontrar sus anclas y se pusieron rojos. En el
+# acta de cierre quedaron clasificados como «contratos heredados de otras áreas
+# que requieren una tanda propia», que es lo que parecían y no lo que eran.
+#
+# Esto lo evita: git normaliza a LF al guardar, y da igual con qué editor o
+# herramienta de Windows se toque el fichero.
+* text=auto eol=lf
+
+# Binarios, que no se toquen.
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.webp binary
+*.ico binary
+*.pdf binary
+*.woff binary
+*.woff2 binary
+*.ttf binary
+*.otf binary
