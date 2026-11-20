@@ -1009,3 +1009,98 @@ dos arreglos —la lectura del puente con la barrera agotada, y `locales` legibl
 para todo cargo— son defectos reales, cada uno con su contrato, y la batería pasa
 entera: 323/323. Ninguno de los dos cierra el fantasma. Y las pruebas de caja,
 cobro y reembolso siguen sin hacerse.
+
+### 20/11/2026 · noche · El fantasma, cerrado. Y de dónde salía de verdad
+
+Está arreglado, y la medida lo dice sin ambigüedad. Mismo sondeo, misma cuenta,
+sesión limpia, con todo desplegado:
+
+```
+17652ms empresas      <- puerta-autoridad = [{"id":"QA-EMP-A",…}]
+18456ms locales       <- puerta-autoridad = [{"id":"QA-A1","nombre":"Local A1",…}]
+18456ms localActivoId <- puerta-autoridad = "QA-A1"
+
+contexto operativo: rol=Camarero/a · localId=QA-A1 · empresaId=QA-EMP-A
+consola: ni un «Local no autorizado para esta cuenta»
+```
+
+Compárese con la medida de esta tarde: `locales` devolvía `""` a los 4081 ms, el
+contexto resolvía `localId: null` con un `localIdSolicitado` inventado distinto
+en cada arranque, y la consola traía el rechazo. **Ya no se acuña ningún local
+fantasma.** Y la lectura ahora llega a los 18456 ms en vez de a los 4081: es el
+reintento de `loadKey` haciendo su trabajo, que es exactamente lo que se buscaba.
+
+#### La causa, en una frase
+
+Un vacío haciendo de «no lo sé», en una tabla de autoridad **duplicada**.
+
+Y con más precisión, porque cada palabra costó una medida:
+
+1. `locales` estaba solo en `CLAVES_ENCARGADO`, y Camarero/a no figura en
+   ninguna de las cuatro listas de cargo, así que Camarero/a, Cajero/a y
+   Churrero/a tenían negada la lista de los locales de su propia membresía. El
+   servidor la da de buen grado, ya filtrada a quien pregunta.
+2. La rama del cargo sin verificar respondía `respuestaVacia(key)`, es decir
+   `{ value: "" }`, confiando en que `loadKey` aplicara su valor por defecto. Y
+   lo aplicaba: ése era el problema.
+3. `fuente.js:101783` convierte un vacío en el valor por defecto **en el acto y
+   sin reintento** —el bucle reintenta tres veces, pero solo si la lectura
+   lanza—, y `fuente.js:105556` lee cero locales como una instalación antigua de
+   un solo local e inventa uno.
+4. Y lo que escondió todo medio día: **la tabla está en dos sitios**.
+   `edge-auth-patch.js` la tiene, y `fuente.js` lleva inlineada su propia copia.
+   El paquete se carga el último, así que su envoltura queda por fuera y su
+   copia es la que decide. Arreglé el fichero suelto dos veces, comprobé byte a
+   byte que lo desplegado llevaba el cambio, y el comportamiento no se movía.
+
+#### Lo que lo resolvió, y no fue razonar
+
+Un andamio de diagnóstico cargado solo en el Deploy Preview que se vuelve a
+poner por encima de las envolturas de `window.storage` cada vez que lo
+desplazan, y escribe en `localStorage` lo que ve, porque la página congela su
+hilo y no se la puede interrogar desde fuera. Eso dio tres cosas que no se
+podían leer en el código: que la pila de envolturas se reconstruye durante el
+arranque (appcc a los 371 ms, el observador del catálogo TPV a los 1371, la
+puerta de autoridad a los 2386), que las tres claves de contexto nunca bajan a
+la base, y qué capa responde qué y cuándo.
+
+Dos tropiezos propios en el camino, los dos escritos: la primera versión del
+andamio se llamaba en círculo (`Maximum call stack size exceeded`, 606
+registros), y mi primer arreglo no distinguía **sin sesión** —donde un vacío es
+honesto y definitivo— de **con sesión y cargo sin resolver**, que es el «no lo
+sé». Lo segundo lo destapó `tests/pm33/p03-frontend-multilocal-contract.mjs`
+poniéndose rojo, y tenía razón: ahora la rama consulta la sesión y solo lanza
+cuando hay alguien detrás.
+
+#### Lo que impide que vuelva
+
+`tests/rediseno/locales-visibles-para-su-cargo-contract.mjs` carga **las dos
+copias** de la tabla y exige que decidan lo mismo, exhaustivo: todos los cargos
+contra todas las claves controladas, en lectura y en escritura. Una divergencia
+significa que el arreglo no está donde corre.
+`tests/rediseno/fallar-cerrado-sin-mentir-contract.mjs` ejecuta el fichero real
+en un entorno donde el cargo no se puede verificar y exige que la lectura lance,
+también en la copia del paquete. Batería entera: 324/324. Paridad:
+`PARIDAD_CUERPO_EXACTA=1`.
+
+#### Lo que sigue abierto, sin adornos
+
+- **Por qué la página congela el hilo principal.** Ahora es el bloqueo
+  principal: `read_page` y la ejecución de JavaScript agotan el tiempo de espera
+  pasados unos segundos, así que **no he podido leer la interfaz** ni confirmar
+  en pantalla que el selector dice «Local A1». Lo que confirmo es la capa de
+  datos, que es donde estaba el defecto. Descartados el volumen de registros
+  (prueba invalidada y explicada) y las sentencias `debugger` del paquete.
+- **Las pruebas de caja, cobro y reembolso** siguen sin hacerse, y ahora el
+  obstáculo es el bloqueo del hilo, no los permisos.
+- **Los dos defectos de `fuente.js`**: el vacío indistinguible en `101783` y la
+  invención de locales en `105556`. Con la autoridad arreglada su disparador
+  desaparece, pero siguen ahí.
+- **La escritura que miente**: en la misma puerta, un `set` con el cargo sin
+  verificar devuelve éxito simulado. Es el mismo defecto del lado de escribir.
+  No lo he tocado porque afecta a la cola de pendientes y merece su propia
+  tanda.
+- **El andamio sigue puesto**, a propósito: es la única forma de ver dentro de
+  una página que no responde, y hace falta para el bloqueo del hilo. Sale antes
+  de cualquier cierre, y está marcado como tal en su cabecera y en el
+  `index.html`.
