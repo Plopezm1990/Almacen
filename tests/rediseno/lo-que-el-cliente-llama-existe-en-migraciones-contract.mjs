@@ -38,8 +38,12 @@ const EJEMPLOS_DE_LA_LIBRERIA = new Set([
 
 // Huecos conocidos. Cada uno con quién lo necesita y por qué sigue aquí.
 const HUECOS_CONOCIDOS = new Map([
-  ['abc_guardar_tarifa_horario', 'org-33, tarifas horarias: hecha a mano en QA el 18/11/2026, sin migración en el repositorio'],
-  ['abc_guardar_tarifa_precio', 'org-33, precios por tarifa: igual que la anterior'],
+  // 20/11/2026: `abc_guardar_tarifa_horario` y `abc_guardar_tarifa_precio` ya no
+  // están aquí. Se volcó su definición desde los catálogos del sistema de QA y se
+  // escribió 20261120120000_rediseno_org33_tarifas_horario.sql con el texto del
+  // volcado, probada contra un Postgres de verdad en
+  // tests/rediseno/org33-tarifas-pglite-contract.mjs. El trinquete se aprieta solo:
+  // si alguien las vuelve a sacar de las migraciones, esto se pone rojo.
   ['abc_preparar_ticket_fiscal_qa', 'C07-D, ensayo fiscal de QA: vive solo en el proyecto de pruebas'],
 ]);
 
@@ -47,10 +51,12 @@ const HUECOS_CONOCIDOS = new Map([
 // listan las de la documentación de la librería ni las anteriores a este juego
 // de migraciones: sólo las que entraron con trabajo de esta rama y deberían
 // haber traído su migración.
-const TABLAS_SIN_MIGRACION = new Map([
-  ['catalogo_tpv_tarifas_horario', 'org-33: la lee la pantalla de configuración; existe en QA y no en el repositorio'],
-  ['catalogo_tpv_tarifa_precios', 'org-33: igual que la anterior'],
-]);
+// 20/11/2026: esta lista quedó vacía. Las dos tablas de tarifas de org-33, que
+// eran las únicas que había, las crea ya
+// 20261120120000_rediseno_org33_tarifas_horario.sql. Se deja la lista (y no se
+// borra el mecanismo) porque es el sitio donde hay que apuntar la próxima tabla
+// que entre sin migración, con su motivo, en vez de dejarla sin nombrar.
+const TABLAS_SIN_MIGRACION = new Map([]);
 
 const fuente = fs.readFileSync('fuente.js', 'utf8');
 

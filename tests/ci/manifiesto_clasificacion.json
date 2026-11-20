@@ -1,8 +1,8 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 376,
+  "total_inventory": 377,
   "expected_counts": {
-    "active_contract": 359,
+    "active_contract": 360,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "pglite": {
-      "active_contract": 4,
+      "active_contract": 5,
       "historical_expected_fail": 0,
       "utility": 1,
       "diagnostic": 0
@@ -51,6 +51,11 @@
     },
     {
       "path": "tests/alb/a03-cableado-proveedor-desde-albaran-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/arranque/canal-bootstrap-sin-huecos-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -906,17 +911,17 @@
       "environment": "node"
     },
     {
+      "path": "tests/p3/p3-clientes-gestion-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/p3/p3b-espejo-static-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
     {
       "path": "tests/p3/p3c-client-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/p3/p3-clientes-gestion-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1231,11 +1236,6 @@
       "environment": "node"
     },
     {
-      "path": "tests/pm12/p10-reversion-y-envase-honestos-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
       "path": "tests/pm12/p08-fallos-replay-concurrencia-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
@@ -1257,6 +1257,11 @@
     },
     {
       "path": "tests/pm12/p10-preview-smoke-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/pm12/p10-reversion-y-envase-honestos-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1856,7 +1861,7 @@
       "environment": "node"
     },
     {
-      "path": "tests/rediseno/org33-sala-contract.mjs",
+      "path": "tests/rediseno/lo-que-el-cliente-llama-existe-en-migraciones-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1864,6 +1869,16 @@
       "path": "tests/rediseno/marco-orbita-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/org33-sala-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/org33-tarifas-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
     },
     {
       "path": "tests/rediseno/p01-capas-y-migraciones-contract.mjs",
@@ -1901,17 +1916,7 @@
       "environment": "node"
     },
     {
-      "path": "tests/rediseno/lo-que-el-cliente-llama-existe-en-migraciones-contract.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
       "path": "tests/ui-context-bridge.mjs",
-      "classification": "active_contract",
-      "environment": "node"
-    },
-    {
-      "path": "tests/arranque/canal-bootstrap-sin-huecos-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     }

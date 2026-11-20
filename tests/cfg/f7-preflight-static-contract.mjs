@@ -178,6 +178,13 @@ const EXCLUIDAS = new Set([
   //   tests/rediseno/p04-mfa-politica-pglite-contract.mjs  (Postgres de verdad)
   //   tests/m03/m03-mfa-enforcement-contract.mjs            (los cinco puntos)
   '20261115120000_mfa_politica_opcional.sql',
+  // Tarifas por horario de org-33 (20/11/2026): reconstruye en el repositorio dos
+  // tablas y dos funciones que el 18/11 se habian creado a mano directamente en QA.
+  // Es del rediseño, posterior a la foto F7 del 3/10, y ademas es de reconciliacion
+  // (idempotente), asi que no se promueve dentro de esa foto. Lo que promete esta
+  // exclusion lo prueba, contra un Postgres de verdad y partiendo de cero:
+  //   tests/rediseno/org33-tarifas-pglite-contract.mjs
+  '20261120120000_rediseno_org33_tarifas_horario.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -237,6 +244,9 @@ const JUSTIFICACION = {
   '20261115120000_mfa_politica_opcional.sql': [
     'tests/rediseno/p04-mfa-politica-pglite-contract.mjs',
     'tests/m03/m03-mfa-enforcement-contract.mjs',
+  ],
+  '20261120120000_rediseno_org33_tarifas_horario.sql': [
+    'tests/rediseno/org33-tarifas-pglite-contract.mjs',
   ],
 };
 
