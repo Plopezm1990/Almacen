@@ -139,3 +139,33 @@ Evidencia estática: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS` (14 primitivas,
 `SOURCE_RECOVERY_CHECK=PASS` y `git diff --check` sin salida. La verificación
 live se hará sobre el deploy generado por esta rama en escritorio y móvil,
 sin ejecutar cobros, reembolsos ni escrituras de negocio.
+
+## Cierre de sustitución de componentes comunes · 20/11/2026
+
+La sustitución del contrato visual común queda cerrada en la rama
+`rediseno/f0-base-qa`, commit `b301222a3dc20ea768e5d01d2b8f9da0c91bc1f2`.
+Se migraron botones primarios, secundarios y destructivos, enlaces, campos,
+selectores, tarjetas, títulos, badges, estados vacíos, alertas, modales y
+botones de solo icono; la hoja global cubre además tablas, pestañas ARIA,
+paneles, paginación, filtros, dropdowns, estados de carga y error,
+confirmaciones, tooltips e iconos. Los selectores semánticos también
+normalizan el marcado histórico, evitando que cada pantalla conserve reglas
+visuales antiguas.
+
+Evidencia de código: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS` (14
+primitivas, 7 selectores semánticos, 5 estados y paridad), marco Órbita 21/21,
+rutas 20/20, P01/P03/P05, org-33, `SOURCE_RECOVERY_CHECK=PASS` y
+`git diff --check` limpio. La batería sin base terminó con 305/327 contratos
+activos en verde, 22 fallos históricos no relacionados con esta capa y
+`INFRA_FAIL=0`; el límite de publicación Netlify pasó.
+
+Evidencia visual en el Deploy Preview 225: en escritorio se recorrieron 46
+módulos con el shell Órbita y sin desbordamiento horizontal; en móvil
+`390×844` se verificaron TPV, Cocina, Productos, Configuración y Clientes,
+todos con barra inferior, lateral oculto, ancho estable y ningún control
+visible por debajo de 44 px. La pasada final se hizo en modo local del preview
+porque la sesión autenticada de QA había caducado; no se ejecutaron cobros,
+reembolsos ni escrituras de negocio. Es una comprobación de renderizado del
+deploy, no una nueva mutación de QA.
+
+PR #225 sigue en borrador y producción permanece fuera de alcance.

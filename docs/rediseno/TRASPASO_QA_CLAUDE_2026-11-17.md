@@ -1173,3 +1173,25 @@ rutas 20/20, P01/P03/P05, org-33, paridad y `git diff --check`. La revisión
 visual autenticada en el preview debe confirmar escritorio y móvil sobre el
 deploy de esta rama. No ejecutar cobros, reembolsos ni cambios de datos; PR #225
 continúa en borrador y producción sigue fuera de alcance.
+
+## Cierre de sustitución de componentes · 20/11/2026
+
+Objetivo completado en `rediseno/f0-base-qa` con el commit
+`b301222a3dc20ea768e5d01d2b8f9da0c91bc1f2`. El contrato Órbita sustituye la
+convivencia de componentes antiguos y nuevos: botones por variante, campos,
+selectores, tablas, tarjetas, pestañas, modales, paneles, alertas, estados,
+badges, paginación, filtros, dropdowns, vacíos, carga, errores,
+confirmaciones, tooltips, iconos y botones solo-icono. La capa es semántica y
+global; conserva handlers, permisos y lógica de negocio.
+
+Resultados reproducibles: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`, marco
+21/21, rutas 20/20, P01/P03/P05, org-33, paridad de source-recovery y
+`git diff --check` PASS. La batería completa de contratos registró 305/327
+activos PASS, 22 fallos preexistentes no vinculados a esta migración y
+`INFRA_FAIL=0`; el límite Netlify pasó.
+
+Smoke visual del Deploy Preview 225: 46 módulos sin overflow en escritorio y
+TPV, Cocina, Productos, Configuración y Clientes sin overflow ni controles
+menores de 44 px en móvil `390×844`. La última pasada fue en modo local (la
+sesión QA había caducado), por lo que no se deben interpretar estos datos como
+nuevas escrituras en QA. PR #225 permanece en borrador y producción intacta.
