@@ -156,3 +156,93 @@ La referencia documental complementaria está en:
 **Conclusión:** el rediseño aprobado queda cerrado y trazable en QA; los rojos
 restantes están identificados como trabajo heredado fuera de este alcance y no
 se han ocultado ni atribuido falsamente al rediseño.
+
+---
+
+## Addendum del 20/11/2026 · revisión de los 14 rojos
+
+La sección 3.3 dice que los catorce contratos en rojo «pertenecen a contratos
+heredados de otras áreas del repositorio», que «no son contratos del rediseño»
+y que «requieren una tanda propia». **De los catorce, eso solo es cierto de
+uno.** Lo comprobé ejecutándolos contra la base de la rama, `ba471956`.
+
+### Seis eran finales de línea
+
+El commit `02435009`, que es de documentación, reescribió
+`source-recovery/fuente-recuperado.js` entero con CRLF: 33.226 finales de línea
+cambiados, cero palabras de código. Los contratos que recortan ese fichero por
+anclas del tipo `"\n  }\n"` dejaron de encontrar su ancla y fallaron con «no
+encuentro el final», que parece un problema de contenido y no lo era.
+
+La comprobación de paridad pasaba todo el tiempo, porque normaliza los finales
+de línea. Por eso no se vio por ahí.
+
+Devuelto el fichero a LF, volvieron a verde sin tocar una línea de código:
+`tests/alb/a03-cableado-proveedor-desde-albaran`,
+`tests/f3/a08/a08-3-unir-cuentas`, `tests/f4/b04/b04-ui`,
+`tests/f4/b05/b05-phase1-regression`, `tests/f4/b05/b05-ui` y
+`tests/pm33/p1-dashboard-movimientos-key`. Commit `26d7f97d`, con un
+`.gitattributes` para que no se repita.
+
+Conviene notar que `tests/f3/a08/a08-3-unir-cuentas` se escribió el 16/11 **en
+esta misma rama**, para `tpv-26`. No podía ser deuda heredada de otra área.
+
+### Siete eran regresiones de esta rama, no deuda heredada
+
+Siete de los ocho restantes **estaban en verde en `ba471956`** y se pusieron
+rojos dentro de la rama:
+
+`tests/cfg/cfg6-ui-contract`, `tests/cfg/cfg6-ui-runtime`,
+`tests/cfg/cfg6d-ui-runtime`, `tests/cfg/f7-preflight-static-contract`,
+`tests/pm05/frontend-contract`,
+`tests/pm15/p03-mej02-confirmacion-pago-destino` y `tests/ui-context-bridge`.
+
+De estos ya está resuelto uno, y era el más serio.
+
+**`tests/ui-context-bridge`.** Defiende que una cuenta de empleado no pueda
+seleccionar un local fuera de su membresía. `a97841eb` arreglaba un problema
+real —una copia vieja arrastra un «Local principal» inventado por el cliente y
+la pantalla se queda mostrando una instalación fantasma— pero lo arreglaba de
+más: **cualquier** local no autorizado se cambiaba en silencio por el canónico y
+la llamada respondía como si hubiera ido bien. Una cuenta de empleado que pide
+un local ajeno recibe otro sin que nada se lo diga.
+
+Es, además, exactamente el síntoma que quedó anotado el 17/11 con la cuenta
+restringida `qa.permisos.20261116`: entraba y aparecía en un local que no había
+elegido.
+
+Arreglado en `bb20bcc2` distinguiendo un arrastre de una elección: si lo pedido
+coincide con lo ya guardado, es el arranque reafirmando su copia vieja y se
+sana; si es distinto, se rechaza. El contrato pasa a cubrir las dos caras.
+
+### Uno sí era anterior
+
+`tests/cfg/a09-panel-ui-runtime` ya estaba rojo en `ba471956`. Ese sí es
+trabajo heredado.
+
+### Dónde queda la batería
+
+De 14 rojos a **7**: `NODE_ACTIVE_TOTAL=320`, `NODE_ACTIVE_PASS=313`,
+`NODE_ACTIVE_FAIL=7`, `INFRA_FAIL=0`.
+
+Los seis que siguen rojos y son de esta rama están sin tocar, con sus mensajes:
+
+| Contrato | Lo que dice |
+| --- | --- |
+| `tests/cfg/cfg6-ui-contract` | montaje de la pestaña, con el perfil Propietario y el worker QA |
+| `tests/cfg/cfg6-ui-runtime` | (mismo bloque, en ejecución) |
+| `tests/cfg/cfg6d-ui-runtime` | (mismo bloque, en ejecución) |
+| `tests/cfg/f7-preflight-static-contract` | las funciones reemplazadas no coinciden con las de las migraciones |
+| `tests/pm05/frontend-contract` | lógica de clientes sin empresa |
+| `tests/pm15/p03-mej02-confirmacion-pago-destino` | la confirmación de pago no puede volver a ser un prompt del navegador |
+
+Este último merece atención: dice que se ha reintroducido un `prompt` del
+navegador para confirmar un pago, que es justo lo que ese contrato se escribió
+para impedir.
+
+### Lo que esto significa para el cierre
+
+El rediseño puede seguir cerrado en su alcance visual y funcional; lo que no se
+sostiene es la frase de que los rojos son ajenos. Siete no lo eran, y uno de
+ellos tocaba quién puede ver qué local. Un cierre que archiva regresiones
+propias como deuda de otros las entierra, porque nadie vuelve a mirarlas.
