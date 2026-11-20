@@ -811,3 +811,99 @@ Mientras la página bloquee no se puede instrumentar el arranque, y sin eso no
 puedo decir de dónde sale el identificador inventado. Las pruebas de caja,
 cobro y reembolso siguen sin hacerse, por lo de siempre: la cuenta no está en un
 local real.
+
+### 20/11/2026 · noche · Causa encontrada, y era de autoridad
+
+Dejé de razonar y me puse a medir. La causa del «Local principal» fantasma es
+que **un cargo restringido tiene negada la lista de los locales de su propia
+membresía**, por decisión del cliente, no del servidor.
+
+**Las tres medidas, en orden.**
+
+1. *El servidor está impecable.* Desde una página trivial del mismo origen, con
+   el token de la sesión real de `qa.permisos.20261116@qa.invalid`, los cuatro
+   RPC del arranque responden 200:
+   `obtener_generacion_instalacion` y `obtener_estado_instalacion` coinciden en
+   la generación `17aac47e…53011c`; `obtener_contexto_instalacion_ui` devuelve
+   `locales: [QA-A1]`, `local_id: QA-A1`, `permite_todos_locales: false`; y
+   `obtener_contexto_operativo` devuelve `rol: Camarero/a`, `localId: QA-A1`,
+   `empresaId: QA-EMP-A`. Nada que reprochar al servidor.
+
+2. *El dispositivo también.* Un muestreador cada 100 ms desde otra pestaña:
+   `almacen:locales` contiene `[{"id":"QA-A1","nombre":"Local A1",…}]` **de
+   forma continua** desde los 109 ms hasta los 4808 ms, con la barrera pasando
+   de `no/no` a `listo/solicitada` a los 1008 ms. Y una escucha de eventos
+   `storage` durante toda una carga: **cero eventos**, así que nadie borra ni
+   reescribe esa clave.
+
+3. *La medida que lo cerró.* Preguntarle a la propia vía de lectura de la
+   aplicación, desde la página, a los dos segundos del arranque:
+
+   ```
+   window.storage.get('locales')        ->  { value: "" }          ← VACÍO
+   window.storage.get('localActivoId')  ->  { value: "\"QA-A1\"" }
+   window.storage.get('empresas')       ->  { value: "[{\"id\":\"QA-EMP-A\",…}]" }
+   ```
+
+**Ese patrón solo lo produce una cosa**, `edge-auth-patch.js:773`:
+
+```js
+if (!puedeLeer(rol, key)) return respuestaVacia(key);
+```
+
+y `respuestaVacia` devuelve literalmente `{ value: "" }`. Porque:
+
+| clave | dónde está | Camarero/a |
+| --- | --- | --- |
+| `localActivoId` | `CLAVES_COMUNES` | la ve |
+| `empresas` | en ninguna lista, no es clave controlada | la ve |
+| `locales` | `CLAVES_ENCARGADO` | **negada** |
+
+Y **Camarero/a no figura en ninguna de las cuatro listas de cargo**, así que
+solo recibe las comunes. Al escribir el contrato apareció además que esto no es
+solo cosa del camarero: **Cajero/a y Churrero/a tenían la misma negativa**. Solo
+Propietario y Encargado veían sus locales.
+
+**La cadena completa, ya sin huecos.** La lectura responde vacío →
+`fuente.js:101783` (`if (!res || !res.value) return fallback;`) lo convierte en
+`[]` **en el acto y sin reintento**, porque el bucle de `loadKey` reintenta tres
+veces pero **solo si la lectura lanza**, y un vacío no lanza →
+`fuente.js:105556` lee «cero locales» como «instalación antigua de un solo
+local» e **inventa** uno con `uid()` → la aplicación opera sobre el fantasma, y
+`obtener_contexto_operativo` con él resuelve `localId: null` → al persistirlo, el
+puente lo rechaza, con razón, con «Local no autorizado para esta cuenta».
+
+**El arreglo** es `CLAVES_LECTURA_CUALQUIER_CARGO = ["locales"]`, consultada solo
+en `puedeLeer`. Saber en qué local se está es lo primero que condiciona todo lo
+demás, y negarlo no protegía nada: el servidor da esa lista de buen grado y ya
+filtrada a la membresía de quien pregunta. La **escritura no se toca** —sigue
+siendo del Propietario y del Encargado, y el puente la enruta por una RPC
+reservada—, y el contrato comprueba justamente eso, además de que las 21 claves
+ajenas al camarero siguen negadas y que cada cargo conserva lo suyo.
+
+**Qué queda abierto, dicho con precisión.**
+
+- *El vacío indistinguible de «no hay»*, en `fuente.js:101783`. Es el mismo
+  defecto que arreglé en el puente por la mañana, un piso más arriba: el
+  reintento solo cubre el caso en que la lectura lanza. Mientras exista, cualquier
+  negativa o cualquier vacío momentáneo se interpreta como ausencia de datos.
+- *La invención de locales*, en `fuente.js:105556`. Con la autoridad arreglada su
+  disparador desaparece, pero sigue siendo una premisa falsa contra un servidor
+  multi-local.
+  Las dos están en `fuente.js`, con su paridad y su contrato; no las toco en la
+  misma tanda que la causa.
+- *Por qué la página congela el hilo principal a los ~4,8 s.* Está medido el
+  cuándo —el muestreador se detiene ahí— y no el por qué. Descarté el volumen de
+  registros: los aparté y la aplicación volvió a bajárselos de la nube y los
+  reescribió idénticos dentro de la misma carga, así que mi prueba era inválida.
+  Descarté también las sentencias `debugger` del paquete: las cuatro están en
+  html2canvas y bajo banderas de depuración.
+- *Las pruebas de caja, cobro y reembolso*, que siguen sin hacerse y ahora sí
+  tienen vía: en cuanto el preview reconstruya con este arreglo, la cuenta debería
+  entrar en Local A1 de verdad.
+
+**Y una corrección sobre mi propio arreglo de la mañana.** El de
+`ui-context-bridge.js` es real y su contrato lo sostiene solo, pero **no era
+esto**: ahí la barrera se abre a tiempo y la copia del dispositivo está bien. Lo
+dije ya al mediodía y lo repito aquí para que no quede la impresión de que
+aquello cerraba este caso.
