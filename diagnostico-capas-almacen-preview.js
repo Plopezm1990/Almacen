@@ -96,50 +96,67 @@
     } catch (e) { return "no-legible"; }
   }
 
-  var getBase = window.storage.get.bind(window.storage);
+  // Qué capa es la que tengo justo debajo, para poder decir quién respondió.
+  function nombrarCapa(fn) {
+    try {
+      var s = String(fn).replace(/\s+/g, " ");
+      if (s.indexOf("CLAVES_CONTROLADAS") !== -1) return "puerta-autoridad";
+      if (s.indexOf("pinPropietario") !== -1) return "puente-contexto";
+      if (s.indexOf("var r = await getAnterior(key") !== -1) return "puente-catalogo-tpv";
+      if (s.indexOf("var normalized = String(key") !== -1) return "puente-appcc";
+      if (s.indexOf("historialRespaldos") !== -1) return "base";
+      return "desconocida: " + s.slice(0, 60);
+    } catch (e) { return "no-legible"; }
+  }
 
-  // __diagCapas en el cuerpo, para que quienEsLaExterna sepa reconocerse.
-  window.storage.get = async function (key, shared) {
-    if (!VIGILADAS[key] || !window.__diagCapasAlmacenV1) return getBase(key, shared);
+  // La pila de envolturas se reconstruye durante el arranque: medido el
+  // 20/11/2026, a los 371 ms manda el puente APPCC, a los 1371 el observador
+  // del catálogo TPV y a los 2386 la puerta de autoridad. Un sondeo fijo queda
+  // enterrado y no ve lo que recibe la aplicación. Así que este se vuelve a
+  // poner encima cada vez que lo desplazan, y anota a quién delegó.
+  var dentro = null;
+  var nombreDentro = null;
 
-    var externa = quienEsLaExterna();
-    var enDispositivo;
-    try { enDispositivo = localStorage.getItem("almacen:" + key); }
-    catch (e) { enDispositivo = "LANZA " + (e && e.message); }
+  function envolver(motivo) {
+    dentro = window.storage.get.bind(window.storage);
+    nombreDentro = nombrarCapa(window.storage.get);
+    window.storage.get = async function (key, shared) {
+      var inner = dentro;
+      var nombre = nombreDentro;
+      if (!VIGILADAS[key] || !window.__diagCapasAlmacenV1) return inner(key, shared);
 
-    var respuesta, fallo = null;
-    try { respuesta = await getBase(key, shared); }
-    catch (e) { fallo = (e && e.message) ? e.message : String(e); }
+      var enDispositivo;
+      try { enDispositivo = localStorage.getItem("almacen:" + key); }
+      catch (e) { enDispositivo = "LANZA " + (e && e.message); }
 
-    registro.lecturas.push({
-      ms: Date.now() - t0,
-      clave: key,
-      base_devuelve: fallo ? ("LANZA: " + recortar(fallo, 120)) : recortar(respuesta && respuesta.value, 120),
-      en_dispositivo: recortar(enDispositivo, 120),
-      envoltura_externa: externa,
-      barrera: barrera(),
-      contexto: contextoSeguro()
-    });
+      var respuesta, fallo = null;
+      try { respuesta = await inner(key, shared); }
+      catch (e) { fallo = (e && e.message) ? e.message : String(e); }
+
+      registro.lecturas.push({
+        ms: Date.now() - t0,
+        clave: key,
+        respondio: nombre,
+        devuelve: fallo ? ("LANZA: " + recortar(fallo, 140)) : recortar(respuesta && respuesta.value, 140),
+        en_dispositivo: recortar(enDispositivo, 140),
+        barrera: barrera(),
+        contexto: contextoSeguro()
+      });
+      volcar();
+
+      if (fallo) throw new Error(fallo);
+      return respuesta;
+    };
+    registro.envolturas.push({ ms: Date.now() - t0, puesto_encima_de: nombreDentro, motivo: motivo, barrera: barrera() });
     volcar();
+  }
 
-    if (fallo) throw new Error(fallo);
-    return respuesta;
-  };
+  envolver("instalación inicial, sobre la base");
 
-  // Cómo evoluciona la pila de envolturas.
   var vueltas = 0;
-  var ultima = null;
   var reloj = window.setInterval(function () {
     vueltas++;
-    var quien = quienEsLaExterna();
-    if (quien !== ultima) {
-      ultima = quien;
-      registro.envolturas.push({ ms: Date.now() - t0, externa: quien, barrera: barrera() });
-      volcar();
-    }
-    if (vueltas > 60) window.clearInterval(reloj);
-  }, 200);
-
-  registro.envolturas.push({ ms: 0, externa: "este-diagnostico (recien instalado sobre la base)", barrera: barrera() });
-  volcar();
+    if (quienEsLaExterna() !== "este-diagnostico") envolver("me desplazaron; vuelvo arriba");
+    if (vueltas > 90) window.clearInterval(reloj);
+  }, 150);
 })();
