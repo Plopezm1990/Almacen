@@ -1104,3 +1104,57 @@ también en la copia del paquete. Batería entera: 324/324. Paridad:
   una página que no responde, y hace falta para el bloqueo del hilo. Sale antes
   de cualquier cierre, y está marcado como tal en su cabecera y en el
   `index.html`.
+
+### 20/11/2026 · noche · El bloqueo no era de la página. Corrección
+
+Escribí varias veces hoy que «la página congela su hilo principal». **Era
+falso**, y lo desmiente la primera medida que hice del hilo en vez de deducirlo.
+
+Instrumenté dos cosas en el andamio: la deriva del reloj —si entre dos tics de
+150 ms pasan muchos más, el hilo estuvo ocupado— y las tareas largas con
+`PerformanceObserver`. En un arranque completo de cuarenta segundos:
+
+```
+atascos del hilo:  922ms → bloqueado 765ms
+                  3039ms → bloqueado 1967ms      (y nada más en 40 s)
+tareas largas:     la mayor dura 336ms
+reloj de 150 ms:   tictaqueando los 39 s completos
+lecturas:          registradas a los 15600 ms, con locales = [{QA-A1}]
+```
+
+Dos atascos cortos durante el arranque y ninguno después. **La página no se
+congela.** Lo que se atasca es el **canal del panel del navegador**: en esa misma
+pestaña, `1 + 1` por CDP agota los 45 segundos de espera mientras el interior de
+la página funciona con normalidad, y una pestaña recién abierta vuelve a
+responder un rato antes de atascarse igual.
+
+El patrón, ahora que se ve: una pestaña nueva contesta una o dos llamadas y
+luego todas agotan su espera; abrir otra vuelve a funcionar. Eso es una sesión
+de depuración atascada por pestaña, no un programa que se cuelga.
+
+**Qué cambia esto.** Tres cosas, y dos son buenas:
+
+1. No hay ningún defecto de rendimiento del producto que perseguir. El punto
+   de la lista «por qué la página congela el hilo» queda **cerrado por
+   inexistente**, no pendiente.
+2. Las pruebas de caja, cobro y reembolso **no están bloqueadas por el
+   producto**. Están estorbadas por la herramienta, y eso tiene apaño: pestaña
+   nueva por medida, lotes cortos, y el registro por `localStorage` leído desde
+   otro documento del mismo origen, que es lo que ha funcionado toda la tarde.
+3. Y lo que no es bueno: me pasé horas tratando como defecto algo que era mi
+   instrumento. La señal estaba disponible desde el principio —una página
+   trivial del mismo origen respondía al instante—, y la interpreté como «es la
+   página, no el panel» cuando decía justo lo contrario en cuanto se medía el
+   hilo por dentro.
+
+Para dejarlo probado y no deducido, el andamio escribe ahora un **latido** en su
+propia clave (`diag_latido_v1`), con reloj de pared, cada segundo. Si una llamada
+del panel agota su espera y justo después el latido tiene una marca de hace un
+segundo, la página estaba viva mientras el canal no respondía.
+
+**Lo que esto no explica, y hay que decirlo:** por qué se atasca el canal. No lo
+sé, y como es la herramienta y no el producto, no voy a gastar la tanda en
+averiguarlo; se trabaja alrededor. Lo que sí queda anotado es cómo reconocerlo,
+para no volver a confundirlo con un defecto del programa: si `read_page` y la
+ejecución de JavaScript agotan su espera **pero la consola y la red siguen
+leyéndose**, es el canal.
