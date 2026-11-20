@@ -16,6 +16,8 @@
   var marco = null;
   var cabecera = null;
   var dialogo = null;
+  var contextoBoton = null;
+  var perfilMenu = null;
   var observador = null;
   var prepararPendiente = false;
   var ultimoContexto = "";
@@ -62,33 +64,60 @@
 
   function selectorsContexto() {
     return Array.prototype.slice.call((root || document).querySelectorAll("select")).filter(function (select) {
-      var options = Array.prototype.slice.call(select.options || []).map(function (option) { return option.textContent; }).join(" ").toLowerCase();
-      return /todos los locales|local a|local/.test(options);
+      var options = Array.prototype.slice.call(select.options || []).map(function (option) { return textoVisible(option); });
+      var texto = options.join(" ").toLowerCase();
+      /* El resto de formularios también usa <select>. Solo el selector de
+         contexto tiene una opción «Todos los locales» y opciones de locales. */
+      return options.some(function (label) { return /todos los locales/i.test(label); }) &&
+        options.some(function (label) { return /^(?:local|sala|terraza|interior|zona)\b/i.test(label); }) &&
+        texto.length > 0;
     });
+  }
+
+  function cerrarContexto() {
+    var menu = document.getElementById("la-orbita-context-menu");
+    if (menu) menu.remove();
+    if (contextoBoton) contextoBoton.setAttribute("aria-expanded", "false");
+  }
+
+  function abrirPanelParaContexto() {
+    var destino = botonesNavegacion().find(function (button) {
+      return /panel general|inicio|dashboard/i.test(textoVisible(button));
+    });
+    if (!destino) return false;
+    destino.click();
+    window.setTimeout(function () {
+      if (contextoBoton && !document.getElementById("la-orbita-context-menu")) abrirContexto();
+    }, 350);
+    return true;
   }
 
   function abrirContexto() {
     var selects = selectorsContexto();
     var menu = document.getElementById("la-orbita-context-menu");
-    if (menu) { menu.remove(); return; }
+    if (menu) { cerrarContexto(); return; }
     menu = h("div", { id: "la-orbita-context-menu", class: "la-orbita-context-menu", role: "menu" });
     if (!selects.length) {
-      menu.appendChild(h("p", { class: "la-orbita-context-empty", texto: "El selector de empresa y local aparece en Panel general, Resultados e IVA." }));
+      menu.appendChild(h("p", { class: "la-orbita-context-empty", texto: "Esta pantalla no expone el selector operativo. Ábrelo desde el Panel general sin perder tu sesión." }));
+      var irAlPanel = h("button", { type: "button", role: "menuitem", texto: "Abrir Panel general" });
+      irAlPanel.addEventListener("click", function () { cerrarContexto(); abrirPanelParaContexto(); });
+      menu.appendChild(irAlPanel);
     } else {
       var select = selects[0];
       Array.prototype.slice.call(select.options).forEach(function (option) {
-        var button = h("button", { type: "button", role: "menuitem", texto: option.textContent });
+        var button = h("button", { type: "button", role: "menuitemradio", "aria-checked": String(option.value === select.value), texto: option.textContent });
         button.addEventListener("click", function () {
           var setter = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value").set;
           setter.call(select, option.value);
           select.dispatchEvent(new Event("change", { bubbles: true }));
-          menu.remove();
+          cerrarContexto();
           actualizarCabecera();
         });
         menu.appendChild(button);
       });
     }
     cabecera.appendChild(menu);
+    if (contextoBoton) contextoBoton.setAttribute("aria-expanded", "true");
   }
 
   function abrirBusqueda() {
@@ -187,6 +216,18 @@
     return sidebar;
   }
 
+  function marcarHerramientasLegadas(sidebar) {
+    if (!sidebar) return;
+    var primerBloque = sidebar.firstElementChild;
+    if (!primerBloque) return;
+    Array.prototype.forEach.call(primerBloque.querySelectorAll("button"), function (button) {
+      var texto = textoVisible(button);
+      if (/seguridad|perfil|modo empleado|cerrar sesión|cerrar sesion|claro|oscuro|tema/i.test(texto)) {
+        button.classList.add("la-orbita-legacy-tool");
+      }
+    });
+  }
+
   function alternarSidebar(sidebar, toggle) {
     var cerrado = !sidebar.classList.contains("la-orbita-colapsada");
     sidebar.classList.toggle("la-orbita-colapsada", cerrado);
@@ -231,6 +272,8 @@
     cabecera = h("header", { class: "la-orbita-header", "data-la-orbita-header": "", role: "banner" });
     var contexto = h("button", { type: "button", class: "la-orbita-context", "aria-haspopup": "menu", texto: "Selecciona empresa y local" });
     contexto.setAttribute("data-la-orbita-context-label", "");
+    contexto.setAttribute("aria-expanded", "false");
+    contextoBoton = contexto;
     contexto.addEventListener("click", abrirContexto);
     var izquierda = h("div", { class: "la-orbita-header-context" }, [h("span", { class: "la-orbita-brand", texto: "L&A Suite" }), contexto]);
     var qa = h("span", { class: "la-orbita-qa", "data-la-orbita-qa": "", texto: "QA" });
@@ -243,10 +286,37 @@
       var aviso = marco.querySelector(".la-orbita-alert");
       if (aviso) aviso.scrollIntoView({ block: "nearest" });
     });
-    var perfil = h("button", { type: "button", class: "la-orbita-header-button", texto: "Perfil" });
+    var perfil = h("button", { type: "button", class: "la-orbita-header-button", "aria-haspopup": "menu", "aria-expanded": "false", texto: "Perfil" });
     perfil.addEventListener("click", function () {
-      var original = Array.prototype.slice.call((sidebar || marco).querySelectorAll("button")).find(function (button) { return /seguridad|perfil/i.test(textoVisible(button)); });
-      if (original) original.click();
+      if (perfilMenu && perfilMenu.isConnected) {
+        perfilMenu.remove();
+        perfilMenu = null;
+        perfil.setAttribute("aria-expanded", "false");
+        return;
+      }
+      perfilMenu = h("div", { class: "la-orbita-profile-menu", role: "menu" });
+      [
+        { label: "Cuenta y seguridad", pattern: /seguridad|perfil/i },
+        { label: "Cambiar tema", pattern: /claro|oscuro|tema/i },
+        { label: "Modo empleado", pattern: /modo empleado/i },
+        { label: "Cerrar sesión", pattern: /cerrar sesión|cerrar sesion|salir/i }
+      ].forEach(function (item) {
+        var original = Array.prototype.slice.call((sidebar || marco).querySelectorAll("button")).find(function (button) {
+          return item.pattern.test(textoVisible(button)) && !button.closest(".la-orbita-header");
+        });
+        if (!original) return;
+        var action = h("button", { type: "button", role: "menuitem", texto: item.label });
+        action.addEventListener("click", function () {
+          perfilMenu.remove();
+          perfilMenu = null;
+          perfil.setAttribute("aria-expanded", "false");
+          original.click();
+        });
+        perfilMenu.appendChild(action);
+      });
+      if (!perfilMenu.children.length) perfilMenu.appendChild(h("p", { class: "la-orbita-context-empty", texto: "No hay acciones de perfil disponibles para este rol." }));
+      cabecera.appendChild(perfilMenu);
+      perfil.setAttribute("aria-expanded", "true");
     });
     var apariencia = h("button", { type: "button", class: "la-orbita-header-button la-orbita-appearance", texto: "Apariencia" });
     apariencia.addEventListener("click", function () { if (typeof window.LAApariencia?.abrirEditor === "function") window.LAApariencia.abrirEditor(); });
@@ -269,6 +339,7 @@
     });
     var sidebar = prepararSidebar();
     if (!sidebar) return;
+    marcarHerramientasLegadas(sidebar);
     prepararToggle(sidebar);
     crearCabecera(sidebar);
     var main = marco.querySelector(":scope > main");
