@@ -321,3 +321,45 @@ Hace falta la migración que cree esas dos tablas con su RLS. No la escribo yo a
 ciegas: no tengo acceso a la base de QA para leer su forma real, y adivinar el
 esquema de dos tablas que ya tienen datos sería peor que dejar el hueco a la
 vista.
+
+### Cuarta tanda del 20/11 · lo que falta de org-33, y un trinquete para que no se repita
+
+**No escribo la migración de las tarifas a ciegas, y conviene decir por qué.**
+No son dos tablas: son dos tablas **y dos funciones**,
+`abc_guardar_tarifa_horario` y `abc_guardar_tarifa_precio`, ninguna de las
+cuatro en el repositorio y las cuatro en QA. Esas funciones llevan motivo, id de
+operación, bloqueo, versión y evento de auditoría, como sus hermanas.
+Reconstruirlas desde la firma de la llamada daría algo que **parece**
+autoritativo y que casi seguro no coincide con lo que corre en QA; eso es peor
+que el hueco, porque el hueco se ve.
+
+Lo que falta, para quien tenga acceso a la base: volcar de QA la definición real
+de `catalogo_tpv_tarifas_horario`, `catalogo_tpv_tarifa_precios`,
+`abc_guardar_tarifa_horario` y `abc_guardar_tarifa_precio`, con su RLS y sus
+permisos, y traerlas como migración. Mientras tanto, `org-33` funciona en QA y
+no es reproducible en ningún otro sitio.
+
+**El trinquete.** `tests/rediseno/lo-que-el-cliente-llama-existe-en-migraciones`
+cruza las 112 RPC que llama el cliente con las 467 que definen las migraciones.
+Huecos reales hoy: **tres** —las dos de tarifas y `abc_preparar_ticket_fiscal_qa`,
+del ensayo fiscal de QA—, cada uno con su motivo escrito. Los otros cinco que
+aparecen son ejemplos de la documentación de la librería de Supabase
+empaquetada dentro de `fuente.js`, nombrados uno a uno para no filtrarlos con un
+patrón que pudiera tragarse una llamada de verdad.
+
+Funciona en los dos sentidos: un hueco nuevo sin anotar pone el contrato en
+rojo, y un hueco ya cerrado no puede quedarse en la lista fingiendo que sigue
+abierto. Comprobado quitando una entrada y viéndolo fallar.
+
+Esto habría avisado el 18/11, y también habría avisado al revés: `abc_unir_cuentas`
+llevaba meses escrita en las migraciones sin que nadie la llamara, y se dio por
+inexistente mirando sólo el cliente.
+
+**La puerta de CI estaba descuadrada.** El manifiesto iba por 375 entradas y el
+workflow seguía declarando las 369 del 17/11, con sus comprobaciones de
+igualdad en los números viejos. Los dos al día: 376 entradas, 359 activas, 321
+de Node.
+
+**Batería: `NODE_ACTIVE_PASS=319`, `NODE_ACTIVE_FAIL=2`.** Los dos rojos que
+quedan son los de la tanda anterior: el heredado de verdad y el de las tarifas,
+que sigue rojo a propósito.
