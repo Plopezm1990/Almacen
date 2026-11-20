@@ -280,3 +280,44 @@ Quedan cuatro, y se sabe qué es cada uno:
 | `tests/cfg/cfg6d-ui-runtime` | lo mismo |
 
 Los tres de `cfg6` son de esta rama, no deuda heredada.
+
+### Tercera tanda del 20/11 · de 4 rojos a 2
+
+**Batería: `NODE_ACTIVE_PASS=318`, `NODE_ACTIVE_FAIL=2`.** De los catorce del
+cierre quedan dos, y ninguno está silenciado.
+
+- **`tests/cfg/cfg6-ui-runtime` y `tests/cfg/cfg6d-ui-runtime`** · verdes.
+  Pulsaban «Iniciar cierre» nada más montar Cocina, y el 18/11 la sesión, las
+  estaciones y el cierre se plegaron tras «Mostrar gestión avanzada»: lo primero
+  de esa pantalla son las comandas. Las pruebas abren ahora ese desplegable
+  antes, y solo si existe, para que sigan valiendo si algún día vuelve a estar
+  desplegado. 98/98 en `cfg6d`.
+
+- **`tests/cfg/a09-panel-ui-runtime`** · sigue rojo y es el único heredado de
+  verdad: ya lo estaba en `ba471956`.
+
+- **`tests/cfg/cfg6-ui-contract`** · **sigue rojo a propósito**, y el motivo
+  está escrito dentro del propio contrato para que nadie lo «arregle» metiendo
+  las tablas nuevas en la lista.
+
+#### Las tarifas de org-33 leen tablas que el repositorio no crea
+
+La pantalla de configuración tenía una regla: no lee ninguna tabla directamente
+salvo la de terminales del local; todo lo demás pasa por `configRpc`. La gestión
+de sala de org-33 añadió tres lecturas directas: `catalogo_tpv_productos`,
+`catalogo_tpv_tarifas_horario` y `catalogo_tpv_tarifa_precios`.
+
+Las dos de tarifas **no las crea ninguna migración de este repositorio**:
+`grep -rl tarifa supabase/migrations` no devuelve nada. Y sin embargo existen en
+QA: preguntadas al servidor responden «permission denied for table», no «Could
+not find the table».
+
+Es decir, están hechas a mano en QA y el despliegue no sabe reproducirlas —el
+mismo caso que `prefiltros_candidatos`—. `org-33` figura como `Pasa` con
+evidencia live, y lo es en QA; lo que no existe es la migración que lo haga
+reproducible en otro sitio.
+
+Hace falta la migración que cree esas dos tablas con su RLS. No la escribo yo a
+ciegas: no tengo acceso a la base de QA para leer su forma real, y adivinar el
+esquema de dos tablas que ya tienen datos sería peor que dejar el hueco a la
+vista.
