@@ -1158,3 +1158,40 @@ averiguarlo; se trabaja alrededor. Lo que sí queda anotado es cómo reconocerlo
 para no volver a confundirlo con un defecto del programa: si `read_page` y la
 ejecución de JavaScript agotan su espera **pero la consola y la red siguen
 leyéndose**, es el canal.
+
+#### Matiz, media hora después: tampoco «el canal» está probado
+
+En la sección anterior dije que lo atascado es el canal del panel. Eso sigue
+siendo lo más probable, pero el latido me obliga a matizarlo antes de que quede
+como un hecho.
+
+El latido —una clave propia, reloj de pared, cada segundo— **se detuvo a los
+15 segundos** del arranque en la pestaña que acababa de abrir, y no volvió a
+latir en los siete minutos siguientes. Es decir: en esa carga los temporizadores
+de la página sí pararon. En la carga anterior, en cambio, el reloj de 150 ms del
+andamio tictaqueó sus 39 segundos completos. Dos cargas, dos conductas.
+
+La explicación que encaja con las dos, y con todo lo demás, es que **el panel
+del navegador estaba oculto**: una página de un panel oculto es una página en
+segundo plano, y el navegador estrangula y acaba congelando sus temporizadores.
+Eso detiene el latido y hace que una evaluación por el canal agote su espera,
+porque la evaluación necesita que la página ejecute una tarea. Y cuadra con el
+control que sí hice: con el panel a la vista, `1 + 1` en una página trivial del
+mismo origen respondió al instante.
+
+**Pero el control que lo probaría no lo he podido hacer.** Intenté poner la
+pestaña en primer plano y recargarla para ver si el latido seguía: el lote entero
+agotó sus 300 segundos: `tabs_select` y `navigate` también se atascan. Así que lo
+dejo dicho como lo que es:
+
+- **Descartado**: que sea un defecto de rendimiento del producto. Dentro de la
+  página, el peor atasco de un arranque de cuarenta segundos es de unos dos
+  segundos, y la tarea más larga dura 336 ms. Eso no cuelga nada.
+- **Probable, no probado**: que el mecanismo sea el estrangulamiento de una
+  página en segundo plano dentro de un panel oculto.
+- **Lo que hace falta para cerrarlo y para seguir**: el panel del navegador a la
+  vista y en primer plano. No es algo que yo pueda poner desde aquí.
+
+Y la señal para reconocerlo, que es lo que vale para la próxima: si `read_page` y
+la ejecución de JavaScript agotan su espera **pero la consola y la red siguen
+leyéndose**, no es el programa.
