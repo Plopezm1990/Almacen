@@ -1058,3 +1058,26 @@ Después de la publicación, el usuario confirmó que el preview vuelve a
 funcionar en Chrome y Firefox. Con la pestaña nueva de Codex estable e
 interactiva, el bloqueo live queda cerrado; no se realizaron cobros,
 reembolsos ni otras operaciones económicas durante la confirmación.
+
+## Addendum marco Órbita · selector y perfil comunes · 20/11/2026
+
+Se reanudó el objetivo de marco común sobre el commit
+`3d99c877bc95668cc0b31500bccfcad585b8f187`, publicado en el deploy
+`6b00add0a3705b197069f1f2` del Preview 225.
+
+- El selector del encabezado distingue el selector operativo real de los
+  demás formularios `<select>` y muestra la opción activa.
+- Desde una pantalla sin selector se ofrece «Abrir Panel general» y el menú
+  reaparece allí; no se inventa contexto ni se escribe en el almacenamiento.
+- Perfil reúne Cuenta y seguridad, Cambiar tema, Modo empleado y Cerrar sesión
+  ejecutando los botones originales.
+- Los controles equivalentes del lateral antiguo se ocultan para no duplicar
+  el marco, pero sus handlers permanecen intactos.
+- En `390×844` la cabecera y la barra inferior son visibles, el lateral queda
+  oculto y no existe desbordamiento horizontal.
+
+Contrato ampliado: `MARCO_ORBITA_CONTRACT=PASS (16/16)`. También pasaron P01,
+P03, P05, org-33, paridad `SOURCE_RECOVERY_CHECK=PASS` y `git diff --check`.
+No se ejecutaron cobros, reembolsos ni escrituras de negocio. La vista TPV de
+caja a pantalla completa conserva la excepción documentada; la revisión
+visual pantalla por pantalla continúa como fase posterior.
