@@ -1023,3 +1023,26 @@ Pendiente de la siguiente pasada: validar el preview publicado en los cinco
 anchos indicados en el plan y actualizar la evidencia con su SHA. No ejecutar
 operaciones económicas; PR #225 continúa en borrador y producción permanece
 fuera de alcance.
+
+## Addendum arranque resiliente del preview · 20/11/2026
+
+El preview acumulaba un diagnóstico temporal de `window.storage` que envolvía
+cada lectura y escritura y escribía trazas en `localStorage`. Se retiró del
+runtime. La causa de la espera visible era además el respaldo automático diario:
+la aplicación lo construía y guardaba antes de terminar de mostrar la suite,
+con una medición de aproximadamente 639.560 caracteres.
+
+La copia automática se mantiene, pero se programa con `requestIdleCallback` (y
+un fallback temporizado) después de dejar disponible la interfaz. Si falla, se
+avisa en consola sin impedir el uso. `index-loader.js` tiene ahora un watchdog
+de 20 segundos que muestra un mensaje accesible y un botón `Reintentar` sin
+borrar datos. El shell Órbita evita reescrituras de texto idéntico y agrupa las
+mutaciones del observador.
+
+Contrato nuevo: `tests/rediseno/preview-arranque-resiliente-contract.mjs`.
+Acta técnica: `docs/rediseno/ACTA_REPARACION_PREVIEW_2026-11-20.md`.
+
+La comprobación live en Chrome, Firefox y el navegador de Codex queda pendiente
+hasta que Netlify publique el commit de esta reparación. No se ejecutaron
+cobros, reembolsos ni escrituras nuevas; producción sigue fuera de alcance y el
+PR #225 permanece en borrador.
