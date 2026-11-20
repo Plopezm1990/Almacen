@@ -179,6 +179,35 @@
     if (vueltas > 260) window.clearInterval(reloj);
   }, 150);
 
+  // Latido, con reloj de pared y en su propia clave.
+  //
+  // Para qué: el panel del navegador agota el tiempo de espera en `read_page`,
+  // en las capturas y en la ejecución de JavaScript sobre esta página —`1 + 1`
+  // se come 45 segundos—, y de ahí dedujé que la página congelaba su hilo
+  // principal. **Era falso**: la deriva del reloj medida aquí dice que el
+  // atasco más largo de todo el arranque es de unos dos segundos, y las
+  // lecturas siguen registrándose a los 15 segundos. Así que lo que está
+  // atascado es el canal, no la página.
+  //
+  // Este latido lo deja probado en vez de deducido: si una llamada por el panel
+  // agota su espera y justo después este latido tiene una marca de hace un
+  // segundo, la página estaba viva mientras el canal no respondía. Se lee desde
+  // cualquier otro documento del mismo origen.
+  try {
+    var latidos = 0;
+    var relojLatido = window.setInterval(function () {
+      latidos++;
+      try {
+        localStorage.setItem("diag_latido_v1", JSON.stringify({
+          latidos: latidos,
+          hora: new Date().toISOString(),
+          desde_el_arranque_ms: Date.now() - t0
+        }));
+      } catch (e) {}
+      if (latidos > 600) window.clearInterval(relojLatido);
+    }, 1000);
+  } catch (e) {}
+
   // Atribución: las tareas largas sí dicen de dónde salen (qué documento o
   // marco las ejecuta). `longtask` solo existe en navegadores que lo soportan,
   // así que va en try y su ausencia no es un fallo del diagnóstico.
