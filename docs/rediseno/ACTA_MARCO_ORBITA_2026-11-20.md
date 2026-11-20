@@ -32,6 +32,7 @@ handlers de negocio, permisos, contratos de TPV ni datos de QA.
 ## Evidencia estática
 
 - `MARCO_ORBITA_CONTRACT=PASS (19/19)`.
+- `MARCO_ORBITA_RUTAS_CONTRACT=PASS (20 rutas)`.
 - `REDISENO_P01_CAPAS_Y_MIGRACIONES_OK=1 capas=7 migraciones=2`.
 - `REDISENO_P05_PROPUESTAS_OK=1 disenos=9 paletas=6 rumbo=PASS pase=PASS responsive=PASS reduced_motion=PASS`.
 - `REDISENO_ORG33_SALA_CONTRACT=PASS`.
