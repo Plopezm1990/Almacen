@@ -92,6 +92,14 @@ pendiente porque ambas están minimizadas para la superficie de automatización.
 No se declara todavía el objetivo como terminado hasta observarlas en primer
 plano o recibir evidencia equivalente de una carga e interacción completas.
 
+### Confirmación del usuario
+
+Tras la publicación y recarga del Deploy Preview 225, el usuario confirmó que
+la aplicación vuelve a funcionar en Chrome y Firefox. Sumado a la carga estable
+e interacción comprobadas en la pestaña de Codex, se considera cerrado el
+bloqueo live de las tres superficies. No se ejecutaron operaciones económicas
+durante esta comprobación.
+
 ## Estado de QA
 
 - No se ejecutaron cobros, reembolsos ni escrituras nuevas para esta reparación.

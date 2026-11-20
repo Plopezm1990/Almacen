@@ -1042,10 +1042,10 @@ mutaciones del observador.
 Contrato nuevo: `tests/rediseno/preview-arranque-resiliente-contract.mjs`.
 Acta técnica: `docs/rediseno/ACTA_REPARACION_PREVIEW_2026-11-20.md`.
 
-La comprobación live en Chrome, Firefox y el navegador de Codex queda pendiente
-hasta que Netlify publique el commit de esta reparación. No se ejecutaron
-cobros, reembolsos ni escrituras nuevas; producción sigue fuera de alcance y el
-PR #225 permanece en borrador.
+La comprobación live en Chrome, Firefox y el navegador de Codex quedó pendiente
+hasta la publicación del commit de esta reparación. No se ejecutaron cobros,
+reembolsos ni escrituras nuevas; producción sigue fuera de alcance y el PR #225
+permanece en borrador.
 
 El commit `c1893e30` ya está publicado como deploy `6b00a94e6de18dc69d58d259`
 (`ready`) en el preview #225. Una pestaña nueva de Codex monta `QA-EMP-A ·
@@ -1053,3 +1053,8 @@ QA-A1`, conserva 67 controles habilitados después de tres segundos y no registr
 errores de consola. Falta observar las ventanas nativas de Chrome y Firefox en
 primer plano; ambas estaban minimizadas para la automatización al hacer la
 comprobación.
+
+Después de la publicación, el usuario confirmó que el preview vuelve a
+funcionar en Chrome y Firefox. Con la pestaña nueva de Codex estable e
+interactiva, el bloqueo live queda cerrado; no se realizaron cobros,
+reembolsos ni otras operaciones económicas durante la confirmación.
