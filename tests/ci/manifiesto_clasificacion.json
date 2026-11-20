@@ -1931,6 +1931,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/rediseno/preview-arranque-resiliente-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/ui-context-bridge.mjs",
       "classification": "active_contract",
       "environment": "node"

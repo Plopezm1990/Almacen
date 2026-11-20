@@ -17,6 +17,7 @@
   var cabecera = null;
   var dialogo = null;
   var observador = null;
+  var prepararPendiente = false;
   var ultimoContexto = "";
 
   function h(tag, props, children) {
@@ -32,6 +33,11 @@
   }
 
   function textoVisible(node) { return String(node && node.textContent || "").replace(/\s+/g, " ").trim(); }
+
+  function textoSiCambia(node, value) {
+    if (!node || node.textContent === value) return;
+    node.textContent = value;
+  }
 
   function activarBotonOriginal(clon, original) {
     clon.addEventListener("click", function () { original.click(); });
@@ -206,17 +212,17 @@
     var contexto = contextoActual();
     ultimoContexto = contexto;
     var texto = cabecera.querySelector("[data-la-orbita-context-label]");
-    if (texto) texto.textContent = contexto;
+    textoSiCambia(texto, contexto);
     var qa = cabecera.querySelector("[data-la-orbita-qa]");
     if (qa) {
       var esQa = window.__modoPruebasQA === true || /deploy-preview-/i.test(location.hostname);
-      qa.textContent = esQa ? "QA" : "Producción";
+      textoSiCambia(qa, esQa ? "QA" : "Producción");
       qa.dataset.qa = esQa ? "qa" : "produccion";
     }
     var avisos = cabecera.querySelector("[data-la-orbita-alertas]");
     if (avisos) {
       var cantidad = marco.querySelectorAll(".la-orbita-alert").length;
-      avisos.textContent = cantidad ? "Avisos " + cantidad : "Avisos";
+      textoSiCambia(avisos, cantidad ? "Avisos " + cantidad : "Avisos");
     }
   }
 
@@ -283,7 +289,16 @@
 
   function iniciar() {
     prepararMarco();
-    observador = new MutationObserver(function () { prepararMarco(); });
+    observador = new MutationObserver(function () {
+      if (prepararPendiente) return;
+      prepararPendiente = true;
+      var ejecutar = function () {
+        prepararPendiente = false;
+        prepararMarco();
+      };
+      if (typeof window.requestAnimationFrame === "function") window.requestAnimationFrame(ejecutar);
+      else window.setTimeout(ejecutar, 0);
+    });
     observador.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
     window.addEventListener("la-apariencia:contexto-cambiado", actualizarCabecera);
     window.addEventListener("resize", actualizarCabecera);

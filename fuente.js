@@ -105707,17 +105707,35 @@ function GestionAlmacen() {
         const hoy = (/* @__PURE__ */ new Date()).toISOString().slice(0, 10);
         const yaHayUnoDeHoy = hi.some((h22) => h22.automatica && (h22.fecha || "").slice(0, 10) === hoy);
         if (tieneDatos && !yaHayUnoDeHoy) {
-          const snapshot = {
-            id: uid(),
-            fecha: (/* @__PURE__ */ new Date()).toISOString(),
-            automatica: true,
-            motivo: "automatico-diario",
-            backupVersion: 3,
-            data: { proveedores: p22, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+          // El respaldo completo puede superar cientos de kilobytes. Nunca se
+          // debe serializar ni escribir dentro de la ruta crítica que deja
+          // visible la aplicación: se programa cuando el navegador tenga un
+          // hueco de inactividad y se deja un fallback temporizado.
+          const crearRespaldoAutomatico = async () => {
+            const snapshot = {
+              id: uid(),
+              fecha: (/* @__PURE__ */ new Date()).toISOString(),
+              automatica: true,
+              motivo: "automatico-diario",
+              backupVersion: 3,
+              data: { proveedores: p22, productos: pr, pedidos: pe2, movimientos: mo, conteos: co, fichasCosto: fc, albaranes: alLimpios, catalogoProv: cp, gastosGenerales: gg, empleados: em, fichajes: fj, registrosAppcc: ra, puntosControl: pc, clientes: cl, encargos: en, arqueos: aq, turnos: tu, nominas: nom, facturasDirectas: fd2, ordenesProduccion: op, traspasos: tr, auditoria: au, freidoras: fre, registrosAceite: rac }
+            };
+            const historialFinal = [snapshot, ...hi].slice(0, 30);
+            setHistorial(historialFinal);
+            try {
+              await saveKey("historialRespaldos", historialFinal);
+            } catch (error) {
+              console.warn("No se pudo crear el respaldo automático; la suite sigue disponible.", error);
+            }
           };
-          const historialFinal = [snapshot, ...hi].slice(0, 30);
-          setHistorial(historialFinal);
-          await saveKey("historialRespaldos", historialFinal);
+          const programar = () => {
+            if (typeof window.requestIdleCallback === "function") {
+              window.requestIdleCallback(() => { void crearRespaldoAutomatico(); }, { timeout: 2500 });
+            } else {
+              window.setTimeout(() => { void crearRespaldoAutomatico(); }, 1200);
+            }
+          };
+          programar();
         }
       }
     })();
