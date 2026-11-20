@@ -179,6 +179,99 @@
     if (vueltas > 260) window.clearInterval(reloj);
   }, 150);
 
+  // QUÉ HAY ENCIMA DE LA PANTALLA
+  // -----------------------------
+  // El usuario informa de que, entrando en el Deploy Preview con la cuenta de
+  // ensayo, «no se puede hacer nada» en el programa, y que **en Firefox pasa lo
+  // mismo**. Eso descarta que sea la herramienta —que es lo que yo había
+  // concluido, y queda corregido en el acta— y encaja con lo medido: el hilo
+  // principal está vivo (el peor atasco de un arranque de 40 s es de unos dos
+  // segundos y la tarea más larga dura 336 ms), así que no es un cuelgue: es
+  // algo que TAPA la interfaz.
+  //
+  // Hay varios candidatos en el propio arranque, todos a pantalla completa:
+  //   · edge-auth-patch.js, la capa de MFA, con z-index 2147483647;
+  //   · owner-bootstrap-post-reset.js, el marco «Instalación bloqueada de forma
+  //     segura», z-index 10050, con un botón «Reintentar comprobación»;
+  //   · plataforma-panel.js, el panel del administrador, 10040/10045/10050.
+  //
+  // En vez de adivinar cuál, se pregunta al navegador quién recibiría el clic:
+  // `elementFromPoint` en el centro y en cuatro esquinas, más el inventario de
+  // las capas fijas con z-index alto. Eso nombra al culpable, con su texto.
+  function quienRecibeElClic() {
+    var an = window.innerWidth || 0;
+    var al = window.innerHeight || 0;
+    var puntos = [
+      ["centro", Math.round(an / 2), Math.round(al / 2)],
+      ["arriba-izq", 40, 80],
+      ["arriba-der", Math.max(0, an - 40), 80],
+      ["abajo-izq", 40, Math.max(0, al - 60)],
+      ["abajo-der", Math.max(0, an - 40), Math.max(0, al - 60)]
+    ];
+    return puntos.map(function (p) {
+      var el = null;
+      try { el = document.elementFromPoint(p[1], p[2]); } catch (e) {}
+      if (!el) return p[0] + ": (nada)";
+      var señas = el.tagName.toLowerCase()
+        + (el.id ? "#" + el.id : "")
+        + (el.className && typeof el.className === "string" ? "." + el.className.split(/\s+/).slice(0, 3).join(".") : "");
+      var z = "";
+      try { z = window.getComputedStyle(el).zIndex; } catch (e) {}
+      return p[0] + ": " + señas + (z && z !== "auto" ? " z=" + z : "");
+    }).join(" | ");
+  }
+
+  function capasQueTapan() {
+    var fuera = [];
+    try {
+      var todos = document.body ? document.body.querySelectorAll("*") : [];
+      for (var i = 0; i < todos.length && fuera.length < 12; i++) {
+        var el = todos[i];
+        var s = window.getComputedStyle(el);
+        if (s.position !== "fixed" && s.position !== "absolute") continue;
+        var z = parseInt(s.zIndex, 10);
+        if (!(z >= 1000)) continue;
+        var r = el.getBoundingClientRect();
+        var cubre = r.width >= (window.innerWidth || 0) * 0.8 && r.height >= (window.innerHeight || 0) * 0.8;
+        if (!cubre) continue;
+        fuera.push({
+          señas: el.tagName.toLowerCase() + (el.id ? "#" + el.id : "") + (el.className && typeof el.className === "string" ? "." + el.className.split(/\s+/).slice(0, 2).join(".") : ""),
+          z: z,
+          tamaño: Math.round(r.width) + "x" + Math.round(r.height),
+          papel: el.getAttribute("role") || "",
+          eventos: s.pointerEvents,
+          visible: s.visibility + "/" + s.opacity + "/" + s.display,
+          texto: (el.innerText || "").replace(/\s+/g, " ").slice(0, 160)
+        });
+      }
+    } catch (e) {
+      fuera.push({ señas: "error al inventariar: " + (e && e.message ? e.message : e) });
+    }
+    return fuera;
+  }
+
+  registro.pantalla = [];
+  [3000, 8000, 20000].forEach(function (cuando) {
+    window.setTimeout(function () {
+      try {
+        registro.pantalla.push({
+          ms: Date.now() - t0,
+          clases_html: document.documentElement.className || "(ninguna)",
+          raiz_visible: (function () {
+            var r = document.getElementById("root");
+            if (!r) return "no hay #root";
+            var s = window.getComputedStyle(r);
+            return s.visibility + "/" + s.display + "/" + s.opacity;
+          })(),
+          recibe_el_clic: quienRecibeElClic(),
+          capas_que_tapan: capasQueTapan(),
+          titulo: document.title
+        });
+        volcar();
+      } catch (e) {}
+    }, cuando);
+  });
+
   // Latido, con reloj de pared y en su propia clave.
   //
   // Para qué: el panel del navegador agota el tiempo de espera en `read_page`,
