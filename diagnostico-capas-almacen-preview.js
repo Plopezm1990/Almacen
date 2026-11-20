@@ -125,6 +125,22 @@
     var nombre = nombrarCapa(window.storage.get);
     var nombreDentro = nombre;
     window.storage.get = async function (key, shared) {
+      // RASTRO DE ÚLTIMA LLAMADA, escrito de forma SÍNCRONA.
+      //
+      // La página se queda «viéndose pero sin responder», y los dos
+      // instrumentos anteriores son ciegos a eso: una tarea que no termina
+      // nunca se publica como «tarea larga», y el muestreador de deriva deja
+      // de tictaquear sin poder anotar nada. Un rastro escrito en el momento de
+      // cada llamada sí sobrevive al parón, porque localStorage es síncrono: lo
+      // último que quede grabado acota qué estaba haciendo el programa cuando
+      // se detuvo.
+      try {
+        registro.ultima_llamada = { tipo: "get", clave: key, ms: Date.now() - t0 };
+        if (!registro.traza) registro.traza = [];
+        if (registro.traza.length < 160) registro.traza.push((Date.now() - t0) + "ms get " + key);
+        volcar();
+      } catch (e) {}
+
       if (!VIGILADAS[key] || !window.__diagCapasAlmacenV1) return inner(key, shared);
 
       var enDispositivo;
@@ -149,6 +165,27 @@
       if (fallo) throw new Error(fallo);
       return respuesta;
     };
+    // Y lo mismo al escribir: el arranque guarda muchas colecciones seguidas, y
+    // saber cuál fue la última acota igual de bien.
+    var innerSet = window.storage.set.bind(window.storage);
+    window.storage.set = async function (key, value, shared, opciones) {
+      try {
+        registro.ultima_llamada = {
+          tipo: "set",
+          clave: key,
+          caracteres: typeof value === "string" ? value.length : null,
+          ms: Date.now() - t0
+        };
+        if (!registro.traza) registro.traza = [];
+        if (registro.traza.length < 160) {
+          registro.traza.push((Date.now() - t0) + "ms set " + key
+            + (typeof value === "string" ? " (" + value.length + " car.)" : ""));
+        }
+        volcar();
+      } catch (e) {}
+      return innerSet(key, value, shared, opciones);
+    };
+
     registro.envolturas.push({ ms: Date.now() - t0, puesto_encima_de: nombreDentro, motivo: motivo, barrera: barrera() });
     volcar();
   }
