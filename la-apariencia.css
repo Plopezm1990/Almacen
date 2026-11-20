@@ -1157,7 +1157,7 @@ html[data-la-diseno] #root .la-ui-link-button:hover {
   box-shadow: 0 4px 14px rgba(0, 0, 0, .14);
   transform: translateY(-1px);
 }
-html[data-la-diseno] #root .la-ui-button-small { min-height: 40px; }
+html[data-la-diseno] #root .la-ui-button-small { min-height: 44px; }
 html[data-la-diseno] #root .la-ui-button:focus-visible,
 html[data-la-diseno] #root .la-ui-link-button:focus-visible,
 html[data-la-diseno] #root .la-ui-icon-button:focus-visible,

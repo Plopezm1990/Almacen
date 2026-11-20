@@ -8,7 +8,7 @@ const css = readFileSync(resolve(root, 'la-apariencia.css'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v12-20261120/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v13-20261120/);
 
 const primitiveClasses = [
   'la-ui-button', 'la-ui-link-button', 'la-ui-input', 'la-ui-select',
