@@ -156,9 +156,59 @@
   envolver("instalación inicial, sobre la base");
 
   var vueltas = 0;
+  var ultimoTic = Date.now();
+  registro.atascos = [];
+  registro.tareasLargas = [];
+
   var reloj = window.setInterval(function () {
     vueltas++;
+
+    // Deriva del reloj: si entre dos tics de 150 ms han pasado muchos más, el
+    // hilo principal estuvo ocupado en medio. Es la medida más tosca y la que
+    // nunca falla, y sirve para fechar el bloqueo que deja la página sin
+    // responder a `read_page` ni a la ejecución de JavaScript.
+    var ahora = Date.now();
+    var deriva = ahora - ultimoTic - 150;
+    ultimoTic = ahora;
+    if (deriva > 400 && registro.atascos.length < 40) {
+      registro.atascos.push({ ms: ahora - t0, bloqueado_ms: deriva, envoltura: quienEsLaExterna() });
+      volcar();
+    }
+
     if (quienEsLaExterna() !== "este-diagnostico") envolver("me desplazaron; vuelvo arriba");
-    if (vueltas > 90) window.clearInterval(reloj);
+    if (vueltas > 260) window.clearInterval(reloj);
   }, 150);
+
+  // Atribución: las tareas largas sí dicen de dónde salen (qué documento o
+  // marco las ejecuta). `longtask` solo existe en navegadores que lo soportan,
+  // así que va en try y su ausencia no es un fallo del diagnóstico.
+  try {
+    if (typeof PerformanceObserver === "function") {
+      var observador = new PerformanceObserver(function (lista) {
+        lista.getEntries().forEach(function (e) {
+          if (registro.tareasLargas.length >= 40) return;
+          var atribucion = [];
+          try {
+            (e.attribution || []).forEach(function (a) {
+              atribucion.push([a.name, a.containerType, a.containerName, a.containerSrc].filter(Boolean).join(" · "));
+            });
+          } catch (err) {}
+          registro.tareasLargas.push({
+            ms: Math.round(e.startTime),
+            duracion_ms: Math.round(e.duration),
+            nombre: e.name,
+            atribucion: atribucion.join(" | ") || "(sin atribucion)"
+          });
+        });
+        volcar();
+      });
+      observador.observe({ type: "longtask", buffered: true });
+      registro.observadorTareasLargas = "activo";
+    } else {
+      registro.observadorTareasLargas = "PerformanceObserver no disponible";
+    }
+  } catch (e) {
+    registro.observadorTareasLargas = "no soportado: " + (e && e.message ? e.message : e);
+  }
+  volcar();
 })();
