@@ -160,6 +160,38 @@ await assert.rejects(
 );
 assert.equal(local.get('almacen:localActivoId'), 'null', 'un local rechazado no debe persistirse');
 
+// La otra cara, añadida el 20/11/2026. Una copia local vieja puede arrastrar un
+// «Local principal» que el cliente se inventó y que no está en la membresía. Eso
+// no es una elección: es el propio arranque reafirmando lo que ya tenía
+// guardado, y hay que sanarlo adoptando el local canónico de la sesión, no
+// dejar la pantalla mostrando una instalación fantasma.
+//
+// Las dos cosas se distinguen por si lo pedido cambia algo. Sin esta
+// distinción, el remedio se tragaba también el caso de arriba y una cuenta de
+// empleado recibía otro local en silencio.
+local.set('almacen:localActivoId', JSON.stringify('fantasma-del-cliente'));
+const arrastre = await context.window.storage.set(
+  'localActivoId',
+  JSON.stringify('fantasma-del-cliente'),
+  false
+);
+assert.equal(
+  arrastre.value,
+  JSON.stringify('l2'),
+  'un arrastre de copia vieja se sana con el local canónico de la sesión'
+);
+assert.equal(
+  local.get('almacen:localActivoId'),
+  JSON.stringify('l2'),
+  'y queda guardado el canónico, no el fantasma'
+);
+await assert.rejects(
+  context.window.storage.set('localActivoId', JSON.stringify('l1'), false),
+  /Local no autorizado/,
+  'y elegir otro local sigue rechazándose después de sanar'
+);
+local.set('almacen:localActivoId', 'null');
+
 await context.window.storage.set('localActivoId', JSON.stringify('l2'), false);
 assert.equal(rpcCalls.at(-1).name, 'obtener_contexto_instalacion_ui');
 assert.equal(local.get('almacen:localActivoId'), JSON.stringify('l2'));

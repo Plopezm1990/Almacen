@@ -123,7 +123,19 @@
         // generado por el cliente. Si la sesión ya tiene un local canónico
         // autorizado, adopta ese valor y publica el contexto para que la UI
         // no se quede mostrando una instalación fantasma.
-        if (parsed !== null && !localPermitido) {
+        //
+        // Pero hay que distinguir un ARRASTRE de una ELECCIÓN, y hasta el
+        // 20/11/2026 no se distinguía: cualquier local no autorizado se
+        // cambiaba en silencio por el canónico y la llamada respondía como si
+        // hubiera ido bien. Con eso, una cuenta de empleado que pedía un local
+        // ajeno recibía otro sin que nada se lo dijera, y el contrato que
+        // defiende justo eso -tests/ui-context-bridge.mjs- se puso en rojo.
+        //
+        // La diferencia está en si lo que se pide cambia algo. Si coincide con
+        // lo que ya hay guardado, es la copia vieja que el propio cliente
+        // arrastra al arrancar: eso se sana. Si es distinto, alguien está
+        // eligiendo, y una elección que no le corresponde se rechaza.
+        if (parsed !== null && !localPermitido && leerLocal(key) === value) {
           var localCanonico = typeof contexto.data.local_id === "string" ? contexto.data.local_id : "";
           var canonicoPermitido = localCanonico && localesPermitidos.some(function (local) {
             return local && local.activo !== false && !local.fusionadoEn && String(local.id) === localCanonico;
