@@ -115,3 +115,27 @@ la publicación no registra errores ni advertencias nuevas.
 Referencia publicada: commit `614c5580970dd9cae8ab2f07e19227df5b5fa71c`,
 Deploy Preview `6b00b89c879fb38200eafb4a` (`ready`). No se ejecutaron cobros,
 reembolsos ni cambios de datos durante la revisión.
+
+## Addendum sustitución de componentes comunes · 20/11/2026
+
+Se cerró la segunda capa del objetivo: los componentes compartidos ya tienen un
+contrato visual Órbita único, en vez de depender de nombres y reglas heredadas
+por pantalla. `fuente.js` y `source-recovery/fuente-recuperado.js` exponen las
+marcas semánticas `la-ui-*` para botones primarios, secundarios y destructivos,
+enlaces, campos, selectores, tarjetas, títulos de sección, badges, estados
+vacíos, alertas de carga/error y modales. El CSS común normaliza además tablas,
+pestañas ARIA, paginación, filtros/selectores nativos, mensajes de estado,
+confirmaciones, tooltips con `title`, iconos y botones de solo icono, incluidos
+foco visible, áreas táctiles mínimas y reducción de movimiento.
+
+La compatibilidad con las vistas que aún emiten marcado histórico se resuelve
+con selectores semánticos globales del contrato; no se cambió la lógica de
+negocio, los permisos ni los handlers. La capa CSS se publica con la marca
+`qa-orbita-shell-v11-20261120` para impedir que el CDN mezcle la versión vieja.
+
+Evidencia estática: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS` (14 primitivas,
+5 estados y paridad), `MARCO_ORBITA_CONTRACT=PASS (21/21)`,
+`MARCO_ORBITA_RUTAS_CONTRACT=PASS (20 rutas)`, P01/P03/P05, org-33,
+`SOURCE_RECOVERY_CHECK=PASS` y `git diff --check` sin salida. La verificación
+live se hará sobre el deploy generado por esta rama en escritorio y móvil,
+sin ejecutar cobros, reembolsos ni escrituras de negocio.

@@ -1152,3 +1152,24 @@ no registra errores ni advertencias nuevas.
 Código verificado: `614c5580970dd9cae8ab2f07e19227df5b5fa71c`. Deploy de código:
 `6b00b89c879fb38200eafb4a` (`ready`). PR #225 continúa en borrador y producción
 permanece fuera de alcance.
+
+## Continuación · componentes visuales comunes Órbita · 20/11/2026
+
+La siguiente tarea del plan es sustituir la convivencia de componentes nuevos y
+antiguos. Quedó implementada como una capa común: las primitivas React reciben
+clases `la-ui-*` (botones y enlaces con variantes, inputs, selects, tarjetas,
+títulos, campos, badges, vacíos, alertas, modales y botones de icono) y
+`la-apariencia.css` aplica el mismo contrato a tablas, tabs ARIA, paginación,
+filtros, dropdowns, estados de carga/error, confirmaciones, tooltips e iconos.
+Las reglas se aplican también al marcado histórico mediante roles y elementos
+semánticos, por lo que no hay que rediseñar cada pantalla por separado.
+
+La fuente recuperada se regeneró desde `fuente.js` y mantiene paridad exacta.
+Se actualizó la marca CSS a `qa-orbita-shell-v11-20261120`; el contrato P01 fija
+marca y huella para evitar una publicación servida desde caché antigua.
+
+Contratos de la tanda: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`, marco 21/21,
+rutas 20/20, P01/P03/P05, org-33, paridad y `git diff --check`. La revisión
+visual autenticada en el preview debe confirmar escritorio y móvil sobre el
+deploy de esta rama. No ejecutar cobros, reembolsos ni cambios de datos; PR #225
+continúa en borrador y producción sigue fuera de alcance.
