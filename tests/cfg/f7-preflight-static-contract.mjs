@@ -57,6 +57,10 @@ const EXCLUIDAS = new Set([
   '20261022130000_abc_f5_tpv_line_notes.sql',
   '20261022140000_abc_f3_a10_route_recovery.sql',
   '20261022150000_abc_f3_a10_route_recovery_merge.sql',
+  // T6, propina en efectivo (24/10/2026): posterior a la foto F7 del 3/10 y parte del
+  // rediseño, que todavía no se ha promovido. Su `abc_registrar_propina_efectivo` no está
+  // ni debe estar en el preflight histórico; cuando esa ventana se promueva llevará el suyo.
+  '20261024070000_t6_propina_efectivo.sql',
   // C07-A: borradores por emisor, con preflight propio. No forma parte de la ventana F7 del 3/10.
   '20261026175245_abc_fiscal_multiempresa_borradores.sql',
   // C07-B: panel configurable multiempresa, validación y promoción separadas del paquete F7 histórico.
