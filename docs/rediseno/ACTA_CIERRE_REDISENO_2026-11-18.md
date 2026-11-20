@@ -363,3 +363,96 @@ de Node.
 **Batería: `NODE_ACTIVE_PASS=319`, `NODE_ACTIVE_FAIL=2`.** Los dos rojos que
 quedan son los de la tanda anterior: el heredado de verdad y el de las tarifas,
 que sigue rojo a propósito.
+
+---
+
+## Añadido el 20/11/2026 — la migración de tarifas existe, y la batería pasa entera
+
+**El hueco de `org-33` está cerrado.** Lo que faltaba era volcar de QA la
+definición real de las cuatro piezas que se habían creado a mano allí el 18/11.
+Hecho: `docs/rediseno/VOLCAR_TARIFAS_DESDE_QA.sql` es un volcado de solo lectura
+de los catálogos del sistema —columnas, restricciones, índices, RLS, políticas,
+permisos de tabla, el texto completo de las dos funciones por
+`pg_get_functiondef` y sus permisos de ejecución—, y
+`supabase/migrations/20261120120000_rediseno_org33_tarifas_horario.sql` sale de
+ese volcado. No hay una sola columna inventada.
+
+El primer intento del volcado falló en el móvil con
+`42P01: relation "public.saml_providers" does not exist`. Ese nombre no estaba en
+el archivo: el autocompletado del editor cambió un nombre de tabla al pegar, y la
+forma `'public.x'::regclass` convierte eso en un fallo duro. Se reescribió sin
+ningún `::regclass`, comparando nombres como texto, así que una pieza ausente ya
+no tumba la consulta: simplemente no sale, y eso también es una respuesta.
+
+**La migración es de reconciliación, y eso cambia cómo se prueba.** Es
+idempotente a propósito (`if not exists`, `drop policy if exists`,
+`create or replace function`), porque en QA los objetos ya están y no debe hacer
+nada. Justo por eso **un push verde en QA no habría probado nada**. Se prueba
+contra un Postgres de verdad partiendo de cero, en
+`tests/rediseno/org33-tarifas-pglite-contract.mjs`: **43 comprobaciones, 43
+pasando**, incluidas la propia aplicación de la migración, aplicarla dos veces,
+quién puede escribir, el solapamiento de horarios, el nombre único sin mayúsculas
+ni espacios, el reintento con el mismo `operation_id`, las llaves ajenas con
+`restrict` y la política de lectura ejercitada de verdad como `authenticated`.
+Al final la migración se comprueba a sí misma, porque `if not exists` acepta en
+silencio una tabla distinta que ya estuviera ahí con ese nombre.
+
+**Los dos trinquetes se aprietan solos.** En
+`lo-que-el-cliente-llama-existe-en-migraciones` los huecos reales bajan de **tres
+a uno** (queda `abc_preparar_ticket_fiscal_qa`, del ensayo fiscal de QA) y
+`TABLAS_SIN_MIGRACION` se queda **vacía**. En `cfg6-ui-contract` la comprobación
+de lecturas directas deja de estar roja a propósito y vuelve a sujetar que no
+aparezca una cuarta sin que nadie lo decida.
+
+**Dos anclas más que el trabajo del 18/11 había dejado desfasadas**, y que sólo
+salieron al quitar ese rojo:
+
+- `const secciones` fijaba ocho secciones y la pantalla tiene nueve: el 18/11
+  entró «Sala y mesas» en segundo lugar.
+- La rodaja del panel fiscal iba de `FISCAL_CONFIG_INICIAL` hasta
+  `function ConfiguracionLocal(`, y entre los dos se habían metido primero las
+  piezas de verificación en dos pasos y después `ConfigSala`. Resultado: la lista
+  de «RPC del panel fiscal» recogía `abc_crear_mesa` y
+  `abc_guardar_tarifa_horario`. La tentación era añadirlas a la lista autorizada,
+  que es tapar justo lo que esa comprobación vigila. Ahora la rodaja termina donde
+  termina el panel y se comprueba que no se ha tragado ninguna otra sección.
+
+**Corrección a lo escrito arriba.** En la tanda anterior clasifiqué
+`tests/cfg/a09-panel-ui-runtime.mjs` como «el heredado de verdad». Estaba
+equivocado. `operacionesCuentaAbiertas` **no existe en la base de la rama**
+(`ba471956`): el plegado es un cambio de esta rama. En algún momento el TPV metió
+cinco paneles de cuenta —descuentos A09, unir cuentas A08 y tres más— detrás de un
+botón «Mostrar operaciones de cuenta» que arranca cerrado, y la prueba montaba la
+pantalla y pulsaba «Abrir» en una tarjeta que no estaba renderizada. El síntoma
+engañaba: parecía que el panel había desaparecido, y sólo estaba plegado. Es el
+mismo caso que «Mostrar gestión avanzada» antes de «Iniciar cierre» en
+`cfg6-ui-runtime` y `cfg6d-ui-runtime`. Ahora la prueba lo abre al montar, y
+comprueba que el botón existe para que el día que alguien quite el plegado esto se
+ponga rojo en vez de quedarse una pulsación muda: **27 de 27**.
+
+**Batería: `NODE_ACTIVE_PASS=321`, `NODE_ACTIVE_FAIL=0`, `INFRA_FAIL=0`,
+`ARBOL_LIMPIO_TRAS_EJECUCION=1`, `BATERIA_NO_DB_COMPLETA`.** Es la primera vez en
+esta rama que la batería pasa entera: no queda ningún rojo, ni heredado ni a
+propósito. Paridad de cuerpo comprobada: `PARIDAD_CUERPO_EXACTA=1`,
+`SOURCE_RECOVERY_CHECK=PASS`.
+
+**Puerta de CI al día:** 377 entradas, 360 activas, 321 de Node y 5 de PGlite.
+El workflow, el manifiesto y `validar-manifiesto-ci.mjs` llevaban números
+distintos entre sí; los tres cuadrados.
+
+**Lo que sigue sin hacerse, y por qué.** La cuenta restringida
+`qa.permisos.20261116@qa.invalid` sigue sin membresía de QA-A1: la pantalla le
+genera un «Local principal» del lado del cliente y `membresias_usuario` no se
+puede leer desde el navegador con ninguno de los dos roles. Arreglarlo necesita
+acceso a la base. Hasta entonces las pruebas de permisos de caja, cobro y
+reembolso con esa cuenta no se pueden hacer, y no se han hecho. Tampoco está
+aislada la causa de que el enlace Pase→TPV caiga siempre en la cuenta actual del
+terminal: hay dos hipótesis anotadas y ninguna descartada.
+
+**Una nota sobre la precisión de `precio_unitario`.** El volcado devolvió
+`numeric` sin precisión porque la consulta pedía `data_type` y no
+`numeric_precision`/`numeric_scale`; en QA podría ser `numeric(24,8)`, como en las
+tablas hermanas. La migración escribe `numeric` a secas, que es lo que el volcado
+dijo literalmente y además el lado permisivo: acepta todo lo que acepta QA. Queda
+anotado aquí porque es el único dato de los cuatro objetos que no está confirmado
+columna a columna, y se cierra con una consulta de dos líneas cuando haya ocasión.
