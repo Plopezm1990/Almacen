@@ -69,6 +69,29 @@ Contratos ejecutados después de los cambios:
 La batería completa y la comprobación en las tres superficies se registran en
 esta misma acta cuando el nuevo Deploy Preview termine de publicarse.
 
+## Publicación y primera comprobación live
+
+Netlify publicó el commit `c1893e30468b1174777e65ec371dca9d44990419` en el
+Deploy Preview #225:
+
+- estado: `ready`;
+- deploy: `6b00a94e6de18dc69d58d259`;
+- URL: `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`;
+- escaneo de secretos: cero coincidencias.
+
+En una pestaña nueva y visible del navegador de Codex, con caché nueva, se
+observó lo siguiente:
+
+- `#root` montado con `QA-EMP-A · QA-A1` y el panel operativo;
+- 67 botones encontrados, todos los primeros controles habilitados;
+- tres segundos después el árbol seguía montado y sin `#error-arranque`;
+- consola sin errores ni avisos.
+
+La comprobación directa de las ventanas nativas de Chrome y Firefox queda
+pendiente porque ambas están minimizadas para la superficie de automatización.
+No se declara todavía el objetivo como terminado hasta observarlas en primer
+plano o recibir evidencia equivalente de una carga e interacción completas.
+
 ## Estado de QA
 
 - No se ejecutaron cobros, reembolsos ni escrituras nuevas para esta reparación.
