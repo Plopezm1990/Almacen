@@ -1096,7 +1096,9 @@ comprobación estática de las cuatro superficies operativas. La identificación
 es idempotente y no escribe estado de negocio; la excepción de TPV en modo caja
 completo sigue explícita y documentada.
 
-Resultado de la tanda: `MARCO_ORBITA_CONTRACT=PASS (19/19)`, P01/P03/P05,
+Resultado de la tanda: commit `5bae9fe737a967d4eb54a4737edaebb13755bda0`,
+Deploy Preview `6b00b273457f622dbe40ac61` (`ready`),
+`MARCO_ORBITA_CONTRACT=PASS (19/19)`, P01/P03/P05,
 org-33, paridad `SOURCE_RECOVERY_CHECK=PASS` y `git diff --check` limpios.
 Pendiente de la siguiente pasada: revisión visual manual de las rutas Clientes,
 Inventario, Compras, Organización y de los cinco anchos del plan. No se
