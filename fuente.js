@@ -43600,6 +43600,9 @@ var init_index_es = __esm({
     "movimientos",
     "fichajes"
   ];
+  var CLAVES_LECTURA_CUALQUIER_CARGO = [
+    "locales"
+  ];
   var CLAVES_ENCARGADO = [
     "proveedores",
     "pedidos",
@@ -43668,6 +43671,7 @@ var init_index_es = __esm({
   function puedeLeer(rol, key) {
     if (rol === "Propietario") return !!CLAVES_CONTROLADAS[key];
     if (estaEn(CLAVES_COMUNES, key)) return true;
+    if (estaEn(CLAVES_LECTURA_CUALQUIER_CARGO, key)) return true;
     if (rol === "Encargado" && estaEn(CLAVES_ENCARGADO, key)) return true;
     if (rol === "Cajero/a" && estaEn(CLAVES_CAJERO, key)) return true;
     if (rol === "Churrero/a" && estaEn(CLAVES_CHURRERO, key)) return true;
@@ -44021,7 +44025,10 @@ var init_index_es = __esm({
     var rol = contexto && contexto.rol;
     if (!rol) {
       if (modoLocalNoReclamado()) return getOriginal(key, shared);
-      return respuestaVacia(key);
+      var sinCargo = new Error("Cargo sin verificar todavia para \u00ab" + key + "\u00bb: reintentable");
+      sinCargo.code = "CARGO_SIN_VERIFICAR";
+      sinCargo.reintentable = true;
+      throw sinCargo;
     }
     if (rol === "Propietario") return getOriginal(key, shared);
     if (key === "productos") {

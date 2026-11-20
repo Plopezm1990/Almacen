@@ -236,4 +236,23 @@ assert.doesNotMatch(
   'la rama del cargo sin verificar no debe responder con un valor vacío'
 );
 
-console.log('FALLAR_CERRADO_SIN_MENTIR=OK (4 bloques)');
+// --- 5. Y la copia que de verdad manda, la del paquete -------------------
+// `fuente.js` lleva inlineada su propia copia de esta puerta, y como el paquete
+// se carga el último, su envoltura queda por fuera: es la que decide. Arreglar
+// solo `edge-auth-patch.js` no cambia nada en la aplicación —me costó media
+// tarde comprobarlo—, así que aquí se exige el arreglo en las dos.
+{
+  const paquete = fs.readFileSync('fuente.js', 'utf8');
+  assert.match(
+    paquete,
+    /sinCargo\.code = "CARGO_SIN_VERIFICAR"/,
+    'la copia inlineada en fuente.js también debe lanzar cuando el cargo no está verificado: es la que corre'
+  );
+  assert.doesNotMatch(
+    paquete,
+    /var rol = contexto && contexto\.rol;\s*if \(!rol\) \{\s*if \(modoLocalNoReclamado\(\)\) return getOriginal\(key, shared\);\s*return respuestaVacia\(key\);/,
+    'la copia del paquete no debe responder con un valor vacío en la rama del cargo sin verificar'
+  );
+}
+
+console.log('FALLAR_CERRADO_SIN_MENTIR=OK (5 bloques, las dos copias)');

@@ -55,21 +55,41 @@ import fs from 'node:fs';
 import vm from 'node:vm';
 import assert from 'node:assert/strict';
 
-const edge = fs.readFileSync('edge-auth-patch.js', 'utf8');
+// LA TABLA ESTÁ DUPLICADA, Y ÉSTE ES EL CONTRATO QUE LO VIGILA
+// -----------------------------------------------------------
+// `edge-auth-patch.js` tiene esta tabla, y el paquete `fuente.js` lleva
+// INLINEADA SU PROPIA COPIA (en el entorno del 20/11/2026, hacia la línea
+// 43593). El paquete se carga el último, así que su envoltura de
+// `window.storage` queda por fuera y **su copia es la que decide**. Medido: el
+// sondeo de capas vio a la puerta de autoridad reinstalarse a los ~2400 ms,
+// después del puente de contexto.
+//
+// Eso costó media tarde. Arreglé `edge-auth-patch.js` dos veces, comprobé que
+// el fichero desplegado llevaba el cambio, y el comportamiento no se movía,
+// porque la copia que corre era la otra. Así que este contrato evalúa LAS DOS y
+// exige que decidan igual, cargo por cargo y clave por clave. Si alguien vuelve
+// a arreglar solo una, salta aquí en vez de costarle la tarde a otro.
+//
+// La región se delimita igual en los dos ficheros: desde `CLAVES_COMUNES` hasta
+// justo antes del primer uso de cliente Supabase, que ya es otra cosa.
 
-// La tabla de autorización se evalúa aislada: desde `CLAVES_COMUNES` hasta justo
-// antes del primer uso de cliente Supabase, que ya es otra cosa.
-const ini = edge.indexOf('var CLAVES_COMUNES = [');
-const fin = edge.indexOf('async function clienteSupabase', ini);
-assert.ok(ini > 0 && fin > ini, 'no se encuentra la tabla de autorización por cargo');
+function cargarTabla(ruta) {
+  const texto = fs.readFileSync(ruta, 'utf8');
+  const ini = texto.indexOf('var CLAVES_COMUNES = [');
+  const fin = texto.indexOf('async function clienteSupabase', ini);
+  assert.ok(ini > 0 && fin > ini, `no se encuentra la tabla de autorización por cargo en ${ruta}`);
+  const ctx = { Object, Array, String };
+  vm.createContext(ctx);
+  vm.runInContext(texto.slice(ini, fin), ctx, { filename: ruta + '#autorizacion' });
+  assert.equal(typeof ctx.puedeLeer, 'function', `puedeLeer debe quedar definida en ${ruta}`);
+  assert.equal(typeof ctx.puedeEscribir, 'function', `puedeEscribir debe quedar definida en ${ruta}`);
+  return { texto, ctx };
+}
 
-const ctx = { Object, Array, String };
-vm.createContext(ctx);
-vm.runInContext(edge.slice(ini, fin), ctx, { filename: 'edge-auth-patch.js#autorizacion' });
-
-const { puedeLeer, puedeEscribir } = ctx;
-assert.equal(typeof puedeLeer, 'function', 'puedeLeer debe quedar definida');
-assert.equal(typeof puedeEscribir, 'function', 'puedeEscribir debe quedar definida');
+const suelto = cargarTabla('edge-auth-patch.js');
+const paquete = cargarTabla('fuente.js');
+const edge = suelto.texto;
+const { puedeLeer, puedeEscribir } = suelto.ctx;
 
 const CARGOS = ['Propietario', 'Encargado', 'Cajero/a', 'Churrero/a', 'Camarero/a'];
 
@@ -131,4 +151,41 @@ assert.match(
   'la decisión de lectura debe seguir pasando por puedeLeer en el get controlado'
 );
 
-console.log('LOCALES_VISIBLES_PARA_SU_CARGO=OK (4 bloques)');
+// --- 5. Las dos copias de la tabla deciden lo mismo ----------------------
+// Exhaustivo a propósito: todos los cargos contra todas las claves que
+// cualquiera de las dos copias considera controladas, para lectura y para
+// escritura. Es la comprobación que me habría ahorrado media tarde.
+{
+  const claves = new Set([
+    ...Object.keys(suelto.ctx.CLAVES_CONTROLADAS || {}),
+    ...Object.keys(paquete.ctx.CLAVES_CONTROLADAS || {})
+  ]);
+  assert.ok(claves.size > 20, 'la tabla de claves controladas no debería estar casi vacía');
+
+  const divergencias = [];
+  for (const cargo of [...CARGOS, 'Rol/Inventado']) {
+    for (const clave of claves) {
+      const a = suelto.ctx.puedeLeer(cargo, clave);
+      const b = paquete.ctx.puedeLeer(cargo, clave);
+      if (a !== b) divergencias.push(`leer ${cargo}/${clave}: suelto=${a} paquete=${b}`);
+      const c = suelto.ctx.puedeEscribir(cargo, clave);
+      const d = paquete.ctx.puedeEscribir(cargo, clave);
+      if (c !== d) divergencias.push(`escribir ${cargo}/${clave}: suelto=${c} paquete=${d}`);
+    }
+  }
+  assert.deepEqual(
+    divergencias,
+    [],
+    'las dos copias de la tabla de autoridad (edge-auth-patch.js y la inlineada en fuente.js) deben decidir lo mismo; la del paquete es la que manda, así que una divergencia significa que el arreglo no está donde corre'
+  );
+
+  // Y que ninguna de las dos se quede sin la lista nueva.
+  for (const [nombre, c] of [['edge-auth-patch.js', suelto.ctx], ['fuente.js', paquete.ctx]]) {
+    assert.ok(
+      Array.isArray(c.CLAVES_LECTURA_CUALQUIER_CARGO) && c.CLAVES_LECTURA_CUALQUIER_CARGO.includes('locales'),
+      `${nombre} debe tener «locales» en la lista de lectura para cualquier cargo`
+    );
+  }
+}
+
+console.log('LOCALES_VISIBLES_PARA_SU_CARGO=OK (5 bloques, las dos copias)');
