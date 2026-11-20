@@ -1,118 +1,73 @@
 -- Volcado de las cuatro piezas de tarifas de org-33 que existen en QA y no en
 -- este repositorio. Pégalo entero en el editor SQL de Supabase, en el proyecto
--- de QA (qjqorixtkilwsndqayyx), y copia el resultado.
+-- de QA, y copia el resultado.
 --
--- Solo lee catálogos del sistema. No toca datos, no crea nada y no borra nada.
+-- Solo lee catálogos del sistema: no toca datos, no crea nada, no borra nada,
+-- y no devuelve ni una fila de tarifas. Solo la forma.
 --
--- Devuelve una sola columna de texto, en orden, lista para copiar de una vez.
+-- Nota: aquí no se usa `::regclass` a propósito. Esa forma revienta si el
+-- nombre no existe, y el autocompletado del editor en el móvil llegó a cambiar
+-- un nombre de tabla por otro al pegar. Todo va por nombre de texto: si algo no
+-- está, simplemente no sale en el resultado, y eso ya es una respuesta.
 
-with piezas as (
-  select 'public.catalogo_tpv_tarifas_horario'::regclass as tabla
-  union all
-  select 'public.catalogo_tpv_tarifa_precios'::regclass
-),
-columnas as (
-  select
-    1 as bloque,
-    format('%s.%s', c.table_schema, c.table_name) as agrupa,
-    c.ordinal_position as orden,
-    format(
-      '  %s %s%s%s',
-      quote_ident(c.column_name),
-      case
-        when c.data_type = 'character varying' and c.character_maximum_length is not null
-          then format('varchar(%s)', c.character_maximum_length)
-        when c.data_type = 'numeric' and c.numeric_precision is not null
-          then format('numeric(%s,%s)', c.numeric_precision, coalesce(c.numeric_scale, 0))
-        when c.data_type = 'ARRAY' then
-          (select format('%s[]', substring(a.udt_name from 2))
-           from information_schema.columns a
-           where a.table_schema = c.table_schema and a.table_name = c.table_name
-             and a.column_name = c.column_name)
-        else c.data_type
-      end,
-      case when c.is_nullable = 'NO' then ' not null' else '' end,
-      case when c.column_default is not null then ' default ' || c.column_default else '' end
-    ) as linea
-  from information_schema.columns c
-  join piezas p on p.tabla = format('%s.%s', c.table_schema, c.table_name)::regclass
-),
-restricciones as (
-  select 2 as bloque, con.conrelid::regclass::text as agrupa, con.oid::bigint as orden,
-         format('  constraint %s %s', quote_ident(con.conname), pg_get_constraintdef(con.oid)) as linea
-  from pg_constraint con
-  join piezas p on p.tabla = con.conrelid
-),
-indices as (
-  select 3 as bloque, i.tablename as agrupa, row_number() over (order by i.indexname) as orden,
-         '  ' || i.indexdef || ';' as linea
-  from pg_indexes i
-  join piezas p on p.tabla = format('public.%s', i.tablename)::regclass
-  where i.schemaname = 'public'
-),
-seguridad as (
-  select 4 as bloque, c.relname as agrupa, 0::bigint as orden,
-         format('  RLS activada: %s · forzada: %s', c.relrowsecurity, c.relforcerowsecurity) as linea
-  from pg_class c
-  join piezas p on p.tabla = c.oid
-),
-politicas as (
-  select 5 as bloque, pol.tablename as agrupa, row_number() over (order by pol.policyname) as orden,
-         format(
-           '  create policy %s on public.%s as %s for %s to %s%s%s;',
-           quote_ident(pol.policyname), quote_ident(pol.tablename), pol.permissive, pol.cmd,
-           array_to_string(pol.roles, ', '),
-           coalesce(' using (' || pol.qual || ')', ''),
-           coalesce(' with check (' || pol.with_check || ')', '')
-         ) as linea
-  from pg_policies pol
-  join piezas p on p.tabla = format('public.%s', pol.tablename)::regclass
-  where pol.schemaname = 'public'
-),
-permisos as (
-  select 6 as bloque, g.table_name as agrupa, row_number() over (order by g.grantee, g.privilege_type) as orden,
-         format('  grant %s on public.%s to %s;', lower(g.privilege_type), quote_ident(g.table_name), quote_ident(g.grantee)) as linea
-  from information_schema.role_table_grants g
-  join piezas p on p.tabla = format('%s.%s', g.table_schema, g.table_name)::regclass
-  where g.table_schema = 'public'
-),
-funciones as (
-  select 7 as bloque, pr.proname as agrupa, row_number() over (order by pr.oid) as orden,
-         pg_get_functiondef(pr.oid) || ';' as linea
-  from pg_proc pr
-  join pg_namespace n on n.oid = pr.pronamespace
-  where n.nspname in ('public', 'private')
-    and pr.proname in ('abc_guardar_tarifa_horario', 'abc_guardar_tarifa_precio')
-),
-permisos_funcion as (
-  select 8 as bloque, pr.proname as agrupa, 0::bigint as orden,
-         format('  permisos de %s: %s', pr.proname, coalesce(pr.proacl::text, 'por defecto')) as linea
-  from pg_proc pr
-  join pg_namespace n on n.oid = pr.pronamespace
-  where n.nspname in ('public', 'private')
-    and pr.proname in ('abc_guardar_tarifa_horario', 'abc_guardar_tarifa_precio')
-),
-todo as (
-  select * from columnas
-  union all select * from restricciones
-  union all select * from indices
-  union all select * from seguridad
-  union all select * from politicas
-  union all select * from permisos
-  union all select * from funciones
-  union all select * from permisos_funcion
+with t(nombre) as (
+  values ('catalogo_tpv_tarifas_horario'), ('catalogo_tpv_tarifa_precios')
+), f(nombre) as (
+  values ('abc_guardar_tarifa_horario'), ('abc_guardar_tarifa_precio')
 )
-select
-  case
-    when bloque = 1 then '-- COLUMNAS · ' || agrupa
-    when bloque = 2 then '-- RESTRICCIONES · ' || agrupa
-    when bloque = 3 then '-- INDICES · ' || agrupa
-    when bloque = 4 then '-- SEGURIDAD A NIVEL DE FILA · ' || agrupa
-    when bloque = 5 then '-- POLITICAS · ' || agrupa
-    when bloque = 6 then '-- PERMISOS DE TABLA · ' || agrupa
-    when bloque = 7 then '-- FUNCION · ' || agrupa
-    else '-- PERMISOS DE FUNCION · ' || agrupa
-  end as seccion,
-  linea
-from todo
-order by bloque, agrupa, orden;
+select '1 COLUMNAS · ' || c.table_name as seccion,
+       c.column_name || ' · ' || c.data_type
+         || coalesce('(' || c.character_maximum_length || ')', '')
+         || case when c.is_nullable = 'NO' then ' · not null' else '' end
+         || coalesce(' · default ' || c.column_default, '') as linea
+from information_schema.columns c
+where c.table_schema = 'public' and c.table_name in (select nombre from t)
+
+union all
+select '2 RESTRICCIONES · ' || cl.relname,
+       con.conname || ' · ' || pg_get_constraintdef(con.oid)
+from pg_constraint con
+join pg_class cl on cl.oid = con.conrelid
+join pg_namespace ns on ns.oid = cl.relnamespace
+where ns.nspname = 'public' and cl.relname in (select nombre from t)
+
+union all
+select '3 INDICES · ' || i.tablename, i.indexdef
+from pg_indexes i
+where i.schemaname = 'public' and i.tablename in (select nombre from t)
+
+union all
+select '4 RLS · ' || cl.relname,
+       'activada: ' || cl.relrowsecurity || ' · forzada: ' || cl.relforcerowsecurity
+from pg_class cl
+join pg_namespace ns on ns.oid = cl.relnamespace
+where ns.nspname = 'public' and cl.relname in (select nombre from t)
+
+union all
+select '5 POLITICAS · ' || p.tablename,
+       p.policyname || ' · ' || p.cmd || ' · para ' || array_to_string(p.roles, ',')
+         || coalesce(' · using ' || p.qual, '')
+         || coalesce(' · with check ' || p.with_check, '')
+from pg_policies p
+where p.schemaname = 'public' and p.tablename in (select nombre from t)
+
+union all
+select '6 PERMISOS DE TABLA · ' || g.table_name,
+       g.grantee || ' · ' || g.privilege_type
+from information_schema.role_table_grants g
+where g.table_schema = 'public' and g.table_name in (select nombre from t)
+
+union all
+select '7 FUNCION · ' || pr.proname, pg_get_functiondef(pr.oid)
+from pg_proc pr
+join pg_namespace ns on ns.oid = pr.pronamespace
+where ns.nspname in ('public', 'private') and pr.proname in (select nombre from f)
+
+union all
+select '8 PERMISOS DE FUNCION · ' || pr.proname,
+       coalesce(pr.proacl::text, 'por defecto')
+from pg_proc pr
+join pg_namespace ns on ns.oid = pr.pronamespace
+where ns.nspname in ('public', 'private') and pr.proname in (select nombre from f)
+
+order by 1, 2;
