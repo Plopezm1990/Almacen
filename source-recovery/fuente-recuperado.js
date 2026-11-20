@@ -22521,10 +22521,13 @@ function Clientes({ analisisClientes, clientesDormidos, ventaCruzada, addCliente
     document.body.removeChild(a22);
     URL.revokeObjectURL(url);
   }
-  function guardarVistaActual() {
-    const nombre = window.prompt("Nombre de la vista", "Mi vista de clientes");
-    if (!nombre || !nombre.trim()) return;
-    const vista = { id: uid(), nombre: nombre.trim(), busqueda, filtroEstado, filtroTipo };
+  // Este componente ya no se monta -la pantalla viva es ClientesPunto3- pero
+  // tampoco se borra, porque varios contratos lo nombran. Lo que si se va es su
+  // window.prompt: dormido en el paquete, vuelve en cuanto alguien lo remonte.
+  function guardarVistaActual(nombrePedido) {
+    const nombre = String(nombrePedido == null ? "" : nombrePedido).trim();
+    if (!nombre) return;
+    const vista = { id: uid(), nombre, busqueda, filtroEstado, filtroTipo };
     const siguiente = [...vistasGuardadas.filter((v22) => v22.nombre !== vista.nombre), vista];
     setVistasGuardadas(siguiente);
     try { localStorage.setItem("la_clientes_vistas", JSON.stringify(siguiente)); } catch {}
@@ -22604,6 +22607,8 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
   const [filtroEstado, setFiltroEstado] = (0, import_react4.useState)("todos");
   const [filtroTipo, setFiltroTipo] = (0, import_react4.useState)("todos");
   const [pagina, setPagina] = (0, import_react4.useState)(1);
+  const [vistaNueva, setVistaNueva] = (0, import_react4.useState)(null);
+  const [errorVista, setErrorVista] = (0, import_react4.useState)("");
   const [clienteAbierto, setClienteAbierto] = (0, import_react4.useState)(null);
   const [fichaTab, setFichaTab] = (0, import_react4.useState)("Resumen");
   const vistaStorageKey = `la_clientes_vistas:${empresaId || "sin-empresa"}`;
@@ -22638,10 +22643,25 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
   }
   function editar(c22) { setForm({ ...blank, ...c22 }); setEditingId(c22.id); setError(""); setShowForm(true); }
   function guardarVista() {
-    const nombre = typeof window !== "undefined" && window.prompt ? window.prompt("Nombre de la vista", "Mi vista de clientes") : "";
-    if (!nombre || !nombre.trim()) return;
-    const siguiente = [...vistasGuardadas.filter((v22) => v22.nombre !== nombre.trim()), { id: uid(), nombre: nombre.trim(), busqueda, filtroEstado, filtroTipo }];
-    setVistasGuardadas(siguiente); try { localStorage.setItem(vistaStorageKey, JSON.stringify(siguiente)); } catch {}
+    setErrorVista("");
+    setVistaNueva("Mi vista de clientes");
+  }
+  function confirmarVista() {
+    const nombre = String(vistaNueva == null ? "" : vistaNueva).trim();
+    if (!nombre) {
+      setErrorVista("Ponle un nombre a la vista para poder encontrarla despu\xE9s.");
+      return;
+    }
+    const siguiente = [...vistasGuardadas.filter((v22) => v22.nombre !== nombre), { id: uid(), nombre, busqueda, filtroEstado, filtroTipo }];
+    setVistasGuardadas(siguiente);
+    try {
+      localStorage.setItem(vistaStorageKey, JSON.stringify(siguiente));
+    } catch (e22) {
+      setErrorVista("La vista no se ha podido guardar en este equipo, as\xED que al recargar no estar\xE1.");
+      return;
+    }
+    setVistaNueva(null);
+    setErrorVista("");
   }
   function aplicarVista(vista) {
     if (!vista) return;
@@ -22690,7 +22710,26 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
     paginator,
     ficha,
     h("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Productos que se piden juntos"),
-    productosJuntos
+    productosJuntos,
+    vistaNueva === null ? null : h(Modal, { onClose: () => setVistaNueva(null), title: "Guardar vista" },
+      h("div", { className: "text-[12.5px] mb-3" }, "Guarda la b\xFAsqueda y los filtros que tienes ahora mismo para volver a ellos con un toque."),
+      h(Field, { label: "Nombre de la vista" }, h(Input, {
+        value: vistaNueva,
+        autoFocus: true,
+        onChange: (e22) => {
+          setVistaNueva(e22.target.value);
+          setErrorVista("");
+        }
+      })),
+      // Guardar con un nombre que ya existe reemplaza la vista anterior. Lo
+      // hacia tambien antes, pero sin avisar.
+      vistasGuardadas.some((v22) => v22.nombre === String(vistaNueva || "").trim()) ? h("div", { className: "text-[12px] mb-3", style: { color: C2.inkSoft } }, "Ya hay una vista con ese nombre: se reemplazar\xE1 por esta.") : null,
+      errorVista ? h("div", { className: "text-[12px] mb-3", role: "alert", style: { color: C2.red } }, errorVista) : null,
+      h("div", { className: "flex gap-2" },
+        h(Btn, { variant: "ghost", onClick: () => setVistaNueva(null) }, "Cancelar"),
+        h(Btn, { onClick: confirmarVista }, "Guardar vista")
+      )
+    )
   ];
   return h("div", null, contenido);
 }
