@@ -109,7 +109,23 @@ for (const l of llamadas) {
 assert.equal(llamadas.filter((l) => l.nombre.startsWith("abc_configurar_")).length, 9, "nueve llamadas que cambian algo, incluyendo terminales y cajas físicas");
 assert.ok(!/\.supabase|supabase\.rpc\(/.test(comp.replace(/const \{ data, error \} = await supabase\.rpc\(nombre, parametros\);/, "")), "el componente solo llama al servidor a través de configRpc");
 const tablas = [...comp.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]);
-assert.deepEqual(tablas, ["terminales_tpv"], "la única lectura directa de una tabla es la de los terminales del local (como hace el resto de la aplicación)");
+// 20/11/2026. Esta comprobación está en rojo a propósito y no debe arreglarse
+// metiendo las tablas nuevas en la lista. El 18/11 la gestión de sala de org-33
+// añadió tres lecturas directas: `catalogo_tpv_productos`,
+// `catalogo_tpv_tarifas_horario` y `catalogo_tpv_tarifa_precios`.
+//
+// Las dos de tarifas **no las crea ninguna migración de este repositorio**
+// —`grep -rl tarifa supabase/migrations` no devuelve nada— y sin embargo
+// existen en QA: preguntadas al servidor responden «permission denied for
+// table», no «Could not find the table». Es decir, están hechas a mano en QA y
+// el repositorio no sabe reproducirlas. Igual que pasó con
+// `prefiltros_candidatos`.
+//
+// Mientras eso siga así, la pantalla de configuración lee tablas que el
+// despliegue no puede crear, y esta comprobación es el único sitio donde
+// alguien se entera. Cuando existan sus migraciones, se añaden aquí con el
+// motivo escrito.
+assert.deepEqual(tablas, ["terminales_tpv"], "la única lectura directa de una tabla es la de los terminales del local (como hace el resto de la aplicación). Hoy hay tres más, y dos de ellas —las de tarifas de org-33— no tienen migración en el repositorio aunque existan en QA");
 assert.ok(!/\.(insert|update|delete|upsert)\(/.test(comp), "el componente no escribe en ninguna tabla");
 assert.ok(!/Borrar|Eliminar/.test(comp), "no hay botones de borrar: los equipos se desactivan");
 assert.match(comp, /\.select\("id,nombre"\)\.eq\("empresa_id", empresaId\)\.eq\("local_id", localId\)\.eq\("activo", true\)/, "solo terminales activos de este local");
