@@ -246,3 +246,37 @@ El rediseño puede seguir cerrado en su alcance visual y funcional; lo que no se
 sostiene es la frase de que los rojos son ajenos. Siete no lo eran, y uno de
 ellos tocaba quién puede ver qué local. Un cierre que archiva regresiones
 propias como deuda de otros las entierra, porque nadie vuelve a mirarlas.
+
+### Segunda tanda del 20/11 · de 7 rojos a 4
+
+Cuatro más resueltos, todos regresiones de esta rama y ninguno silenciado.
+
+- **`tests/ui-context-bridge`** · ver arriba. Una cuenta de empleado volvía a
+  recibir en silencio un local distinto del que pedía. `bb20bcc2`.
+- **`tests/pm15/p03-mej02`** · «Guardar vista» de clientes había vuelto a usar
+  un `window.prompt`, que es exactamente lo que ese contrato prohíbe y por el
+  motivo que lleva escrito: con un prompt el aviso de error sale después de
+  cerrarse el diálogo, y donde el navegador no lo permite la acción no ocurre
+  sin decir por qué. Ahora es una pantalla del programa, con el error dentro y
+  un aviso nuevo: si el nombre ya existe, la vista anterior se reemplaza —cosa
+  que antes pasaba igual, en silencio—. Se quitó también el prompt gemelo del
+  componente `Clientes`, que ya no se monta pero sigue en el paquete. `b1253a76`.
+- **`tests/pm05/frontend-contract`** · fijaba dos textos literales que cambiaron
+  sin que la garantía cambiara: `empresaId` pasó de atajo a expresión y `...data`
+  a `...normalizado`. Las dos comprobaciones pasan a exigir lo que defienden.
+- **`tests/cfg/f7-preflight-static`** · la migración de propina en efectivo es
+  del 24/10 y la foto F7 es del 3/10: no es de esa ventana de promoción. Queda
+  excluida como las demás posteriores, con el motivo escrito.
+
+**Batería: `NODE_ACTIVE_PASS=316`, `NODE_ACTIVE_FAIL=4`.**
+
+Quedan cuatro, y se sabe qué es cada uno:
+
+| Contrato | Qué pasa |
+| --- | --- |
+| `tests/cfg/a09-panel-ui-runtime` | ya estaba rojo en la base de la rama; es el único heredado de verdad |
+| `tests/cfg/cfg6-ui-contract` | exige que la pantalla de configuración lea directamente `terminales_tpv` y hoy no lee ninguna tabla. Parece una mejora —todo pasa por `configRpc`— pero hay que confirmar de dónde salen ahora los terminales antes de relajar la regla, porque la regla existe para que ese componente no lea tablas por su cuenta |
+| `tests/cfg/cfg6-ui-runtime` | en Cocina pulsa un botón que ya no está a la vista: la gestión avanzada se plegó tras «Mostrar gestión avanzada». El test necesita abrir ese desplegable; conviene decidir primero si plegarlo fue lo correcto |
+| `tests/cfg/cfg6d-ui-runtime` | lo mismo |
+
+Los tres de `cfg6` son de esta rama, no deuda heredada.
