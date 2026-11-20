@@ -937,3 +937,75 @@ ajenas al camarero siguen negadas y que cada cargo conserva lo suyo.
 esto**: ahí la barrera se abre a tiempo y la copia del dispositivo está bien. Lo
 dije ya al mediodía y lo repito aquí para que no quede la impresión de que
 aquello cerraba este caso.
+
+### 20/11/2026 · cierre de la tanda · Caché descartada, y la cadena no cuadra
+
+Quedaban dos explicaciones del vacío de `locales` tras el arreglo de autoridad:
+caché del navegador, o una segunda puerta. **La caché está descartada**, y con
+una medida limpia: `performance.getEntriesByType('resource')` en la propia
+página da, para `edge-auth-patch.js`, `transferSize=300` —una revalidación 304—
+con `decodedBodySize=46247`. El fichero arreglado pesa en disco exactamente
+46247 bytes; el anterior pesaba 44941. **La página ejecutó el código nuevo.** Y
+el commit desplegado lleva la línea en su sitio:
+
+```
+function puedeLeer(rol, key) {
+  if (rol === "Propietario") return !!CLAVES_CONTROLADAS[key];
+  if (estaEn(CLAVES_COMUNES, key)) return true;
+  if (estaEn(CLAVES_LECTURA_CUALQUIER_CARGO, key)) return true;   ← desplegada
+  ...
+```
+
+Aun así, con el código nuevo corriendo, la respuesta se repite: `locales` → `""`.
+
+**Y aquí la cadena deja de cuadrar, que es lo que hay que decir.** Medí cuál es
+la envoltura más externa de `window.storage.get` en la página:
+
+```
+async function(key, shared) { if (!CLAVES_CONTROLADAS[key]) return getOriginal(key, shared); …
+```
+
+Es la **puerta de autoridad**, no el puente de contexto, aunque el HTML cargue
+`edge-auth-patch.js` antes que `ui-context-bridge.js` y ambos se declaren
+instalados (`__contextoRolSeguroInstalado` y `__laUiContextBridgeV1`, los dos
+ciertos). Así que la cadena efectiva es puerta → puente/base.
+
+Y recorriendo el código, **ninguna de las capas de debajo puede devolver `""`**
+para esa clave:
+
+- con `puedeLeer` ya en cierto, la puerta solo tiene una salida para `locales`:
+  `return getOriginal(key, shared)`. No hay rama especial para esa clave entre
+  las sustituciones de mínimo privilegio; las comprobé una a una.
+- el **puente** sirve las tres claves de contexto desde `localStorage`, y
+  `almacen:locales` **sí** se lee desde la propia página al principio de la
+  carga: lo medí, devuelve `[{"id":"QA-A1",…}]`.
+- la **base** (`index-storage-bootstrap.js:1243`) no trata `locales` como tabla
+  de nube —no está en `TABLAS_EMPRESA` ni en `TABLAS_EMPRESA_LOCAL`— y su clave
+  de caché no se namespacea por usuario, porque `locales` no está en
+  `CLAVES_CACHE_POR_USUARIO`. Acaba en `leerLocalOpcional('locales')`, que es
+  `almacen:locales`.
+
+El único productor de `""` que queda en todo el recorrido es `respuestaVacia` de
+la puerta, y para llegar ahí hace falta `!rol` —falso: el contexto guardado dice
+`rol: "Camarero/a"`— o `!puedeLeer`, que ya es cierto.
+
+**Conclusión honesta: una de mis lecturas de la cadena está mal, y no sé cuál.**
+No puedo decidirlo sin instrumentar las tres capas desde dentro de la página, y
+eso choca con el bloqueo del hilo a los ~4,8 s, que sigue sin explicar. Lo que no
+voy a hacer es ofrecer una tercera explicación coherente: hoy ya se han caído dos.
+
+**Para quien siga, el camino más corto.** Envolver las tres capas y registrar
+quién responde cada clave, con un guion de diagnóstico cargado solo en el Deploy
+Preview —el repositorio ya tiene ese precedente exacto en
+`reset-pruebas-preview.js`, que solo corre si el host casa con el patrón del
+preview—. Escribir el registro en `localStorage` y leerlo desde otra pestaña del
+mismo origen, que es la técnica que ha funcionado toda la tarde: la página se
+congela, pero `localStorage` es del origen y se lee desde cualquier documento de
+él.
+
+**Lo que queda en firme de la tanda.** El servidor está impecable de punta a
+punta con la sesión real. El dispositivo tiene su copia correcta y continua. Los
+dos arreglos —la lectura del puente con la barrera agotada, y `locales` legible
+para todo cargo— son defectos reales, cada uno con su contrato, y la batería pasa
+entera: 323/323. Ninguno de los dos cierra el fantasma. Y las pruebas de caja,
+cobro y reembolso siguen sin hacerse.
