@@ -77,3 +77,20 @@ los productos; no se ejecutaron cobros, reembolsos ni escrituras de negocio.
 La revisión visual pantalla por pantalla continúa después de cerrar este
 marco estructural; esta tanda deja cubierta la identificación y composición
 común de las superficies que todavía tenían raíces visuales distintas.
+
+## Addendum de continuidad · 20/11/2026 · commit `9ef6a9c5`
+
+La referencia vigente de esta entrega es el commit
+`9ef6a9c574710efc72964eb1490c559f6acddf3f`, publicado en el Deploy Preview
+`6b00b5092bd7410861c6dc3e` (`ready`). La URL de comprobación es:
+https://deploy-preview-225--chic-entremet-9107cf.netlify.app/?cache=qa-orbita-audit-v5-20261120
+
+Contratos ejecutados: marco Órbita 21/21, rutas 20/20, capas y migraciones,
+propuestas, org-33, botones de solo icono, paridad `source-recovery` y
+`git diff --check`, todos conformes.
+
+El preview carga correctamente. La revisión visual autenticada de módulos
+restantes queda pendiente de una sesión QA activa: la sesión del navegador
+integrado había caducado y la pestaña quedó preparada en el acceso para que el
+propietario introduzca sus credenciales directamente, sin compartirlas en el
+chat. En esta tanda no se ejecutaron cobros, reembolsos ni mutaciones de QA.

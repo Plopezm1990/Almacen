@@ -1120,3 +1120,18 @@ No se editó `fuente.js` ni se cambió lógica de negocio. Resultado: contrato d
 marco `21/21`, contrato de rutas `20 rutas`, P01/P03/P05, org-33, paridad y
 `git diff --check` en verde. La revisión autenticada de cinco anchos queda
 como comprobación visual final cuando haya una sesión QA disponible.
+
+## Addendum continuidad marco Órbita · 20/11/2026
+
+La referencia vigente de la rama `rediseno/f0-base-qa` es el commit
+`9ef6a9c574710efc72964eb1490c559f6acddf3f`, publicado en el Deploy Preview
+`6b00b5092bd7410861c6dc3e` (`ready`). Esta entrega homogeneiza también los
+títulos de los módulos generales mediante el shell común, sin modificar
+`fuente.js` ni la paridad de `source-recovery`.
+
+Resultado de contratos: marco Órbita 21/21, rutas 20/20, P01/P03/P05,
+org-33, paridad y `git diff --check` conformes. La revisión visual autenticada
+no se pudo cerrar porque el navegador integrado ya no conservaba la sesión QA;
+el preview sí carga y la pestaña quedó preparada en el acceso para que el
+propietario inicie sesión directamente. No se ejecutaron cobros, reembolsos ni
+escrituras de negocio en esta tanda.
