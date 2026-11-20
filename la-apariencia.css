@@ -1294,6 +1294,37 @@ html[data-la-diseno] #root nav[aria-label*="paginación"] {
   border-top: 1px solid var(--c-divider);
   padding-top: 12px;
 }
+html[data-la-diseno] #root .la-ui-dropdown,
+html[data-la-diseno] #root [role="menu"],
+html[data-la-diseno] #root [role="listbox"],
+html[data-la-diseno] #root [data-dropdown] {
+  border: 1px solid var(--la-ui-control-border);
+  border-radius: 10px;
+  background: var(--c-surface) !important;
+  box-shadow: var(--la-ui-shadow);
+  color: var(--c-ink);
+}
+html[data-la-diseno] #root [role="menuitem"],
+html[data-la-diseno] #root [role="option"],
+html[data-la-diseno] #root .la-ui-dropdown-item {
+  min-height: 40px;
+  border-radius: 7px;
+  color: var(--c-ink);
+}
+html[data-la-diseno] #root [role="menuitem"]:hover,
+html[data-la-diseno] #root [role="option"]:hover,
+html[data-la-diseno] #root .la-ui-dropdown-item:hover { background: var(--la-ui-control-hover); }
+html[data-la-diseno] #root .la-ui-filter,
+html[data-la-diseno] #root [data-filter],
+html[data-la-diseno] #root [aria-label*="Filtro"],
+html[data-la-diseno] #root [aria-label*="filtro"] { border-radius: 10px; }
+html[data-la-diseno] #root .la-ui-pagination { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+html[data-la-diseno] #root .la-ui-confirmation,
+html[data-la-diseno] #root [data-confirmation] { border: 1px solid var(--c-divider); border-radius: 10px; background: var(--c-surface-soft, var(--c-bg)); }
+html[data-la-diseno] #root .la-ui-tooltip,
+html[data-la-diseno] #root [role="tooltip"] { border-radius: 7px; background: var(--c-chrome); color: var(--c-on-chrome); box-shadow: var(--la-ui-shadow); }
+html[data-la-diseno] #root .la-ui-icon,
+html[data-la-diseno] #root svg[aria-hidden="true"] { flex: 0 0 auto; }
 html[data-la-diseno] #root [title] { cursor: help; }
 html[data-la-diseno] #root button[aria-label]:not(.la-ui-icon-button) { min-width: 44px; }
 

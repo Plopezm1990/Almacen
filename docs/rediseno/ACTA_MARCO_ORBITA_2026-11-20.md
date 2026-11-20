@@ -131,10 +131,10 @@ foco visible, áreas táctiles mínimas y reducción de movimiento.
 La compatibilidad con las vistas que aún emiten marcado histórico se resuelve
 con selectores semánticos globales del contrato; no se cambió la lógica de
 negocio, los permisos ni los handlers. La capa CSS se publica con la marca
-`qa-orbita-shell-v11-20261120` para impedir que el CDN mezcle la versión vieja.
+`qa-orbita-shell-v12-20261120` para impedir que el CDN mezcle la versión vieja.
 
 Evidencia estática: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS` (14 primitivas,
-5 estados y paridad), `MARCO_ORBITA_CONTRACT=PASS (21/21)`,
+7 selectores semánticos, 5 estados y paridad), `MARCO_ORBITA_CONTRACT=PASS (21/21)`,
 `MARCO_ORBITA_RUTAS_CONTRACT=PASS (20 rutas)`, P01/P03/P05, org-33,
 `SOURCE_RECOVERY_CHECK=PASS` y `git diff --check` sin salida. La verificación
 live se hará sobre el deploy generado por esta rama en escritorio y móvil,

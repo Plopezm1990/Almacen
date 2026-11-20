@@ -1165,7 +1165,7 @@ Las reglas se aplican también al marcado histórico mediante roles y elementos
 semánticos, por lo que no hay que rediseñar cada pantalla por separado.
 
 La fuente recuperada se regeneró desde `fuente.js` y mantiene paridad exacta.
-Se actualizó la marca CSS a `qa-orbita-shell-v11-20261120`; el contrato P01 fija
+Se actualizó la marca CSS a `qa-orbita-shell-v12-20261120`; el contrato P01 fija
 marca y huella para evitar una publicación servida desde caché antigua.
 
 Contratos de la tanda: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`, marco 21/21,
