@@ -228,6 +228,55 @@
     });
   }
 
+  function slugRuta(texto) {
+    return textoVisible({ textContent: texto })
+      .toLocaleLowerCase("es")
+      .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+      .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "pantalla";
+  }
+
+  function rutaActiva(sidebar, main) {
+    if (main && main.querySelector(".tpv-layout")) return "tpv";
+    if (main && main.querySelector("#la-pase")) return "pase";
+    if (main && main.querySelector(".la-operacion-cocina")) return "cocina";
+    if (main && main.querySelector(".la-operacion-caja")) return "caja";
+    var activa = sidebar && sidebar.querySelector('[aria-current="page"]');
+    var label = textoVisible(activa);
+    var conocidas = [
+      ["panel general|inicio|dashboard", "dashboard"],
+      ["panel de direccion|direccion", "direccion"],
+      ["clientes", "clientes"],
+      ["productos", "productos"],
+      ["historial de producto", "historial-producto"],
+      ["proveedores", "proveedores"],
+      ["pedidos", "pedidos"],
+      ["recepcion", "recepcion"],
+      ["albaranes", "albaranes"],
+      ["facturas", "facturas"],
+      ["caja|arqueo", "caja"],
+      ["personal", "personal"],
+      ["configuracion", "configuracion"],
+      ["auditoria", "auditoria"],
+      ["inventario", "inventario"]
+    ];
+    var coincidencia = conocidas.find(function (entrada) { return new RegExp(entrada[0], "i").test(label); });
+    return coincidencia ? coincidencia[1] : (label ? slugRuta(label) : "pantalla");
+  }
+
+  function marcarSuperficie(main, sidebar) {
+    if (!marco) return;
+    var ruta = rutaActiva(sidebar, main);
+    marco.setAttribute("data-la-orbita-route", ruta);
+    if (main) {
+      main.setAttribute("data-la-orbita-route", ruta);
+      var superficie = main.querySelector(".tpv-layout") ? "tpv" :
+        main.querySelector("#la-pase") ? "pase" :
+        main.querySelector(".la-operacion-cocina") ? "cocina" :
+        main.querySelector(".la-operacion-caja") ? "caja" : "general";
+      main.setAttribute("data-la-orbita-surface", superficie);
+    }
+  }
+
   function alternarSidebar(sidebar, toggle) {
     var cerrado = !sidebar.classList.contains("la-orbita-colapsada");
     sidebar.classList.toggle("la-orbita-colapsada", cerrado);
@@ -348,6 +397,7 @@
     if (bottom) bottom.classList.add("la-orbita-bottom-nav");
     var rumbo = marco.querySelector(":scope > main .la-rumbo-acceso");
     if (rumbo) rumbo.classList.add("la-orbita-legacy-search");
+    marcarSuperficie(main, sidebar);
     actualizarCabecera();
   }
 

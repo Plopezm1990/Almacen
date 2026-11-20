@@ -109,6 +109,29 @@ html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
 .la-orbita-profile-menu button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--c-ink); font: 600 12.5px/1.2 var(--la-font); text-align: left; cursor: pointer; }
 .la-orbita-profile-menu button:hover { background: var(--c-accent-soft); color: var(--c-accent); }
 .la-orbita-main { grid-column: 2; grid-row: 2; min-height: 0; max-height: none !important; padding: clamp(14px, 2.2vw, 30px) !important; overflow: auto !important; }
+.la-orbita-main[data-la-orbita-surface] { container-type: inline-size; }
+.la-orbita-main[data-la-orbita-surface="general"] > :is(h1, h2) {
+  margin-block: 0 18px;
+  color: var(--c-ink);
+  font-size: clamp(20px, 2.6vw, 30px);
+  font-weight: 700;
+  letter-spacing: -.025em;
+}
+.la-orbita-main[data-la-orbita-surface="general"] > :is(h1, h2)::after {
+  content: "";
+  display: block;
+  width: 52px;
+  height: 2px;
+  margin-block-start: 8px;
+  border-radius: 99px;
+  background: linear-gradient(90deg, var(--c-accent-fill), #8CC3FF);
+}
+.la-orbita-main[data-la-orbita-surface="pase"] #la-pase,
+.la-orbita-main[data-la-orbita-surface="tpv"] .tpv-layout,
+.la-orbita-main[data-la-orbita-surface="cocina"] .la-operacion-cocina,
+.la-orbita-main[data-la-orbita-surface="caja"] .la-operacion-caja {
+  min-width: 0;
+}
 .la-orbita-bottom-nav { grid-column: 2; grid-row: 3; }
 .la-orbita-legacy-search { display: none !important; }
 .la-rumbo-acceso { display: none !important; }

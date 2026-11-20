@@ -1081,3 +1081,24 @@ P03, P05, org-33, paridad `SOURCE_RECOVERY_CHECK=PASS` y `git diff --check`.
 No se ejecutaron cobros, reembolsos ni escrituras de negocio. La vista TPV de
 caja a pantalla completa conserva la excepción documentada; la revisión
 visual pantalla por pantalla continúa como fase posterior.
+
+## Addendum marco Órbita · cobertura de superficies · 20/11/2026
+
+La segunda pasada mantiene la misma raíz visual en todas las rutas autenticadas.
+`la-orbita-shell.js` marca la ruta activa en `data-la-orbita-route` y el tipo de
+superficie en `data-la-orbita-surface`: `tpv`, `pase`, `cocina`, `caja` o
+`general`. Así las reglas de `la-apariencia.css` pueden tratar de forma común
+los encabezados, el espaciado y las raíces operativas sin inspeccionar ni
+duplicar la lógica de `fuente.js`.
+
+Se añadió tratamiento Órbita para encabezados de vistas generales y una
+comprobación estática de las cuatro superficies operativas. La identificación
+es idempotente y no escribe estado de negocio; la excepción de TPV en modo caja
+completo sigue explícita y documentada.
+
+Resultado de la tanda: `MARCO_ORBITA_CONTRACT=PASS (19/19)`, P01/P03/P05,
+org-33, paridad `SOURCE_RECOVERY_CHECK=PASS` y `git diff --check` limpios.
+Pendiente de la siguiente pasada: revisión visual manual de las rutas Clientes,
+Inventario, Compras, Organización y de los cinco anchos del plan. No se
+ejecutaron cobros, reembolsos ni escrituras de negocio; PR #225 sigue en
+borrador y producción permanece fuera de alcance.

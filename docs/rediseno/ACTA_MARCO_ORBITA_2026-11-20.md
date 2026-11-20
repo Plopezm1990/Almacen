@@ -21,10 +21,17 @@ handlers de negocio, permisos, contratos de TPV ni datos de QA.
   se neutralizan visualmente; no se eliminan sus handlers.
 - Se actualizaron las marcas de caché de `la-orbita-shell.js` y
   `la-apariencia.css` para impedir que el CDN sirva la versión anterior.
+- El shell identifica la ruta activa con `data-la-orbita-route` y la superficie
+  operativa con `data-la-orbita-surface`. TPV, Pase, Cocina, Caja y las vistas
+  generales pasan por la misma raíz de contenido, lo que permite aplicar el
+  mismo tratamiento tipográfico y de espaciado sin duplicar componentes.
+- Las vistas generales reciben un encabezado Órbita homogéneo (jerarquía,
+  subrayado de acento y separación) y las cuatro superficies operativas quedan
+  marcadas para que sus reglas no dependan de encabezados históricos.
 
 ## Evidencia estática
 
-- `MARCO_ORBITA_CONTRACT=PASS (16/16)`.
+- `MARCO_ORBITA_CONTRACT=PASS (19/19)`.
 - `REDISENO_P01_CAPAS_Y_MIGRACIONES_OK=1 capas=7 migraciones=2`.
 - `REDISENO_P05_PROPUESTAS_OK=1 disenos=9 paletas=6 rumbo=PASS pase=PASS responsive=PASS reduced_motion=PASS`.
 - `REDISENO_ORG33_SALA_CONTRACT=PASS`.
@@ -53,4 +60,5 @@ El marco común queda operativo en la base de QA. La vista TPV de caja a
 pantalla completa conserva su excepción documentada para no tapar el ticket y
 los productos; no se ejecutaron cobros, reembolsos ni escrituras de negocio.
 La revisión visual pantalla por pantalla continúa después de cerrar este
-marco estructural.
+marco estructural; esta tanda deja cubierta la identificación y composición
+común de las superficies que todavía tenían raíces visuales distintas.
