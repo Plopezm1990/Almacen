@@ -673,3 +673,58 @@ No toco `fuente.js` ni el puente hasta tener eso. Es exactamente la lección de
 `bb20bcc2`, tres párrafos más arriba: cambié código por una hipótesis razonada,
 el contrato se puso verde y la conducta viva se rompió. La hipótesis de hoy es
 mejor, pero sigue siendo una hipótesis hasta que la vea correr.
+
+### 20/11/2026 · La mentira de la lectura, demostrada sin navegador y arreglada
+
+Me quedé esperando el panel del navegador para confirmar la cadena, y eso era
+lo segundo mejor. La parte que importa se puede demostrar aquí: el puente es
+JavaScript corriente, así que la hipótesis se convierte en un contrato que
+falla contra el código tal como estaba.
+
+`tests/rediseno/contexto-lectura-barrera-contract.mjs` monta el puente real con
+la barrera **cerrada** y la copia local apartada —el caso exacto del arranque en
+un navegador nuevo— y pregunta por `locales`. Contra el código del 18/11:
+
+```
+AssertionError: con la barrera cerrada y la copia apartada, la lectura de
+«locales» no puede responder vacío: eso dice «no hay» cuando lo cierto es
+«no lo sé»
+  actual: ''
+```
+
+`actual: ''`. La lectura afirmaba que la cuenta no tiene locales. No es una
+deducción: es la conducta, medida. Y el contrato que ya existía para el puente
+—`tests/ui-context-bridge.mjs`— no podía verlo, porque lo monta con
+`__instalacionSyncPermitida: true`, es decir con la barrera siempre abierta.
+
+**El arreglo.** La lectura de las tres claves de contexto ya no responde con un
+vacío inventado. En orden: si el dispositivo tiene su propia copia, se usa; si
+no, se le pregunta al servidor, cuya RPC de contexto está permitida antes de la
+barrera precisamente para esto; y si tampoco se puede, se falla. No se siembra
+en localStorage —sembrar es lo que hace el arranque cuando la barrera se abre, y
+hacerlo aquí dejaría escrita una copia autorizada con la validación pendiente—.
+
+Lo que hacía evidente el defecto es la asimetría dentro del propio fichero: al
+**escribir** ya consideraba fatal que la barrera no se abriera
+(`throw new Error("Instalación no validada")`), y al leer se lo tragaba. El
+contrato fija ahora las dos caras, más tres casos que protegen la conducta
+normal: con copia propia no se consulta al servidor, con la barrera abierta no
+hay ni una llamada de más, y el PIN ausente sigue siendo un estado normal y no
+un error.
+
+**Lo que NO he tocado, a propósito.** `fuente.js:105556`, la ruta que inventa
+«Local principal». Con la lectura arreglada ya no se le puede entregar un vacío
+falso, así que su disparador desaparece en el origen, que es la capa correcta
+donde arreglarlo. Tocar el paquete de 6,3 MB además, con su paridad y su
+contrato, sobre un eslabón que no he observado en marcha, es precisamente lo
+que salió mal en `bb20bcc2`. Queda como defecto propio, anotado: un cliente no
+debería inventar locales contra una sesión en la que manda el servidor.
+
+**Y lo que sigue sin confirmarse.** Que esta mentira fuera la causa del síntoma
+de QA es coherente con todo lo observado, pero no está probado: la ruta normal
+de acceso recarga cuando la copia cambia, y en la segunda pasada la semilla
+debería escribir antes de que la barrera se abra. No puedo dar cuenta de ese
+eslabón sin ver la ejecución, y además lo contaminé yo al dejar dos pestañas
+abiertas sobre el mismo localStorage. Lo honesto es decir que el defecto
+arreglado es real y se sostiene solo, y que su relación con el fantasma de QA
+está por confirmar con el panel a la vista.
