@@ -44025,6 +44025,26 @@ var init_index_es = __esm({
     var rol = contexto && contexto.rol;
     if (!rol) {
       if (modoLocalNoReclamado()) return getOriginal(key, shared);
+      // Y hay que distinguir dos nulos que no significan lo mismo, cosa que
+      // este arreglo no hacia en su primera version y que destapo el contrato
+      // tests/pm33/p03-frontend-multilocal-contract.mjs:
+      //
+      //   - SIN SESION: no hay nada que dar, y es definitivo. Un vacio ahi es
+      //     honesto, y ademas no tiene sentido que loadKey reintente tres
+      //     veces algo que no va a cambiar.
+      //   - CON SESION pero sin cargo resuelto todavia: eso es «no lo se», y
+      //     es lo que hay que decir lanzando.
+      //
+      // La sesion se consulta aqui, en la rama rara, para no gravar el camino
+      // normal.
+      var haySesionAhora = false;
+      try {
+        var sbSesion = await clienteSupabase();
+        var sesionAhora = await sesionActual(sbSesion);
+        haySesionAhora = !!(sesionAhora && sesionAhora.user && sesionAhora.user.id);
+      } catch (e) {
+      }
+      if (!haySesionAhora) return respuestaVacia(key);
       var sinCargo = new Error("Cargo sin verificar todavia para \u00ab" + key + "\u00bb: reintentable");
       sinCargo.code = "CARGO_SIN_VERIFICAR";
       sinCargo.reintentable = true;
