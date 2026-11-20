@@ -42,8 +42,8 @@ handlers de negocio, permisos, contratos de TPV ni datos de QA.
 
 ## Evidencia live · Deploy Preview 225
 
-- Commit base de esta acta: `5bae9fe737a967d4eb54a4737edaebb13755bda0`.
-- Deploy Netlify: `6b00b273457f622dbe40ac61`, estado `ready`.
+- Commit final de esta tanda: `9d132d72f996c54177f48cb14031b301b2570f05`.
+- Deploy Netlify: `6b00b373ce91b4e9db365e88`, estado `ready`.
 - URL: https://deploy-preview-225--chic-entremet-9107cf.netlify.app
 - La pestaña autenticada monta `.la-orbita-shell`, cabecera, lateral y barra
   inferior; muestra el distintivo `QA` y no presenta `#error-arranque`.
