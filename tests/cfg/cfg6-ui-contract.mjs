@@ -194,11 +194,17 @@ assert.match(ficha, /if \(!esPropietario\) contenido = h\(Card, \{ className: "m
   "sin perfil Propietario o sin local concreto no se monta ninguna sección (y por tanto no se llama al servidor)");
 assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), "las secciones solo se montan en la rama con permiso");
 // La octava sección se añadió el 15/11/2026 con la política opcional de
-// verificación en dos pasos. Lo que hay dentro lo fija
-// tests/m03/m03-mfa-enforcement-contract.mjs; aquí solo se fija que está, en
-// este orden, y dentro de la rama con permiso como las otras siete.
-assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["terminales", "Terminales y cajas"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\], \["mfa", "Verificación en dos pasos"\]\];/);
+// verificación en dos pasos, y la novena —«Sala y mesas», en segundo lugar— el
+// 18/11/2026 con la gestión de sala y las tarifas por horario de org-33. Esta
+// lista estuvo desfasada desde ese día: la pantalla tenía nueve secciones y el
+// contrato seguía pinchando ocho. Lo que hay dentro de cada una lo fijan sus
+// propios contratos (tests/m03/m03-mfa-enforcement-contract.mjs para la de
+// verificación; tests/rediseno/org33-tarifas-pglite-contract.mjs para lo que
+// la de sala guarda en el servidor); aquí sólo se fija que están, en este
+// orden, y dentro de la rama con permiso como las demás.
+assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["sala", "Sala y mesas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["terminales", "Terminales y cajas"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\], \["mfa", "Verificación en dos pasos"\]\];/);
 assert.ok(ficha.indexOf('ConfigMfa, {') > ficha.indexOf('else contenido = h('), 'la sección de verificación en dos pasos también se monta solo con permiso');
+assert.ok(ficha.indexOf('ConfigSala, {') > ficha.indexOf('else contenido = h('), 'la sección de sala y mesas también se monta solo con permiso');
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
 assert.doesNotMatch(comp, /Barra[^.\n]*bloquead/i, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
@@ -216,8 +222,32 @@ assert.match(comp, /p_permitido: c3\.permitido,/, "heredar se envía como nulo")
 assert.match(comp, /await cargar\(true\);\s+\}\s+\};\s+const verRetirados/, "tras un fallo se recarga sin borrar el mensaje de error");
 
 // 5b. El panel fiscal es multiempresa, usa solo RPC y continúa siendo un borrador no activable.
-const fiscal = comp.slice(comp.indexOf("var FISCAL_CONFIG_INICIAL ="), comp.indexOf("function ConfiguracionLocal("));
+//
+// 20/11/2026. Esta rodaja iba de `FISCAL_CONFIG_INICIAL` hasta
+// `function ConfiguracionLocal(`, y eso dejó de ser el panel fiscal. Entre los
+// dos se fueron metiendo piezas nuevas —el 15/11 las de verificación en dos
+// pasos, el 18/11 `ConfigSala` con las mesas, las zonas y las tarifas de
+// org-33—, así que la lista de RPC «del panel fiscal» acabó recogiendo
+// `abc_crear_mesa`, `abc_guardar_tarifa_horario` y compañía. La tentación es
+// añadirlas a la lista autorizada; sería tapar exactamente lo que esta
+// comprobación vigila, que es que el panel fiscal no llame a nada más.
+//
+// Es el mismo error que cortar `ConfiguracionLocal` por el primer
+// `\nfunction `: una rodaja que crece sola convierte una comprobación en un
+// adorno. Ahora termina donde de verdad termina el panel, en la primera pieza
+// de la sección de verificación en dos pasos, y si mañana alguien mete algo
+// entre medias la rodaja se queda corta y esto se pone rojo en vez de
+// ensancharse en silencio.
+const fiscalIni = comp.indexOf("var FISCAL_CONFIG_INICIAL =");
+const fiscalFin = comp.indexOf("function clienteNubeMfa(", fiscalIni);
+assert.ok(fiscalIni >= 0, "existe el panel Fiscalidad y AEAT");
+assert.ok(fiscalFin > fiscalIni, "la pieza de verificación en dos pasos sigue viniendo detrás del panel fiscal: si se movió, hay que rehacer esta rodaja, no ampliarla");
+const fiscal = comp.slice(fiscalIni, fiscalFin);
 assert.ok(fiscal.length > 1000, "existe el panel Fiscalidad y AEAT");
+// Se buscan las declaraciones, no los nombres: justo antes de `clienteNubeMfa`
+// hay un comentario que explica la sección de verificación en dos pasos y que
+// nombra sus piezas, y ese comentario sí pertenece a la frontera.
+assert.ok(!/function (?:ConfigSala|ConfigMfa|MfaPoliticaCargos|MfaMiCuenta)\(/.test(fiscal), "la rodaja del panel fiscal no se ha tragado otras secciones");
 assert.deepEqual([...new Set([...fiscal.matchAll(/configRpc\("([a-z_0-9]+)"/g)].map((m) => m[1]))].sort(),
   ["abc_c07d_leer_piloto_sandbox", "abc_fiscal_guardar_borrador", "abc_fiscal_guardar_representacion", "abc_fiscal_invitar_asesoria", "abc_fiscal_leer_borrador", "abc_fiscal_leer_representacion", "abc_fiscal_listar_delegaciones", "abc_fiscal_listar_emisores", "abc_fiscal_revocar_delegacion"], "el panel usa solo las RPC fiscales autorizadas");
 assert.doesNotMatch(fiscal, /\.from\(|\.insert\(|\.update\(|\.delete\(|\.upsert\(/, "el panel fiscal no accede a tablas directamente");
