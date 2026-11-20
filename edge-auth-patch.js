@@ -754,12 +754,39 @@ function modoLocalNoReclamado() {
     try { contexto = await obtenerContexto(false); } catch (e) {}
     var rol = contexto && contexto.rol;
 
-    // Si hay una sesión pero no se ha podido verificar su rol, se falla
-    // cerrado para las colecciones empresariales controladas. loadKey aplicará
-    // el fallback del módulo sin borrar la copia local.
+    // Si hay una sesión pero todavía no se ha podido verificar su cargo, se
+    // falla cerrado para las colecciones empresariales controladas. Pero se
+    // falla DICIÉNDOLO, no devolviendo un valor vacío.
+    //
+    // Hasta el 20/11/2026 esta rama respondía `respuestaVacia(key)`, es decir
+    // `{ value: "" }`, confiando en que `loadKey` aplicara su valor por
+    // defecto. Y lo aplica, pero eso es justo el problema: quien recibe un
+    // vacío no puede distinguir «todavía no sé quién eres» de «no tienes
+    // ninguno». Medido en el Deploy Preview #225 con la cuenta de ensayo
+    // `qa.permisos.20261116` (Camarero/a, membresía QA-A1 correcta): `locales`
+    // se pide a los 4081 ms, cuando el contexto aún no está resuelto, y esta
+    // rama devolvía ""; `fuente.js:101783` lo convertía en `[]` y
+    // `fuente.js:105556` leía cero locales como una instalación antigua de un
+    // solo local e inventaba uno. Ése era el «Local principal» fantasma, con
+    // identificador nuevo en cada arranque. Las lecturas tardías de `empresas`
+    // y `localActivoId` (15385 y 15567 ms) salían bien, y por eso el síntoma
+    // parecía ser de una clave concreta cuando era del momento de la lectura.
+    //
+    // Lanzar es lo que el propio `loadKey` espera para este caso: reintenta
+    // tres veces con 350 ms de espera, pero SOLO si la lectura lanza —un vacío
+    // se da por bueno al primer golpe—, y para el segundo intento el contexto
+    // ya está resuelto. Si tras los tres sigue sin resolverse, `loadKey` aplica
+    // el mismo valor por defecto de antes: el peor caso no empeora. Y lanzar es
+    // más cerrado que devolver vacío, no menos: no entrega ningún dato y además
+    // lo dice. Fallar cerrado y fallar callado no son lo mismo.
+    //
+    // Contrato: tests/rediseno/fallar-cerrado-sin-mentir-contract.mjs
     if (!rol) {
     if (modoLocalNoReclamado()) return key === "empleados" ? empleadosPropietarioSinSecretos(null, shared) : getOriginal(key, shared);
-    return respuestaVacia(key);
+    var sinCargo = new Error("Cargo sin verificar todavía para «" + key + "»: reintentable");
+    sinCargo.code = "CARGO_SIN_VERIFICAR";
+    sinCargo.reintentable = true;
+    throw sinCargo;
   }
 
     if (rol === "Propietario") {
