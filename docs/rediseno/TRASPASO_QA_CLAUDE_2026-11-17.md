@@ -1462,6 +1462,18 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### TPV y sala · superficies secundarias · 21/11/2026
+
+La capa `la-apariencia.css` v23 extiende la migración visual de TPV a venta
+rápida (`data-tpv-quick`), selector de modalidad, resumen/historial de ventas,
+factura a empresa (`data-tpv31-factura-empresa`) y avisos de error. Se usan
+tokens Órbita para tarjetas, estados y foco; en móvil el resumen pasa a una
+columna. No se tocaron cobro, persistencia, fiscalidad, permisos ni handlers.
+Los contratos `componentes-orbita`, `migracion-modulos` y `P01` pasan; la
+huella CSS es `dc23dacac016d12d` y la marca es
+`qa-orbita-modules-v23-20261121`. El recorrido autenticado de TPV sigue
+pendiente para cerrar el bloque.
+
 La publicación de esta corrección quedó en el deploy
 `6b01359c82a0e124af379731` (`ready`), commit `74b32091`, PR #225 en borrador.
 La batería sin base de datos conserva el resultado `328/305/23`, con

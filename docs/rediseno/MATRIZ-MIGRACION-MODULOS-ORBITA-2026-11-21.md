@@ -110,6 +110,18 @@ heredados en esa capa. Inicio sigue en `PARCIAL` hasta comprobar en QA las
 variantes de indicadores y los estados vacío/carga/error en los cinco
 viewports definidos.
 
+### TPV y sala · superficies secundarias · v23
+
+La capa scoped de TPV cubre ahora también la tarjeta de venta rápida, el
+selector de modalidad, el resumen/historial de ventas, el flujo de factura a
+empresa y los avisos de error. Esas superficies conservan sus handlers y
+operaciones, pero dejan de depender de fondos literales y adoptan los tokens
+de tarjeta, estado y foco de Órbita. El resumen de ventas se apila en móvil
+para que la pantalla no se alargue horizontalmente. La caché CSS pasó a
+`qa-orbita-modules-v23-20261121` (huella P01 `dc23dacac016d12d`). TPV sigue en
+`PARCIAL` hasta el recorrido QA de venta rápida, sala, cuentas, mesas,
+historial, vacío/carga/error y factura a empresa en escritorio y móvil.
+
 ### Verificación posterior · commit `74b32091`
 
 El cambio se publicó en el Deploy Preview 225 como deploy

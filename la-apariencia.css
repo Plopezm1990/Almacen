@@ -1975,6 +1975,42 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-dock {
   box-shadow: var(--la-shadow-2);
   backdrop-filter: blur(12px);
 }
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-quick="1"],
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-summary="1"],
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv31-factura-empresa="1"] {
+  border: 1px solid var(--c-divider) !important;
+  border-block-start: 2px solid var(--c-accent-fill) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-quick="1"] [role="group"],
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-selector-modalidad="1"] [role="group"] {
+  gap: var(--la-space-2);
+  flex-wrap: wrap;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-quick="1"] button[aria-pressed="true"],
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-selector-modalidad="1"] button[aria-pressed="true"] {
+  background: var(--c-accent-fill) !important;
+  border-color: var(--c-accent-fill) !important;
+  color: var(--c-on-accent) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] {
+  background: var(--c-bg) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [role="alert"] {
+  background: var(--c-red-soft) !important;
+  border: 1px solid color-mix(in srgb, var(--c-red) 42%, transparent) !important;
+  color: var(--c-red) !important;
+  border-radius: var(--la-radius-md) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-summary="1"] .grid > div {
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-md);
+  background: color-mix(in srgb, var(--c-bg) 74%, var(--c-surface)) !important;
+}
 @media (max-width: 767px) {
   html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout {
     grid-template-columns: minmax(0, 1fr);
@@ -1988,6 +2024,9 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-dock {
   html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button {
     min-height: 96px;
     padding: var(--la-space-3) !important;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-summary="1"] .grid {
+    grid-template-columns: 1fr !important;
   }
 }
 @media (prefers-reduced-motion: reduce) {
