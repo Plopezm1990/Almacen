@@ -1234,3 +1234,22 @@ Contratos ejecutados y conformes: componentes Órbita, marco (21/21), rutas
 --check`. Falta añadir tras el despliegue la evidencia live de escritorio y
 móvil y el resultado de la batería global; no ejecutar cobros, reembolsos ni
 escrituras de negocio. PR #225 sigue en borrador y producción intacta.
+
+### Cierre y evidencia live · 21/11/2026
+
+Deploy Preview 225 listo en `6b0124c9e2b32501d2e28b9c` (`ready`), commit
+`66b2b85360df498f4e39dff1e495c27d121240fb`. En el navegador Codex se midió el
+preview en escritorio `1440×900` y móvil `390×844`: sin desbordamiento,
+controles visibles con mínimo 44 px y cero mensajes `error`/`warn` en consola.
+
+La batería oficial registró `NODE_ACTIVE_TOTAL=327`,
+`NODE_ACTIVE_PASS=304`, `NODE_ACTIVE_FAIL=23`, `UTILITIES_RUN=8`,
+`DIAGNOSTICS_RUN=5`, `INFRA_FAIL=0`; el límite Netlify pasó y el runner dejó
+el árbol limpio. Los 23 fallos son históricos y no afectan a los contratos de
+rediseño, que pasan. No se hicieron cobros, reembolsos ni escrituras de
+negocio durante esta tanda.
+
+No quedan acciones técnicas de este objetivo. Las excepciones deliberadas son
+checkbox/radio/range nativos y la densidad de TPV en modo caja completo; todo
+lo demás queda gobernado por la escala Órbita. PR #225 continúa en borrador y
+producción sigue fuera de alcance.

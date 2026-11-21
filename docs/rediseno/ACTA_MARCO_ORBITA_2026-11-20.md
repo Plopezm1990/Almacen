@@ -228,3 +228,23 @@ Evidencia estática: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`,
 y la comprobación visual del deploy de esta tanda se añadirán al cerrar la
 publicación. PR #225 continúa en borrador y producción permanece fuera de
 alcance.
+
+### Evidencia final de publicación · escala · 21/11/2026
+
+La rama quedó publicada en el Deploy Preview 225 mediante el deploy
+`6b0124c9e2b32501d2e28b9c` (`ready`), commit
+`66b2b85360df498f4e39dff1e495c27d121240fb`, con la marca CSS
+`qa-orbita-scale-v14-20261121`. En el navegador Codex se comprobó el mismo
+preview en `1440×900` y `390×844`: `scrollWidth` coincidió con el ancho del
+viewport (1440 y 390), el mínimo de los controles visibles fue 44 px en ambos
+casos y no se observaron errores ni avisos de consola. El viewport se devolvió
+después a su tamaño normal.
+
+La batería oficial `tests/ci/ejecutar_bateria_no_db.sh` ejecutó 327 contratos
+activos: 304 PASS y 23 fallos históricos ajenos a esta escala; utilidades 8,
+diagnósticos 5, `INFRA_FAIL=0`, límite de publicación PASS y árbol limpio tras
+la ejecución. Los 23 fallos quedan separados en el TSV de evidencia generado
+por el runner; ninguno corresponde a `tests/rediseno`.
+
+**Estado:** objetivo 3 terminado completamente. PR #225 sigue en borrador,
+solo se publicó `rediseno/f0-base-qa` y producción no se tocó.
