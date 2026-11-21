@@ -1,5 +1,5 @@
 diff --git a/fuente.js b/fuente.js
-index 3b7334fd..528c3ca1 100644
+index 3b7334fd..f3e7f079 100644
 --- a/fuente.js
 +++ b/fuente.js
 @@ -1,3 +1,8 @@
@@ -948,7 +948,7 @@ index 3b7334fd..528c3ca1 100644
 +  // no resuelve su promesa. No dejamos que una sola clave congele el montaje
 +  // de los doce módulos: en modo local fallamos rápido; en QA damos margen a
 +  // la consulta remota, pero seguimos teniendo un techo por intento.
-+  const limiteLectura = typeof window !== "undefined" && window.__modoPruebasQA === true ? 7500 : 1500;
++  const limiteLectura = typeof window !== "undefined" && window.__nubeActiva === true ? 7500 : 1500;
    for (let attempt = 0; attempt <= retries; attempt++) {
 +    let res;
      try {

@@ -3,11 +3,11 @@
   "baseCommit": "7b2aa0f1500ecfc5dce551196f5434655411a314",
   "baseArtifactSha256": "372813f2230054306b0d37eb3825938832b68f62ea88a484dde0b1dfcdb075ed",
   "releaseBaseCommit": "8540bd06d5555cf260aa4599144ed6c64f3ca029",
-  "targetFuenteCommit": "609e62f20efdc8e728a71cf0536123f3e8843754",
-  "targetArtifactSha256": "d05da25d439143eb7768ce46f2a03cda6ec66f042874cd56e9c7e96bb5d8212b",
+  "targetFuenteCommit": "e2ae8d4a0726a29c8628c8f10bda2858387dc8dc",
+  "targetArtifactSha256": "04bbfe45866a3273851ed2bcf5d047a9fe3cfbd15e679d4ced44a82074cc6d23",
   "patch": "CURRENT_RELEASE.patch",
-  "patchSha256": "5b66a5f88f2f8818372a70b2d603c0e759ae4928f3fa0b4dea7aeae4b5d03c1b",
-  "patchBytes": 2617231,
+  "patchSha256": "d7032bd3b942ee2dfd6fa1354cc3f71adc2d5135b2fc777f524de8b95d3233ea",
+  "patchBytes": 2617228,
   "fuenteRecuperadoSha256": "7b74ffb26cd29cbfe4eb7c217bcb7f5a3fe7376719a542cca1a44bd3f41740cc",
   "rebuildContract": "Build source-recovery at baseCommit from clean npm ci; require baseArtifactSha256; apply CURRENT_RELEASE.patch with patch --batch --fuzz=0 -p1; require targetArtifactSha256 and byte-for-byte equality with repository fuente.js."
 }
