@@ -1339,3 +1339,25 @@ navegación inferior y los mismos accesos sin desbordamiento. Se mantuvo el
 modo local sin sincronización; no se escribieron datos ni se ejecutaron cobros.
 La fila Inicio sigue `PARCIAL` hasta repetir estas variantes con sesión QA
 autenticada y estados de negocio reales.
+
+### Barrido transversal de módulos · escritorio y móvil · 21/11/2026
+
+En modo local se repitió el mismo chequeo para TPV, Cocina, Clientes,
+Proveedores/Compras, Productos/Inventario, Personal y Configuración en el
+viewport integrado y en `390×844`. Las siete rutas conservaron el módulo,
+superficie y ruta semánticos esperados; todas devolvieron `overflow=false` y
+un mínimo visible de `44 px` en ambos tamaños. La tabla de evidencia es:
+
+| Ruta | Módulo | Escritorio | Móvil |
+|---|---|---|---|
+| TPV | `tpv` | 44 px / sin overflow | 44 px / sin overflow |
+| Cocina | `cocina` | 44 px / sin overflow | 44 px / sin overflow |
+| Clientes | `clientes` | 44 px / sin overflow | 44 px / sin overflow |
+| Proveedores | `compras` | 44 px / sin overflow | 44 px / sin overflow |
+| Productos | `inventario` | 44 px / sin overflow | 44 px / sin overflow |
+| Personal | `personal` | 44 px / sin overflow | 44 px / sin overflow |
+| Configuración | `configuracion` | 44 px / sin overflow | 44 px / sin overflow |
+
+La prueba es de marco visual, responsive y clasificación. No cierra las filas:
+queda pendiente el recorrido QA autenticado de datos, permisos, estados de
+negocio, Plataforma y Acceso.

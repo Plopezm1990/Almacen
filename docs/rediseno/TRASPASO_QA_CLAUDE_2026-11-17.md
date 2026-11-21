@@ -1473,6 +1473,16 @@ cabecera Órbita y navegación inferior. La prueba se hizo en modo local, sin
 sincronización ni escrituras; hace falta repetirla autenticada para cerrar la
 fila de Inicio y comprobar datos, permisos y estados reales.
 
+### Barrido de rutas principales · escritorio y móvil · 21/11/2026
+
+En modo local se recorrieron TPV, Cocina, Clientes, Proveedores, Productos,
+Personal y Configuración en el viewport de escritorio integrado y en `390×844`.
+En las catorce combinaciones la ruta mantuvo su módulo/superficie Órbita,
+`overflow=false` y un control visible mínimo de `44 px`. El resultado confirma
+la integración común del shell y la escala en estos siete bloques; no sustituye
+el recorrido autenticado de datos, permisos, estados reales, Plataforma y
+Acceso, por lo que las filas siguen `PARCIAL`.
+
 ### Deploy v19 y auditoría de rutas históricas · 21/11/2026
 
 El commit `a57e154d8cd3f9488b53a3361e32febed7937508` está publicado en el
