@@ -643,7 +643,7 @@ async function loadKey(key, fallback, retries = 2) {
   // no resuelve su promesa. No dejamos que una sola clave congele el montaje
   // de los doce módulos: en modo local fallamos rápido; en QA damos margen a
   // la consulta remota, pero seguimos teniendo un techo por intento.
-  const limiteLectura = typeof window !== "undefined" && window.__modoPruebasQA === true ? 7500 : 1500;
+  const limiteLectura = typeof window !== "undefined" && window.__nubeActiva === true ? 7500 : 1500;
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
     try {
