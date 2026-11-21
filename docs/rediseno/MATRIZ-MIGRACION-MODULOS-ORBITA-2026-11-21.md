@@ -310,3 +310,5 @@ cabecera Órbita y en móvil conserva el scroll dentro de su wrapper. No se
 alteran cobros, persistencia, fiscalidad, permisos ni handlers. Caché
 `qa-orbita-modules-v30-20261121`, huella P01 `742bf5b1ac1bc2fd`. TPV continúa
 `PARCIAL` hasta recorrer sus rutas autenticadas y estados reales.
+La publicación está lista en Deploy Preview 225 como
+`6b014268ed0690c4525a4eb2` (`ready`), commit `47368d65`.

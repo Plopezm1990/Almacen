@@ -1482,6 +1482,8 @@ historial usa tabla/tarjeta Órbita y queda contenido en móvil. La capa es solo
 visual; conserva cobros, fiscalidad, permisos, persistencia y handlers. Marca
 `qa-orbita-modules-v30-20261121`, huella P01 `742bf5b1ac1bc2fd`; falta el
 recorrido autenticado de TPV y sala.
+La publicación está lista en Deploy Preview 225 como
+`6b014268ed0690c4525a4eb2` (`ready`), commit `47368d65`.
 
 ### Contenedores históricos · contención móvil común · 21/11/2026
 
