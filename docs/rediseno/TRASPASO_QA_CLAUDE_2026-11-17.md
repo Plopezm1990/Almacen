@@ -1478,7 +1478,8 @@ La hoja se publica con `qa-orbita-modules-v61-20261121` (huella
 shell/rutas, todos los `tests/rediseno/*.mjs`, `node --check`, paridad y
 `git diff --check`: PASS. Sigue pendiente una sesión autenticada para verificar
 Reconciliación con datos QA; por eso Inventario y el conjunto de módulos no se
-declaran cerrados todavía.
+declaran cerrados todavía. Commit publicado: `1a2e45a6aa1d77528b59f082158476610190ba18`;
+el PR #225 sigue en borrador y producción permanece intacta.
 
 ### Sesión autenticada pendiente · 21/11/2026
 

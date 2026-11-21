@@ -1243,4 +1243,4 @@ conservan paridad exacta. Los contratos de componentes, shell, rutas y módulos
 `python -I source-recovery/recuperar_candidato.py --check` y `git diff --check`
 quedan verdes. La fila de Inventario sigue `PARCIAL` porque la evidencia visual
 se hizo sin sesión QA y aún falta recorrer la ruta autenticada de Reconciliación
-con datos reales.
+con datos reales. Commit publicado: `1a2e45a6aa1d77528b59f082158476610190ba18`.
