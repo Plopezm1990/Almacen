@@ -1375,3 +1375,15 @@ La caché CSS es `qa-orbita-modules-v21-20261121`, huella P01
 rutas reales, estados vacío/carga/error y acciones específicas en escritorio y
 móvil. Plataforma sigue pendiente de una sesión de administrador QA; no se
 concedieron privilegios ni se escribieron datos nuevos.
+
+### Batería posterior · 21/11/2026
+
+Tras la capa de gestión se ejecutó `tests/ci/ejecutar_bateria_no_db.sh` fuera
+del sandbox con el árbol limpio. Resultado: `NODE_ACTIVE_TOTAL=327`,
+`NODE_ACTIVE_PASS=304`, `NODE_ACTIVE_FAIL=23`, `UTILITIES_RUN=8`,
+`DIAGNOSTICS_RUN=5`, `INFRA_FAIL=0` y `ARBOL_LIMPIO_TRAS_EJECUCION=1`.
+Los 23 rojos coinciden con la lista histórica (alb, cfg, f3, f4, plataforma,
+pm11-compra y pm33); no apareció un fallo nuevo atribuible a las capas de
+Caja, Clientes o Gestión. El contrato de publicación Netlify y todos los
+contratos específicos de rediseño pasan. El PR #225 sigue en borrador y
+producción permanece fuera de alcance.
