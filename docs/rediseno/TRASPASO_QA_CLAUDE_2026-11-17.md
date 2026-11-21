@@ -1445,3 +1445,19 @@ HTML sirve `la-apariencia.css?v=qa-orbita-modules-v22-20261121`, el control
 táctil mínimo es `44 px` y no se observa overflow horizontal en la pantalla de
 acceso. Esta comprobación no sustituye los recorridos autenticados de los doce
 módulos, que siguen pendientes para pasar de `PARCIAL` a `CERRADO`.
+
+### Inicio · tokens Órbita en el dashboard premium · 21/11/2026
+
+Se corrigió una convivencia visual que no aparecía en los contratos de shell:
+`dashboard-premium-v2.js` usaba colores literales verde/dorado en KPIs,
+acciones rápidas, alertas, CTA, toast y el botón de detalle operativo. Esos
+colores procedían de una versión anterior de Sello y hacían que Inicio no
+pareciera Órbita aunque el panel principal ya estuviera separado del detalle
+heredado.
+
+La capa ahora consume exclusivamente los tokens semánticos del tema (`--c-*`)
+y el recurso se sirve con la marca `qa-orbita-panel-v3-20261121`. Se añadió al
+contrato de componentes una aserción que detecta el retorno de la paleta
+heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
+Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
+estados en QA.

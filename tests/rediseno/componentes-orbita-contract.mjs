@@ -11,7 +11,7 @@ const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
 assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v22-20261121/);
-assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v2-20261121/);
+assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v3-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);
 assert.match(dashboardPremium, /laDetalleVisible/);
@@ -54,6 +54,13 @@ for (const token of [
 assert.match(dashboardPremium, /gap:var\(--la-space-3\)/);
 assert.match(dashboardPremium, /border-radius:var\(--la-radius-lg\)/);
 assert.match(dashboardPremium, /min-height:var\(--la-control-height-large\)/);
+for (const token of [
+  'var(--c-surface)', 'var(--c-bg)', 'var(--c-ink)', 'var(--c-accent)',
+  'var(--c-accent-fill)', 'var(--c-on-accent)', 'var(--c-ink-soft)', 'var(--c-red)'
+]) {
+  assert.ok(dashboardPremium.includes(token), `el panel de Inicio no consume ${token}`);
+}
+assert.doesNotMatch(dashboardPremium, /#102F20|#0D351F|#DFAE52|#E3B75F|rgba\(201,154,75/, 'el panel de Inicio conserva colores heredados');
 
 for (const moduleName of [
   'inicio', 'tpv', 'pase', 'cocina', 'caja', 'clientes', 'compras',

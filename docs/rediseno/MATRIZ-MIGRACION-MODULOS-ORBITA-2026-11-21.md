@@ -93,6 +93,23 @@ P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
 Esta matriz es de seguimiento, no un cierre prematuro. El objetivo 4 sigue
 activo hasta que los doce módulos pasen individualmente a `CERRADO`.
 
+### Inicio y panel general · eliminación de la paleta heredada
+
+La superficie de Inicio conserva el panel Órbita y el detalle operativo
+colapsable, pero la capa `dashboard-premium-v2.js` todavía pintaba sus KPIs,
+acciones rápidas, alertas, CTA y toast con verdes/dorados propios del diseño
+Sello. En `56901e31` se sustituyeron esos colores literales por los tokens del
+tema (`--c-surface`, `--c-bg`, `--c-ink`, `--c-accent`, `--c-accent-fill`,
+`--c-on-accent`, `--c-ink-soft` y `--c-red`). Así el panel no vuelve a
+introducir una segunda identidad visual cuando la empresa usa Órbita ni cuando
+se prueba otra propuesta. No se tocaron indicadores, navegación, permisos ni
+handlers. La caché pasó a `qa-orbita-panel-v3-20261121`.
+
+El contrato de componentes ahora falla si reaparecen los cuatro colores
+heredados en esa capa. Inicio sigue en `PARCIAL` hasta comprobar en QA las
+variantes de indicadores y los estados vacío/carga/error en los cinco
+viewports definidos.
+
 ### Clientes · primera migración de superficie
 
 La capa añadida en `2c709144` se limita a
