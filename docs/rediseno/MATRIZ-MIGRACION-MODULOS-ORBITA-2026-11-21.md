@@ -729,3 +729,8 @@ La rama sigue siendo `rediseno/f0-base-qa`, PR #225 en borrador, y producción
 permanece intacta. Este cambio mejora el marco de los doce módulos, pero no
 convierte por sí solo ninguna fila `PARCIAL` en `CERRADO`: siguen pendientes
 los recorridos autenticados y los estados de datos reales indicados arriba.
+
+El commit quedó publicado en el Deploy Preview 225 como
+`6b01684ad1ed5298eea45317` (`ready`), `commit_ref=37080596af67e46a04cc7c313293f69a0e8b3521`.
+El escaneo de secretos no encontró coincidencias y las siete reglas de
+cabeceras se procesaron sin error.

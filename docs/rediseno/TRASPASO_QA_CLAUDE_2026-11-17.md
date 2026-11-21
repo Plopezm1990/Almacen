@@ -1478,6 +1478,10 @@ La evidencia visual móvil de esta revisión queda pendiente de una nueva pasada
 en el Preview 225; no se debe declarar cierre de ningún módulo hasta repetirla
 con la barra renderizada y, para las rutas operativas, con sesión QA.
 
+El commit `37080596af67e46a04cc7c313293f69a0e8b3521` está desplegado en el
+Preview 225 como `6b01684ad1ed5298eea45317` (`ready`). El escaneo de secretos
+de Netlify devolvió cero coincidencias y las siete reglas de cabeceras pasaron.
+
 ### Publicación de la revisión actual
 
 Referencia: commit `bfb0e6856c4baa1fe64858f45b98cfdf89485685`, Deploy Preview
