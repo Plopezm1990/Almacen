@@ -1346,3 +1346,17 @@ autoridad de persistencia y `git diff --check`. No se hicieron cobros ni
 reembolsos nuevos. La verificación de QA que falta para cerrar Caja es el
 recorrido real de cobro, arqueo, cierre, reembolso y documento, incluyendo
 vacío/carga/error en escritorio y móvil.
+### Clientes · primera migración de superficie `2c709144` · 21/11/2026
+
+La superficie de Clientes ya usa la capa Órbita para vistas guardadas,
+filtros, búsqueda, paginación, tarjetas del listado y estados de ficha. El
+alcance está en `main[data-la-orbita-module="clientes"]`; los handlers de
+sincronización, anonimización, actividad y NIF no se modificaron. Los
+controles mantienen `44×44 px` y los filtros se apilan en móvil sin
+desbordamiento.
+
+La caché CSS es `qa-orbita-modules-v20-20261121`, huella P01
+`7f70543a840f3e64`. Pasan P01, marco `21/21`, componentes, rutas `20/20` y
+`git diff --check`. Falta recorrer en QA la ficha, la actividad, el NIF y los
+estados vacío/carga/error para cerrar el módulo; no se hicieron escrituras de
+datos en esta tanda.

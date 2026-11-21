@@ -15,7 +15,7 @@ vacío y contratos sin regresión.
 | 3 | Pase | `pase`, `.la-pase` (`#la-pase` legado) | PARCIAL: panel real y cola ya integrados; la raíz semántica ya queda marcada aunque el recorrido histórico use otro selector | Igualar tarjetas, filtros, destinos y revisión móvil |
 | 4 | Cocina | `cocina`, `.la-operacion-cocina` | PARCIAL: cabecera, tarjetas, estados, filtros, estaciones/rutas y cola ya tienen capa Órbita; recorrido de estados reales aún pendiente | Verificar rutas reales, vacío/carga/error, estados de comanda y densidad en escritorio y móvil |
 | 5 | Caja | `caja`, `.la-operacion-caja` | PARCIAL: apertura, arqueo, movimientos, historial y traspasos ya tienen capa Órbita; recorrido de cobro/cierre real aún pendiente | Verificar cobros, arqueos, cierres, reembolsos, documentos y estados en rutas reales |
-| 6 | Clientes | `clientes` | MARCO: shell y escala global | Migrar listado, filtros, ficha, actividad y NIF |
+| 6 | Clientes | `clientes` | PARCIAL: listado, vistas guardadas, filtros, paginación y fichas ya tienen capa Órbita; actividad/NIF aún requieren recorrido real | Verificar ficha, actividad, NIF y estados vacío/carga/error en escritorio y móvil |
 | 7 | Compras | `compras` | MARCO: shell y escala global | Migrar proveedores, pedidos, recepción, albaranes y facturas |
 | 8 | Inventario | `inventario` | MARCO: shell y escala global | Migrar productos, movimientos, mermas, caducidad y ajustes |
 | 9 | Personal | `personal` | MARCO: shell y escala global | Migrar empleados, cargos, permisos, turnos y fichajes |
@@ -91,6 +91,20 @@ P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
 
 Esta matriz es de seguimiento, no un cierre prematuro. El objetivo 4 sigue
 activo hasta que los doce módulos pasen individualmente a `CERRADO`.
+
+### Clientes · primera migración de superficie
+
+La capa añadida en `2c709144` se limita a
+`main[data-la-orbita-module="clientes"]`: vistas guardadas, filtros, búsqueda,
+paginación, tarjetas de listado y estados de ficha comparten tarjetas, bordes,
+radios, tipografía y controles Órbita. Los campos y botones conservan un área
+mínima de `44 px`; en móvil los filtros y tarjetas se apilan sin overflow. No
+se modificaron sincronización, anonimización, actividad, NIF ni handlers.
+
+La caché CSS es `qa-orbita-modules-v20-20261121`, huella P01
+`7f70543a840f3e64`. Pasan P01, marco `21/21`, componentes, rutas `20/20` y
+`git diff --check`. El módulo permanece `PARCIAL` hasta recorrer ficha,
+actividad, NIF y estados vacío/carga/error con datos reales de QA.
 
 ### Caja · primera migración de superficie
 
