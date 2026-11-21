@@ -1153,3 +1153,18 @@ mostró además el estado vacío «Todavía no has añadido proveedores» y el C
 Este barrido confirma que las rutas navegables ya no presentan un encabezado
 heredado distinto ni desborde en modo local. No se elevan filas a `CERRADO`:
 la prueba no ejerce datos, permisos, cobros, estados de servidor ni MFA.
+
+### Corrección del menú lateral heredado · v57 · 21/11/2026
+
+La auditoría de estilos calculados encontró que los botones históricos del
+menú conservaban color y fondo inline del tema anterior. La capa Órbita ahora
+reencamina `[data-la-orbita-nav-item]` a sus tokens de chrome, tipografía,
+radio y altura táctil; el estado inicial reconoce el estilo activo existente y
+los clics posteriores usan `aria-current`. No se modifican handlers, rutas,
+datos ni permisos. La hoja se sirve como
+`la-apariencia.css?v=qa-orbita-modules-v57-20261121`, huella
+`43da85fd6450d055`.
+
+En el Preview 225, el estado activo calculó `color-mix` Órbita, los estados
+normales calcularon el color derivado del chrome y todos los botones del menú
+devolvieron `min-height: 44px`. La batería de rediseño pasó completa.

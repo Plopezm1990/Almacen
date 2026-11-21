@@ -1462,6 +1462,20 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Corrección del menú lateral heredado · v57 · 21/11/2026
+
+La comprobación de estilos efectivos detectó colores inline antiguos en la
+navegación lateral. Se añadió una normalización scoped sobre
+`[data-la-orbita-nav-item]` para que el fondo, texto, tipografía, radios y
+altura táctil dependan de los tokens Órbita; el estado activo conserva el
+comportamiento original y se reencamina por `aria-current` o por el estilo
+activo inicial. El Preview sirve `la-apariencia.css` v57 y verificó en vivo
+estado activo tokenizado, estado normal tokenizado y `min-height: 44px`.
+
+No se modificaron handlers, datos, permisos ni producción. Las doce filas
+siguen `PARCIAL` hasta la validación autenticada de acciones y estados de
+negocio.
+
 ### Barrido local completo de navegación · v56 · 21/11/2026
 
 Se recorrieron las rutas del menú Más en el Preview 225 usando el modo local
