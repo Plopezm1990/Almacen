@@ -1622,3 +1622,24 @@ La auditoría es de lectura y no crea, cobra, reembolsa, elimina ni cambia
 configuración. Plataforma móvil y Acceso/MFA móvil siguen separados porque no
 se exponen desde el menú operativo de esta sesión y requieren sus superficies
 de autenticación/administración correspondientes.
+
+### Evidencia móvil aportada por el usuario · Acceso, MFA y Plataforma · 21/11/2026
+
+Las capturas del dispositivo móvil aportadas en esta tanda completan la
+revisión visual de las superficies que no se pueden abrir desde el menú
+operativo:
+
+- **MFA:** «Confirma tu segundo factor» aparece como una única tarjeta, con
+  campo de código, botón coral «Continuar» y enlace «Cerrar sesión». No hay
+  un segundo diálogo heredado tapando la pantalla ni el QR/formulario.
+- **Plataforma:** el título, administrador, acciones principales y tarjetas de
+  empresas se apilan en una columna; los botones ocupan el ancho disponible y
+  los estados Activa/Desactivada conservan sus badges. El desplazamiento es
+  vertical y no se aprecia desbordamiento horizontal.
+- **Acceso:** login, recuperación, trabajo local y explicación del PIN quedan
+  en una sola columna; el foco del correo mantiene un anillo visible y el CTA
+  coral ocupa el ancho táctil.
+
+Esta evidencia cierra la composición móvil de Acceso, MFA y Plataforma. No
+autoriza ni ejecuta acciones administrativas; las filas funcionales siguen
+dependiendo de sus recorridos de permisos, estados y operaciones de negocio.

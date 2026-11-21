@@ -1462,6 +1462,17 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Evidencia móvil de Acceso, MFA y Plataforma · 21/11/2026
+
+El usuario aportó capturas del preview 225 desde el teléfono. Se verificó
+visualmente que el login se presenta en una columna sin corte horizontal, que
+el flujo «Confirma tu segundo factor» muestra una sola tarjeta interactiva
+sin el modal antiguo superpuesto, y que Plataforma apila las tarjetas de
+empresa y sus botones manteniendo la superficie Órbita. Esta evidencia se
+añade a la auditoría automatizada de `320×844`, `390×844` y `430×932`.
+No se ejecutaron acciones administrativas ni se copiaron claves o códigos MFA
+al acta.
+
 ### Incidencia MFA: modal duplicado sobre el QR · 21/11/2026
 
 **Síntoma reproducido.** Después de retirar los factores MFA de
