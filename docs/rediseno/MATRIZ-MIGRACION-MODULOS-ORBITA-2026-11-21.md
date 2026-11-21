@@ -356,4 +356,5 @@ alertas y estados informativos consumen tokens semánticos y en móvil las tabla
 mantienen scroll local sin ampliar el viewport. No se modifican filtros,
 actividad, NIF, datos, permisos ni handlers. Caché
 `qa-orbita-modules-v34-20261121`, huella P01 `77fa483c6dc0cc62`. Clientes sigue
-`PARCIAL` hasta el recorrido autenticado en QA.
+`PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
+`6b01467d071af1a092f9d639` (`ready`), commit `851f285c`.

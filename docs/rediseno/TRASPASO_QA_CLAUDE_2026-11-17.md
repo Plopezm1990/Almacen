@@ -1588,7 +1588,8 @@ filtros, paginación, ficha, actividad y tablas. Los estados de error e
 información consumen tokens Órbita y el scroll queda contenido en móvil. Se
 preservan datos, NIF, permisos, actividad y handlers. Marca
 `qa-orbita-modules-v34-20261121`, huella P01 `77fa483c6dc0cc62`; queda pendiente
-el recorrido autenticado en QA.
+el recorrido autenticado en QA. Deploy Preview 225:
+`6b01467d071af1a092f9d639` (`ready`), commit `851f285c`.
 
 ### Pase · variante Órbita · 21/11/2026
 
