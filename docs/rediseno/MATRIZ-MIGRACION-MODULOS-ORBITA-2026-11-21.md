@@ -93,6 +93,23 @@ P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
 Esta matriz es de seguimiento, no un cierre prematuro. El objetivo 4 sigue
 activo hasta que los doce módulos pasen individualmente a `CERRADO`.
 
+### Estado de publicación y auditoría · 21/11/2026 · SHA `fc182979`
+
+La última revisión de la rama `rediseno/f0-base-qa` está publicada en el
+Deploy Preview 225 como `6b0172f4f2384790eed0e20f` (`ready`). El PR #225
+continúa abierto, en borrador y sin fusionar; producción no se ha tocado.
+La corrección de esta revisión marca también las raíces administrativas que
+se montan antes del shell (`#la-plataforma-root` y
+`#la-plataforma-cambio-root`) con `data-la-orbita-external="plataforma"` y
+`data-la-orbita-surface="plataforma"`, de modo que Plataforma no conserva una
+segunda escala visual cuando aparece antes de la navegación autenticada.
+
+La batería `tests/rediseno/*.mjs` queda en `ALL_REDISENO_TESTS_PASS`, incluido
+`REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12
+responsive=PASS tactil=44`; `git diff --check` también pasa. Esta evidencia
+confirma la integración del marco, no sustituye el recorrido autenticado de
+cada módulo. Por eso las doce filas permanecen deliberadamente en `PARCIAL`.
+
 ### Pasada local adicional · preview 225 · 21/11/2026
 
 Se hizo una pasada de renderizado en el Deploy Preview 225 desde el navegador

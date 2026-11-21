@@ -1462,6 +1462,27 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Punto 4 · estado de publicación y cierre pendiente · 21/11/2026
+
+La revisión vigente de la migración modular es el SHA `fc182979f09c7d8690bcfbda4a119b3e94ecaf46`,
+publicado en Deploy Preview 225 como `6b0172f4f2384790eed0e20f` (`ready`).
+El PR #225 sigue en borrador contra `release`; no se ha publicado nada en
+producción.
+
+Se confirma en código que los doce módulos enumerados en la matriz comparten
+el shell Órbita, la escala responsive y las marcas de componentes; también se
+normalizan las dos raíces de Plataforma que aparecen antes del shell. La
+batería específica de rediseño termina en `ALL_REDISENO_TESTS_PASS` y
+`git diff --check` pasa.
+
+Esto no se presenta como cierre prematuro: las doce filas siguen `PARCIAL`
+hasta recorrer cada módulo con sesión QA real, incluyendo estados de carga,
+vacío y error, permisos y rutas mutables. Las verificaciones pendientes son
+especialmente Plataforma con una cuenta administradora y Acceso con login,
+recuperación, expiración, MFA y selección de empresa/local; tampoco se ha
+obtenido todavía una pasada independiente en Chrome y Firefox para todos los
+módulos.
+
 ### Revisión final de controles externos · Plataforma y Acceso · 21/11/2026
 
 La auditoría del marco común encontró una excepción concreta en los paneles
