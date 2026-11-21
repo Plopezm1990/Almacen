@@ -231,6 +231,120 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
 }
 
 /* ========================================================================
+   Órbita · módulos de gestión
+   ------------------------------------------------------------------------
+   Primera capa común para Compras, Inventario, Personal, Configuración y
+   Plataforma. Cada módulo conserva sus propias operaciones y handlers, pero
+   deja de emitir tarjetas y formularios con el tratamiento histórico.
+   ======================================================================== */
+html[data-la-diseno] #root main[data-la-orbita-module="compras"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"],
+html[data-la-diseno] #root main[data-la-orbita-module="personal"],
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"],
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] {
+  min-width: 0;
+  container-type: inline-size;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] h2,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] h2,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] h2,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] h2,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] h2 {
+  margin-block-end: var(--la-space-4);
+  font-family: var(--la-display);
+  font-size: var(--la-type-title);
+  letter-spacing: -.025em;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] .la-ui-card,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .la-ui-card,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] .la-ui-card,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] .la-ui-card,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] .la-ui-card {
+  min-width: 0;
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-surface) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] input,
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] select,
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] textarea,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] input,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] select,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] textarea,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] input,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] select,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] textarea,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] input,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] select,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] textarea,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] input,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] select,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] textarea {
+  min-height: var(--la-control-height);
+  border-color: var(--c-border-control) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] button,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] button,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] button,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] button,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] button {
+  min-height: var(--la-control-height);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] table,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] table,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] table,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] table,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] table {
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-md);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] [role="status"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [role="status"],
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] [role="status"],
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] [role="status"],
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] [role="status"] {
+  min-height: var(--la-control-height);
+  border-radius: var(--la-radius-md);
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="compras"] .la-ui-card,
+  html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .la-ui-card,
+  html[data-la-diseno] #root main[data-la-orbita-module="personal"] .la-ui-card,
+  html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] .la-ui-card,
+  html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] .la-ui-card {
+    padding: var(--la-space-4) !important;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="compras"] .grid,
+  html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .grid,
+  html[data-la-diseno] #root main[data-la-orbita-module="personal"] .grid,
+  html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] .grid,
+  html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] .grid {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="compras"] table,
+  html[data-la-diseno] #root main[data-la-orbita-module="inventario"] table,
+  html[data-la-diseno] #root main[data-la-orbita-module="personal"] table,
+  html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] table,
+  html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
+/* ========================================================================
    Órbita · Clientes
    ------------------------------------------------------------------------
    Listado, vistas guardadas, filtros, ficha y actividad comparten la misma
