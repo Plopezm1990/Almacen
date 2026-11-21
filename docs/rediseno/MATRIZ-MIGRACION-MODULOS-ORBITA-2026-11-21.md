@@ -974,3 +974,13 @@ entra en esta rama. La caché de `fuente.js` pasa a
 `qa-arranque-lectura-local-directa-v4-20261121`; el contrato de arranque fija
 la regresión. Esto reduce el arranque offline a la lectura local y evita que
 la nube bloqueada genere avisos falsos de `localActivoId`.
+
+### Corrección de clasificación con tildes · 21/11/2026 · `232f6974`
+
+El recorrido visual local detectó que «Configuración» se resolvía como
+`configuracion-configuracion` porque el detector comparaba el texto visible
+con patrones sin diacríticos. El shell ahora normaliza la etiqueta a NFD antes
+de clasificarla. En el preview actualizado, Configuración devuelve
+`data-la-orbita-module="configuracion"`, `data-la-orbita-surface="configuracion"`,
+sin overflow y con control mínimo de 44 px; por tanto la capa scoped de
+Órbita sí alcanza esa pantalla.

@@ -1462,6 +1462,15 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Clasificación de Configuración · `232f6974`
+
+En la revisión del preview se encontró una diferencia real: el texto con tilde
+«Configuración» generaba el módulo `configuracion-configuracion`, por lo que
+no aplicaba el CSS scoped de `configuracion`. El detector del shell normaliza
+diacríticos antes de evaluar las rutas. La comprobación live posterior devuelve
+`module=configuracion`, `surface=configuracion`, `overflow=false` y control
+mínimo de 44 px. El contrato de migración de módulos incluye esta defensa.
+
 ### Corrección del arranque local · 21/11/2026 · `2c3c84a6`
 
 Se aisló la ruta de «Trabajar solo en este equipo, sin sincronizar» para que
