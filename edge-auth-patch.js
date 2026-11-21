@@ -980,6 +980,7 @@ function modoLocalNoReclamado() {
   var ejecucion = 0;
   var factorActual = null;
   var challengeActual = null;
+  var enrolamientoEnCurso = false;
 
   function nodo(tag, texto) {
     var el = document.createElement(tag);
@@ -992,6 +993,7 @@ function modoLocalNoReclamado() {
     overlay = null;
     factorActual = null;
     challengeActual = null;
+    enrolamientoEnCurso = false;
   }
 
   function crearOverlay() {
@@ -1080,6 +1082,7 @@ function modoLocalNoReclamado() {
       });
       if (verificacion.error) throw verificacion.error;
       challengeActual = null;
+      enrolamientoEnCurso = false;
       await comprobarMfa();
     } catch (e) {
       botonVerificar.disabled = false;
@@ -1129,12 +1132,14 @@ function modoLocalNoReclamado() {
       factorActual = alta.data;
       renderEnrolamiento(tarjeta, rol, alta.data);
     } catch (e) {
+      enrolamientoEnCurso = false;
       mensajeError(tarjeta, "No se pudo iniciar el alta del autenticador. Revisa la configuración MFA del proyecto.");
     }
   }
 
   async function comprobarMfa() {
     var esta = ++ejecucion;
+    if (enrolamientoEnCurso && overlay) return;
     if (!window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
       limpiarOverlay();
       return;
@@ -1162,11 +1167,13 @@ function modoLocalNoReclamado() {
       if (factores.error) throw factores.error;
       var totp = factores.data && Array.isArray(factores.data.totp) ? factores.data.totp : [];
       var verificados = totp.filter(function (factor) { return factor && factor.status === "verified"; });
+      if (enrolamientoEnCurso && overlay) return;
       var tarjeta = crearOverlay();
       if (verificados.length === 0) {
         encabezado(tarjeta, "El rol " + rol + " requiere configurar un autenticador TOTP.");
         var iniciar = boton("Configurar autenticador TOTP");
         iniciar.addEventListener("click", function () {
+          enrolamientoEnCurso = true;
           iniciar.disabled = true;
           tarjeta.textContent = "Preparando configuración segura…";
           prepararEnrolamiento(tarjeta, rol);

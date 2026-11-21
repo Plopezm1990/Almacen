@@ -199,6 +199,11 @@ assert.match(overlayEdge, /cliente\.rpc\("mfa_politica_leer"\)/, 'M03_EDGE_OVERL
 assert.match(overlayEdge, /if \(esFuncionInexistente\(e\)\) return !!ROLES_MFA_OBLIGATORIA\[rol\];/, 'M03_EDGE_OVERLAY_MUST_FAIL_CLOSED_AS_M03');
 const decisionOverlay = trozo(edgeAuth, 'var exigida = await mfaExigidaPorElServidor(supabase, rol);', 'limpiarOverlay();', 'M03_EDGE_OVERLAY_DECISION');
 assert.match(decisionOverlay, /if \(!exigida\)/, 'M03_EDGE_OVERLAY_MUST_STAND_DOWN_WHEN_NOT_REQUIRED');
+// Durante el alta el QR vive en el overlay actual. Una comprobación concurrente
+// no debe crear un segundo modal por encima y dejar el QR/campo inaccesibles.
+assert.match(edgeAuth, /var enrolamientoEnCurso = false;/, 'M03_ENROLL_BUSY_STATE_MISSING');
+assert.match(edgeAuth, /if \(enrolamientoEnCurso && overlay\) return;/, 'M03_ENROLL_MUST_KEEP_CURRENT_OVERLAY');
+assert.match(edgeAuth, /enrolamientoEnCurso = true;/, 'M03_ENROLL_MUST_MARK_BUSY_BEFORE_ENROLL');
 
 assert.match(source, /const localPersistidoValido = !!localActivoFinal[\s\S]*?if \(!localPersistidoValido && idsLocalesHuerfanos\.length === 1/, 'M03_OLD_FOREIGN_PRODUCT_MUST_NOT_REPLACE_VALID_LOCAL');
 
