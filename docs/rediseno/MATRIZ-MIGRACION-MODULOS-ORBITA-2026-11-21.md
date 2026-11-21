@@ -1685,3 +1685,43 @@ Apariencia) quedan fuera de este cierre.
 
 SHA de cierre: `9258f2222429c7e377c0afdd20b66feaa21d7876` · PR #225 en borrador
 · producción intacta.
+
+## Higiene visual Órbita · retirada/aislamiento CSS antiguo · 21/11/2026
+
+Esta revisión no cambia handlers, datos, permisos ni RPC. Se limita a impedir
+que una capa visual nueva vuelva a introducir la convivencia antigua:
+
+- `dashboard-premium-v2.js` deja de usar sus 32 declaraciones `!important` y
+  no contiene colores HEX directos. KPIs, acciones, alertas, CTA, toast y
+  detalle operativo consumen exclusivamente `--c-*`, `--la-space-*`,
+  `--la-radius-*` y `--la-shadow-*`.
+- `la-pase.css` migra los radios, gaps, márgenes y paddings del panel operativo
+  a la escala Órbita. Sus tres `!important` restantes están limitados a los
+  estados `OCUPADA`/`RESERVADA` bajo
+  `html[data-la-diseno="orbita"] .la-orbita-pase`; no son reglas globales.
+- `plataforma-panel.js` deja de generar estilos inline para ocultación,
+  espaciado y alineación. Las clases `.lap-hidden`, `.lap-transport`,
+  `.lap-mt-1/2/3` y `.lap-fila-between` son la única superficie visual de
+  esas operaciones.
+- `la-apariencia.css` conserva únicamente los puentes legacy necesarios para
+  MFA, cabecera histórica y estados inline de Inventario. Todos están
+  acotados por `html[data-la-diseno]`, por `#root` y/o por
+  `data-la-orbita-module`; el comentario de compatibilidad explica su
+  retirada progresiva y evita confundirlos con componentes nuevos.
+- Se renovaron las marcas CDN: `la-apariencia` v68, `la-pase` v3 y el panel
+  v5. El contrato `css-orbita-legacy-contract.mjs` fija estas invariantes y
+  falla si reaparecen `!important` en Inicio, estilos inline visuales en
+  Plataforma, o puentes sin aislamiento.
+
+### Evidencia de esta revisión
+
+`REDISENO_CSS_ORBITA_CONTRACT=PASS` (`dashboardImportant=0`, `paseImportant=3`,
+`puentesInline=45`, `plataformaInline=0`), `P01_CAPAS_Y_MIGRACIONES_OK=1`,
+`COMPONENTES_ORBITA_CONTRACT=PASS`, `MARCO_ORBITA_CONTRACT=PASS` y
+`git diff --check=PASS`. Los 45 puentes inline son selectores de remapeo
+documentados, no estilos inline generados por el producto nuevo.
+
+La excepción deliberada son los defaults HEX dentro de variables semánticas y
+los diseños de propuesta no Órbita: no se eliminan porque son fallback de
+resiliencia o composiciones seleccionables. En el marco activo Órbita ninguna
+de esas propuestas puede sobrescribir el shell ni su escala.

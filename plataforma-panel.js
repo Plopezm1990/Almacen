@@ -253,23 +253,26 @@
     ".lap-barra{background:var(--c-chrome,#15171B);color:var(--c-on-chrome,#fff);padding:var(--la-space-4,16px);display:flex;flex-wrap:wrap;gap:var(--la-space-2,8px);align-items:center;justify-content:space-between;border-bottom:1px solid var(--c-divider,#343941)}" +
     ".lap-barra h1{margin:0;font-family:var(--la-display,var(--la-font));font-size:var(--la-type-section,18px);color:var(--c-on-chrome,#fff)}.lap-barra small{display:block;color:var(--c-ink-soft,#929DA7);font-size:var(--la-type-label,12px);word-break:break-all}" +
     ".lap-cuerpo{max-width:880px;margin:0 auto;padding:var(--la-space-4,16px)}" +
-    ".lap-fila{display:flex;flex-wrap:wrap;gap:8px;align-items:center}" +
-    ".lap-btn{appearance:none;border:1px solid var(--c-accent-fill,#FF4B32);background:var(--c-accent-fill,#FF4B32);color:var(--c-on-accent,#17191C);border-radius:var(--la-radius-md,10px);padding:9px 14px;font:inherit;font-weight:700;cursor:pointer}" +
+    ".lap-fila{display:flex;flex-wrap:wrap;gap:var(--la-space-2,8px);align-items:center}" +
+    ".lap-fila-between{justify-content:space-between}" +
+    ".lap-mt-1{margin-top:var(--la-space-1,4px)}.lap-mt-2{margin-top:var(--la-space-2,8px)}.lap-mt-3{margin-top:var(--la-space-3,12px)}" +
+    ".lap-hidden{display:none}.lap-transport{position:fixed;left:-9999px;top:0}" +
+    ".lap-btn{appearance:none;border:1px solid var(--c-accent-fill,#FF4B32);background:var(--c-accent-fill,#FF4B32);color:var(--c-on-accent,#17191C);border-radius:var(--la-radius-md,10px);padding:var(--la-space-2,8px) var(--la-space-3,12px);font:inherit;font-weight:700;cursor:pointer}" +
     ".lap-btn:disabled{opacity:.55;cursor:default}" +
     ".lap-btn.sec{background:transparent;color:var(--c-ink,#F1F3F6);border-color:var(--c-border-control,#737D88)}.lap-barra .lap-btn.sec{color:var(--c-on-chrome,#fff);border-color:color-mix(in srgb,var(--c-on-chrome,#fff) 42%,transparent)}" +
     ".lap-btn.peligro{background:var(--c-red-fill,#8E2A1E);border-color:var(--c-red-fill,#8E2A1E);color:var(--c-on-red,#fff)}.lap-btn.aviso{background:transparent;color:var(--c-amber,#FFCE89);border-color:var(--c-amber,#FFCE89)}" +
-    ".lap-btn.peq{padding:6px 10px;font-size:13px}" +
+    ".lap-btn.peq{padding:var(--la-space-1,4px) var(--la-space-2,8px);font-size:13px}" +
     ".lap-tarjeta{background:var(--c-surface,#202328);border:1px solid var(--c-divider,#343941);border-radius:var(--la-radius-lg,14px);padding:var(--la-space-4,16px);margin-top:var(--la-space-3,12px);box-shadow:var(--la-shadow-1,0 2px 12px rgba(0,0,0,.08))}" +
     ".lap-tarjeta h2{margin:0;font-family:var(--la-display,var(--la-font));font-size:var(--la-type-section,18px)}" +
-    ".lap-pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700}" +
+    ".lap-pill{display:inline-block;border-radius:var(--la-radius-pill,999px);padding:var(--la-space-1,4px) var(--la-space-2,8px);font-size:12px;font-weight:700}" +
     ".lap-pill.ok{background:var(--c-accent-soft,#342727);color:var(--c-accent,#FF8E7D)}.lap-pill.off{background:var(--c-amber-soft,#362727);color:var(--c-amber,#FFCE89)}" +
     ".lap-muted{color:var(--c-ink-soft,#929DA7);font-size:var(--la-type-label,12px)}" +
     ".lap-banner{border-radius:var(--la-radius-md,10px);padding:var(--la-space-3,12px);margin-top:var(--la-space-3,12px);font-size:var(--la-type-label,12px)}" +
     ".lap-banner.ok{background:var(--c-accent-soft,#342727);color:var(--c-accent,#FF8E7D)}.lap-banner.mal{background:var(--c-red-soft,#3B2627);color:var(--c-red,#FFB5A9)}.lap-banner.info{background:var(--c-amber-soft,#362727);color:var(--c-amber,#FFCE89);border:1px solid var(--c-amber,#FFCE89)}" +
     ".lap-velo{position:fixed;inset:0;z-index:10045;background:color-mix(in srgb,var(--c-chrome,#15171B) 68%,transparent);display:flex;align-items:flex-start;justify-content:center;padding:var(--la-space-4,16px);overflow-y:auto}" +
     ".lap-dialogo{width:min(100%,520px);background:var(--c-surface,#202328);border:1px solid var(--c-border-control,#737D88);border-radius:var(--la-radius-xl,18px);padding:var(--la-space-5,20px);margin:auto 0;box-shadow:var(--la-shadow-2,0 12px 32px rgba(0,0,0,.14));color:var(--c-ink,#F1F3F6)}" +
-    ".lap-dialogo h2{margin:0 0 8px;font-family:var(--la-display,var(--la-font));font-size:var(--la-type-section,18px);color:var(--c-ink,#F1F3F6)}" +
-    ".lap-campo{display:block;margin-top:var(--la-space-3,12px)}.lap-campo>span{display:block;font-size:var(--la-type-label,12px);font-weight:700;color:var(--c-ink-soft,#929DA7);margin-bottom:4px}" +
+    ".lap-dialogo h2{margin:0 0 var(--la-space-2,8px);font-family:var(--la-display,var(--la-font));font-size:var(--la-type-section,18px);color:var(--c-ink,#F1F3F6)}" +
+    ".lap-campo{display:block;margin-top:var(--la-space-3,12px)}.lap-campo>span{display:block;font-size:var(--la-type-label,12px);font-weight:700;color:var(--c-ink-soft,#929DA7);margin-bottom:var(--la-space-1,4px)}" +
     ".lap-campo input,.lap-campo textarea,.lap-campo select{width:100%;padding:11px;border-radius:var(--la-radius-md,10px);border:1px solid var(--c-border-control,#737D88);background:var(--c-bg,#17191C);font:inherit;color:var(--c-ink,#F1F3F6)}" +
     ".lap-campo .lap-ayuda{font-size:var(--la-type-caption,11px);color:var(--c-ink-soft,#929DA7);margin-top:3px;font-weight:400}.lap-campo .lap-err{font-size:var(--la-type-caption,11px);color:var(--c-red,#FFB5A9);margin-top:3px;font-weight:600}" +
     ".lap-kicker{font-size:var(--la-type-label,12px);letter-spacing:.12em;text-transform:uppercase;color:var(--c-accent,#FF8E7D);font-weight:700}" +
@@ -277,11 +280,11 @@
     // propia escala táctil, pero consumen los mismos tokens del shell.
     ".lap-root button,.lap-root .lap-btn{min-height:var(--la-control-height,44px);min-width:44px}" +
     ".lap-campo input,.lap-campo textarea,.lap-campo select{min-height:var(--la-control-height,44px)}" +
-    ".lap-pie{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}" +
-    ".lap-caja{background:var(--c-bg,#17191C);border:1px dashed var(--c-border-control,#737D88);border-radius:var(--la-radius-md,10px);padding:10px 12px;margin-top:10px;font-family:var(--la-mono,ui-monospace,monospace);font-size:13px;word-break:break-all}" +
-    ".lap-codigo{font-family:var(--la-mono,ui-monospace,monospace);font-size:26px;letter-spacing:.12em;font-weight:700;text-align:center;background:var(--c-bg,#17191C);border:1px solid var(--c-border-control,#737D88);border-radius:var(--la-radius-md,10px);padding:10px;margin-top:10px}" +
-    ".lap-btn.lap-atajo{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:45;opacity:.88;writing-mode:vertical-rl;padding:8px 5px;border-radius:0 8px 8px 0;font-size:10px;line-height:1.2;letter-spacing:.03em}" +
-    ".lap-cambio{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 20%,var(--c-chrome,#15171B) 0%,var(--c-bg,#17191C) 48%,#08090B 100%);overflow-y:auto;font-family:var(--la-font,'Inter','Segoe UI',system-ui,sans-serif)}" +
+    ".lap-pie{display:flex;flex-wrap:wrap;gap:var(--la-space-2,8px);justify-content:flex-end;margin-top:var(--la-space-4,16px)}" +
+    ".lap-caja{background:var(--c-bg,#17191C);border:1px dashed var(--c-border-control,#737D88);border-radius:var(--la-radius-md,10px);padding:var(--la-space-2,8px) var(--la-space-3,12px);margin-top:var(--la-space-2,8px);font-family:var(--la-mono,ui-monospace,monospace);font-size:13px;word-break:break-all}" +
+    ".lap-codigo{font-family:var(--la-mono,ui-monospace,monospace);font-size:26px;letter-spacing:.12em;font-weight:700;text-align:center;background:var(--c-bg,#17191C);border:1px solid var(--c-border-control,#737D88);border-radius:var(--la-radius-md,10px);padding:var(--la-space-2,8px);margin-top:var(--la-space-2,8px)}" +
+    ".lap-btn.lap-atajo{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:45;opacity:.88;writing-mode:vertical-rl;padding:var(--la-space-2,8px) var(--la-space-1,4px);border-radius:0 var(--la-radius-sm,8px) var(--la-radius-sm,8px) 0;font-size:10px;line-height:1.2;letter-spacing:.03em}" +
+    ".lap-cambio{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:var(--la-space-6,24px);background:radial-gradient(circle at 50% 20%,var(--c-chrome,#15171B) 0%,var(--c-bg,#17191C) 48%,#08090B 100%);overflow-y:auto;font-family:var(--la-font,'Inter','Segoe UI',system-ui,sans-serif)}" +
     ".lap-cambio .lap-dialogo{margin:auto}";
 
   function asegurarEstilos() {
@@ -408,7 +411,7 @@
       return true;
     } catch (e) {
       try {
-        var ta = h("textarea", { style: "position:fixed;left:-9999px;top:0" });
+        var ta = h("textarea", { class: "lap-transport" });
         ta.value = texto;
         document.body.appendChild(ta);
         ta.select();
@@ -424,7 +427,7 @@
   function descargarJson(nombre, objeto) {
     var blob = new Blob([JSON.stringify(objeto)], { type: "application/json" });
     var url = URL.createObjectURL(blob);
-    var a = h("a", { href: url, download: nombre, style: "display:none" });
+    var a = h("a", { href: url, download: nombre, class: "lap-hidden" });
     document.body.appendChild(a);
     a.click();
     a.remove();
@@ -438,7 +441,7 @@
     if (ctx && ctx.dialogo) ctx.dialogo.cerrar(true);
     var ocupado = false;
     var cuerpo = h("div", { class: "lap-dialogo-cuerpo" });
-    var error = h("div", { class: "lap-banner mal", role: "alert", style: "display:none" });
+    var error = h("div", { class: "lap-banner mal lap-hidden", role: "alert" });
     var pie = h("div", { class: "lap-pie" });
     var caja = h("div", { class: "lap-dialogo", role: "dialog", "aria-modal": "true", "aria-label": titulo },
       h("h2", null, titulo), cuerpo, error, pie);
@@ -456,7 +459,7 @@
       },
       error: function (msg) {
         error.textContent = msg || "";
-        error.style.display = msg ? "block" : "none";
+        error.classList.toggle("lap-hidden", !msg);
       },
       ocupado: function (valor) {
         ocupado = !!valor;
@@ -488,12 +491,12 @@
     // role="alert" para que el aviso se oiga cuando aparece, y aria-invalid
     // para que el campo se note mal puesto al volver a el. Antes el aviso solo
     // se veia: pulsabas "Guardar" y, sin mirar, no pasaba nada.
-    var err = h("div", { class: "lap-err", role: "alert", style: "display:none", "data-error-de": clave || "" });
+    var err = h("div", { class: "lap-err lap-hidden", role: "alert", "data-error-de": clave || "" });
     return {
       nodo: h("label", { class: "lap-campo" }, h("span", null, etiqueta), input, ayuda ? h("div", { class: "lap-ayuda" }, ayuda) : null, err),
       error: function (msg) {
         err.textContent = msg || "";
-        err.style.display = msg ? "block" : "none";
+        err.classList.toggle("lap-hidden", !msg);
         if (msg) input.setAttribute("aria-invalid", "true");
         else input.removeAttribute("aria-invalid");
       },
@@ -558,7 +561,7 @@
     var cPass = campo("Contraseña inicial", iPass, "La eliges tú y se la das al dueño; tendrá que cambiarla al entrar.", "password");
     var btnOtra = boton("Generar otra contraseña", "sec peq", function () { iPass.value = generarContrasena(iEmail.value); });
 
-    var form = h("form", { novalidate: "novalidate" }, cNombre.nodo, cCif.nodo, cLocal.nodo, cDueno.nodo, cEmail.nodo, cPass.nodo, h("div", { class: "lap-fila", style: "margin-top:6px" }, btnOtra));
+    var form = h("form", { novalidate: "novalidate" }, cNombre.nodo, cCif.nodo, cLocal.nodo, cDueno.nodo, cEmail.nodo, cPass.nodo, h("div", { class: "lap-fila lap-mt-2" }, btnOtra));
     d.cuerpo.appendChild(form);
     var btnEnviar = boton("Crear empresa y cuenta", "", function () { enviar(); });
     d.pie.appendChild(boton("Cancelar", "sec", function () { d.cerrar(); }));
@@ -621,7 +624,7 @@
     var cEmail = campo("Correo", iEmail, "Será su usuario para entrar.", "email");
     var cPass = campo("Contraseña inicial", iPass, "Tendrá que cambiarla al entrar.", "password");
     var form = h("form", { novalidate: "novalidate" }, cDueno.nodo, cEmail.nodo, cPass.nodo,
-      h("div", { class: "lap-fila", style: "margin-top:6px" }, boton("Generar otra contraseña", "sec peq", function () { iPass.value = generarContrasena(iEmail.value); })));
+      h("div", { class: "lap-fila lap-mt-2" }, boton("Generar otra contraseña", "sec peq", function () { iPass.value = generarContrasena(iEmail.value); })));
     d.cuerpo.appendChild(form);
     var btn = boton("Crear cuenta", "", function () { enviar(); });
     d.pie.appendChild(boton("Cancelar", "sec", function () { d.cerrar(); }));
@@ -787,8 +790,8 @@
           var r = await accionCopia(emp);
           d.ocupado(false);
           avisoCopia.textContent = "Copia descargada (" + numero(r.filas_total) + " filas). Ya puedes continuar sin motivo.";
-          cMotivo.nodo.style.display = "none";
-          btnCopia.style.display = "none";
+          cMotivo.nodo.classList.add("lap-hidden");
+          btnCopia.classList.add("lap-hidden");
           sinCopia = false;
           resumen.copia_hecha = true;
         } catch (e) {
@@ -798,7 +801,7 @@
         }
       });
       paso1.appendChild(avisoCopia);
-      paso1.appendChild(h("div", { class: "lap-fila", style: "margin-top:8px" }, btnCopia));
+      paso1.appendChild(h("div", { class: "lap-fila lap-mt-2" }, btnCopia));
       paso1.appendChild(cMotivo.nodo);
     }
     paso1.appendChild(cNombre.nodo);
@@ -916,9 +919,9 @@
     var duenos = Array.isArray(emp.propietarios) ? emp.propietarios : [];
     var lineaDuenos;
     if (!duenos.length) {
-      lineaDuenos = h("div", { class: "lap-banner info", style: "margin-top:8px" }, "Sin dueño todavía. Pulsa «Añadir dueño» para crearle la cuenta.");
+      lineaDuenos = h("div", { class: "lap-banner info lap-mt-2" }, "Sin dueño todavía. Pulsa «Añadir dueño» para crearle la cuenta.");
     } else {
-      lineaDuenos = h("div", { class: "lap-muted", style: "margin-top:6px" }, "Dueño: ", duenos.map(function (p, i) {
+      lineaDuenos = h("div", { class: "lap-muted lap-mt-2" }, "Dueño: ", duenos.map(function (p, i) {
         return h("span", { "data-dueno": p.email || "" }, (i ? ", " : "") + (p.email || "(sin correo)") + (p.activo === false ? " (desactivado)" : ""));
       }));
     }
@@ -930,7 +933,7 @@
       var partes = [];
       partes.push(emp.baja_en ? "Desactivada el " + fechaCorta(emp.baja_en) + "." : "Desactivada, sin fecha de baja registrada.");
       if (emp.baja_motivo) partes.push("Motivo: " + emp.baja_motivo);
-      detalleBaja = h("div", { class: "lap-muted", style: "margin-top:6px" }, partes.join(" "));
+      detalleBaja = h("div", { class: "lap-muted lap-mt-2" }, partes.join(" "));
     }
     var botones = acciones.map(function (a) {
       switch (a) {
@@ -944,13 +947,13 @@
       }
     });
     return h("div", { class: "lap-tarjeta", "data-empresa": emp.id },
-      h("div", { class: "lap-fila", style: "justify-content:space-between" }, h("h2", null, emp.nombre || "(sin nombre)"), estado),
-      h("div", { class: "lap-muted", style: "margin-top:4px" },
+      h("div", { class: "lap-fila lap-fila-between" }, h("h2", null, emp.nombre || "(sin nombre)"), estado),
+      h("div", { class: "lap-muted lap-mt-1" },
         "Locales: " + numero(emp.locales_activos) + " activos de " + numero(emp.locales_total) +
         " · Usuarios: " + numero(emp.usuarios_activos) + " activos de " + numero(emp.usuarios_total)),
       lineaDuenos,
       detalleBaja,
-      h("div", { class: "lap-fila", style: "margin-top:10px" }, botones));
+      h("div", { class: "lap-fila lap-mt-2" }, botones));
   }
 
   function pintar() {
@@ -964,7 +967,7 @@
     if (ctx.aviso && ctx.aviso.texto) {
       contenido.appendChild(h("div", { class: "lap-banner " + ctx.aviso.tipo, role: ctx.aviso.tipo === "mal" ? "alert" : "status", "data-aviso": ctx.aviso.tipo }, ctx.aviso.texto));
     }
-    contenido.appendChild(h("div", { class: "lap-fila", style: "justify-content:space-between;margin-top:12px" },
+    contenido.appendChild(h("div", { class: "lap-fila lap-fila-between lap-mt-3" },
       h("div", { class: "lap-muted", "data-resumen": "1" },
         ctx.cargando && !(ctx.empresas || []).length ? "Cargando empresas…" :
           numero(activas) + (activas === 1 ? " empresa activa" : " empresas activas") + " · " + numero(desactivadas) + (desactivadas === 1 ? " desactivada" : " desactivadas")),
@@ -1090,7 +1093,7 @@
     var i2 = h("input", { name: "repite", type: "password", autocomplete: "new-password", maxlength: "200" });
     var c1 = campo("Nueva contraseña", i1, "Mínimo 10 caracteres, con letras y números.", "nueva");
     var c2 = campo("Repite la contraseña", i2, null, "repite");
-    var error = h("div", { class: "lap-banner mal", role: "alert", style: "display:none" });
+    var error = h("div", { class: "lap-banner mal lap-hidden", role: "alert" });
     var btn = boton("Guardar contraseña y entrar", "", function () { guardar(); });
     var form = h("form", { novalidate: "novalidate" },
       h("p", { class: "lap-muted" }, "Tu cuenta se creó con una contraseña inicial que conoce quien te dio de alta. Elige ahora una contraseña que solo sepas tú."),
@@ -1098,7 +1101,7 @@
       h("div", { class: "lap-pie" }, boton("Cerrar sesión", "sec", function () { cerrarSesionCambio(); }), btn));
     var caja = h("div", { class: "lap-dialogo", role: "dialog", "aria-modal": "true", "aria-label": "Elige tu contraseña" },
       h("div", { class: "lap-kicker" }, "L&A Suite · primer acceso"),
-      h("h2", { style: "margin-top:6px" }, "Elige tu contraseña"), form);
+      h("h2", { class: "lap-mt-2" }, "Elige tu contraseña"), form);
     var raiz = h("div", { id: ROOT_CAMBIO_ID, class: "lap-cambio lap-root", "data-la-orbita-external": "plataforma", "data-la-orbita-surface": "plataforma" }, caja);
     document.body.appendChild(raiz);
 
@@ -1112,7 +1115,7 @@
 
     async function guardar() {
       if (enCurso) return;
-      error.style.display = "none";
+      error.classList.add("lap-hidden");
       c1.error(""); c2.error("");
       var motivo = validarCambioContrasena(i1.value, i2.value, email);
       if (motivo) {
@@ -1144,7 +1147,7 @@
         else if (code === "reauthentication_needed" || /reauthentication/i.test(m)) m = "Por seguridad, cierra sesión, vuelve a entrar con la contraseña inicial y repite el cambio.";
         else m = traducirError(e);
         error.textContent = m;
-        error.style.display = "block";
+        error.classList.remove("lap-hidden");
       }
     }
     i1.focus();

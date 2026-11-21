@@ -1499,6 +1499,31 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+## Addendum · higiene CSS y aislamiento de legacy · 21/11/2026
+
+Se completó la siguiente pasada del objetivo visual sobre
+`rediseno/f0-base-qa`:
+
+- Inicio ya no depende de `!important` en `dashboard-premium-v2.js` y la capa
+  no contiene colores HEX directos. La marca CDN pasó a
+  `qa-orbita-panel-v5-20261121`.
+- Pase consume la escala común para radios, espaciado y controles táctiles.
+  La hoja se sirve como `qa-orbita-pase-v3-20261121`. Solo permanecen tres
+  `!important`, todos bajo la variante Órbita y usados para estados que llegan
+  con inline legacy.
+- Plataforma no genera estilos inline de layout; usa `.lap-hidden`,
+  `.lap-transport`, `.lap-mt-*` y `.lap-fila-between`. Sus handlers y RPC no
+  se tocaron.
+- Los puentes de `la-apariencia.css` están declarados como compatibilidad
+  legacy. Son 45 selectores de remapeo, todos acotados por diseño/superficie;
+  no son una segunda implementación del shell.
+
+Contrato ejecutado: `tests/rediseno/css-orbita-legacy-contract.mjs` → PASS;
+P01, componentes, marco y `git diff --check` → PASS. Este contrato debe
+ejecutarse cada vez que se cambie una capa CSS o un componente que inyecte
+estilos. No retirar los puentes MFA/Inventario sin sustituir antes el
+componente histórico que todavía emite esos estilos.
+
 ### Cierre global del objetivo Órbita · 21/11/2026
 
 El objetivo de migrar los doce módulos al marco Órbita queda terminado en QA.

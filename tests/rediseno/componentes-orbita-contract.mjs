@@ -26,7 +26,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v67-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v68-20261121/);
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,
   'la ausencia de configuración de empresa debe conservar Órbita como fallback visual');
@@ -96,7 +96,7 @@ const shellVisual = css.slice(css.indexOf('.la-orbita-sidebar'), css.indexOf('/*
 assert.doesNotMatch(shellVisual, /rgba\(255,255,255|#8CC3FF|#c7d5ce|#8fb0a1/i,
   'el shell no debe imponer colores literales sobre las paletas activas');
 assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
-assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v67-20261121/, 'la recuperación no carga el contrato de apariencia');
+assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v68-20261121/, 'la recuperación no carga el contrato de apariencia');
 assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
 assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
 
@@ -110,7 +110,7 @@ for (const token of laTokensUsados) {
   assert.ok(laTokensDefinidos.has(token) || laTokensDinamicos.has(token),
     `la capa visual usa --${token} sin declararlo ni documentarlo como dinámico`);
 }
-assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v4-20261121/);
+assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v5-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);
 assert.match(dashboardPremium, /laDetalleVisible/);

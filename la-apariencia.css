@@ -54,7 +54,11 @@
   --la-icon-lg: 24px;
 }
 
-/* MFA · el gate histórico se monta antes de .la-acceso y trae estilos inline
+/* Compatibilidad legacy · los pocos selectores que apuntan a estilos inline
+   históricos están aislados por html[data-la-diseno] y por la superficie del
+   módulo. Son puentes temporales de remapeo, no componentes nuevos: se
+   mantienen para que los estados existentes adopten Órbita sin tocar handlers.
+   MFA · el gate histórico se monta antes de .la-acceso y trae estilos inline
    de Sello. La superficie sigue siendo Acceso: aquí solo se remapean sus
    primitivas a Órbita, sin cambiar el flujo ni los handlers de autenticación. */
 html[data-la-diseno] #root > div[style*="radial-gradient"] {

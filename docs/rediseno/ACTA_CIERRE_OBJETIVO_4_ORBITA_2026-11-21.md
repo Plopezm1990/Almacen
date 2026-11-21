@@ -121,3 +121,36 @@ migraciones de Apariencia. No reabren el objetivo ni alteran su cierre.
 
 **Resultado:** objetivo 4 Órbita terminado en QA. El último SHA de la rama es
 `9258f2222429c7e377c0afdd20b66feaa21d7876`; PR #225 sigue en borrador.
+
+## Auditoría y retirada de CSS antiguo · 21/11/2026
+
+Como continuación del cierre visual se inspeccionaron las capas que todavía
+podían sobrescribir Órbita. La retirada se hizo por superficie, sin reescribir
+la lógica del producto:
+
+1. Inicio (`dashboard-premium-v2.js`) quedó sin `!important` ni colores HEX
+   directos; todos sus componentes visuales usan tokens semánticos y la
+   escala común.
+2. Pase (`la-pase.css`) dejó radios, gaps, márgenes y paddings literales en
+   favor de `--la-space-*` y `--la-radius-*`. Solo quedan tres sobrescrituras
+   de estado, explícitamente limitadas a la variante Órbita para neutralizar
+   estilos inline históricos.
+3. Plataforma (`plataforma-panel.js`) dejó de producir estilos inline de
+   layout/ocultación. El panel usa clases tokenizadas y conserva sus RPC,
+   permisos, diálogos y flujo de administración.
+4. La hoja común mantiene los puentes legacy estrictamente necesarios para
+   MFA, la cabecera antigua y los estados inline de Inventario. No se
+   presentan como componentes nuevos: están anotados, acotados a la superficie
+   Órbita y cubiertos por contrato.
+
+La caché se renovó (`la-apariencia` v68, `la-pase` v3, panel v5). El nuevo
+contrato `tests/rediseno/css-orbita-legacy-contract.mjs` registra la frontera:
+`dashboardImportant=0`, `paseImportant=3`, `plataformaInline=0` y 45 puentes
+inline documentados. P01, componentes, marco y `git diff --check` pasan.
+Los fallbacks HEX de tokens y las composiciones de las otras propuestas se
+conservan como excepciones intencionadas; no sobrescriben el marco cuando
+Órbita está activo.
+
+**Estado:** retirada/aislamiento CSS antiguo cerrada para el marco Órbita. La
+limpieza futura de los puentes MFA/Inventario queda como trabajo de sustitución
+del componente histórico, no como regla visual activa sin documentar.
