@@ -1462,6 +1462,21 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Objetivo 4 · refuerzo de la envolvente modular v47 · 21/11/2026
+
+Se publicó `la-apariencia.css?v=qa-orbita-modules-v47-20261121`, con huella
+`f6bb851c32c3a83e`. Todas las raíces `main[data-la-orbita-module]` reciben
+ahora una envolvente común para tarjetas, campos, botones, estados, badges,
+tablas y superficies vacías/cargando/error. También se encapsula el ancho de
+grids y tablas en móvil. La capa es scoped y aditiva: lógica, permisos,
+persistencia, RPC y handlers permanecen intactos.
+
+La validación estática se actualizó en `componentes-orbita-contract.mjs`,
+`marco-orbita-contract.mjs` y `p01-capas-y-migraciones-contract.mjs` para
+fijar la marca y la huella de la nueva hoja. La evidencia live disponible
+confirma shell interactivo y superficies identificadas; el cierre funcional
+de cada módulo continúa pendiente de recorrido QA autenticado.
+
 ### Hallazgo de arranque durante la migración por bloques · 21/11/2026
 
 En el preview limpio, el modo local podía quedarse en «Cargando almacén…» si

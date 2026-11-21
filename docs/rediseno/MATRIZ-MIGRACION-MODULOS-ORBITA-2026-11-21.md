@@ -927,3 +927,23 @@ lógica, los handlers ni la persistencia; evita que una promesa colgada congele
 los doce módulos. La batería de arranque, `loadKey`, componentes y migración
 de módulos queda verde tras el cambio. El recorrido autenticado del preview
 sigue siendo necesario para pasar cada fila de `PARCIAL` a `CERRADO`.
+
+### Refuerzo transversal de superficies · v47 · 21/11/2026
+
+La capa `la-apariencia.css` pasa a `qa-orbita-modules-v47-20261121` (huella
+`f6bb851c32c3a83e`). Se añadió un contrato scoped a
+`main[data-la-orbita-module]` que aplica la misma envolvente a los doce
+módulos, incluidos los contenedores históricos que todavía no usan una
+primitiva `la-ui-*`: tipografía y altura de controles, tarjetas, etiquetas,
+estados vacío/carga/error, badges, tablas y wrappers de desplazamiento.
+
+La regla es aditiva: no cambia handlers, RPC, permisos, datos ni navegación.
+En móvil limita el ancho intrínseco de grids y tablas al contenedor de la
+superficie y conserva el desplazamiento dentro del wrapper, de modo que el
+viewport no crece. El contrato de capas fija la marca y la huella para que el
+preview no pueda servir una hoja anterior desde caché.
+
+Esta tanda completa la base técnica de la migración uno-a-uno; no convierte
+por sí sola una fila en `CERRADO`. Las doce filas siguen `PARCIAL` hasta que
+se recorra cada ruta real autenticada, sus estados vacío/carga/error y sus
+acciones en escritorio y móvil.

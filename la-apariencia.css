@@ -2086,6 +2086,98 @@ html[data-la-diseno] #root button[aria-label]:not(.la-ui-icon-button) { min-widt
 }
 
 /* ========================================================================
+   Órbita · contrato de superficie para los doce módulos · v47
+   ------------------------------------------------------------------------
+   Algunas pantallas antiguas no usan las primitivas la-ui-* y conservan
+   contenedores anónimos con estilos inline. Esta capa no sustituye sus
+   handlers ni su estructura: aplica una envolvente común a cualquier raíz
+   que el shell haya identificado, y deja que los bloques específicos de
+   TPV/Pase/Cocina/Caja mantengan sus estados operativos.
+   ======================================================================== */
+html[data-la-diseno] #root main[data-la-orbita-module] {
+  color: var(--c-ink);
+  font-family: var(--la-font);
+  font-size: var(--la-type-body);
+  line-height: 1.45;
+  min-width: 0;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] > :where(section, article, form, [data-la-card], .la-ui-card) {
+  min-width: 0;
+  max-width: 100%;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where(.la-ui-card, [data-la-card], .rounded-lg, .rounded-xl, .rounded-2xl) {
+  border-color: var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where(label, .la-ui-field-label) {
+  color: var(--c-ink-soft);
+  font-family: var(--la-font);
+  font-size: var(--la-type-label);
+  font-weight: 650;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where(button, input, select, textarea, [role="button"], [role="tab"], [role="menuitem"], [role="option"]) {
+  font-family: var(--la-font);
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where(button, [role="button"]) {
+  border-radius: var(--la-radius-md);
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where(button:not([type="checkbox"]):not([type="radio"]), [role="button"], [role="tab"], [role="menuitem"], [role="option"]) svg {
+  width: var(--la-icon-md);
+  height: var(--la-icon-md);
+  flex: 0 0 auto;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where([data-empty], .empty-state, .la-ui-empty) {
+  min-height: 120px;
+  display: grid;
+  place-items: center;
+  border: 1px dashed var(--c-divider);
+  border-radius: var(--la-radius-lg);
+  background: color-mix(in srgb, var(--c-surface) 82%, transparent);
+  color: var(--c-ink-soft);
+  text-align: center;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where([data-loading], .loading-state, [aria-busy="true"]) {
+  min-height: 72px;
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-md);
+  background: var(--c-accent-soft);
+  color: var(--c-ink-soft);
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where([data-error], .error-state) {
+  border: 1px solid color-mix(in srgb, var(--c-red) 42%, transparent);
+  border-radius: var(--la-radius-md);
+  background: var(--c-red-soft);
+  color: var(--c-red);
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where([data-status], .status-badge, .la-ui-badge) {
+  border-radius: var(--la-radius-pill);
+  font-family: var(--la-font);
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where(.overflow-x-auto, [data-table-scroll]) {
+  min-width: 0;
+  max-width: 100%;
+  overscroll-behavior-inline: contain;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] :where(table) {
+  max-width: 100%;
+  color: var(--c-ink);
+}
+
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module] {
+    overflow-wrap: anywhere;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module] :where(.grid, .flex) {
+    min-width: 0;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module] :where(table) {
+    width: max-content;
+    min-width: 100%;
+  }
+}
+
+/* ========================================================================
    Órbita · escala única aplicada a la interfaz existente
    ------------------------------------------------------------------------
    El programa conserva muchas clases utilitarias históricas. Estas reglas
