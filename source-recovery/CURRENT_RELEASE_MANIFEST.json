@@ -3,7 +3,7 @@
   "baseCommit": "7b2aa0f1500ecfc5dce551196f5434655411a314",
   "baseArtifactSha256": "372813f2230054306b0d37eb3825938832b68f62ea88a484dde0b1dfcdb075ed",
   "releaseBaseCommit": "8540bd06d5555cf260aa4599144ed6c64f3ca029",
-  "targetFuenteCommit": "27f71efbf39dfdc0b1545f28d97a4ad7a29831bd",
+  "targetFuenteCommit": "609e62f20efdc8e728a71cf0536123f3e8843754",
   "targetArtifactSha256": "d05da25d439143eb7768ce46f2a03cda6ec66f042874cd56e9c7e96bb5d8212b",
   "patch": "CURRENT_RELEASE.patch",
   "patchSha256": "5b66a5f88f2f8818372a70b2d603c0e759ae4928f3fa0b4dea7aeae4b5d03c1b",
