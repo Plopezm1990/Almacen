@@ -1472,6 +1472,11 @@ estado activo no quedan un ciclo de render por detrás.
 La superficie y el módulo comparten esa prioridad, evitando que un Pase
 incrustado se presente como la pantalla principal.
 
+El deploy `6b016e263339e98d72dc5b68` confirmó `inicio/inicio` al seleccionar
+Panel general y recorrió TPV, Cocina, Caja, Clientes, Compras, Inventario,
+Personal y Configuración en modo local: todos mantuvieron controles de 44 px y
+`overflow=false`. La evidencia no sustituye el recorrido autenticado de QA.
+
 ### Corrección del modo local · shell Órbita · `1948bc4d`
 
 En el primer ensayo del deploy v45, «Trabajar solo en este equipo» montó el

@@ -811,3 +811,14 @@ Además, la selección actualiza `data-la-orbita-route` inmediatamente; no
 depende de un repintado posterior de React para cambiar la superficie visual.
 La marca `data-la-orbita-module` usa esa misma prioridad: Inicio ya no queda
 clasificado como Pase cuando el panel operativo está incrustado.
+
+### Recorrido modular local · prioridad de Inicio · `d08a905e`
+
+En el deploy `6b016e263339e98d72dc5b68` (`ready`) se repitió el recorrido sin
+sincronización. Al activar «Panel general», la superficie y el módulo quedaron
+ambos en `inicio` aunque el panel Pase siga incrustado; se observaron 24
+controles semánticos, mínimo de 44 px y `overflow=false`. El mismo banco
+recorrió TPV (`tpv`), Cocina (`cocina`), Caja (`caja`), Clientes (`clientes`),
+Proveedores (`compras`), Productos (`inventario`), Personal (`personal`) y
+Configuración (`configuracion`), todos con mínimo 44 px y sin desbordamiento
+horizontal. Es evidencia visual local, no cierre de permisos ni datos reales.
