@@ -115,3 +115,26 @@ La misma cobertura se amplió con estados seguros que no escriben datos:
 No se provocaron errores de red deliberados. Hacerlo requeriría interrumpir el
 transporte de QA y se reserva para una prueba controlada; los contratos de
 estados y fail-closed ya pasan en local.
+
+## Sesión restringida · permisos de Camarero/a · 21/11/2026
+
+Se inició sesión en Deploy Preview #225 con
+`qa.permisos.20261116@qa.invalid`, rol Camarero/a, `QA-EMP-A / QA-A1` y
+terminal A1. La sesión confirma el local operativo correcto y los límites de
+este cargo: Caja, arqueo, cierre, fichajes y recepciones aparecen
+deshabilitados; el TPV muestra `C07D_CONFIG_NO_AUTORIZADO` y «No tienes permiso
+para operar este TPV en el local seleccionado». No se ejecutó ninguna
+operación financiera ni se creó un documento nuevo.
+
+La evidencia detallada está en
+`docs/rediseno/QA_PUNTO1_PERMISOS_CAMARERO_LIVE_2026-11-21.md`. Esta sesión no
+puede cerrar la validación funcional de los módulos porque no tiene permisos
+para las operaciones de negocio ni para Plataforma, MFA, recuperación y
+configuración administrativa. Las filas que requieren propietario o
+administrador permanecen `PARCIAL` hasta disponer de esas sesiones.
+
+El navegador conservaba un borrador local del TPV y un aviso de sincronización
+fallida de `productos`; no se reintentó ni se modificó. La cuenta sintética
+abierta `d802aad8-0099-4092-945b-01adfbb9a569` sigue documentada y requiere
+limpieza separada. No se usa `sis-13`, no se restaura QA y producción sigue
+fuera de alcance.

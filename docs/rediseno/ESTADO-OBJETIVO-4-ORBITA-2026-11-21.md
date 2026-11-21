@@ -96,3 +96,17 @@ versiona la URL del parche para evitar caché obsoleta. El preview 225 quedó
 verificado en el deploy `6b01e253b24fe5974d813833` con una sola pantalla de
 enrolamiento interactiva y sin diálogo superpuesto. La clave TOTP y sus códigos
 no se documentan.
+
+## Estado de la validación funcional · sesión Camarero/a · 21/11/2026
+
+La cuenta `qa.permisos.20261116@qa.invalid` fue comprobada en el preview como
+Camarero/a de `QA-EMP-A / QA-A1`. La denegación de Caja, arqueo, cierre,
+fichajes, recepciones y operación del TPV quedó visible y documentada, sin
+crear cobros, reembolsos ni documentos nuevos.
+
+Esta sesión no tiene autoridad para cerrar los recorridos de negocio de los
+módulos restantes ni el acceso de Plataforma/MFA. Por tanto la matriz conserva
+`PARCIAL` donde faltan propietario, administrador de Plataforma o una cuenta de
+ensayo con autorización explícita. El siguiente requisito operativo es abrir
+una sesión de propietario y otra de administrador de Plataforma en QA; las
+contraseñas y códigos MFA deben introducirse únicamente en el navegador.
