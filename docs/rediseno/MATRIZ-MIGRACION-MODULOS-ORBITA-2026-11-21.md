@@ -507,3 +507,26 @@ táctiles de al menos 44 px. La sesión fue local/sin sincronización; esta
 evidencia valida el marco y la respuesta visual, pero no sustituye la
 verificación autenticada de datos, permisos, cobros, MFA ni estados reales.
 Por ello las filas permanecen `PARCIAL` hasta completar esos recorridos.
+
+### Estados observados en la pasada móvil local · 21/11/2026
+
+Además del anclaje del shell, se comprobó que las rutas no quedan en blanco
+cuando el modo local no puede consultar el servidor: muestran una alerta,
+estado informativo o vacío explícito. La lectura fue realizada después de
+cada navegación, manteniendo `overflow=false` y control mínimo de 44 px.
+
+| Ruta | Módulo/superficie | Alertas | Estados informativos | Vacío/conexión visible |
+|---|---|---:|---:|---|
+| Inicio | `inicio/inicio` | 0 | 3 | no |
+| TPV | `tpv/tpv` | 1 | 0 | no |
+| Cocina | `cocina/cocina` | 1 | 0 | sí |
+| Proveedores | `compras/compras` | 0 | 1 | no |
+| Productos | `inventario/inventario` | 0 | 0 | no |
+| Personal | `personal/personal` | 0 | 1 | no |
+| Clientes | `clientes/clientes` | 0 | 2 | no |
+| Configuración | `configuracion/configuracion` | 1 | 0 | sí |
+| Arqueo de caja | `caja/caja` | 0 | 0 | no |
+| Encargos | `tpv/tpv` | 0 | 1 | sí |
+
+Esta es evidencia de la capa visual y de sus estados de comunicación en modo
+local; no certifica el contenido, permisos o persistencia del backend QA.

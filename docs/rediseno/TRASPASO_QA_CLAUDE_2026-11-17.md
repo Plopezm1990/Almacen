@@ -1480,6 +1480,14 @@ comportamiento del menú «Más». No sustituye la prueba autenticada de datos,
 permisos, cobros, MFA ni handlers, por lo que las filas de la matriz continúan
 `PARCIAL` hasta completar esas comprobaciones.
 
+En la misma pasada se comprobó que las rutas siguen comunicando estados cuando
+el modo local no puede consultar el servidor: TPV y Cocina muestran alertas de
+conexión; Compras, Personal y Clientes muestran estados informativos; Inicio y
+Caja conservan su composición; Configuración y Encargos muestran estados
+vacíos o de conexión. En todos los casos se mantuvieron `overflow=false` y
+controles visibles de al menos 44 px. Es una comprobación de presentación y
+estados locales, no una validación de datos, permisos o persistencia de QA.
+
 ### Inicio y panel general · superficie única v29
 
 Se normalizó la superficie de Inicio completa: el panel Órbita y el detalle
