@@ -1406,3 +1406,20 @@ login principal ya usase Órbita. Se añadió una capa CSS específica, sin toca
 `qa-orbita-modules-v63-20261121` (huella P01 `515475166ec7aea9`). Se añadió un
 contrato negativo para impedir que vuelvan los selectores heredados. La fila
 Acceso sigue `PARCIAL`: falta recorrer MFA con sesión autenticada y código real.
+
+### Recorrido QA autenticado · Inicio y TPV · 21/11/2026
+
+Con sesión de propietario en `QA-EMP-A`, local `QA-A1`, sobre el Deploy Preview
+225, se recorrieron las superficies reales de Inicio y TPV. En ambos casos el
+viewport efectivo fue `1195×678`; el DOM devolvió `overflow=false`, un control
+visible mínimo de `44 px` y los pares semánticos esperados:
+
+| Módulo | Superficie/ruta | Evidencia real observada | Resultado |
+|---|---|---|---|
+| Inicio | `inicio` / `inicio` · Panel general | `Ventas registradas €317,61`, `Margen promedio 85,12%`, `Pedidos pendientes 0`, `Productos en stock bajo 1`; accesos TPV/Cocina/Resultados; Pase con mesas, pedidos y caja | PASS visual QA |
+| TPV y sala | `tpv` / `tpv` · TPV | modos Venta rápida y Sala/restaurante, terminal A1, catálogo QA, filtros, paginación `1 de 2`, caja del TPV y botón de historial separado | PASS visual QA |
+
+Esta tanda fue de lectura: no se creó cuenta, no se añadió producto, no se
+abrió fondo y no se ejecutó cobro. Las dos filas permanecen `PARCIAL` hasta
+completar sus variantes móviles, estados de carga/vacío/error y las operaciones
+de negocio que correspondan.

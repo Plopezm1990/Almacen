@@ -1462,6 +1462,17 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Primer recorrido QA autenticado del objetivo 4 · Inicio y TPV · 21/11/2026
+
+Se recuperó una sesión de propietario en `QA-EMP-A` / `QA-A1` y se recorrieron
+Inicio y TPV sobre el preview 225. En viewport `1195×678`, ambas superficies
+resolvieron correctamente su módulo y ruta, sin overflow y con mínimo táctil
+de `44 px`. Inicio mostró indicadores reales (`€317,61`, `85,12%`, `0`, `1`),
+Pase mostró mesas y pedidos de QA, y TPV mostró los dos modos de venta, el
+terminal A1, catálogo, filtros, paginación y el historial separado. Fue una
+revisión de lectura: no se ejecutaron cobros ni escrituras de negocio. Matriz:
+ambas filas siguen `PARCIAL` hasta móvil, estados y operaciones autorizadas.
+
 ### Acceso/MFA · eliminación de la convivencia Sello/Órbita · 21/11/2026
 
 La auditoría del punto 4 detectó que el componente MFA (`MfaGate`) todavía
