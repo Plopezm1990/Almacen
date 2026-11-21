@@ -1607,6 +1607,7 @@ ajustes: controles táctiles, tarjetas, estados, detalles y tablas comunes,
 con scroll local y formularios apilados en móvil. La lógica, persistencia,
 permisos y handlers permanecen intactos. Marca `qa-orbita-modules-v36-20261121`,
 huella P01 `b0199d11c27752d6`; queda pendiente el recorrido autenticado en QA.
+Deploy Preview 225: `6b0147c47a019a8ab1360f4d` (`ready`), commit `e015abb2`.
 
 ### Pase · variante Órbita · 21/11/2026
 
