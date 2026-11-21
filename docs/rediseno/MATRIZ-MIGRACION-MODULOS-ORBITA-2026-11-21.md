@@ -921,7 +921,7 @@ Al probar el modo local desde el preview limpio, la vista podía quedarse en
 su promesa. El documento ya fijaba Órbita (`data-la-diseno="orbita"`), pero no
 se podía verificar ningún módulo detrás del bloqueo. Se corrigió `loadKey` en
 `fuente.js` y en `source-recovery/fuente-recuperado.js`: cada lectura tiene un
-techo de 1,5 s en modo local y 7,5 s en QA, conserva los reintentos y emite el
+techo de 1,5 s sin conexión y 7,5 s en QA autenticado, conserva los reintentos y emite el
 fallo real para que el arranque visible pueda ofrecer reintento. No cambia la
 lógica, los handlers ni la persistencia; evita que una promesa colgada congele
 los doce módulos. La batería de arranque, `loadKey`, componentes y migración

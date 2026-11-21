@@ -1466,7 +1466,7 @@ estados en QA.
 
 En el preview limpio, el modo local podía quedarse en «Cargando almacén…» si
 una lectura del adaptador no resolvía su promesa. Se corrigió `loadKey` en las
-dos copias protegidas: 1,5 s por lectura en modo local y 7,5 s en QA, con los
+dos copias protegidas: 1,5 s por lectura sin conexión y 7,5 s en QA, con los
 reintentos y el evento de fallo conservados. La app ya no depende de una
 promesa de almacenamiento infinita para montar el shell Órbita; el contrato de
 arranque exige además el mensaje explícito y el reintento visible. La batería
