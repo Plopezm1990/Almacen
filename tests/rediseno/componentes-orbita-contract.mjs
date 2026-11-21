@@ -26,7 +26,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v58-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v59-20261121/);
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,
   'la ausencia de configuración de empresa debe conservar Órbita como fallback visual');
@@ -82,7 +82,7 @@ const shellVisual = css.slice(css.indexOf('.la-orbita-sidebar'), css.indexOf('/*
 assert.doesNotMatch(shellVisual, /rgba\(255,255,255|#8CC3FF|#c7d5ce|#8fb0a1/i,
   'el shell no debe imponer colores literales sobre las paletas activas');
 assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
-assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v58-20261121/, 'la recuperación no carga el contrato de apariencia');
+assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v59-20261121/, 'la recuperación no carga el contrato de apariencia');
 assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
 assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
 
@@ -168,7 +168,7 @@ assert.ok(css.includes('.la-orbita-bottom-nav'), 'la barra inferior móvil no re
 assert.ok(css.includes('.la-orbita-bottom-item[aria-current="page"]'), 'la barra inferior móvil no expone estado activo');
 assert.ok(css.includes('.la-orbita-sidebar [data-la-orbita-nav-item]'), 'la navegación heredada no consume la escala Órbita');
 assert.ok(css.includes('.la-orbita-sidebar [style*="rgba(184, 139, 69, 0.07)"]'), 'el halo antiguo del logo no se remapea al acento Órbita');
-assert.ok(css.includes('main[data-la-orbita-module="tpv"] .tpv-categorias button') && css.includes('border-inline-start: 2px solid var(--c-accent-fill) !important'), 'los filtros de categoría del TPV conservan bordes heredados');
+assert.ok(css.includes('main[data-la-orbita-module="tpv"] button[style*="border-left"]') && css.includes('border-inline-start: 2px solid var(--c-accent-fill) !important'), 'los filtros de categoría del TPV conservan bordes heredados');
 assert.ok(css.includes('main[data-la-orbita-module="inventario"] button[style*="rgb(18, 59, 45)"]'), 'el filtro Todos de Inventario conserva el color inline antiguo');
 assert.ok(css.includes('[data-la-orbita-nav-item][style*="rgba(255, 255, 255, 0.12)"]'), 'el estado inicial del menú heredado no se reencamina a tokens');
 assert.ok(css.includes('.la-orbita-control'), 'los módulos no comparten la marca semántica de control');

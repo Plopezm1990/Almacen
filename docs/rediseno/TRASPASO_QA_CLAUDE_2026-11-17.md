@@ -1462,6 +1462,16 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Precedencia real del filtro TPV · v59 · 21/11/2026
+
+El filtro de categorías usa en la vista una tira histórica cuyo contenedor no
+tiene la clase `.tpv-categorias`; la corrección v59 cubre los botones con
+`border-left` inline dentro de `main[data-la-orbita-module="tpv"]`. Su borde
+efectivo ya es `2px` del acento de la paleta, incluso cuando el atributo inline
+conserva el valor antiguo. Recurso `qa-orbita-modules-v59-20261121`, huella
+`39b48ae6ec69e7f4`. Contratos enfocados y diff limpios; falta observar el
+Preview v59 en el navegador antes de elevar la evidencia visual.
+
 ### Restos visuales corregidos · v58 · 21/11/2026
 
 En la revisión efectiva del Preview 225 se localizaron tres estilos inline

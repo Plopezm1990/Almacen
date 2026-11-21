@@ -1185,3 +1185,16 @@ Contratos y batería tras el cambio: `ALL_REDISENO_TESTS_PASS=1`,
 recarga del Preview 225 con la marca v58; las filas funcionales de TPV e
 Inventario siguen `PARCIAL` hasta completar recorridos autenticados y estados
 de negocio.
+
+### Ajuste de precedencia en filtros TPV · v59 · 21/11/2026
+
+La primera regla v58 cubría el componente de categorías previsto, pero el TPV
+real monta esa tira con un contenedor histórico distinto. La regla se amplió
+de forma acotada a los botones que llevan `border-left` inline dentro del
+módulo TPV. En el Preview el borde calculado de «Todos», «Al peso», «Bebidas»,
+«Bocadillos» y «Bollería» queda en el acento Órbita, con ancho de 2 px; los
+handlers y colores de datos no se alteran. Marca
+`qa-orbita-modules-v59-20261121`, huella `39b48ae6ec69e7f4`.
+
+Contratos enfocados y `git diff --check`: PASS. La validación visual v59 se
+debe repetir en el Preview tras la nueva publicación.

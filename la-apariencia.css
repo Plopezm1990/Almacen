@@ -2473,7 +2473,8 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.i
   background: color-mix(in srgb, var(--c-surface) 92%, transparent);
 }
 html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-categorias button,
-html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.items-center.gap-2.mb-3 button {
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.items-center.gap-2.mb-3 button,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] button[style*="border-left"] {
   min-height: var(--la-control-height);
   border: 1px solid transparent;
   border-inline-start: 2px solid var(--c-accent-fill) !important;
