@@ -1646,6 +1646,35 @@ desbordamiento. Marca `qa-orbita-modules-v40-20261121`, huella P01
 `67300938eb8c5c76`; queda pendiente el recorrido autenticado completo en QA.
 Deploy Preview 225: `6b014b8aabe0ae40a1c2ee97` (`ready`), commit `b1b142ba`.
 
+### Cierre técnico de la tanda de módulos · 21/11/2026 · SHA `b8a9a132`
+
+Se corrigió la última superficie fuera del `main` común: Plataforma ahora
+recibe la escala Órbita también en `#la-plataforma-root` y
+`#la-plataforma-cambio-root`, incluidos botones, campos, tarjetas, errores,
+estados y filas `.lap-*`. La corrección conserva lógica, datos, permisos,
+handlers y rutas. El PR #225 sigue en borrador, dirigido a `release`, y el
+estado combinado de GitHub confirma el Deploy Preview 225 correcto.
+
+Comprobaciones ejecutadas en esta tanda:
+
+- `tests/rediseno/*.mjs`: `REDISENO_REGRESSION_FAILED=0`.
+- Contratos Órbita, rutas, módulos (12/12), responsive/táctil, P01,
+  Apariencia local (49/49), MFA (26/26), org-33 (43/43), Pase, fiscalidad,
+  propina, botones solo icono y arranque resiliente: todos `PASS`.
+- Manifiesto CI: 367 contratos activos, 1 histórico esperado, 11 utilidades y
+  5 diagnósticos; inventario total 384.
+- `python source-recovery/recuperar_candidato.py --check`:
+  `PARIDAD_CUERPO_EXACTA=1`, `SOURCE_RECOVERY_CHECK=PASS`.
+- `node --check` para `fuente.js` y `source-recovery/fuente-recuperado.js`:
+  `PASS`; `git diff --check`: `PASS`; árbol limpio.
+
+La batería Bash global no pudo iniciarse en este Windows porque MSYS2 falla al
+crear el objeto `\BaseNamedObjects\msys-*` (fallo de infraestructura del
+runner, no del producto). La batería específica reproducible de rediseño sí
+queda verde. Los 12 módulos permanecen `PARCIAL` en la matriz hasta completar
+el recorrido autenticado de cada ruta real, especialmente Plataforma con
+administrador QA y Acceso con sesión/MFA.
+
 ### Corrección de Plataforma previa al shell · 21/11/2026
 
 La revisión v39 cubría el panel de Plataforma cuando ya existía el shell

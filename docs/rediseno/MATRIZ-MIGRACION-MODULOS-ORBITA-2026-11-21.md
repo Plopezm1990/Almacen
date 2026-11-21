@@ -440,3 +440,14 @@ Deploy Preview 225: `6b014b8aabe0ae40a1c2ee97` (`ready`), commit `b1b142ba`.
 Evidencia no autenticada: pantalla `Iniciar sesión`, recuperación, acceso sin
 sincronizar y lanzador Apariencia visibles en el preview; el recorrido con
 sesión y MFA queda pendiente.
+
+## Evidencia de la tanda `b8a9a132` · 21/11/2026
+
+La corrección final de Plataforma cubre también sus montajes previos al shell
+(`la-plataforma-root` y `la-plataforma-cambio-root`) y sus primitivas `.lap-*`.
+Los contratos de rediseño pasan con `REDISENO_REGRESSION_FAILED=0`; el chequeo
+de recuperación de fuente devuelve `PARIDAD_CUERPO_EXACTA=1` y
+`SOURCE_RECOVERY_CHECK=PASS`; `git diff --check` está limpio. La batería global
+Bash no se pudo iniciar por un error de MSYS2 al crear `\BaseNamedObjects\msys-*`
+en este Windows. Esto no cambia el estado funcional: los doce módulos siguen
+`PARCIAL` hasta verificar sus rutas autenticadas reales en escritorio y móvil.
