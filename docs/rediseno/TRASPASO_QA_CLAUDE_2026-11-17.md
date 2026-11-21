@@ -1473,14 +1473,17 @@ botones, alerta y resumen mediante los tokens `--c-*`, la tipografía común y
 `--la-control-height`; se conserva la lógica de autenticación, los handlers y
 la paridad de `fuente.js`.
 
-La caché activa queda en `qa-orbita-modules-v65-20261121`, huella P01
-`43b32a4afb679641`. Contratos de capas y componentes pasan. La prueba MFA real
+La caché activa queda en `qa-orbita-modules-v66-20261121`, huella P01
+`2d2f01d1eb801325`. Contratos de capas y componentes pasan. La prueba MFA real
 y la revisión con un administrador de Plataforma siguen pendientes; no se
 debe marcar Acceso ni Plataforma como terminados por este cambio aislado.
 
 Además, el estado de error MFA y la cabecera compacta de móvil se normalizan
 desde la misma hoja: desaparecen los acentos Sello inline sin editar handlers
 ni paridad de las fuentes.
+
+La regla táctil común cubre ahora los botones que contienen únicamente un SVG:
+Personal ya no deja exportar, eliminar o anular con un ancho inferior a `44 px`.
 
 ### Recorrido QA autenticado · Cocina y Clientes · 21/11/2026
 

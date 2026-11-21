@@ -1433,7 +1433,7 @@ añadió una normalización específica para `[role="dialog"][aria-labelledby="l
 overlay, tarjeta, título, texto, campo OTP, acción primaria, alerta y resumen
 usan los tokens del tema, la tipografía común y la altura táctil de `44 px`.
 No se tocaron handlers, MFA, paridad de fuente ni permisos. La hoja vigente es
-`qa-orbita-modules-v65-20261121` (huella P01 `43b32a4afb679641`). La fila
+`qa-orbita-modules-v66-20261121` (huella P01 `2d2f01d1eb801325`). La fila
 Acceso continúa `PARCIAL` porque la prueba funcional de MFA y la sesión de
 administrador de Plataforma siguen fuera de esta tanda.
 
@@ -1441,3 +1441,8 @@ En la misma revisión se cubrió el estado `mfa-error` y la cabecera compacta de
 móvil, que aún recibían colores inline del bundle histórico. Ambos quedan
 remapeados por tokens y mantienen la altura táctil común; la lógica de acceso
 no cambia.
+
+También se cerró el caso táctil que quedaba en Personal: los botones emitidos
+solo con un icono (exportar, eliminar y anular) tenían el ancho del SVG aunque
+su fila midiese más. La regla común los convierte en objetivos cuadrados de
+`44×44 px` sin alterar el evento asociado.

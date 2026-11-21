@@ -455,6 +455,18 @@ html[data-la-diseno] #root main[data-la-orbita-module] [role="menuitem"],
 html[data-la-diseno] #root main[data-la-orbita-module] [role="option"] {
   min-height: var(--la-control-height) !important;
 }
+/* Botones con solo un icono no pueden depender del ancho del SVG: el área
+   pulsable completa también debe ser 44×44 px, especialmente en Personal,
+   donde exportar, borrar y anular se emiten como botones desnudos. */
+html[data-la-diseno] #root main[data-la-orbita-module] button:has(> svg:only-child),
+html[data-la-diseno] #root main[data-la-orbita-module] [role="button"]:has(> svg:only-child) {
+  width: var(--la-control-height) !important;
+  min-width: var(--la-control-height) !important;
+  min-height: var(--la-control-height) !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
 /* Los checks históricos medían 13 px de ancho aunque su fila aparentara ser
    grande. Órbita les da un objetivo táctil real de 44 × 44 px, manteniendo el
    acento del diseño activo y sin alterar el valor ni el handler. */
