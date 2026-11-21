@@ -809,3 +809,5 @@ siguiente deploy v14.
 
 Además, la selección actualiza `data-la-orbita-route` inmediatamente; no
 depende de un repintado posterior de React para cambiar la superficie visual.
+La marca `data-la-orbita-module` usa esa misma prioridad: Inicio ya no queda
+clasificado como Pase cuando el panel operativo está incrustado.

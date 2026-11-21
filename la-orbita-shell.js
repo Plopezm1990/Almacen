@@ -372,7 +372,8 @@
     marco.setAttribute("data-la-orbita-route", ruta);
     if (main) {
       main.setAttribute("data-la-orbita-route", ruta);
-      var superficie = main.querySelector(".tpv-layout") ? "tpv" :
+      var superficie = ruta === "inicio" ? "inicio" :
+        main.querySelector(".tpv-layout") ? "tpv" :
         main.querySelector(".la-panel-diseno") ? "inicio" :
         main.querySelector("#la-pase, .la-pase") ? "pase" :
         main.querySelector(".la-operacion-cocina") ? "cocina" :

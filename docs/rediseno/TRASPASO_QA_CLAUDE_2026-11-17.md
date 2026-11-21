@@ -1469,6 +1469,8 @@ con el módulo principal.
 
 La marca de ruta se recalcula en el mismo clic, por lo que la cabecera y el
 estado activo no quedan un ciclo de render por detrás.
+La superficie y el módulo comparten esa prioridad, evitando que un Pase
+incrustado se presente como la pantalla principal.
 
 ### Corrección del modo local · shell Órbita · `1948bc4d`
 
