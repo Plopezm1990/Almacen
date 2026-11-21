@@ -1287,16 +1287,18 @@ consecuencia, los selectores scoped de Inventario no podían aplicar su escala
 ciego, saldo/mapa de almacén, traspasos y etiquetas/catálogo bajo
 `data-la-orbita-module="inventario"`. No se cambiaron handlers, datos ni
 permisos; solo la clasificación visual. La marca del shell pasa a
-`qa-orbita-shell-v18-20261121`, huella `9a4fe75c1f5860c9`.
+`qa-orbita-shell-v19-20261121`, huella `8b9ab5c5aedf7c75`.
 
 La verificación live posterior, en modo local y sin escrituras, confirmó en el
 Deploy Preview 225 que «Más → Reconciliación de stock» devuelve
 `data-la-orbita-module="inventario"` y
 `data-la-orbita-surface="inventario"`, con `overflow=false` y control visible
-mínimo de `44 px`. El HTML sirve `la-orbita-shell.js?v=qa-orbita-shell-v18-20261121`.
+mínimo de `44 px`. El HTML sirve `la-orbita-shell.js?v=qa-orbita-shell-v19-20261121`.
 
 La segunda pasada de rutas encontró y corrigió dos casos equivalentes: «Traspasos»
 ya prioriza `inventario` aunque conserve una raíz histórica de Caja, y «Registro
 horario»/«Cuadrante de turnos» se agrupan bajo `personal`. En «Etiquetas y
 catálogo» los checks históricos medían 13 px de ancho; la capa v62 les fija un
 objetivo táctil real de `44 × 44 px` sin cambiar su valor ni su handler.
+La corrección v19 evita además que la superficie calculada vuelva a sobrescribir
+Inventario con `caja` al detectar esa raíz histórica.

@@ -1470,17 +1470,19 @@ no recibía los selectores scoped de Inventario. El shell v17 la agrupa junto a
 Inventario ciego, saldo/mapa de almacén, traspasos y etiquetas/catálogo bajo
 `data-la-orbita-module="inventario"`. Es un cambio de presentación y caché;
 no altera datos, handlers, permisos ni RPC. Marca:
-`qa-orbita-shell-v18-20261121`, huella `9a4fe75c1f5860c9`.
+`qa-orbita-shell-v19-20261121`, huella `8b9ab5c5aedf7c75`.
 
 Evidencia live en el Preview 225, modo local y sin escrituras: Reconciliación
 devuelve módulo y superficie `inventario`, `overflow=false` y control visible
 mínimo de `44 px`; el navegador confirmó el recurso
-`la-orbita-shell.js?v=qa-orbita-shell-v18-20261121`.
+`la-orbita-shell.js?v=qa-orbita-shell-v19-20261121`.
 
 En la pasada siguiente, «Traspasos» dejó de caer en Caja y «Registro horario»
 y «Cuadrante de turnos» dejaron de quedar como rutas sueltas: ahora heredan
 Inventario y Personal respectivamente. «Etiquetas y catálogo» tenía checks de
 13 px; la capa v62 los normaliza a `44 × 44 px` manteniendo sus handlers.
+El shell v19 también impide que la raíz histórica de Traspasos vuelva a
+sobrescribir la superficie Inventario con Caja.
 
 También se verificó Configuración en v61, modo local y Local A1. Las ocho
 familias de ajustes y el estado de error sin sesión se renderizan dentro del

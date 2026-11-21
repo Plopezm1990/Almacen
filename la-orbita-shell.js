@@ -390,6 +390,8 @@
     if (main) {
       main.setAttribute("data-la-orbita-route", ruta);
       var superficie = ruta === "inicio" ? "inicio" :
+        ruta === "inventario" ? "inventario" :
+        ruta === "personal" ? "personal" :
         main.querySelector(".tpv-layout") ? "tpv" :
         main.querySelector(".la-panel-diseno") ? "inicio" :
         main.querySelector("#la-pase, .la-pase") ? "pase" :
