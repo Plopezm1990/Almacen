@@ -1677,6 +1677,18 @@ queda verde. Los 12 módulos permanecen `PARCIAL` en la matriz hasta completar
 el recorrido autenticado de cada ruta real, especialmente Plataforma con
 administrador QA y Acceso con sesión/MFA.
 
+### Recorrido visual de rutas históricas · 21/11/2026 · SHA `56be8a75`
+
+El shell ya no depende de `aria-current` para las pantallas antiguas: cuando
+un handler no lo actualiza, combina ese valor con el `h1/h2` visible y asigna
+la superficie correcta. El recorrido en modo local del preview verificó
+`inicio`, `tpv`, `cocina`, `compras`, `inventario`, `personal`, `clientes`,
+`configuracion`, `caja` y `tpv` para Encargos; todas las rutas devolvieron
+`overflow=false` y un control visible mínimo de 44 px. Se añadió una defensa
+contra la coincidencia parcial de «Encargos» con «cargos», que antes podía
+clasificar esa ruta como Personal. Esta evidencia es visual y no autenticada;
+no sustituye la validación de datos, permisos, cobros ni MFA en QA.
+
 ### Corrección de Plataforma previa al shell · 21/11/2026
 
 La revisión v39 cubría el panel de Plataforma cuando ya existía el shell

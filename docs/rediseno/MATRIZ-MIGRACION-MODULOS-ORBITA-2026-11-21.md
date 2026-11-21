@@ -453,3 +453,28 @@ en este Windows. Esto no cambia el estado funcional: los doce módulos siguen
 `PARCIAL` hasta verificar sus rutas autenticadas reales en escritorio y móvil.
 El deploy correspondiente del PR #225 es `6b01503a7eb72456135f09fb` (`ready`),
 con la URL estable `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
+
+### Recorrido visual de rutas · 21/11/2026 · SHA `56be8a75`
+
+En el preview se activó el modo local sin sincronizar para aislar la capa
+visual y se recorrieron diez entradas del menú. La lectura de la propia página
+devolvió este anclaje, sin desbordamiento horizontal y con controles visibles
+de al menos 44 px en cada ruta:
+
+| Entrada | `data-la-orbita-module` / `surface` | Overflow | Mínimo |
+|---|---|---:|---:|
+| Panel general | `inicio` / `inicio` | no | 44 px |
+| TPV | `tpv` / `tpv` | no | 44 px |
+| Cocina | `cocina` / `cocina` | no | 44 px |
+| Proveedores | `compras` / `compras` | no | 44 px |
+| Productos | `inventario` / `inventario` | no | 44 px |
+| Personal | `personal` / `personal` | no | 44 px |
+| Clientes | `clientes` / `clientes` | no | 44 px |
+| Configuración | `configuracion` / `configuracion` | no | 44 px |
+| Arqueo de caja | `caja` / `caja` | no | 44 px |
+| Encargos | `tpv` / `tpv` | no | 44 px |
+
+La prueba confirma que las pantallas históricas ya no caen en la superficie
+genérica `pantalla`. Al ser modo sin sincronizar, los estados de servidor,
+permisos, cobros y persistencia siguen requiriendo el recorrido autenticado de
+QA antes de cambiar cualquiera de las doce filas a `CERRADO`.
