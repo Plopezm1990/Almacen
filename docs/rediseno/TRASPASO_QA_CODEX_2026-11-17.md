@@ -253,6 +253,12 @@ rendimiento del arranque, no como bloqueo: el loader ya tiene límite visible,
 mensaje accesible y reintento. La medición no sustituye el recorrido
 autenticado de QA ni autoriza cobros, reembolsos o escrituras.
 
+La misma comprobación cubrió Proveedores/Compras, Productos/Inventario,
+Personal y Configuración. Se observaron los estados vacío y carga sin que
+ninguno introdujera una segunda cabecera ni desbordamiento. Pase no se marca
+por esta pasada: necesita sus mesas y cola reales; Plataforma sigue necesitando
+la concesión de administrador QA.
+
 La evidencia y esta nota se publicaron en `23f98029` y el Deploy Preview 225
 quedó `ready` en `6b0164cbaf0db151e7fa02b2`. El PR #225 continúa abierto en
 borrador y producción no se tocó.

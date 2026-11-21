@@ -110,6 +110,14 @@ segundos en este banco, pero no quedó bloqueada: tras esperar diez segundos el
 | Caja / Arqueo | `caja` | `caja` | igual al viewport | 44 px |
 | Clientes | `clientes` | `clientes` | igual al viewport | 44 px |
 
+La misma pasada añadió, sin mutaciones, Proveedores (`compras`), Productos
+(`inventario`), Personal (`personal`) y Configuración (`configuracion`).
+Proveedores mostró el vacío «Todavía no has añadido proveedores»; Personal
+mostró el estado de carga «Cargando empleados…»; Productos mostró filtros y
+acciones de inventario; Configuración mostró el contexto de QA y sus controles.
+En las cuatro rutas el `scrollWidth` siguió igual al viewport y el mínimo
+visible fue `44 px`.
+
 En Inicio se observaron «El pulso del negocio», accesos rápidos, cuatro
 indicadores, selector de local, cabecera QA, buscador global, avisos, perfil,
 botón Apariencia y navegación inferior. TPV mantuvo venta rápida, sala,
