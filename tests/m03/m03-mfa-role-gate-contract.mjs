@@ -34,7 +34,7 @@ for (const token of required) {
   if (!source.includes(token)) throw new Error(`M03 falta evidencia estática: ${token}`);
 }
 
-const patchScript = index.indexOf('src="./edge-auth-patch.js"');
+const patchScript = index.indexOf('src="./edge-auth-patch.js');
 const bundleScript = index.indexOf('src="./fuente.js');
 if (patchScript < 0 || bundleScript < 0 || patchScript > bundleScript) {
   throw new Error('M03: edge-auth-patch.js debe cargarse antes de fuente.js');
