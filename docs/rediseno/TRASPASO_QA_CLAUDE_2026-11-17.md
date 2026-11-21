@@ -1491,6 +1491,7 @@ de error Órbita y `role=status` la superficie informativa, incluyendo Clientes,
 Caja y pantallas aún sin selector específico. La semántica y los handlers no
 cambian. Caché `qa-orbita-modules-v26-20261121`, huella P01
 `0471acf3bfc85099`.
+Deploy Preview 225: `6b013d3584eba994f4ee5306` (`ready`), commit `4e51e027`.
 
 ### TPV y sala · superficies secundarias · 21/11/2026
 

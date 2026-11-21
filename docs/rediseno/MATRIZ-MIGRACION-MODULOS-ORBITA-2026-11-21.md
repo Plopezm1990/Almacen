@@ -262,3 +262,4 @@ alcanza también Clientes, Caja y cualquier pantalla de gestión que todavía no
 tenga un selector específico. Se conserva el contenido, la semántica ARIA y
 los handlers. Caché `qa-orbita-modules-v26-20261121`, huella P01
 `0471acf3bfc85099`.
+Deploy Preview 225: `6b013d3584eba994f4ee5306` (`ready`), commit `4e51e027`.
