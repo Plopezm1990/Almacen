@@ -347,3 +347,13 @@ reembolsos, documentos, permisos ni handlers. Caché
 `qa-orbita-modules-v33-20261121`, huella P01 `7ba54937325ac699`. Caja sigue
 `PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
 `6b01458faf0db151e7f4ba59` (`ready`), commit `fd1f6a51`.
+
+### Clientes · listados, vistas guardadas y ficha · v34
+
+La capa v34 completa la superficie de Clientes: vistas guardadas, paginación,
+botones con rol, ficha, tablas, detalles y estados comparten la escala Órbita;
+alertas y estados informativos consumen tokens semánticos y en móvil las tablas
+mantienen scroll local sin ampliar el viewport. No se modifican filtros,
+actividad, NIF, datos, permisos ni handlers. Caché
+`qa-orbita-modules-v34-20261121`, huella P01 `77fa483c6dc0cc62`. Clientes sigue
+`PARCIAL` hasta el recorrido autenticado en QA.

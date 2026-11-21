@@ -1581,6 +1581,15 @@ Marca `qa-orbita-modules-v33-20261121`, huella P01 `7ba54937325ac699`; queda
 pendiente el recorrido autenticado en QA. Deploy Preview 225:
 `6b01458faf0db151e7f4ba59` (`ready`), commit `fd1f6a51`.
 
+### Clientes · listados, vistas guardadas y ficha · v34
+
+Se completó la normalización visual de Clientes para listado, vistas guardadas,
+filtros, paginación, ficha, actividad y tablas. Los estados de error e
+información consumen tokens Órbita y el scroll queda contenido en móvil. Se
+preservan datos, NIF, permisos, actividad y handlers. Marca
+`qa-orbita-modules-v34-20261121`, huella P01 `77fa483c6dc0cc62`; queda pendiente
+el recorrido autenticado en QA.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo

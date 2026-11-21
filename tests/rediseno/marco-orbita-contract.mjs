@@ -7,7 +7,7 @@ const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const css = readFileSync(resolve(root, 'la-apariencia.css'), 'utf8');
 
 const checks = [
-  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v7-20261121') && index.includes('la-apariencia.css?v=qa-orbita-modules-v33-20261121'), 'index carga las capas Órbita con sus marcas de caché'],
+  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v7-20261121') && index.includes('la-apariencia.css?v=qa-orbita-modules-v34-20261121'), 'index carga las capas Órbita con sus marcas de caché'],
   [shell.includes('data-la-orbita-header') && shell.includes('data-la-orbita-qa'), 'capa común con cabecera y estado QA'],
   [shell.includes('crearSidebarParaClaro') && shell.includes('la-orbita-legacy-header'), 'la propuesta claro deja de conservar una cabecera de marco alternativa'],
   [shell.includes('data-la-orbita-sidebar-toggle') && shell.includes('la-orbita:sidebar'), 'menú lateral con estado abierto/cerrado persistente'],
