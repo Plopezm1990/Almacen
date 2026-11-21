@@ -42,7 +42,7 @@ import assert from 'node:assert/strict';
 const CAPAS = [
   { archivo: 'la-apariencia.css', marca: 'qa-orbita-modules-v46-20261121', huella: 'ebbf90ccdde80bb4', etiqueta: 'link' },
   { archivo: 'la-pase.css', marca: 'qa-orbita-pase-v2-20261121', huella: '4b14613f8923c353', etiqueta: 'link' },
-  { archivo: 'la-apariencia.js', marca: 'qa-apariencia-contexto-20261113', huella: 'da220cc43c9544bc', etiqueta: 'script' },
+  { archivo: 'la-apariencia.js', marca: 'qa-apariencia-contexto-v2-20261121', huella: '787e3036904bc526', etiqueta: 'script' },
   { archivo: 'la-apariencia-editor.js', marca: 'qa-apariencia-contexto-20261113', huella: '423e462949e5edea', etiqueta: 'script' },
   { archivo: 'la-orbita-shell.js', marca: 'qa-orbita-shell-v15-20261121', huella: '85a521c292d3b784', etiqueta: 'script' },
   { archivo: 'la-pase-panel.js', marca: 'qa-orbita-pase-20261118', huella: '00a951bb2691a431', etiqueta: 'script' },

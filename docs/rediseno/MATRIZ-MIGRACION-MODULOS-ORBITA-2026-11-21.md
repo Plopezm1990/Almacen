@@ -110,6 +110,11 @@ responsive=PASS tactil=44`; `git diff --check` también pasa. Esta evidencia
 confirma la integración del marco, no sustituye el recorrido autenticado de
 cada módulo. Por eso las doce filas permanecen deliberadamente en `PARCIAL`.
 
+Además, el arranque sin configuración de empresa conserva ahora `orbita` como
+fallback visual. La ausencia de una preferencia ya no elimina
+`data-la-diseno` ni devuelve la suite a los estilos históricos; una propuesta
+o paleta guardada explícitamente continúa teniendo precedencia.
+
 ### Pasada local adicional · preview 225 · 21/11/2026
 
 Se hizo una pasada de renderizado en el Deploy Preview 225 desde el navegador

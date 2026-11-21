@@ -708,7 +708,13 @@
     if (prueba) return aplicar(prueba, "prueba");
     var empresa = await leerEmpresa();
     if (contexto !== contextoApariencia()) return false;
-    return aplicar(empresa, empresa ? "empresa" : "base");
+    /* Órbita es el marco visual base de la suite. Antes, la ausencia de una
+       configuración por empresa llamaba a aplicar(null) y eliminaba
+       data-la-diseno, devolviendo las pantallas al CSS histórico aunque
+       index.html ya hubiera fijado Órbita antes del primer render. Una
+       configuración explícita sigue teniendo precedencia; solo el fallback
+       sin empresa usa ahora el diseño base registrado. */
+    return aplicar(empresa || { diseno: "orbita" }, empresa ? "empresa" : "base");
   }
 
   function vigilarContexto() {
@@ -718,7 +724,7 @@
       contextoVigilado = actual;
       limpiarPruebasDelNavegador();
       servidor = { disponible: null, puedeAplicar: null, motivo: "" };
-      aplicar(null, "base");
+      aplicar({ diseno: "orbita" }, "base");
       window.dispatchEvent(new CustomEvent("la-apariencia:contexto-cambiado"));
       resolver();
     }, 1500);

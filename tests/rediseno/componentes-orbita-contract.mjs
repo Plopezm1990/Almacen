@@ -12,6 +12,7 @@ const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.j
 const resetPassword = readFileSync(resolve(root, 'restablecer-contrasena.html'), 'utf8');
 const ownerBootstrap = readFileSync(resolve(root, 'owner-bootstrap-post-reset.js'), 'utf8');
 const platformPanel = readFileSync(resolve(root, 'plataforma-panel.js'), 'utf8');
+const appearance = readFileSync(resolve(root, 'la-apariencia.js'), 'utf8');
 
 const normalizeNewlines = (text) => text.replace(/\r\n/g, '\n');
 const localAccessBlock = (text) => {
@@ -27,6 +28,10 @@ assert.equal(localAccessBlock(source), localAccessBlock(recovery),
 
 assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v46-20261121/);
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
+assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,
+  'la ausencia de configuración de empresa debe conservar Órbita como fallback visual');
+assert.match(appearance, /aplicar\(\{ diseno: "orbita" \}, "base"\)/,
+  'el cambio de contexto no debe devolver temporalmente la suite a la capa antigua');
 assert.match(index, /var\(--c-bg, #17191C\)/, 'la pantalla de carga conserva la superficie antigua');
 assert.doesNotMatch(index, /#0C2714|#F7F3E9|#E7D1A5|#B8AC91|#7F5823|#C69A52|#D2AD68/, 'el arranque conserva la paleta antigua');
 assert.match(ownerBootstrap, /min-height:var\(--la-control-height,44px\)/, 'el bootstrap de instalación conserva controles menores de 44 px');

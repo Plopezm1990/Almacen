@@ -1483,6 +1483,12 @@ recuperación, expiración, MFA y selección de empresa/local; tampoco se ha
 obtenido todavía una pasada independiente en Chrome y Firefox para todos los
 módulos.
 
+Corrección transversal de esta tanda: si la empresa todavía no tiene una
+preferencia de apariencia, `la-apariencia.js` conserva `orbita` como diseño
+base. Antes el resolver eliminaba `data-la-diseno` y permitía que reapareciera
+la paleta histórica; las preferencias explícitas de las nueve propuestas no
+se modifican.
+
 ### Revisión final de controles externos · Plataforma y Acceso · 21/11/2026
 
 La auditoría del marco común encontró una excepción concreta en los paneles
