@@ -1273,5 +1273,9 @@ Evidencia live tras el despliegue: en Codex, Inicio quedó marcado como módulo
 superficie a `tpv` y montó `.tpv-layout`; en el ancho disponible del banco no
 hubo overflow (`scrollWidth === innerWidth`) y el control visible mínimo fue
 44 px. Los contratos P01, marco, rutas, componentes y `git diff --check`
-siguen pasando. La batería global se debe ejecutar después de estabilizar la
-siguiente tanda; no se hicieron cobros, reembolsos ni cambios de datos en QA.
+siguen pasando. La batería global posterior registró `NODE_ACTIVE_TOTAL=327`,
+`NODE_ACTIVE_PASS=304`, `NODE_ACTIVE_FAIL=23`, `UTILITIES_RUN=8`,
+`DIAGNOSTICS_RUN=5`, `INFRA_FAIL=0` y dejó el árbol limpio. Los 23 fallos
+coinciden con la lista histórica del banco (alb/cfg/f3/f4/plataforma/pm11/pm33)
+y no apuntan a esta corrección de selectores. No se hicieron cobros,
+reembolsos ni cambios de datos en QA.
