@@ -1209,3 +1209,7 @@ sin overflow y con una única composición visible; móvil `390×844` sin
 overflow, barra inferior de 55 px y cero controles visibles por debajo de
 44 px. El contrato de componentes Órbita y la sintaxis del nuevo script pasan;
 no hubo errores ni advertencias de consola.
+
+La regresión global posterior registró 304/327 contratos activos PASS, 23
+fallos históricos no relacionados con el Panel y `INFRA_FAIL=0`; el contrato
+del Panel y el contrato de componentes Órbita pasan.

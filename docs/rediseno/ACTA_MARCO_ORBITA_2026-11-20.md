@@ -194,3 +194,8 @@ cerrarlo vuelve a quedar oculto. En móvil `390×844` se mantiene oculto por
 defecto, la barra inferior tiene cuatro botones de 55 px, no hay overflow y no
 hay controles visibles menores de 44 px. No hubo errores ni advertencias de
 consola.
+
+La batería global ejecutada después de esta corrección registró 304/327
+contratos activos PASS, 23 fallos históricos ajenos al Panel y `INFRA_FAIL=0`;
+el contrato específico de componentes Órbita volvió a pasar dentro de esa
+batería.
