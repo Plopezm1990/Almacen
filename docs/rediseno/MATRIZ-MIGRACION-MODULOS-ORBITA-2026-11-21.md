@@ -298,3 +298,5 @@ apila accesos e indicadores sin overflow. No cambia indicadores, datos,
 permisos, navegación ni handlers. Caché `qa-orbita-modules-v29-20261121`,
 huella P01 `b729a1b6a5c2f7d3`. La matriz permanece `PARCIAL` hasta recorrer
 Inicio autenticado en los cinco viewports y comprobar vacío/carga/error.
+La publicación v29 está lista en Deploy Preview 225 como
+`6b0141b9c36cc507a332a536` (`ready`), commit `41532f7b`.
