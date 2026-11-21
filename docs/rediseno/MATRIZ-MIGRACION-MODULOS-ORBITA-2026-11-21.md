@@ -1380,3 +1380,12 @@ visibles. Los fondos dominantes fueron `rgb(32,35,40)` (superficie Órbita),
 translúcido; no apareció el verde/dorado histórico. El módulo mantuvo
 `overflow=false` y control mínimo de `44 px`. No se modificaron handlers ni se
 ejecutó ninguna venta.
+
+### Auditoría de paleta transversal · Cocina, Clientes, Compras, Inventario, Personal y Configuración · 21/11/2026
+
+Se inspeccionaron en vivo los controles y tarjetas visibles de los seis
+módulos. Los colores dominantes fueron superficies Órbita (`rgb(32,35,40)`),
+coral (`rgb(255,75,50)`/`rgb(255,142,125)`), fondos de estado semánticos y
+transparencia; no apareció el verde/dorado histórico. Las seis rutas
+mantuvieron `overflow=false` y un mínimo visible de `44 px`. La auditoría no
+modificó datos ni handlers y no sustituye la prueba autenticada de cada módulo.

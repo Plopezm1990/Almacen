@@ -1469,6 +1469,15 @@ controles y tarjetas visibles: predominan la superficie Órbita `rgb(32,35,40)`
 y el coral de acción `rgb(255,75,50)`. La ruta mantiene `overflow=false` y un
 mínimo táctil de `44 px`; no se hizo ninguna venta ni escritura de negocio.
 
+### Auditoría de paleta de módulos restantes · 21/11/2026
+
+La revisión live de Cocina, Clientes, Proveedores/Compras, Productos/Inventario,
+Personal y Configuración no encontró retornos del verde/dorado antiguo. Sus
+fondos y acciones visibles usan la superficie Órbita y el coral semántico;
+las seis rutas conservaron `overflow=false` y controles de al menos `44 px`.
+Se trata de evidencia visual en modo local; los recorridos autenticados de
+datos, permisos y estados de negocio siguen pendientes.
+
 ### Inicio · verificación desktop/móvil · 21/11/2026
 
 La pantalla Inicio se comprobó en el Deploy Preview 225 en un viewport de
