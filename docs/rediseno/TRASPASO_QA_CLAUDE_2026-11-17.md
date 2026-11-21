@@ -1644,6 +1644,8 @@ móvil el formulario ocupa el ancho disponible y las opciones se envuelven sin
 desbordamiento. Marca `qa-orbita-modules-v40-20261121`, huella P01
 `9f2ac4f4bc28b2f1`; queda pendiente el recorrido autenticado completo en QA.
 Deploy Preview 225: `6b014b8aabe0ae40a1c2ee97` (`ready`), commit `b1b142ba`.
+Evidencia no autenticada: el preview muestra `Iniciar sesión`, recuperación,
+acceso sin sincronizar y Apariencia; falta recorrer la sesión autenticada y MFA.
 
 ### Pase · variante Órbita · 21/11/2026
 
