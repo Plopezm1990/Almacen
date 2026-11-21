@@ -1462,6 +1462,17 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Inicio · verificación desktop/móvil · 21/11/2026
+
+La pantalla Inicio se comprobó en el Deploy Preview 225 en un viewport de
+escritorio integrado (`618×678`) y en `390×844`. En ambos tamaños mantiene
+`inicio/inicio`, `overflow=false` y controles visibles de al menos `44 px`.
+Se observaron el panel «El pulso del negocio», sus cuatro indicadores y los
+accesos rápidos a TPV, Cocina y Resultados. En móvil se confirmaron también
+cabecera Órbita y navegación inferior. La prueba se hizo en modo local, sin
+sincronización ni escrituras; hace falta repetirla autenticada para cerrar la
+fila de Inicio y comprobar datos, permisos y estados reales.
+
 ### Deploy v19 y auditoría de rutas históricas · 21/11/2026
 
 El commit `a57e154d8cd3f9488b53a3361e32febed7937508` está publicado en el

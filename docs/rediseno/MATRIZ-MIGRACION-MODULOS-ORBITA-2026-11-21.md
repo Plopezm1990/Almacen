@@ -1324,3 +1324,18 @@ resiliente); `git diff --check` también pasa. Esta evidencia acredita la capa
 visual y responsive, pero no cambia ninguna fila funcional de `PARCIAL`: aún
 falta recorrer cada módulo con una sesión QA autenticada, datos reales y sus
 permisos/estados de negocio, especialmente Plataforma y Acceso.
+
+### Inicio · revisión responsive adicional · 21/11/2026
+
+En el mismo preview se verificó Inicio en dos tamaños efectivos: el viewport
+integrado de escritorio (`618×678`) y un viewport móvil explícito de `390×844`.
+En ambos casos la ruta devolvió `data-la-orbita-module=inicio`,
+`data-la-orbita-surface=inicio`, `overflow=false` y un control visible mínimo
+de `44 px`. El escritorio mostró «El pulso del negocio», cuatro indicadores
+(`Ventas registradas`, `Margen promedio`, `Pedidos pendientes` y `Productos en
+stock bajo`) y los tres accesos rápidos (`Abrir TPV`, `Ir a Cocina` y
+`Consultar resultados`). El móvil mostró el mismo panel, cabecera Órbita,
+navegación inferior y los mismos accesos sin desbordamiento. Se mantuvo el
+modo local sin sincronización; no se escribieron datos ni se ejecutaron cobros.
+La fila Inicio sigue `PARCIAL` hasta repetir estas variantes con sesión QA
+autenticada y estados de negocio reales.
