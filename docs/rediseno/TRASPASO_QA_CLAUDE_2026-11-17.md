@@ -1462,6 +1462,34 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Recorrido QA autenticado · Cocina y Clientes · 21/11/2026
+
+Con sesión real de propietario `pm07.smoke@qa.invalid` en QA-EMP-A / QA-A1,
+preview #225, viewport `1195×678`, se recorrieron dos módulos adicionales sin
+mutar datos. En ambos casos el `scrollWidth` coincide con el ancho útil
+(`overflow=false`) y el suelo táctil observado/contratado es `44 px`.
+
+**Cocina.** El marco Órbita muestra «Cocina y comandas», «Actualizar» y
+«Mostrar gestión avanzada». El selector de estación ofrece «Todas las
+estaciones» y `COCINA-QA`; la cola real muestra 8 de 93 comandas, con estados
+`NUEVA`, `RECIBIDA`, `BLOQUEADA` y `ALTA`, además de la acción «Reimprimir» y
+la advertencia explícita de comandas sin ruta de preparación. No se cambió
+ningún estado. La fila queda `PARCIAL` hasta verificar móvil, carga/vacío/error
+y el recorrido operativo con cargo restringido.
+
+**Clientes.** El marco único muestra «Clientes», «Nuevo cliente», vistas
+guardadas (`Todos`, `Particulares`, `Empresas`, `Activos`, «Guardar vista»),
+búsqueda, filtros de Estado y Tipo de cliente, dos fichas reales QA y
+acciones «Abrir ficha», «Editar», «Anonimizar» y «Eliminar». La paginación
+indica `1–2 de 2 clientes`; el NIF de prueba aparece enmascarado como
+`••••678Z`. No se modificaron clientes ni se abrió una ficha. La fila queda
+`PARCIAL` hasta verificar móvil, carga/vacío/error y ficha con actividad.
+
+La evidencia se registra también como `qa-20261121-orbita-cocina` y
+`qa-20261121-orbita-clientes` en `MATRIZ-IMPLANTACION-QA.csv`. El orden de
+trabajo continúa con Compras, Inventario, Personal, Configuración, Plataforma
+y Acceso; ningún módulo se marca `CERRADO` solo por inspección estática.
+
 ### Primer recorrido QA autenticado del objetivo 4 · Inicio y TPV · 21/11/2026
 
 Se recuperó una sesión de propietario en `QA-EMP-A` / `QA-A1` y se recorrieron
