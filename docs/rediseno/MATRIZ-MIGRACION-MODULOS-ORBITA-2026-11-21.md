@@ -581,3 +581,7 @@ El deploy de comprobación de esta revisión es
 `https://deploy-preview-225--chic-entremet-9107cf.netlify.app`. El escaneo de
 secretos no encontró coincidencias y se procesaron las siete reglas de
 cabeceras sin error.
+
+Tras el commit documental `e5f0a67efe6b2b3d16fff12b048e2eabf25e4dd6`, el
+Preview 225 volvió a quedar `ready` en el deploy
+`6b015a56e2b32501d2eb2c8d`; el alias estable sigue apuntando a esa rama de QA.

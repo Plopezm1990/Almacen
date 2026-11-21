@@ -1477,6 +1477,10 @@ El deploy correspondiente quedó `ready` como
 225. La batería `tests/rediseno/*.mjs` terminó sin fallos y `git diff --check`
 quedó limpio.
 
+Tras el commit documental `e5f0a67efe6b2b3d16fff12b048e2eabf25e4dd6`, el
+Preview 225 volvió a quedar `ready` en el deploy
+`6b015a56e2b32501d2eb2c8d`; el alias estable sigue apuntando a esa rama de QA.
+
 ### Acceso · revisión responsive no autenticada · 21/11/2026
 
 La pantalla `.la-acceso` se observó directamente en el preview a **390 × 844**
