@@ -95,3 +95,9 @@ viewport. Inventario (`inventario/inventario`) y Compras
 (`compras/compras`) conservaron `overflow=false`, `scrollWidth=390` y un
 mínimo interactivo de `44 px`; se observaron «Productos» y «Proveedores» sin
 escribir datos.
+
+La pasada continuó con `Personal`, `Cocina`, `Caja` y `Clientes`. En
+`390×844`, las cuatro superficies conservaron su par semántico, sin overflow y
+con mínimo interactivo de `44 px`. La cobertura móvil autenticada acumulada es
+de nueve módulos; Pase queda observado dentro de Inicio. Plataforma sigue
+requiriendo privilegio administrador y Acceso/MFA una sesión separada.

@@ -1536,3 +1536,12 @@ La misma sesión recorrió después `Más → Productos` y `Más → Proveedores
 «Productos»; Compras devolvió `compras/compras` con encabezado «Proveedores».
 Ambas rutas dieron `scrollWidth=390`, `overflow=false` y mínimo interactivo de
 `44 px`. La lectura no modificó productos, proveedores ni documentos.
+
+La misma sesión completó la pasada móvil de `Personal`, `Cocina`, `Caja` y
+`Clientes`. Las rutas devolvieron respectivamente
+`personal/personal`, `cocina/cocina`, `caja/caja` y `clientes/clientes`; todas
+mantuvieron `scrollWidth=390`, `overflow=false` y mínimo interactivo `44 px`.
+Con ello quedan nueve módulos autenticados comprobados en móvil: Inicio, TPV,
+Cocina, Caja, Clientes, Compras, Inventario, Personal y Configuración. Pase se
+observa integrado en el panel operativo de Inicio; Plataforma no está expuesta
+al rol Propietario y Acceso/MFA requiere una sesión específica.

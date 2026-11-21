@@ -1462,6 +1462,13 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+La sesión comprobó además `Personal`, `Cocina`, `Caja` y `Clientes` en
+`390×844`: `personal/personal`, `cocina/cocina`, `caja/caja` y
+`clientes/clientes`, sin overflow y con controles de `44 px`. La cobertura
+móvil autenticada llega a nueve módulos. Pase permanece visible dentro de
+Inicio; Plataforma y Acceso/MFA siguen siendo recorridos separados por
+privilegios.
+
 ### Evidencia móvil QA añadida · 21/11/2026
 
 La sesión propietaria `pm07.smoke@qa.invalid` comprobó en el preview 225,
