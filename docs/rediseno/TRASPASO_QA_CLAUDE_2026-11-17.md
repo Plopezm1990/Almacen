@@ -1633,7 +1633,8 @@ Se aplicó la escala Órbita a los paneles de Plataforma, conservando permisos,
 roles, datos y handlers: controles táctiles comunes, tarjetas, estados y
 tablas contenidas en móvil. Marca `qa-orbita-modules-v39-20261121`, huella P01
 `f26769170c7cdfa3`; queda pendiente el recorrido autenticado con privilegio de
-administración en QA.
+administración en QA. La capa cubre el panel previo `#la-plataforma-root`, su
+flujo de cambio de contraseña y la superficie marcada por el shell.
 Deploy Preview 225: `6b014af5313583e7553eee86` (`ready`), commit `45722dc5`.
 
 ### Acceso · login, recuperación, MFA y selección de empresa/local · v40
@@ -1642,8 +1643,21 @@ Se aplicó la escala Órbita a login, recuperación, MFA y selección de
 empresa/local, conservando autenticación, sesiones, permisos y handlers. En
 móvil el formulario ocupa el ancho disponible y las opciones se envuelven sin
 desbordamiento. Marca `qa-orbita-modules-v40-20261121`, huella P01
-`9f2ac4f4bc28b2f1`; queda pendiente el recorrido autenticado completo en QA.
+`67300938eb8c5c76`; queda pendiente el recorrido autenticado completo en QA.
 Deploy Preview 225: `6b014b8aabe0ae40a1c2ee97` (`ready`), commit `b1b142ba`.
+
+### Corrección de Plataforma previa al shell · 21/11/2026
+
+La revisión v39 cubría el panel de Plataforma cuando ya existía el shell
+Órbita, pero el flujo de cambio de contraseña y el panel administrativo
+temprano se montan antes de `main[data-la-orbita-module="plataforma"]`, en
+`#la-plataforma-root` y `#la-plataforma-cambio-root`. La capa compartida ahora
+normaliza también esos dos contenedores y sus primitivas `.lap-*` (tarjetas,
+botones, campos, errores, estados y filas), con la misma superficie, borde,
+radio, tipografía, escala táctil y comportamiento móvil. No se ha cambiado
+ningún handler, permiso, RPC o dato. La huella P01 de esta corrección es
+`67300938eb8c5c76`; la matriz y el contrato de componentes la exigen. Sigue
+pendiente la verificación con una cuenta de administrador de Plataforma en QA.
 Evidencia no autenticada: el preview muestra `Iniciar sesión`, recuperación,
 acceso sin sincronizar y Apariencia; falta recorrer la sesión autenticada y MFA.
 

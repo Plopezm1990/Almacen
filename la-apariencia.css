@@ -3016,6 +3016,78 @@ html[data-la-diseno] main:has(input[autocomplete="one-time-code"]) [role="button
   min-height: var(--la-control-height) !important;
   border-radius: var(--la-radius-md) !important;
 }
+
+/* Plataforma también puede vivir como panel previo al shell autenticado. */
+html[data-la-diseno] #la-plataforma-root,
+html[data-la-diseno] #la-plataforma-cambio-root {
+  color: var(--c-ink) !important;
+  font-family: var(--la-font-sans) !important;
+}
+html[data-la-diseno] #la-plataforma-root .lap-root,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-root {
+  background: var(--c-bg) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #la-plataforma-root .lap-barra,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-barra {
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+  border-bottom: 1px solid var(--c-divider) !important;
+}
+html[data-la-diseno] #la-plataforma-root .lap-tarjeta,
+html[data-la-diseno] #la-plataforma-root .lap-banner,
+html[data-la-diseno] #la-plataforma-root .lap-bloqueado,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-tarjeta,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-banner,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-bloqueado {
+  background: var(--c-surface) !important;
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  box-shadow: var(--la-shadow-1) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #la-plataforma-root .lap-btn,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-btn {
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md) !important;
+  font: inherit !important;
+}
+html[data-la-diseno] #la-plataforma-root .lap-campo input,
+html[data-la-diseno] #la-plataforma-root .lap-campo select,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-campo input,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-campo select {
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md) !important;
+  border-color: var(--c-border-control) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #la-plataforma-root .lap-err,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-err {
+  background: var(--c-red-soft) !important;
+  border-color: color-mix(in srgb, var(--c-red) 42%, transparent) !important;
+  color: var(--c-red) !important;
+}
+html[data-la-diseno] #la-plataforma-root .lap-pill,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-pill {
+  border-color: var(--c-divider) !important;
+  background: var(--c-accent-soft) !important;
+  color: var(--c-ink) !important;
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #la-plataforma-root .lap-cuerpo,
+  html[data-la-diseno] #la-plataforma-cambio-root .lap-cuerpo {
+    padding: var(--la-space-3) !important;
+  }
+  html[data-la-diseno] #la-plataforma-root .lap-fila,
+  html[data-la-diseno] #la-plataforma-cambio-root .lap-fila {
+    align-items: stretch !important;
+  }
+  html[data-la-diseno] #la-plataforma-root .lap-btn,
+  html[data-la-diseno] #la-plataforma-cambio-root .lap-btn {
+    flex: 1 1 160px;
+  }
+}
 @media (max-width: 767px) {
   html[data-la-diseno] .la-acceso {
     padding-inline: var(--la-space-3);

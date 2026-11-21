@@ -422,7 +422,9 @@ escala Órbita; en móvil los grupos se envuelven, las tablas mantienen scroll
 local y los formularios se apilan sin overflow. No se modifican permisos,
 roles, datos ni handlers. Caché `qa-orbita-modules-v39-20261121`, huella P01
 `f26769170c7cdfa3`. Plataforma sigue `PARCIAL` hasta el recorrido autenticado
-con privilegio de administración en QA.
+con privilegio de administración en QA. La capa alcanza tanto
+`main[data-la-orbita-module="plataforma"]` como los paneles previos
+`#la-plataforma-root` y `#la-plataforma-cambio-root`.
 Deploy Preview 225: `6b014af5313583e7553eee86` (`ready`), commit `45722dc5`.
 
 ### Acceso · login, recuperación, MFA y selección de empresa/local · v40
@@ -432,7 +434,7 @@ selección de empresa/local comparten campos, botones, alertas y estados Órbita
 en móvil se oculta el arte decorativo, el formulario ocupa el ancho disponible
 y las opciones se envuelven sin overflow. No se modifican autenticación,
 sesiones, permisos ni handlers. Caché `qa-orbita-modules-v40-20261121`, huella
-P01 `9f2ac4f4bc28b2f1`. Acceso sigue `PARCIAL` hasta el recorrido autenticado
+P01 `67300938eb8c5c76`. Acceso sigue `PARCIAL` hasta el recorrido autenticado
 completo en QA.
 Deploy Preview 225: `6b014b8aabe0ae40a1c2ee97` (`ready`), commit `b1b142ba`.
 Evidencia no autenticada: pantalla `Iniciar sesión`, recuperación, acceso sin

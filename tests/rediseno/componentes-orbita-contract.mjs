@@ -47,6 +47,8 @@ assert.ok(css.includes('main[data-la-orbita-module="configuracion"] .la-ui-card'
 assert.ok(css.includes('main[data-la-orbita-module="configuracion"] [role="alert"]'), 'Configuración no normaliza errores');
 assert.ok(css.includes('main[data-la-orbita-module="plataforma"] .la-ui-card'), 'Plataforma no normaliza tarjetas');
 assert.ok(css.includes('main[data-la-orbita-module="plataforma"] [role="alert"]'), 'Plataforma no normaliza errores');
+assert.ok(css.includes('#la-plataforma-root .lap-tarjeta'), 'Plataforma previa no normaliza tarjetas');
+assert.ok(css.includes('#la-plataforma-root .lap-btn'), 'Plataforma previa no normaliza controles');
 assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
 assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no conserva la composición Órbita');
 assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v3-20261121/);
