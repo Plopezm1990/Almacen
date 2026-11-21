@@ -10,7 +10,7 @@ const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v39-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v40-20261121/);
 assert.ok(css.includes('overscroll-behavior-inline: contain'), 'las tablas Órbita no encapsulan el desplazamiento móvil');
 assert.ok(css.includes('main[data-la-orbita-module] .overflow-x-auto'), 'los wrappers históricos no encapsulan el desplazamiento móvil');
 assert.ok(css.includes('main[data-la-orbita-module="inicio"] .la-panel-diseno'), 'Inicio no normaliza el panel Órbita');
@@ -35,6 +35,8 @@ assert.ok(css.includes('main[data-la-orbita-module="configuracion"] .la-ui-card'
 assert.ok(css.includes('main[data-la-orbita-module="configuracion"] [role="alert"]'), 'Configuración no normaliza errores');
 assert.ok(css.includes('main[data-la-orbita-module="plataforma"] .la-ui-card'), 'Plataforma no normaliza tarjetas');
 assert.ok(css.includes('main[data-la-orbita-module="plataforma"] [role="alert"]'), 'Plataforma no normaliza errores');
+assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
+assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no conserva la composición Órbita');
 assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v3-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);

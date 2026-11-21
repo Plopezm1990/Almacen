@@ -1636,6 +1636,14 @@ tablas contenidas en móvil. Marca `qa-orbita-modules-v39-20261121`, huella P01
 administración en QA.
 Deploy Preview 225: `6b014af5313583e7553eee86` (`ready`), commit `45722dc5`.
 
+### Acceso · login, recuperación, MFA y selección de empresa/local · v40
+
+Se aplicó la escala Órbita a login, recuperación, MFA y selección de
+empresa/local, conservando autenticación, sesiones, permisos y handlers. En
+móvil el formulario ocupa el ancho disponible y las opciones se envuelven sin
+desbordamiento. Marca `qa-orbita-modules-v40-20261121`, huella P01
+`9f2ac4f4bc28b2f1`; queda pendiente el recorrido autenticado completo en QA.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo
