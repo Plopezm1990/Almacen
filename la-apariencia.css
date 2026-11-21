@@ -245,6 +245,19 @@ html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] {
   min-width: 0;
   container-type: inline-size;
 }
+/* El código histórico todavía puede emitir minHeight inline (40px en
+   algunos selectores). La capa Órbita es la autoridad final de interacción:
+   ningún módulo puede dejar un control táctil por debajo de 44px. */
+html[data-la-diseno] #root main[data-la-orbita-module] input,
+html[data-la-diseno] #root main[data-la-orbita-module] select,
+html[data-la-diseno] #root main[data-la-orbita-module] textarea,
+html[data-la-diseno] #root main[data-la-orbita-module] button,
+html[data-la-diseno] #root main[data-la-orbita-module] [role="button"],
+html[data-la-diseno] #root main[data-la-orbita-module] [role="tab"],
+html[data-la-diseno] #root main[data-la-orbita-module] [role="menuitem"],
+html[data-la-diseno] #root main[data-la-orbita-module] [role="option"] {
+  min-height: var(--la-control-height) !important;
+}
 html[data-la-diseno] #root main[data-la-orbita-module="compras"] h2,
 html[data-la-diseno] #root main[data-la-orbita-module="inventario"] h2,
 html[data-la-diseno] #root main[data-la-orbita-module="personal"] h2,
@@ -1652,7 +1665,7 @@ html[data-la-diseno] #root [role="tablist"] {
   padding-bottom: 6px;
 }
 html[data-la-diseno] #root [role="tab"] {
-  min-height: 40px;
+  min-height: var(--la-control-height) !important;
   border: 1px solid var(--la-ui-control-border);
   border-radius: 9px;
   background: transparent;
@@ -1732,7 +1745,7 @@ html[data-la-diseno] #root [data-dropdown] {
 html[data-la-diseno] #root [role="menuitem"],
 html[data-la-diseno] #root [role="option"],
 html[data-la-diseno] #root .la-ui-dropdown-item {
-  min-height: 40px;
+  min-height: var(--la-control-height) !important;
   border-radius: 7px;
   color: var(--c-ink);
 }

@@ -140,3 +140,16 @@ por P01 es `ce277db80f8e2cf4`. Pasan P01, marco `21/21`, componentes, rutas
 `PARCIAL` hasta recorrer en QA cobro, cierre, reembolso, documento y estados
 vacío/carga/error en escritorio y móvil; no se ejecutaron nuevas operaciones
 de negocio en esta tanda.
+
+### Endurecimiento de escala contra estilos heredados · v22
+
+La capa común ahora fuerza `min-height: var(--la-control-height) !important`
+para inputs, selects, textareas, botones, tabs, opciones y elementos de menú
+dentro de cualquier módulo Órbita. Esto neutraliza los `minHeight` inline que
+todavía emite código histórico (por ejemplo, el selector de asignación de
+Personal con `40px`) sin tocar sus handlers ni su lógica. La misma regla se
+aplica a tabs y dropdowns globales. La caché pasó a
+`qa-orbita-modules-v22-20261121`, huella P01 `bdeee2cb4df1c980`.
+
+Este cambio es una guarda de escala, no un cierre visual de los módulos: los
+doce siguen en `PARCIAL` hasta la revisión live de cada ruta real.

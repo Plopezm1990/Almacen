@@ -1404,3 +1404,16 @@ superficie `.la-acceso` ya está gobernada por los tokens Órbita y mantiene
 recuperación, MFA, expiración de sesión y selección de empresa/local tanto en
 escritorio como en móvil. La sesión observada en el preview mostró el acceso
 QA y el botón Apariencia, sin realizar ninguna autenticación ni escritura.
+
+### Endurecimiento v22 · estilos inline heredados
+
+Se detectaron `minHeight` inline de `40px` en una ruta histórica de Personal y
+reglas equivalentes en tabs/dropdowns. Para que la escala Órbita sea única, la
+capa común fuerza ahora `min-height: var(--la-control-height) !important` en
+inputs, selects, textareas, botones, tabs, opciones y elementos de menú dentro
+de los módulos etiquetados. La caché quedó en
+`qa-orbita-modules-v22-20261121` (SHA CSS `bdeee2cb4df1c980`). Es una corrección
+de contrato táctil y de consistencia; no modifica handlers, permisos, datos ni
+RPC. Los contratos P01, marco, componentes y módulos deben ejecutarse de nuevo
+antes de aceptar el deploy. Los doce módulos continúan `PARCIAL` hasta la
+revisión QA individual de escritorio, móvil y estados de cada ruta.
