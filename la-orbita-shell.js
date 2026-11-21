@@ -499,7 +499,23 @@
           perfilMenu.remove();
           perfilMenu = null;
           perfil.setAttribute("aria-expanded", "false");
-          original.click();
+          /* El botón heredado de salida vive dentro del encabezado que el shell
+             oculta. Su click abría un modal también oculto y dejaba al usuario
+             atrapado en la sesión. La salida del perfil Órbita se ejecuta aquí
+             directamente; el botón antiguo queda como respaldo si el cliente
+             no está disponible (por ejemplo, durante una hidratación parcial). */
+          if (item.label === "Cerrar sesión" && typeof window.getSupabaseClient === "function") {
+            Promise.resolve(window.getSupabaseClient()).then(function (cliente) {
+              if (!cliente || !cliente.auth || typeof cliente.auth.signOut !== "function") throw new Error("cliente de sesión no disponible");
+              return cliente.auth.signOut({ scope: "local" });
+            }).then(function () {
+              window.location.reload();
+            }).catch(function () {
+              if (original && typeof original.click === "function") original.click();
+            });
+          } else if (original && typeof original.click === "function") {
+            original.click();
+          }
         });
         perfilMenu.appendChild(action);
       });
