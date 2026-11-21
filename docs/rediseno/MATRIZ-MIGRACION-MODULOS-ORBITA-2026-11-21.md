@@ -369,3 +369,13 @@ recepción, albaranes, facturas, datos, permisos ni handlers. Caché
 `qa-orbita-modules-v35-20261121`, huella P01 `edaafbdf5effde93`. Compras sigue
 `PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
 `6b01472c82a0e124af3b427b` (`ready`), commit `5b0c4bad`.
+
+### Inventario · productos, movimientos, mermas y ajustes · v36
+
+La capa v36 normaliza Inventario para productos, movimientos, mermas,
+caducidad y ajustes: tarjetas, botones, campos, estados, detalles y tablas
+comparten la escala Órbita; en móvil los listados conservan scroll local y los
+formularios se apilan sin overflow. No se modifican salidas, ajustes,
+persistencia, permisos ni handlers. Caché `qa-orbita-modules-v36-20261121`,
+huella P01 `b0199d11c27752d6`. Inventario sigue `PARCIAL` hasta el recorrido
+autenticado en QA.

@@ -1600,6 +1600,14 @@ y handlers. Marca `qa-orbita-modules-v35-20261121`, huella P01
 `edaafbdf5effde93`; queda pendiente el recorrido autenticado en QA.
 Deploy Preview 225: `6b01472c82a0e124af3b427b` (`ready`), commit `5b0c4bad`.
 
+### Inventario · productos, movimientos, mermas y ajustes · v36
+
+Se aplicó la escala Órbita a productos, movimientos, mermas, caducidad y
+ajustes: controles táctiles, tarjetas, estados, detalles y tablas comunes,
+con scroll local y formularios apilados en móvil. La lógica, persistencia,
+permisos y handlers permanecen intactos. Marca `qa-orbita-modules-v36-20261121`,
+huella P01 `b0199d11c27752d6`; queda pendiente el recorrido autenticado en QA.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo
