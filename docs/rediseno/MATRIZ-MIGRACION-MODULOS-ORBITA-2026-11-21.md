@@ -423,3 +423,4 @@ y las opciones se envuelven sin overflow. No se modifican autenticación,
 sesiones, permisos ni handlers. Caché `qa-orbita-modules-v40-20261121`, huella
 P01 `9f2ac4f4bc28b2f1`. Acceso sigue `PARCIAL` hasta el recorrido autenticado
 completo en QA.
+Deploy Preview 225: `6b014b8aabe0ae40a1c2ee97` (`ready`), commit `b1b142ba`.
