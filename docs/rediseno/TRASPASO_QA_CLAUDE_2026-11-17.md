@@ -1438,3 +1438,10 @@ Los 23 fallos son históricos y no cambian respecto a la tanda anterior; no
 incluyen el contrato modular ni la defensa de escala v22. El árbol solo queda
 con las modificaciones intencionadas del manifiesto/validador y documentación;
 la limpieza del runner no revierte cambios del objetivo.
+
+El commit `1e3de70c` está desplegado en el Deploy Preview 225
+(`6b01335abbb331413cd060a0`, `ready`). En una comprobación live del alias, el
+HTML sirve `la-apariencia.css?v=qa-orbita-modules-v22-20261121`, el control
+táctil mínimo es `44 px` y no se observa overflow horizontal en la pantalla de
+acceso. Esta comprobación no sustituye los recorridos autenticados de los doce
+módulos, que siguen pendientes para pasar de `PARCIAL` a `CERRADO`.

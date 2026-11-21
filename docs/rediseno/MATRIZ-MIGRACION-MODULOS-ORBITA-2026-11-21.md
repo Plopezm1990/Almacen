@@ -165,3 +165,9 @@ ya conocida (alb, cfg, f3, f4, plataforma, pm11-compra y pm33); el contrato de
 migración modular pasa dentro de la batería. El runner dejó las únicas
 modificaciones intencionadas del manifiesto/validador y el `git diff --check`
 continúa limpio.
+
+El commit `1e3de70c` se publicó en Deploy Preview 225
+(`6b01335abbb331413cd060a0`, estado `ready`). La comprobación live del alias
+sirve `la-apariencia.css?v=qa-orbita-modules-v22-20261121`; en la pantalla de
+acceso el control táctil mínimo observado fue `44 px` y no hubo desbordamiento
+horizontal.
