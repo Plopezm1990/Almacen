@@ -1481,6 +1481,14 @@ Tras el commit documental `e5f0a67efe6b2b3d16fff12b048e2eabf25e4dd6`, el
 Preview 225 volvió a quedar `ready` en el deploy
 `6b015a56e2b32501d2eb2c8d`; el alias estable sigue apuntando a esa rama de QA.
 
+### Plataforma · token tipográfico heredado corregido · `e84079b3`
+
+El panel previo al shell utilizaba `var(--la-font-sans)`, que no existe en el
+sistema de tokens Órbita. Se corrigió a `var(--la-font)`, se actualizó la
+marca CSS a `qa-orbita-modules-v42-20261121` y se dejó un contrato negativo
+para detectar el token inexistente. Plataforma conserva `PARCIAL`: falta la
+sesión de administrador QA y el recorrido real de sus paneles.
+
 ### Acceso · revisión responsive no autenticada · 21/11/2026
 
 La pantalla `.la-acceso` se observó directamente en el preview a **390 × 844**

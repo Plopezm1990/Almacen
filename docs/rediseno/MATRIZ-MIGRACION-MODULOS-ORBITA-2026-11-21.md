@@ -585,3 +585,13 @@ cabeceras sin error.
 Tras el commit documental `e5f0a67efe6b2b3d16fff12b048e2eabf25e4dd6`, el
 Preview 225 volvió a quedar `ready` en el deploy
 `6b015a56e2b32501d2eb2c8d`; el alias estable sigue apuntando a esa rama de QA.
+
+### Plataforma · corrección del token tipográfico · `e84079b3`
+
+La auditoría del panel previo al shell detectó `var(--la-font-sans)`, una
+variable inexistente que dejaba la tipografía de Plataforma en manos del
+estilo heredado. Se sustituyó por `var(--la-font)`, se invalidó la caché a
+`qa-orbita-modules-v42-20261121` y se añadió una aserción que impide volver a
+referenciar el token huérfano. La lógica, permisos y handlers permanecen
+intactos; Plataforma sigue `PARCIAL` hasta disponer de una sesión de
+administrador QA para recorrer sus paneles reales.
