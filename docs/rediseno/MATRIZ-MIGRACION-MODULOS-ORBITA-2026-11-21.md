@@ -1371,3 +1371,12 @@ menos `44 px` y la composición adaptada a una sola columna en móvil. No se
 introdujeron credenciales ni se alteró ninguna sesión. La fila Acceso sigue
 `PARCIAL` hasta probar login, recuperación, MFA, expiración y selección de
 empresa/local con una sesión QA real.
+
+### TPV · auditoría de colores heredados · 21/11/2026
+
+La superficie TPV se inspeccionó en vivo sobre los controles y tarjetas
+visibles. Los fondos dominantes fueron `rgb(32,35,40)` (superficie Órbita),
+`rgb(255,75,50)` (coral de acción), transparente y el overlay blanco
+translúcido; no apareció el verde/dorado histórico. El módulo mantuvo
+`overflow=false` y control mínimo de `44 px`. No se modificaron handlers ni se
+ejecutó ninguna venta.

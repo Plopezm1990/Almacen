@@ -1462,6 +1462,13 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### TPV · comprobación de paleta · 21/11/2026
+
+La auditoría live de TPV no encontró fondos verdes/dorados heredados entre los
+controles y tarjetas visibles: predominan la superficie Órbita `rgb(32,35,40)`
+y el coral de acción `rgb(255,75,50)`. La ruta mantiene `overflow=false` y un
+mínimo táctil de `44 px`; no se hizo ninguna venta ni escritura de negocio.
+
 ### Inicio · verificación desktop/móvil · 21/11/2026
 
 La pantalla Inicio se comprobó en el Deploy Preview 225 en un viewport de
