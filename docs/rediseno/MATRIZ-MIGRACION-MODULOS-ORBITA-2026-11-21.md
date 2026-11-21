@@ -1597,3 +1597,28 @@ no está disponible. No se cambian datos ni permisos. La marca del shell pasa a
 Verificación live posterior: deploy `6b01d9f443a8f975bdb02ec4` (`ready`). En
 la sesión propietaria de QA, el menú móvil `Perfil → Cerrar sesión` terminó la
 sesión y dejó visible `Iniciar sesión`; no se modificaron datos de negocio.
+
+### Auditoría responsive automatizada ampliada · 21/11/2026
+
+Sobre la misma sesión QA se aplicaron viewports explícitos de `320×844` y
+`430×932` y se volvieron a recorrer las nueve rutas autenticadas disponibles:
+Inicio/Pase, TPV, Cocina, Caja, Clientes, Productos/Inventario, Personal,
+Configuración y Proveedores/Compras. En los 18 casos el resultado fue
+`overflow=false` y el control visible mínimo fue `44 px`.
+
+| Ruta | Controles a 320 px | Controles a 390 px | Controles a 430 px |
+|---|---:|---:|---:|
+| Inicio / Pase | 45 | 45 | 45 |
+| TPV | 41 | 41 | 41 |
+| Cocina | 23 | 23 | 23 |
+| Caja | 18 | 18 | 18 |
+| Clientes | 28 | 28 | 28 |
+| Productos / Inventario | 119 | 119 | 119 |
+| Personal | 127 | 127 | 127 |
+| Configuración | 26 | 26 | 26 |
+| Proveedores / Compras | 13 | 13 | 13 |
+
+La auditoría es de lectura y no crea, cobra, reembolsa, elimina ni cambia
+configuración. Plataforma móvil y Acceso/MFA móvil siguen separados porque no
+se exponen desde el menú operativo de esta sesión y requieren sus superficies
+de autenticación/administración correspondientes.
