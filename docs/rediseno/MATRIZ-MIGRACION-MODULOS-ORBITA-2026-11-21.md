@@ -635,3 +635,8 @@ Los contratos `p04-panel-contract`, `componentes-orbita-contract`,
  pasan tras la corrección. Plataforma y Acceso siguen en `PARCIAL`: todavía se
  necesita el recorrido autenticado de administración, recuperación, selección
  de local y MFA para cerrar sus filas de QA.
+
+La corrección está en `bfb0e6856c4baa1fe64858f45b98cfdf89485685` y se publicó
+en el Deploy Preview 225 como `6b015f565f50b1269577c814` (`ready`), con
+escaneo de secretos sin coincidencias y las siete reglas de cabeceras
+procesadas. El PR #225 continúa en borrador y producción no se tocó.

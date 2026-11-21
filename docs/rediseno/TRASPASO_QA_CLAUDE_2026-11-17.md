@@ -1462,6 +1462,16 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Publicación de la revisión actual
+
+Referencia: commit `bfb0e6856c4baa1fe64858f45b98cfdf89485685`, Deploy Preview
+`6b015f565f50b1269577c814` (`ready`), alias estable
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`. El escaneo de
+secretos no encontró coincidencias. Los tests de runtime que requieren
+`jsdom/react` no se ejecutaron en este host porque `CFG6_UI_DEPS` no está
+disponible; los contratos estáticos y la batería `tests/rediseno/*.mjs` sí
+pasaron, junto con `node --check` y `git diff --check`.
+
 ### Revisión adicional · Plataforma previa y recuperación de acceso
 
 El último barrido visual encontró una excepción fuera de `#root`: el panel de
