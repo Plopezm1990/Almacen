@@ -75,3 +75,14 @@ el preview 225 con una cuenta QA autorizada, registrar cada viewport y estado,
 y cerrar una fila funcional solo cuando estén presentes todos sus criterios.
 La capa de implementación no necesita otra arquitectura; las tareas
 pendientes son de recorrido QA, permisos y datos de ensayo.
+
+## Incidencia de acceso MFA resuelta · 21/11/2026
+
+El bloqueo que impedía escanear el QR no era de la cuenta ni del navegador:
+se montaban simultáneamente la pantalla MFA React de `fuente.js` y un overlay
+histórico de `edge-auth-patch.js`. La corrección `d99bfac6` deja a React como
+única autoridad, observa el montaje para retirar el overlay duplicado y
+versiona la URL del parche para evitar caché obsoleta. El preview 225 quedó
+verificado en el deploy `6b01e253b24fe5974d813833` con una sola pantalla de
+enrolamiento interactiva y sin diálogo superpuesto. La clave TOTP y sus códigos
+no se documentan.

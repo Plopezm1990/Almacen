@@ -1462,6 +1462,46 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Incidencia MFA: modal duplicado sobre el QR · 21/11/2026
+
+**Síntoma reproducido.** Después de retirar los factores MFA de
+`owner.a@qa.invalid` para volver a enrolarlo en QA, el preview mostraba el
+QR y el formulario de `MfaGate`, pero encima aparecía un segundo modal
+histórico («Verificación adicional requerida»/«Configurar autenticador TOTP»).
+Ese modal tapaba el QR y hacía imposible escanearlo o escribir el código.
+
+**Causa.** `fuente.js` ya monta la puerta MFA canónica de React y
+`edge-auth-patch.js` montaba además su propia puerta antigua. Ambas se
+activaban en la misma navegación. La versión sin query de
+`edge-auth-patch.js` también podía quedar en caché del navegador.
+
+**Corrección publicada.** En `d99bfac6554d7769784dfe9331fbbda976a27efd`:
+
+- el parche histórico detecta el `MfaGate` activo (título de segundo factor
+  más `input[autocomplete="one-time-code"]`) y no crea su overlay;
+- un `MutationObserver` retira el overlay antiguo si aparece durante la
+  carrera de montaje;
+- el estado de enrolamiento evita una segunda puerta mientras se configura
+  TOTP;
+- `index.html` carga el parche con la marca
+  `edge-auth-patch.js?v=qa-mfa-gate-v2-20261121` para invalidar la caché
+  antigua.
+
+**Evidencia.** Deploy Netlify `6b01e253b24fe5974d813833` en el preview 225,
+estado `ready`, PR #225 todavía en borrador y producción intacta. En una
+pestaña nueva del alias de preview se observó una sola pantalla React con
+QR, campo de código de seis dígitos, «Activar y continuar» y «Cerrar sesión»;
+no existe `role="dialog"` ni el texto del modal histórico.
+
+**Pruebas.** `M03_MFA_ROLE_GATE_CONTRACT=PASS`, `M03_CONTRACT_PASS=1`,
+`P2_P06_CONTRACT_OK=1` y `git diff --check` limpio. No se guardan en este
+documento la clave TOTP ni códigos de un solo uso.
+
+**Siguiente acción del usuario.** Recargar la pestaña visible del preview
+(Ctrl+F5 o cerrar y abrir de nuevo el enlace), escanear el QR que queda en la
+pantalla única e introducir el código directamente en el navegador. Nunca
+enviar la clave ni el código por chat.
+
 ### Corrección de salida del perfil Órbita · 21/11/2026
 
 Se reprodujo que `Perfil → Cerrar sesión` cerraba solo el menú en móvil. El
