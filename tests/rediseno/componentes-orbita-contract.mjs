@@ -5,10 +5,16 @@ import { resolve } from 'node:path';
 const root = resolve(import.meta.dirname, '../..');
 const index = readFileSync(resolve(root, 'index.html'), 'utf8');
 const css = readFileSync(resolve(root, 'la-apariencia.css'), 'utf8');
+const dashboardPremium = readFileSync(resolve(root, 'dashboard-premium-v2.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
 assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v13-20261120/);
+assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v2-20261121/);
+assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
+assert.match(dashboardPremium, /Ver detalle operativo/);
+assert.match(dashboardPremium, /laDetalleVisible/);
+assert.doesNotMatch(dashboardPremium, /grid\.classList\.add\([^)]*\);addQuickActions\(root,grid\)/, 'el dashboard heredado no debe inyectar un segundo panel de acciones');
 
 const primitiveClasses = [
   'la-ui-button', 'la-ui-link-button', 'la-ui-input', 'la-ui-select',

@@ -5,6 +5,12 @@ const MASTER='./la-suite-logo.svg';
 const ICON='./la-suite-icon.svg';
 const css=`
 .la-dashboard-v2{position:relative}
+.la-dashboard-v2.la-dashboard-detail-hidden{display:none!important}
+.la-dashboard-detail-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:12px;margin:14px 0 18px;padding:13px 16px;border:1px solid rgba(201,154,75,.34);border-radius:14px;background:linear-gradient(135deg,#102F20,#0C281A);color:#F5EAD4;font:600 13px/1.2 'IBM Plex Sans',sans-serif;cursor:pointer;min-height:48px;box-shadow:0 6px 18px rgba(0,0,0,.10)}
+.la-dashboard-detail-toggle::after{content:'›';font-size:22px;line-height:1;color:#DFAE52;transition:transform .18s ease}
+.la-dashboard-detail-toggle[aria-expanded='true']::after{transform:rotate(90deg)}
+.la-dashboard-v2.la-dashboard-detail-visible{display:block;padding:18px;border:1px solid rgba(201,154,75,.26);border-radius:18px;background:linear-gradient(145deg,rgba(13,53,31,.44),rgba(9,40,25,.28));box-shadow:0 10px 28px rgba(0,0,0,.08)}
+.la-dashboard-v2.la-dashboard-detail-visible::before{content:'Detalle operativo';display:block;margin:0 0 14px;color:#DFAE52;font:700 11px/1 'IBM Plex Sans',sans-serif;letter-spacing:.11em;text-transform:uppercase}
 .la-dashboard-v2 .la-kpi-grid{display:grid!important;gap:12px!important}
 .la-dashboard-v2 .la-kpi-card{position:relative!important;background:linear-gradient(145deg,#0D351F 0%,#0A2B1A 100%)!important;border:1px solid rgba(201,154,75,.28)!important;border-radius:18px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 10px 24px rgba(0,0,0,.10)!important;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease!important}
 .la-dashboard-v2 .la-kpi-card:active{transform:scale(.985)}
@@ -177,12 +183,43 @@ function addAlerts(root){
   if(!root.querySelector('.la-report-cta')){const cta=document.createElement('button');cta.type='button';cta.className='la-report-cta';cta.dataset.laInjected='1';cta.innerHTML='<span>▥</span><span>Ver informe completo</span><span>›</span>';cta.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();goToModule('informes')});wrap.insertAdjacentElement('afterend',cta)}
 }
 function hideOldMobileBlocks(root){if(window.innerWidth>767)return;['Alertas de reposición','Caducidades próximas','Movimiento reciente de almacén'].forEach(label=>{const n=all('div',root).find(el=>textEq(el,label));if(n){let p=n;for(let i=0;i<4&&p;i++,p=p.parentElement){if(p.parentElement===root||(p.className&&String(p.className).includes('rounded'))){p.dataset.laOldBlock='1';break}}}});root.querySelectorAll('[data-la-old-block="1"]').forEach(el=>el.style.display='none')}
+function ensureDashboardDetailToggle(root){
+  const panel=document.querySelector('.la-panel-diseno');
+  if(!panel||!root||!panel.parentElement)return;
+  let toggle=panel.parentElement.querySelector('.la-dashboard-detail-toggle');
+  if(!toggle){
+    toggle=document.createElement('button');
+    toggle.type='button';
+    toggle.className='la-dashboard-detail-toggle';
+    toggle.dataset.laInjected='1';
+    toggle.innerHTML='<span>Ver detalle operativo</span><span class="sr-only"> del panel principal</span>';
+    panel.insertAdjacentElement('afterend',toggle);
+    toggle.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const visible=root.dataset.laDetalleVisible==='1';
+      root.dataset.laDetalleVisible=visible?'0':'1';
+      syncDashboardDetail(root,toggle);
+    });
+  }
+  syncDashboardDetail(root,toggle);
+}
+function syncDashboardDetail(root,toggle){
+  const visible=root.dataset.laDetalleVisible==='1';
+  root.classList.toggle('la-dashboard-detail-hidden',!visible);
+  root.classList.toggle('la-dashboard-detail-visible',visible);
+  root.setAttribute('aria-hidden',visible?'false':'true');
+  toggle.setAttribute('aria-expanded',String(visible));
+  toggle.querySelector('span')?.replaceChildren(document.createTextNode(visible?'Ocultar detalle operativo':'Ver detalle operativo'));
+}
 function enhanceDashboard(){
-  const d=findDashboard();if(!d)return;const {root,heading}=d;root.classList.add('la-dashboard-v2');if(norm(heading.textContent)!=='resumen general')heading.textContent='Resumen general';let first=null;
-  kpis.forEach(([label,id])=>{const b=nearestCardFromText(label,root);if(b){b.classList.add('la-kpi-card');b.dataset.laKpi=id;if(id==='stock'){const m=b.querySelector('.mono');if(m&&numberOf(m.textContent)>0)b.dataset.laAlert='critical';else delete b.dataset.laAlert}if(!first)first=b}});
-  if(first&&first.parentElement){const grid=first.parentElement;grid.classList.add('la-kpi-grid');addQuickActions(root,grid);addAlerts(root)}
-  const headerImg=heading.parentElement&&heading.parentElement.parentElement&&heading.parentElement.parentElement.querySelector('img');if(headerImg){headerImg.src=MASTER;headerImg.alt='L&A Suite';headerImg.classList.add('la-dashboard-brand')}
-  hideOldMobileBlocks(root);
+  const d=findDashboard();if(!d)return;const {root,heading}=d;
+  root.classList.add('la-dashboard-v2');
+  if(norm(heading.textContent)!=='resumen general')heading.textContent='Resumen general';
+  root.dataset.laDetalleVisible=root.dataset.laDetalleVisible==='1'?'1':'0';
+  ensureDashboardDetailToggle(root);
+  const headerImg=heading.parentElement&&heading.parentElement.parentElement&&heading.parentElement.parentElement.querySelector('img');
+  if(headerImg){headerImg.src=MASTER;headerImg.alt='L&A Suite';headerImg.classList.add('la-dashboard-brand')}
 }
 let scheduled=false;function refresh(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;replaceBrand();enhanceDashboard()})}
 const mo=new MutationObserver(muts=>{if(muts.some(m=>Array.from(m.addedNodes||[]).some(n=>!(n.nodeType===1&&n.closest&&n.closest('[data-la-injected="1"]')))))refresh()});
