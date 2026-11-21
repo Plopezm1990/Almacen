@@ -1481,6 +1481,8 @@ La capa `la-apariencia.css` v25 lo normaliza mediante el atributo estable
 acciones usan tokens Órbita, con controles táctiles mínimos de `44 px` también
 en móvil. El flujo de autenticación no se tocó. Huella P01:
 `e9372afb3252f577`. Sigue pendiente el recorrido autenticado completo.
+Publicado en Deploy Preview 225 como `6b013c51e5a98b1501fc71df` (`ready`),
+commit `f7157f0c`.
 
 ### TPV y sala · superficies secundarias · 21/11/2026
 

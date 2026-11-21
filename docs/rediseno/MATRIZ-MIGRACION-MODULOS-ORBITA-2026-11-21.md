@@ -250,3 +250,5 @@ los tokens Órbita; en móvil mantiene el ancho útil y controles de `44 px`.
 No se modifican desafío, verificación, inscripción, cierre de sesión ni
 handlers de autenticación. El bloque continúa `PARCIAL` hasta comprobar login,
 recuperación, MFA y selección de empresa/local en ambas superficies.
+La capa quedó publicada en el Deploy Preview 225 (`6b013c51e5a98b1501fc71df`,
+`ready`), commit `f7157f0c`.
