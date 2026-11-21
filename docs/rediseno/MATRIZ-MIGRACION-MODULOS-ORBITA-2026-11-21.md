@@ -10,7 +10,7 @@ vacío y contratos sin regresión.
 
 | Orden | Módulo | Superficie identificable | Estado actual | Cierre pendiente |
 |---:|---|---|---|---|
-| 1 | Inicio y panel general | `inicio`, `.la-panel-diseno` | PARCIAL: panel Órbita ya visible y detalle antiguo separado | Revisar todas las variantes de indicadores y estados en 5 viewports |
+| 1 | Inicio y panel general | `inicio`, `.la-panel-diseno` | PARCIAL: panel Órbita ya visible y detalle antiguo separado; el panel tiene prioridad cuando Pase está incrustado | Revisar todas las variantes de indicadores y estados en 5 viewports |
 | 2 | TPV y sala | `tpv`, `.tpv-layout` | PARCIAL: layout operativo y shell existentes | Unificar venta rápida, sala, cuentas, mesas, tickets y estados móviles |
 | 3 | Pase | `pase`, `.la-pase` (`#la-pase` legado) | PARCIAL: panel real y cola ya integrados; la raíz semántica ya queda marcada aunque el recorrido histórico use otro selector | Igualar tarjetas, filtros, destinos y revisión móvil |
 | 4 | Cocina | `cocina`, `.la-operacion-cocina` | PARCIAL: superficie operativa existente | Migrar cabecera, tarjetas, estados, filtros y densidad |
@@ -39,6 +39,10 @@ y las reglas específicas de Órbita no alcanzaban la cabecera, plano y cola.
 La detección y los selectores visuales aceptan ahora ambas raíces. Es un cambio
 solo de presentación: no modifica estados de mesa, cola, permisos ni navegación.
 La marca de caché de la capa pasó a `qa-orbita-modules-v16-20261121`.
+
+El mismo detector da prioridad a `.la-panel-diseno` cuando Inicio incluye el
+panel Pase operativo. Así `Inicio` conserva su identidad de módulo y el Pase
+independiente sigue etiquetándose como `pase`.
 
 ## Evidencia de base
 

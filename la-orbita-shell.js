@@ -237,6 +237,10 @@
 
   function rutaActiva(sidebar, main) {
     if (main && main.querySelector(".tpv-layout")) return "tpv";
+    /* Inicio puede incrustar el panel Pase para dar contexto operativo. La
+       raíz del dashboard tiene prioridad: la cola embebida no debe cambiar la
+       identidad del módulo ni la navegación activa. */
+    if (main && main.querySelector(".la-panel-diseno")) return "inicio";
     if (main && main.querySelector("#la-pase, .la-pase")) return "pase";
     if (main && main.querySelector(".la-operacion-cocina")) return "cocina";
     if (main && main.querySelector(".la-operacion-caja")) return "caja";
@@ -270,6 +274,7 @@
     if (main) {
       main.setAttribute("data-la-orbita-route", ruta);
       var superficie = main.querySelector(".tpv-layout") ? "tpv" :
+        main.querySelector(".la-panel-diseno") ? "inicio" :
         main.querySelector("#la-pase, .la-pase") ? "pase" :
         main.querySelector(".la-operacion-cocina") ? "cocina" :
         main.querySelector(".la-operacion-caja") ? "caja" : ruta;
