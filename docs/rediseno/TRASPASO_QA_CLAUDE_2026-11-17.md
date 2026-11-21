@@ -1470,7 +1470,10 @@ raíz aunque sus recursos respondieran 200. `la-orbita-shell.js` v11 reconoce
 también la clase estable del wrapper y fija el atributo visual `orbita` solo
 para que se aplique el shell. No activa nube, no escribe datos y no toca
 handlers. El caso queda como regresión explícita para la nueva comprobación
-live del Preview 225.
+live del Preview 225. En la revisión posterior se añadió al shell v12 el valor
+inicial `data-la-diseno="orbita"` cuando el modo local no trae ningún diseño y
+la clasificación de «Resumen general» como Inicio; no pisa una elección de
+apariencia existente.
 
 ### Punto 4 · marcas semánticas para componentes históricos · `f7f6eb58`
 

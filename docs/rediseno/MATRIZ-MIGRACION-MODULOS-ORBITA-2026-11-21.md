@@ -781,6 +781,12 @@ estable del wrapper (`w-full min-h-[700px]`) y añade el atributo visual
 `data-la-contenedor="orbita"` cuando falta. Es una guarda de presentación; no
 inicia sincronización, no crea datos y no altera el diseño elegido.
 
-El shell se sirve ahora como `qa-orbita-shell-v11-20261121`; tras volver a
+El shell se sirve ahora como `qa-orbita-shell-v12-20261121`; tras volver a
 publicar se repetirá la comprobación live en modo local antes de considerar
 cerrada esta excepción.
+
+La misma pasada detectó que el wrapper local podía no tener `data-la-diseno` y
+que «Resumen general» no entraba en la clasificación de Inicio. El shell v12
+fija Órbita solo como valor inicial cuando no existe otro diseño y reconoce
+ese encabezado como `inicio`; una elección posterior de apariencia conserva
+precedencia.

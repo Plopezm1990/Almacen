@@ -331,7 +331,7 @@
     var labelEncabezado = textoVisible(main && main.querySelector("h1, h2"));
     var label = [labelNavegacion, labelEncabezado].filter(Boolean).join(" | ");
     var conocidas = [
-      ["panel general|inicio|dashboard", "inicio"],
+      ["resumen general|panel general|inicio|dashboard", "inicio"],
       ["panel de direccion|direccion", "direccion"],
       ["tpv|venta rapida|venta rápida", "tpv"],
       ["pase", "pase"],
@@ -490,6 +490,12 @@
     var encontrado = document.querySelector("#root > [data-la-contenedor]") ||
       document.querySelector('#root > div.w-full.min-h-\\[700px\\]');
     if (!encontrado) return;
+    /* Sin cuenta ni sincronización no hay resolución de empresa que escriba
+       data-la-diseno. Órbita es el valor inicial del producto; solo se fija
+       cuando no existe otro diseño para no pisar una elección posterior. */
+    if (!document.documentElement.getAttribute("data-la-diseno")) {
+      document.documentElement.setAttribute("data-la-diseno", "orbita");
+    }
     if (marco !== encontrado) { marco = encontrado; }
     if (!marco.getAttribute("data-la-contenedor")) marco.setAttribute("data-la-contenedor", "orbita");
     marco.classList.add("la-orbita-shell");
