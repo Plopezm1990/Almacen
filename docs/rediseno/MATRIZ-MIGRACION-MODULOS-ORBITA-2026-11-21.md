@@ -263,3 +263,11 @@ tenga un selector específico. Se conserva el contenido, la semántica ARIA y
 los handlers. Caché `qa-orbita-modules-v26-20261121`, huella P01
 `0471acf3bfc85099`.
 Deploy Preview 225: `6b013d3584eba994f4ee5306` (`ready`), commit `4e51e027`.
+
+### Tablas · contención móvil común · v27
+
+Todas las tablas dentro de un módulo Órbita encapsulan su desplazamiento en
+móvil, sin ampliar el viewport ni alterar la semántica de cabeceras, celdas,
+ordenación o selección. Las celdas conservan una anchura legible y el área
+interactiva común. Caché `qa-orbita-modules-v27-20261121`, huella P01
+`bb7e168a744878e6`.

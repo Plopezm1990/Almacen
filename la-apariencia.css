@@ -1886,6 +1886,23 @@ html[data-la-diseno] #root svg[aria-hidden="true"] { flex: 0 0 auto; }
 html[data-la-diseno] #root [title] { cursor: help; }
 html[data-la-diseno] #root button[aria-label]:not(.la-ui-icon-button) { min-width: 44px; }
 
+/* Las tablas que todavía vienen de rutas históricas no deben ampliar el
+   viewport móvil. La tabla conserva su semántica y sus celdas; solo el
+   contenedor de la superficie Órbita absorbe el desplazamiento horizontal. */
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module] table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module] table thead th,
+  html[data-la-diseno] #root main[data-la-orbita-module] table tbody td {
+    min-width: 84px;
+    min-height: var(--la-control-height);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   html[data-la-diseno] #root .la-ui-button,
   html[data-la-diseno] #root .la-ui-link-button { transition: none; }
