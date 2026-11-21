@@ -42,4 +42,18 @@ assert.ok(shell.indexOf('encargos|devoluciones|descuentos|cortesias|cupones') < 
 assert.match(matrix, /Esta matriz es de seguimiento/, 'la matriz no conserva el criterio de cierre');
 assert.match(transfer, /objetivo 4|Objetivo 4|migraci[oó]n visual por m[oó]dulos/i, 'el traspaso no documenta el objetivo modular');
 
+// La pasada móvil live se conserva como contrato documental. Esto no finge
+// una sesión autenticada: fija únicamente que el shell móvil fue recorrido,
+// que las diez entradas observadas resolvieron su superficie y que el criterio
+// de 390×844/44px/overflow no se puede borrar sin actualizar la evidencia.
+assert.match(matrix, /Recorrido visual m[oó]vil/, 'falta la evidencia móvil del recorrido modular');
+assert.match(matrix, /390 ×\s*844 px/, 'la evidencia móvil no fija el viewport');
+assert.match(matrix, /10\/10 rutas m[oó]viles clasificadas correctamente/, 'la evidencia móvil no fija el resultado');
+for (const route of ['Panel general', 'TPV', 'Cocina', 'Proveedores', 'Productos', 'Personal', 'Clientes', 'Configuración', 'Arqueo de caja', 'Encargos']) {
+  assert.match(matrix, new RegExp(`\\| ${route.replace(/[.*+?^${}()|[\\]\\\\]/g, '\\\\$&')} \\|`), `la evidencia móvil no incluye ${route}`);
+}
+assert.match(transfer, /Evidencia visual m[oó]vil/, 'el traspaso no conserva la evidencia móvil');
+assert.match(transfer, /overflow=false/, 'el traspaso no conserva el criterio de overflow móvil');
+assert.match(transfer, /control visible m[ií]nimo de \*\*44 px\*\*/, 'el traspaso no conserva el criterio táctil móvil');
+
 console.log('REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12 matriz=12 responsive=PASS tactil=44');
