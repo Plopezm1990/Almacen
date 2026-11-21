@@ -1462,6 +1462,24 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Tanda Codex · Reconciliación de stock · v61 · 21/11/2026
+
+El barrido visual detectó que Inventario/Reconciliación era la única superficie
+revisada que todavía pintaba estados con literales legacy (`#16a34a`, `#d97706`,
+`#dc2626`). Se remapearon los estados `OK`, `DEFICIT`, `DISCREPANCIA` y
+`DEFICIT_Y_DISCREPANCIA` a `C2.accent`, `C2.amber` y `C2.red`, con sus fondos
+semánticos, y se añadió una defensa CSS para el estilo inline histórico. La
+corrección es visual: no cambia la reconciliación, sus movimientos, la
+corrección de caché, permisos ni handlers. Se editaron las dos copias del
+bundle y `SOURCE_RECOVERY_CHECK=PASS`.
+
+La hoja se publica con `qa-orbita-modules-v61-20261121` (huella
+`059302a5b48ab161`). Contrato de componentes, contratos de los 12 módulos,
+shell/rutas, todos los `tests/rediseno/*.mjs`, `node --check`, paridad y
+`git diff --check`: PASS. Sigue pendiente una sesión autenticada para verificar
+Reconciliación con datos QA; por eso Inventario y el conjunto de módulos no se
+declaran cerrados todavía.
+
 ### Sesión autenticada pendiente · 21/11/2026
 
 La comprobación de sesiones abiertas no encontró el Preview 225 autenticado en

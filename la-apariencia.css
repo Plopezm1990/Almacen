@@ -54,6 +54,40 @@
   --la-icon-lg: 24px;
 }
 
+/* v61: Reconciliación de stock comparte los tokens Órbita aunque la vista
+   histórica conserve estilos inline. No cambia la lógica ni el significado
+   de los estados; evita que los verdes/ámbar/rojos legacy rompan la paleta. */
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#16a34a"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="rgb(22, 163, 74)"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="var(--c-accent)22"] {
+  color: var(--c-accent) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#d97706"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="rgb(217, 119, 6)"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="var(--c-amber)22"] {
+  color: var(--c-amber) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#dc2626"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="rgb(220, 38, 38)"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="var(--c-red)22"] {
+  color: var(--c-red) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="var(--c-accent)22"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="rgba(22, 163, 74"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#16a34a22"] {
+  background: var(--c-accent-soft) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="var(--c-amber)22"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="rgba(217, 119, 6"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#d9770622"] {
+  background: var(--c-amber-soft) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="var(--c-red)22"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="rgba(220, 38, 38"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#dc262622"] {
+  background: var(--c-red-soft) !important;
+}
+
 /* -------------------------------------------------------------------------
    Marco común Órbita
    El contenido puede cambiar de propuesta y paleta; la arquitectura de

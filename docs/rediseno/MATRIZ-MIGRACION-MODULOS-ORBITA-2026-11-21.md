@@ -1224,3 +1224,23 @@ Preview. No se ejercieron acciones de datos, permisos, cobros, reembolsos ni
 administración. Para cerrar las filas funcionales sigue siendo necesario abrir
 el Preview 225 con una sesión QA válida y recorrer Pase, Plataforma y los
 estados de negocio de cada módulo.
+
+### Reconciliación de stock · remapeo de estados · v61 · 21/11/2026
+
+El barrido de Inventario encontró una excepción que no cubría el contrato de
+componentes: `DiagnosticoStock` conservaba los colores literales verde, ámbar y
+rojo en el resumen, las etiquetas de estado y los movimientos. Se cambiaron
+los cuatro estados a los tokens semánticos `C2.accent`, `C2.amber` y `C2.red`,
+con fondos `accentSoft`, `amberSoft` y `redSoft`; la hoja Órbita remapea además
+el estilo inline histórico con selectores acotados a
+`main[data-la-orbita-module="inventario"]`. No se modificaron cálculos,
+movimientos, handlers, permisos ni datos.
+
+La marca de caché de la hoja es `qa-orbita-modules-v61-20261121`, huella
+`059302a5b48ab161`. `fuente.js` y `source-recovery/fuente-recuperado.js`
+conservan paridad exacta. Los contratos de componentes, shell, rutas y módulos
+12/12 pasan; la batería completa `tests/rediseno/*.mjs`, `node --check`,
+`python -I source-recovery/recuperar_candidato.py --check` y `git diff --check`
+quedan verdes. La fila de Inventario sigue `PARCIAL` porque la evidencia visual
+se hizo sin sesión QA y aún falta recorrer la ruta autenticada de Reconciliación
+con datos reales.
