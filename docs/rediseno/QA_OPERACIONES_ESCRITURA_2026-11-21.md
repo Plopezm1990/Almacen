@@ -124,3 +124,30 @@ la base de datos: habría que resolverlos mediante el flujo operativo de
 servidor o preparar una limpieza de fixtures QA explícitamente autorizada.
 Hasta entonces, A1 no puede pasar de `CIERRE_PROVISIONAL` a `CERRADA_FINAL`.
 
+## Limpieza auditada de fixtures QA · 21/11/2026
+
+Con autorización expresa para operar únicamente en QA, se resolvieron los
+bloqueos de dominio mediante las funciones de servidor existentes; no se hizo
+ningún `UPDATE` directo ni se tocó producción:
+
+- Los cuatro intentos de tarjeta antiguos de QA-A1 se resolvieron mediante
+  `public.abc_resolver_intento(..., 'CANCELADO', ...)`, con el proveedor
+  `QA_FIXTURE_CLEANUP` y una referencia `QA-CANCEL-*` por intento. El resultado
+  fue `CANCELADO`, con reservas liberadas y evento de auditoría para cada uno.
+- Los efectos pendientes de QA-A1 se procesaron con el flujo oficial
+  `abc_reclamar_efectos` → `abc_abandonar_efecto`. La referencia común fue
+  `qa.cleanup.pending-effects.20261121` y cada fila conserva el motivo,
+  `tipo`, fecha original y autorización del propietario en `last_error`.
+- Verificación posterior independiente: `pagos_bloqueantes = 0` y
+  `efectos_bloqueantes = 0`. Los cuatro pagos figuran cancelados; los efectos
+  de cocina/reimpresión de fixtures antiguos figuran abandonados o, si ya
+  habían sido resueltos por el sistema, completados. El historial no se borró.
+
+El cierre definitivo de A1 sigue sin ejecutarse porque queda un descuadre
+histórico de efectivo (`2,00 €` contados frente a `118,44 €` esperados,
+`-116,44 €`). No se inventó un contado ni se alteró el libro. A2 permanece
+cerrado definitivamente y reabierto para conservar la cobertura Q08 de dos
+terminales. Por tanto, el bloqueo de pagos/efectos está resuelto; el único
+pendiente operativo es decidir cómo tratar ese dato sintético de caja antes de
+convertir A1 de `CIERRE_PROVISIONAL` a `CERRADA_FINAL`.
+

@@ -1499,6 +1499,24 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Desbloqueo de cierre A1 · limpieza auditada de fixtures QA · 21/11/2026
+
+Se ejecutó únicamente en el proyecto QA, sin SQL directo sobre tablas y sin
+producción. Los cuatro intentos de tarjeta antiguos de QA-A1 se resolvieron con
+`public.abc_resolver_intento(..., 'CANCELADO', ...)`, usando el proveedor
+`QA_FIXTURE_CLEANUP`; cada uno dejó su evento de auditoría y liberó reservas.
+Los efectos que impedían C12 se procesaron por el flujo oficial
+`abc_reclamar_efectos` → `abc_abandonar_efecto` con referencia
+`qa.cleanup.pending-effects.20261121`. La verificación posterior devuelve
+`pagos_bloqueantes=0` y `efectos_bloqueantes=0`; no se borró historial.
+
+El único pendiente para convertir A1 de `CIERRE_PROVISIONAL` a `CERRADA_FINAL`
+es el descuadre histórico de caja: `2,00 €` contados frente a `118,44 €`
+esperados (`-116,44 €`). No se falseó el contado ni se creó otro cobro. A2
+continúa cerrado/reabierto para conservar Q08. El cierre de pagos y efectos
+queda resuelto; la decisión de producto sobre ese dato sintético de efectivo
+es independiente y debe quedar separada de esta limpieza.
+
 ### Punto 1 · estado real del cierre TPV/sala/caja · 21/11/2026
 
 La prueba de dos terminales ya estaba hecha: Chrome en A1 y Firefox en A2.
