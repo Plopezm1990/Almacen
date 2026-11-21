@@ -2304,6 +2304,21 @@ queda verde. Los 12 módulos permanecen `PARCIAL` en la matriz hasta completar
 el recorrido autenticado de cada ruta real, especialmente Plataforma con
 administrador QA y Acceso con sesión/MFA.
 
+### Objetivo 4 · migración visual modular vigente · 21/11/2026
+
+El trabajo continúa por bloques y en orden, no por retoques aislados de cada
+pantalla: Inicio, TPV/sala, Pase, Cocina, Caja, Clientes, Compras, Inventario,
+Personal, Configuración, Plataforma y Acceso. La capa Órbita y sus contratos
+ya enumeran los doce módulos y mantienen el mínimo táctil de `44 × 44 px`;
+para cerrar cada fila todavía hay que ejecutar su recorrido autenticado real,
+incluidos datos, permisos, estados de carga/vacío/error y revisión móvil.
+
+Regla de cierre para Claude: no cambiar `PARCIAL` a `CERRADO` por inspección
+estática. Registrar en la matriz la ruta, viewport, evidencia y cualquier dato
+de QA creado; mantener producción intacta y el PR #225 en borrador. Las
+pruebas locales solo acreditan la capa visual y la ausencia de regresiones,
+no sustituyen el recorrido con sesión.
+
 ### Recorrido visual de rutas históricas · 21/11/2026 · SHA `56be8a75`
 
 El shell ya no depende de `aria-current` para las pantallas antiguas: cuando

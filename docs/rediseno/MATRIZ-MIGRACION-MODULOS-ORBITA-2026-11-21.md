@@ -8,6 +8,22 @@ módulo solo pasa a `CERRADO` cuando tiene el marco común, sus componentes
 visuales normalizados, revisión de escritorio y móvil, estados de carga/error/
 vacío y contratos sin regresión.
 
+## Objetivo 4 activo · migración modular por bloques
+
+Este es el objetivo operativo vigente para completar la unificación visual:
+los módulos se migran uno por uno, en el orden de la tabla, sin mezclar
+handlers ni cambiar el contrato de datos. Cada bloque debe demostrar el mismo
+shell Órbita, la misma escala de componentes, estados de carga/vacío/error,
+responsive sin overflow y controles de al menos `44 × 44 px`; después se
+recorre su ruta real con sesión QA antes de cambiar `PARCIAL` por `CERRADO`.
+
+Orden de ejecución: `inicio` → `tpv` → `pase` → `cocina` → `caja` → `clientes`
+→ `compras` → `inventario` → `personal` → `configuracion` → `plataforma` →
+`acceso`. La capa visual ya está integrada para los doce identificadores y
+los contratos estáticos pasan; las filas permanecen `PARCIAL` cuando falta la
+prueba autenticada de datos, permisos o estados de negocio. No se debe cerrar
+un módulo solo porque su selector `data-la-orbita-module` exista.
+
 | Orden | Módulo | Superficie identificable | Estado actual | Cierre pendiente |
 |---:|---|---|---|---|
 | 1 | Inicio y panel general | `inicio`, `.la-panel-diseno` | PARCIAL: panel Órbita ya visible y detalle antiguo separado; el panel tiene prioridad cuando Pase está incrustado | Revisar todas las variantes de indicadores y estados en 5 viewports |
