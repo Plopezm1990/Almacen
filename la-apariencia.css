@@ -128,6 +128,12 @@ html[data-la-diseno] .la-orbita-sidebar [data-la-orbita-nav-item][style*="rgba(2
   background: color-mix(in srgb, var(--c-on-chrome, #fff) 13%, transparent) !important;
   color: var(--c-on-chrome, #fff) !important;
 }
+/* La marca del sidebar todavía nacía con un halo dorado inline. El shell
+   Órbita deja que ese contenedor use el acento de la propuesta activa. */
+html[data-la-diseno] .la-orbita-sidebar [style*="rgba(184, 139, 69, 0.07)"] {
+  background: color-mix(in srgb, var(--c-accent) 7%, transparent) !important;
+  border-color: color-mix(in srgb, var(--c-accent) 24%, transparent) !important;
+}
 .la-orbita-sidebar.la-orbita-colapsada { padding-inline: 10px !important; }
 .la-orbita-sidebar.la-orbita-colapsada .la-shell-label,
 .la-orbita-sidebar.la-orbita-colapsada .text-\[13px\],
@@ -2470,6 +2476,7 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-categorias but
 html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.items-center.gap-2.mb-3 button {
   min-height: var(--la-control-height);
   border: 1px solid transparent;
+  border-inline-start: 2px solid var(--c-accent-fill) !important;
   border-radius: var(--la-radius-sm);
   color: var(--c-ink-soft);
   white-space: nowrap;
@@ -3002,6 +3009,14 @@ html[data-la-diseno] #root main[data-la-orbita-module="inventario"] input,
 html[data-la-diseno] #root main[data-la-orbita-module="inventario"] textarea {
   min-height: var(--la-control-height) !important;
   border-radius: var(--la-radius-md) !important;
+}
+/* El filtro "Todos" de Productos conserva un fondo inline del tema antiguo;
+   su estado seleccionado debe seguir la paleta Órbita activa. */
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] button[style*="rgb(18, 59, 45)"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] button[style*="rgb(18,59,45)"] {
+  background: var(--c-accent-fill) !important;
+  color: var(--c-on-accent) !important;
+  border-color: var(--c-accent-fill) !important;
 }
 html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [role="alert"] {
   background: var(--c-red-soft) !important;

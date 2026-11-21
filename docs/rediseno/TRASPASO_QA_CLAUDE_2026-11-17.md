@@ -1462,6 +1462,21 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Restos visuales corregidos · v58 · 21/11/2026
+
+En la revisión efectiva del Preview 225 se localizaron tres estilos inline
+heredados: bordes de color antiguos en los filtros de categoría del TPV, el
+fondo verde fijo del filtro «Todos» de Inventario y el halo dorado del marco
+del logotipo lateral. Se añadió una capa de precedencia Órbita, limitada a los
+selectores afectados, que conserva los handlers y sustituye esos colores por
+los tokens de la propuesta activa. Recurso: `la-apariencia.css` con marca
+`qa-orbita-modules-v58-20261121`, huella `115434da9b65987b`.
+
+La batería de contratos de `tests/rediseno` pasa completa y `git diff --check`
+está limpio. El Preview debe recargarse con v58 para la comprobación visual;
+no se considera cierre funcional de TPV o Inventario hasta recorrer sesión,
+datos, permisos, carga, vacío y error en escritorio y móvil.
+
 ### Corrección del menú lateral heredado · v57 · 21/11/2026
 
 La comprobación de estilos efectivos detectó colores inline antiguos en la

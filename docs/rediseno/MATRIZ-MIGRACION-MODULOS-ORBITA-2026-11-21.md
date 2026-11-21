@@ -1168,3 +1168,20 @@ datos ni permisos. La hoja se sirve como
 En el Preview 225, el estado activo calculó `color-mix` Órbita, los estados
 normales calcularon el color derivado del chrome y todos los botones del menú
 devolvieron `min-height: 44px`. La batería de rediseño pasó completa.
+
+### Corrección de restos inline en TPV, Inventario y marca lateral · v58 · 21/11/2026
+
+La auditoría de estilos efectivos detectó tres residuos del tema antiguo que
+no aparecían en el contrato de shell: los filtros de categoría del TPV tenían
+bordes laterales morado/verde/naranja escritos inline; el filtro seleccionado
+«Todos» de Productos mantenía el verde histórico; y el contenedor del logotipo
+conservaba un halo dorado fijo. La capa Órbita los remapea ahora a
+`--c-accent-fill`, `--c-on-accent` y `--c-accent`, respectivamente, con reglas
+acotadas por módulo y sin tocar handlers, datos o permisos. Marca del recurso:
+`qa-orbita-modules-v58-20261121`, huella `115434da9b65987b`.
+
+Contratos y batería tras el cambio: `ALL_REDISENO_TESTS_PASS=1`,
+`git diff --check` limpio. La evidencia visual queda pendiente de una nueva
+recarga del Preview 225 con la marca v58; las filas funcionales de TPV e
+Inventario siguen `PARCIAL` hasta completar recorridos autenticados y estados
+de negocio.
