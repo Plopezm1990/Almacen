@@ -39,6 +39,34 @@ Identificadores para la comprobación del ticket existente en QA. Mesa `QA-P1-I0
 - [Traspaso inicial](TRASPASO_QA_CLAUDE_2026-11-13.md) y [base de QA](F0_BASE_QA_2026-11-13.md) para la historia de Apariencia, Pase, despliegue y contratos.
 - Paquete original `LA-Suite-Traspaso-QA`, en particular `01-PLAN-INTEGRACION-QA.md`, `03-ESPECIFICACION-FUNCIONAL.md` y `04-PRUEBAS-Y-ACEPTACION.md`, para el alcance del rediseño y los casos Q07/Q08.
 
+## Actualización Codex · operaciones de escritura autorizadas · 21/11/2026
+
+Con el propietario `pm07.smoke@qa.invalid` en `QA-EMP-A / QA-A1` se ejecutó
+la tanda autorizada de escritura, únicamente en QA. La evidencia completa está
+en [`QA_OPERACIONES_ESCRITURA_2026-11-21.md`](QA_OPERACIONES_ESCRITURA_2026-11-21.md).
+
+- Venta sintética de 1,00 € sobre `QA Aceite ensayo 20261115`: cuenta
+  `c4dadb89-0b27-4e27-b4ee-d2d348e97ff1`, pedido
+  `e4f59cf1-26b6-418e-9d75-5d5cd16edf97`.
+- Estados ejercitados: guardado, enviado a cocina, en preparación, listo para
+  servir y servido.
+- Cobro efectivo exacto confirmado por el servidor: ticket `TPV-43`, secuencia
+  `37`, venta `V-20261121-65D717`, cuenta pagada y cerrada.
+- Anulación/reembolso del mismo ticket: estado `ANULADA`, vigente 0,00 €,
+  original 1,00 €, y movimientos de caja `COBRO_VENTA +1,00 €` y
+  `REEMBOLSO_VENTA −1,00 €`.
+- La opción de preparación del producto se restauró a `Requiere preparación =
+  sí` después del ensayo. La caja activa no se abrió ni se cerró y no se guardó
+  un arqueo nuevo.
+- La operación de Plataforma queda sin ejercitar porque esta sesión no es de
+  administrador de Plataforma; no se concedió ese privilegio ni se tocó
+  producción. El registro contable pendiente de migraciones de Apariencia y
+  las acciones opcionales siguen separadas.
+
+No borrar los identificadores anteriores: la venta anulada y el pedido cerrado
+son evidencia auditable de QA. El reembolso económico no revierte stock físico;
+el producto queda en 48 litros, como corresponde a los dos flujos separados.
+
 ## Resultado del 17/11 por la tarde · Claude Code
 
 Lo de este tramo salió casi todo del punto 1, y lo que salió no era un permiso
