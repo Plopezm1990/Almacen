@@ -770,3 +770,17 @@ Los contratos P01, marco, componentes y migración modular, junto con
 en los doce módulos, pero no convierte una fila en `CERRADO`: todavía se exige
 el recorrido QA autenticado de cada ruta, sus estados de datos y sus dos
 viewports antes de cerrar individualmente.
+
+### Modo local · montaje del shell sin `data-la-contenedor` · `1948bc4d`
+
+La primera verificación del artefacto v45 reveló una diferencia entre sesión
+autenticada y modo «Trabajar solo en este equipo»: el wrapper React local no
+recibía `data-la-contenedor`, así que el shell no encontraba su raíz y dejaba
+visible el marco histórico. `prepararMarco()` acepta ahora también la clase
+estable del wrapper (`w-full min-h-[700px]`) y añade el atributo visual
+`data-la-contenedor="orbita"` cuando falta. Es una guarda de presentación; no
+inicia sincronización, no crea datos y no altera el diseño elegido.
+
+El shell se sirve ahora como `qa-orbita-shell-v11-20261121`; tras volver a
+publicar se repetirá la comprobación live en modo local antes de considerar
+cerrada esta excepción.

@@ -1462,6 +1462,16 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Corrección del modo local · shell Órbita · `1948bc4d`
+
+En el primer ensayo del deploy v45, «Trabajar solo en este equipo» montó el
+wrapper React sin `data-la-contenedor`; por eso la capa visual no encontraba la
+raíz aunque sus recursos respondieran 200. `la-orbita-shell.js` v11 reconoce
+también la clase estable del wrapper y fija el atributo visual `orbita` solo
+para que se aplique el shell. No activa nube, no escribe datos y no toca
+handlers. El caso queda como regresión explícita para la nueva comprobación
+live del Preview 225.
+
 ### Punto 4 · marcas semánticas para componentes históricos · `f7f6eb58`
 
 El shell Órbita ahora clasifica de forma aditiva los elementos que React ya

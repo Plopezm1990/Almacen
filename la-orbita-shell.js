@@ -483,9 +483,15 @@
   }
 
   function prepararMarco() {
-    var encontrado = document.querySelector("#root > [data-la-contenedor]");
+    /* En modo local el producto no persiste `disenoNavegacion` y el wrapper
+       React llega sin data-la-contenedor. Sigue siendo la misma superficie de
+       suite (su clase estable es w-full/min-h-[700px]); asumir que el atributo
+       existe dejaba el shell antiguo visible en el banco sin sincronización. */
+    var encontrado = document.querySelector("#root > [data-la-contenedor]") ||
+      document.querySelector('#root > div.w-full.min-h-\\[700px\\]');
     if (!encontrado) return;
     if (marco !== encontrado) { marco = encontrado; }
+    if (!marco.getAttribute("data-la-contenedor")) marco.setAttribute("data-la-contenedor", "orbita");
     marco.classList.add("la-orbita-shell");
     Array.prototype.forEach.call(marco.children, function (child) {
       if (child.tagName === "STYLE") child.classList.add("la-orbita-runtime-style");
