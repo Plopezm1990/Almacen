@@ -367,4 +367,5 @@ alertas y estados informativos consumen tokens semánticos y en móvil los
 listados mantienen scroll local y columnas apiladas. No se modifican pagos,
 recepción, albaranes, facturas, datos, permisos ni handlers. Caché
 `qa-orbita-modules-v35-20261121`, huella P01 `edaafbdf5effde93`. Compras sigue
-`PARCIAL` hasta el recorrido autenticado en QA.
+`PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
+`6b01472c82a0e124af3b427b` (`ready`), commit `5b0c4bad`.

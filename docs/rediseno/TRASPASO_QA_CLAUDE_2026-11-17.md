@@ -1598,6 +1598,7 @@ facturas: controles de `44 px`, tarjetas y estados comunes, detalles
 accionables y tablas contenidas en móvil. Se preservan pagos, datos, permisos
 y handlers. Marca `qa-orbita-modules-v35-20261121`, huella P01
 `edaafbdf5effde93`; queda pendiente el recorrido autenticado en QA.
+Deploy Preview 225: `6b01472c82a0e124af3b427b` (`ready`), commit `5b0c4bad`.
 
 ### Pase · variante Órbita · 21/11/2026
 
