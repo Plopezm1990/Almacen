@@ -1048,3 +1048,13 @@ La declaración de `--c-on-chrome` quedó publicada posteriormente con el
 commit `ab274506` en el deploy `6b01897327a3a62ea37e96a9` (`ready`). La
 apertura limpia del alias sirvió v50, mantuvo Órbita, `overflow=false` y el
 flujo de Acceso visible.
+
+### Acceso y arranque · eliminación de la paleta Sello heredada · v51
+
+La pantalla de acceso se construye dentro de `fuente.js` y todavía incluía
+colores Sello literales en la columna de marca, el distintivo de entorno y el
+pie. La hoja Órbita los sustituye por tokens activos. El aviso de error de
+arranque y su botón «Reintentar» reciben el mismo tratamiento, sin modificar
+el watchdog ni el comportamiento de recarga. La nueva huella es
+`36cdf3112337d2c4` y el recurso queda marcado como
+`qa-orbita-modules-v51-20261121`.

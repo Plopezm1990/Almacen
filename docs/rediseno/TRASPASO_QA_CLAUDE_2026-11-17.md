@@ -1462,6 +1462,14 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Acceso y arranque · tokens Órbita v51
+
+Se neutralizaron los colores Sello que seguían embebidos en el arte de
+Acceso y se alineó el aviso de error de arranque con los tokens activos. El
+watchdog, el botón de reintento y los handlers permanecen intactos. La hoja
+se sirve como `la-apariencia.css?v=qa-orbita-modules-v51-20261121`, huella
+`36cdf3112337d2c4`.
+
 ### Deploy de la corrección de tokens · 21/11/2026
 
 El commit `46c7e007` está publicado en el Preview 225 como deploy

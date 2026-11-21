@@ -770,6 +770,17 @@ html[data-la-diseno] .la-acceso-arte {
   background: var(--c-chrome) !important;
   color: var(--c-on-chrome, #fff) !important;
 }
+html[data-la-diseno] .la-acceso-arte .la-acceso-entorno {
+  background: color-mix(in srgb, var(--c-accent) 16%, transparent) !important;
+  border-color: color-mix(in srgb, var(--c-accent) 52%, transparent) !important;
+  color: var(--c-accent) !important;
+}
+html[data-la-diseno] .la-acceso-arte .la-acceso-monograma,
+html[data-la-diseno] .la-acceso-arte .la-acceso-lema {
+  color: var(--c-on-chrome, #fff) !important;
+}
+html[data-la-diseno] .la-acceso-arte .la-acceso-monograma { color: var(--c-accent) !important; }
+html[data-la-diseno] .la-acceso-arte .la-acceso-pie { color: color-mix(in srgb, var(--c-on-chrome, #fff) 68%, transparent) !important; }
 html[data-la-diseno] .la-acceso-cuerpo {
   background: var(--c-bg) !important;
   color: var(--c-ink) !important;
@@ -3224,6 +3235,24 @@ html[data-la-diseno] .la-acceso .la-acceso-entrar {
   background: var(--c-accent-fill) !important;
   color: var(--c-on-accent) !important;
   box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #cargando {
+  background: radial-gradient(circle at 50% 26%, var(--c-chrome) 0%, var(--c-bg) 64%, color-mix(in srgb, var(--c-bg) 72%, #000) 100%) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #cargando .sub,
+html[data-la-diseno] #cargando .paso { color: var(--c-ink-soft) !important; }
+html[data-la-diseno] #error-arranque {
+  color: var(--c-ink) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #error-arranque button {
+  min-height: var(--la-control-height) !important;
+  border: 1px solid var(--c-border-control) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-accent-fill) !important;
+  color: var(--c-on-accent) !important;
+  font: 600 var(--la-type-body)/1.2 var(--la-font) !important;
 }
 html[data-la-diseno] .la-acceso .la-acceso-alt {
   display: flex;
