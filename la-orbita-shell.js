@@ -261,11 +261,11 @@
       ["clientes", "clientes"],
       ["compras|proveedores|pedidos|recepcion|albaranes|facturas", "compras"],
       ["inventario|productos|historial de producto|mermas|caducidad|ajustes", "inventario"],
-      ["personal|empleados|cargos|permisos|turnos|fichajes", "personal"],
+      ["encargos|devoluciones|descuentos|cortesias|cupones", "tpv"],
+      ["\\bpersonal\\b|\\bempleados\\b|\\bcargos\\b|\\bpermisos\\b|\\bturnos\\b|\\bfichajes\\b", "personal"],
       ["configuracion|empresa|locales|terminales|equipos|fiscal", "configuracion"],
       ["plataforma|administracion", "plataforma"],
       ["acceso|login", "acceso"],
-      ["encargos|devoluciones|descuentos|cortesias|cupones", "tpv"],
       ["auditoria", "auditoria"],
       ["informes|resultados", "informes"]
     ];

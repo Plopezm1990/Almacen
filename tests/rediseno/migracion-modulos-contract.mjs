@@ -38,6 +38,7 @@ assert.match(css, /@media\s*\(max-width:\s*767px\)/, 'falta adaptación móvil')
 assert.match(css, /prefers-reduced-motion:\s*reduce/, 'falta reducción de movimiento');
 assert.match(shell, /labelEncabezado\s*=\s*textoVisible\(main && main\.querySelector\("h1, h2"\)\)/, 'las pantallas históricas no usan su encabezado para anclar el módulo');
 assert.match(shell, /encargos\|devoluciones\|descuentos\|cortesias\|cupones/, 'ventas auxiliares no heredan la superficie TPV');
+assert.ok(shell.indexOf('encargos|devoluciones|descuentos|cortesias|cupones') < shell.indexOf('\\\\bpersonal\\\\b|\\\\bempleados\\\\b'), 'Encargos no debe confundirse con Personal');
 assert.match(matrix, /Esta matriz es de seguimiento/, 'la matriz no conserva el criterio de cierre');
 assert.match(transfer, /objetivo 4|Objetivo 4|migraci[oó]n visual por m[oó]dulos/i, 'el traspaso no documenta el objetivo modular');
 
