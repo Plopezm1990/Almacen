@@ -50,6 +50,21 @@ pero no devuelve automáticamente el stock. El producto quedó en 48 litros en
 QA; esto es coherente con separar reembolso económico de devolución física de
 stock. No se ejecutó una devolución física adicional.
 
+### Cierre y apertura de caja ejercitados
+
+Con la sesión de caja que ya estaba activa se introdujo un contado de `2,00 €`
+—el efectivo esperado que mostraba la pantalla antes del cierre— y se guardó el
+arqueo. El servidor confirmó el cierre y dejó visible `Día cerrado: contado
+€2,00 (−€116,44)`, junto con el cálculo posterior `esperado €118,44, contado
+€2,00`; la diferencia procede del libro histórico de QA y queda conservada como
+dato de ensayo, no se corrigió a mano.
+
+Después se intentó abrir una nueva sesión con fondo inicial `0,00 €`. El servidor
+respondió `La caja o el terminal ya tienen una sesión activa`, por lo que la
+apertura duplicada no se confirmó. No se forzó una segunda sesión ni se anuló el
+cierre con motivo: la prueba de cierre sí tiene escritura confirmada y la
+apertura queda documentada como rechazo correcto por sesión activa.
+
 ## Acciones no ejecutadas
 
 - No se hizo ningún cobro, reembolso, apertura/cierre de caja ni cambio de
