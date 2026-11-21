@@ -1643,3 +1643,21 @@ operativo:
 Esta evidencia cierra la composición móvil de Acceso, MFA y Plataforma. No
 autoriza ni ejecuta acciones administrativas; las filas funcionales siguen
 dependiendo de sus recorridos de permisos, estados y operaciones de negocio.
+
+### Estados no destructivos comprobados · 21/11/2026
+
+En una pestaña QA autenticada se comprobaron sin mutaciones adicionales:
+
+- **Carga:** al abrir Inicio se observó el estado transitorio «Cargando
+  almacén…» y, tras la hidratación, desapareció sin dejar un bucle.
+- **Clientes vacío:** búsqueda `zzzz-no-existe-qa` mostró el estado vacío
+  semántico de listado y mantuvo `scrollWidth = innerWidth`.
+- **Inventario vacío:** búsqueda `zzzz-no-existe-qa` en Productos activó el
+  estado vacío semántico y mantuvo el ancho del viewport.
+- **Cocina:** las comandas sin estación muestran el estado `BLOQUEADA` y el
+  mensaje explicativo «Sin ruta de preparación», sin presentar una tarjeta
+  ambigua ni reenviar la comanda.
+
+Los errores de conexión deliberados no se provocaron en QA porque requieren
+interrumpir el transporte o cambiar datos del entorno; quedan cubiertos por
+los contratos estáticos y como prueba controlada separada.

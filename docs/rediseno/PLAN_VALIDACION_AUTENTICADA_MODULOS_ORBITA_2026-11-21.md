@@ -101,3 +101,17 @@ La pasada continuó con `Personal`, `Cocina`, `Caja` y `Clientes`. En
 con mínimo interactivo de `44 px`. La cobertura móvil autenticada acumulada es
 de nueve módulos; Pase queda observado dentro de Inicio. Plataforma sigue
 requiriendo privilegio administrador y Acceso/MFA una sesión separada.
+
+## Estados comprobados sin mutación · 21/11/2026
+
+La misma cobertura se amplió con estados seguros que no escriben datos:
+
+- Inicio: carga transitoria «Cargando almacén…» y resolución posterior estable.
+- Clientes: búsqueda sin resultados, con estado vacío semántico.
+- Productos: búsqueda sin resultados, con estado vacío semántico.
+- Cocina: comandas sin estación con estado `BLOQUEADA` y explicación de la
+  ruta faltante.
+
+No se provocaron errores de red deliberados. Hacerlo requeriría interrumpir el
+transporte de QA y se reserva para una prueba controlada; los contratos de
+estados y fail-closed ya pasan en local.
