@@ -748,3 +748,25 @@ La ruta quedó en Inicio/Órbita; los estados de Pase y Cocina se mostraron como
 avisos de conexión explícitos en modo local, sin operaciones ni escrituras.
 Esta evidencia confirma la corrección transversal del shell; las filas de los
 módulos siguen `PARCIAL` hasta sus recorridos autenticados y de datos reales.
+
+### Componentes comunes · normalización semántica de los doce módulos · `f7f6eb58`
+
+La auditoría del punto 4 encontró que el shell ya era común, pero los controles
+seguían llegando con nombres de clase históricos diferentes según la pantalla.
+Eso podía dejar botones, campos, pestañas, tablas, estados, diálogos y tarjetas
+con geometrías distintas aunque pertenecieran al mismo módulo. Se añadió en
+`la-orbita-shell.js` la marca aditiva `marcarComponentesOrbita`: clasifica los
+elementos existentes por su rol real (`la-orbita-control`, `la-orbita-field`,
+`la-orbita-tab`, `la-orbita-table`, `la-orbita-state`, `la-orbita-dialog` y
+`la-orbita-card`). No sustituye nodos, no añade handlers de negocio y no cambia
+permisos, datos ni persistencia; solo permite que la hoja común aplique la
+escala Órbita de forma uniforme cuando React vuelve a pintar una vista.
+
+`la-apariencia.css` v45 consume esas marcas para tipografía, altura mínima de
+44 px, foco, radios, bordes, estados, tablas y modales. La caché quedó en
+`qa-orbita-modules-v45-20261121` y el shell en `qa-orbita-shell-v10-20261121`.
+Los contratos P01, marco, componentes y migración modular, junto con
+`git diff --check`, pasan en local. Esto reduce la convivencia visual antigua
+en los doce módulos, pero no convierte una fila en `CERRADO`: todavía se exige
+el recorrido QA autenticado de cada ruta, sus estados de datos y sus dos
+viewports antes de cerrar individualmente.

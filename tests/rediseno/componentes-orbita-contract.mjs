@@ -24,7 +24,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v44-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v45-20261121/);
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(index, /var\(--c-bg, #17191C\)/, 'la pantalla de carga conserva la superficie antigua');
 assert.doesNotMatch(index, /#0C2714|#F7F3E9|#E7D1A5|#B8AC91|#7F5823|#C69A52|#D2AD68/, 'el arranque conserva la paleta antigua');
@@ -62,7 +62,7 @@ assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza camp
 assert.match(css, /--la-mono:\s*["']IBM Plex Mono["']/, 'MFA usa --la-mono sin declararlo');
 assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no conserva la composición Órbita');
 assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
-assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v44-20261121/, 'la recuperación no carga el contrato de apariencia');
+assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v45-20261121/, 'la recuperación no carga el contrato de apariencia');
 assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
 assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
 
@@ -144,6 +144,10 @@ assert.ok(css.includes('.la-acceso-entrar'), 'el acceso no recibe el contrato vi
 assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no recibe la composición Órbita');
 assert.ok(css.includes('.la-orbita-bottom-nav'), 'la barra inferior móvil no recibe el marco Órbita');
 assert.ok(css.includes('.la-orbita-bottom-item[aria-current="page"]'), 'la barra inferior móvil no expone estado activo');
+assert.ok(css.includes('.la-orbita-control'), 'los módulos no comparten la marca semántica de control');
+assert.ok(css.includes('.la-orbita-field'), 'los módulos no comparten la marca semántica de campo');
+assert.ok(css.includes('.la-orbita-table'), 'los módulos no comparten la marca semántica de tabla');
+assert.match(shell, /marcarComponentesOrbita/, 'el shell no normaliza componentes históricos');
 assert.ok(shell.includes('"acceso"'), 'el shell conserva el identificador de acceso para la matriz de módulos');
 assert.ok(shell.includes('data-la-orbita-module'), 'el shell no expone la marca verificable de módulo');
 assert.match(shell, /marcarBarraInferior/, 'el shell no marca la navegación inferior para el buscador global');

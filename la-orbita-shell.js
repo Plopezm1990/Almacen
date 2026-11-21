@@ -279,6 +279,41 @@
       .replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "") || "pantalla";
   }
 
+  /*
+   * Los módulos históricos no comparten nombres de clase: unos usan Tailwind,
+   * otros clases propias y otros solo roles ARIA. Esta marca es deliberadamente
+   * semántica y aditiva. No reemplaza nodos ni escucha sus eventos; únicamente
+   * permite que la hoja Órbita aplique la misma escala a todos los módulos,
+   * también cuando React vuelve a pintar una pantalla.
+   */
+  function marcarComponentesOrbita(main) {
+    if (!main) return;
+    Array.prototype.forEach.call(main.querySelectorAll(
+      'button, input, select, textarea, [role="button"], [role="tab"], [role="menuitem"], [role="option"]'
+    ), function (control) {
+      control.classList.add("la-orbita-control");
+      if (control.getAttribute("aria-disabled") === "true" || control.disabled) control.classList.add("la-orbita-control-disabled");
+    });
+    Array.prototype.forEach.call(main.querySelectorAll('input, select, textarea'), function (field) {
+      field.classList.add("la-orbita-field");
+    });
+    Array.prototype.forEach.call(main.querySelectorAll('[role="tab"]'), function (tab) {
+      tab.classList.add("la-orbita-tab");
+    });
+    Array.prototype.forEach.call(main.querySelectorAll('table'), function (table) {
+      table.classList.add("la-orbita-table");
+    });
+    Array.prototype.forEach.call(main.querySelectorAll('[role="alert"], [role="status"]'), function (state) {
+      state.classList.add("la-orbita-state");
+    });
+    Array.prototype.forEach.call(main.querySelectorAll('[role="dialog"], dialog'), function (dialog) {
+      dialog.classList.add("la-orbita-dialog");
+    });
+    Array.prototype.forEach.call(main.querySelectorAll('.la-ui-card, [data-la-card]'), function (card) {
+      card.classList.add("la-orbita-card");
+    });
+  }
+
   function rutaActiva(sidebar, main) {
     if (main && main.querySelector(".tpv-layout")) return "tpv";
     /* Inicio puede incrustar el panel Pase para dar contexto operativo. La
@@ -331,6 +366,7 @@
       main.setAttribute("data-la-orbita-surface", superficie);
       marco.setAttribute("data-la-orbita-module", superficie);
       main.setAttribute("data-la-orbita-module", superficie);
+      marcarComponentesOrbita(main);
       /* Los módulos históricos comparten SectionTitle, pero su composición
          queda anidada en raíces distintas. Marcar el primer h2 visible da a
          Órbita un ancla estable para la misma jerarquía en Clientes,

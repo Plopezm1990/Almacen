@@ -1462,6 +1462,24 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Punto 4 · marcas semánticas para componentes históricos · `f7f6eb58`
+
+El shell Órbita ahora clasifica de forma aditiva los elementos que React ya
+renderiza en cada módulo: controles, campos, pestañas, tablas, estados,
+diálogos y tarjetas. Las clases `la-orbita-control`, `la-orbita-field`,
+`la-orbita-tab`, `la-orbita-table`, `la-orbita-state`, `la-orbita-dialog` y
+`la-orbita-card` permiten que `la-apariencia.css` v45 aplique una escala común
+sin reemplazar componentes ni tocar handlers, permisos o datos. Se mantienen
+el suelo táctil de 44 px, el foco visible, los tokens de color y la reducción
+de movimiento. Cache: `qa-orbita-modules-v45-20261121` y
+`qa-orbita-shell-v10-20261121`.
+
+Resultado estático: contratos P01, marco, componentes, migración de módulos y
+`git diff --check` en verde. La normalización está publicada solo en la rama
+`rediseno/f0-base-qa`; PR #225 continúa en borrador y producción no se toca.
+Las filas de la matriz permanecen `PARCIAL` hasta validar rutas autenticadas,
+estados de carga/vacío/error y escritorio+móvil con datos reales.
+
 ### Barra inferior móvil · revisión `5c452ff4`
 
 La barra de pestañas móvil ya no conserva el tratamiento visual histórico:

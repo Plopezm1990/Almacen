@@ -667,6 +667,73 @@ html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module] {
   --la-module-card-radius: var(--la-radius-lg);
   --la-module-card-shadow: var(--la-shadow-1);
 }
+/*
+   Contrato semántico transversal del punto 4. Las vistas antiguas no
+   comparten clases: el shell marca sus roles reales con estas clases
+   aditivas. Así la escala Órbita se aplica igual a los doce módulos sin
+   sustituir componentes, handlers ni estilos de negocio.
+*/
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-control {
+  box-sizing: border-box;
+  min-height: var(--la-control-height) !important;
+  font-family: var(--la-font) !important;
+  transition: border-color .16s ease, background-color .16s ease, color .16s ease, box-shadow .16s ease;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-field {
+  min-width: 0;
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-control:focus-visible,
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-field:focus-visible,
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-tab:focus-visible {
+  outline: 3px solid var(--c-focus-ring) !important;
+  outline-offset: 1px;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-control-disabled {
+  cursor: not-allowed;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-tab {
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-table {
+  min-width: 0;
+  border-collapse: separate;
+  border-spacing: 0;
+  border-color: var(--c-divider) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-table th,
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-table td {
+  min-height: var(--la-control-height);
+  padding: var(--la-space-3) var(--la-space-4);
+  border-color: var(--c-divider) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-state {
+  box-sizing: border-box;
+  min-height: var(--la-control-height) !important;
+  padding: var(--la-space-3) var(--la-space-4) !important;
+  border-radius: var(--la-radius-md) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-card {
+  min-width: 0;
+  border-radius: var(--la-module-card-radius) !important;
+  box-shadow: var(--la-module-card-shadow);
+}
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-dialog {
+  border-radius: var(--la-radius-lg) !important;
+  border-color: var(--c-border-control) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+  box-shadow: var(--la-shadow-2) !important;
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-control { transition: none; }
+}
 html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module] > h1,
 html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module] > h2,
 html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module] > h3 {
