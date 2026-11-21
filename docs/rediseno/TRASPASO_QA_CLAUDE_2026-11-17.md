@@ -1462,6 +1462,16 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Inicio y panel general · superficie única v29
+
+Se normalizó la superficie de Inicio completa: el panel Órbita y el detalle
+operativo que se abre debajo consumen la misma tarjeta, borde, radio, sombra,
+jerarquía tipográfica y altura táctil. Los wrappers de móvil reciben límites
+de anchura y los accesos/indicadores se apilan sin ampliar el viewport. La
+lógica de KPIs, estados, datos, permisos y handlers queda intacta. Marca
+`qa-orbita-modules-v29-20261121`, huella P01 `b729a1b6a5c2f7d3`; falta el
+recorrido autenticado de Inicio y sus estados en QA.
+
 ### Contenedores históricos · contención móvil común · 21/11/2026
 
 La capa común v28 contiene también los wrappers históricos `overflow-x-auto`

@@ -286,3 +286,15 @@ handlers. La caché CSS queda en `qa-orbita-modules-v28-20261121`, huella P01
 publicación quedó lista en Deploy Preview 225 como
 `6b01405358c478c62a3c92b0` (`ready`), commit `1c00a56a`; el alias estable es
 `https://deploy-preview-225--chic-entremet-9107cf.netlify.app`.
+
+### Inicio y panel general · superficie única v29
+
+El primer bloque de migración deja de tratar el panel Órbita y el detalle
+operativo histórico como dos identidades visuales. La capa v29 normaliza el
+panel de Inicio, sus accesos, indicadores, tarjetas de detalle, formularios,
+tablas y estados con los tokens comunes de Órbita; fija anchura máxima,
+radios, sombras, tipografía y controles táctiles de `44 px`, y en móvil
+apila accesos e indicadores sin overflow. No cambia indicadores, datos,
+permisos, navegación ni handlers. Caché `qa-orbita-modules-v29-20261121`,
+huella P01 `b729a1b6a5c2f7d3`. La matriz permanece `PARCIAL` hasta recorrer
+Inicio autenticado en los cinco viewports y comprobar vacío/carga/error.

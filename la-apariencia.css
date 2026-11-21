@@ -1994,6 +1994,131 @@ html[data-la-diseno] #root .la-ui-icon-small svg { width: var(--la-icon-sm); hei
 html[data-la-diseno] #root .la-ui-icon-large,
 html[data-la-diseno] #root .la-ui-icon-large svg { width: var(--la-icon-lg); height: var(--la-icon-lg); }
 
+/* ========================================================================
+   Órbita · Inicio y panel general · superficie única
+   ------------------------------------------------------------------------
+   El dashboard histórico se mantiene como detalle operativo, pero no puede
+   reintroducir su propia geometría cuando se abre desde Inicio. Estas reglas
+   hacen que el panel principal y ese detalle compartan los mismos tokens,
+   controles, estados y límites de anchura sin tocar sus datos ni handlers.
+   ======================================================================== */
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] {
+  min-width: 0;
+  container-type: inline-size;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-diseno {
+  box-sizing: border-box;
+  width: 100%;
+  max-width: 100%;
+  margin-block-end: var(--la-space-5);
+  padding: clamp(var(--la-space-4), 3vw, var(--la-space-7));
+  border: 1px solid var(--c-divider) !important;
+  border-block-start: 2px solid var(--c-accent-fill) !important;
+  border-radius: var(--la-radius-xl) !important;
+  background: linear-gradient(145deg, var(--c-surface), var(--c-bg)) !important;
+  color: var(--c-ink) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-diseno-cab {
+  min-width: 0;
+  padding-block-end: var(--la-space-3);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-contexto {
+  margin: 0 0 var(--la-space-2);
+  color: var(--c-ink-soft) !important;
+  font: 600 var(--la-type-label)/1.35 var(--la-font);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-diseno h2 {
+  margin: 0 0 var(--la-space-4);
+  color: var(--c-ink) !important;
+  font-family: var(--la-display);
+  font-size: clamp(24px, 4vw, 38px);
+  line-height: 1.1;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-accesos,
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-indicadores {
+  min-width: 0;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-accesos button,
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-indicadores button {
+  min-width: 0;
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md) !important;
+  border-color: var(--c-divider) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-accesos button:first-child {
+  border-color: var(--c-accent-fill) !important;
+  background: var(--c-accent-fill) !important;
+  color: var(--c-on-accent) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-indicadores button {
+  grid-template-columns: auto minmax(0, 1fr);
+  border-block-start: 2px solid var(--c-accent) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-indicadores strong {
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 {
+  box-sizing: border-box;
+  min-width: 0;
+  width: 100%;
+  max-width: 100%;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 .la-ui-card {
+  min-width: 0;
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 .la-ui-card [role="status"] {
+  color: var(--c-ink-soft) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 button,
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 [role="button"] {
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 input,
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 select,
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 textarea {
+  min-height: var(--la-control-height) !important;
+  border-color: var(--c-border-control) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-bg) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 table {
+  width: 100%;
+  border-color: var(--c-divider) !important;
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-diseno {
+    padding: var(--la-space-4);
+    border-radius: var(--la-radius-lg) !important;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-accesos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-accesos button {
+    justify-content: center;
+    min-height: var(--la-control-height-large) !important;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-indicadores {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2 > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+}
+
 /* Geometría común para tablas, tarjetas, paneles y estados. */
 html[data-la-diseno] #root table th,
 html[data-la-diseno] #root table td { padding-block: var(--la-space-3); padding-inline: var(--la-space-4); }
