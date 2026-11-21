@@ -1117,3 +1117,23 @@ selector elegido. No se tocan lógica, datos, permisos ni handlers. Marca
 El contrato de componentes fija esta barrera para que una futura regla no pueda
 volver a anular la personalización. Las filas funcionales siguen `PARCIAL` por
 la verificación autenticada pendiente.
+
+### Recorrido navegable en modo local · Preview 225 · v55 · 21/11/2026
+
+Se abrió una sesión limpia del alias estable en modo «Trabajar solo en este
+equipo, sin sincronizar», sin credenciales y sin escribir en QA ni producción.
+El shell Órbita se mantuvo al recorrer Inicio, TPV, Cocina y Caja mediante sus
+accesos reales. En TPV se observaron venta rápida/sala, catálogo, filtros,
+paginación, caja y el botón de historial separado; Cocina mostró cabecera,
+estado de conexión, selector de estación y cola vacía; Caja mostró apertura,
+arqueo, movimientos, contado, notas e historial bajo demanda. En las cuatro
+superficies se conservaron cabecera, selector de local, búsqueda global,
+avisos, perfil, botón Apariencia y navegación inferior comunes.
+
+La evidencia es de modo local: confirma composición del marco, estados vacío y
+controles navegables, pero no cierra acciones que dependen de sesión, datos,
+permisos o servidor. Por eso las doce filas siguen `PARCIAL` hasta recorrer
+sus rutas autenticadas y estados de negocio.
+
+Batería tras la revisión: `ALL_REDISENO_TESTS_PASS=1`, `git diff --check`
+limpio. SHA de referencia: `09d2ad1a52f3ebc8394f276073f49e03617be062`.

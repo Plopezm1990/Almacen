@@ -1462,6 +1462,31 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Estado de migración visual por módulos · v55 · 21/11/2026
+
+La rama `rediseno/f0-base-qa` permanece en el SHA
+`09d2ad1a52f3ebc8394f276073f49e03617be062`, con PR #225 en borrador y sin
+publicación a producción. La última corrección evita que el fallback de
+tokens Órbita anule paletas de biblioteca o personalizadas dentro del shell
+histórico (`:not([data-la-paleta]):not([data-la-personalizada])`).
+
+Se hizo un recorrido navegable no autenticado en el Preview 225 en modo local
+(sin sincronización): Inicio, TPV, Cocina y Caja conservaron el shell común de
+Órbita. Se verificaron los estados visibles de TPV (venta rápida/sala,
+catálogo, filtros, paginación, caja e historial separado), Cocina (cabecera,
+conexión, estación y cola vacía) y Caja (apertura, arqueo, movimientos,
+contado, notas e historial bajo demanda). Cabecera, selector de local,
+búsqueda, avisos, perfil, Apariencia y navegación inferior fueron comunes en
+las cuatro rutas. No se escribió en QA.
+
+Resultado técnico: todos los contratos `tests/rediseno/*.mjs` pasan
+(`ALL_REDISENO_TESTS_PASS=1`) y `git diff --check` está limpio. La matriz
+mantiene las 12 filas en `PARCIAL`: el modo local no sustituye la verificación
+autenticada de datos, permisos, cobros, estados de negocio, MFA y paneles de
+Plataforma. El siguiente paso es repetir el recorrido con una sesión de
+propietario QA y, para Caja/Personal/Plataforma, con los cargos restringidos
+correspondientes, sin ejecutar operaciones monetarias nuevas sin autorización.
+
 ### Degradados de operación adaptables a paleta · v53 · 21/11/2026
 
 La revisión transversal detectó que los encabezados de Cocina/Caja y el título
