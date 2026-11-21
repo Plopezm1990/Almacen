@@ -18,6 +18,7 @@
 :root {
   /* La barra lateral y las cabeceras del programa usan este color de marca. */
   --c-chrome: #123B2D;
+  --c-on-chrome: #FFFFFF;
   --la-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --la-mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Consolas, monospace;
   --la-display: var(--la-font);

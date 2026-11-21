@@ -1504,8 +1504,9 @@ La última auditoría visual encontró literales de color en la barra lateral,
 estados activo/hover, control de colapso, menús del shell, barra inferior y
 subrayados de página. Se sustituyeron por mezclas derivadas de los tokens del
 diseño activo, manteniendo intactos los nodos y handlers existentes. El
-recurso actualizado es `la-apariencia.css` v49, huella
-`d4a97a578224adb2`. Esto evita que Órbita vuelva a imponer una segunda paleta
+recurso actualizado es `la-apariencia.css` v50, huella
+`b9519144fc6ebd36`. También se declara `--c-on-chrome` como token base para
+evitar texto transparente en una paleta que no lo redefina. Esto evita que Órbita vuelva a imponer una segunda paleta
 cuando se eligen las otras propuestas o una paleta personalizada.
 
 La corrección es visual y estática; no convierte ninguna fila en `CERRADO`.

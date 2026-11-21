@@ -1030,8 +1030,10 @@ blancos, verdes ni azules literales. Usan mezclas y sombras derivadas de los
 tokens activos (`--c-chrome`, `--c-on-chrome`, `--c-accent`, `--c-surface` y
 `--c-bg`), de modo que el marco Órbita mantiene la misma geometría al cambiar
 entre diseños y paletas. La capa se sirve como
-`la-apariencia.css?v=qa-orbita-modules-v49-20261121`, huella
-`d4a97a578224adb2`. No se modificaron handlers, rutas, permisos ni datos.
+`la-apariencia.css?v=qa-orbita-modules-v50-20261121`, huella
+`b9519144fc6ebd36`. También se declara `--c-on-chrome` como token base para
+evitar estados transparentes cuando una paleta no redefine el color de texto
+del chrome. No se modificaron handlers, rutas, permisos ni datos.
 
 Esta corrección reduce la convivencia cromática entre propuestas, pero no
 cierra por sí sola las doce filas: siguen pendientes las acciones y estados
