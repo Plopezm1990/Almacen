@@ -480,3 +480,30 @@ permisos, cobros y persistencia siguen requiriendo el recorrido autenticado de
 QA antes de cambiar cualquiera de las doce filas a `CERRADO`.
 La corrección se sirve con `qa-orbita-shell-v8-20261121`, huella P01
 `a6a93b11be680172`, en el commit `24d490c8`.
+
+### Recorrido visual móvil · 21/11/2026
+
+Se repitió el recorrido en el Deploy Preview con emulación móvil de **390 ×
+844 px**, `deviceScaleFactor=1`, modo móvil y sesión local sin sincronización.
+Se abrió la navegación inferior y el menú «Más» para todas las entradas
+visibles:
+
+| Entrada | Módulo | Superficie | Overflow horizontal | Control mínimo | Navegación inferior |
+|---|---|---|---:|---:|---|
+| Panel general | `inicio` | `inicio` | `false` | 44 px | `true` |
+| TPV | `tpv` | `tpv` | `false` | 44 px | `true` |
+| Cocina | `cocina` | `cocina` | `false` | 44 px | `true` |
+| Proveedores | `compras` | `compras` | `false` | 44 px | `true` |
+| Productos | `inventario` | `inventario` | `false` | 44 px | `true` |
+| Personal | `personal` | `personal` | `false` | 44 px | `true` |
+| Clientes | `clientes` | `clientes` | `false` | 44 px | `true` |
+| Configuración | `configuracion` | `configuracion` | `false` | 44 px | `true` |
+| Arqueo de caja | `caja` | `caja` | `false` | 44 px | `true` |
+| Encargos | `tpv` | `tpv` | `false` | 44 px | `true` |
+
+Resultado: **10/10 rutas móviles clasificadas correctamente**, sin
+desbordamiento horizontal, con navegación inferior presente y controles
+táctiles de al menos 44 px. La sesión fue local/sin sincronización; esta
+evidencia valida el marco y la respuesta visual, pero no sustituye la
+verificación autenticada de datos, permisos, cobros, MFA ni estados reales.
+Por ello las filas permanecen `PARCIAL` hasta completar esos recorridos.

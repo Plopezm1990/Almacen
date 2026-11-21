@@ -1462,6 +1462,24 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Evidencia visual móvil · 21/11/2026
+
+Se ejecutó un recorrido completo en el Deploy Preview con emulación de **390 ×
+844 px** (`deviceScaleFactor=1`, modo móvil), en sesión local sin
+sincronización. Se abrió la navegación inferior y el menú «Más» para cada
+entrada. Resultado: **10/10 rutas correctas**, `overflow=false` en todas,
+navegación inferior presente y control visible mínimo de **44 px**.
+
+`Panel general → inicio/inicio; TPV → tpv/tpv; Cocina → cocina/cocina;
+Proveedores → compras/compras; Productos → inventario/inventario; Personal →
+personal/personal; Clientes → clientes/clientes; Configuración →
+configuracion/configuracion; Arqueo de caja → caja/caja; Encargos → tpv/tpv.`
+
+Este recorrido demuestra la unificación del shell Órbita en móvil y el
+comportamiento del menú «Más». No sustituye la prueba autenticada de datos,
+permisos, cobros, MFA ni handlers, por lo que las filas de la matriz continúan
+`PARCIAL` hasta completar esas comprobaciones.
+
 ### Inicio y panel general · superficie única v29
 
 Se normalizó la superficie de Inicio completa: el panel Órbita y el detalle
