@@ -1246,7 +1246,11 @@
     async get(key) {
       if (key === "historialRespaldos") {
         try {
-          var historialIndexedDb = await leerHistorialRespaldosIndexedDb();
+          // IndexedDB puede quedarse en estado `blocked` si otra pestaña
+          // conserva una conexión antigua. El historial es auxiliar y nunca
+          // debe impedir la hidratación del resto de la suite: acotamos esta
+          // lectura y volvemos a la copia local si no responde rápido.
+          var historialIndexedDb = await conTiempoLimite(leerHistorialRespaldosIndexedDb(), 1200);
           if (historialIndexedDb !== null) {
             try { localStorage.removeItem("almacen:" + key); } catch (e) {}
             return { key: key, value: historialIndexedDb, shared: false };
