@@ -1471,6 +1471,11 @@ Una apertura limpia del preview confirmó que el HTML sirve
 Acceso visible; la comprobación fue no autenticada y no altera la matriz de
 permisos o estados reales.
 
+La declaración final de `--c-on-chrome` está en `ab274506`, publicado como
+deploy `6b01897327a3a62ea37e96a9` (`ready`). El alias sirve
+`la-apariencia.css?v=qa-orbita-modules-v50-20261121`; la apertura limpia
+confirmó Órbita y `overflow=false` en Acceso.
+
 ### Evidencia live adicional de la migración por módulos · 21/11/2026
 
 En el Preview 225, después de recargar para descartar una pestaña que aún

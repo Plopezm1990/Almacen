@@ -1043,3 +1043,8 @@ El commit `46c7e007` quedó publicado en el Deploy Preview 225 como
 `6b01888ae50f6b98af641626` (`ready`, sin coincidencias en el escaneo de
 secretos). La pantalla de Acceso del artefacto sirve v49 y conserva
 `overflow=false`; esta verificación no autenticada no cierra la fila de Acceso.
+
+La declaración de `--c-on-chrome` quedó publicada posteriormente con el
+commit `ab274506` en el deploy `6b01897327a3a62ea37e96a9` (`ready`). La
+apertura limpia del alias sirvió v50, mantuvo Órbita, `overflow=false` y el
+flujo de Acceso visible.
