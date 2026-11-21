@@ -89,3 +89,9 @@ Fue una revisión de lectura y no generó operaciones ni cambios de datos.
 
 Esta tanda mejora la cobertura responsive, pero no permite cerrar por sí sola
 las filas: faltan estados de negocio, Plataforma con administrador y Acceso/MFA.
+
+La sesión continuó con `Más → Productos` y `Más → Proveedores` en el mismo
+viewport. Inventario (`inventario/inventario`) y Compras
+(`compras/compras`) conservaron `overflow=false`, `scrollWidth=390` y un
+mínimo interactivo de `44 px`; se observaron «Productos» y «Proveedores» sin
+escribir datos.

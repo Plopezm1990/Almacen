@@ -1530,3 +1530,9 @@ La matriz conserva `PARCIAL` para estas filas porque el cierre funcional exige
 además estados de carga/vacío/error y las acciones de negocio indicadas en el
 plan. Plataforma y Acceso/MFA siguen necesitando una sesión con los privilegios
 correspondientes.
+
+La misma sesión recorrió después `Más → Productos` y `Más → Proveedores` en
+`390×844`. Inventario devolvió `inventario/inventario` con encabezado
+«Productos»; Compras devolvió `compras/compras` con encabezado «Proveedores».
+Ambas rutas dieron `scrollWidth=390`, `overflow=false` y mínimo interactivo de
+`44 px`. La lectura no modificó productos, proveedores ni documentos.

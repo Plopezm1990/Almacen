@@ -1479,6 +1479,11 @@ TPV para continuar. Plataforma sigue pendiente de una cuenta administradora y
 Acceso/MFA de un recorrido específico; no se debe convertir esta evidencia
 responsive en un cierre funcional.
 
+La misma sesión recorrió también `Más → Productos` y `Más → Proveedores` en
+`390×844`: Inventario (`inventario/inventario`) y Compras
+(`compras/compras`) quedaron sin desbordamiento y con controles de `44 px`.
+No se escribieron productos, proveedores ni documentos.
+
 ### Cierre de implementación del objetivo 4 · 21/11/2026 · SHA `9b98bb13`
 
 La capa visual común queda integrada para los doce módulos del orden acordado:
