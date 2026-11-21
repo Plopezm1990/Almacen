@@ -1545,3 +1545,14 @@ Con ello quedan nueve módulos autenticados comprobados en móvil: Inicio, TPV,
 Cocina, Caja, Clientes, Compras, Inventario, Personal y Configuración. Pase se
 observa integrado en el panel operativo de Inicio; Plataforma no está expuesta
 al rol Propietario y Acceso/MFA requiere una sesión específica.
+
+### Corrección del cierre de sesión desde Perfil · v20 · 21/11/2026
+
+En la sesión móvil autenticada, `Perfil → Cerrar sesión` cerraba el menú pero
+no abandonaba la cuenta. La causa era que el shell reenviaba el clic al botón
+heredado situado dentro de un encabezado oculto; el modal de confirmación se
+montaba bajo ese contenedor y quedaba invisible. El shell Órbita ahora llama
+directamente a `getSupabaseClient().auth.signOut({ scope: "local" })` y recarga
+la pantalla de acceso; el botón heredado queda como respaldo si el cliente aún
+no está disponible. No se cambian datos ni permisos. La marca del shell pasa a
+`qa-orbita-shell-v20-20261121`, huella P01 `ff718595e9b0ce16`.

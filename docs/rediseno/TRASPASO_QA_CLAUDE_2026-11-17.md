@@ -1462,6 +1462,15 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Corrección de salida del perfil Órbita · 21/11/2026
+
+Se reprodujo que `Perfil → Cerrar sesión` cerraba solo el menú en móvil. El
+shell reenviaba la acción a un botón dentro del encabezado antiguo oculto, por
+lo que su modal no era visible. `la-orbita-shell.js` v20 ejecuta directamente
+el cierre local de Supabase y recarga el acceso, con respaldo al handler viejo.
+Contratos P01, marco (`24/24`), componentes y `git diff --check` pasan. Hay que
+confirmar la salida en el preview después de que termine el nuevo deploy.
+
 La sesión comprobó además `Personal`, `Cocina`, `Caja` y `Clientes` en
 `390×844`: `personal/personal`, `cocina/cocina`, `caja/caja` y
 `clientes/clientes`, sin overflow y con controles de `44 px`. La cobertura
