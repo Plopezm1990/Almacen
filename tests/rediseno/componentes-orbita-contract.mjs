@@ -87,11 +87,12 @@ for (const token of laTokensUsados) {
   assert.ok(laTokensDefinidos.has(token) || laTokensDinamicos.has(token),
     `la capa visual usa --${token} sin declararlo ni documentarlo como dinámico`);
 }
-assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v3-20261121/);
+assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v4-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);
 assert.match(dashboardPremium, /laDetalleVisible/);
 assert.doesNotMatch(dashboardPremium, /grid\.classList\.add\([^)]*\);addQuickActions\(root,grid\)/, 'el dashboard heredado no debe inyectar un segundo panel de acciones');
+assert.match(dashboardPremium, /removeOrphanDashboardToggle/, 'el detalle de Inicio no puede quedar huérfano en otras rutas');
 
 const primitiveClasses = [
   'la-ui-button', 'la-ui-link-button', 'la-ui-input', 'la-ui-select',
@@ -143,6 +144,7 @@ for (const token of [
   assert.ok(dashboardPremium.includes(token), `el panel de Inicio no consume ${token}`);
 }
 assert.doesNotMatch(dashboardPremium, /#102F20|#0D351F|#DFAE52|#E3B75F|rgba\(201,154,75/, 'el panel de Inicio conserva colores heredados');
+assert.match(css, /main\[data-la-orbita-module\]\:not\(\[data-la-orbita-module="inicio"\]\)[\s\S]*la-dashboard-detail-toggle/, 'el detalle operativo se limita visualmente a Inicio');
 
 for (const moduleName of [
   'inicio', 'tpv', 'pase', 'cocina', 'caja', 'clientes', 'compras',

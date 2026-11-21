@@ -1471,6 +1471,15 @@ diacríticos antes de evaluar las rutas. La comprobación live posterior devuelv
 `module=configuracion`, `surface=configuracion`, `overflow=false` y control
 mínimo de 44 px. El contrato de migración de módulos incluye esta defensa.
 
+### Limpieza del detalle heredado fuera de Inicio · `dashboard-premium-v4`
+
+Al cambiar de Inicio a TPV el panel de dashboard se desmontaba, pero su botón
+«Ver detalle operativo» quedaba en el `main` nuevo. Se corrigió el observador
+para retirar nodos huérfanos y se añadió una defensa scoped que solo permite ese
+control en `data-la-orbita-module="inicio"`. La ruta TPV ya no muestra el
+control antiguo; el detalle se conserva en Inicio. No cambian handlers ni
+datos. La caché queda en `qa-orbita-panel-v4-20261121`.
+
 ### Corrección del arranque local · 21/11/2026 · `2c3c84a6`
 
 Se aisló la ruta de «Trabajar solo en este equipo, sin sincronizar» para que

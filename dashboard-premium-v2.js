@@ -212,8 +212,16 @@ function syncDashboardDetail(root,toggle){
   toggle.setAttribute('aria-expanded',String(visible));
   toggle.querySelector('span')?.replaceChildren(document.createTextNode(visible?'Ocultar detalle operativo':'Ver detalle operativo'));
 }
+function removeOrphanDashboardToggle(){
+  // React desmonta el panel de Inicio antes de montar TPV/Cocina/Caja. El
+  // botón se inserta junto al panel, así que si no retiramos el nodo queda
+  // visible en la siguiente ruta como un control antiguo sin destino.
+  all('.la-dashboard-detail-toggle').forEach(toggle=>{
+    if(!toggle.closest('.la-panel-diseno')) toggle.remove();
+  });
+}
 function enhanceDashboard(){
-  const d=findDashboard();if(!d)return;const {root,heading}=d;
+  const d=findDashboard();if(!d){removeOrphanDashboardToggle();return;}const {root,heading}=d;
   root.classList.add('la-dashboard-v2');
   if(norm(heading.textContent)!=='resumen general')heading.textContent='Resumen general';
   root.dataset.laDetalleVisible=root.dataset.laDetalleVisible==='1'?'1':'0';
@@ -221,7 +229,7 @@ function enhanceDashboard(){
   const headerImg=heading.parentElement&&heading.parentElement.parentElement&&heading.parentElement.parentElement.querySelector('img');
   if(headerImg){headerImg.src=MASTER;headerImg.alt='L&A Suite';headerImg.classList.add('la-dashboard-brand')}
 }
-let scheduled=false;function refresh(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;replaceBrand();enhanceDashboard()})}
+let scheduled=false;function refresh(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;replaceBrand();enhanceDashboard();removeOrphanDashboardToggle()})}
 const mo=new MutationObserver(muts=>{if(muts.some(m=>Array.from(m.addedNodes||[]).some(n=>!(n.nodeType===1&&n.closest&&n.closest('[data-la-injected="1"]')))))refresh()});
 mo.observe(document.documentElement,{childList:true,subtree:true});window.addEventListener('resize',refresh);window.addEventListener('load',refresh);refresh();
 })();

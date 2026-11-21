@@ -984,3 +984,12 @@ de clasificarla. En el preview actualizado, Configuración devuelve
 `data-la-orbita-module="configuracion"`, `data-la-orbita-surface="configuracion"`,
 sin overflow y con control mínimo de 44 px; por tanto la capa scoped de
 Órbita sí alcanza esa pantalla.
+
+### Limpieza del detalle operativo al cambiar de módulo · 21/11/2026 · `dashboard-premium-v4`
+
+La revisión live encontró que el botón «Ver detalle operativo del panel
+principal» sobrevivía al desmontaje de Inicio y aparecía al principio de TPV.
+`dashboard-premium-v2.js` ahora retira los toggles huérfanos cuando el panel ya
+no existe; además, la hoja Órbita los oculta como defensa en cualquier módulo
+distinto de Inicio. La lógica del detalle sigue disponible únicamente en
+Inicio. La marca de caché pasa a `qa-orbita-panel-v4-20261121`.

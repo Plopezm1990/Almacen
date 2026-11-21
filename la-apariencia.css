@@ -2275,6 +2275,12 @@ html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-diseno
   color: var(--c-ink) !important;
   box-shadow: var(--la-shadow-1);
 }
+/* El detalle operativo pertenece únicamente a Inicio. La defensa visual
+   evita que un nodo huérfano del dashboard aparezca durante un cambio de ruta
+   mientras el observador de montaje retira el control. */
+html[data-la-diseno] #root main[data-la-orbita-module]:not([data-la-orbita-module="inicio"]) .la-dashboard-detail-toggle {
+  display: none !important;
+}
 html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-diseno-cab {
   min-width: 0;
   padding-block-end: var(--la-space-3);
