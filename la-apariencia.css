@@ -96,7 +96,8 @@ html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
 .la-orbita-sidebar > .la-claro-marca { position: relative; }
 .la-orbita-sidebar .la-orbita-sidebar-toggle {
   position: absolute; inset-block-start: 0; inset-inline-end: 0;
-  width: 36px; min-width: 36px; height: 36px; min-height: 36px;
+  /* Es una acción táctil real del shell, también en escritorio. */
+  width: 44px; min-width: 44px; height: 44px; min-height: 44px;
   border: 1px solid rgba(255,255,255,.22); border-radius: 9px;
   background: rgba(255,255,255,.08); color: #fff; font-size: 20px; cursor: pointer;
 }

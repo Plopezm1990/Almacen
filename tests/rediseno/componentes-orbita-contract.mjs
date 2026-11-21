@@ -22,9 +22,10 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v40-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v41-20261121/);
 assert.ok(css.includes('overscroll-behavior-inline: contain'), 'las tablas Órbita no encapsulan el desplazamiento móvil');
 assert.ok(css.includes('main[data-la-orbita-module] .overflow-x-auto'), 'los wrappers históricos no encapsulan el desplazamiento móvil');
+assert.match(css, /\.la-orbita-sidebar \.la-orbita-sidebar-toggle[\s\S]*?width:\s*44px;\s*min-width:\s*44px;\s*height:\s*44px;\s*min-height:\s*44px;/, 'el toggle del shell no respeta 44x44');
 assert.ok(css.includes('main[data-la-orbita-module="inicio"] .la-panel-diseno'), 'Inicio no normaliza el panel Órbita');
 assert.ok(css.includes('main[data-la-orbita-module="inicio"] .la-dashboard-v2'), 'Inicio no normaliza el detalle operativo');
 assert.ok(css.includes('main[data-la-orbita-module="tpv"] .tpv-layout button'), 'TPV no normaliza sus controles secundarios');
