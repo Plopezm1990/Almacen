@@ -993,3 +993,31 @@ principal» sobrevivía al desmontaje de Inicio y aparecía al principio de TPV.
 no existe; además, la hoja Órbita los oculta como defensa en cualquier módulo
 distinto de Inicio. La lógica del detalle sigue disponible únicamente en
 Inicio. La marca de caché pasa a `qa-orbita-panel-v4-20261121`.
+
+### Recorrido live adicional · Preview 225 · 21/11/2026 · commit `fbde8ec6`
+
+Se recargó el preview contra el artefacto vigente antes de medir. La pestaña
+que conservaba recursos `qa-orbita-shell-v15` y `qa-orbita-panel-v3` mostró
+transitoriamente el botón «Ver detalle operativo del panel principal» dentro de
+TPV; no era el artefacto actual. Tras la recarga, los recursos servidos fueron
+`la-apariencia.css?v=qa-orbita-modules-v48-20261121`,
+`la-orbita-shell.js?v=qa-orbita-shell-v16-20261121` y
+`dashboard-premium-v2.js?v=qa-orbita-panel-v4-20261121`. En TPV el botón
+heredado quedó en `toggleCount=0`.
+
+En la vista móvil del preview (390 px) se recorrieron rutas reales del modo de
+ensayo, sin escribir datos: TPV (`module=tpv`), Cocina (`cocina`, vacío
+confirmado por «No hay comandas para este filtro»), Caja (`caja`), Clientes
+(`clientes`, vacío confirmado), Compras mediante Proveedores (`compras`, vacío
+confirmado), Inventario mediante Productos (`inventario`, 23 filas de tabla),
+y Personal (`personal`, estado visible «Cargando empleados…»). En todos los
+casos el shell etiquetó módulo y superficie correctamente, `overflow=false` y
+el control visible mínimo fue `44` px. Personal quedó expresamente como estado
+de carga pendiente de una sesión/servidor que confirme la colección; no se
+interpretó como vacío.
+
+La pantalla de Acceso del mismo preview expone login, recuperación, modo sin
+sincronizar y selector de Apariencia; también devuelve `overflow=false` y
+control mínimo de 44 px. Esta tanda es evidencia visual no autenticada: no
+cierra ninguna fila, porque aún faltan permisos, datos reales, acciones y
+estados autenticados de cada bloque.

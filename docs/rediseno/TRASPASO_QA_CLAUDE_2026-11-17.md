@@ -1462,6 +1462,33 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Evidencia live adicional de la migración por módulos · 21/11/2026
+
+En el Preview 225, después de recargar para descartar una pestaña que aún
+servía `qa-orbita-shell-v15`/`qa-orbita-panel-v3`, se verificó el artefacto
+actual (`la-apariencia.css` v48, `la-orbita-shell.js` v16 y panel v4). El
+control «Ver detalle operativo» ya no aparece en TPV (`toggleCount=0`).
+
+En viewport móvil de 390 px, sin crear ni cobrar datos nuevos, el recorrido
+visual confirmó:
+
+| Módulo | Evidencia | Resultado |
+|---|---|---|
+| TPV | `data-la-orbita-module=tpv` | `overflow=false`, mínimo 44 px |
+| Cocina | estado vacío «No hay comandas para este filtro» | `overflow=false`, mínimo 44 px |
+| Caja | `data-la-orbita-module=caja` | `overflow=false`, mínimo 44 px |
+| Clientes | vacío confirmado y paginación deshabilitada | `overflow=false`, mínimo 44 px |
+| Compras | Proveedores vacío | `overflow=false`, mínimo 44 px |
+| Inventario | Productos, 23 filas y acciones de tabla | `overflow=false`, mínimo 44 px |
+| Personal | «Cargando empleados…» visible | carga no convertida en vacío; requiere sesión/servidor |
+| Acceso | login, recuperación y modo sin sincronizar | `overflow=false`, mínimo 44 px |
+
+Esta evidencia es visual y no autenticada. No cierra módulos: todavía faltan
+recorridos con sesión, permisos, persistencia, estados reales y acciones de
+Pase, Cocina, Caja, Clientes, Compras, Inventario, Personal, Configuración,
+Plataforma y Acceso. El estado de Personal queda documentado como carga
+honesta, no como ausencia de empleados.
+
 ### Clasificación de Configuración · `232f6974`
 
 En la revisión del preview se encontró una diferencia real: el texto con tilde
