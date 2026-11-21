@@ -81,6 +81,28 @@ La fila `plataforma` continúa en `PARCIAL`: esta pasada confirma la entrada
 autenticada y la composición visual, pero todavía falta recorrer estados de
 carga/error y los paneles administrativos exclusivos en escritorio y móvil.
 
+### Recorrido autenticado de composición · 21/11/2026
+
+En la misma sesión de propietario, con `QA Empresa A, S.L. · Local A1`, se
+recorrieron sin mutaciones las rutas visibles del shell:
+
+| Módulo | Evidencia observada | Resultado de esta pasada |
+|---|---|---|
+| Inicio / Pase | «El pulso del negocio», selector de empresa/local, indicadores, plano de sala, cola de cocina y accesos del turno | Carga correcta; estados reales de mesas y comandas visibles |
+| TPV y sala | Venta rápida/sala, terminal A1/A2, categorías, catálogo, paginación, resumen de caja e historial separado | Carga correcta; no se abrió cuenta ni se cobró |
+| Cocina | Estación, comandas nuevas/bloqueadas/recibidas, aviso de rutas y cola acotada | Carga correcta; bloqueos de ruta explicados por la propia pantalla |
+| Clientes | Vistas guardadas, búsqueda, filtros de estado/tipo, ficha, NIF enmascarado y paginación | Carga correcta; NIF particular aparece enmascarado |
+| Inventario | Filtros, tabla de productos, stock piso/almacén, margen, ABC, Kardex y registrar salida | Carga correcta; no se registró ninguna salida |
+| Personal | Empleados, bajas, roles, vacaciones, historial y acciones de ficha | Carga correcta; no se cambió ningún empleado |
+| Configuración | Empresa/local, motivo de auditoría, caja, fiscalidad, cargos, permisos y MFA | Carga correcta; no se guardó ninguna configuración |
+| Caja | Apertura, efectivo esperado, movimientos, contado, arqueo e historial bajo demanda | Carga correcta; no se abrió sesión ni se guardó arqueo |
+| Compras | Proveedores, proveedor creado por IA pendiente de revisión, datos fiscales y acciones | Carga correcta; no se revisó ni eliminó el proveedor |
+
+La pasada confirma la composición y la navegación autenticada de escritorio,
+pero no convierte por sí sola las filas en `CERRADO`: siguen pendientes las
+variantes móviles dedicadas, estados de carga/vacío/error donde no aparecieron
+en esta sesión y las acciones de negocio que requieren autorización explícita.
+
 ## Cambio de esta tanda
 
 `la-orbita-shell.js` etiqueta ahora cada ruta autenticada con
