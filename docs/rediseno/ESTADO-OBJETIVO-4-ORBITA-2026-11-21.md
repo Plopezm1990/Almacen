@@ -2,7 +2,7 @@
 
 Fecha: 21/11/2026  
 Rama: `rediseno/f0-base-qa` · PR #225 en borrador  
-Último SHA auditado: `9b98bb1319e5285fb4482851f71fb358841b7af1`
+Último SHA auditado: `b348cf0d` (evidencia móvil de Acceso, MFA y Plataforma)
 
 ## Resultado de la implementación
 
@@ -75,6 +75,16 @@ el preview 225 con una cuenta QA autorizada, registrar cada viewport y estado,
 y cerrar una fila funcional solo cuando estén presentes todos sus criterios.
 La capa de implementación no necesita otra arquitectura; las tareas
 pendientes son de recorrido QA, permisos y datos de ensayo.
+
+## Cierre de implementación visual · 21/11/2026
+
+La auditoría responsive automatizada y las capturas móviles aportadas por el
+usuario completan la evidencia de composición para los doce módulos. El acta
+de cierre es
+[`ACTA_CIERRE_OBJETIVO_4_ORBITA_2026-11-21.md`](./ACTA_CIERRE_OBJETIVO_4_ORBITA_2026-11-21.md).
+El objetivo visual queda terminado; la matriz mantiene `PARCIAL` únicamente en
+las condiciones funcionales y de negocio que requieren una prueba adicional,
+una autorización explícita o una superficie administrativa separada.
 
 ## Incidencia de acceso MFA resuelta · 21/11/2026
 
