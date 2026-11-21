@@ -51,8 +51,28 @@ persistencia tras recargar y captura o log verificable. No se usan producción,
    fila a `CERRADO`; si falta una condición, se conserva `PARCIAL` con el
    motivo concreto.
 
-## Bloqueo actual
+## Estado de la tanda actual · 21/11/2026
 
-En la última comprobación no había sesión QA autenticada abierta en Codex,
-Chrome ni Firefox. Por eso este documento queda preparado para la siguiente
-tanda, pero no inventa resultados de negocio ni cierra las doce filas.
+Ya existe una sesión autenticada real de propietario en el Deploy Preview #225,
+empresa `QA-EMP-A`, local `QA-A1`, cuenta `pm07.smoke@qa.invalid`. Con ella se
+han recorrido sin mutaciones económicas Inicio, TPV/sala, Cocina, Clientes,
+Compras, Inventario, Personal, Configuración y Caja en viewport de escritorio
+`1195×678`. Las rutas devuelven el shell Órbita, `overflow=false` y los estados
+reales indicados en la matriz; no se cambia ninguna fila a `CERRADO` porque aún
+faltan las condiciones móviles, carga/vacío/error y, cuando corresponde, la
+operación autorizada.
+
+Evidencias registradas en `MATRIZ-IMPLANTACION-QA.csv`:
+
+- `qa-20261121-orbita-cocina`
+- `qa-20261121-orbita-clientes`
+- `qa-20261121-orbita-compras`
+- `qa-20261121-orbita-inventario`
+- `qa-20261121-orbita-personal`
+- `qa-20261121-orbita-configuracion`
+- `qa-20261121-orbita-caja`
+
+Siguen pendientes la revisión móvil completa, la validación de estados de
+carga/vacío/error, Plataforma con una cuenta administradora específica y el
+recorrido de Acceso sin destruir la sesión de QA. No se usa `sis-13`, no se
+restaura QA y no se ejecutan cobros ni reembolsos nuevos sin autorización.
