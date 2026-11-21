@@ -1495,6 +1495,22 @@ operación de negocio ni se tocó producción. Falta todavía la sesión de
 administrador de Plataforma y el recorrido real de recuperación/MFA para
 convertir esas filas de `PARCIAL` en `CERRADO`.
 
+### Revisión adicional · arranque y bootstrap de instalación · `9ae45621`
+
+El primer render también queda dentro del contrato Órbita. `index.html` fija
+el diseño antes de cargar la aplicación y la pantalla `#cargando` consume los
+tokens semánticos, sin la paleta antigua. El diálogo de instalación inicial
+de `owner-bootstrap-post-reset.js` usa la misma superficie, tipografía,
+alertas, campos y botones; todos sus controles respetan `44×44 px` mínimo.
+No se tocaron la sesión, las RPC, los permisos ni la barrera de instalación.
+
+Verificación: `node --check owner-bootstrap-post-reset.js`,
+`componentes-orbita-contract`, `marco-orbita-contract`,
+`marco-orbita-rutas-contract`, `migracion-modulos-contract` y
+`git diff --check` pasan. Commit `9ae4562168c3057d090e857df3e4b205c530446f`;
+Deploy Preview 225 `6b0160c90992330e675aecdf` (estado `building` al crear esta
+nota). Plataforma y Acceso continúan `PARCIAL` hasta la validación autenticada.
+
 ### Ajuste del shell · control lateral táctil · `6438b207`
 
 En la auditoría del punto 4 se encontró un control común que no cumplía el

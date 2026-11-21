@@ -640,3 +640,18 @@ La corrección está en `bfb0e6856c4baa1fe64858f45b98cfdf89485685` y se publicó
 en el Deploy Preview 225 como `6b015f565f50b1269577c814` (`ready`), con
 escaneo de secretos sin coincidencias y las siete reglas de cabeceras
 procesadas. El PR #225 continúa en borrador y producción no se tocó.
+
+### Arranque y bootstrap de instalación · revisión `9ae45621`
+
+El barrido del punto 4 también cubrió el primer render, antes de que React
+monte `#root`, y el diálogo de instalación inicial que crea el propietario.
+`index.html` fija `data-la-diseno="orbita"` desde el documento, usa el fondo,
+tipografía y acento semánticos del tema en la pantalla de carga y mantiene la
+barra de progreso sin la paleta verde/beige antigua. `owner-bootstrap-post-reset.js`
+consume los mismos tokens para su modal, avisos, campos y botones; inputs y
+acciones tienen `min-height: 44px` y el flujo de servidor queda intacto.
+
+Los contratos de componentes, shell, rutas, módulos y `git diff --check` pasan
+con esta revisión. Se publicó en el Deploy Preview 225 como deploy
+`6b0160c90992330e675aecdf` (en construcción al redactar esta nota). Plataforma
+y Acceso siguen `PARCIAL` hasta completar sus recorridos autenticados reales.
