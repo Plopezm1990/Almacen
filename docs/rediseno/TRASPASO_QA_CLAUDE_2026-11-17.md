@@ -1469,7 +1469,9 @@ shell reenviaba la acción a un botón dentro del encabezado antiguo oculto, por
 lo que su modal no era visible. `la-orbita-shell.js` v20 ejecuta directamente
 el cierre local de Supabase y recarga el acceso, con respaldo al handler viejo.
 Contratos P01, marco (`24/24`), componentes y `git diff --check` pasan. Hay que
-confirmar la salida en el preview después de que termine el nuevo deploy.
+confirmar la salida en el preview después de que termine el nuevo deploy. La
+confirmación ya está hecha en `6b01d9f443a8f975bdb02ec4`: el menú termina la
+sesión y muestra `Iniciar sesión`.
 
 La sesión comprobó además `Personal`, `Cocina`, `Caja` y `Clientes` en
 `390×844`: `personal/personal`, `cocina/cocina`, `caja/caja` y

@@ -1556,3 +1556,7 @@ directamente a `getSupabaseClient().auth.signOut({ scope: "local" })` y recarga
 la pantalla de acceso; el botón heredado queda como respaldo si el cliente aún
 no está disponible. No se cambian datos ni permisos. La marca del shell pasa a
 `qa-orbita-shell-v20-20261121`, huella P01 `ff718595e9b0ce16`.
+
+Verificación live posterior: deploy `6b01d9f443a8f975bdb02ec4` (`ready`). En
+la sesión propietaria de QA, el menú móvil `Perfil → Cerrar sesión` terminó la
+sesión y dejó visible `Iniciar sesión`; no se modificaron datos de negocio.
