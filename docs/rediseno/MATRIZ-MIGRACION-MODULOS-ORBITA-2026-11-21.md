@@ -125,6 +125,17 @@ historial, vacío/carga/error y factura a empresa en escritorio y móvil.
 La versión v23 está publicada en el Deploy Preview 225 como deploy
 `6b0137dac55d9e163e63c27e` (`ready`), commit `a9147300`.
 
+### Pase · variante Órbita · v2
+
+La raíz `.la-orbita-pase` ya no hereda la paleta verde/lima genérica de Pase:
+usa fondo carbón, superficie, acero y coral mediante los tokens del diseño.
+También se normalizaron el turno, el plano, la cola, los accesos y los estados
+`OCUPADA`/`RESERVADA`; los estados `LIBRE`, `BLOQUEADA` y `FUERA_SERVICIO`
+siguen saliendo del servidor sin reinterpretarlos. La caché de `la-pase.css`
+pasó a `qa-orbita-pase-v2-20261121` (huella P01 `4b14613f8923c353`). Pase
+continúa `PARCIAL` hasta recorrer datos reales, cola de cocina y estados en
+escritorio y móvil.
+
 ### Verificación posterior · commit `74b32091`
 
 El cambio se publicó en el Deploy Preview 225 como deploy

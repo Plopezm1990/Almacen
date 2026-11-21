@@ -38,6 +38,56 @@
   --pase-tinta-suave: var(--c-ink-soft);
   --pase-acento: var(--c-accent);
 }
+/* Variante Órbita: el panel de Pase conserva sus datos y estados operativos,
+   pero no debe arrastrar la paleta verde/lima del componente histórico. */
+html[data-la-diseno="orbita"] .la-orbita-pase {
+  --pase-fondo: var(--c-bg);
+  --pase-panel: var(--c-surface);
+  --pase-tarjeta: color-mix(in srgb, var(--c-surface) 88%, var(--c-bg));
+  --pase-tinta: var(--c-ink);
+  --pase-tinta-suave: var(--c-ink-soft);
+  --pase-acento: var(--c-accent);
+  padding: var(--la-space-4);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-lg);
+  background: var(--c-bg);
+  color: var(--c-ink);
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno="orbita"] .la-orbita-pase .la-pase-turno {
+  grid-template-columns: minmax(0, 360px) minmax(0, 1fr);
+  border: 1px solid var(--c-divider);
+  border-block-start: 2px solid var(--c-accent-fill);
+  border-radius: var(--la-radius-lg);
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+html[data-la-diseno="orbita"] .la-orbita-pase .la-pase-plano,
+html[data-la-diseno="orbita"] .la-orbita-pase .la-pase-caja {
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-lg);
+  background: var(--c-surface);
+  color: var(--c-ink);
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno="orbita"] .la-orbita-pase .la-pase-mesa[data-estado="OCUPADA"] {
+  border-color: var(--c-amber) !important;
+}
+html[data-la-diseno="orbita"] .la-orbita-pase .la-pase-mesa[data-estado="OCUPADA"] .est {
+  color: var(--c-amber) !important;
+}
+html[data-la-diseno="orbita"] .la-orbita-pase .la-pase-mesa[data-estado="RESERVADA"] {
+  border-color: var(--c-focus-ring) !important;
+}
+html[data-la-diseno="orbita"] .la-orbita-pase .la-pase-accion {
+  background: var(--c-accent-fill);
+  color: var(--c-on-accent);
+  border: 1px solid var(--c-accent-fill);
+}
+@media (max-width: 767px) {
+  html[data-la-diseno="orbita"] .la-orbita-pase { padding: var(--la-space-3); }
+  html[data-la-diseno="orbita"] .la-orbita-pase .la-pase-turno { grid-template-columns: minmax(0, 1fr); }
+}
 .la-ascua-turno {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(160px, .6fr);
@@ -154,7 +204,7 @@
 
 .la-pase-accion {
   min-height: 44px; padding: 0 16px; border: 0; border-radius: 10px;
-  background: var(--pase-acento); color: #15251E;
+  background: var(--pase-acento); color: var(--c-on-accent, #15251E);
   font: 700 13px/1 var(--la-font, inherit); cursor: pointer;
 }
 .la-pase-accion[disabled] { opacity: .5; cursor: not-allowed; }
