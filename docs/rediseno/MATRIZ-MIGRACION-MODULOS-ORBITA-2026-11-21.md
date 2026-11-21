@@ -1080,6 +1080,11 @@ altura táctil de 44 px). La corrección está acotada a
 caducidad, ajustes, datos, permisos ni handlers. La hoja se sirve como
 `qa-orbita-modules-v52-20261121`, huella `ce2d5675f6ef1d25`.
 
+El commit `c395ae58` se publicó en el Deploy Preview 225 como
+`6b018c8b82a0e124af450238` (`ready`, escaneo de secretos sin coincidencias).
+El alias estable sigue siendo
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
+
 Los contratos de componentes, marco y capas pasan con esta marca. La fila de
 Inventario continúa `PARCIAL`: falta el recorrido autenticado de movimientos,
 mermas, caducidad y ajustes en escritorio y móvil, aunque la superficie visual

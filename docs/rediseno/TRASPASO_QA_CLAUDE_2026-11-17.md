@@ -1472,6 +1472,11 @@ los tokens activos de Órbita, radio/sombra común y `--la-control-height` (44 p
 sin tocar la lógica ni los handlers. La marca de caché es
 `qa-orbita-modules-v52-20261121`, huella `ce2d5675f6ef1d25`.
 
+El commit `c395ae58` se publicó en el Deploy Preview 225 como
+`6b018c8b82a0e124af450238` (`ready`, escaneo de secretos sin coincidencias).
+El alias estable sigue siendo
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
+
 Se añadieron aserciones específicas al contrato de componentes y se actualizaron
 las huellas de P01, `index.html`, recuperación de contraseña y marco. La
 verificación estática pasa; el estado funcional de Inventario permanece
