@@ -1089,3 +1089,16 @@ Los contratos de componentes, marco y capas pasan con esta marca. La fila de
 Inventario continúa `PARCIAL`: falta el recorrido autenticado de movimientos,
 mermas, caducidad y ajustes en escritorio y móvil, aunque la superficie visual
 ya no introduce ese bloque antiguo.
+
+### Degradados de operación adaptables a paleta · v53 · 21/11/2026
+
+La revisión transversal detectó que los encabezados de Cocina/Caja y el título
+de Pase conservaban degradados morado/azul literales. En Órbita ahora se derivan
+de `--c-accent-fill`, `--c-accent` y `--c-ink`, por lo que las seis paletas y la
+paleta propia mantienen la misma jerarquía sin arrastrar colores de la maqueta
+base. No se modifican estados, handlers ni datos. Marca
+`qa-orbita-modules-v53-20261121`, huella `7c926e786e2e6488`.
+
+El contrato de componentes comprueba ambos degradados tokenizados. La matriz
+funcional continúa `PARCIAL` hasta terminar los recorridos autenticados de los
+módulos.
