@@ -391,3 +391,13 @@ turnos, datos ni handlers. Caché `qa-orbita-modules-v37-20261121`, huella P01
 `7360be9936c414f6`. Personal sigue `PARCIAL` hasta el recorrido autenticado
 en QA. Deploy Preview 225: `6b0148194d9d3057193003d7` (`ready`), commit
 `2f3735b0`.
+
+### Configuración · empresa, locales, terminales, fiscalidad y apariencia · v38
+
+La capa v38 completa la normalización de Configuración: tarjetas, botones,
+campos, selectores, estados, detalles y tablas comparten la escala Órbita; en
+móvil los grupos se envuelven, las tablas mantienen scroll local y los
+formularios se apilan sin overflow. No se modifican persistencia, fiscalidad,
+apariencia, permisos ni handlers. Caché `qa-orbita-modules-v38-20261121`,
+huella P01 `f186177be3f110a1`. Configuración sigue `PARCIAL` hasta el recorrido
+autenticado en QA.

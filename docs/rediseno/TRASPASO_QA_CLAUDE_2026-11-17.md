@@ -1618,6 +1618,14 @@ intactos. Marca `qa-orbita-modules-v37-20261121`, huella P01
 `7360be9936c414f6`; queda pendiente el recorrido autenticado en QA.
 Deploy Preview 225: `6b0148194d9d3057193003d7` (`ready`), commit `2f3735b0`.
 
+### Configuración · empresa, locales, terminales, fiscalidad y apariencia · v38
+
+Se aplicó la escala Órbita a empresa, locales, terminales, fiscalidad y
+apariencia: controles táctiles comunes, tarjetas, estados y tablas contenidas
+en móvil. Se preservan persistencia, permisos y handlers. Marca
+`qa-orbita-modules-v38-20261121`, huella P01 `f186177be3f110a1`; queda pendiente
+el recorrido autenticado en QA.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo

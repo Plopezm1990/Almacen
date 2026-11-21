@@ -2849,3 +2849,59 @@ html[data-la-diseno] #root main[data-la-orbita-module="personal"] details > summ
     grid-template-columns: minmax(0, 1fr);
   }
 }
+
+/* Configuración · empresa, locales, terminales, fiscalidad y apariencia. */
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] .la-ui-card {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--c-ink);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] button,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] [role="button"],
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] select,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] input,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] textarea {
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] [role="alert"] {
+  background: var(--c-red-soft) !important;
+  border-color: color-mix(in srgb, var(--c-red) 42%, transparent) !important;
+  color: var(--c-red) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] [role="status"] {
+  background: var(--c-accent-soft) !important;
+  border-color: var(--c-divider) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] table {
+  max-width: 100%;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] details > summary {
+  min-height: var(--la-control-height);
+  display: flex;
+  align-items: center;
+  gap: var(--la-space-2);
+  cursor: pointer;
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] .flex.items-center.justify-between,
+  html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] .flex.items-start.justify-between {
+    flex-wrap: wrap;
+    gap: var(--la-space-3);
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] table {
+    display: block;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] .grid.grid-cols-2,
+  html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] .grid.grid-cols-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+}
