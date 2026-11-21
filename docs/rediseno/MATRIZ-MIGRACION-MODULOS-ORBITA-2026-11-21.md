@@ -508,6 +508,29 @@ evidencia valida el marco y la respuesta visual, pero no sustituye la
 verificación autenticada de datos, permisos, cobros, MFA ni estados reales.
 Por ello las filas permanecen `PARCIAL` hasta completar esos recorridos.
 
+### Recorrido visual de escritorio actualizado · 21/11/2026
+
+Se repitió el mismo conjunto de rutas con viewport de **1440 × 900 px** en el
+preview actualizado. Las diez entradas resolvieron la superficie esperada, sin
+overflow horizontal y con un control visible mínimo de 44 px:
+
+| Ruta | Módulo/superficie | Overflow | Mínimo | Alertas | Estados |
+|---|---|---:|---:|---:|---:|
+| Panel general | `inicio/inicio` | `false` | 44 px | 0 | 3 |
+| TPV | `tpv/tpv` | `false` | 44 px | 1 | 0 |
+| Cocina | `cocina/cocina` | `false` | 44 px | 1 | 0 |
+| Proveedores | `compras/compras` | `false` | 44 px | 0 | 1 |
+| Productos | `inventario/inventario` | `false` | 44 px | 0 | 0 |
+| Personal | `personal/personal` | `false` | 44 px | 0 | 1 |
+| Clientes | `clientes/clientes` | `false` | 44 px | 0 | 2 |
+| Configuración | `configuracion/configuracion` | `false` | 44 px | 1 | 0 |
+| Arqueo de caja | `caja/caja` | `false` | 44 px | 0 | 0 |
+| Encargos | `tpv/tpv` | `false` | 44 px | 0 | 1 |
+
+La medición se hizo en modo local/sin sincronización para no generar cambios
+de negocio. Es evidencia del marco, la escala y la comunicación visual; no
+convierte por sí sola las filas en `CERRADO`.
+
 ### Estados observados en la pasada móvil local · 21/11/2026
 
 Además del anclaje del shell, se comprobó que las rutas no quedan en blanco

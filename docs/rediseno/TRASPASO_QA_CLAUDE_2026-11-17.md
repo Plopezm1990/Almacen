@@ -1462,6 +1462,16 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Recorrido de escritorio actualizado · 21/11/2026
+
+La misma selección se repitió en escritorio a **1440 × 900 px**: Inicio, TPV,
+Cocina, Proveedores, Productos, Personal, Clientes, Configuración, Arqueo de
+caja y Encargos resolvieron respectivamente `inicio`, `tpv`, `cocina`,
+`compras`, `inventario`, `personal`, `clientes`, `configuracion`, `caja` y
+`tpv`. Todas conservaron `overflow=false`, controles visibles de al menos 44
+px y sus alertas/estados visibles. La pasada no sincronizada evita escrituras
+de negocio y no sustituye la validación autenticada.
+
 ### Evidencia visual móvil · 21/11/2026
 
 Se ejecutó un recorrido completo en el Deploy Preview con emulación de **390 ×
