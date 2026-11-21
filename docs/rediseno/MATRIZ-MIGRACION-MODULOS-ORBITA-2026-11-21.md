@@ -21,7 +21,7 @@ vacío y contratos sin regresión.
 | 9 | Personal | `personal` | PARCIAL: empleados, permisos, turnos, tablas y formularios ya tienen capa Órbita | Recorrer fichajes, cargos, permisos y estados en rutas reales |
 | 10 | Configuración | `configuracion` | PARCIAL: empresa, locales, terminales, fiscalidad y apariencia ya comparten la capa base | Recorrer configuración y selectores sin romper persistencia ni permisos |
 | 11 | Plataforma | `plataforma` | PARCIAL: paneles administrativos ya comparten tarjetas, tablas y controles base | Verificar acceso administrador y paneles exclusivos en QA |
-| 12 | Acceso | `.la-acceso` y `acceso` | BASE: contrato visual Órbita añadido | Revisar login, recuperación, MFA y selección de empresa/local |
+| 12 | Acceso | `.la-acceso` y `acceso` | PARCIAL: login dividido, recuperación, MFA y selector conservan la capa visual Órbita | Verificar login, recuperación, MFA, expiración y selección de empresa/local en escritorio y móvil |
 
 ## Cambio de esta tanda
 

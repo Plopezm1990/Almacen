@@ -1387,3 +1387,12 @@ pm11-compra y pm33); no apareció un fallo nuevo atribuible a las capas de
 Caja, Clientes o Gestión. El contrato de publicación Netlify y todos los
 contratos específicos de rediseño pasan. El PR #225 sigue en borrador y
 producción permanece fuera de alcance.
+
+### Acceso · alcance vigente
+
+El acceso no se considera cerrado solo por cargar la pantalla partida. La
+superficie `.la-acceso` ya está gobernada por los tokens Órbita y mantiene
+áreas táctiles mínimas, pero queda `PARCIAL` hasta comprobar en QA login,
+recuperación, MFA, expiración de sesión y selección de empresa/local tanto en
+escritorio como en móvil. La sesión observada en el preview mostró el acceso
+QA y el botón Apariencia, sin realizar ninguna autenticación ni escritura.
