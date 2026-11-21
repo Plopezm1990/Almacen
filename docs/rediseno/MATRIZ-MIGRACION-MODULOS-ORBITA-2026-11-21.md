@@ -24,6 +24,9 @@ los contratos estáticos pasan; las filas permanecen `PARCIAL` cuando falta la
 prueba autenticada de datos, permisos o estados de negocio. No se debe cerrar
 un módulo solo porque su selector `data-la-orbita-module` exista.
 
+La ejecución detallada de esa comprobación está en
+[`PLAN_VALIDACION_AUTENTICADA_MODULOS_ORBITA_2026-11-21.md`](./PLAN_VALIDACION_AUTENTICADA_MODULOS_ORBITA_2026-11-21.md).
+
 | Orden | Módulo | Superficie identificable | Estado actual | Cierre pendiente |
 |---:|---|---|---|---|
 | 1 | Inicio y panel general | `inicio`, `.la-panel-diseno` | PARCIAL: panel Órbita ya visible y detalle antiguo separado; el panel tiene prioridad cuando Pase está incrustado | Revisar todas las variantes de indicadores y estados en 5 viewports |

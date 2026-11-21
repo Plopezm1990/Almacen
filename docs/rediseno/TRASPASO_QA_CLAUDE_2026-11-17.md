@@ -2415,8 +2415,10 @@ incluidos datos, permisos, estados de carga/vacío/error y revisión móvil.
 
 Regla de cierre para Claude: no cambiar `PARCIAL` a `CERRADO` por inspección
 estática. Registrar en la matriz la ruta, viewport, evidencia y cualquier dato
-de QA creado; mantener producción intacta y el PR #225 en borrador. Las
-pruebas locales solo acreditan la capa visual y la ausencia de regresiones,
+de QA creado; mantener producción intacta y el PR #225 en borrador. El orden y
+la ficha exacta de cada recorrido están en
+`docs/rediseno/PLAN_VALIDACION_AUTENTICADA_MODULOS_ORBITA_2026-11-21.md`.
+Las pruebas locales solo acreditan la capa visual y la ausencia de regresiones,
 no sustituyen el recorrido con sesión.
 
 ### Recorrido visual de rutas históricas · 21/11/2026 · SHA `56be8a75`

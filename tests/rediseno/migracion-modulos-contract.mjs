@@ -7,6 +7,7 @@ const css = readFileSync(resolve(root, 'la-apariencia.css'), 'utf8');
 const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const matrix = readFileSync(resolve(root, 'docs/rediseno/MATRIZ-MIGRACION-MODULOS-ORBITA-2026-11-21.md'), 'utf8');
 const transfer = readFileSync(resolve(root, 'docs/rediseno/TRASPASO_QA_CLAUDE_2026-11-17.md'), 'utf8');
+const authPlan = readFileSync(resolve(root, 'docs/rediseno/PLAN_VALIDACION_AUTENTICADA_MODULOS_ORBITA_2026-11-21.md'), 'utf8');
 
 const modules = [
   ['inicio', 'Inicio y panel general'],
@@ -62,5 +63,10 @@ assert.match(transfer, /control visible m[ií]nimo de \*\*44 px\*\*/, 'el traspa
 assert.match(matrix, /Acceso · revisi[oó]n visual no autenticada/, 'la matriz no conserva la revisión responsive de Acceso');
 assert.match(matrix, /390 × 844 px.*1440 × 900 px/s, 'la matriz no fija los dos viewports de Acceso');
 assert.match(transfer, /Acceso · revisi[oó]n responsive no autenticada/, 'el traspaso no conserva la revisión responsive de Acceso');
+assert.match(authPlan, /## Evidencia mínima por módulo/, 'falta el criterio de evidencia autenticada');
+assert.match(authPlan, /\| 12 \| Acceso \|/, 'el plan autenticado no incluye Acceso');
+assert.match(authPlan, /\| 5 \| Caja \|/, 'el plan autenticado no incluye Caja');
+assert.match(authPlan, /Nunca\s+escribir la contraseña/, 'el plan autenticado debe excluir credenciales de la documentación');
+assert.match(authPlan, /PARCIAL/, 'el plan autenticado debe conservar el estado no cerrado hasta tener evidencia');
 
 console.log('REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12 matriz=12 responsive=PASS tactil=44');
