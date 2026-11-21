@@ -1462,6 +1462,29 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Cierre de implementación del objetivo 4 · 21/11/2026 · SHA `9b98bb13`
+
+La capa visual común queda integrada para los doce módulos del orden acordado:
+Inicio, TPV, Pase, Cocina, Caja, Clientes, Compras, Inventario, Personal,
+Configuración, Plataforma y Acceso. La batería `tests/rediseno/*.mjs` termina
+con `REDISENO_BATTERY_FAILS=0 TOTAL=18`; los contratos de marco, componentes,
+rutas, estados y migración modular (`12/12`, responsive y táctil `44 px`)
+continúan verdes, y `git diff --check` no encuentra errores.
+
+La corrección v67 también remapea el control heredado de Seguridad/Tema sin
+alterar su handler, MFA ni permisos. Se conserva la paridad de
+`fuente.js`/`source-recovery/fuente-recuperado.js`. El Deploy Preview 225 y el
+PR #225 siguen en QA y borrador respectivamente; producción no se ha tocado.
+
+Importante para retomar: esto cierra la implementación visual, no el recorrido
+funcional autenticado. La matriz mantiene las doce filas en `PARCIAL` hasta
+disponer de evidencia de móvil, carga/vacío/error, Plataforma con cuenta
+administradora y Acceso/MFA real. La última sesión del navegador integrado
+caducó al cargar una URL fresca y quedó en login; no se ejecutaron cobros,
+reembolsos, restauraciones ni cambios de permisos nuevos. El detalle y los
+comandos reproducibles están en
+`docs/rediseno/ESTADO-OBJETIVO-4-ORBITA-2026-11-21.md`.
+
 ### TPV y control heredado de Seguridad · v67 · 21/11/2026
 
 El deploy `6b01c1e7071af1a09210e5b2` de la rama QA está `ready`. En una sesión

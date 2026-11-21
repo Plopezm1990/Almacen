@@ -10,6 +10,17 @@ vacío y contratos sin regresión.
 
 ## Objetivo 4 activo · migración modular por bloques
 
+### Cierre de implementación visual · 21/11/2026
+
+La capa de implementación del objetivo está completa para los `12/12` módulos:
+el shell común clasifica todas las rutas y la escala Órbita cubre sus
+componentes, estados y responsive. Esta afirmación es de implementación y de
+contrato; no sustituye la validación autenticada de negocio. Por eso las filas
+de la tabla mantienen `PARCIAL` hasta que se aporten las evidencias de QA que
+exige el plan, sin convertir una comprobación estática en un cierre funcional.
+El detalle reproducible queda en
+[`ESTADO-OBJETIVO-4-ORBITA-2026-11-21.md`](./ESTADO-OBJETIVO-4-ORBITA-2026-11-21.md).
+
 Este es el objetivo operativo vigente para completar la unificación visual:
 los módulos se migran uno por uno, en el orden de la tabla, sin mezclar
 handlers ni cambiar el contrato de datos. Cada bloque debe demostrar el mismo
