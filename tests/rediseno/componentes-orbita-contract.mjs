@@ -10,6 +10,7 @@ const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 const resetPassword = readFileSync(resolve(root, 'restablecer-contrasena.html'), 'utf8');
+const ownerBootstrap = readFileSync(resolve(root, 'owner-bootstrap-post-reset.js'), 'utf8');
 
 const normalizeNewlines = (text) => text.replace(/\r\n/g, '\n');
 const localAccessBlock = (text) => {
@@ -24,6 +25,11 @@ assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
 assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v43-20261121/);
+assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
+assert.match(index, /var\(--c-bg, #17191C\)/, 'la pantalla de carga conserva la superficie antigua');
+assert.doesNotMatch(index, /#0C2714|#F7F3E9|#E7D1A5|#B8AC91|#7F5823|#C69A52|#D2AD68/, 'el arranque conserva la paleta antigua');
+assert.match(ownerBootstrap, /min-height:var\(--la-control-height,44px\)/, 'el bootstrap de instalación conserva controles menores de 44 px');
+assert.doesNotMatch(ownerBootstrap, /#153D27|#0C2714|#06170E|#F7F3E9|#7F5823|#b7b0a0|#8d2e1f/, 'el bootstrap de instalación conserva la paleta antigua');
 assert.ok(css.includes('overscroll-behavior-inline: contain'), 'las tablas Órbita no encapsulan el desplazamiento móvil');
 assert.ok(css.includes('main[data-la-orbita-module] .overflow-x-auto'), 'los wrappers históricos no encapsulan el desplazamiento móvil');
 assert.match(css, /\.la-orbita-sidebar \.la-orbita-sidebar-toggle[\s\S]*?width:\s*44px;\s*min-width:\s*44px;\s*height:\s*44px;\s*min-height:\s*44px;/, 'el toggle del shell no respeta 44x44');
