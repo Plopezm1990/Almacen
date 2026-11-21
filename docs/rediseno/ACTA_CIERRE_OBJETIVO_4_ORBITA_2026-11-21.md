@@ -185,6 +185,9 @@ las capacidades de Caja, Plataforma y permisos siguen remitiendo a sus actas
 QA respectivas. No se inventan datos ni recorridos para las vistas que solo
 pertenecen a la maqueta.
 
+Implementación: `3df79dc278f979d3c3c3f09e1400691d42a94744`; Deploy Preview 225
+listo: `6b02176e17a3179765460a94`.
+
 ## Fase de plantillas reutilizables y cobertura de pantallas · 21/11/2026
 
 Se incorporó `la-plantillas-orbita.js` como registro único de composición.

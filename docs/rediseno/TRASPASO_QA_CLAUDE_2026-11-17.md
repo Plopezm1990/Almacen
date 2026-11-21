@@ -1526,6 +1526,9 @@ Caja a 390×844 y 1440×900, y revisar en Pase la búsqueda «mesa», «cocina»
 identificador de pedido. Plataforma y Acceso se comprueban sin sesión; no se
 requiere una escritura en QA.
 
+SHA de implementación: `3df79dc278f979d3c3c3f09e1400691d42a94744`.
+Deploy Preview 225: `6b02176e17a3179765460a94` (estado `ready`).
+
 ### Plantillas Órbita compartidas · 21/11/2026
 
 La siguiente fase añade `la-plantillas-orbita.js` y su contrato

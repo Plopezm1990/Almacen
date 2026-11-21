@@ -1830,3 +1830,7 @@ Contrato reproducible: `node tests/rediseno/movil-recorridos-orbita-contract.mjs
 `touch=44`). El contrato de plantillas y la batería Rediseno siguen siendo la
 referencia para no declarar funcional una pantalla que solo tenga una marca
 visual.
+
+Implementación de esta revisión: `3df79dc278f979d3c3c3f09e1400691d42a94744`.
+Deploy Preview 225 listo en `6b02176e17a3179765460a94`; el alias estable es
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
