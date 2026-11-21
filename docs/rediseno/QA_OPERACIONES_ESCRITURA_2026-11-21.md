@@ -63,7 +63,12 @@ Después se intentó abrir una nueva sesión con fondo inicial `0,00 €`. El se
 respondió `La caja o el terminal ya tienen una sesión activa`, por lo que la
 apertura duplicada no se confirmó. No se forzó una segunda sesión ni se anuló el
 cierre con motivo: la prueba de cierre sí tiene escritura confirmada y la
-apertura queda documentada como rechazo correcto por sesión activa.
+apertura queda documentada como rechazo correcto por sesión activa. Para aislar
+el origen se cambió el navegador al terminal `QA terminal A2 (ensayo punto 2)`
+y se repitió el intento; QA devolvió el mismo rechazo. Esto demuestra que hay
+otra sesión operativa en A2 —la que estaba abierta en el segundo perfil de
+ensayo— y que el servidor aplica la exclusión por terminal, no un fallo del
+formulario de apertura.
 
 ## Acciones no ejecutadas
 

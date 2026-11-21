@@ -64,7 +64,9 @@ en [`QA_OPERACIONES_ESCRITURA_2026-11-21.md`](QA_OPERACIONES_ESCRITURA_2026-11-2
 - Se cerró la sesión de caja activa con contado `2,00 €`; QA confirmó el cierre
   y mostró la diferencia histórica `−116,44 €` frente al libro acumulado. Un
   intento posterior de apertura con fondo `0,00 €` fue rechazado correctamente
-  porque el terminal ya tenía una sesión activa. No se forzó otra apertura.
+  porque el terminal ya tenía una sesión activa. Al cambiar al terminal A2 y
+  repetirlo, el servidor devolvió el mismo rechazo: la segunda sesión de
+  ensayo (Firefox) sigue abierta allí. No se forzó otra apertura.
 - La operación de Plataforma queda sin ejercitar porque esta sesión no es de
   administrador de Plataforma; no se concedió ese privilegio ni se tocó
   producción. El registro contable pendiente de migraciones de Apariencia y
