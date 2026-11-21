@@ -1417,3 +1417,24 @@ de contrato táctil y de consistencia; no modifica handlers, permisos, datos ni
 RPC. Los contratos P01, marco, componentes y módulos deben ejecutarse de nuevo
 antes de aceptar el deploy. Los doce módulos continúan `PARCIAL` hasta la
 revisión QA individual de escritorio, móvil y estados de cada ruta.
+
+### Batería global actualizada · 21/11/2026
+
+El contrato `tests/rediseno/migracion-modulos-contract.mjs` ya forma parte del
+manifiesto CI. Se actualizaron sus contadores de inventario a `384` entradas,
+`367` contratos activos y `328` contratos Node; el validador y sus pruebas
+negativas pasan. La ejecución completa registró:
+
+```text
+NODE_ACTIVE_TOTAL=328
+NODE_ACTIVE_PASS=305
+NODE_ACTIVE_FAIL=23
+UTILITIES_RUN=8
+DIAGNOSTICS_RUN=5
+INFRA_FAIL=0
+```
+
+Los 23 fallos son históricos y no cambian respecto a la tanda anterior; no
+incluyen el contrato modular ni la defensa de escala v22. El árbol solo queda
+con las modificaciones intencionadas del manifiesto/validador y documentación;
+la limpieza del runner no revierte cambios del objetivo.

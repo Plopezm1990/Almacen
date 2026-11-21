@@ -153,3 +153,15 @@ aplica a tabs y dropdowns globales. La caché pasó a
 
 Este cambio es una guarda de escala, no un cierre visual de los módulos: los
 doce siguen en `PARCIAL` hasta la revisión live de cada ruta real.
+
+### Batería global y manifiesto · 21/11/2026
+
+Se incorporó `tests/rediseno/migracion-modulos-contract.mjs` al manifiesto
+oficial y al validador de inventario: `384` entradas, `367` contratos activos,
+`328` Node activos. La batería completa ejecutó los `328` contratos Node, la
+prueba de frontera Netlify, `8` utilidades y `5` diagnósticos: `305 PASS`,
+`23 FAIL` históricos, `INFRA_FAIL=0`. Los 23 fallos son exactamente la familia
+ya conocida (alb, cfg, f3, f4, plataforma, pm11-compra y pm33); el contrato de
+migración modular pasa dentro de la batería. El runner dejó las únicas
+modificaciones intencionadas del manifiesto/validador y el `git diff --check`
+continúa limpio.
