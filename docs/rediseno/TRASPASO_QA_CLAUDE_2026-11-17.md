@@ -1627,6 +1627,14 @@ en móvil. Se preservan persistencia, permisos y handlers. Marca
 el recorrido autenticado en QA. Deploy Preview 225: `6b0149afafe536f0d8713604`
 (`ready`), commit `9b2bde7b`.
 
+### Plataforma · paneles exclusivos de administración · v39
+
+Se aplicó la escala Órbita a los paneles de Plataforma, conservando permisos,
+roles, datos y handlers: controles táctiles comunes, tarjetas, estados y
+tablas contenidas en móvil. Marca `qa-orbita-modules-v39-20261121`, huella P01
+`f26769170c7cdfa3`; queda pendiente el recorrido autenticado con privilegio de
+administración en QA.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo

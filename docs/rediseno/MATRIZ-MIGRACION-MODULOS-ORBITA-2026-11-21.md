@@ -402,3 +402,13 @@ apariencia, permisos ni handlers. Caché `qa-orbita-modules-v38-20261121`,
 huella P01 `f186177be3f110a1`. Configuración sigue `PARCIAL` hasta el recorrido
 autenticado en QA. Deploy Preview 225: `6b0149afafe536f0d8713604` (`ready`),
 commit `9b2bde7b`.
+
+### Plataforma · paneles exclusivos de administración · v39
+
+La capa v39 completa la normalización de Plataforma: paneles administrativos,
+tarjetas, botones, campos, selectores, estados, detalles y tablas comparten la
+escala Órbita; en móvil los grupos se envuelven, las tablas mantienen scroll
+local y los formularios se apilan sin overflow. No se modifican permisos,
+roles, datos ni handlers. Caché `qa-orbita-modules-v39-20261121`, huella P01
+`f26769170c7cdfa3`. Plataforma sigue `PARCIAL` hasta el recorrido autenticado
+con privilegio de administración en QA.
