@@ -1485,6 +1485,16 @@ ni paridad de las fuentes.
 La regla táctil común cubre ahora los botones que contienen únicamente un SVG:
 Personal ya no deja exportar, eliminar o anular con un ancho inferior a `44 px`.
 
+### Barrido live autenticado · shell y módulos · 21/11/2026
+
+Con `pm07.smoke@qa.invalid` en QA-EMP-A / QA-A1 se recorrieron Inicio/Pase,
+TPV, Cocina, Caja, Clientes, Proveedores/Compras, Productos/Inventario,
+Personal y Configuración sobre el deploy que sirve `v66`. En `618×678` todos
+mantuvieron `overflow=false` y altura mínima de `44 px`; Personal quedó con
+ancho mínimo `44 px` también para sus botones solo icono. La lectura no hizo
+mutaciones. Quedan expresamente pendientes las variantes móviles de cada ruta,
+estados de carga/vacío/error, MFA, Plataforma y permisos operativos.
+
 ### Recorrido QA autenticado · Cocina y Clientes · 21/11/2026
 
 Con sesión real de propietario `pm07.smoke@qa.invalid` en QA-EMP-A / QA-A1,

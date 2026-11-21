@@ -1446,3 +1446,28 @@ También se cerró el caso táctil que quedaba en Personal: los botones emitidos
 solo con un icono (exportar, eliminar y anular) tenían el ancho del SVG aunque
 su fila midiese más. La regla común los convierte en objetivos cuadrados de
 `44×44 px` sin alterar el evento asociado.
+
+### Barrido live autenticado del shell · 21/11/2026
+
+Con la sesión de propietario `pm07.smoke@qa.invalid` en QA-EMP-A / QA-A1 se
+repitió el recorrido sobre el deploy que sirve `qa-orbita-modules-v66`. En el
+viewport disponible (`618×678`) todas las rutas devolvieron `overflow=false` y
+una altura mínima de `44 px`; Personal quedó además con ancho mínimo `44 px`
+en los botones de solo icono. Se observaron estas superficies reales:
+
+| Módulo | Ruta observada | Encabezado/superficie | overflow | min alto | Resultado |
+|---|---|---|---:|---:|---|
+| Inicio/Pase | `inicio` | El pulso del negocio + El turno en directo | false | 44 | PASS visual |
+| TPV | `tpv` | TPV | false | 44 | PASS visual |
+| Cocina | `cocina` | Cocina y comandas | false | 44 | PASS visual |
+| Caja | `caja` | Arqueo de caja | false | 44 | PASS visual |
+| Clientes | `clientes` | Clientes | false | 44 | PASS visual |
+| Compras | `compras` | Proveedores | false | 44 | PASS visual |
+| Inventario | `inventario` | Productos | false | 44 | PASS visual |
+| Personal | `personal` | Personal | false | 44 | PASS visual |
+| Configuración | `configuracion` | Configuración | false | 44 | PASS visual |
+
+Es una comprobación visual/estructural de lectura: no crea, cobra, elimina ni
+modifica datos. No sustituye la revisión móvil de cada ruta, los estados de
+carga/vacío/error, MFA, Plataforma ni los recorridos operativos restringidos;
+por eso las filas funcionales siguen `PARCIAL`.
