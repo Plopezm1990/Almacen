@@ -204,6 +204,8 @@ assert.match(decisionOverlay, /if \(!exigida\)/, 'M03_EDGE_OVERLAY_MUST_STAND_DO
 assert.match(edgeAuth, /var enrolamientoEnCurso = false;/, 'M03_ENROLL_BUSY_STATE_MISSING');
 assert.match(edgeAuth, /if \(enrolamientoEnCurso && overlay\) return;/, 'M03_ENROLL_MUST_KEEP_CURRENT_OVERLAY');
 assert.match(edgeAuth, /enrolamientoEnCurso = true;/, 'M03_ENROLL_MUST_MARK_BUSY_BEFORE_ENROLL');
+assert.match(edgeAuth, /function mfaGateReactActivo\(\)/, 'M03_REACT_MFA_GATE_DETECTION_MISSING');
+assert.match(edgeAuth, /if \(mfaGateReactActivo\(\)\) \{[\s\S]*?if \(overlay\) limpiarOverlay\(\);[\s\S]*?return;/, 'M03_EDGE_GATE_MUST_NOT_COVER_REACT_MFA');
 
 assert.match(source, /const localPersistidoValido = !!localActivoFinal[\s\S]*?if \(!localPersistidoValido && idsLocalesHuerfanos\.length === 1/, 'M03_OLD_FOREIGN_PRODUCT_MUST_NOT_REPLACE_VALID_LOCAL');
 

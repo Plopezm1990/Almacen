@@ -1019,6 +1019,16 @@ function modoLocalNoReclamado() {
     return tarjeta;
   }
 
+  // AppConSesion/MfaGate is the canonical visible MFA flow. The historical
+  // edge gate still validates the server policy, but must not place a second
+  // modal over the QR that React is already rendering.
+  function mfaGateReactActivo() {
+    var root = document.getElementById("root");
+    if (!root) return false;
+    var texto = String(root.textContent || "");
+    return /segundo factor/i.test(texto) && !!root.querySelector('input[autocomplete="one-time-code"]');
+  }
+
   function boton(texto) {
     var b = nodo("button", texto);
     b.type = "button";
@@ -1139,6 +1149,10 @@ function modoLocalNoReclamado() {
 
   async function comprobarMfa() {
     var esta = ++ejecucion;
+    if (mfaGateReactActivo()) {
+      if (overlay) limpiarOverlay();
+      return;
+    }
     if (enrolamientoEnCurso && overlay) return;
     if (!window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
       limpiarOverlay();
@@ -1167,6 +1181,10 @@ function modoLocalNoReclamado() {
       if (factores.error) throw factores.error;
       var totp = factores.data && Array.isArray(factores.data.totp) ? factores.data.totp : [];
       var verificados = totp.filter(function (factor) { return factor && factor.status === "verified"; });
+      if (mfaGateReactActivo()) {
+        if (overlay) limpiarOverlay();
+        return;
+      }
       if (enrolamientoEnCurso && overlay) return;
       var tarjeta = crearOverlay();
       if (verificados.length === 0) {
