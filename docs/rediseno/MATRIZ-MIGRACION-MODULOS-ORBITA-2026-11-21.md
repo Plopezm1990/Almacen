@@ -800,3 +800,9 @@ cabecera, lateral, contexto QA, buscador, avisos, perfil y Apariencia con la
 misma jerarquía Órbita. No se hicieron escrituras de negocio. Esta evidencia
 cierra la excepción de arranque local; las filas siguen `PARCIAL` hasta sus
 recorridos autenticados.
+
+La navegación histórica también queda sincronizada con `aria-current` al
+activar un destino. Así «Panel general» conserva `inicio` aunque su contenido
+incluya el panel Pase; una sub-superficie ya no roba la identidad del módulo.
+La regresión queda cubierta por el contrato de marco y se comprobará en el
+siguiente deploy v13.

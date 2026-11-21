@@ -202,6 +202,15 @@
       if (button.closest(".la-orbita-shell-tools")) return;
       button.setAttribute("data-la-orbita-nav-item", "");
       Array.prototype.forEach.call(button.querySelectorAll("span"), function (span) { span.classList.add("la-shell-label"); });
+      if (!button.dataset.laOrbitaRouteBound) {
+        button.dataset.laOrbitaRouteBound = "1";
+        button.addEventListener("click", function () {
+          Array.prototype.forEach.call(sidebar.querySelectorAll("[data-la-orbita-nav-item]"), function (item) {
+            item.removeAttribute("aria-current");
+          });
+          button.setAttribute("aria-current", "page");
+        });
+      }
     });
   }
 
@@ -315,6 +324,11 @@
   }
 
   function rutaActiva(sidebar, main) {
+    var activa = sidebar && sidebar.querySelector('[aria-current="page"]');
+    var labelNavegacion = textoVisible(activa);
+    /* El destino elegido por la navegación manda sobre cualquier subpanel
+       incrustado (por ejemplo, Pase dentro de Inicio). */
+    if (/panel general|resumen general|inicio|dashboard/i.test(labelNavegacion)) return "inicio";
     if (main && main.querySelector(".tpv-layout")) return "tpv";
     /* Inicio puede incrustar el panel Pase para dar contexto operativo. La
        raíz del dashboard tiene prioridad: la cola embebida no debe cambiar la
@@ -323,11 +337,9 @@
     if (main && main.querySelector("#la-pase, .la-pase")) return "pase";
     if (main && main.querySelector(".la-operacion-cocina")) return "cocina";
     if (main && main.querySelector(".la-operacion-caja")) return "caja";
-    var activa = sidebar && sidebar.querySelector('[aria-current="page"]');
     /* Algunas pantallas históricas navegan mediante un handler propio y no
        actualizan aria-current. Su h1/h2 es la fuente visible y estable para
        conservar el anclaje Órbita sin sustituir el componente ni su ruta. */
-    var labelNavegacion = textoVisible(activa);
     var labelEncabezado = textoVisible(main && main.querySelector("h1, h2"));
     var label = [labelNavegacion, labelEncabezado].filter(Boolean).join(" | ");
     var conocidas = [

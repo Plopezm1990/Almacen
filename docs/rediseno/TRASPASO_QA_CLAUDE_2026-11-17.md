@@ -1462,6 +1462,11 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+También se corrigió la prioridad de ruta: al pulsar Panel general, el shell
+mantiene `inicio` aunque Pase esté incrustado. La navegación marca el destino
+activo para que el siguiente recorrido no confunda la sub-superficie operativa
+con el módulo principal.
+
 ### Corrección del modo local · shell Órbita · `1948bc4d`
 
 En el primer ensayo del deploy v45, «Trabajar solo en este equipo» montó el
