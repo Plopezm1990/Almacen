@@ -2516,6 +2516,14 @@ ya enumeran los doce módulos y mantienen el mínimo táctil de `44 × 44 px`;
 para cerrar cada fila todavía hay que ejecutar su recorrido autenticado real,
 incluidos datos, permisos, estados de carga/vacío/error y revisión móvil.
 
+El contrato de estados ya es transversal: en cada `main[data-la-orbita-module]`
+se normalizan carga (`data-loading`, `loading-state`, `aria-busy`), vacío
+(`data-empty`, `empty-state`, `la-ui-empty`) y error (`data-error`,
+`error-state`) con los tokens Órbita. La batería estática verifica estas tres
+familias y evita que un módulo vuelva a introducir una apariencia propia. Esto
+no sustituye la prueba autenticada de cada estado; solo garantiza que, cuando
+el producto los emita, todos reciben el mismo marco visual.
+
 Regla de cierre para Claude: no cambiar `PARCIAL` a `CERRADO` por inspección
 estática. Registrar en la matriz la ruta, viewport, evidencia y cualquier dato
 de QA creado; mantener producción intacta y el PR #225 en borrador. El orden y

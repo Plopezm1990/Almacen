@@ -17,6 +17,19 @@ shell Órbita, la misma escala de componentes, estados de carga/vacío/error,
 responsive sin overflow y controles de al menos `44 × 44 px`; después se
 recorre su ruta real con sesión QA antes de cambiar `PARCIAL` por `CERRADO`.
 
+### Contrato transversal de estados
+
+Los estados no se resuelven con estilos aislados de cada pantalla. La raíz
+`main[data-la-orbita-module]` aplica una envolvente común a las tres formas
+que ya existen en el producto: `[data-loading]`, `.loading-state` o
+`[aria-busy="true"]` para carga; `[data-empty]`, `.empty-state` o
+`.la-ui-empty` para vacío; y `[data-error]` o `.error-state` para error.
+Cada variante usa los tokens semánticos Órbita (`--c-accent-soft`,
+`--c-red-soft`, `--c-divider`, `--c-ink-soft`), conserva un mínimo vertical
+legible y queda contenida en móvil. El contrato estático falla si desaparece
+cualquiera de las tres familias, de modo que una pantalla nueva no pueda
+volver a introducir una cuarta apariencia de estado.
+
 Orden de ejecución: `inicio` → `tpv` → `pase` → `cocina` → `caja` → `clientes`
 → `compras` → `inventario` → `personal` → `configuracion` → `plataforma` →
 `acceso`. La capa visual ya está integrada para los doce identificadores y

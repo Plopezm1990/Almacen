@@ -37,6 +37,13 @@ for (const [id, label] of modules) {
 assert.match(css, /min-height:\s*var\(--la-control-height\)/, 'falta altura táctil común');
 assert.match(css, /@media\s*\(max-width:\s*767px\)/, 'falta adaptación móvil');
 assert.match(css, /prefers-reduced-motion:\s*reduce/, 'falta reducción de movimiento');
+// Los tres estados transversales deben seguir usando la misma envolvente
+// aunque una pantalla histórica emita nombres de clase distintos.
+assert.match(css, /main\[data-la-orbita-module\][\s\S]*:where\(\[data-empty\],\s*\.empty-state,\s*\.la-ui-empty\)/, 'falta estado vacío común por módulo');
+assert.match(css, /main\[data-la-orbita-module\][\s\S]*:where\(\[data-loading\],\s*\.loading-state,\s*\[aria-busy="true"\]\)/, 'falta estado de carga común por módulo');
+assert.match(css, /main\[data-la-orbita-module\][\s\S]*:where\(\[data-error\],\s*\.error-state\)/, 'falta estado de error común por módulo');
+assert.match(css, /background:\s*var\(--c-accent-soft\)/, 'el estado de carga no usa el token semántico Órbita');
+assert.match(css, /background:\s*var\(--c-red-soft\)/, 'el estado de error no usa el token semántico Órbita');
 assert.match(shell, /labelEncabezado\s*=\s*textoVisible\(main && main\.querySelector\("h1, h2"\)\)/, 'las pantallas históricas no usan su encabezado para anclar el módulo');
 assert.match(shell, /labelParaCoincidencia[\s\S]{0,260}normalize\("NFD"\)/, 'las rutas con tildes no normalizan su etiqueta antes de clasificarse');
 assert.match(shell, /encargos\|devoluciones\|descuentos\|cortesias\|cupones/, 'ventas auxiliares no heredan la superficie TPV');
