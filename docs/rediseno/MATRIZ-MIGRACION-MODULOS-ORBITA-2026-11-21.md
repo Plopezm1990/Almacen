@@ -1484,3 +1484,20 @@ Es una comprobación visual/estructural de lectura: no crea, cobra, elimina ni
 modifica datos. No sustituye la revisión móvil de cada ruta, los estados de
 carga/vacío/error, MFA, Plataforma ni los recorridos operativos restringidos;
 por eso las filas funcionales siguen `PARCIAL`.
+
+### Revisión live de TPV y cabecera · v67 · 21/11/2026
+
+El Deploy Preview 225 quedó `ready` en `6b01c1e7071af1a09210e5b2` tras la
+corrección `f136b38b`. Con la sesión de Propietario `pm07.smoke@qa.invalid`,
+QA-EMP-A / QA-A1 y el terminal A1, se recorrió Inicio → `Abrir TPV` sin
+mutaciones económicas. La vista mostró el encabezado TPV, el modo
+`Sala/restaurante`, el selector de terminal A1/A2, el buscador F2, categorías,
+catálogo de productos QA, paginación `1 de 3`, caja del TPV y el botón
+`Ver historial completo` separado del resumen.
+
+La revisión también confirma que el control heredado `Seguridad` ya no conserva
+la altura de 24 px ni sus colores inline: la capa v67 lo remapea a la
+superficie, borde, radio y altura táctil de Órbita sin tocar el flujo MFA. La
+captura live no registró desbordamiento y no se ejecutaron cobros, aperturas ni
+otros cambios de datos. TPV permanece `PARCIAL`: falta la ficha móvil dedicada,
+los estados de carga/vacío/error y el recorrido funcional de cuentas/tickets.

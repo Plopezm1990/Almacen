@@ -1462,6 +1462,18 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### TPV y control heredado de Seguridad · v67 · 21/11/2026
+
+El deploy `6b01c1e7071af1a09210e5b2` de la rama QA está `ready`. En una sesión
+de Propietario sobre QA-EMP-A / QA-A1 se abrió TPV desde Inicio y se comprobó,
+sin mutaciones, la composición de Sala/restaurante, terminal A1/A2, buscador
+F2, categorías, catálogo, paginación, caja y acceso separado al historial.
+La corrección `f136b38b` remapea el botón antiguo `Seguridad` (antes inline,
+24 px) a los tokens Órbita y a 44 px, conservando su handler de MFA. La
+evidencia se añade como `qa-20261121-orbita-tpv-v67` en la matriz CSV.
+TPV no se cierra todavía: siguen pendientes móvil específico, estados
+carga/vacío/error y recorrido funcional autorizado de cuentas/tickets.
+
 ### Acceso/MFA · diálogo montado fuera del shell · 21/11/2026
 
 Se detectó una fuga visual en M-03: `edge-auth-patch.js` crea el diálogo de
