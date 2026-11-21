@@ -1036,3 +1036,8 @@ entre diseños y paletas. La capa se sirve como
 Esta corrección reduce la convivencia cromática entre propuestas, pero no
 cierra por sí sola las doce filas: siguen pendientes las acciones y estados
 autenticados que figuran en la tabla inicial.
+
+El commit `46c7e007` quedó publicado en el Deploy Preview 225 como
+`6b01888ae50f6b98af641626` (`ready`, sin coincidencias en el escaneo de
+secretos). La pantalla de Acceso del artefacto sirve v49 y conserva
+`overflow=false`; esta verificación no autenticada no cierra la fila de Acceso.

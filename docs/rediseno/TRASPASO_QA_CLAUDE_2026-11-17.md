@@ -1462,6 +1462,15 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Deploy de la corrección de tokens · 21/11/2026
+
+El commit `46c7e007` está publicado en el Preview 225 como deploy
+`6b01888ae50f6b98af641626` (`ready`, escaneo de secretos sin coincidencias).
+Una apertura limpia del preview confirmó que el HTML sirve
+`la-apariencia.css?v=qa-orbita-modules-v49-20261121`, con Órbita y el flujo de
+Acceso visible; la comprobación fue no autenticada y no altera la matriz de
+permisos o estados reales.
+
 ### Evidencia live adicional de la migración por módulos · 21/11/2026
 
 En el Preview 225, después de recargar para descartar una pestaña que aún
