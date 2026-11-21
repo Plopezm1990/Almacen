@@ -1492,6 +1492,8 @@ con la misma composición Órbita. Los estados reales de mesa, filtros, accesos
 y cola mantienen sus handlers; en móvil la cola queda acotada a un scroll local
 para evitar una pantalla infinita. Marca `qa-orbita-modules-v31-20261121`,
 huella P01 `42175d9f2bb452b1`; falta la comprobación autenticada en QA.
+La publicación v31 está lista en Deploy Preview 225 como
+`6b0142f47b251896fb16c39f` (`ready`), commit `cbea3472`.
 
 ### Contenedores históricos · contención móvil común · 21/11/2026
 

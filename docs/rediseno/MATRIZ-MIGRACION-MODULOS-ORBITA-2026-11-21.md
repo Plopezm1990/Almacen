@@ -322,3 +322,5 @@ escala, foco, tarjetas y tokens Órbita; en móvil la cola mantiene su scroll
 local y no hace crecer la pantalla. No se modifican RPC, estados de sala,
 permisos ni navegación. Caché `qa-orbita-modules-v31-20261121`, huella P01
 `42175d9f2bb452b1`. Pase continúa `PARCIAL` hasta el recorrido autenticado.
+La publicación v31 está lista en Deploy Preview 225 como
+`6b0142f47b251896fb16c39f` (`ready`), commit `cbea3472`.
