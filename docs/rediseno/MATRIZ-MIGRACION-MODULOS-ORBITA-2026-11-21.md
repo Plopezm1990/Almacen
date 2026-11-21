@@ -1277,3 +1277,14 @@ explícita («No se pudo completar la operación. No hay una sesión sincronizad
 con motivo obligatorio y controles de corte, cajas y umbral dentro del marco
 Órbita. No se guardó ningún ajuste; la fila Configuración sigue `PARCIAL` hasta
 repetirlo autenticado.
+
+### Corrección de clasificación de Inventario · v62 · 21/11/2026
+
+La auditoría de rutas encontró que «Reconciliación de stock» se clasificaba
+como `reconciliacion-de-stock`, aunque pertenece al módulo Inventario. En
+consecuencia, los selectores scoped de Inventario no podían aplicar su escala
+Órbita a esa pantalla. El shell ahora agrupa también Reconciliación, Inventario
+ciego, saldo/mapa de almacén, traspasos y etiquetas/catálogo bajo
+`data-la-orbita-module="inventario"`. No se cambiaron handlers, datos ni
+permisos; solo la clasificación visual. La marca del shell pasa a
+`qa-orbita-shell-v17-20261121`, huella `56ec6757a3d12e3a`.

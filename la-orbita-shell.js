@@ -353,7 +353,7 @@
       ["caja|arqueo", "caja"],
       ["clientes", "clientes"],
       ["compras|proveedores|pedidos|recepcion|albaranes|facturas", "compras"],
-      ["inventario|productos|historial de producto|mermas|caducidad|ajustes", "inventario"],
+      ["inventario|productos|historial de producto|mermas|caducidad|ajustes|reconciliaci[oó]n|inventario ciego|saldo de almac[eé]n|mapa de almac[eé]n|traspasos|etiquetas y cat[aá]logo", "inventario"],
       ["encargos|devoluciones|descuentos|cortesias|cupones", "tpv"],
       ["\\bpersonal\\b|\\bempleados\\b|\\bcargos\\b|\\bpermisos\\b|\\bturnos\\b|\\bfichajes\\b", "personal"],
       ["configuracion|empresa|locales|terminales|equipos|fiscal", "configuracion"],

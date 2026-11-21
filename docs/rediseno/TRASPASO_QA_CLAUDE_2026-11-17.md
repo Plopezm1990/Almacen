@@ -1462,6 +1462,16 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Inventario · clasificación de Reconciliación · v62 · 21/11/2026
+
+En la revisión del Preview se detectó que «Reconciliación de stock» quedaba
+clasificada como una ruta independiente (`reconciliacion-de-stock`) y por eso
+no recibía los selectores scoped de Inventario. El shell v17 la agrupa junto a
+Inventario ciego, saldo/mapa de almacén, traspasos y etiquetas/catálogo bajo
+`data-la-orbita-module="inventario"`. Es un cambio de presentación y caché;
+no altera datos, handlers, permisos ni RPC. Marca:
+`qa-orbita-shell-v17-20261121`, huella `56ec6757a3d12e3a`.
+
 También se verificó Configuración en v61, modo local y Local A1. Las ocho
 familias de ajustes y el estado de error sin sesión se renderizan dentro del
 shell Órbita; el motivo obligatorio y los controles de corte/cajas/umbral están
