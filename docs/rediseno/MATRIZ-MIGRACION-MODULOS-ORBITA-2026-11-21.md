@@ -1214,3 +1214,13 @@ Esta evidencia cierra la revisión responsive del marco y de los componentes
 comunes, pero no las condiciones funcionales: las filas siguen `PARCIAL` hasta
 probar con sesión QA, datos reales, permisos, estados de negocio y rutas de
 Plataforma/Pase que requieren acceso autenticado.
+
+### Estado de sesión para recorridos funcionales · 21/11/2026
+
+La inspección de las superficies disponibles no encontró una pestaña de Chrome
+o Firefox con el Preview autenticado. Solo estaban disponibles pestañas
+locales/públicas del navegador integrado y una ventana de Firefox sin el
+Preview. No se ejercieron acciones de datos, permisos, cobros, reembolsos ni
+administración. Para cerrar las filas funcionales sigue siendo necesario abrir
+el Preview 225 con una sesión QA válida y recorrer Pase, Plataforma y los
+estados de negocio de cada módulo.

@@ -1462,6 +1462,15 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Sesión autenticada pendiente · 21/11/2026
+
+La comprobación de sesiones abiertas no encontró el Preview 225 autenticado en
+Chrome ni Firefox; quedaron únicamente pestañas públicas/locales del navegador
+integrado. No se han ejecutado operaciones de datos o permisos en esta tanda.
+El siguiente paso para Claude es abrir el Preview con un propietario de QA y
+recorrer Pase/Plataforma y las acciones de negocio restantes, manteniendo el PR
+en borrador y sin tocar producción.
+
 ### Precedencia real del filtro TPV · v59 · 21/11/2026
 
 El filtro de categorías usa en la vista una tira histórica cuyo contenedor no
