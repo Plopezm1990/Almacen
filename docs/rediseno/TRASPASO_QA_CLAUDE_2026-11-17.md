@@ -1499,6 +1499,20 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Cierre global del objetivo Órbita · 21/11/2026
+
+El objetivo de migrar los doce módulos al marco Órbita queda terminado en QA.
+Se ejecutaron todos los scripts `tests/rediseno/*.mjs` (18/18, 0 fallos) y
+`git diff --check` pasa. A1 terminó en `CERRADA_FINAL`; A2 conserva la prueba
+Q08 de dos terminales. La matriz y el acta global se actualizaron con el SHA
+`9258f2222429c7e377c0afdd20b66feaa21d7876`.
+
+No se pudo ejecutar el runner Bash general de CI en Windows por ausencia de
+`bash.exe`; los contratos Node reproducibles sí pasaron completos. El PR #225
+sigue en borrador, la rama es `rediseno/f0-base-qa`, producción no se tocó y
+no se usó `sis-13`. Las salvedades no bloqueantes (paginación/búsqueda de Pase
+y bookkeeping de Apariencia) permanecen documentadas fuera de este objetivo.
+
 ### Desbloqueo de cierre A1 · limpieza auditada de fixtures QA · 21/11/2026
 
 Se ejecutó únicamente en el proyecto QA, sin SQL directo sobre tablas y sin

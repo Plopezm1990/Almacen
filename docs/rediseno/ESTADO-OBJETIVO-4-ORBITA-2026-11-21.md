@@ -128,3 +128,12 @@ configuración ni ejecutar acciones de Plataforma. Solo ve las pantallas
 operativas correspondientes a su cargo. La combinación de denegaciones
 server-side y comprobación live queda documentada en
 `QA_PUNTO3_PERMISOS_RESTRINGIDOS_2026-11-21.md`.
+
+## Estado final del objetivo · 21/11/2026
+
+Con el cierre definitivo de QA-A1 y la batería final de 18 scripts Node sin
+fallos, el objetivo de migración de los 12 módulos al marco Órbita queda
+**TERMINADO en QA**. El cierre global está en
+`ACTA_CIERRE_OBJETIVO_4_ORBITA_2026-11-21.md`; la matriz conserva las notas
+históricas para trazabilidad. Último SHA:
+`9258f2222429c7e377c0afdd20b66feaa21d7876`.

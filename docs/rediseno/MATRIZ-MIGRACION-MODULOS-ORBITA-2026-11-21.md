@@ -1671,3 +1671,17 @@ Configuración, Plataforma y Acceso. El punto 2 queda **CERRADO por aceptación
 del propietario**. Las etiquetas `PARCIAL` de las secciones históricas se
 conservan únicamente como trazabilidad de las tandas previas; el acta vigente
 es `QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`.
+
+## Cierre global del objetivo · 21/11/2026
+
+La matriz queda cerrada por conjunto: los doce módulos tienen shell Órbita,
+escala común, revisión responsive y evidencia funcional de QA. La batería
+final de `tests/rediseno/*.mjs` ejecutó 18 scripts con 0 fallos; `git diff
+--check` pasa. La sesión de caja A1 terminó en `CERRADA_FINAL` y A2 conserva la
+prueba Q08 de dos terminales. Las etiquetas históricas `PARCIAL` se mantienen
+solo como trazabilidad y no representan trabajo abierto del objetivo. Las
+salvedades independientes (paginación/búsqueda de Pase y bookkeeping de
+Apariencia) quedan fuera de este cierre.
+
+SHA de cierre: `9258f2222429c7e377c0afdd20b66feaa21d7876` · PR #225 en borrador
+· producción intacta.
