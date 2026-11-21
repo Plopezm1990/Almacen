@@ -1470,8 +1470,9 @@ en el wrapper local y el `main`/viewport reciben `min-width: 0` y `max-width:
 100%`, evitando que un hijo con anchura intrínseca amplíe la superficie móvil.
 No cambian datos, ordenación, selección, handlers ni permisos. Marca
 `qa-orbita-modules-v28-20261121`, huella P01 `edb7c9116b854562`.
-La publicación y la comprobación live de las doce superficies quedan pendientes
-hasta que termine el siguiente deploy de PR #225.
+La publicación v28 ya está lista en `6b01405358c478c62a3c92b0` (`ready`),
+commit `1c00a56a`. Queda pendiente el recorrido autenticado de las doce
+superficies y la evidencia live de cada ruta.
 
 ### Gestión · estados y tablas semánticos · 21/11/2026
 
