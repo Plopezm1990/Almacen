@@ -1489,6 +1489,14 @@ marca CSS a `qa-orbita-modules-v42-20261121` y se dejó un contrato negativo
 para detectar el token inexistente. Plataforma conserva `PARCIAL`: falta la
 sesión de administrador QA y el recorrido real de sus paneles.
 
+### Acceso · token tipográfico de MFA declarado · `v43`
+
+El campo de código de MFA consumía `--la-mono` sin que la hoja Órbita lo
+declarase. Se añadió IBM Plex Mono en `:root`, se actualizó la marca CSS a
+`qa-orbita-modules-v43-20261121` y se añadió una aserción de contrato. La
+propiedad `--la-orbita-puntero` queda documentada como dinámica, no como token
+huérfano.
+
 ### Acceso · revisión responsive no autenticada · 21/11/2026
 
 La pantalla `.la-acceso` se observó directamente en el preview a **390 × 844**

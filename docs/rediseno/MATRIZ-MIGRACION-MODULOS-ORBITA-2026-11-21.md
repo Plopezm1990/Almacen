@@ -595,3 +595,11 @@ estilo heredado. Se sustituyó por `var(--la-font)`, se invalidó la caché a
 referenciar el token huérfano. La lógica, permisos y handlers permanecen
 intactos; Plataforma sigue `PARCIAL` hasta disponer de una sesión de
 administrador QA para recorrer sus paneles reales.
+
+### Acceso · token mono declarado · revisión `v43`
+
+La auditoría de tokens encontró que el campo de MFA usaba `--la-mono` sin una
+declaración en la capa Órbita. Se añadió el token IBM Plex Mono en `:root`, se
+actualizó la caché a `qa-orbita-modules-v43-20261121` y se protegió con un
+contrato estático. `--la-orbita-puntero` no es un hueco: es una propiedad
+dinámica escrita por el movimiento del cursor y conserva su fallback.
