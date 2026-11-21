@@ -1489,6 +1489,20 @@ Pase, Cocina, Caja, Clientes, Compras, Inventario, Personal, Configuración,
 Plataforma y Acceso. El estado de Personal queda documentado como carga
 honesta, no como ausencia de empleados.
 
+### Corrección transversal de tokens del shell · 21/11/2026
+
+La última auditoría visual encontró literales de color en la barra lateral,
+estados activo/hover, control de colapso, menús del shell, barra inferior y
+subrayados de página. Se sustituyeron por mezclas derivadas de los tokens del
+diseño activo, manteniendo intactos los nodos y handlers existentes. El
+recurso actualizado es `la-apariencia.css` v49, huella
+`d4a97a578224adb2`. Esto evita que Órbita vuelva a imponer una segunda paleta
+cuando se eligen las otras propuestas o una paleta personalizada.
+
+La corrección es visual y estática; no convierte ninguna fila en `CERRADO`.
+La validación con sesión, datos, permisos y acciones reales sigue pendiente
+para los doce módulos según la matriz.
+
 ### Clasificación de Configuración · `232f6974`
 
 En la revisión del preview se encontró una diferencia real: el texto con tilde
