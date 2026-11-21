@@ -101,6 +101,45 @@ html[data-la-diseno] #root > div[style*="radial-gradient"] > main button:last-of
   padding: 8px 12px !important;
   font-family: var(--la-font, 'IBM Plex Sans', ui-sans-serif, system-ui) !important;
 }
+/* MFA M-03 · estados de error y cabecera móvil que aún llegan con estilos
+   inline del bundle histórico. Se remapean sin tocar el componente ni sus
+   handlers; la regla queda limitada a la superficie de acceso. */
+html[data-la-diseno] #root > div[style*="#F7F3E9"] {
+  background: radial-gradient(circle at 50% 26%, var(--c-chrome, #15171B) 0%, var(--c-bg, #17191C) 64%, #08090B 100%) !important;
+  color: var(--c-ink, #F1F3F6) !important;
+  font-family: var(--la-font, 'IBM Plex Sans', ui-sans-serif, system-ui) !important;
+}
+html[data-la-diseno] #root > div[style*="#F7F3E9"] > main {
+  box-sizing: border-box;
+  background: var(--c-surface, #202328) !important;
+  color: var(--c-ink, #F1F3F6) !important;
+  border: 1px solid var(--c-divider, #3B424A) !important;
+  border-radius: var(--la-radius-lg, 16px) !important;
+  box-shadow: var(--la-shadow-2, 0 12px 32px rgba(0,0,0,.14)) !important;
+}
+html[data-la-diseno] #root > div[style*="#F7F3E9"] > main h1,
+html[data-la-diseno] #root > div[style*="#F7F3E9"] > main p {
+  color: var(--c-ink, #F1F3F6) !important;
+  font-family: var(--la-font, 'IBM Plex Sans', ui-sans-serif, system-ui) !important;
+}
+html[data-la-diseno] #root > div[style*="#F7F3E9"] > main p { color: var(--c-ink-soft, #929DA7) !important; }
+html[data-la-diseno] #root > div[style*="#F7F3E9"] > main button {
+  min-height: var(--la-control-height, 44px) !important;
+  background: var(--c-accent-fill, #FF4B32) !important;
+  color: var(--c-on-accent, #FFFFFF) !important;
+  border: 1px solid var(--c-accent-fill, #FF4B32) !important;
+  border-radius: var(--la-radius-md, 10px) !important;
+  font-family: var(--la-font, 'IBM Plex Sans', ui-sans-serif, system-ui) !important;
+}
+html[data-la-diseno] #root [style*="#C69A52"],
+html[data-la-diseno] #root [style*="#D9C69A"],
+html[data-la-diseno] #root [style*="#E2D3B8"] {
+  color: var(--c-accent, #FF8E7D) !important;
+}
+html[data-la-diseno] #root [class*="md:hidden"][class*="items-center"][class*="justify-between"] {
+  background: var(--c-chrome, #15171B) !important;
+  color: var(--c-ink, #F1F3F6) !important;
+}
 
 /* v61: Reconciliación de stock comparte los tokens Órbita aunque la vista
    histórica conserve estilos inline. No cambia la lógica ni el significado

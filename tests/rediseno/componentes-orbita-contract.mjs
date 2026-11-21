@@ -26,7 +26,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v64-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v65-20261121/);
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,
   'la ausencia de configuración de empresa debe conservar Órbita como fallback visual');
@@ -88,11 +88,13 @@ assert.ok(css.includes('#root > div[style*="radial-gradient"] > main button:firs
 assert.ok(css.includes('#root > div[style*="radial-gradient"] > main button:last-of-type'), 'MFA no remapea la salida a la paleta Órbita');
 assert.ok(css.includes('body > [role="dialog"][aria-labelledby="la-m03-titulo"]'), 'MFA externo no queda dentro del marco visual Órbita');
 assert.ok(css.includes('body > [role="dialog"][aria-labelledby="la-m03-titulo"] input') && css.includes('min-height: var(--la-control-height)'), 'MFA externo no conserva la escala táctil');
+assert.ok(css.includes('#root > div[style*="#F7F3E9"] > main'), 'MFA error no remapea la superficie heredada');
+assert.ok(css.includes('[style*="#C69A52"]') && css.includes('[class*="md:hidden"][class*="items-center"][class*="justify-between"]'), 'la cabecera móvil no remapea los acentos heredados');
 const shellVisual = css.slice(css.indexOf('.la-orbita-sidebar'), css.indexOf('/* ========================================================================\n   Órbita · módulos de gestión'));
 assert.doesNotMatch(shellVisual, /rgba\(255,255,255|#8CC3FF|#c7d5ce|#8fb0a1/i,
   'el shell no debe imponer colores literales sobre las paletas activas');
 assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
-assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v64-20261121/, 'la recuperación no carga el contrato de apariencia');
+assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v65-20261121/, 'la recuperación no carga el contrato de apariencia');
 assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
 assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
 
