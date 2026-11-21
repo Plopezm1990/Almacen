@@ -1561,6 +1561,15 @@ pendiente para cerrar el bloque.
 La versión v23 está publicada en el Deploy Preview 225 como deploy
 `6b0137dac55d9e163e63c27e` (`ready`), commit `a9147300`.
 
+### Cocina · controles y estados de la cola · v32
+
+Se normalizaron los controles y estados de Cocina con la escala Órbita:
+acciones, filtros, campos, tarjetas, alertas y estados informativos comparten
+tokens, foco, radio y altura mínima táctil. La cola y las tarjetas quedan
+contenidas en móvil sin ampliar el viewport. Se preservan estaciones, estados,
+RPC, permisos y handlers. Marca `qa-orbita-modules-v32-20261121`, huella P01
+`9ea641f1c7c6adae`; falta la comprobación autenticada en QA.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo

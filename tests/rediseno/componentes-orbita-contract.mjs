@@ -10,7 +10,7 @@ const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v31-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v32-20261121/);
 assert.ok(css.includes('overscroll-behavior-inline: contain'), 'las tablas Órbita no encapsulan el desplazamiento móvil');
 assert.ok(css.includes('main[data-la-orbita-module] .overflow-x-auto'), 'los wrappers históricos no encapsulan el desplazamiento móvil');
 assert.ok(css.includes('main[data-la-orbita-module="inicio"] .la-panel-diseno'), 'Inicio no normaliza el panel Órbita');
@@ -19,6 +19,8 @@ assert.ok(css.includes('main[data-la-orbita-module="tpv"] .tpv-layout button'), 
 assert.ok(css.includes('main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] table'), 'TPV no normaliza la tabla de historial');
 assert.ok(css.includes('main[data-la-orbita-module="pase"] .la-pase-mesa'), 'Pase no normaliza estados de mesa');
 assert.ok(css.includes('main[data-la-orbita-module="pase"] .la-pase-cola'), 'Pase no contiene la cola operativa');
+assert.ok(css.includes('main[data-la-orbita-module="cocina"] .la-operacion-cocina button'), 'Cocina no normaliza controles operativos');
+assert.ok(css.includes('main[data-la-orbita-module="cocina"] .la-operacion-cocina [role="alert"]'), 'Cocina no normaliza el estado de error');
 assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v3-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);

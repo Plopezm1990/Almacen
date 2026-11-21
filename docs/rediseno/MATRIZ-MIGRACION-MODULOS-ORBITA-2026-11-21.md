@@ -324,3 +324,13 @@ permisos ni navegación. Caché `qa-orbita-modules-v31-20261121`, huella P01
 `42175d9f2bb452b1`. Pase continúa `PARCIAL` hasta el recorrido autenticado.
 La publicación v31 está lista en Deploy Preview 225 como
 `6b0142f47b251896fb16c39f` (`ready`), commit `cbea3472`.
+
+### Cocina · controles y estados de la cola · v32
+
+La capa v32 completa la normalización de Cocina: botones, selects, inputs y
+acciones de reimpresión/gestión comparten la altura de `44 px` y el radio
+común; los estados `role=alert` y `role=status` consumen tokens Órbita; las
+tarjetas y la cola quedan contenidos en móvil sin overflow. No se modifican
+estaciones, rutas, estados, RPC, permisos ni handlers. Caché
+`qa-orbita-modules-v32-20261121`, huella P01 `9ea641f1c7c6adae`. Cocina sigue
+`PARCIAL` hasta el recorrido autenticado en QA.

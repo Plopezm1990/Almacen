@@ -405,6 +405,53 @@ html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] table tbody 
   }
 }
 
+/* Cocina · controles y estados de la cola con la misma escala operativa. */
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina {
+  overflow-x: hidden;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina button,
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina [role="button"],
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina select,
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina input,
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina textarea {
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina .la-ui-card {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--c-ink);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina [role="alert"] {
+  background: var(--c-red-soft) !important;
+  border-color: color-mix(in srgb, var(--c-red) 42%, transparent) !important;
+  color: var(--c-red) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina [role="status"] {
+  background: var(--c-accent-soft) !important;
+  border-color: var(--c-divider) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina .text-\[10\.5px\].font-semibold {
+  display: inline-flex;
+  align-items: center;
+  min-height: 28px;
+  padding-inline: var(--la-space-2);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-pill);
+  background: var(--c-accent-soft);
+  color: var(--c-accent) !important;
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina .la-ui-card:last-child {
+    overflow-x: hidden;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina .la-ui-card:last-child > .la-ui-card {
+    min-width: 0;
+  }
+}
+
 /* ========================================================================
    Órbita · Clientes
    ------------------------------------------------------------------------
