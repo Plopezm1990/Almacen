@@ -1058,3 +1058,9 @@ arranque y su botón «Reintentar» reciben el mismo tratamiento, sin modificar
 el watchdog ni el comportamiento de recarga. La nueva huella es
 `36cdf3112337d2c4` y el recurso queda marcado como
 `qa-orbita-modules-v51-20261121`.
+
+El commit `5cb4a5ac` quedó publicado en el Preview 225 como deploy
+`6b018ab0e50f6b98af648911` (`ready`, escaneo de secretos sin coincidencias).
+La apertura limpia del alias sirvió v51, mostró Acceso con Órbita y mantuvo
+`overflow=false`; el botón de reintento solo aparece cuando se activa el
+estado de error de arranque, por lo que no se fuerza en esta comprobación.

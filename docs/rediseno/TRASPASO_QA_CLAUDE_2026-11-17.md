@@ -1470,6 +1470,12 @@ watchdog, el botón de reintento y los handlers permanecen intactos. La hoja
 se sirve como `la-apariencia.css?v=qa-orbita-modules-v51-20261121`, huella
 `36cdf3112337d2c4`.
 
+La publicación quedó en el deploy `6b018ab0e50f6b98af648911` (`ready`),
+commit `5cb4a5ac`, sin coincidencias en el escaneo de secretos. La apertura
+limpia del preview confirmó el recurso v51, login visible, Órbita y
+`overflow=false`. El estado de error del watchdog no se fuerza durante una
+prueba normal; el botón «Reintentar» queda documentado para esa ruta.
+
 ### Deploy de la corrección de tokens · 21/11/2026
 
 El commit `46c7e007` está publicado en el Preview 225 como deploy
