@@ -55,5 +55,8 @@ for (const route of ['Panel general', 'TPV', 'Cocina', 'Proveedores', 'Productos
 assert.match(transfer, /Evidencia visual m[oó]vil/, 'el traspaso no conserva la evidencia móvil');
 assert.match(transfer, /overflow=false/, 'el traspaso no conserva el criterio de overflow móvil');
 assert.match(transfer, /control visible m[ií]nimo de \*\*44 px\*\*/, 'el traspaso no conserva el criterio táctil móvil');
+assert.match(matrix, /Acceso · revisi[oó]n visual no autenticada/, 'la matriz no conserva la revisión responsive de Acceso');
+assert.match(matrix, /390 × 844 px.*1440 × 900 px/s, 'la matriz no fija los dos viewports de Acceso');
+assert.match(transfer, /Acceso · revisi[oó]n responsive no autenticada/, 'el traspaso no conserva la revisión responsive de Acceso');
 
 console.log('REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12 matriz=12 responsive=PASS tactil=44');

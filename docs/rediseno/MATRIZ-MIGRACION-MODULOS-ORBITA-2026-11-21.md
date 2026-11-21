@@ -531,6 +531,15 @@ La medición se hizo en modo local/sin sincronización para no generar cambios
 de negocio. Es evidencia del marco, la escala y la comunicación visual; no
 convierte por sí sola las filas en `CERRADO`.
 
+### Acceso · revisión visual no autenticada · 21/11/2026
+
+La superficie `.la-acceso` se comprobó directamente en el preview sin iniciar
+sesión, en **390 × 844 px** y **1440 × 900 px**. En ambos tamaños se observó
+login, recuperación, acceso local y lanzador de Apariencia; no hubo overflow y
+el control visible mínimo fue de 44 px. Esta evidencia cubre la composición
+responsive de Acceso, pero no el resultado de login, recuperación, expiración,
+selección de local ni MFA, que requieren una sesión QA real.
+
 ### Estados observados en la pasada móvil local · 21/11/2026
 
 Además del anclaje del shell, se comprobó que las rutas no quedan en blanco

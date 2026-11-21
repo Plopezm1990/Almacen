@@ -1462,6 +1462,15 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Acceso · revisión responsive no autenticada · 21/11/2026
+
+La pantalla `.la-acceso` se observó directamente en el preview a **390 × 844**
+y **1440 × 900**. En ambos tamaños mostró login, recuperación, acceso local y
+Apariencia sin desbordamiento y con control mínimo de 44 px. La comprobación
+valida solo la composición responsive; el login, la recuperación, la
+expiración, el selector de empresa/local y MFA siguen necesitando una sesión
+QA autenticada.
+
 ### Recorrido de escritorio actualizado · 21/11/2026
 
 La misma selección se repitió en escritorio a **1440 × 900 px**: Inicio, TPV,
