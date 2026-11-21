@@ -245,7 +245,12 @@
     if (main && main.querySelector(".la-operacion-cocina")) return "cocina";
     if (main && main.querySelector(".la-operacion-caja")) return "caja";
     var activa = sidebar && sidebar.querySelector('[aria-current="page"]');
-    var label = textoVisible(activa);
+    /* Algunas pantallas históricas navegan mediante un handler propio y no
+       actualizan aria-current. Su h1/h2 es la fuente visible y estable para
+       conservar el anclaje Órbita sin sustituir el componente ni su ruta. */
+    var labelNavegacion = textoVisible(activa);
+    var labelEncabezado = textoVisible(main && main.querySelector("h1, h2"));
+    var label = [labelNavegacion, labelEncabezado].filter(Boolean).join(" | ");
     var conocidas = [
       ["panel general|inicio|dashboard", "inicio"],
       ["panel de direccion|direccion", "direccion"],
@@ -256,10 +261,11 @@
       ["clientes", "clientes"],
       ["compras|proveedores|pedidos|recepcion|albaranes|facturas", "compras"],
       ["inventario|productos|historial de producto|mermas|caducidad|ajustes", "inventario"],
-      ["personal", "personal"],
+      ["personal|empleados|cargos|permisos|turnos|fichajes", "personal"],
       ["configuracion|empresa|locales|terminales|equipos|fiscal", "configuracion"],
       ["plataforma|administracion", "plataforma"],
       ["acceso|login", "acceso"],
+      ["encargos|devoluciones|descuentos|cortesias|cupones", "tpv"],
       ["auditoria", "auditoria"],
       ["informes|resultados", "informes"]
     ];
