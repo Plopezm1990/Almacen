@@ -1499,6 +1499,33 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Cierre de recorridos móviles Órbita · 21/11/2026
+
+La fase móvil queda cerrada como capa transversal. La plantilla `movil` y el
+shell común se aplican a los doce módulos: Inicio, TPV, Pase, Cocina, Caja,
+Clientes, Compras, Inventario, Personal, Configuración, Plataforma y Acceso.
+En las rutas de producto medidas a 390×844 no hay scroll horizontal y los
+controles mantienen 44×44 px como mínimo; 1440×900 se usa como regresión. Las
+tablas reciben etiquetas de sus cabeceras reales y pasan a fichas en móvil;
+filtros, paginación, estados, modales y formularios comparten la escala Órbita.
+
+Pase incorpora búsqueda accesible en la cola (comanda/mesa/estación/pedido/
+cuenta/estado) además de sus filtros. La búsqueda es local sobre la respuesta
+ya cargada, conserva el límite visual de ocho filas y ofrece el acceso a Cocina
+para la cola completa. No llama RPC nuevo ni altera permisos, estados o enlaces.
+
+Contrato de cierre: `node tests/rediseno/movil-recorridos-orbita-contract.mjs`
+→ `REDISENO_MOVIL_RECORRIDOS_ORBITA_CONTRACT=PASS modulos=12 shell=PASS
+pase-busqueda=PASS overflow=PASS touch=44`. La evidencia funcional autenticada
+de cada capacidad permanece en la matriz y actas de QA; esta fase certifica
+que el marco visual y el recorrido móvil no vuelven a divergir entre módulos.
+
+Para reproducir antes de fusionar: abrir el Deploy Preview 225, comprobar
+Inicio, TPV, Cocina, Compras, Inventario, Personal, Clientes, Configuración y
+Caja a 390×844 y 1440×900, y revisar en Pase la búsqueda «mesa», «cocina» o un
+identificador de pedido. Plataforma y Acceso se comprueban sin sesión; no se
+requiere una escritura en QA.
+
 ### Plantillas Órbita compartidas · 21/11/2026
 
 La siguiente fase añade `la-plantillas-orbita.js` y su contrato

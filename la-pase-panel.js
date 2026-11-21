@@ -26,6 +26,7 @@
   var estado = {
     zonaFiltro: "todas",
     colaFiltro: "todas",
+    colaBusqueda: "",
     mesaSeleccionada: null,
     mapa: null,
     mapaError: null,
@@ -380,6 +381,10 @@
         if (estado.colaFiltro === "todas") return true;
         if (estado.colaFiltro === "pendientes") return String(c.estado || "").toUpperCase() === "PENDIENTE";
         return String(c.estado || "").toUpperCase() !== "PENDIENTE";
+      }).filter(function (c) {
+        var q = String(estado.colaBusqueda || "").toLowerCase();
+        return !q || [c.mesa_nombre, c.mesa_codigo, c.estacion_nombre, c.tipo, c.pedido_ref, c.pedido_id, c.operation_id, c.estado]
+          .filter(Boolean).join(" ").toLowerCase().includes(q);
       });
       var filtros = el("div", { class: "la-pase-filtros", role: "group", "aria-label": "Filtrar la cola" },
         [["todas", "Todas"], ["pendientes", "Pendientes"], ["resto", "Recibidas"]].map(function (f) {
@@ -389,6 +394,16 @@
           });
         }));
       cab.appendChild(filtros);
+      var busqueda = el("input", {
+        class: "la-pase-cola-busqueda",
+        type: "search",
+        value: estado.colaBusqueda || "",
+        placeholder: "Buscar comanda…",
+        "aria-label": "Buscar en la cola del turno",
+        "data-la-pase-cola-busqueda": ""
+      });
+      busqueda.addEventListener("change", function () { estado.colaBusqueda = busqueda.value.trim(); pintar(); });
+      cab.appendChild(busqueda);
       /* La cola del panel es un vistazo, no el listado de cocina: se muestran
          las primeras y se ofrece el paso a Cocina para el resto. */
       var TOPE = 8;
@@ -442,9 +457,22 @@
         return el("button", { type: "button", texto: opcion[1], "aria-pressed": String(estado.colaFiltro === opcion[0]),
           onclick: function () { estado.colaFiltro = opcion[0]; pintar(); } });
       }));
+    var busqueda = el("input", {
+      class: "la-pase-cola-busqueda",
+      type: "search",
+      value: estado.colaBusqueda || "",
+      placeholder: "Buscar pedido…",
+      "aria-label": "Buscar en pedidos en servicio",
+      "data-la-pase-cola-busqueda": ""
+    });
+    busqueda.addEventListener("change", function () { estado.colaBusqueda = busqueda.value.trim(); pintar(); });
     var pedidos = estado.pedidos.filter(function (pedido) {
       var esCuenta = pedido.estado === "SERVIDO" || pedido.estado === "ABIERTO";
       return estado.colaFiltro === "todas" || (estado.colaFiltro === "cuentas") === esCuenta;
+    }).filter(function (pedido) {
+      var q = String(estado.colaBusqueda || "").toLowerCase();
+      return !q || [pedido.id, pedido.cuenta_id, pedido.estado, pedido.tipo, pedido.created_at]
+        .filter(Boolean).join(" ").toLowerCase().includes(q);
     }).sort(function (a, b) {
       return (ESTADO_PEDIDO[a.estado]?.[0] ?? 9) - (ESTADO_PEDIDO[b.estado]?.[0] ?? 9)
         || String(a.created_at).localeCompare(String(b.created_at));
@@ -468,7 +496,7 @@
     }));
     var parcial = estado.totalPedidos != null && estado.totalPedidos > estado.pedidos.length;
     return el("section", { class: "la-pase-caja" }, [
-      cab, filtro, pedidos.length ? lista : el("p", { class: "la-pase-aviso", texto: "Ningún pedido con ese filtro." }),
+      cab, filtro, busqueda, pedidos.length ? lista : el("p", { class: "la-pase-aviso", texto: "Ningún pedido con ese filtro." }),
       parcial ? el("p", { class: "la-pase-aviso", texto: "La muestra del panel contiene " + estado.pedidos.length + " de " + estado.totalPedidos + " pedidos." }) : null,
       botonIrA("cocina", "Ver Cocina", "la-pase-accion suave")
     ]);

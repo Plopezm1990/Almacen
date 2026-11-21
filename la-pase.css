@@ -175,6 +175,15 @@ html[data-la-diseno="orbita"] .la-orbita-pase .la-pase-accion {
   font: 600 12.5px/1 var(--la-font, inherit); cursor: pointer;
 }
 .la-pase-filtros button[aria-pressed="true"] { background: color-mix(in srgb, var(--pase-tinta) 14%, transparent); color: var(--pase-acento); }
+.la-pase-cola-busqueda {
+  flex: 1 1 180px; min-width: 180px; min-height: 44px; box-sizing: border-box;
+  padding: 0 var(--la-space-3, 12px); border: 1px solid color-mix(in srgb, var(--pase-tinta) 24%, transparent);
+  border-radius: var(--la-radius-md, 10px); background: color-mix(in srgb, var(--pase-tinta) 6%, transparent);
+  color: var(--pase-tinta); font: 500 13px/1 var(--la-font, inherit);
+}
+.la-pase-caja .la-pase-cola-busqueda { background: var(--c-bg); border-color: var(--c-divider); color: var(--c-ink); }
+.la-pase-cola-busqueda::placeholder { color: var(--pase-tinta-suave); opacity: .9; }
+.la-pase-caja .la-pase-cola-busqueda::placeholder { color: var(--c-ink-soft); }
 
 .la-pase-zonas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: var(--la-space-3, 12px); }
 .la-pase-zona { border: 1px solid color-mix(in srgb, var(--pase-tinta) 16%, transparent); border-radius: var(--la-radius-md, 10px); padding: var(--la-space-2, 8px); }

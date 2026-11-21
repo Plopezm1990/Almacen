@@ -155,6 +155,36 @@ conservan como excepciones intencionadas; no sobrescriben el marco cuando
 limpieza futura de los puentes MFA/Inventario queda como trabajo de sustitución
 del componente histórico, no como regla visual activa sin documentar.
 
+## Revisión móvil transversal · 21/11/2026
+
+Se cierra la revisión móvil como sistema, no como una colección de parches por
+pantalla. Las doce superficies (`inicio`, `tpv`, `pase`, `cocina`, `caja`,
+`clientes`, `compras`, `inventario`, `personal`, `configuracion`, `plataforma` y
+`acceso`) reciben la plantilla móvil Órbita y el shell común. En 390×844 se
+verificó la familia de rutas de producto con `overflow=false` y objetivos
+táctiles de 44 px; 1440×900 queda como regresión de escritorio. El mismo
+contrato cubre cabecera compacta, navegación inferior, menús agrupados,
+tablas como fichas, filtros, acciones visibles, formularios por bloques,
+diálogos al ancho disponible y estados vacío/carga/error.
+
+Pase deja de presentar una limitación opaca: además del límite visual de ocho
+filas, la cola tiene búsqueda accesible por texto sobre los datos cargados. No
+se añadió una consulta ni se modificó el destino de ningún botón. La paginación
+ampliada de la Cocina sigue siendo la pantalla de listado completa, no una
+duplicación dentro del panel.
+
+Evidencia y controles:
+
+- `REDISENO_MOVIL_RECORRIDOS_ORBITA_CONTRACT=PASS modulos=12 shell=PASS pase-busqueda=PASS overflow=PASS touch=44`.
+- Contrato de plantillas: 10 plantillas, 12 módulos, sin RPC ni handlers nuevos.
+- Contrato de capas: marcas CDN renovadas para `la-pase.css` y `la-pase-panel.js`.
+- `git diff --check=PASS`; producción no se toca y PR #225 permanece en borrador.
+
+La cobertura de marco visual no sustituye la evidencia funcional autenticada:
+las capacidades de Caja, Plataforma y permisos siguen remitiendo a sus actas
+QA respectivas. No se inventan datos ni recorridos para las vistas que solo
+pertenecen a la maqueta.
+
 ## Fase de plantillas reutilizables y cobertura de pantallas · 21/11/2026
 
 Se incorporó `la-plantillas-orbita.js` como registro único de composición.

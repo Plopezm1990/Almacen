@@ -1788,3 +1788,45 @@ Publicación de esta tanda: SHA `b008bc6c583042740337aeaf02d9f7935401a575`,
 Deploy Preview 225 listo (`6b021314756178af22771d3a`). En el navegador de QA
 se confirmó la pantalla de Acceso, el enlace marcado de la capa de plantillas,
 `overflow=false` y un control visible mínimo de 44 px en viewport `758 × 678`.
+
+## Cierre de recorridos móviles Órbita · 21/11/2026
+
+Esta revisión convierte la adaptación móvil en un contrato transversal. El
+shell Órbita aporta una única cabecera compacta, navegación inferior, selector
+de contexto, búsqueda global, perfil/avisos y estado QA. Las raíces de los doce
+módulos reciben además `data-la-orbita-mobile-template="movil"`; las tablas se
+transforman en fichas usando sus cabeceras reales, y los formularios, diálogos,
+colas, filtros, estados y acciones reutilizan la misma escala.
+
+| Módulo | Superficie/ruta real | Evidencia móvil | Resultado del marco |
+|---|---|---|---|
+| Inicio | `inicio` / Panel general | 390×844 local + preview Acceso | PASS: cabecera, dock, KPIs y estados sin overflow |
+| TPV | `tpv` / Venta rápida y Sala | 390×844 y 1440×900 QA | PASS: catálogo, filtros, paginación, caja e historial separado |
+| Pase | `inicio` / panel «El turno en directo» | 390×844 + contrato estático | PASS: plano, estados, cola y búsqueda local |
+| Cocina | `cocina` / cola operativa | 390×844 local + 1440×900 | PASS: estación, filtros, tarjetas y estados |
+| Caja | `caja` / arqueo y detalle | 390×844 local + 1440×900 | PASS: tarjetas, acciones y diálogos acotados |
+| Clientes | `clientes` / listado y ficha | 390×844 local + 1440×900 | PASS: fichas de tabla, búsqueda, filtros y paginación |
+| Compras | `compras` / proveedores y pedidos | 390×844 local + 1440×900 | PASS: listado, filtros, estados vacíos/carga/error |
+| Inventario | `inventario` / Productos y movimientos | 390×844 local + 1440×900 | PASS: tablas como fichas, acciones y ajustes |
+| Personal | `personal` / empleados y permisos | 390×844 local + 1440×900 | PASS: listado, filtros y formularios por bloques |
+| Configuración | `configuracion` / empresa, locales y apariencia | 390×844 local + 1440×900 | PASS: secciones, selectores y modales |
+| Plataforma | `#la-plataforma-root` | capa móvil y reglas de plataforma | PASS visual: shell común; acceso administrativo funcional separado |
+| Acceso | login, recuperación y MFA | 390×844 preview + 1440×900 | PASS: formulario, errores, carga y recuperación sin overflow |
+
+Los diez recorridos de producto medidos en modo local (Inicio, TPV, Cocina,
+Compras, Inventario, Personal, Clientes, Configuración, Caja y Encargos) dieron
+`overflow=false` y controles de al menos 44 px en 390×844; la regresión de
+escritorio se comprobó a 1440×900. Acceso y Plataforma tienen además reglas y
+marcas de plantilla independientes, por lo que no se confunden con cobertura
+funcional de una sesión administrativa.
+
+La cola de Pase ya no depende de un tope silencioso: conserva la muestra
+contenida de ocho elementos y ahora ofrece búsqueda accesible por comanda,
+mesa, estación, pedido, cuenta o estado. El filtrado es sobre los datos ya
+cargados y no modifica RPC, permisos, navegación ni handlers.
+
+Contrato reproducible: `node tests/rediseno/movil-recorridos-orbita-contract.mjs`
+(`modulos=12`, `shell=PASS`, `pase-busqueda=PASS`, `overflow=PASS`,
+`touch=44`). El contrato de plantillas y la batería Rediseno siguen siendo la
+referencia para no declarar funcional una pantalla que solo tenga una marca
+visual.
