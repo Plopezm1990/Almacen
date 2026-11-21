@@ -400,4 +400,5 @@ móvil los grupos se envuelven, las tablas mantienen scroll local y los
 formularios se apilan sin overflow. No se modifican persistencia, fiscalidad,
 apariencia, permisos ni handlers. Caché `qa-orbita-modules-v38-20261121`,
 huella P01 `f186177be3f110a1`. Configuración sigue `PARCIAL` hasta el recorrido
-autenticado en QA.
+autenticado en QA. Deploy Preview 225: `6b0149afafe536f0d8713604` (`ready`),
+commit `9b2bde7b`.
