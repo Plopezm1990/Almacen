@@ -946,8 +946,8 @@ sigue siendo necesario para pasar cada fila de `PARCIAL` a `CERRADO`.
 
 ### Refuerzo transversal de superficies · v47 · 21/11/2026
 
-La capa `la-apariencia.css` pasa a `qa-orbita-modules-v47-20261121` (huella
-`f6bb851c32c3a83e`). Se añadió un contrato scoped a
+La capa `la-apariencia.css` pasa a `qa-orbita-modules-v48-20261121` (huella
+`6ee9a8f9998201d6`). Se añadió un contrato scoped a
 `main[data-la-orbita-module]` que aplica la misma envolvente a los doce
 módulos, incluidos los contenedores históricos que todavía no usan una
 primitiva `la-ui-*`: tipografía y altura de controles, tarjetas, etiquetas,

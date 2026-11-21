@@ -1498,8 +1498,8 @@ recorrido QA autenticado individual de cada bloque.
 
 ### Objetivo 4 · refuerzo de la envolvente modular v47 · 21/11/2026
 
-Se publicó `la-apariencia.css?v=qa-orbita-modules-v47-20261121`, con huella
-`f6bb851c32c3a83e`. Todas las raíces `main[data-la-orbita-module]` reciben
+Se publicó `la-apariencia.css?v=qa-orbita-modules-v48-20261121`, con huella
+`6ee9a8f9998201d6`. Todas las raíces `main[data-la-orbita-module]` reciben
 ahora una envolvente común para tarjetas, campos, botones, estados, badges,
 tablas y superficies vacías/cargando/error. También se encapsula el ancho de
 grids y tablas en móvil. La capa es scoped y aditiva: lógica, permisos,
