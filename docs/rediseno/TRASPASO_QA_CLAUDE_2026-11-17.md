@@ -1688,6 +1688,9 @@ la superficie correcta. El recorrido en modo local del preview verificó
 contra la coincidencia parcial de «Encargos» con «cargos», que antes podía
 clasificar esa ruta como Personal. Esta evidencia es visual y no autenticada;
 no sustituye la validación de datos, permisos, cobros ni MFA en QA.
+El shell se publica con la marca `qa-orbita-shell-v8-20261121` y huella P01
+`a6a93b11be680172` (commit `24d490c8`) para impedir que el navegador conserve
+la clasificación anterior.
 
 ### Corrección de Plataforma previa al shell · 21/11/2026
 

@@ -478,3 +478,5 @@ La prueba confirma que las pantallas históricas ya no caen en la superficie
 genérica `pantalla`. Al ser modo sin sincronizar, los estados de servidor,
 permisos, cobros y persistencia siguen requiriendo el recorrido autenticado de
 QA antes de cambiar cualquiera de las doce filas a `CERRADO`.
+La corrección se sirve con `qa-orbita-shell-v8-20261121`, huella P01
+`a6a93b11be680172`, en el commit `24d490c8`.
