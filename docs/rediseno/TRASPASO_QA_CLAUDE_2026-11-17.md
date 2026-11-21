@@ -1462,6 +1462,26 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Deploy v19 y auditoría de rutas históricas · 21/11/2026
+
+El commit `a57e154d8cd3f9488b53a3361e32febed7937508` está publicado en el
+Deploy Preview 225 (`6b01a327c586c564caa6ed7c`, estado `ready`), con PR #225
+todavía en borrador y sin cambios en producción. La comprobación live en modo
+local recorrió tres rutas que habían quedado fuera de la clasificación común:
+
+- **Traspasos**: `data-la-orbita-module= inventario`,
+  `data-la-orbita-surface= inventario`, `overflow=false`, mínimo 44 px.
+- **Registro horario**: `personal/personal`, `overflow=false`, mínimo 44 px.
+- **Etiquetas y catálogo**: `inventario/inventario`, `overflow=false`, mínimo
+  44 px; sus checks nativos quedan en `44 × 44 px`.
+
+La hoja se sirve como `qa-orbita-modules-v62-20261121` y el shell como
+`qa-orbita-shell-v19-20261121`. La batería `tests/rediseno/*.mjs` completa
+queda verde y `git diff --check` limpio. Estas comprobaciones son de marco,
+responsive y clasificación; no sustituyen el recorrido autenticado con datos,
+permisos, carga/vacío/error y estados de negocio. Las 12 filas de migración
+siguen `PARCIAL` hasta completar esa evidencia módulo por módulo.
+
 ### Inventario · clasificación de Reconciliación · v62 · 21/11/2026
 
 En la revisión del Preview se detectó que «Reconciliación de stock» quedaba

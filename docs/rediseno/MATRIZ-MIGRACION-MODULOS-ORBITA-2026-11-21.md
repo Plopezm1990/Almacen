@@ -1302,3 +1302,25 @@ catálogo» los checks históricos medían 13 px de ancho; la capa v62 les fija 
 objetivo táctil real de `44 × 44 px` sin cambiar su valor ni su handler.
 La corrección v19 evita además que la superficie calculada vuelva a sobrescribir
 Inventario con `caja` al detectar esa raíz histórica.
+
+### Verificación live de rutas v19 · Deploy Preview 225 · 21/11/2026
+
+El deploy `6b01a327c586c564caa6ed7c` quedó `ready` para el commit
+`a57e154d8cd3f9488b53a3361e32febed7937508` en `rediseno/f0-base-qa`.
+En una sesión limpia del preview se verificaron las rutas reales siguientes,
+sin escrituras de negocio:
+
+| Ruta | Módulo/superficie | Overflow | Mínimo visible |
+|---|---|---:|---:|
+| Más → Traspasos | `inventario` / `inventario` | `false` | 44 px |
+| Más → Registro horario | `personal` / `personal` | `false` | 44 px |
+| Más → Etiquetas y catálogo | `inventario` / `inventario` | `false` | 44 px; checkbox 44×44 |
+
+El HTML servido confirma `la-orbita-shell.js?v=qa-orbita-shell-v19-20261121`
+y `la-apariencia.css?v=qa-orbita-modules-v62-20261121`. La batería completa de
+`tests/rediseno/*.mjs` termina sin fallos (incluye componentes, marco, rutas,
+los 12 módulos, apariencia, MFA, fiscalidad, Pase, P01/P03/P05/P06 y arranque
+resiliente); `git diff --check` también pasa. Esta evidencia acredita la capa
+visual y responsive, pero no cambia ninguna fila funcional de `PARCIAL`: aún
+falta recorrer cada módulo con una sesión QA autenticada, datos reales y sus
+permisos/estados de negocio, especialmente Plataforma y Acceso.
