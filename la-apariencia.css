@@ -139,14 +139,16 @@ html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
 .la-orbita-profile-menu button:hover { background: var(--c-accent-soft); color: var(--c-accent); }
 .la-orbita-main { grid-column: 2; grid-row: 2; min-height: 0; max-height: none !important; padding: clamp(14px, 2.2vw, 30px) !important; overflow: auto !important; }
 .la-orbita-main[data-la-orbita-surface] { container-type: inline-size; }
-.la-orbita-main[data-la-orbita-surface="general"] > :is(h1, h2) {
+.la-orbita-main[data-la-orbita-surface="general"] > :is(h1, h2),
+.la-orbita-main[data-la-orbita-surface="inicio"] > :is(h1, h2) {
   margin-block: 0 18px;
   color: var(--c-ink);
   font-size: clamp(20px, 2.6vw, 30px);
   font-weight: 700;
   letter-spacing: -.025em;
 }
-.la-orbita-main[data-la-orbita-surface="general"] > :is(h1, h2)::after {
+.la-orbita-main[data-la-orbita-surface="general"] > :is(h1, h2)::after,
+.la-orbita-main[data-la-orbita-surface="inicio"] > :is(h1, h2)::after {
   content: "";
   display: block;
   width: 52px;
@@ -225,6 +227,90 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
   .la-orbita-context-menu { inset-block-start: 58px; inset-inline-start: 10px; }
   .la-orbita-profile-menu { inset-block-start: 58px; inset-inline-end: 10px; }
   .la-orbita-page-title-wrap { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+}
+
+/* ========================================================================
+   Órbita · superficies de los 12 módulos
+   ------------------------------------------------------------------------
+   El shell identifica cada bloque funcional para que la misma jerarquía se
+   pueda verificar y evolucionar por módulo, sin duplicar navegación ni
+   reescribir los handlers de las vistas existentes.
+   ======================================================================== */
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module] {
+  --la-module-section-gap: var(--la-space-6);
+  --la-module-card-radius: var(--la-radius-lg);
+  --la-module-card-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module] > h1,
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module] > h2,
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module] > h3 {
+  margin-block-end: var(--la-module-section-gap);
+}
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="tpv"] .tpv-layout,
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="pase"] #la-pase,
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="cocina"] .la-operacion-cocina,
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="caja"] .la-operacion-caja,
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="inicio"] .la-panel-diseno {
+  min-width: 0;
+  max-width: 100%;
+}
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="clientes"],
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="compras"],
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="inventario"],
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="personal"],
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="configuracion"],
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="plataforma"] {
+  container-type: inline-size;
+}
+
+/* Acceso es una superficie independiente del shell autenticado, pero usa el
+   mismo contrato de tipografía, color, radios, controles y foco. */
+html[data-la-diseno] .la-acceso {
+  min-height: 100dvh;
+  font-family: var(--la-font) !important;
+  background: var(--c-bg) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] .la-acceso-arte {
+  background: var(--c-chrome) !important;
+  color: var(--c-on-chrome, #fff) !important;
+}
+html[data-la-diseno] .la-acceso-cuerpo {
+  background: var(--c-bg) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] .la-acceso-cuerpo h1 {
+  font-family: var(--la-display) !important;
+  font-size: var(--la-type-display) !important;
+  line-height: 1.2 !important;
+}
+html[data-la-diseno] .la-acceso-campo { margin-block-end: var(--la-space-4) !important; }
+html[data-la-diseno] .la-acceso-campo span,
+html[data-la-diseno] .la-acceso-intro,
+html[data-la-diseno] .la-acceso-nota { font-size: var(--la-type-label) !important; }
+html[data-la-diseno] .la-acceso-campo input {
+  min-height: var(--la-control-height) !important;
+  border: 1px solid var(--c-border-control) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] .la-acceso-entrar {
+  min-height: var(--la-control-height-large) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-accent-fill) !important;
+  color: var(--c-on-accent) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] .la-acceso-alt { gap: var(--la-space-2) !important; }
+html[data-la-diseno] .la-acceso-alt a,
+html[data-la-diseno] .la-acceso-alt button { min-height: var(--la-control-height) !important; }
+html[data-la-diseno] .la-acceso-error {
+  border-radius: var(--la-radius-md) !important;
+  border: 1px solid var(--c-red) !important;
+  background: var(--c-red-soft) !important;
+  color: var(--c-red) !important;
 }
 @media (prefers-reduced-motion: reduce) { .la-orbita-sidebar { transition: none; } }
 

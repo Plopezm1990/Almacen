@@ -6,10 +6,11 @@ const root = resolve(import.meta.dirname, '../..');
 const index = readFileSync(resolve(root, 'index.html'), 'utf8');
 const css = readFileSync(resolve(root, 'la-apariencia.css'), 'utf8');
 const dashboardPremium = readFileSync(resolve(root, 'dashboard-premium-v2.js'), 'utf8');
+const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-scale-v14-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v15-20261121/);
 assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v2-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);
@@ -53,6 +54,17 @@ for (const token of [
 assert.match(dashboardPremium, /gap:var\(--la-space-3\)/);
 assert.match(dashboardPremium, /border-radius:var\(--la-radius-lg\)/);
 assert.match(dashboardPremium, /min-height:var\(--la-control-height-large\)/);
+
+for (const moduleName of [
+  'inicio', 'tpv', 'pase', 'cocina', 'caja', 'clientes', 'compras',
+  'inventario', 'personal', 'configuracion', 'plataforma'
+]) {
+  assert.ok(shell.includes(`"${moduleName}"`), `el shell no identifica el módulo ${moduleName}`);
+  assert.ok(css.includes(`data-la-orbita-module="${moduleName}"`), `falta la superficie CSS del módulo ${moduleName}`);
+}
+assert.ok(css.includes('.la-acceso-entrar'), 'el acceso no recibe el contrato visual Órbita');
+assert.ok(shell.includes('"acceso"'), 'el shell conserva el identificador de acceso para la matriz de módulos');
+assert.ok(shell.includes('data-la-orbita-module'), 'el shell no expone la marca verificable de módulo');
 
 const block = (text) => {
   const start = text.indexOf('function Card(');

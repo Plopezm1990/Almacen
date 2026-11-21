@@ -243,21 +243,21 @@
     var activa = sidebar && sidebar.querySelector('[aria-current="page"]');
     var label = textoVisible(activa);
     var conocidas = [
-      ["panel general|inicio|dashboard", "dashboard"],
+      ["panel general|inicio|dashboard", "inicio"],
       ["panel de direccion|direccion", "direccion"],
-      ["clientes", "clientes"],
-      ["productos", "productos"],
-      ["historial de producto", "historial-producto"],
-      ["proveedores", "proveedores"],
-      ["pedidos", "pedidos"],
-      ["recepcion", "recepcion"],
-      ["albaranes", "albaranes"],
-      ["facturas", "facturas"],
+      ["tpv|venta rapida|venta rápida", "tpv"],
+      ["pase", "pase"],
+      ["cocina", "cocina"],
       ["caja|arqueo", "caja"],
+      ["clientes", "clientes"],
+      ["compras|proveedores|pedidos|recepcion|albaranes|facturas", "compras"],
+      ["inventario|productos|historial de producto|mermas|caducidad|ajustes", "inventario"],
       ["personal", "personal"],
-      ["configuracion", "configuracion"],
+      ["configuracion|empresa|locales|terminales|equipos|fiscal", "configuracion"],
+      ["plataforma|administracion", "plataforma"],
+      ["acceso|login", "acceso"],
       ["auditoria", "auditoria"],
-      ["inventario", "inventario"]
+      ["informes|resultados", "informes"]
     ];
     var coincidencia = conocidas.find(function (entrada) { return new RegExp(entrada[0], "i").test(label); });
     return coincidencia ? coincidencia[1] : (label ? slugRuta(label) : "pantalla");
@@ -272,8 +272,10 @@
       var superficie = main.querySelector(".tpv-layout") ? "tpv" :
         main.querySelector("#la-pase") ? "pase" :
         main.querySelector(".la-operacion-cocina") ? "cocina" :
-        main.querySelector(".la-operacion-caja") ? "caja" : "general";
+        main.querySelector(".la-operacion-caja") ? "caja" : ruta;
       main.setAttribute("data-la-orbita-surface", superficie);
+      marco.setAttribute("data-la-orbita-module", superficie);
+      main.setAttribute("data-la-orbita-module", superficie);
       /* Los módulos históricos comparten SectionTitle, pero su composición
          queda anidada en raíces distintas. Marcar el primer h2 visible da a
          Órbita un ancla estable para la misma jerarquía en Clientes,
