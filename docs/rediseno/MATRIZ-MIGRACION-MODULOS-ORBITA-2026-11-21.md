@@ -790,3 +790,13 @@ que «Resumen general» no entraba en la clasificación de Inicio. El shell v12
 fija Órbita solo como valor inicial cuando no existe otro diseño y reconoce
 ese encabezado como `inicio`; una elección posterior de apariencia conserva
 precedencia.
+
+Evidencia live posterior: deploy `6b016bd8317438ca308d4d50` en estado `ready`,
+commit `ee43cf1d`. En modo local del Preview, la raíz quedó con
+`data-la-contenedor="orbita"`, `data-la-diseno="orbita"` y el shell común; la
+superficie observada fue `pase`, con 24 controles semánticos, 1 campo, 5
+estados, mínimo visible de 44 px y `overflow=false`. La captura confirmó
+cabecera, lateral, contexto QA, buscador, avisos, perfil y Apariencia con la
+misma jerarquía Órbita. No se hicieron escrituras de negocio. Esta evidencia
+cierra la excepción de arranque local; las filas siguen `PARCIAL` hasta sus
+recorridos autenticados.

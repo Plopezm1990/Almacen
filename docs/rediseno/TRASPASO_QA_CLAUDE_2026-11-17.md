@@ -1475,6 +1475,12 @@ inicial `data-la-diseno="orbita"` cuando el modo local no trae ningún diseño y
 la clasificación de «Resumen general» como Inicio; no pisa una elección de
 apariencia existente.
 
+Evidencia live: deploy `6b016bd8317438ca308d4d50` (`ready`), SHA `ee43cf1d`.
+En modo local se observaron `data-la-diseno="orbita"`, el shell común y la
+superficie Pase; 24 controles, 1 campo y 5 estados quedaron marcados por la
+capa semántica, con mínimo visible de 44 px y `overflow=false`. La vista
+confirmó la cabecera y navegación Órbita; no se escribieron datos de negocio.
+
 ### Punto 4 · marcas semánticas para componentes históricos · `f7f6eb58`
 
 El shell Órbita ahora clasifica de forma aditiva los elementos que React ya
