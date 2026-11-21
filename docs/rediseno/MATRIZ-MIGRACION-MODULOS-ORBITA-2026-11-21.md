@@ -333,4 +333,5 @@ común; los estados `role=alert` y `role=status` consumen tokens Órbita; las
 tarjetas y la cola quedan contenidos en móvil sin overflow. No se modifican
 estaciones, rutas, estados, RPC, permisos ni handlers. Caché
 `qa-orbita-modules-v32-20261121`, huella P01 `9ea641f1c7c6adae`. Cocina sigue
-`PARCIAL` hasta el recorrido autenticado en QA.
+`PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
+`6b014411457f622dbe7439c8` (`ready`), commit `81ca1074`.

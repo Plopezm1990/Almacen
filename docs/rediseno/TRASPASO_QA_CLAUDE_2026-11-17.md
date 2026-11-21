@@ -1568,7 +1568,8 @@ acciones, filtros, campos, tarjetas, alertas y estados informativos comparten
 tokens, foco, radio y altura mínima táctil. La cola y las tarjetas quedan
 contenidas en móvil sin ampliar el viewport. Se preservan estaciones, estados,
 RPC, permisos y handlers. Marca `qa-orbita-modules-v32-20261121`, huella P01
-`9ea641f1c7c6adae`; falta la comprobación autenticada en QA.
+`9ea641f1c7c6adae`; falta la comprobación autenticada en QA. Deploy Preview
+225: `6b014411457f622dbe7439c8` (`ready`), commit `81ca1074`.
 
 ### Pase · variante Órbita · 21/11/2026
 
