@@ -709,3 +709,23 @@ sesión, viewport disponible `618×678`): `data-la-diseno="orbita"`, fondo
 controles por debajo de `44 px`. Esta comprobación cierra la revisión visual
 del primer render, pero no sustituye el recorrido autenticado de login,
 recuperación, expiración, MFA y selección de empresa/local.
+
+### Marco transversal · barra inferior móvil Órbita · `5c452ff4`
+
+El recorrido modular detectó una convivencia que no aparecía en las filas de
+los módulos: la navegación inferior móvil seguía siendo el componente histórico
+con estilos inline. Se normalizó como parte del shell común, sin sustituir sus
+handlers React: cinco destinos con la misma superficie, tipografía, borde,
+estado activo, foco y área táctil mínima de `44×44 px`. La barra queda oculta
+en escritorio, ocupa una fila propia en móvil y el buscador global incluye sus
+destinos sin duplicar los del menú lateral.
+
+La corrección está servida con `la-apariencia.css?v=qa-orbita-modules-v44-20261121`.
+Se añadieron marcas semánticas `data-la-orbita-nav-item` y
+`aria-current="page"` únicamente para presentación y accesibilidad; no cambian
+la selección de pestaña, permisos, persistencia ni rutas. El contrato de
+componentes comprueba tanto la barra como la deduplicación del buscador.
+La rama sigue siendo `rediseno/f0-base-qa`, PR #225 en borrador, y producción
+permanece intacta. Este cambio mejora el marco de los doce módulos, pero no
+convierte por sí solo ninguna fila `PARCIAL` en `CERRADO`: siguen pendientes
+los recorridos autenticados y los estados de datos reales indicados arriba.

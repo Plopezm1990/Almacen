@@ -1462,6 +1462,22 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Barra inferior móvil · revisión `5c452ff4`
+
+La barra de pestañas móvil ya no conserva el tratamiento visual histórico:
+`la-orbita-shell.js` la marca como navegación del shell, sincroniza el destino
+activo y la incluye en el buscador global sin duplicar entradas. `la-apariencia.css`
+la presenta con la misma superficie, escala, foco, borde y controles de `44 px`
+que el resto de Órbita; en escritorio se oculta y en móvil ocupa su propia fila
+sin desbordamiento. El cambio es aditivo y mantiene los handlers y la lógica de
+selección existentes. La caché de hoja pasa a `qa-orbita-modules-v44-20261121`.
+
+Verificación estática: `node --check la-orbita-shell.js`, contratos de shell,
+rutas, componentes y migración modular, además de `git diff --check`, pasan.
+La evidencia visual móvil de esta revisión queda pendiente de una nueva pasada
+en el Preview 225; no se debe declarar cierre de ningún módulo hasta repetirla
+con la barra renderizada y, para las rutas operativas, con sesión QA.
+
 ### Publicación de la revisión actual
 
 Referencia: commit `bfb0e6856c4baa1fe64858f45b98cfdf89485685`, Deploy Preview
