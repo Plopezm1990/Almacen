@@ -1328,3 +1328,21 @@ QA y documentar estados con datos, vacío, carga, error y transiciones de
 comanda en escritorio y móvil. La regresión histórica `pm11-compra/p10`
 continúa fallando por el orden de carga de su parche móvil; no fue introducida
 por esta migración y se conserva como excepción del banco.
+
+### Caja · primera migración de superficie `92785c52` · 21/11/2026
+
+Caja ya tiene su primera capa Órbita en la rama de QA. Se aplica a
+`main[data-la-orbita-module="caja"]` y a `.la-operacion-caja`, cubriendo la
+apertura de sesión, el arqueo diario, movimientos/ajustes, historial,
+traspasos y avisos. Las tarjetas, campos, selects y acciones comparten la
+misma jerarquía que TPV, Pase y Cocina; los controles se mantienen en
+`44×44 px` y los formularios de denominaciones se apilan en móvil. La lógica
+de cobros, reembolsos, cierres, permisos, fiscalidad y persistencia permanece
+intacta.
+
+La caché CSS es `qa-orbita-modules-v19-20261121`, con huella P01
+`ce277db80f8e2cf4`. Pasan P01, marco `21/21`, componentes, rutas `20/20`,
+autoridad de persistencia y `git diff --check`. No se hicieron cobros ni
+reembolsos nuevos. La verificación de QA que falta para cerrar Caja es el
+recorrido real de cobro, arqueo, cierre, reembolso y documento, incluyendo
+vacío/carga/error en escritorio y móvil.

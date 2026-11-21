@@ -14,7 +14,7 @@ vacío y contratos sin regresión.
 | 2 | TPV y sala | `tpv`, `.tpv-layout` | PARCIAL: superficie Órbita aplicada a catálogo, filtros, mesas, ticket/caja, paginación y dock móvil; recorridos de datos intactos | Verificar venta rápida, sala, cuentas, mesas, tickets y estados en las rutas reales de escritorio y móvil |
 | 3 | Pase | `pase`, `.la-pase` (`#la-pase` legado) | PARCIAL: panel real y cola ya integrados; la raíz semántica ya queda marcada aunque el recorrido histórico use otro selector | Igualar tarjetas, filtros, destinos y revisión móvil |
 | 4 | Cocina | `cocina`, `.la-operacion-cocina` | PARCIAL: cabecera, tarjetas, estados, filtros, estaciones/rutas y cola ya tienen capa Órbita; recorrido de estados reales aún pendiente | Verificar rutas reales, vacío/carga/error, estados de comanda y densidad en escritorio y móvil |
-| 5 | Caja | `caja`, `.la-operacion-caja` | PARCIAL: superficie operativa existente | Migrar cobros, arqueos, cierres, reembolsos y documentos sin tocar permisos |
+| 5 | Caja | `caja`, `.la-operacion-caja` | PARCIAL: apertura, arqueo, movimientos, historial y traspasos ya tienen capa Órbita; recorrido de cobro/cierre real aún pendiente | Verificar cobros, arqueos, cierres, reembolsos, documentos y estados en rutas reales |
 | 6 | Clientes | `clientes` | MARCO: shell y escala global | Migrar listado, filtros, ficha, actividad y NIF |
 | 7 | Compras | `compras` | MARCO: shell y escala global | Migrar proveedores, pedidos, recepción, albaranes y facturas |
 | 8 | Inventario | `inventario` | MARCO: shell y escala global | Migrar productos, movimientos, mermas, caducidad y ajustes |
@@ -91,3 +91,21 @@ P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
 
 Esta matriz es de seguimiento, no un cierre prematuro. El objetivo 4 sigue
 activo hasta que los doce módulos pasen individualmente a `CERRADO`.
+
+### Caja · primera migración de superficie
+
+El commit `92785c52` aplica la capa visual Órbita a
+`main[data-la-orbita-module="caja"]`. La apertura de sesión, el arqueo diario,
+los movimientos y ajustes de caja, el historial, los traspasos y sus avisos
+comparten tarjetas, bordes, radios, sombras y jerarquía tipográfica. Los
+campos, selectores y botones respetan `44 px`; en móvil los bloques de
+denominaciones y formularios pasan a una columna para evitar desbordamientos.
+La capa también cubre la raíz histórica `.la-operacion-caja`. No se tocaron
+handlers, cobros, reembolsos, permisos, fiscalidad ni persistencia.
+
+La marca de caché CSS es `qa-orbita-modules-v19-20261121` y la huella fijada
+por P01 es `ce277db80f8e2cf4`. Pasan P01, marco `21/21`, componentes, rutas
+`20/20`, autoridad de persistencia y `git diff --check`. Caja permanece en
+`PARCIAL` hasta recorrer en QA cobro, cierre, reembolso, documento y estados
+vacío/carga/error en escritorio y móvil; no se ejecutaron nuevas operaciones
+de negocio en esta tanda.
