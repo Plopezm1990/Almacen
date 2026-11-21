@@ -199,3 +199,32 @@ La batería global ejecutada después de esta corrección registró 304/327
 contratos activos PASS, 23 fallos históricos ajenos al Panel y `INFRA_FAIL=0`;
 el contrato específico de componentes Órbita volvió a pasar dentro de esa
 batería.
+
+## Cierre de escala visual única Órbita · 21/11/2026
+
+Se definió y aplicó una sola escala geométrica para todas las vistas que
+reciben `html[data-la-diseno]`. `la-apariencia.css` declara ahora el contrato
+de espacio de 4 px (`--la-space-1` a `--la-space-7`), radios `sm/md/lg/xl`,
+dos sombras, alturas de control de 44/48 px, seis escalones de texto y tres
+tamaños de icono. La escala se aplica también a las clases utilitarias
+históricas (`gap-*`, `p-*`, `px-*`, `py-*`, `rounded-*` y `text-[...]`), de
+forma que los márgenes y tamaños escritos por las pantallas antiguas dejan de
+imponer una segunda geometría.
+
+Los controles nativos, tabs, opciones, menús y botones conservan un área
+mínima de 44×44 px; tablas y tarjetas usan el mismo espaciado y radio. Se
+mantienen como excepciones intencionadas los controles nativos checkbox/radio/
+range y la densidad especial de TPV en modo caja completo. No se modificaron
+handlers, permisos ni lógica de negocio.
+
+El dashboard premium también consume los tokens de escala en lugar de valores
+directos. La marca de caché pasó a `qa-orbita-scale-v14-20261121` y el
+contrato P01 fija la huella de la hoja para evitar servir CSS anterior desde
+CDN.
+
+Evidencia estática: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`,
+`MARCO_ORBITA_CONTRACT=PASS (21/21)`, rutas 20/20, P01/P03/P05, org-33,
+`SOURCE_RECOVERY_CHECK=PASS` y `git diff --check` limpio. La batería completa
+y la comprobación visual del deploy de esta tanda se añadirán al cerrar la
+publicación. PR #225 continúa en borrador y producción permanece fuera de
+alcance.

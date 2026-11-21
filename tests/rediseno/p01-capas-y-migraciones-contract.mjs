@@ -40,7 +40,7 @@ import assert from 'node:assert/strict';
 // son más baratas que un despliegue que sirve lo de ayer y lo da por bueno.
 
 const CAPAS = [
-  { archivo: 'la-apariencia.css', marca: 'qa-orbita-shell-v13-20261120', huella: '48bba6be7997f5cb', etiqueta: 'link' },
+  { archivo: 'la-apariencia.css', marca: 'qa-orbita-scale-v14-20261121', huella: 'a194f5fb00f4c5af', etiqueta: 'link' },
   { archivo: 'la-pase.css', marca: 'qa-ascua-20261113', huella: '1def5771bce1f9e4', etiqueta: 'link' },
   { archivo: 'la-apariencia.js', marca: 'qa-apariencia-contexto-20261113', huella: 'da220cc43c9544bc', etiqueta: 'script' },
   { archivo: 'la-apariencia-editor.js', marca: 'qa-apariencia-contexto-20261113', huella: '423e462949e5edea', etiqueta: 'script' },

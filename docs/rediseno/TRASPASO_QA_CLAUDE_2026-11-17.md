@@ -1213,3 +1213,24 @@ no hubo errores ni advertencias de consola.
 La regresión global posterior registró 304/327 contratos activos PASS, 23
 fallos históricos no relacionados con el Panel y `INFRA_FAIL=0`; el contrato
 del Panel y el contrato de componentes Órbita pasan.
+
+## Continuación · escala visual única Órbita · 21/11/2026
+
+La tercera capa del plan queda implementada sin tocar operaciones: una escala
+común de 4 px para espacios, radios `8/10/14/18`, sombras, tipografía
+`11/12/14/18/24/30`, controles de 44 px (48 px para acciones grandes) e
+iconos `16/20/24`. `la-apariencia.css` traduce además las utilidades directas
+que todavía emiten las vistas históricas, por lo que definir variables no es
+la única medida: `gap-*`, `p-*`, `px-*`, `py-*`, `rounded-*` y los tamaños
+`text-[...]` se resuelven mediante los tokens del contrato.
+
+La capa de controles semánticos mantiene la exclusión explícita de
+checkbox/radio/range nativos y la densidad de TPV en modo caja completo. El
+dashboard premium ya utiliza la misma escala. Se actualizó la marca de caché
+CSS a `qa-orbita-scale-v14-20261121`; el contrato P01 fija marca y huella.
+
+Contratos ejecutados y conformes: componentes Órbita, marco (21/21), rutas
+(20/20), P01/P03/P05, org-33, paridad de `source-recovery` y `git diff
+--check`. Falta añadir tras el despliegue la evidencia live de escritorio y
+móvil y el resultado de la batería global; no ejecutar cobros, reembolsos ni
+escrituras de negocio. PR #225 sigue en borrador y producción intacta.

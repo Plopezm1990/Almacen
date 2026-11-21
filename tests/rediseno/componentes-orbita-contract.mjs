@@ -9,7 +9,7 @@ const dashboardPremium = readFileSync(resolve(root, 'dashboard-premium-v2.js'), 
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v13-20261120/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-scale-v14-20261121/);
 assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v2-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);
@@ -41,6 +41,18 @@ for (const required of [
 ]) {
   assert.ok(css.includes(required), `falta la regla común ${required}`);
 }
+
+for (const token of [
+  '--la-space-1: 4px', '--la-space-4: 16px', '--la-radius-md: 10px',
+  '--la-shadow-1:', '--la-control-height: 44px', '--la-type-body: 14px',
+  '--la-icon-md: 20px', '.gap-2', '.p-3', '.rounded-lg', '.text-\\[12px\\]',
+  'min-height: var(--la-control-height)', 'table th', 'table td'
+]) {
+  assert.ok(css.includes(token), `falta el token o normalizador de escala ${token}`);
+}
+assert.match(dashboardPremium, /gap:var\(--la-space-3\)/);
+assert.match(dashboardPremium, /border-radius:var\(--la-radius-lg\)/);
+assert.match(dashboardPremium, /min-height:var\(--la-control-height-large\)/);
 
 const block = (text) => {
   const start = text.indexOf('function Card(');

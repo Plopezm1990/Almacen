@@ -21,6 +21,35 @@
   --la-font: "IBM Plex Sans", ui-sans-serif, system-ui, sans-serif;
   --la-display: var(--la-font);
   --la-radio: 12px;
+
+  /* Escala visual Órbita. Todos los componentes comparten estos pasos; las
+     propuestas solo cambian color y composición, no la geometría operativa. */
+  --la-space-0: 0px;
+  --la-space-1: 4px;
+  --la-space-2: 8px;
+  --la-space-3: 12px;
+  --la-space-4: 16px;
+  --la-space-5: 20px;
+  --la-space-6: 24px;
+  --la-space-7: 32px;
+  --la-radius-sm: 8px;
+  --la-radius-md: 10px;
+  --la-radius-lg: 14px;
+  --la-radius-xl: 18px;
+  --la-radius-pill: 999px;
+  --la-shadow-1: 0 2px 12px rgba(7, 25, 18, .08);
+  --la-shadow-2: 0 12px 32px rgba(7, 25, 18, .14);
+  --la-control-height: 44px;
+  --la-control-height-large: 48px;
+  --la-type-caption: 11px;
+  --la-type-label: 12px;
+  --la-type-body: 14px;
+  --la-type-section: 18px;
+  --la-type-title: 24px;
+  --la-type-display: 30px;
+  --la-icon-sm: 16px;
+  --la-icon-md: 20px;
+  --la-icon-lg: 24px;
 }
 
 /* -------------------------------------------------------------------------
@@ -1331,4 +1360,96 @@ html[data-la-diseno] #root button[aria-label]:not(.la-ui-icon-button) { min-widt
 @media (prefers-reduced-motion: reduce) {
   html[data-la-diseno] #root .la-ui-button,
   html[data-la-diseno] #root .la-ui-link-button { transition: none; }
+}
+
+/* ========================================================================
+   Órbita · escala única aplicada a la interfaz existente
+   ------------------------------------------------------------------------
+   El programa conserva muchas clases utilitarias históricas. Estas reglas
+   traducen sus pasos al mismo contrato de espacio, tipografía y geometría;
+   no sustituyen handlers ni cambian la lógica de las pantallas.
+   ======================================================================== */
+html[data-la-diseno] #root {
+  --la-radio: var(--la-radius-md);
+  font-family: var(--la-font);
+  font-size: var(--la-type-body);
+}
+html[data-la-diseno] #root :where(h1, h2, h3, h4, h5, h6) {
+  font-family: var(--la-display);
+  line-height: 1.2;
+}
+html[data-la-diseno] #root :where(h1, h2) { font-size: var(--la-type-display); }
+html[data-la-diseno] #root :where(h3, h4) { font-size: var(--la-type-section); }
+
+/* Tailwind-like legacy steps now resolve to the same 4px spacing scale. */
+html[data-la-diseno] #root .gap-0 { gap: var(--la-space-0) !important; }
+html[data-la-diseno] #root .gap-1 { gap: var(--la-space-1) !important; }
+html[data-la-diseno] #root .gap-2 { gap: var(--la-space-2) !important; }
+html[data-la-diseno] #root .gap-3 { gap: var(--la-space-3) !important; }
+html[data-la-diseno] #root .gap-4 { gap: var(--la-space-4) !important; }
+html[data-la-diseno] #root .gap-6 { gap: var(--la-space-6) !important; }
+html[data-la-diseno] #root .p-0 { padding: var(--la-space-0) !important; }
+html[data-la-diseno] #root .p-1 { padding: var(--la-space-1) !important; }
+html[data-la-diseno] #root .p-2 { padding: var(--la-space-2) !important; }
+html[data-la-diseno] #root .p-3 { padding: var(--la-space-3) !important; }
+html[data-la-diseno] #root .p-4 { padding: var(--la-space-4) !important; }
+html[data-la-diseno] #root .p-5 { padding: var(--la-space-5) !important; }
+html[data-la-diseno] #root .px-1 { padding-inline: var(--la-space-1) !important; }
+html[data-la-diseno] #root .px-2 { padding-inline: var(--la-space-2) !important; }
+html[data-la-diseno] #root .px-3 { padding-inline: var(--la-space-3) !important; }
+html[data-la-diseno] #root .px-4 { padding-inline: var(--la-space-4) !important; }
+html[data-la-diseno] #root .py-0 { padding-block: var(--la-space-0) !important; }
+html[data-la-diseno] #root .py-1 { padding-block: var(--la-space-1) !important; }
+html[data-la-diseno] #root .py-2 { padding-block: var(--la-space-2) !important; }
+html[data-la-diseno] #root .py-3 { padding-block: var(--la-space-3) !important; }
+html[data-la-diseno] #root .py-4 { padding-block: var(--la-space-4) !important; }
+html[data-la-diseno] #root .rounded-sm { border-radius: var(--la-radius-sm) !important; }
+html[data-la-diseno] #root .rounded-md { border-radius: var(--la-radius-md) !important; }
+html[data-la-diseno] #root .rounded-lg { border-radius: var(--la-radius-md) !important; }
+html[data-la-diseno] #root .rounded-xl { border-radius: var(--la-radius-lg) !important; }
+html[data-la-diseno] #root .rounded-2xl { border-radius: var(--la-radius-xl) !important; }
+
+/* Tipografía directa antigua: solo se agrupa en seis escalones legibles. */
+html[data-la-diseno] #root :where(.text-\[8\.5px\], .text-\[9px\], .text-\[9\.5px\], .text-\[10px\], .text-\[10\.5px\], .text-\[11px\]) { font-size: var(--la-type-caption) !important; }
+html[data-la-diseno] #root :where(.text-\[11\.5px\], .text-\[12px\], .text-\[12\.5px\]) { font-size: var(--la-type-label) !important; }
+html[data-la-diseno] #root :where(.text-\[13px\], .text-\[13\.5px\], .text-\[14px\], .text-\[15px\], .text-base) { font-size: var(--la-type-body) !important; }
+html[data-la-diseno] #root :where(.text-\[16px\], .text-\[17px\], .text-\[18px\]) { font-size: var(--la-type-section) !important; }
+html[data-la-diseno] #root :where(.text-\[19px\], .text-\[20px\], .text-\[22px\], .text-\[24px\], .text-\[26px\], .text-\[28px\]) { font-size: var(--la-type-title) !important; }
+
+/* Controles: un único objetivo táctil, salvo controles nativos compactos. */
+html[data-la-diseno] #root button:not([type="checkbox"]):not([type="radio"]):not(.la-ui-icon-button),
+html[data-la-diseno] #root [role="button"],
+html[data-la-diseno] #root input:not([type="checkbox"]):not([type="radio"]):not([type="range"]),
+html[data-la-diseno] #root select,
+html[data-la-diseno] #root textarea,
+html[data-la-diseno] #root [role="tab"],
+html[data-la-diseno] #root [role="menuitem"],
+html[data-la-diseno] #root [role="option"] {
+  min-height: var(--la-control-height);
+}
+html[data-la-diseno] #root .la-ui-button-large { min-height: var(--la-control-height-large); }
+html[data-la-diseno] #root .la-ui-icon,
+html[data-la-diseno] #root .la-ui-icon svg { width: var(--la-icon-md); height: var(--la-icon-md); }
+html[data-la-diseno] #root .la-ui-icon-small,
+html[data-la-diseno] #root .la-ui-icon-small svg { width: var(--la-icon-sm); height: var(--la-icon-sm); }
+html[data-la-diseno] #root .la-ui-icon-large,
+html[data-la-diseno] #root .la-ui-icon-large svg { width: var(--la-icon-lg); height: var(--la-icon-lg); }
+
+/* Geometría común para tablas, tarjetas, paneles y estados. */
+html[data-la-diseno] #root table th,
+html[data-la-diseno] #root table td { padding-block: var(--la-space-3); padding-inline: var(--la-space-4); }
+html[data-la-diseno] #root .la-ui-card,
+html[data-la-diseno] #root .la-ui-panel { border-radius: var(--la-radius-lg) !important; box-shadow: var(--la-shadow-1); }
+html[data-la-diseno] #root .la-ui-modal { border-radius: var(--la-radius-lg) !important; box-shadow: var(--la-shadow-2); }
+html[data-la-diseno] #root .la-ui-section,
+html[data-la-diseno] #root .la-ui-section-title { margin-block-end: var(--la-space-4); }
+html[data-la-diseno] #root .la-ui-divider { border-color: var(--c-divider) !important; }
+
+@media (max-width: 767px) {
+  html[data-la-diseno] #root { font-size: var(--la-type-body); }
+  html[data-la-diseno] #root table { min-width: 0; }
+  html[data-la-diseno] #root table th,
+  html[data-la-diseno] #root table td { padding-inline: var(--la-space-3); }
+  html[data-la-diseno] #root .la-ui-card,
+  html[data-la-diseno] #root .la-ui-panel { max-width: 100%; }
 }
