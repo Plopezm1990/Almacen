@@ -271,3 +271,6 @@ móvil, sin ampliar el viewport ni alterar la semántica de cabeceras, celdas,
 ordenación o selección. Las celdas conservan una anchura legible y el área
 interactiva común. Caché `qa-orbita-modules-v27-20261121`, huella P01
 `bb7e168a744878e6`.
+La corrección está publicada en Deploy Preview 225 como `6b013ddcf49a09cfd3ecd251`
+(`ready`), commit `8b07d8e7`. El recorrido autenticado de las doce superficies
+continúa pendiente antes de cambiar cualquier estado de `PARCIAL` a `CERRADO`.

@@ -1499,6 +1499,7 @@ La capa v27 contiene el desplazamiento horizontal de cualquier tabla dentro
 de un módulo Órbita en móvil y mantiene una anchura mínima legible por celda.
 No cambia semántica, ordenación ni handlers. Caché
 `qa-orbita-modules-v27-20261121`, huella P01 `bb7e168a744878e6`.
+Deploy Preview 225: `6b013ddcf49a09cfd3ecd251` (`ready`), commit `8b07d8e7`.
 
 ### TPV y sala · superficies secundarias · 21/11/2026
 
