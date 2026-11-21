@@ -947,3 +947,14 @@ Esta tanda completa la base técnica de la migración uno-a-uno; no convierte
 por sí sola una fila en `CERRADO`. Las doce filas siguen `PARCIAL` hasta que
 se recorra cada ruta real autenticada, sus estados vacío/carga/error y sus
 acciones en escritorio y móvil.
+
+### Arranque local sin espera remota · 21/11/2026
+
+La revisión live mostró que el modo «Trabajar solo en este equipo» aún
+atravesaba el guard de contexto remoto antes de leer `almacen:*`. Se corrigió
+`fuente.js`: cuando `__modoPruebasLocal` es `true`, `storage.get`, `storage.set`
+y `storage.delete` van directamente al adaptador local. QA autenticado no
+entra en esta rama. La caché de `fuente.js` pasa a
+`qa-arranque-lectura-local-directa-v4-20261121`; el contrato de arranque fija
+la regresión. Esto reduce el arranque offline a la lectura local y evita que
+la nube bloqueada genere avisos falsos de `localActivoId`.

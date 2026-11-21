@@ -1477,6 +1477,17 @@ fijar la marca y la huella de la nueva hoja. La evidencia live disponible
 confirma shell interactivo y superficies identificadas; el cierre funcional
 de cada módulo continúa pendiente de recorrido QA autenticado.
 
+### Corrección de arranque local · 21/11/2026
+
+El guard de contexto operativo esperaba una sesión remota incluso después de
+que el usuario eligiera explícitamente trabajar sin sincronización. `fuente.js`
+ahora deriva directamente `get/set/delete` al adaptador local cuando
+`__modoPruebasLocal` es `true`; la rama QA autenticada conserva el control de
+permisos y contexto. Se invalidó la caché a
+`qa-arranque-lectura-local-directa-v4-20261121` y se añadió la aserción al
+contrato de arranque. La evidencia anterior de shell y módulos sigue válida;
+hay que repetir la medición de tiempo en el preview publicado.
+
 ### Hallazgo de arranque durante la migración por bloques · 21/11/2026
 
 En el preview limpio, el modo local podía quedarse en «Cargando almacén…» si

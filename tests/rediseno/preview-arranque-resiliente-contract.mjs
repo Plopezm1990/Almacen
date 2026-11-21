@@ -18,6 +18,8 @@ assert.match(fuente, /requestIdleCallback/, 'el respaldo automático se difiere 
 assert.match(fuente, /No se pudo crear el respaldo automático/, 'un fallo del respaldo no bloquea la suite');
 assert.match(fuente, /const limitarArranque = .*__modoPruebasQA/, 'las lecturas del arranque tienen un límite en QA/local');
 assert.match(fuente, /El almacenamiento no respondió a tiempo/, 'el timeout de almacenamiento deja una señal explícita');
+assert.match(fuente, /__modoPruebasLocal === true\) return getOriginal/, 'el modo local no debe esperar al contexto remoto');
+assert.match(fuente, /__modoPruebasLocal === true\) return setOriginal/, 'el modo local no debe sincronizar escrituras');
 assert.match(shell, /function textoSiCambia/, 'la cabecera no reescribe texto idéntico');
 assert.match(shell, /prepararPendiente/, 'el observador del marco está agrupado');
 

@@ -44016,6 +44016,11 @@ var init_index_es = __esm({
     }
   }
   window.storage.get = async function(key, shared) {
+    // El modo solo local es una elección explícita del usuario. No hay una
+    // identidad remota que resolver ni permisos cloud que consultar; esperar
+    // a obtenerContexto aquí añadía una espera de red a cada clave local y
+    // podía dejar el arranque bloqueado.
+    if (window.__modoPruebasLocal === true) return getOriginal(key, shared);
     if (!CLAVES_CONTROLADAS[key]) return getOriginal(key, shared);
     var contexto = null;
     try {
@@ -44076,6 +44081,7 @@ var init_index_es = __esm({
     return getOriginal(key, shared);
   };
   window.storage.set = async function(key, value, shared) {
+    if (window.__modoPruebasLocal === true) return setOriginal(key, value, shared);
     if (!CLAVES_CONTROLADAS[key]) return setOriginal(key, value, shared);
     var contexto = null;
     try {
@@ -44109,6 +44115,7 @@ var init_index_es = __esm({
   };
   if (deleteOriginal) {
     window.storage.delete = async function(key, shared) {
+      if (window.__modoPruebasLocal === true) return deleteOriginal(key, shared);
       if (!CLAVES_CONTROLADAS[key]) return deleteOriginal(key, shared);
       var contexto = null;
       try {
