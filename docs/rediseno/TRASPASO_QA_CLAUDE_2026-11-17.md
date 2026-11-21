@@ -1462,6 +1462,17 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Hallazgo de arranque durante la migración por bloques · 21/11/2026
+
+En el preview limpio, el modo local podía quedarse en «Cargando almacén…» si
+una lectura del adaptador no resolvía su promesa. Se corrigió `loadKey` en las
+dos copias protegidas: 1,5 s por lectura en modo local y 7,5 s en QA, con los
+reintentos y el evento de fallo conservados. La app ya no depende de una
+promesa de almacenamiento infinita para montar el shell Órbita; el contrato de
+arranque exige además el mensaje explícito y el reintento visible. La batería
+estática queda verde; las doce filas siguen `PARCIAL` hasta el recorrido
+autenticado de cada módulo.
+
 ### Punto 4 · estado de publicación y cierre pendiente · 21/11/2026
 
 La revisión vigente de la migración modular es el SHA `ba7bf3e42ca292200dc5dd1a96f4ae36ba5a9a0e`,

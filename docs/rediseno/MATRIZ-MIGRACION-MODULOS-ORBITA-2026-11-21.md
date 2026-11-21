@@ -913,3 +913,17 @@ permisos, RPC o handlers. `plataforma-panel.js` se sirve con
 El contrato de componentes comprueba ambas marcas y la paridad del resto de
 la capa. La verificación de acceso de administrador sigue pendiente para
 cerrar Plataforma funcionalmente.
+
+### Hallazgo de arranque durante la migración por bloques · 21/11/2026
+
+Al probar el modo local desde el preview limpio, la vista podía quedarse en
+«Cargando almacén…» si una lectura del adaptador de almacenamiento no resolvía
+su promesa. El documento ya fijaba Órbita (`data-la-diseno="orbita"`), pero no
+se podía verificar ningún módulo detrás del bloqueo. Se corrigió `loadKey` en
+`fuente.js` y en `source-recovery/fuente-recuperado.js`: cada lectura tiene un
+techo de 1,5 s en modo local y 7,5 s en QA, conserva los reintentos y emite el
+fallo real para que el arranque visible pueda ofrecer reintento. No cambia la
+lógica, los handlers ni la persistencia; evita que una promesa colgada congele
+los doce módulos. La batería de arranque, `loadKey`, componentes y migración
+de módulos queda verde tras el cambio. El recorrido autenticado del preview
+sigue siendo necesario para pasar cada fila de `PARCIAL` a `CERRADO`.

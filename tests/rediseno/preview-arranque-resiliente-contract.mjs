@@ -16,6 +16,8 @@ assert.match(loader, /Reintentar/, 'el aviso de arranque ofrece reintento');
 assert.match(loader, /location\.reload\(\)/, 'el reintento vuelve a cargar sin borrar datos');
 assert.match(fuente, /requestIdleCallback/, 'el respaldo automático se difiere a inactividad');
 assert.match(fuente, /No se pudo crear el respaldo automático/, 'un fallo del respaldo no bloquea la suite');
+assert.match(fuente, /const limitarArranque = .*__modoPruebasQA/, 'las lecturas del arranque tienen un límite en QA/local');
+assert.match(fuente, /El almacenamiento no respondió a tiempo/, 'el timeout de almacenamiento deja una señal explícita');
 assert.match(shell, /function textoSiCambia/, 'la cabecera no reescribe texto idéntico');
 assert.match(shell, /prepararPendiente/, 'el observador del marco está agrupado');
 

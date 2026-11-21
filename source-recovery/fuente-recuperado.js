@@ -638,10 +638,23 @@ function notificarFalloCargaPM16(key, motivo, error) {
   window.dispatchEvent(new CustomEvent("fallo-carga", { detail: { key, motivo, mensaje: error && error.message } }));
 }
 async function loadKey(key, fallback, retries = 2) {
+  // Una lectura del adaptador puede quedar pendiente indefinidamente si una
+  // pestaña conserva una conexión de IndexedDB o si una capa de sincronización
+  // no resuelve su promesa. No dejamos que una sola clave congele el montaje
+  // de los doce módulos: en modo local fallamos rápido; en QA damos margen a
+  // la consulta remota, pero seguimos teniendo un techo por intento.
+  const limiteLectura = typeof window !== "undefined" && window.__modoPruebasLocal ? 1500 : 7500;
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
     try {
-      res = await window.storage.get(key, false);
+      const lectura = window.storage.get(key, false);
+      const limitarArranque = typeof window !== "undefined" && (window.__modoPruebasQA === true || (window.__modoPruebasLocal === true && window.__nubeActiva !== true));
+      res = limitarArranque
+        ? await Promise.race([
+          lectura,
+          Promise.resolve().then(() => new Promise((_, reject) => setTimeout(() => reject(new Error("El almacenamiento no respondió a tiempo")), limiteLectura)))
+        ])
+        : await lectura;
     } catch (e2) {
       if (attempt === retries) {
         const motivo = motivoFalloCargaPM16(e2);
