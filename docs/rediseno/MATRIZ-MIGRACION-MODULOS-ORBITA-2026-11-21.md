@@ -562,3 +562,15 @@ cada navegación, manteniendo `overflow=false` y control mínimo de 44 px.
 
 Esta es evidencia de la capa visual y de sus estados de comunicación en modo
 local; no certifica el contenido, permisos o persistencia del backend QA.
+
+### Corrección transversal · control de navegación del shell · `6438b207`
+
+La auditoría del criterio táctil detectó que el botón visible para contraer la
+navegación lateral estaba definido en `36×36 px`. Aunque las comprobaciones
+anteriores no lo incluían como control de módulo, forma parte del marco común y
+no podía quedar por debajo del contrato de `44×44 px`. Se corrigió a `44×44 px`,
+se invalidó la caché CSS a `qa-orbita-modules-v41-20261121` y se añadió una
+aserción al contrato de componentes para impedir regresiones. No se tocaron
+handlers, permisos, datos ni rutas. La corrección está publicada solo en
+`rediseno/f0-base-qa`; PR #225 continúa en borrador y producción permanece
+fuera de alcance.

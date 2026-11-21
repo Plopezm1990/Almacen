@@ -1462,6 +1462,15 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Ajuste del shell · control lateral táctil · `6438b207`
+
+En la auditoría del punto 4 se encontró un control común que no cumplía el
+mínimo táctil: el botón de contraer la barra lateral medía `36×36 px`. Se
+ajustó a `44×44 px`, se actualizó la versión de caché CSS a
+`qa-orbita-modules-v41-20261121` y se dejó el contrato automatizado que lo
+comprueba. La corrección no modifica lógica ni datos y solo se publicó en la
+rama de QA; PR #225 sigue en borrador y producción no se toca.
+
 ### Acceso · revisión responsive no autenticada · 21/11/2026
 
 La pantalla `.la-acceso` se observó directamente en el preview a **390 × 844**
