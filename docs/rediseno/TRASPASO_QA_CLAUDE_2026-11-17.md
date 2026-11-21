@@ -1517,6 +1517,17 @@ continúa cerrado/reabierto para conservar Q08. El cierre de pagos y efectos
 queda resuelto; la decisión de producto sobre ese dato sintético de efectivo
 es independiente y debe quedar separada de esta limpieza.
 
+### Actualización: A1 finalizado con diferencia auditada · 21/11/2026
+
+La reapertura y el cierre se completaron desde Cocina con la cuenta de
+Propietario. La sesión `b0255efb-664d-4e8e-9dd9-a0ae0c59e0c2` quedó en
+`CERRADA_FINAL` y su cierre en `FINAL`. El efectivo conservado es `0,00 €`
+contado frente a `118,44 €` esperados, diferencia `-118,44 €`; no se falseó
+ni se generó un cobro. La diferencia quedó registrada y aprobada como fixture
+sintético de QA. Con `pagos_bloqueantes=0` y `efectos_bloqueantes=0`, el
+servidor aceptó la finalización. A2 sigue cerrado/reabierto para mantener la
+prueba Q08. El punto 1 TPV/sala/caja queda cerrado en QA; no tocar producción.
+
 ### Punto 1 · estado real del cierre TPV/sala/caja · 21/11/2026
 
 La prueba de dos terminales ya estaba hecha: Chrome en A1 y Firefox en A2.

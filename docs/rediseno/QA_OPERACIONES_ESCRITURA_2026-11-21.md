@@ -151,3 +151,23 @@ terminales. Por tanto, el bloqueo de pagos/efectos está resuelto; el único
 pendiente operativo es decidir cómo tratar ese dato sintético de caja antes de
 convertir A1 de `CIERRE_PROVISIONAL` a `CERRADA_FINAL`.
 
+### Actualización final del cierre A1 · 21/11/2026
+
+La advertencia anterior queda superada por la validación operativa posterior.
+Desde Cocina se ejecutó C12 y se confirmó el cierre definitivo con el flujo de
+servidor. El resultado independiente en QA es:
+
+- sesión `b0255efb-664d-4e8e-9dd9-a0ae0c59e0c2`: `CERRADA_FINAL`;
+- cierre asociado: `FINAL`;
+- contado conservado: `0,00 €`;
+- esperado conservado: `118,44 €`;
+- diferencia auditada: `-118,44 €`;
+- pagos y efectos bloqueantes: `0` / `0`.
+
+La diferencia no se corrigió ni se convirtió en ingreso ficticio: quedó
+registrada y aprobada por el Propietario como dato sintético de QA. C12 la
+presenta como `PENDIENTE` por la diferencia de efectivo, pero el servidor
+permite la finalización porque los bloqueos de pagos/efectos están resueltos y
+la diferencia tiene motivo y aprobación. El punto de cierre de A1 queda, por
+tanto, completado sin borrar la evidencia ni tocar producción.
+
