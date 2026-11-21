@@ -312,3 +312,13 @@ alteran cobros, persistencia, fiscalidad, permisos ni handlers. Caché
 `PARCIAL` hasta recorrer sus rutas autenticadas y estados reales.
 La publicación está lista en Deploy Preview 225 como
 `6b014268ed0690c4525a4eb2` (`ready`), commit `47368d65`.
+
+### Pase · raíces independientes y cola contenida · v31
+
+La raíz de Pase queda normalizada tanto cuando se monta como módulo propio
+como cuando se incrusta en Inicio. El plano, estados `LIBRE`, `OCUPADA`,
+`RESERVADA`, `BLOQUEADA` y `FUERA_SERVICIO`, filtros, accesos y cola comparten
+escala, foco, tarjetas y tokens Órbita; en móvil la cola mantiene su scroll
+local y no hace crecer la pantalla. No se modifican RPC, estados de sala,
+permisos ni navegación. Caché `qa-orbita-modules-v31-20261121`, huella P01
+`42175d9f2bb452b1`. Pase continúa `PARCIAL` hasta el recorrido autenticado.

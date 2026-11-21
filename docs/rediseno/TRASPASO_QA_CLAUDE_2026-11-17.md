@@ -1485,6 +1485,14 @@ recorrido autenticado de TPV y sala.
 La publicación está lista en Deploy Preview 225 como
 `6b014268ed0690c4525a4eb2` (`ready`), commit `47368d65`.
 
+### Pase · raíces independientes y cola contenida · v31
+
+Se alinearon las dos raíces de Pase (módulo independiente y panel incrustado)
+con la misma composición Órbita. Los estados reales de mesa, filtros, accesos
+y cola mantienen sus handlers; en móvil la cola queda acotada a un scroll local
+para evitar una pantalla infinita. Marca `qa-orbita-modules-v31-20261121`,
+huella P01 `42175d9f2bb452b1`; falta la comprobación autenticada en QA.
+
 ### Contenedores históricos · contención móvil común · 21/11/2026
 
 La capa común v28 contiene también los wrappers históricos `overflow-x-auto`

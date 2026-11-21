@@ -2368,6 +2368,62 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-s
 }
 
 /* ========================================================================
+   Órbita · Pase · raíz operativa única
+   ------------------------------------------------------------------------
+   Pase puede montarse como panel independiente o incrustado en Inicio. La
+   misma composición debe aplicarse a ambas raíces para que el plano, la cola,
+   los filtros y los estados no vuelvan a mezclar estilos históricos.
+   ======================================================================== */
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] #la-pase,
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase,
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-orbita-pase {
+  min-width: 0;
+  max-width: 100%;
+  box-sizing: border-box;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase button,
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase select,
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase input,
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase [role="button"] {
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-mesa {
+  min-height: 76px !important;
+  border-color: var(--c-divider);
+  background: var(--c-surface);
+  color: var(--c-ink);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-mesa[data-estado="LIBRE"] { border-color: var(--c-accent); }
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-mesa[data-estado="OCUPADA"] { border-color: var(--c-amber) !important; }
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-mesa[data-estado="RESERVADA"] { border-color: var(--c-focus-ring) !important; }
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-mesa[data-estado="BLOQUEADA"],
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-mesa[data-estado="FUERA_SERVICIO"] { border-color: var(--c-divider) !important; }
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-cola {
+  min-width: 0;
+  max-width: 100%;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-cola li {
+  min-width: 0;
+  border-color: var(--c-divider);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-aviso {
+  background: var(--c-amber-soft);
+  border-color: var(--c-amber);
+  color: var(--c-ink);
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-abajo {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="pase"] .la-pase-cola {
+    max-height: 430px;
+    overflow-y: auto;
+    overscroll-behavior-block: contain;
+  }
+}
+
+/* ========================================================================
    Órbita · Cocina y comandas
    ------------------------------------------------------------------------
    Cocina mantiene el contrato operativo del servidor (estaciones, rutas,
