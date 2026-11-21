@@ -53,6 +53,45 @@
     return Array.prototype.slice.call(marco.querySelectorAll("[data-la-orbita-nav-item]"));
   }
 
+  function marcarBarraInferior(bottom) {
+    if (!bottom) return;
+    Array.prototype.forEach.call(bottom.querySelectorAll(":scope > button, :scope > a"), function (button) {
+      button.setAttribute("data-la-orbita-nav-item", "");
+      button.classList.add("la-orbita-bottom-item");
+      /* Los handlers pertenecen al componente React; solo conservamos una
+         marca semántica para que el shell pueda buscar y pintar el activo. */
+      if (!button.dataset.laOrbitaBound) {
+        button.dataset.laOrbitaBound = "1";
+        button.addEventListener("click", function () {
+          Array.prototype.forEach.call(bottom.querySelectorAll("[data-la-orbita-nav-item]"), function (item) {
+            item.removeAttribute("aria-current");
+          });
+          button.setAttribute("aria-current", "page");
+        });
+      }
+    });
+  }
+
+  function sincronizarBarraInferior(bottom, ruta) {
+    if (!bottom) return;
+    var patrones = {
+      inicio: /inicio|panel general|dashboard/i,
+      tpv: /tpv|venta|sala/i,
+      cocina: /cocina/i,
+      caja: /caja|arqueo/i,
+      personal: /fichaje|personal|empleado/i
+    };
+    var patron = patrones[ruta];
+    if (!patron) return;
+    var encontrado = Array.prototype.slice.call(bottom.querySelectorAll("[data-la-orbita-nav-item]"))
+      .find(function (item) { return patron.test(textoVisible(item)); });
+    if (!encontrado) return;
+    Array.prototype.forEach.call(bottom.querySelectorAll("[data-la-orbita-nav-item]"), function (item) {
+      if (item === encontrado) item.setAttribute("aria-current", "page");
+      else item.removeAttribute("aria-current");
+    });
+  }
+
   function contextoActual() {
     var sidebar = marco && marco.querySelector(".la-orbita-sidebar");
     if (!sidebar) return ultimoContexto || "Selecciona empresa y local";
@@ -127,9 +166,14 @@
     cerrar.addEventListener("click", function () { dialogo.close(); });
     var input = h("input", { type: "search", class: "la-orbita-search-input", placeholder: "Busca una pantalla, módulo o tarea", autocomplete: "off", "aria-label": "Buscar en la suite" });
     var lista = h("div", { class: "la-orbita-search-list", role: "listbox" });
+    var vistos = new Set();
     var items = botonesNavegacion().map(function (button) {
       return { label: textoVisible(button), button: button };
-    }).filter(function (item) { return item.label; });
+    }).filter(function (item) {
+      if (!item.label || vistos.has(item.label)) return false;
+      vistos.add(item.label);
+      return true;
+    });
     function render() {
       var consulta = input.value.trim().toLocaleLowerCase("es");
       lista.replaceChildren();
@@ -420,10 +464,14 @@
     var main = marco.querySelector(":scope > main");
     if (main) main.classList.add("la-orbita-main");
     var bottom = marco.querySelector(":scope > [data-la-barra-inferior]");
-    if (bottom) bottom.classList.add("la-orbita-bottom-nav");
+    if (bottom) {
+      bottom.classList.add("la-orbita-bottom-nav");
+      marcarBarraInferior(bottom);
+    }
     var rumbo = marco.querySelector(":scope > main .la-rumbo-acceso");
     if (rumbo) rumbo.classList.add("la-orbita-legacy-search");
     marcarSuperficie(main, sidebar);
+    if (bottom) sincronizarBarraInferior(bottom, marco.getAttribute("data-la-orbita-route"));
     actualizarCabecera();
   }
 

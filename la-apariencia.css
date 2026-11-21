@@ -194,7 +194,49 @@ html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
 .la-orbita-main[data-la-orbita-surface="caja"] .la-operacion-caja {
   min-width: 0;
 }
-.la-orbita-bottom-nav { grid-column: 2; grid-row: 3; }
+.la-orbita-bottom-nav {
+  grid-column: 2;
+  grid-row: 3;
+  display: grid !important;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  align-items: stretch;
+  min-height: 64px;
+  padding: 4px 8px !important;
+  gap: 4px;
+  background: var(--c-surface) !important;
+  border-top: 1px solid var(--c-divider) !important;
+  box-shadow: 0 -8px 24px rgba(7, 25, 18, .08);
+  z-index: 30;
+}
+.la-orbita-bottom-item {
+  position: relative;
+  display: flex !important;
+  min-width: 44px;
+  min-height: 56px !important;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  padding: 7px 6px !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--la-radius-md) !important;
+  background: transparent !important;
+  color: var(--c-ink-soft) !important;
+  font: 600 var(--la-type-caption)/1.15 var(--la-font) !important;
+  text-align: center;
+  transition: background-color .16s ease, color .16s ease, border-color .16s ease;
+}
+.la-orbita-bottom-item svg { width: var(--la-icon-md); height: var(--la-icon-md); flex: 0 0 auto; }
+.la-orbita-bottom-item[aria-current="page"],
+.la-orbita-bottom-item:hover,
+.la-orbita-bottom-item:focus-visible {
+  border-color: var(--c-accent-fill) !important;
+  background: var(--c-accent-soft) !important;
+  color: var(--c-accent) !important;
+}
+.la-orbita-bottom-item:focus-visible { outline: 3px solid var(--c-focus-ring); outline-offset: 1px; }
+@media (min-width: 768px) {
+  .la-orbita-bottom-nav { display: none !important; }
+}
 .la-orbita-legacy-search { display: none !important; }
 .la-rumbo-acceso { display: none !important; }
 body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
@@ -226,7 +268,13 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
   .la-orbita-appearance::after { content: "✦"; font-size: 17px; }
   .la-orbita-qa { min-height: 24px; padding-inline: 7px; font-size: 10px; }
   .la-orbita-main { grid-column: 1; grid-row: 2; padding: 12px !important; }
-  .la-orbita-bottom-nav { grid-column: 1; grid-row: 3; min-height: 56px; }
+  .la-orbita-bottom-nav {
+    grid-column: 1;
+    grid-row: 3;
+    min-height: 64px;
+    padding-inline: 4px !important;
+  }
+  .la-orbita-bottom-item { font-size: 10px !important; }
   .la-orbita-context-menu { inset-block-start: 58px; inset-inline-start: 10px; }
   .la-orbita-profile-menu { inset-block-start: 58px; inset-inline-end: 10px; }
   .la-orbita-page-title-wrap { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
