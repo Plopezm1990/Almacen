@@ -1389,3 +1389,17 @@ coral (`rgb(255,75,50)`/`rgb(255,142,125)`), fondos de estado semánticos y
 transparencia; no apareció el verde/dorado histórico. Las seis rutas
 mantuvieron `overflow=false` y un mínimo visible de `44 px`. La auditoría no
 modificó datos ni handlers y no sustituye la prueba autenticada de cada módulo.
+
+### Acceso/MFA · remapeo de la paleta heredada · 21/11/2026
+
+La revisión estática encontró que `MfaGate` conservaba estilos inline del diseño
+Sello: fondo radial verde, tarjeta verde, borde dorado, tipografía Georgia y
+botón de acción dorado. Esa convivencia afectaba al módulo Acceso aunque el
+login principal ya usase Órbita. Se añadió una capa CSS específica, sin tocar
+`MfaGate`, sus handlers, las llamadas MFA ni la paridad de `fuente.js` y
+`source-recovery/fuente-recuperado.js`: el fondo, la tarjeta, el campo
+`one-time-code`, la acción primaria y «Cerrar sesión» consumen ahora los tokens
+Órbita y la escala común de 44 px. La hoja se sirve con la marca
+`qa-orbita-modules-v63-20261121` (huella P01 `515475166ec7aea9`). Se añadió un
+contrato negativo para impedir que vuelvan los selectores heredados. La fila
+Acceso sigue `PARCIAL`: falta recorrer MFA con sesión autenticada y código real.

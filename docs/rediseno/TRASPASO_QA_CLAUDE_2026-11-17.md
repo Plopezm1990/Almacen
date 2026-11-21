@@ -1462,6 +1462,19 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Acceso/MFA · eliminación de la convivencia Sello/Órbita · 21/11/2026
+
+La auditoría del punto 4 detectó que el componente MFA (`MfaGate`) todavía
+inyectaba una superficie radial verde, tarjeta verde, borde dorado, Georgia y
+botón dorado mediante estilos inline. Se remapeó esa composición desde
+`la-apariencia.css` a los tokens del marco Órbita: fondo y superficie activos,
+tipografía IBM Plex Sans, campo de código, botón primario y salida con mínimo
+44 px. No se modificaron autenticación, MFA, permisos, datos, handlers ni la
+paridad de las fuentes. La caché queda en
+`qa-orbita-modules-v63-20261121`, huella P01 `515475166ec7aea9`; los contratos
+de componentes verifican los tres selectores MFA. La fila Acceso continúa
+`PARCIAL` hasta repetir login/MFA con una sesión QA autenticada.
+
 ### TPV · comprobación de paleta · 21/11/2026
 
 La auditoría live de TPV no encontró fondos verdes/dorados heredados entre los
