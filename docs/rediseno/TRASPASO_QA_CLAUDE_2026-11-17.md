@@ -1473,8 +1473,8 @@ botones, alerta y resumen mediante los tokens `--c-*`, la tipografía común y
 `--la-control-height`; se conserva la lógica de autenticación, los handlers y
 la paridad de `fuente.js`.
 
-La caché activa queda en `qa-orbita-modules-v66-20261121`, huella P01
-`2d2f01d1eb801325`. Contratos de capas y componentes pasan. La prueba MFA real
+La caché activa queda en `qa-orbita-modules-v67-20261121`, huella P01
+`fb1546ac4f812bd2`. Contratos de capas y componentes pasan. La prueba MFA real
 y la revisión con un administrador de Plataforma siguen pendientes; no se
 debe marcar Acceso ni Plataforma como terminados por este cambio aislado.
 

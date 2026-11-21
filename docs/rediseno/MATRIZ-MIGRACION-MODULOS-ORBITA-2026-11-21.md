@@ -1446,7 +1446,7 @@ añadió una normalización específica para `[role="dialog"][aria-labelledby="l
 overlay, tarjeta, título, texto, campo OTP, acción primaria, alerta y resumen
 usan los tokens del tema, la tipografía común y la altura táctil de `44 px`.
 No se tocaron handlers, MFA, paridad de fuente ni permisos. La hoja vigente es
-`qa-orbita-modules-v66-20261121` (huella P01 `2d2f01d1eb801325`). La fila
+`qa-orbita-modules-v67-20261121` (huella P01 `fb1546ac4f812bd2`). La fila
 Acceso continúa `PARCIAL` porque la prueba funcional de MFA y la sesión de
 administrador de Plataforma siguen fuera de esta tanda.
 

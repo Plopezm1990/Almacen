@@ -136,6 +136,18 @@ html[data-la-diseno] #root [style*="#D9C69A"],
 html[data-la-diseno] #root [style*="#E2D3B8"] {
   color: var(--c-accent, #FF8E7D) !important;
 }
+/* El botón de Seguridad se monta desde la cabecera histórica con colores
+   inline y una altura de 24 px. Se conserva su handler/MFA, pero la superficie
+   Órbita debe ser la autoridad visual también en Inicio y Configuración. */
+html[data-la-diseno] #root button[style*="rgba(255,255,255,0.08)"],
+html[data-la-diseno] #root button[style*="rgba(255, 255, 255, 0.08)"] {
+  min-height: var(--la-control-height) !important;
+  padding-inline: var(--la-space-3) !important;
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+}
 html[data-la-diseno] #root [class*="md:hidden"][class*="items-center"][class*="justify-between"] {
   background: var(--c-chrome, #15171B) !important;
   color: var(--c-ink, #F1F3F6) !important;
