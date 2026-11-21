@@ -91,3 +91,36 @@ anulación/reembolso con movimientos de caja. Queda como dato sintético
 auditable la venta `V-20261121-65D717` anulada y el pedido cerrado; no borrar
 ninguno de los dos.
 
+## Cierre formal de terminales · comprobación posterior
+
+La verificación de dos navegadores/terminales ya estaba realizada antes de
+esta anotación: Chrome quedó en `QA terminal A1` y Firefox en `QA terminal A2`.
+No se repitió ese recorrido.
+
+En la sesión A2 se ejecutó el flujo completo de cierre provisional y cierre
+definitivo del servidor; el cierre fue aceptado. Después se abrió de nuevo una
+sesión A2 con fondo inicial `0,00 €` para conservar la cobertura Q08 de dos
+terminales.
+
+En A1 el cierre provisional se registró con contado `0,00 €` frente a un
+esperado de `118,44 €`, con motivo y aprobación del Propietario. El intento de
+cierre definitivo fue rechazado por el servidor con los bloqueos
+`EFECTOS_PENDIENTES` y `PAGOS_PENDIENTES`; el ensayo C12 los reproduce y además
+señala la diferencia de efectivo. No es un fallo del navegador ni de la capa
+Órbita.
+
+Consulta de solo lectura realizada contra QA-EMP-A:
+
+- `efectos_pendientes`: QA-A1 tiene 55 filas `PENDIENTE` (37 `COMPLETADO`, 7
+  `ABANDONADO`). Entre las pendientes hay comandas de ensayos anteriores y
+  comandas antiguas sin ruta de preparación.
+- `pagos`: QA-A1 tiene 4 filas `PENDIENTE`, todas intentos de tarjeta antiguos
+  (0,60 €, 1,32 €, 0,32 € y 7,27 €; fechas 01–13/11/2026).
+
+La pantalla Cocina confirma que existen comandas `BLOQUEADA · Sin estación` y
+advierte que asignar una ruta no reenvía automáticamente la comanda existente.
+Por seguridad no se cambiaron estados ni se cancelaron pagos directamente en
+la base de datos: habría que resolverlos mediante el flujo operativo de
+servidor o preparar una limpieza de fixtures QA explícitamente autorizada.
+Hasta entonces, A1 no puede pasar de `CIERRE_PROVISIONAL` a `CERRADA_FINAL`.
+

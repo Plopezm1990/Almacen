@@ -1499,6 +1499,27 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Punto 1 · estado real del cierre TPV/sala/caja · 21/11/2026
+
+La prueba de dos terminales ya estaba hecha: Chrome en A1 y Firefox en A2.
+A2 completó cierre provisional y definitivo, y después se reabrió con fondo
+`0,00 €` para conservar la cobertura Q08. No debe repetirse ese recorrido.
+
+A1 queda en `CIERRE_PROVISIONAL`. El servidor rechaza el definitivo con
+`PAGOS_PENDIENTES` y `EFECTOS_PENDIENTES`; C12 lo reproduce y añade la
+diferencia de efectivo (`esperado 118,44 €`, `contado 0,00 €`). La causa se
+confirmó en solo lectura sobre QA-EMP-A: 55 efectos en `PENDIENTE` y 4 pagos
+en `PENDIENTE` (intentos de tarjeta antiguos). Cocina muestra además
+comandas antiguas `BLOQUEADA · Sin estación` y avisa de que asignar una ruta no
+reenvía automáticamente las comandas ya creadas.
+
+No se modificaron esas filas con SQL ni se inventaron cobros/reembolsos. Para
+cerrar A1 faltan una de estas dos vías, siempre dentro de QA: resolver los
+efectos/pagos mediante sus flujos operativos de servidor, o autorizar una
+limpieza de fixtures QA que conserve la evidencia y deje un acta de lo
+retirado. Mientras ninguna se ejecute, el punto 1 no puede declararse cerrado
+formalmente aunque Q07, Q08 y los recorridos funcionales ya estén verificados.
+
 ### Punto 1 · permisos de Camarero/a cerrados live · 21/11/2026
 
 La cuenta `qa.permisos.20261116@qa.invalid` entró en Deploy Preview #225 como
