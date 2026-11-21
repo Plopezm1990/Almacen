@@ -93,6 +93,17 @@ P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
 Esta matriz es de seguimiento, no un cierre prematuro. El objetivo 4 sigue
 activo hasta que los doce módulos pasen individualmente a `CERRADO`.
 
+### Corrección transversal · arranque local desde Acceso
+
+El botón «Trabajar solo en este equipo, sin sincronizar» cambiaba la fase de
+login a `dentro`, pero conservaba el cliente Supabase que se había creado al
+abrir el formulario. En Deploy Preview eso dejaba el arranque intentando leer
+la nube QA y podía mantener «Cargando almacén…» indefinidamente. `fuente.js` y
+`source-recovery/fuente-recuperado.js` ahora activan explícitamente
+`__modoPruebasLocal`, limpian el cliente y desactivan la sincronización antes
+de montar la suite. La corrección no toca datos ni producción; la marca de
+caché pasó a `qa-persistencia-sin-advertencias-v2-20261121`.
+
 ### Inicio y panel general · eliminación de la paleta heredada
 
 La superficie de Inicio conserva el panel Órbita y el detalle operativo

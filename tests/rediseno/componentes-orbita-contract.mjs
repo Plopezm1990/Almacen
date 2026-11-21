@@ -10,6 +10,18 @@ const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
+const normalizeNewlines = (text) => text.replace(/\r\n/g, '\n');
+const localAccessBlock = (text) => {
+  const start = text.indexOf('function entrarSinNube()');
+  const end = text.indexOf('\n  }', start);
+  assert.ok(start >= 0 && end > start, 'no se pudo localizar el acceso local');
+  return normalizeNewlines(text.slice(start, end + 4));
+};
+assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true/,
+  'Acceso no desactiva la nube al elegir modo local');
+assert.equal(localAccessBlock(source), localAccessBlock(recovery),
+  'el acceso local debe conservar paridad entre fuente y recuperación');
+
 assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v40-20261121/);
 assert.ok(css.includes('overscroll-behavior-inline: contain'), 'las tablas Órbita no encapsulan el desplazamiento móvil');
 assert.ok(css.includes('main[data-la-orbita-module] .overflow-x-auto'), 'los wrappers históricos no encapsulan el desplazamiento móvil');

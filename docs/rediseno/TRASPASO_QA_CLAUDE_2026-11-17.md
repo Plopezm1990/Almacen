@@ -1647,6 +1647,15 @@ Deploy Preview 225: `6b014b8aabe0ae40a1c2ee97` (`ready`), commit `b1b142ba`.
 Evidencia no autenticada: el preview muestra `Iniciar sesión`, recuperación,
 acceso sin sincronizar y Apariencia; falta recorrer la sesión autenticada y MFA.
 
+### Corrección transversal · arranque local desde Acceso
+
+El modo «sin sincronizar» conservaba el cliente Supabase que se había creado
+al abrir el formulario de acceso; en Preview podía dejar la suite en
+«Cargando almacén…». La corrección activa `__modoPruebasLocal`, limpia el
+cliente y desactiva la sincronización antes de montar la aplicación, con
+paridad entre `fuente.js` y `source-recovery/fuente-recuperado.js`. La caché
+del recurso pasa a `qa-persistencia-sin-advertencias-v2-20261121`.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo

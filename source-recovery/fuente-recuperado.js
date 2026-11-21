@@ -30826,6 +30826,12 @@ function AppConSesion() {
     setFase("login");
   }
   function entrarSinNube() {
+    // El botón de trabajo local debe poder anular el cliente QA que ya se
+    // inicializó mientras se mostraba el formulario de acceso. Si solo se
+    // cambia la fase, el arranque sigue intentando leer el backend y puede
+    // quedarse indefinidamente en «Cargando almacén…».
+    window.__modoPruebasLocal = true;
+    window.__nubeCliente = null;
     window.__nubeActiva = false;
     window.actualizarIndicador();
     setFase("dentro");
