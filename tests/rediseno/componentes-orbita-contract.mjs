@@ -11,6 +11,7 @@ const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 const resetPassword = readFileSync(resolve(root, 'restablecer-contrasena.html'), 'utf8');
 const ownerBootstrap = readFileSync(resolve(root, 'owner-bootstrap-post-reset.js'), 'utf8');
+const platformPanel = readFileSync(resolve(root, 'plataforma-panel.js'), 'utf8');
 
 const normalizeNewlines = (text) => text.replace(/\r\n/g, '\n');
 const localAccessBlock = (text) => {
@@ -59,6 +60,9 @@ assert.ok(css.includes('#la-plataforma-root .lap-tarjeta'), 'Plataforma previa n
 assert.ok(css.includes('#la-plataforma-root .lap-btn'), 'Plataforma previa no normaliza controles');
 assert.ok(css.includes('#la-plataforma-root .lap-campo textarea'), 'Plataforma previa no normaliza áreas de texto');
 assert.ok(css.includes('.la-acceso button:focus-visible') && css.includes('.lap-btn:focus-visible'), 'Acceso y Plataforma no exponen foco Órbita');
+assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v3-20261121/, 'Plataforma no invalida la caché tras marcar la superficie externa');
+assert.match(platformPanel, /data-la-orbita-external["']:\s*["']plataforma["']/g, 'Plataforma no expone su marca externa Órbita');
+assert.match(platformPanel, /data-la-orbita-surface["']:\s*["']plataforma["']/g, 'Plataforma no expone su superficie Órbita');
 assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipográfico inexistente');
 assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
 assert.match(css, /--la-mono:\s*["']IBM Plex Mono["']/, 'MFA usa --la-mono sin declararlo');

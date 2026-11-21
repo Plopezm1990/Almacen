@@ -876,3 +876,18 @@ los controles táctiles de 44 px y la revisión responsive. Esta pasada no prueb
 permisos, persistencia, cobros, reembolsos, MFA ni estados de servidor con una
 sesión autenticada: esos requisitos siguen siendo el criterio pendiente para
 pasar cada fila de `PARCIAL` a `CERRADO`.
+
+### Plataforma previa al shell · marca semántica externa · 21/11/2026
+
+Las dos superficies que Plataforma monta antes de abrir el `main` autenticado
+(`la-plataforma-root` y `la-plataforma-cambio-root`) exponen ahora
+`data-la-orbita-external="plataforma"` y
+`data-la-orbita-surface="plataforma"`. La hoja visual ya las normalizaba por
+id; la marca hace verificable que el panel administrador y el cambio de
+contraseña pertenecen al mismo marco Órbita sin duplicar navegación ni tocar
+permisos, RPC o handlers. `plataforma-panel.js` se sirve con
+`qa-orbita-platform-v3-20261121`.
+
+El contrato de componentes comprueba ambas marcas y la paridad del resto de
+la capa. La verificación de acceso de administrador sigue pendiente para
+cerrar Plataforma funcionalmente.

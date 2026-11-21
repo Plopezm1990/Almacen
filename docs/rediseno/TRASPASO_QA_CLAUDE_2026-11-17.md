@@ -1505,6 +1505,17 @@ pero no sustituye la verificación autenticada de permisos, persistencia,
 estados de servidor, Plataforma administradora ni login/MFA. Las filas de la
 matriz permanecen `PARCIAL` por ese motivo.
 
+### Plataforma previa al shell · marca semántica externa · 21/11/2026
+
+`plataforma-panel.js` marca ahora sus dos raíces externas con
+`data-la-orbita-external="plataforma"` y
+`data-la-orbita-surface="plataforma"`, y se publica con la caché
+`qa-orbita-platform-v3-20261121`. Es una identificación aditiva para que la
+capa Órbita pueda reconocer el panel administrador y el cambio de contraseña
+antes de que exista el shell autenticado; no modifica operaciones,
+autenticación, permisos ni datos. El contrato de componentes la exige. Falta
+todavía recorrer esas superficies con una cuenta administradora real de QA.
+
 También se corrigió la prioridad de ruta: al pulsar Panel general, el shell
 mantiene `inicio` aunque Pase esté incrustado. La navegación marca el destino
 activo para que el siguiente recorrido no confunda la sub-superficie operativa
