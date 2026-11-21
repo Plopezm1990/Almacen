@@ -186,6 +186,7 @@ html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
   background: linear-gradient(90deg, var(--c-accent-fill), #8CC3FF);
 }
 .la-orbita-main[data-la-orbita-surface="pase"] #la-pase,
+.la-orbita-main[data-la-orbita-surface="pase"] .la-pase,
 .la-orbita-main[data-la-orbita-surface="tpv"] .tpv-layout,
 .la-orbita-main[data-la-orbita-surface="cocina"] .la-operacion-cocina,
 .la-orbita-main[data-la-orbita-surface="caja"] .la-operacion-caja {
@@ -248,6 +249,7 @@ html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module] > h3 {
 }
 html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="tpv"] .tpv-layout,
 html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="pase"] #la-pase,
+html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="pase"] .la-pase,
 html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="cocina"] .la-operacion-cocina,
 html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="caja"] .la-operacion-caja,
 html[data-la-diseno] #root .la-orbita-main[data-la-orbita-module="inicio"] .la-panel-diseno {
@@ -1135,6 +1137,47 @@ html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) {
   --pase-tinta: var(--c-ink);
   --pase-tinta-suave: var(--c-ink-soft);
   --pase-acento: var(--c-accent-fill);
+}
+
+/* El panel de Pase montado sobre Inicio usa la raíz semántica `.la-pase`
+   (el id histórico solo existe en recorridos antiguos). Mantener ambas raíces
+   evita que el marco Órbita dependa de una variante concreta del componente. */
+html[data-la-diseno="orbita"] .la-pase.la-orbita-pase,
+html[data-la-diseno="orbita"] .la-pase:not(.la-ascua) {
+  --pase-fondo: var(--c-surface);
+  --pase-panel: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  --pase-tarjeta: color-mix(in srgb, var(--c-surface) 88%, #FFFFFF);
+  --pase-tinta: var(--c-ink);
+  --pase-tinta-suave: var(--c-ink-soft);
+  --pase-acento: var(--c-accent-fill);
+}
+html[data-la-diseno="orbita"] .la-pase:not(.la-ascua) .la-pase-turno,
+html[data-la-diseno="orbita"] .la-pase:not(.la-ascua) .la-pase-caja,
+html[data-la-diseno="orbita"] .la-pase:not(.la-ascua) .la-pase-plano {
+  border: 1px solid var(--c-divider);
+  border-block-start: 2px solid var(--c-accent-fill);
+  border-radius: var(--la-radio);
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  color: var(--c-ink);
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .14);
+}
+html[data-la-diseno="orbita"] .la-pase:not(.la-ascua) .la-pase-titulo {
+  background: linear-gradient(105deg, #D0ABFF, #B0A6FF 45%, #8CC3FF);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+html[data-la-diseno="orbita"] .la-pase:not(.la-ascua) .la-pase-titulo em {
+  color: var(--c-accent);
+  -webkit-text-fill-color: currentColor;
+}
+html[data-la-diseno="orbita"] .la-pase:not(.la-ascua) .la-pase-mesa,
+html[data-la-diseno="orbita"] .la-pase:not(.la-ascua) .la-pase-accion {
+  border-color: var(--c-divider);
+  border-radius: var(--la-radio);
+}
+html[data-la-diseno="orbita"] .la-pase:not(.la-ascua) .la-pase-accion {
+  background: var(--c-accent-fill);
+  color: var(--c-on-accent);
 }
 
 html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-turno,

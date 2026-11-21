@@ -237,7 +237,7 @@
 
   function rutaActiva(sidebar, main) {
     if (main && main.querySelector(".tpv-layout")) return "tpv";
-    if (main && main.querySelector("#la-pase")) return "pase";
+    if (main && main.querySelector("#la-pase, .la-pase")) return "pase";
     if (main && main.querySelector(".la-operacion-cocina")) return "cocina";
     if (main && main.querySelector(".la-operacion-caja")) return "caja";
     var activa = sidebar && sidebar.querySelector('[aria-current="page"]');
@@ -270,7 +270,7 @@
     if (main) {
       main.setAttribute("data-la-orbita-route", ruta);
       var superficie = main.querySelector(".tpv-layout") ? "tpv" :
-        main.querySelector("#la-pase") ? "pase" :
+        main.querySelector("#la-pase, .la-pase") ? "pase" :
         main.querySelector(".la-operacion-cocina") ? "cocina" :
         main.querySelector(".la-operacion-caja") ? "caja" : ruta;
       main.setAttribute("data-la-orbita-surface", superficie);
@@ -285,7 +285,7 @@
         tituloViejo.classList.remove("la-orbita-page-title");
       });
       var titulo = main.querySelector("h2");
-      if (titulo && !titulo.closest(".la-operacion-cocina, .la-operacion-caja, #la-pase, .tpv-layout")) {
+      if (titulo && !titulo.closest(".la-operacion-cocina, .la-operacion-caja, #la-pase, .la-pase, .tpv-layout")) {
         titulo.classList.add("la-orbita-page-title");
         if (titulo.parentElement) titulo.parentElement.classList.add("la-orbita-page-title-wrap");
       }
