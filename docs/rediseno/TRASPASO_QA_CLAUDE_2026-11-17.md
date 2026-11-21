@@ -1490,6 +1490,37 @@ La evidencia se registra también como `qa-20261121-orbita-cocina` y
 trabajo continúa con Compras, Inventario, Personal, Configuración, Plataforma
 y Acceso; ningún módulo se marca `CERRADO` solo por inspección estática.
 
+### Recorrido QA autenticado · Compras, Inventario, Personal, Configuración y Caja · 21/11/2026
+
+En la misma sesión de propietario, local QA-A1 y viewport `1195×678`, se
+recorrieron cinco superficies adicionales. Todas devolvieron `overflow=false`
+y conservaron la cabecera Órbita.
+
+- **Compras:** «Pedidos de compra», «Nuevo pedido» y el estado vacío «No hay
+  pedidos registrados todavía». No se creó pedido; la fila queda `PARCIAL`.
+- **Inventario:** tabla real de Productos con búsqueda, filtros por tipo y
+  departamento, Kardex, Editar, Registrar salida y Eliminar producto. Se ven
+  stock, margen, ABC y fixtures de QA (incluidos bajo mínimo y caducidad). No
+  se registró ninguna salida ni eliminación; fila `PARCIAL`.
+- **Personal:** empleados QA cargados, cargos Camarero/a, Cajero/a y
+  Encargado, fichas de baja y acciones de historial, EPI y cuenta de acceso.
+  El medidor de escritorio detecta controles de 24 px en esta superficie; se
+  mantiene abierta la revisión táctil móvil antes de cerrar.
+- **Configuración:** secciones de Día y cajas, Sala y mesas, Modalidades,
+  Equipos, Terminales y cajas, Fiscalidad y AEAT, Cargos y permisos, Permisos
+  y Verificación en dos pasos. El motivo obligatorio de auditoría y los
+  controles de corte están visibles; no se guardó ningún ajuste.
+- **Caja:** apertura de sesión, fondo inicial, fecha, efectivo esperado,
+  movimientos bajo demanda, contado, notas e historial. No se abrió/cerró
+  caja ni se hizo ningún cobro o reembolso nuevo.
+
+Estas observaciones se registran como `qa-20261121-orbita-compras`,
+`qa-20261121-orbita-inventario`, `qa-20261121-orbita-personal`,
+`qa-20261121-orbita-configuracion` y `qa-20261121-orbita-caja` en la matriz.
+Siguen `PARCIAL` hasta completar móvil, estados de carga/vacío/error y los
+recorridos funcionales permitidos; Personal además requiere resolver el suelo
+táctil de 44 px.
+
 ### Primer recorrido QA autenticado del objetivo 4 · Inicio y TPV · 21/11/2026
 
 Se recuperó una sesión de propietario en `QA-EMP-A` / `QA-A1` y se recorrieron
