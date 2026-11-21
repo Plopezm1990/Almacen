@@ -734,3 +734,17 @@ El commit quedó publicado en el Deploy Preview 225 como
 `6b01684ad1ed5298eea45317` (`ready`), `commit_ref=37080596af67e46a04cc7c313293f69a0e8b3521`.
 El escaneo de secretos no encontró coincidencias y las siete reglas de
 cabeceras se procesaron sin error.
+
+### Evidencia live posterior · barra móvil · Preview 225
+
+Con el Preview 225 actualizado (`?cache=qa-orbita-modules-v44-20261121`) se
+abrió el modo local en viewport táctil `618×678`. El árbol accesible mostró las
+cuatro pestañas `Inicio`, `Resultados`, `Arqueo de caja` y `Más`, además de la
+cabecera común con contexto `Local A1 · QA Empresa A, S.L.`, QA, búsqueda,
+avisos, perfil y Apariencia. La captura visual confirmó que la barra queda en
+su propia fila inferior, que el estado activo se distingue con borde/acento y
+que no tapa el contenido ni introduce desplazamiento horizontal visible.
+La ruta quedó en Inicio/Órbita; los estados de Pase y Cocina se mostraron como
+avisos de conexión explícitos en modo local, sin operaciones ni escrituras.
+Esta evidencia confirma la corrección transversal del shell; las filas de los
+módulos siguen `PARCIAL` hasta sus recorridos autenticados y de datos reales.

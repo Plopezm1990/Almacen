@@ -1478,6 +1478,14 @@ La evidencia visual móvil de esta revisión queda pendiente de una nueva pasada
 en el Preview 225; no se debe declarar cierre de ningún módulo hasta repetirla
 con la barra renderizada y, para las rutas operativas, con sesión QA.
 
+La pasada se completó después del despliegue: en `618×678`, el modo local del
+Preview 225 mostró la barra inferior Órbita con `Inicio`, `Resultados`, `Arqueo
+de caja` y `Más`, el activo resaltado y la cabecera común completa. No hubo
+desbordamiento horizontal visible ni se ejecutaron escrituras; Pase y Cocina
+mostraron sus avisos de conexión de modo local. La evidencia confirma el shell
+móvil, pero no sustituye los recorridos autenticados que mantienen las doce
+filas de la matriz en `PARCIAL`.
+
 El commit `37080596af67e46a04cc7c313293f69a0e8b3521` está desplegado en el
 Preview 225 como `6b01684ad1ed5298eea45317` (`ready`). El escaneo de secretos
 de Netlify devolvió cero coincidencias y las siete reglas de cabeceras pasaron.
