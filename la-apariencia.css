@@ -2997,6 +2997,41 @@ html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [role="statu
 html[data-la-diseno] #root main[data-la-orbita-module="inventario"] table {
   max-width: 100%;
 }
+/* Inventario · informe móvil PM12/P09. El módulo se monta en una vista
+   histórica con estilos propios; estos selectores lo incorporan al mismo
+   contrato de tarjeta, estado y tipografía sin cambiar sus datos. */
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .pm12-p09-meta,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .pm12-p09-note {
+  color: var(--c-ink-soft) !important;
+  border-color: var(--c-divider) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .pm12-p09-report {
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-accent-soft) !important;
+  color: var(--c-ink) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .pm12-p09-report-title,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .pm12-p09-stat b {
+  color: var(--c-ink) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .pm12-p09-stat {
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .pm12-p09-stat span {
+  color: var(--c-ink-soft) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [data-pm12-p09-actions="1"] button,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .pm12-p09-capture-grid input,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .pm12-p09-capture-grid select {
+  min-height: var(--la-control-height) !important;
+}
 html[data-la-diseno] #root main[data-la-orbita-module="inventario"] details > summary {
   min-height: var(--la-control-height);
   display: flex;

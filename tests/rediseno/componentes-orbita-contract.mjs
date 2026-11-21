@@ -26,7 +26,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v51-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v52-20261121/);
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,
   'la ausencia de configuración de empresa debe conservar Órbita como fallback visual');
@@ -55,6 +55,8 @@ assert.ok(css.includes('main[data-la-orbita-module="compras"] .la-ui-card'), 'Co
 assert.ok(css.includes('main[data-la-orbita-module="compras"] [role="alert"]'), 'Compras no normaliza el estado de error');
 assert.ok(css.includes('main[data-la-orbita-module="inventario"] .la-ui-card'), 'Inventario no normaliza tarjetas');
 assert.ok(css.includes('main[data-la-orbita-module="inventario"] table'), 'Inventario no normaliza tablas');
+assert.ok(css.includes('main[data-la-orbita-module="inventario"] .pm12-p09-report'), 'Inventario no normaliza el informe móvil PM12/P09');
+assert.ok(css.includes('main[data-la-orbita-module="inventario"] .pm12-p09-capture-grid input'), 'Inventario no normaliza los campos de captura PM12/P09');
 assert.ok(css.includes('main[data-la-orbita-module="personal"] .la-ui-card'), 'Personal no normaliza tarjetas');
 assert.ok(css.includes('main[data-la-orbita-module="personal"] [role="status"]'), 'Personal no normaliza el estado informativo');
 assert.ok(css.includes('main[data-la-orbita-module="configuracion"] .la-ui-card'), 'Configuración no normaliza tarjetas');
@@ -77,7 +79,7 @@ const shellVisual = css.slice(css.indexOf('.la-orbita-sidebar'), css.indexOf('/*
 assert.doesNotMatch(shellVisual, /rgba\(255,255,255|#8CC3FF|#c7d5ce|#8fb0a1/i,
   'el shell no debe imponer colores literales sobre las paletas activas');
 assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
-assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v51-20261121/, 'la recuperación no carga el contrato de apariencia');
+assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v52-20261121/, 'la recuperación no carga el contrato de apariencia');
 assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
 assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
 

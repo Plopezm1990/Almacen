@@ -1462,6 +1462,22 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Iteración visual de Inventario · v52 · 21/11/2026
+
+La revisión del bloque 4 encontró que los informes móviles PM12/P09 todavía
+conservaban fondos, bordes y tipografía de la capa anterior. Se añadió una
+normalización scoped en `la-apariencia.css` para `.pm12-p09-report`, sus
+estadísticas, metadatos, nota, acciones y controles de captura. Todos consumen
+los tokens activos de Órbita, radio/sombra común y `--la-control-height` (44 px)
+sin tocar la lógica ni los handlers. La marca de caché es
+`qa-orbita-modules-v52-20261121`, huella `ce2d5675f6ef1d25`.
+
+Se añadieron aserciones específicas al contrato de componentes y se actualizaron
+las huellas de P01, `index.html`, recuperación de contraseña y marco. La
+verificación estática pasa; el estado funcional de Inventario permanece
+`PARCIAL` hasta recorrer con sesión sus acciones y estados reales en desktop y
+móvil. No hay cambios de datos en QA.
+
 Tras v51 se ejecutó la batería completa de `tests/rediseno/*.mjs`:
 `ALL_REDISENO_TESTS_PASS=1`. El árbol permanece limpio y `git diff --check`
 continúa pasando. Estos contratos prueban la capa estática y sus bancos de

@@ -1069,3 +1069,18 @@ La batería completa de `tests/rediseno/*.mjs` se repitió después de v51:
 `ALL_REDISENO_TESTS_PASS=1`. También pasaron P01, componentes Órbita, marco,
 rutas, migración modular, Apariencia, MFA, fiscalidad TPV, arranque resiliente,
 paridad y `git diff --check`.
+
+### Inventario · informes móviles PM12/P09 · v52 · 21/11/2026
+
+Se eliminó otra zona visible de la paleta heredada en Inventario: los informes
+móviles PM12/P09, sus tarjetas de métricas, metadatos, acciones y campos de
+captura ahora consumen la escala Órbita (`--c-*`, radios, sombra, tipografía y
+altura táctil de 44 px). La corrección está acotada a
+`main[data-la-orbita-module="inventario"]` y no altera movimientos, mermas,
+caducidad, ajustes, datos, permisos ni handlers. La hoja se sirve como
+`qa-orbita-modules-v52-20261121`, huella `ce2d5675f6ef1d25`.
+
+Los contratos de componentes, marco y capas pasan con esta marca. La fila de
+Inventario continúa `PARCIAL`: falta el recorrido autenticado de movimientos,
+mermas, caducidad y ajustes en escritorio y móvil, aunque la superficie visual
+ya no introduce ese bloque antiguo.
