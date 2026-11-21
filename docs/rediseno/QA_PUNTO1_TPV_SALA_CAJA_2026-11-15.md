@@ -269,3 +269,18 @@ El producto de ensayo se dejó con su configuración original de preparación y
 el stock quedó en 49 litros por el consumo de la venta. La sesión de caja ya
 estaba activa antes del ensayo; no se abrió ni cerró otra sesión. Arqueo mostró
 2,00 € esperados (1,00 € de venta y 1,00 € de ajuste/reembolso).
+
+## Addendum de permisos Camarero/a · 21/11/2026
+
+La evidencia live de la cuenta restringida está en
+[QA_PUNTO1_PERMISOS_CAMARERO_LIVE_2026-11-21.md](QA_PUNTO1_PERMISOS_CAMARERO_LIVE_2026-11-21.md).
+`qa.permisos.20261116@qa.invalid` entra como Camarero/a en QA-A1. Caja,
+arqueo, cierre, fichajes y recepciones aparecen deshabilitados; el TPV muestra
+`C07D_CONFIG_NO_AUTORIZADO` y «No tienes permiso para operar este TPV en el
+local seleccionado». No se pulsó ningún cobro, tarjeta, factura o reembolso.
+
+El navegador conservaba un borrador local de una línea de producto y un aviso
+de sincronización fallida de `productos`; no se reintentó ni se modificó. Es
+estado local del dispositivo y no una mutación de servidor. La cuenta sintética
+`d802aad8-0099-4092-945b-01adfbb9a569` sigue abierta y documentada para una
+limpieza separada.

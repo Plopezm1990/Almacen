@@ -1462,6 +1462,23 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Punto 1 · permisos de Camarero/a cerrados live · 21/11/2026
+
+La cuenta `qa.permisos.20261116@qa.invalid` entró en Deploy Preview #225 como
+Camarero/a de `QA-EMP-A / QA-A1`. La sesión mostró el local operativo correcto.
+Caja, arqueo, cierre, fichajes y recepciones quedaron deshabilitados; el TPV
+mostró `C07D_CONFIG_NO_AUTORIZADO` y el aviso «No tienes permiso para operar
+este TPV en el local seleccionado». No se ejecutó ningún cobro, reembolso,
+factura ni cierre nuevo. Esto completa la evidencia de UI junto a las tres
+denegaciones server-side ya registradas.
+
+El navegador tenía un borrador local de una línea de `QA Aceite ensayo
+20261115` y un aviso de sincronización fallida de `productos`; no se reintentó
+ni se modificó. La cuenta sintética abierta
+`d802aad8-0099-4092-945b-01adfbb9a569` permanece documentada y requiere una
+limpieza separada. Detalle en
+`docs/rediseno/QA_PUNTO1_PERMISOS_CAMARERO_LIVE_2026-11-21.md`.
+
 ### Punto 1 · evidencia económica live · 21/11/2026
 
 La validación autorizada de TPV, sala y caja ya incluye una venta sintética de
