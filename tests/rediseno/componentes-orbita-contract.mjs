@@ -10,7 +10,7 @@ const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v19-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v20-20261121/);
 assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v2-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);

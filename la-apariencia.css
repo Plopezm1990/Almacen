@@ -231,6 +231,76 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
 }
 
 /* ========================================================================
+   Órbita · Clientes
+   ------------------------------------------------------------------------
+   Listado, vistas guardadas, filtros, ficha y actividad comparten la misma
+   jerarquía de tarjetas y controles. Los datos y la trazabilidad del cliente
+   permanecen en sus componentes existentes.
+   ======================================================================== */
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] {
+  min-width: 0;
+  container-type: inline-size;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] h2 {
+  margin-block-end: var(--la-space-4);
+  font-family: var(--la-display);
+  font-size: var(--la-type-title);
+  letter-spacing: -.025em;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] .la-ui-card {
+  min-width: 0;
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-surface) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] input,
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] select,
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] textarea {
+  min-height: var(--la-control-height);
+  border-color: var(--c-border-control) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] button {
+  min-height: var(--la-control-height);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] [role="group"][aria-label="Vistas guardadas de clientes"],
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] nav[aria-label="Paginación de clientes"] {
+  gap: var(--la-space-2);
+  align-items: center;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] nav[aria-label="Paginación de clientes"] {
+  min-height: var(--la-control-height);
+  padding: var(--la-space-2) var(--la-space-3);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-md);
+  background: color-mix(in srgb, var(--c-surface) 96%, transparent);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] [role="status"] {
+  min-height: var(--la-control-height);
+  border-radius: var(--la-radius-md);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="clientes"] .space-y-2 > .la-ui-card {
+  border-inline-start: 3px solid var(--c-accent-fill) !important;
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="clientes"] .la-ui-card {
+    padding: var(--la-space-4) !important;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="clientes"] .grid.grid-cols-2,
+  html[data-la-diseno] #root main[data-la-orbita-module="clientes"] .grid.grid-cols-3 {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="clientes"] .flex.items-start.justify-between {
+    flex-wrap: wrap;
+    gap: var(--la-space-3);
+  }
+}
+
+/* ========================================================================
    Órbita · Caja, cobros y cierres
    ------------------------------------------------------------------------
    Caja tiene dos recorridos operativos (arqueo y traspasos). Se unifica la
