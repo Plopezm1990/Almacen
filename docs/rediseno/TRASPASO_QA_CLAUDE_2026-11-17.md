@@ -1462,6 +1462,23 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Evidencia móvil QA añadida · 21/11/2026
+
+La sesión propietaria `pm07.smoke@qa.invalid` comprobó en el preview 225,
+empresa `QA-EMP-A`, local `QA-A1`, viewport `390×844`:
+
+- Inicio: `inicio/inicio`, panel y navegación inferior, sin overflow y mínimo
+  interactivo `44 px`.
+- TPV: `tpv/tpv`, catálogo de dos columnas, paginación `1 de 3`, Caja del TPV,
+  sin overflow y mínimo `44 px`.
+- Configuración: `configuracion/configuracion`, pestañas del módulo visibles,
+  sin overflow y mínimo `44 px`.
+
+No se ejecutaron cobros, reembolsos, aperturas ni ajustes. La sesión quedó en
+TPV para continuar. Plataforma sigue pendiente de una cuenta administradora y
+Acceso/MFA de un recorrido específico; no se debe convertir esta evidencia
+responsive en un cierre funcional.
+
 ### Cierre de implementación del objetivo 4 · 21/11/2026 · SHA `9b98bb13`
 
 La capa visual común queda integrada para los doce módulos del orden acordado:

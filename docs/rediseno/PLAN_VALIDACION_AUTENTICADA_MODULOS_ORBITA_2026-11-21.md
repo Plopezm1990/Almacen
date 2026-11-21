@@ -76,3 +76,16 @@ Siguen pendientes la revisión móvil completa, la validación de estados de
 carga/vacío/error, Plataforma con una cuenta administradora específica y el
 recorrido de Acceso sin destruir la sesión de QA. No se usa `sis-13`, no se
 restaura QA y no se ejecutan cobros ni reembolsos nuevos sin autorización.
+
+## Evidencia móvil añadida · 21/11/2026
+
+Con `pm07.smoke@qa.invalid` en `QA-EMP-A / QA-A1` se verificaron en el preview
+225 los módulos Inicio, TPV y Configuración a `390×844`. En los tres casos el
+DOM expuso el módulo y la superficie Órbita esperados, `scrollWidth` coincidió
+con `innerWidth` (`overflow=false`) y el mínimo de los controles visibles fue
+`44 px`. TPV mostró catálogo, paginación y Caja del TPV; Configuración mostró
+las ocho pestañas operativas; Inicio mostró el panel y la navegación inferior.
+Fue una revisión de lectura y no generó operaciones ni cambios de datos.
+
+Esta tanda mejora la cobertura responsive, pero no permite cerrar por sí sola
+las filas: faltan estados de negocio, Plataforma con administrador y Acceso/MFA.

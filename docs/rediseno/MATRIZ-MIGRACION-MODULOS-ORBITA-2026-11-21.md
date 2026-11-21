@@ -1512,3 +1512,21 @@ superficie, borde, radio y altura táctil de Órbita sin tocar el flujo MFA. La
 captura live no registró desbordamiento y no se ejecutaron cobros, aperturas ni
 otros cambios de datos. TPV permanece `PARCIAL`: falta la ficha móvil dedicada,
 los estados de carga/vacío/error y el recorrido funcional de cuentas/tickets.
+
+### Revisión QA móvil autenticada · Inicio, TPV y Configuración · 21/11/2026
+
+Con la sesión de propietario `pm07.smoke@qa.invalid`, empresa `QA-EMP-A`,
+local `QA-A1`, se comprobó el preview 225 en viewport explícito `390×844`.
+La comprobación fue de lectura: no se abrió fondo, no se cobró, no se cambió
+configuración y no se modificaron datos.
+
+| Módulo | Ruta/superficie | Evidencia visible | Resultado |
+|---|---|---|---|
+| Inicio | `inicio` / `inicio` | Panel «El turno en directo», navegación inferior y accesos del panel; `scrollWidth=390`, `overflow=false`, mínimo interactivo `44 px` | PASS responsive QA |
+| TPV y sala | `tpv` / `tpv` | Catálogo en dos columnas, paginación «Página 1 de 3 · 20 productos», Caja del TPV y navegación inferior; `scrollWidth=390`, `overflow=false`, mínimo `44 px` | PASS responsive QA |
+| Configuración | `configuracion` / `configuracion` | Pestañas Día y cajas, Sala y mesas, Modalidades, Equipos, Terminales y cajas, Fiscalidad y AEAT, Cargos y permisos, Permisos y Verificación en dos pasos; `scrollWidth=390`, `overflow=false`, mínimo `44 px` | PASS responsive QA |
+
+La matriz conserva `PARCIAL` para estas filas porque el cierre funcional exige
+además estados de carga/vacío/error y las acciones de negocio indicadas en el
+plan. Plataforma y Acceso/MFA siguen necesitando una sesión con los privilegios
+correspondientes.
