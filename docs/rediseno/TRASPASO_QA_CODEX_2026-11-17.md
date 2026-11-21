@@ -263,6 +263,9 @@ La evidencia y esta nota se publicaron en `23f98029` y el Deploy Preview 225
 quedó `ready` en `6b0164cbaf0db151e7fa02b2`. El PR #225 continúa abierto en
 borrador y producción no se tocó.
 
+La ampliación posterior de la pasada local quedó en `aeafd362`; el preview
+correspondiente (`6b0165979a8ca4a5e6bbc99b`) terminó correctamente.
+
 1. **Publicar el commit `88bb28ac` en el Deploy Preview #225 y repetir los tres
    casos de Pase** de la tabla A con un terminal que ya tenga otra cuenta
    activa. Confirmar que cada botón abre la cuenta/pedido pedido y que una

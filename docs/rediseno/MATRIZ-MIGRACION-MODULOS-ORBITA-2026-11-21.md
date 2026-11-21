@@ -136,6 +136,10 @@ El Deploy Preview 225 asociado (`6b0164cbaf0db151e7fa02b2`) terminó en estado
 `ready`, con el escaneo de secretos sin coincidencias y sin cambios en
 producción.
 
+La ampliación de la evidencia de Compras, Inventario, Personal y Configuración
+está en `aeafd3629134177018cf5a789c9de9b3e8e0272d`; su Deploy Preview asociado
+es `6b0165979a8ca4a5e6bbc99b`, también `ready`.
+
 ### Corrección transversal · arranque local desde Acceso
 
 El botón «Trabajar solo en este equipo, sin sincronizar» cambiaba la fase de
