@@ -1388,6 +1388,14 @@ Caja, Clientes o Gestión. El contrato de publicación Netlify y todos los
 contratos específicos de rediseño pasan. El PR #225 sigue en borrador y
 producción permanece fuera de alcance.
 
+El nuevo contrato `tests/rediseno/migracion-modulos-contract.mjs` comprueba
+que los doce módulos aparecen en el shell y en la matriz, que cada superficie
+tiene CSS scoped (incluido `.la-acceso`) y que la capa conserva responsive,
+reducción de movimiento y controles táctiles de `44 px`. Resultado:
+`REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12 matriz=12
+responsive=PASS tactil=44`. Es una guarda estática; no sustituye la revisión
+live de cada ruta en QA.
+
 ### Acceso · alcance vigente
 
 El acceso no se considera cerrado solo por cargar la pantalla partida. La

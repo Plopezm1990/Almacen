@@ -86,6 +86,7 @@ P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
 - `REDISENO_P03_BOTONES_SOLO_ICONO_OK=1`.
 - `REDISENO_P05_PROPUESTAS_OK=1`.
 - `REDISENO_ORG33_SALA_CONTRACT=PASS`.
+- `REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12 matriz=12 responsive=PASS tactil=44`.
 - `SOURCE_RECOVERY_CHECK=PASS`.
 - `git diff --check` limpio.
 
