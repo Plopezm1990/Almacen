@@ -1469,8 +1469,8 @@ tiene la clase `.tpv-categorias`; la corrección v59 cubre los botones con
 `border-left` inline dentro de `main[data-la-orbita-module="tpv"]`. Su borde
 efectivo ya es `2px` del acento de la paleta, incluso cuando el atributo inline
 conserva el valor antiguo. Recurso `qa-orbita-modules-v59-20261121`, huella
-`39b48ae6ec69e7f4`. Contratos enfocados y diff limpios; falta observar el
-Preview v59 en el navegador antes de elevar la evidencia visual.
+`39b48ae6ec69e7f4`. Contratos enfocados y diff limpios. La observación en modo
+local del Preview v59 confirmó el borde calculado coral para los cinco filtros.
 
 ### Restos visuales corregidos · v58 · 21/11/2026
 

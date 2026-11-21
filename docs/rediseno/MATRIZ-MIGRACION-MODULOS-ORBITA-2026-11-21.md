@@ -1196,5 +1196,6 @@ módulo TPV. En el Preview el borde calculado de «Todos», «Al peso», «Bebid
 handlers y colores de datos no se alteran. Marca
 `qa-orbita-modules-v59-20261121`, huella `39b48ae6ec69e7f4`.
 
-Contratos enfocados y `git diff --check`: PASS. La validación visual v59 se
-debe repetir en el Preview tras la nueva publicación.
+Contratos enfocados y `git diff --check`: PASS. La validación visual v59 en
+modo local del Preview confirmó que los cinco filtros calculan el borde coral
+Órbita y que el recurso servido es `qa-orbita-modules-v59-20261121`.
