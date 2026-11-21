@@ -331,6 +331,54 @@ html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] [role="statu
   min-height: var(--la-control-height);
   border-radius: var(--la-radius-md);
 }
+/* Estados de comunicación: los módulos de gestión ya no heredan los
+   fondos verdes/amarillos de las pantallas históricas. El significado se
+   expresa con los mismos tokens en Compras, Inventario, Personal,
+   Configuración y Plataforma. */
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] [role="alert"] {
+  border: 1px solid color-mix(in srgb, var(--c-red) 42%, transparent) !important;
+  background: var(--c-red-soft) !important;
+  color: var(--c-red) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] [role="status"],
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [role="status"],
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] [role="status"],
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] [role="status"],
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] [role="status"] {
+  border: 1px solid var(--c-divider) !important;
+  background: var(--c-accent-soft) !important;
+  color: var(--c-ink) !important;
+}
+/* Cabeceras y filas de las tablas heredadas adoptan la densidad y el
+   contraste Órbita, sin alterar su ordenación ni sus controles. */
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] table thead th,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] table thead th,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] table thead th,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] table thead th,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] table thead th {
+  min-height: var(--la-control-height);
+  background: var(--c-chrome) !important;
+  color: var(--c-on-chrome) !important;
+  white-space: nowrap;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] table tbody tr,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] table tbody tr,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] table tbody tr,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] table tbody tr,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] table tbody tr {
+  background: var(--c-surface) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="compras"] table tbody tr:hover,
+html[data-la-diseno] #root main[data-la-orbita-module="inventario"] table tbody tr:hover,
+html[data-la-diseno] #root main[data-la-orbita-module="personal"] table tbody tr:hover,
+html[data-la-diseno] #root main[data-la-orbita-module="configuracion"] table tbody tr:hover,
+html[data-la-diseno] #root main[data-la-orbita-module="plataforma"] table tbody tr:hover {
+  background: var(--c-accent-soft) !important;
+}
 @media (max-width: 767px) {
   html[data-la-diseno] #root main[data-la-orbita-module="compras"] .la-ui-card,
   html[data-la-diseno] #root main[data-la-orbita-module="inventario"] .la-ui-card,

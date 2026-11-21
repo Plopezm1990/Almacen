@@ -224,4 +224,18 @@ El commit `1e3de70c` se publicó en Deploy Preview 225
 (`6b01335abbb331413cd060a0`, estado `ready`). La comprobación live del alias
 sirve `la-apariencia.css?v=qa-orbita-modules-v22-20261121`; en la pantalla de
 acceso el control táctil mínimo observado fue `44 px` y no hubo desbordamiento
-horizontal.
+ horizontal.
+
+### Gestión · estados y tablas semánticos · v24
+
+La capa común de Compras, Inventario, Personal, Configuración y Plataforma
+deja de heredar colores históricos en los mensajes de estado: los `role=alert`
+usan el fondo/error Órbita y los `role=status` el estado informativo Órbita.
+Las cabeceras y filas de tablas reciben la superficie, contraste, densidad y
+hover del sistema común. No se modifican ordenación, filtros, permisos,
+handlers ni datos. La caché CSS pasa a
+`qa-orbita-modules-v24-20261121`, huella P01 `471a45c1efb84092`.
+
+Los cinco módulos siguen `PARCIAL`: aún falta el recorrido autenticado de
+cada ruta, estados vacío/carga/error y comprobación conjunta escritorio/móvil
+con datos reales de QA.

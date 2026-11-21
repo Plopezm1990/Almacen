@@ -1462,6 +1462,16 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Gestión · estados y tablas semánticos · 21/11/2026
+
+La revisión v24 de `la-apariencia.css` completa la capa común de Compras,
+Inventario, Personal, Configuración y Plataforma: avisos (`role=alert`),
+estados (`role=status`) y tablas consumen los tokens Órbita para fondo,
+contraste, bordes y hover, también en móvil. Se conservan lógica, datos,
+permisos, ordenación y handlers. Marca `qa-orbita-modules-v24-20261121`,
+huella P01 `471a45c1efb84092`. Los cinco módulos siguen `PARCIAL` hasta el
+recorrido autenticado de sus rutas y estados.
+
 ### TPV y sala · superficies secundarias · 21/11/2026
 
 La capa `la-apariencia.css` v23 extiende la migración visual de TPV a venta
