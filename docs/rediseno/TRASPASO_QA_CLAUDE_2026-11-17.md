@@ -1591,6 +1591,14 @@ preservan datos, NIF, permisos, actividad y handlers. Marca
 el recorrido autenticado en QA. Deploy Preview 225:
 `6b01467d071af1a092f9d639` (`ready`), commit `851f285c`.
 
+### Compras · proveedores, pedidos, recepción y facturas · v35
+
+Se aplicó la escala Órbita a proveedores, pedidos, recepción, albaranes y
+facturas: controles de `44 px`, tarjetas y estados comunes, detalles
+accionables y tablas contenidas en móvil. Se preservan pagos, datos, permisos
+y handlers. Marca `qa-orbita-modules-v35-20261121`, huella P01
+`edaafbdf5effde93`; queda pendiente el recorrido autenticado en QA.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo

@@ -358,3 +358,13 @@ actividad, NIF, datos, permisos ni handlers. Caché
 `qa-orbita-modules-v34-20261121`, huella P01 `77fa483c6dc0cc62`. Clientes sigue
 `PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
 `6b01467d071af1a092f9d639` (`ready`), commit `851f285c`.
+
+### Compras · proveedores, pedidos, recepción y facturas · v35
+
+La capa v35 normaliza Compras de extremo a extremo: tarjetas, botones,
+selectores, campos, estados, detalles y tablas comparten la escala Órbita;
+alertas y estados informativos consumen tokens semánticos y en móvil los
+listados mantienen scroll local y columnas apiladas. No se modifican pagos,
+recepción, albaranes, facturas, datos, permisos ni handlers. Caché
+`qa-orbita-modules-v35-20261121`, huella P01 `edaafbdf5effde93`. Compras sigue
+`PARCIAL` hasta el recorrido autenticado en QA.
