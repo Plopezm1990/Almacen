@@ -1654,6 +1654,8 @@ recibe la escala Órbita también en `#la-plataforma-root` y
 estados y filas `.lap-*`. La corrección conserva lógica, datos, permisos,
 handlers y rutas. El PR #225 sigue en borrador, dirigido a `release`, y el
 estado combinado de GitHub confirma el Deploy Preview 225 correcto.
+Deploy `6b014feae7ac94a4d1023204` (`ready`), URL estable
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
 
 Comprobaciones ejecutadas en esta tanda:
 

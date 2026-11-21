@@ -451,3 +451,5 @@ de recuperación de fuente devuelve `PARIDAD_CUERPO_EXACTA=1` y
 Bash no se pudo iniciar por un error de MSYS2 al crear `\BaseNamedObjects\msys-*`
 en este Windows. Esto no cambia el estado funcional: los doce módulos siguen
 `PARCIAL` hasta verificar sus rutas autenticadas reales en escritorio y móvil.
+El deploy correspondiente del PR #225 es `6b014feae7ac94a4d1023204` (`ready`),
+con la URL estable `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
