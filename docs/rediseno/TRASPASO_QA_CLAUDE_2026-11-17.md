@@ -1479,6 +1479,15 @@ ni se modificó. La cuenta sintética abierta
 limpieza separada. Detalle en
 `docs/rediseno/QA_PUNTO1_PERMISOS_CAMARERO_LIVE_2026-11-21.md`.
 
+### Punto 3 · permisos de cuenta restringida cerrados · 21/11/2026
+
+El punto de permisos queda cerrado con la cuenta
+`qa.permisos.20261116@qa.invalid` (Camarero/a, `QA-EMP-A / QA-A1`). Las RPC
+deniegan cobro, caja y reembolso; la interfaz muestra
+`C07D_CONFIG_NO_AUTORIZADO`, mantiene Caja/Configuración/Plataforma fuera del
+alcance del cargo y deja únicamente las pantallas operativas autorizadas.
+Detalle en `QA_PUNTO3_PERMISOS_RESTRINGIDOS_2026-11-21.md`.
+
 ### Punto 1 · evidencia económica live · 21/11/2026
 
 La validación autorizada de TPV, sala y caja ya incluye una venta sintética de

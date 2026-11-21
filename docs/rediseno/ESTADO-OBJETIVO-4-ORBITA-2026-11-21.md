@@ -120,3 +120,11 @@ MFA, expiración y selección de local. El estado vigente del punto 2 pasa a
 `CERRADO` por aceptación de QA. El detalle se conserva en
 `QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`; las notas `PARCIAL` anteriores son
 históricas y no se eliminan.
+
+## Punto 3 · permisos con cuenta restringida · cerrado · 21/11/2026
+
+La cuenta Camarero/a de QA-A1 no puede cobrar, reembolsar, modificar
+configuración ni ejecutar acciones de Plataforma. Solo ve las pantallas
+operativas correspondientes a su cargo. La combinación de denegaciones
+server-side y comprobación live queda documentada en
+`QA_PUNTO3_PERMISOS_RESTRINGIDOS_2026-11-21.md`.
