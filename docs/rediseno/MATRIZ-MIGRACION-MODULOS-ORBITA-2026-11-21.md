@@ -93,10 +93,10 @@ P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
 Esta matriz es de seguimiento, no un cierre prematuro. El objetivo 4 sigue
 activo hasta que los doce módulos pasen individualmente a `CERRADO`.
 
-### Estado de publicación y auditoría · 21/11/2026 · SHA `fc182979`
+### Estado de publicación y auditoría · 21/11/2026 · SHA `ba7bf3e4`
 
 La última revisión de la rama `rediseno/f0-base-qa` está publicada en el
-Deploy Preview 225 como `6b0172f4f2384790eed0e20f` (`ready`). El PR #225
+Deploy Preview 225 como `6b01754bbbb331413cdf306d` (`ready`). El PR #225
 continúa abierto, en borrador y sin fusionar; producción no se ha tocado.
 La corrección de esta revisión marca también las raíces administrativas que
 se montan antes del shell (`#la-plataforma-root` y

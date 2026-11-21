@@ -1464,8 +1464,8 @@ estados en QA.
 
 ### Punto 4 · estado de publicación y cierre pendiente · 21/11/2026
 
-La revisión vigente de la migración modular es el SHA `fc182979f09c7d8690bcfbda4a119b3e94ecaf46`,
-publicado en Deploy Preview 225 como `6b0172f4f2384790eed0e20f` (`ready`).
+La revisión vigente de la migración modular es el SHA `ba7bf3e42ca292200dc5dd1a96f4ae36ba5a9a0e`,
+publicado en Deploy Preview 225 como `6b01754bbbb331413cdf306d` (`ready`).
 El PR #225 sigue en borrador contra `release`; no se ha publicado nada en
 producción.
 
