@@ -1474,6 +1474,15 @@ recorrido autenticado de Inicio y sus estados en QA.
 El código está publicado en Deploy Preview 225 como
 `6b0141b9c36cc507a332a536` (`ready`), commit `41532f7b`.
 
+### TPV y sala · controles secundarios e historial · v30
+
+Se normalizaron también los controles que quedaban fuera del catálogo: ticket,
+cuentas, mesas, venta rápida, confirmaciones y selector de modalidad. El
+historial usa tabla/tarjeta Órbita y queda contenido en móvil. La capa es solo
+visual; conserva cobros, fiscalidad, permisos, persistencia y handlers. Marca
+`qa-orbita-modules-v30-20261121`, huella P01 `742bf5b1ac1bc2fd`; falta el
+recorrido autenticado de TPV y sala.
+
 ### Contenedores históricos · contención móvil común · 21/11/2026
 
 La capa común v28 contiene también los wrappers históricos `overflow-x-auto`

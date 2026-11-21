@@ -2308,6 +2308,65 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-s
   html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button { transform: none; }
 }
 
+/* El TPV histórico todavía emite botones y selectores dentro del ticket,
+   las cuentas y el historial con alturas propias. La superficie Órbita es la
+   autoridad común para interacción: todos conservan su handler, pero reciben
+   la misma escala y foco que catálogo, sala y dock. */
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout button,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout [role="button"],
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout input,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout select,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout textarea {
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout .tpv-rejilla > button {
+  min-height: 104px !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side .la-ui-card,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] .la-ui-card {
+  min-width: 0;
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-surface) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] table {
+  width: 100%;
+  border-collapse: separate;
+  border-spacing: 0;
+  overflow: hidden;
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-lg);
+  background: var(--c-surface);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] th,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] td {
+  border-color: var(--c-divider) !important;
+  color: var(--c-ink);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] th {
+  background: var(--c-bg) !important;
+  color: var(--c-ink-soft);
+  font: 700 var(--la-type-caption)/1.2 var(--la-font);
+  text-transform: uppercase;
+  letter-spacing: .04em;
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.items-center.justify-between {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.items-center.justify-between > * {
+    flex: 0 0 auto;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+  }
+}
+
 /* ========================================================================
    Órbita · Cocina y comandas
    ------------------------------------------------------------------------

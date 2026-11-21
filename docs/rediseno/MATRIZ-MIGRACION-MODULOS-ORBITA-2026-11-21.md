@@ -300,3 +300,13 @@ huella P01 `b729a1b6a5c2f7d3`. La matriz permanece `PARCIAL` hasta recorrer
 Inicio autenticado en los cinco viewports y comprobar vacío/carga/error.
 La publicación v29 está lista en Deploy Preview 225 como
 `6b0141b9c36cc507a332a536` (`ready`), commit `41532f7b`.
+
+### TPV y sala · controles secundarios e historial · v30
+
+La capa v30 completa la normalización de la superficie TPV: botones, inputs y
+selectores del ticket, cuentas, sala, venta rápida y confirmaciones reciben la
+misma altura mínima, radio y foco; la tabla de historial adopta la tarjeta y
+cabecera Órbita y en móvil conserva el scroll dentro de su wrapper. No se
+alteran cobros, persistencia, fiscalidad, permisos ni handlers. Caché
+`qa-orbita-modules-v30-20261121`, huella P01 `742bf5b1ac1bc2fd`. TPV continúa
+`PARCIAL` hasta recorrer sus rutas autenticadas y estados reales.
