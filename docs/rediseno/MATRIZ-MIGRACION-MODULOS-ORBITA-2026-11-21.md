@@ -345,4 +345,5 @@ tokens semánticos; los detalles y tablas mantienen un área accionable legible
 y el scroll queda contenido en móvil. No se modifican cobros, arqueos,
 reembolsos, documentos, permisos ni handlers. Caché
 `qa-orbita-modules-v33-20261121`, huella P01 `7ba54937325ac699`. Caja sigue
-`PARCIAL` hasta el recorrido autenticado en QA.
+`PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
+`6b01458faf0db151e7f4ba59` (`ready`), commit `fd1f6a51`.

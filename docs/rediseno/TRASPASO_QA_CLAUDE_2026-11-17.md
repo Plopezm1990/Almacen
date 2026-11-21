@@ -1578,7 +1578,8 @@ campos, estados, detalles y tablas. En móvil las tablas conservan scroll
 local, los grupos se envuelven y no se amplía el viewport. La lógica de
 cobros, arqueos, cierres, reembolsos, documentos y permisos permanece intacta.
 Marca `qa-orbita-modules-v33-20261121`, huella P01 `7ba54937325ac699`; queda
-pendiente el recorrido autenticado en QA.
+pendiente el recorrido autenticado en QA. Deploy Preview 225:
+`6b01458faf0db151e7f4ba59` (`ready`), commit `fd1f6a51`.
 
 ### Pase · variante Órbita · 21/11/2026
 
