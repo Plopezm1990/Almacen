@@ -335,3 +335,14 @@ estaciones, rutas, estados, RPC, permisos ni handlers. Caché
 `qa-orbita-modules-v32-20261121`, huella P01 `9ea641f1c7c6adae`. Cocina sigue
 `PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
 `6b014411457f622dbe7439c8` (`ready`), commit `81ca1074`.
+
+### Caja · controles, estados y movimientos · v33
+
+La capa v33 completa la normalización visual de Caja: botones, botones con
+rol, selectores, campos y áreas de texto comparten altura táctil de `44 px` y
+radio Órbita; los estados `role=alert`, `role=status` y `aria-busy` consumen
+tokens semánticos; los detalles y tablas mantienen un área accionable legible
+y el scroll queda contenido en móvil. No se modifican cobros, arqueos,
+reembolsos, documentos, permisos ni handlers. Caché
+`qa-orbita-modules-v33-20261121`, huella P01 `7ba54937325ac699`. Caja sigue
+`PARCIAL` hasta el recorrido autenticado en QA.

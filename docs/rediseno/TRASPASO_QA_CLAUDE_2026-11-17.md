@@ -1571,6 +1571,15 @@ RPC, permisos y handlers. Marca `qa-orbita-modules-v32-20261121`, huella P01
 `9ea641f1c7c6adae`; falta la comprobación autenticada en QA. Deploy Preview
 225: `6b014411457f622dbe7439c8` (`ready`), commit `81ca1074`.
 
+### Caja · controles, estados y movimientos · v33
+
+Se completó la capa visual de Caja con la misma escala Órbita para acciones,
+campos, estados, detalles y tablas. En móvil las tablas conservan scroll
+local, los grupos se envuelven y no se amplía el viewport. La lógica de
+cobros, arqueos, cierres, reembolsos, documentos y permisos permanece intacta.
+Marca `qa-orbita-modules-v33-20261121`, huella P01 `7ba54937325ac699`; queda
+pendiente el recorrido autenticado en QA.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo

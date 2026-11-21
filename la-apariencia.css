@@ -2564,3 +2564,63 @@ html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-co
     padding: var(--la-space-3) !important;
   }
 }
+
+/* Caja · controles, estados y movimientos con la misma escala operativa. */
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja {
+  min-width: 0;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja button,
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja [role="button"],
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja select,
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja input,
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja textarea {
+  min-height: var(--la-control-height) !important;
+  border-radius: var(--la-radius-md) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja .la-ui-card {
+  min-width: 0;
+  max-width: 100%;
+  color: var(--c-ink);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja [role="alert"] {
+  background: var(--c-red-soft) !important;
+  border-color: color-mix(in srgb, var(--c-red) 42%, transparent) !important;
+  color: var(--c-red) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja [role="status"] {
+  background: var(--c-accent-soft) !important;
+  border-color: var(--c-divider) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja table {
+  max-width: 100%;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja details > summary {
+  min-height: var(--la-control-height);
+  display: flex;
+  align-items: center;
+  gap: var(--la-space-2);
+  cursor: pointer;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja [aria-busy="true"] {
+  min-height: var(--la-control-height);
+  border-color: var(--c-divider) !important;
+  background: var(--c-accent-soft) !important;
+  color: var(--c-ink) !important;
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja .flex.items-center.justify-between {
+    flex-wrap: wrap;
+    gap: var(--la-space-3);
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja table {
+    display: block;
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="caja"] .la-operacion-caja .space-y-2 > * {
+    min-width: 0;
+  }
+}
