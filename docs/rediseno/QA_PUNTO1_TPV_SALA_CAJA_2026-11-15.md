@@ -251,3 +251,21 @@ sintética `d802aad8-0099-4092-945b-01adfbb9a569` / pedido
 `87cf1dad-ea65-4970-a2b8-0e96899441f8` permanece abierta en QA, sin cobro ni
 reembolso, para no borrar la evidencia; debe limpiarse mediante un procedimiento
 de QA separado antes de restablecer el entorno.
+
+## Addendum económico · 21/11/2026
+
+La evidencia de esta tanda se detalla en
+[QA_PUNTO1_EVIDENCIA_ECONOMICA_2026-11-21.md](QA_PUNTO1_EVIDENCIA_ECONOMICA_2026-11-21.md).
+Se realizó con autorización explícita una venta sintética de 1,00 € en QA-A1:
+cuenta `e3b9e818-4015-4cde-b0bd-8d351b641819`, pedido
+`109103bc-879a-42ae-92cf-46f930fc538b`, ticket `TPV-42` / secuencia 36,
+efectivo recibido 1,00 €, cambio 0,00 €, cuenta cerrada y documento QA
+encolado. El reembolso económico B08 de 1,00 € se creó, aprobó y confirmó en
+efectivo; la pantalla confirmó que generó un único movimiento negativo de caja.
+
+El flujo físico de Devoluciones se dejó sin mutación porque respondió
+`reembolso_devolucion_separado`: stock y reembolso son operaciones separadas.
+El producto de ensayo se dejó con su configuración original de preparación y
+el stock quedó en 49 litros por el consumo de la venta. La sesión de caja ya
+estaba activa antes del ensayo; no se abrió ni cerró otra sesión. Arqueo mostró
+2,00 € esperados (1,00 € de venta y 1,00 € de ajuste/reembolso).

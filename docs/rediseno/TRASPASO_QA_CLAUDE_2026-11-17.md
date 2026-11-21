@@ -1462,6 +1462,35 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Punto 1 · evidencia económica live · 21/11/2026
+
+La validación autorizada de TPV, sala y caja ya incluye una venta sintética de
+1,00 € en QA-A1 y su reembolso económico. Cuenta
+`e3b9e818-4015-4cde-b0bd-8d351b641819`, pedido
+`109103bc-879a-42ae-92cf-46f930fc538b`, ticket `TPV-42` / secuencia 36.
+El Propietario cobró 1,00 € en efectivo simulado, el pedido recorrió
+guardado→enviado→preparación→servido, la cuenta quedó cerrada y el documento
+fiscal QA se encoló en `SIMULADOR_C07D`. La solicitud B08 de reembolso en
+efectivo fue creada, aprobada y confirmada; el sistema mostró un único
+movimiento negativo de caja.
+
+El flujo físico de Devoluciones se rechazó de forma explícita con
+`reembolso_devolucion_separado`, porque stock y reembolso son contratos
+separados. El producto de ensayo volvió a `Requiere preparación = sí`. La caja
+ya tenía una sesión activa; no se duplicó ni se cerró. Arqueo mostró 2,00 €
+esperados: base de venta 1,00 € y ajuste/reembolso 1,00 €.
+
+La matriz debe leer este addendum junto con
+`QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md`: `ini-01`, `tpv-03`, `tpv-06`,
+`tpv-09`, `tpv-18`, `tpv-20`, `caj-11`, `caj-12`, `caj-13` y `caj-22` quedan
+cerradas para el punto 1. Se mantienen fuera del cierre el positivo de
+Cajero/a con MFA, la paginación/búsqueda de la cola de Pase y el bookkeeping de
+Apariencia. La cuenta `e3b9e818-4015-4cde-b0bd-8d351b641819` quedó pagada y
+cerrada; no se borró ningún dato de ensayo.
+La tabla de correspondencia queda en
+`MATRIZ-IMPLANTACION-QA-ADDENDUM-2026-11-21.md` para no duplicar IDs en el CSV
+principal.
+
 ### Evidencia móvil de Acceso, MFA y Plataforma · 21/11/2026
 
 El usuario aportó capturas del preview 225 desde el teléfono. Se verificó
