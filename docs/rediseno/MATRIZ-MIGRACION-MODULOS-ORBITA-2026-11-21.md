@@ -123,6 +123,11 @@ con sesión QA y datos reales, además de los estados de carga/error y las rutas
 restantes de cada módulo. No se ejecutaron cobros, reembolsos ni cambios de
 datos en esta pasada.
 
+La documentación quedó publicada en `23f98029ea10e658ef13af3484ac0adab474939e`.
+El Deploy Preview 225 asociado (`6b0164cbaf0db151e7fa02b2`) terminó en estado
+`ready`, con el escaneo de secretos sin coincidencias y sin cambios en
+producción.
+
 ### Corrección transversal · arranque local desde Acceso
 
 El botón «Trabajar solo en este equipo, sin sincronizar» cambiaba la fase de
