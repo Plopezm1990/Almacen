@@ -368,6 +368,17 @@ html[data-la-diseno] #root main[data-la-orbita-module] [role="menuitem"],
 html[data-la-diseno] #root main[data-la-orbita-module] [role="option"] {
   min-height: var(--la-control-height) !important;
 }
+/* Los checks históricos medían 13 px de ancho aunque su fila aparentara ser
+   grande. Órbita les da un objetivo táctil real de 44 × 44 px, manteniendo el
+   acento del diseño activo y sin alterar el valor ni el handler. */
+html[data-la-diseno] #root main[data-la-orbita-module] input[type="checkbox"],
+html[data-la-diseno] #root main[data-la-orbita-module] input[type="radio"] {
+  width: var(--la-control-height) !important;
+  min-width: var(--la-control-height) !important;
+  height: var(--la-control-height) !important;
+  min-height: var(--la-control-height) !important;
+  accent-color: var(--c-accent-fill) !important;
+}
 html[data-la-diseno] #root main[data-la-orbita-module="compras"] h2,
 html[data-la-diseno] #root main[data-la-orbita-module="inventario"] h2,
 html[data-la-diseno] #root main[data-la-orbita-module="personal"] h2,

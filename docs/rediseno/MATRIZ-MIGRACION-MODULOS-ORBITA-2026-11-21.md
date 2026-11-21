@@ -1294,3 +1294,9 @@ Deploy Preview 225 que «Más → Reconciliación de stock» devuelve
 `data-la-orbita-module="inventario"` y
 `data-la-orbita-surface="inventario"`, con `overflow=false` y control visible
 mínimo de `44 px`. El HTML sirve `la-orbita-shell.js?v=qa-orbita-shell-v17-20261121`.
+
+La segunda pasada de rutas encontró y corrigió dos casos equivalentes: «Traspasos»
+ya prioriza `inventario` aunque conserve una raíz histórica de Caja, y «Registro
+horario»/«Cuadrante de turnos» se agrupan bajo `personal`. En «Etiquetas y
+catálogo» los checks históricos medían 13 px de ancho; la capa v62 les fija un
+objetivo táctil real de `44 × 44 px` sin cambiar su valor ni su handler.

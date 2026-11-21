@@ -1477,6 +1477,11 @@ devuelve módulo y superficie `inventario`, `overflow=false` y control visible
 mínimo de `44 px`; el navegador confirmó el recurso
 `la-orbita-shell.js?v=qa-orbita-shell-v17-20261121`.
 
+En la pasada siguiente, «Traspasos» dejó de caer en Caja y «Registro horario»
+y «Cuadrante de turnos» dejaron de quedar como rutas sueltas: ahora heredan
+Inventario y Personal respectivamente. «Etiquetas y catálogo» tenía checks de
+13 px; la capa v62 los normaliza a `44 × 44 px` manteniendo sus handlers.
+
 También se verificó Configuración en v61, modo local y Local A1. Las ocho
 familias de ajustes y el estado de error sin sesión se renderizan dentro del
 shell Órbita; el motivo obligatorio y los controles de corte/cajas/umbral están
