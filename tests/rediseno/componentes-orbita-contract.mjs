@@ -38,10 +38,16 @@ for (const required of [
   '[role="tablist"]', '[role="tab"]', '[role="alert"]',
   'nav[aria-label*="Paginación"]', '[role="menu"]', '[role="listbox"]',
   '[role="tooltip"]', 'table thead th',
+  'table tbody tr:hover', 'role="status"',
   'prefers-reduced-motion: reduce'
 ]) {
   assert.ok(css.includes(required), `falta la regla común ${required}`);
 }
+for (const moduleName of ['compras', 'inventario', 'personal', 'configuracion', 'plataforma']) {
+  assert.ok(css.includes(`main[data-la-orbita-module="${moduleName}"] [role="status"]`), `falta el estado Órbita de ${moduleName}`);
+  assert.ok(css.includes(`main[data-la-orbita-module="${moduleName}"] table tbody tr:hover`), `falta el hover de tabla de ${moduleName}`);
+}
+assert.ok(css.includes('background: var(--c-red-soft)'), 'los avisos de gestión deben consumir el token de error');
 
 for (const token of [
   '--la-space-1: 4px', '--la-space-4: 16px', '--la-radius-md: 10px',
