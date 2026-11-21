@@ -22,6 +22,7 @@ simulado y reembolso simulado. El recorrido se hizo sobre el TPV del terminal
 | Venta | `V-20261121-65D717` |
 | Anulación/reembolso | Venta pasó a `ANULADA`, importe vigente 0,00 €, original 1,00 € |
 | Caja | Se observan los movimientos `COBRO_VENTA +1,00 €` y `REEMBOLSO_VENTA −1,00 €`, con motivo `Ensayo autorizado QA 20261121 - reembolso efectivo` |
+| Cambio de permisos | Empleado `QA Rediseno Camarero 20261113`: `Camarero/a → Encargado → Camarero/a`; cada guardado se confirmó al reabrir la ficha y el estado final quedó restaurado a `Camarero/a` |
 
 La anulación se hizo desde Historial completo de ventas sobre el ticket recién
 creado, no sobre un ticket preexistente. El historial conserva la venta
@@ -53,10 +54,13 @@ stock. No se ejecutó una devolución física adicional.
 
 - No se hizo ningún cobro, reembolso, apertura/cierre de caja ni cambio de
   configuración fuera de la venta sintética descrita.
-- No se modificaron permisos ni se ejecutó una acción de Plataforma en esta
-  tanda. La sesión era de Propietario de empresa, no de administrador de
-  Plataforma; no se utilizó una cuenta `plataforma_admin` ni se concedió ese
-  privilegio.
+- Sí se ejercitó un cambio de permisos reversible sobre `QA Rediseno Camarero
+  20261113`: se elevó temporalmente de `Camarero/a` a `Encargado`, se verificó
+  el guardado y después se restauró a `Camarero/a`. No queda una elevación de
+  privilegios abierta.
+- No se ejecutó una acción de Plataforma. La sesión era de Propietario de
+  empresa, no de administrador de Plataforma; no se utilizó una cuenta
+  `plataforma_admin` ni se concedió ese privilegio.
 - No se tocó producción, no se fusionó el PR #225 y no se reinició QA.
 
 ## Estado para el siguiente agente

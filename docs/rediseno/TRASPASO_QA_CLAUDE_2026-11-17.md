@@ -58,6 +58,9 @@ en [`QA_OPERACIONES_ESCRITURA_2026-11-21.md`](QA_OPERACIONES_ESCRITURA_2026-11-2
 - La opción de preparación del producto se restauró a `Requiere preparación =
   sí` después del ensayo. La caja activa no se abrió ni se cerró y no se guardó
   un arqueo nuevo.
+- Se ejercitó y revirtió un cambio de rol sobre `QA Rediseno Camarero 20261113`:
+  `Camarero/a → Encargado → Camarero/a`, con verificación al reabrir la ficha;
+  el estado final sigue siendo `Camarero/a`.
 - La operación de Plataforma queda sin ejercitar porque esta sesión no es de
   administrador de Plataforma; no se concedió ese privilegio ni se tocó
   producción. El registro contable pendiente de migraciones de Apariencia y
