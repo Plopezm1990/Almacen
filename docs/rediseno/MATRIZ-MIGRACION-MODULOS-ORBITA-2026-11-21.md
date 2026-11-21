@@ -13,7 +13,7 @@ vacío y contratos sin regresión.
 | 1 | Inicio y panel general | `inicio`, `.la-panel-diseno` | PARCIAL: panel Órbita ya visible y detalle antiguo separado; el panel tiene prioridad cuando Pase está incrustado | Revisar todas las variantes de indicadores y estados en 5 viewports |
 | 2 | TPV y sala | `tpv`, `.tpv-layout` | PARCIAL: superficie Órbita aplicada a catálogo, filtros, mesas, ticket/caja, paginación y dock móvil; recorridos de datos intactos | Verificar venta rápida, sala, cuentas, mesas, tickets y estados en las rutas reales de escritorio y móvil |
 | 3 | Pase | `pase`, `.la-pase` (`#la-pase` legado) | PARCIAL: panel real y cola ya integrados; la raíz semántica ya queda marcada aunque el recorrido histórico use otro selector | Igualar tarjetas, filtros, destinos y revisión móvil |
-| 4 | Cocina | `cocina`, `.la-operacion-cocina` | PARCIAL: superficie operativa existente | Migrar cabecera, tarjetas, estados, filtros y densidad |
+| 4 | Cocina | `cocina`, `.la-operacion-cocina` | PARCIAL: cabecera, tarjetas, estados, filtros, estaciones/rutas y cola ya tienen capa Órbita; recorrido de estados reales aún pendiente | Verificar rutas reales, vacío/carga/error, estados de comanda y densidad en escritorio y móvil |
 | 5 | Caja | `caja`, `.la-operacion-caja` | PARCIAL: superficie operativa existente | Migrar cobros, arqueos, cierres, reembolsos y documentos sin tocar permisos |
 | 6 | Clientes | `clientes` | MARCO: shell y escala global | Migrar listado, filtros, ficha, actividad y NIF |
 | 7 | Compras | `compras` | MARCO: shell y escala global | Migrar proveedores, pedidos, recepción, albaranes y facturas |
@@ -57,6 +57,25 @@ abierta, tickets, vacío, carga y error) en escritorio y móvil.
 Evidencia live actual: tarjeta de producto de `104 px`, búsqueda de `47 px`,
 rejilla de dos columnas en el ancho táctil del banco, lateral estable,
 `scrollWidth === innerWidth` y control mínimo de `44 px`.
+
+### Cocina · primera migración de superficie
+
+El commit `6aace0b1` aplica la capa visual Órbita scoped a
+`main[data-la-orbita-module="cocina"] .la-operacion-cocina`. La cabecera de
+«Cocina y comandas», las tarjetas operativas, avisos de estado, estaciones y
+rutas, y la cola de comandas comparten ahora borde, radio, sombra, fondo y
+jerarquía tipográfica del sistema. Las tarjetas anidadas de cada comanda
+conservan sus estados y acciones; selects, inputs y botones mantienen un área
+mínima de `44 px`. En móvil la cabecera envuelve y la cola no fuerza
+desbordamiento horizontal. No se cambiaron handlers, RPC, permisos, estados
+de cocina ni persistencia.
+
+La caché CSS quedó en `qa-orbita-modules-v18-20261121`. Pasan los contratos
+P01, marco (21/21), componentes, rutas (20/20) y autoridad de persistencia.
+El bloque sigue en `PARCIAL`: falta recorrer en QA la ruta real de Cocina con
+datos, los estados vacío/carga/error y las transiciones de comanda en
+escritorio y móvil. El fallo histórico de `pm11-compra/p10` («parche móvil
+P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
 
 ## Evidencia de base
 

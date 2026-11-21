@@ -1305,3 +1305,26 @@ Evidencia live del preview tras `3ff74403`: módulo `tpv`; tarjeta de producto
 búsqueda `47 px`; lateral estable; `scrollWidth === innerWidth`; control
 visible mínimo `44 px`. El despliegue Netlify correspondiente quedó en
 `6b012b2dbbd76a7f1b53f032` (`ready`).
+
+### Cocina · primera migración de superficie `6aace0b1` · 21/11/2026
+
+La primera capa específica de Cocina ya está en la rama `rediseno/f0-base-qa`.
+Se aplica únicamente a `main[data-la-orbita-module="cocina"]` y a la raíz
+`.la-operacion-cocina`: la cabecera «Cocina y comandas», las tarjetas de
+sesión, avisos, estaciones/rutas y cola de comandas usan el mismo tratamiento
+Órbita que TPV y Pase. Las tarjetas anidadas conservan el contenido y las
+acciones de cada comanda; selects, inputs y controles quedan por encima de
+`44×44 px`. En móvil la cabecera se adapta y la cola no desborda en
+horizontal. No se modificaron lógica, RPC, permisos, estados ni persistencia.
+
+La marca de caché CSS es `qa-orbita-modules-v18-20261121`. Los contratos
+dirigidos pasan: P01 capas/migraciones, marco `21/21`, componentes, rutas
+`20/20`, autoridad de persistencia y `git diff --check`. El deploy de preview
+correspondiente a la rama queda en estado `ready`; el PR #225 continúa en
+borrador y producción no se toca.
+
+Queda expresamente pendiente antes de cerrar Cocina: recorrer la ruta real en
+QA y documentar estados con datos, vacío, carga, error y transiciones de
+comanda en escritorio y móvil. La regresión histórica `pm11-compra/p10`
+continúa fallando por el orden de carga de su parche móvil; no fue introducida
+por esta migración y se conserva como excepción del banco.
