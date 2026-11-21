@@ -1360,3 +1360,18 @@ La caché CSS es `qa-orbita-modules-v20-20261121`, huella P01
 `git diff --check`. Falta recorrer en QA la ficha, la actividad, el NIF y los
 estados vacío/carga/error para cerrar el módulo; no se hicieron escrituras de
 datos en esta tanda.
+
+### Gestión · primera capa común `91943176` · 21/11/2026
+
+Compras, Inventario, Personal, Configuración y Plataforma comparten ahora la
+capa visual Órbita scoped por módulo: tarjetas, formularios, tablas,
+alertas/estados, tipografía y botones. En móvil los formularios se apilan y
+las tablas quedan contenidas en scroll horizontal local. No se modificaron
+handlers, permisos, datos, RPC ni el acceso de administrador de Plataforma.
+
+La caché CSS es `qa-orbita-modules-v21-20261121`, huella P01
+`b4aa9acf6bc07ec2`. Pasan P01, marco `21/21`, componentes, rutas `20/20` y
+`git diff --check`. Los cinco módulos continúan `PARCIAL`: falta recorrer sus
+rutas reales, estados vacío/carga/error y acciones específicas en escritorio y
+móvil. Plataforma sigue pendiente de una sesión de administrador QA; no se
+concedieron privilegios ni se escribieron datos nuevos.

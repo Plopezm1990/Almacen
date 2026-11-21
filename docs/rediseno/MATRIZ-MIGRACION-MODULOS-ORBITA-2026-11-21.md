@@ -16,11 +16,11 @@ vacío y contratos sin regresión.
 | 4 | Cocina | `cocina`, `.la-operacion-cocina` | PARCIAL: cabecera, tarjetas, estados, filtros, estaciones/rutas y cola ya tienen capa Órbita; recorrido de estados reales aún pendiente | Verificar rutas reales, vacío/carga/error, estados de comanda y densidad en escritorio y móvil |
 | 5 | Caja | `caja`, `.la-operacion-caja` | PARCIAL: apertura, arqueo, movimientos, historial y traspasos ya tienen capa Órbita; recorrido de cobro/cierre real aún pendiente | Verificar cobros, arqueos, cierres, reembolsos, documentos y estados en rutas reales |
 | 6 | Clientes | `clientes` | PARCIAL: listado, vistas guardadas, filtros, paginación y fichas ya tienen capa Órbita; actividad/NIF aún requieren recorrido real | Verificar ficha, actividad, NIF y estados vacío/carga/error en escritorio y móvil |
-| 7 | Compras | `compras` | MARCO: shell y escala global | Migrar proveedores, pedidos, recepción, albaranes y facturas |
-| 8 | Inventario | `inventario` | MARCO: shell y escala global | Migrar productos, movimientos, mermas, caducidad y ajustes |
-| 9 | Personal | `personal` | MARCO: shell y escala global | Migrar empleados, cargos, permisos, turnos y fichajes |
-| 10 | Configuración | `configuracion` | MARCO: shell y escala global | Migrar empresa, locales, terminales, equipos, fiscalidad y apariencia |
-| 11 | Plataforma | `plataforma` | MARCO: shell y escala global | Verificar acceso administrador y sus paneles exclusivos |
+| 7 | Compras | `compras` | PARCIAL: tarjetas, formularios, tablas, estados y controles ya tienen capa Órbita | Recorrer proveedores, pedidos, recepción, albaranes y facturas en rutas reales |
+| 8 | Inventario | `inventario` | PARCIAL: productos, tablas, formularios, estados y controles ya tienen capa Órbita | Recorrer movimientos, mermas, caducidad y ajustes en rutas reales |
+| 9 | Personal | `personal` | PARCIAL: empleados, permisos, turnos, tablas y formularios ya tienen capa Órbita | Recorrer fichajes, cargos, permisos y estados en rutas reales |
+| 10 | Configuración | `configuracion` | PARCIAL: empresa, locales, terminales, fiscalidad y apariencia ya comparten la capa base | Recorrer configuración y selectores sin romper persistencia ni permisos |
+| 11 | Plataforma | `plataforma` | PARCIAL: paneles administrativos ya comparten tarjetas, tablas y controles base | Verificar acceso administrador y paneles exclusivos en QA |
 | 12 | Acceso | `.la-acceso` y `acceso` | BASE: contrato visual Órbita añadido | Revisar login, recuperación, MFA y selección de empresa/local |
 
 ## Cambio de esta tanda
@@ -105,6 +105,22 @@ La caché CSS es `qa-orbita-modules-v20-20261121`, huella P01
 `7f70543a840f3e64`. Pasan P01, marco `21/21`, componentes, rutas `20/20` y
 `git diff --check`. El módulo permanece `PARCIAL` hasta recorrer ficha,
 actividad, NIF y estados vacío/carga/error con datos reales de QA.
+
+### Gestión · primera capa común `91943176`
+
+Compras, Inventario, Personal, Configuración y Plataforma reciben en el commit
+`91943176` una capa visual Órbita scoped por `data-la-orbita-module`. Unifica
+tarjetas, formularios, tablas, alertas/estados, tipografía y botones; en móvil
+los grids pasan a una columna y las tablas se desplazan dentro de su propio
+contenedor sin ampliar la página. Los handlers, permisos, datos y RPC de cada
+módulo no se tocaron.
+
+La caché CSS es `qa-orbita-modules-v21-20261121`, huella P01
+`b4aa9acf6bc07ec2`. Pasan P01, marco `21/21`, componentes, rutas `20/20` y
+`git diff --check`. Los cinco bloques quedan en `PARCIAL` hasta recorrer sus
+rutas reales, estados vacío/carga/error y acciones específicas en escritorio y
+móvil. En Plataforma sigue siendo necesaria una cuenta de administrador QA;
+no se elevó ningún privilegio durante esta tanda.
 
 ### Caja · primera migración de superficie
 
