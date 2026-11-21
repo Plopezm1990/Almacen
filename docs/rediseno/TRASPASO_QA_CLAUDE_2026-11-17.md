@@ -1484,6 +1484,14 @@ en móvil. El flujo de autenticación no se tocó. Huella P01:
 Publicado en Deploy Preview 225 como `6b013c51e5a98b1501fc71df` (`ready`),
 commit `f7157f0c`.
 
+### Estados globales · 21/11/2026
+
+La capa v26 normaliza las primitivas globales: `role=alert` usa el fondo/tinta
+de error Órbita y `role=status` la superficie informativa, incluyendo Clientes,
+Caja y pantallas aún sin selector específico. La semántica y los handlers no
+cambian. Caché `qa-orbita-modules-v26-20261121`, huella P01
+`0471acf3bfc85099`.
+
 ### TPV y sala · superficies secundarias · 21/11/2026
 
 La capa `la-apariencia.css` v23 extiende la migración visual de TPV a venta

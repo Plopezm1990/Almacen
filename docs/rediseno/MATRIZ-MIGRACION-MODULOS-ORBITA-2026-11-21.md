@@ -252,3 +252,13 @@ handlers de autenticación. El bloque continúa `PARCIAL` hasta comprobar login,
 recuperación, MFA y selección de empresa/local en ambas superficies.
 La capa quedó publicada en el Deploy Preview 225 (`6b013c51e5a98b1501fc71df`,
 `ready`), commit `f7157f0c`.
+
+### Estados globales · cierre de convivencia antigua · v26
+
+La primitiva global de alerta/estado deja de depender del color heredado del
+componente que la emite: todos los `role=alert` reciben fondo y tinta de
+error Órbita y todos los `role=status` la superficie informativa Órbita. Esto
+alcanza también Clientes, Caja y cualquier pantalla de gestión que todavía no
+tenga un selector específico. Se conserva el contenido, la semántica ARIA y
+los handlers. Caché `qa-orbita-modules-v26-20261121`, huella P01
+`0471acf3bfc85099`.

@@ -1793,6 +1793,15 @@ html[data-la-diseno] #root .la-ui-alert,
 html[data-la-diseno] #root [role="alert"] {
   border: 1px solid color-mix(in srgb, currentColor 35%, var(--c-divider));
   border-radius: 10px;
+  background: var(--c-red-soft) !important;
+  color: var(--c-red) !important;
+  line-height: 1.45;
+}
+html[data-la-diseno] #root [role="status"] {
+  border: 1px solid var(--c-divider);
+  border-radius: 10px;
+  background: var(--c-accent-soft) !important;
+  color: var(--c-ink) !important;
   line-height: 1.45;
 }
 html[data-la-diseno] #root .la-ui-empty {
