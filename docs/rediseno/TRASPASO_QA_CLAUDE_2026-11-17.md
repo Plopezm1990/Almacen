@@ -1484,6 +1484,11 @@ administrador de Plataforma y la comprobación completa de Acceso (login,
 recuperación, MFA, expiración y selección de empresa/local). El PR #225 se
 mantiene en borrador y producción permanece intacta.
 
+El commit `1878e2b1` quedó publicado en el Deploy Preview 225 como deploy
+`6b0170474f1e763bb9d3eab9` (`ready`), con escaneo de secretos sin coincidencias.
+La comprobación del navegador integrado llega al formulario de Acceso sin
+bloqueo; no se introdujeron credenciales ni se hicieron escrituras de negocio.
+
 También se corrigió la prioridad de ruta: al pulsar Panel general, el shell
 mantiene `inicio` aunque Pase esté incrustado. La navegación marca el destino
 activo para que el siguiente recorrido no confunda la sub-superficie operativa

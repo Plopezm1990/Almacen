@@ -844,3 +844,10 @@ Evidencia de esta revisión: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`,
 tactil=44`, `MARCO_ORBITA_CONTRACT=PASS (23/23)`,
 `MARCO_ORBITA_RUTAS_CONTRACT=PASS (20 rutas)`, batería completa
 `tests/rediseno/*.mjs` en verde y `git diff --check` limpio.
+
+El commit `1878e2b1` se publicó en el Deploy Preview 225 como deploy
+`6b0170474f1e763bb9d3eab9` (`ready`). El alias estable sigue siendo
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`; la pantalla de
+Acceso carga sin bloqueo y muestra el formulario Órbita con controles táctiles.
+El PR #225 permanece abierto, en borrador, contra `release`; producción no se
+ha tocado.
