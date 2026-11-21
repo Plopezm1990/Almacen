@@ -22,7 +22,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v41-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v42-20261121/);
 assert.ok(css.includes('overscroll-behavior-inline: contain'), 'las tablas Órbita no encapsulan el desplazamiento móvil');
 assert.ok(css.includes('main[data-la-orbita-module] .overflow-x-auto'), 'los wrappers históricos no encapsulan el desplazamiento móvil');
 assert.match(css, /\.la-orbita-sidebar \.la-orbita-sidebar-toggle[\s\S]*?width:\s*44px;\s*min-width:\s*44px;\s*height:\s*44px;\s*min-height:\s*44px;/, 'el toggle del shell no respeta 44x44');
@@ -50,6 +50,7 @@ assert.ok(css.includes('main[data-la-orbita-module="plataforma"] .la-ui-card'), 
 assert.ok(css.includes('main[data-la-orbita-module="plataforma"] [role="alert"]'), 'Plataforma no normaliza errores');
 assert.ok(css.includes('#la-plataforma-root .lap-tarjeta'), 'Plataforma previa no normaliza tarjetas');
 assert.ok(css.includes('#la-plataforma-root .lap-btn'), 'Plataforma previa no normaliza controles');
+assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipográfico inexistente');
 assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
 assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no conserva la composición Órbita');
 assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v3-20261121/);
