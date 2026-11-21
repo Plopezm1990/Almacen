@@ -66,6 +66,21 @@ La ejecución detallada de esa comprobación está en
 | 11 | Plataforma | `plataforma` | PARCIAL: paneles administrativos ya comparten tarjetas, tablas y controles base | Verificar acceso administrador y paneles exclusivos en QA |
 | 12 | Acceso | `.la-acceso` y `acceso` | PARCIAL: login dividido, recuperación, MFA y selector conservan la capa visual Órbita | Verificar login, recuperación, MFA, expiración y selección de empresa/local en escritorio y móvil |
 
+### Evidencia autenticada adicional · Plataforma · 21/11/2026
+
+Con `owner.a@qa.invalid` autenticado en el Deploy Preview 225 se comprobó la
+superficie real `#la-plataforma-root`: título y perfil de administrador,
+acciones «Abrir mi aplicación», «Cerrar sesión», «Actualizar» y «Dar de alta
+una empresa», tarjetas de empresas, etiquetas Activa/Desactivada y botones
+contextuales. La captura visual muestra fondo carbón, acento coral, tarjetas,
+bordes, radios y jerarquía tipográfica del sistema Órbita; el árbol accesible
+expone todos los controles y no hay modal ni overlay bloqueante. No se ejecutó
+ninguna operación destructiva ni se alteraron empresas, locales o usuarios.
+
+La fila `plataforma` continúa en `PARCIAL`: esta pasada confirma la entrada
+autenticada y la composición visual, pero todavía falta recorrer estados de
+carga/error y los paneles administrativos exclusivos en escritorio y móvil.
+
 ## Cambio de esta tanda
 
 `la-orbita-shell.js` etiqueta ahora cada ruta autenticada con
