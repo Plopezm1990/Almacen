@@ -1508,8 +1508,9 @@ Verificación: `node --check owner-bootstrap-post-reset.js`,
 `componentes-orbita-contract`, `marco-orbita-contract`,
 `marco-orbita-rutas-contract`, `migracion-modulos-contract` y
 `git diff --check` pasan. Commit `9ae4562168c3057d090e857df3e4b205c530446f`;
-Deploy Preview 225 `6b0160c90992330e675aecdf` (estado `building` al crear esta
-nota). Plataforma y Acceso continúan `PARCIAL` hasta la validación autenticada.
+Deploy Preview 225 `6b0160c90992330e675aecdf` (`ready`, escaneo de secretos sin
+coincidencias). Plataforma y Acceso continúan `PARCIAL` hasta la validación
+autenticada.
 
 ### Ajuste del shell · control lateral táctil · `6438b207`
 

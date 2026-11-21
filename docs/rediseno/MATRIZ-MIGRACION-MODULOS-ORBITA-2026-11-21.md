@@ -653,5 +653,5 @@ acciones tienen `min-height: 44px` y el flujo de servidor queda intacto.
 
 Los contratos de componentes, shell, rutas, módulos y `git diff --check` pasan
 con esta revisión. Se publicó en el Deploy Preview 225 como deploy
-`6b0160c90992330e675aecdf` (en construcción al redactar esta nota). Plataforma
+`6b0160c90992330e675aecdf` (`ready`). Plataforma
 y Acceso siguen `PARCIAL` hasta completar sus recorridos autenticados reales.
