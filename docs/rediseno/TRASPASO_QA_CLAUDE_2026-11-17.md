@@ -1467,6 +1467,9 @@ mantiene `inicio` aunque Pase esté incrustado. La navegación marca el destino
 activo para que el siguiente recorrido no confunda la sub-superficie operativa
 con el módulo principal.
 
+La marca de ruta se recalcula en el mismo clic, por lo que la cabecera y el
+estado activo no quedan un ciclo de render por detrás.
+
 ### Corrección del modo local · shell Órbita · `1948bc4d`
 
 En el primer ensayo del deploy v45, «Trabajar solo en este equipo» montó el

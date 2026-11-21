@@ -805,4 +805,7 @@ La navegación histórica también queda sincronizada con `aria-current` al
 activar un destino. Así «Panel general» conserva `inicio` aunque su contenido
 incluya el panel Pase; una sub-superficie ya no roba la identidad del módulo.
 La regresión queda cubierta por el contrato de marco y se comprobará en el
-siguiente deploy v13.
+siguiente deploy v14.
+
+Además, la selección actualiza `data-la-orbita-route` inmediatamente; no
+depende de un repintado posterior de React para cambiar la superficie visual.

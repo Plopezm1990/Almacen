@@ -209,6 +209,8 @@
             item.removeAttribute("aria-current");
           });
           button.setAttribute("aria-current", "page");
+          marcarSuperficie(marco && marco.querySelector(":scope > main"), sidebar);
+          sincronizarBarraInferior(marco && marco.querySelector(":scope > [data-la-barra-inferior]"), marco && marco.getAttribute("data-la-orbita-route"));
         });
       }
     });
