@@ -1244,3 +1244,11 @@ conservan paridad exacta. Los contratos de componentes, shell, rutas y módulos
 quedan verdes. La fila de Inventario sigue `PARCIAL` porque la evidencia visual
 se hizo sin sesión QA y aún falta recorrer la ruta autenticada de Reconciliación
 con datos reales. Commit publicado: `1a2e45a6aa1d77528b59f082158476610190ba18`.
+
+La verificación visual posterior se hizo en el Preview 225 con la marca
+`qa-orbita-modules-v61-20261121`, modo local y Local A1: la ruta
+`Más → Almacén → Reconciliación de stock` montó cabecera y navegación inferior
+Órbita, mostró `25` revisados, `25` correctos, filtros `Discrepancias / Con
+déficit / Correctos / Todos` y el estado vacío «Nada que mostrar con este
+filtro». No hubo overflow ni escrituras de negocio. Esta evidencia confirma
+la presentación; la condición funcional autenticada sigue pendiente.

@@ -1481,6 +1481,12 @@ Reconciliación con datos QA; por eso Inventario y el conjunto de módulos no se
 declaran cerrados todavía. Commit publicado: `1a2e45a6aa1d77528b59f082158476610190ba18`;
 el PR #225 sigue en borrador y producción permanece intacta.
 
+La verificación de navegador de v61 se repitió en el Deploy Preview 225, modo
+local y Local A1. La ruta real `Más → Almacén → Reconciliación de stock` mostró
+la cabecera y barra inferior Órbita, 25 productos revisados/25 correctos, los
+cuatro filtros y el estado vacío sin bloqueo. No se escribieron datos. Falta
+repetir el mismo recorrido con sesión QA autenticada para cerrar Inventario.
+
 ### Sesión autenticada pendiente · 21/11/2026
 
 La comprobación de sesiones abiertas no encontró el Preview 225 autenticado en
