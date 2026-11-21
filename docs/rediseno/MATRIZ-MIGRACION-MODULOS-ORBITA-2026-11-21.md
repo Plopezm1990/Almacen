@@ -1252,3 +1252,12 @@ La verificación visual posterior se hizo en el Preview 225 con la marca
 déficit / Correctos / Todos` y el estado vacío «Nada que mostrar con este
 filtro». No hubo overflow ni escrituras de negocio. Esta evidencia confirma
 la presentación; la condición funcional autenticada sigue pendiente.
+
+En la misma sesión local v61 se recorrió `Más → Configuración` en Local A1.
+La pantalla mostró empresa/local, pestañas de Día y cajas, Sala y mesas,
+Modalidades, Equipos, Terminales y cajas, Fiscalidad y AEAT, Cargos y permisos,
+Permisos y Verificación en dos pasos. El estado sin sesión se presenta de forma
+explícita («No se pudo completar la operación. No hay una sesión sincronizada»),
+con motivo obligatorio y controles de corte, cajas y umbral dentro del marco
+Órbita. No se guardó ningún ajuste; la fila Configuración sigue `PARCIAL` hasta
+repetirlo autenticado.

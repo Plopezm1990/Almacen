@@ -1462,6 +1462,12 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+También se verificó Configuración en v61, modo local y Local A1. Las ocho
+familias de ajustes y el estado de error sin sesión se renderizan dentro del
+shell Órbita; el motivo obligatorio y los controles de corte/cajas/umbral están
+visibles sin mutación. La condición de persistencia y permisos queda pendiente
+de una sesión autenticada.
+
 ### Tanda Codex · Reconciliación de stock · v61 · 21/11/2026
 
 El barrido visual detectó que Inventario/Reconciliación era la única superficie
