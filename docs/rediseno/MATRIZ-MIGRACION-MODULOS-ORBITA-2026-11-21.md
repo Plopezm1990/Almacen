@@ -1102,3 +1102,18 @@ base. No se modifican estados, handlers ni datos. Marca
 El contrato de componentes comprueba ambos degradados tokenizados. La matriz
 funcional continúa `PARCIAL` hasta terminar los recorridos autenticados de los
 módulos.
+
+### Paletas respetadas dentro del shell histórico · v54 · 21/11/2026
+
+La auditoría detectó que una regla de respaldo de Órbita reescribía con
+`!important` sus tokens carbón/coral dentro de `data-la-contenedor`. Eso hacía
+que el shell se viera correcto en la propuesta base, pero anulaba una paleta de
+biblioteca o personalizada al entrar en TPV, Cocina, Caja o Pase. El fallback
+queda ahora limitado a `:not([data-la-paleta]):not([data-la-personalizada])`;
+cuando existe una paleta, todos los módulos vuelven a resolver los tokens del
+selector elegido. No se tocan lógica, datos, permisos ni handlers. Marca
+`qa-orbita-modules-v54-20261121`, huella `f626d12aff47f789`.
+
+El contrato de componentes fija esta barrera para que una futura regla no pueda
+volver a anular la personalización. Las filas funcionales siguen `PARCIAL` por
+la verificación autenticada pendiente.

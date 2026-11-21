@@ -1520,7 +1520,7 @@ html[data-la-diseno="orbita"] .tpv-layout {
    solo en los componentes nuevos; estas reglas son deliberadamente locales
    al diseño y llevan !important para ganar al estilo en línea sin tocar la
    lógica ni los tokens de los otros ocho diseños. */
-html[data-la-diseno="orbita"] #root [data-la-contenedor] {
+html[data-la-diseno="orbita"]:not([data-la-paleta]):not([data-la-personalizada]) #root [data-la-contenedor] {
   /* El bundle histórico vuelve a declarar sus tokens sobre el shell
      `[data-tema="oscuro"]`. Si solo cambiamos `background`, los valores de
      C2 (que usan `var(--c-*)`) siguen resolviendo el verde antiguo. Reaplicamos
