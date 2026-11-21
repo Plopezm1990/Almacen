@@ -1661,3 +1661,13 @@ En una pestaña QA autenticada se comprobaron sin mutaciones adicionales:
 Los errores de conexión deliberados no se provocaron en QA porque requieren
 interrumpir el transporte o cambiar datos del entorno; quedan cubiertos por
 los contratos estáticos y como prueba controlada separada.
+
+## Estado vigente del punto 2 · aceptación QA · 21/11/2026
+
+El propietario confirma que los recorridos funcionales de los doce módulos
+enumerados en este documento funcionan correctamente en QA: Inicio, TPV y
+sala, Pase, Cocina, Caja, Clientes, Compras, Inventario, Personal,
+Configuración, Plataforma y Acceso. El punto 2 queda **CERRADO por aceptación
+del propietario**. Las etiquetas `PARCIAL` de las secciones históricas se
+conservan únicamente como trazabilidad de las tandas previas; el acta vigente
+es `QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`.

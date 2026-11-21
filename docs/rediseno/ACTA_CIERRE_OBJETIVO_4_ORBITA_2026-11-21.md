@@ -60,3 +60,16 @@ se restauró QA y no se tocó producción.
 
 La evidencia móvil de Acceso, MFA y Plataforma quedó publicada en el commit
 `b348cf0d` de `rediseno/f0-base-qa`. El PR #225 sigue en borrador.
+
+## Cierre funcional posterior · punto 2 · 21/11/2026
+
+El propietario de QA confirma que la validación funcional de TPV, Pase, Cocina,
+Caja, Clientes, Compras, Inventario, Personal, Configuración, Plataforma y
+Acceso funciona correctamente, incluidos recuperación, MFA, expiración y
+selección de local. El cierre detallado está en
+`QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`.
+
+El acta pasa a considerar el punto 2 **CERRADO por aceptación del propietario**.
+Las salvedades y marcas históricas `PARCIAL` se conservan para trazabilidad y
+no reabren el punto. No se autoriza por ello ninguna nueva operación financiera
+ni se modifica producción.

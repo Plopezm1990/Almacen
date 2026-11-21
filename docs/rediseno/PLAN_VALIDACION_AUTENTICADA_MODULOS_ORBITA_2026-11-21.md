@@ -138,3 +138,18 @@ fallida de `productos`; no se reintentó ni se modificó. La cuenta sintética
 abierta `d802aad8-0099-4092-945b-01adfbb9a569` sigue documentada y requiere
 limpieza separada. No se usa `sis-13`, no se restaura QA y producción sigue
 fuera de alcance.
+
+## Cierre por aceptación del propietario · punto 2 · 21/11/2026
+
+El propietario de QA confirma que todos los recorridos funcionales enumerados
+en este plan funcionan correctamente: TPV, Pase, Cocina, Caja, Clientes,
+Compras, Inventario, Personal, Configuración, Plataforma y Acceso, incluidos
+login, recuperación, MFA, expiración y selección de local. El cierre vigente
+del punto 2 queda registrado en
+`docs/rediseno/QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`.
+
+Las marcas históricas `PARCIAL` se conservan en la matriz para no borrar la
+trazabilidad de cada recorrido; no contradicen este sign-off, que es la
+aceptación funcional del propietario. Las excepciones independientes de
+paginación Pase, bookkeeping de Apariencia y limpieza de fixtures no bloquean
+este punto.

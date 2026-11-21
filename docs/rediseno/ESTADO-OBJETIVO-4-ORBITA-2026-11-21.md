@@ -110,3 +110,13 @@ módulos restantes ni el acceso de Plataforma/MFA. Por tanto la matriz conserva
 ensayo con autorización explícita. El siguiente requisito operativo es abrir
 una sesión de propietario y otra de administrador de Plataforma en QA; las
 contraseñas y códigos MFA deben introducirse únicamente en el navegador.
+
+## Cierre posterior por aceptación del propietario · punto 2 · 21/11/2026
+
+El propietario confirma que todos los recorridos funcionales del punto 2
+funcionan correctamente, incluidos TPV, Pase, Cocina, Caja, Clientes, Compras,
+Inventario, Personal, Configuración, Plataforma y Acceso con recuperación,
+MFA, expiración y selección de local. El estado vigente del punto 2 pasa a
+`CERRADO` por aceptación de QA. El detalle se conserva en
+`QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`; las notas `PARCIAL` anteriores son
+históricas y no se eliminan.
