@@ -1462,6 +1462,17 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Contenedores históricos · contención móvil común · 21/11/2026
+
+La capa común v28 contiene también los wrappers históricos `overflow-x-auto`
+que rodean matrices de permisos, bandas de filtros y listados. El scroll queda
+en el wrapper local y el `main`/viewport reciben `min-width: 0` y `max-width:
+100%`, evitando que un hijo con anchura intrínseca amplíe la superficie móvil.
+No cambian datos, ordenación, selección, handlers ni permisos. Marca
+`qa-orbita-modules-v28-20261121`, huella P01 `edb7c9116b854562`.
+La publicación y la comprobación live de las doce superficies quedan pendientes
+hasta que termine el siguiente deploy de PR #225.
+
 ### Gestión · estados y tablas semánticos · 21/11/2026
 
 La revisión v24 de `la-apariencia.css` completa la capa común de Compras,

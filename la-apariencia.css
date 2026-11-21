@@ -1890,6 +1890,19 @@ html[data-la-diseno] #root button[aria-label]:not(.la-ui-icon-button) { min-widt
    viewport móvil. La tabla conserva su semántica y sus celdas; solo el
    contenedor de la superficie Órbita absorbe el desplazamiento horizontal. */
 @media (max-width: 767px) {
+  /* Algunas rutas históricas ya traen su propio wrapper `overflow-x-auto`
+     alrededor de tablas, matrices de permisos o bandas de filtros. El wrapper
+     debe ser el único que pueda desplazarse: la superficie y el viewport no
+     pueden crecer por culpa de un hijo con anchura intrínseca. */
+  html[data-la-diseno] #root main[data-la-orbita-module] > *,
+  html[data-la-diseno] #root main[data-la-orbita-module] .overflow-x-auto {
+    min-width: 0;
+    max-width: 100%;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module] .overflow-x-auto {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+  }
   html[data-la-diseno] #root main[data-la-orbita-module] table {
     display: block;
     max-width: 100%;

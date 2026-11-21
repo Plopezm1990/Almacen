@@ -274,3 +274,13 @@ interactiva común. Caché `qa-orbita-modules-v27-20261121`, huella P01
 La corrección está publicada en Deploy Preview 225 como `6b013ddcf49a09cfd3ecd251`
 (`ready`), commit `8b07d8e7`. El recorrido autenticado de las doce superficies
 continúa pendiente antes de cambiar cualquier estado de `PARCIAL` a `CERRADO`.
+
+### Contenedores históricos · contención móvil común · v28
+
+Además de las tablas, los wrappers históricos `overflow-x-auto` de matrices,
+bandas de filtros y listados quedan contenidos dentro de su superficie Órbita.
+El hijo conserva su scroll local, pero el `main` y el viewport reciben
+`min-width: 0` y `max-width: 100%`. No se modifican contenido, ordenación ni
+handlers. La caché CSS queda en `qa-orbita-modules-v28-20261121`, huella P01
+`edb7c9116b854562`; falta esperar el deploy y repetir la revisión live de los
+módulos.
