@@ -1279,3 +1279,13 @@ siguen pasando. La batería global posterior registró `NODE_ACTIVE_TOTAL=327`,
 coinciden con la lista histórica del banco (alb/cfg/f3/f4/plataforma/pm11/pm33)
 y no apuntan a esta corrección de selectores. No se hicieron cobros,
 reembolsos ni cambios de datos en QA.
+
+### Ajuste posterior de identidad Inicio/Pase · `bab5d3e6`
+
+Al revisar el preview se comprobó que Inicio puede contener el panel Pase sin
+dejar de ser Inicio. El shell ahora prioriza `.la-panel-diseno` y etiqueta la
+superficie como `inicio`; solo una ruta Pase independiente queda como `pase`.
+El cambio se publicó en el deploy `6b012a4769a7c7ccd57b055e` (`ready`) con la
+misma política de QA y PR #225 en borrador. Evidencia live en Codex: Inicio
+`data-la-orbita-module="inicio"`; `Abrir TPV` → `tpv`; `scrollWidth ===
+innerWidth`; control visible mínimo 44 px.
