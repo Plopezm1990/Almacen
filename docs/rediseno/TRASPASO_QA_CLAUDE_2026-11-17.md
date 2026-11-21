@@ -1195,3 +1195,17 @@ TPV, Cocina, Productos, Configuración y Clientes sin overflow ni controles
 menores de 44 px en móvil `390×844`. La última pasada fue en modo local (la
 sesión QA había caducado), por lo que no se deben interpretar estos datos como
 nuevas escrituras en QA. PR #225 permanece en borrador y producción intacta.
+
+## Cierre del Panel principal · 21/11/2026
+
+Se eliminó la convivencia visible entre `la-panel-diseno` y el dashboard
+heredado `la-dashboard-v2`. El commit `04b7cb4809d46904bdf000f5e6784cbe1ad9f3bc`
+mantiene `Resumen general` como detalle secundario, oculto al cargar, con la
+acción explícita `Ver detalle operativo`; el contenido sigue disponible al
+abrirlo y no se tocaron datos, permisos ni handlers.
+
+Preview verificado: deploy `6b01204b515686ad7b0dd5b3` (`ready`). Escritorio
+sin overflow y con una única composición visible; móvil `390×844` sin
+overflow, barra inferior de 55 px y cero controles visibles por debajo de
+44 px. El contrato de componentes Órbita y la sintaxis del nuevo script pasan;
+no hubo errores ni advertencias de consola.

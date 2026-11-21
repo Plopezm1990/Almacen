@@ -169,3 +169,28 @@ reembolsos ni escrituras de negocio. Es una comprobación de renderizado del
 deploy, no una nueva mutación de QA.
 
 PR #225 sigue en borrador y producción permanece fuera de alcance.
+
+## Cierre del Panel principal Órbita · 21/11/2026
+
+La revisión visual del Panel detectó que la capa nueva `la-panel-diseno`
+(`El pulso del negocio`) convivía con el dashboard heredado `la-dashboard-v2`
+(`Resumen general`). Se corrigió en el commit
+`04b7cb4809d46904bdf000f5e6784cbe1ad9f3bc`: el detalle heredado ya no se
+renderiza visible al entrar al Panel. El script `dashboard-premium-v2.js` dejó
+de inyectar una segunda fila de acciones/alertas y ahora mantiene el detalle en
+una sección secundaria marcada como `Detalle operativo`.
+
+La acción `Ver detalle operativo` permite abrir y cerrar esa sección sin
+alterar los datos, permisos ni handlers existentes. Así se conserva el acceso
+a indicadores, alertas, caducidades y movimientos, pero no se duplica la
+composición en la pantalla principal. El bloque de Pase permanece integrado
+como módulo operativo independiente.
+
+Evidencia en Deploy Preview 225, deploy Netlify
+`6b01204b515686ad7b0dd5b3` (`ready`): en escritorio el Panel carga con una
+sola composición Órbita, `Resumen general` está oculto por defecto y no hay
+overflow (`scrollWidth=1440`). Al activar la acción se muestra el detalle y al
+cerrarlo vuelve a quedar oculto. En móvil `390×844` se mantiene oculto por
+defecto, la barra inferior tiene cuatro botones de 55 px, no hay overflow y no
+hay controles visibles menores de 44 px. No hubo errores ni advertencias de
+consola.
