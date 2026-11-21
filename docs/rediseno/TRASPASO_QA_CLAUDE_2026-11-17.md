@@ -1512,6 +1512,12 @@ Deploy Preview 225 `6b0160c90992330e675aecdf` (`ready`, escaneo de secretos sin
 coincidencias). Plataforma y Acceso continúan `PARCIAL` hasta la validación
 autenticada.
 
+En el mismo Preview 225 se hizo un smoke visual de la pantalla de Acceso sin
+sesión: viewport `618×678`, `data-la-diseno="orbita"`, fondo y tipografía
+semánticos, `scrollWidth` igual a `innerWidth` y cero controles menores de
+`44 px`. Es evidencia de la composición inicial; queda separado el recorrido
+autenticado de login, recuperación, expiración, MFA y selección de local.
+
 ### Ajuste del shell · control lateral táctil · `6438b207`
 
 En la auditoría del punto 4 se encontró un control común que no cumplía el

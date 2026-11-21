@@ -655,3 +655,10 @@ Los contratos de componentes, shell, rutas, módulos y `git diff --check` pasan
 con esta revisión. Se publicó en el Deploy Preview 225 como deploy
 `6b0160c90992330e675aecdf` (`ready`). Plataforma
 y Acceso siguen `PARCIAL` hasta completar sus recorridos autenticados reales.
+
+Evidencia visual adicional de Acceso en el Preview 225 (ruta de login sin
+sesión, viewport disponible `618×678`): `data-la-diseno="orbita"`, fondo
+`rgb(23,25,28)`, tipografía Inter, `scrollWidth === innerWidth` y cero
+controles por debajo de `44 px`. Esta comprobación cierra la revisión visual
+del primer render, pero no sustituye el recorrido autenticado de login,
+recuperación, expiración, MFA y selección de empresa/local.
