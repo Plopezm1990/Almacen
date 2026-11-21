@@ -851,3 +851,28 @@ El commit `1878e2b1` se publicó en el Deploy Preview 225 como deploy
 Acceso carga sin bloqueo y muestra el formulario Órbita con controles táctiles.
 El PR #225 permanece abierto, en borrador, contra `release`; producción no se
 ha tocado.
+
+### Recorrido local adicional · preview v46 · 21/11/2026
+
+En el deploy `6b0170d2f16c14c121a5b9e5` se activó «Trabajar solo en este
+equipo, sin sincronizar» y se recorrieron las rutas visibles del shell sin
+credenciales ni escrituras de negocio. El arranque terminó en el panel Órbita
+tras la hidratación y mantuvo el contexto `Local A1 · QA Empresa A, S.L.`.
+
+| Ruta | Evidencia observada |
+|---|---|
+| Inicio / Panel general | `El pulso del negocio`, accesos rápidos, cuatro indicadores, detalle operativo colapsable y cabecera Órbita |
+| TPV | venta rápida/sala, buscador, categorías, catálogo QA, caja del TPV, resumen e historial bajo demanda |
+| Cocina | cabecera, actualización, filtro de estación, aviso de conexión y estado vacío de comandas |
+| Caja | apertura de sesión, arqueo, fecha, movimientos ocultos bajo demanda, contado y estados de cierre |
+| Clientes | vistas guardadas, búsqueda, filtros de estado/tipo, vacío y paginación deshabilitada |
+| Compras | Proveedores con estado vacío y acción Nuevo proveedor |
+| Inventario | filtros, tabla de productos QA, acciones Kardex/Editar/Registrar salida/Eliminar y alerta de stock mínimo |
+| Personal | cabecera, acción Nuevo empleado, pestañas Empleados/Selección y estado de carga |
+| Configuración | selector de secciones, contexto empresa/local, motivo obligatorio, controles de cajas y fiscalidad/permisos |
+
+La capa común siguió visible en todas las rutas; la batería estática garantiza
+los controles táctiles de 44 px y la revisión responsive. Esta pasada no prueba
+permisos, persistencia, cobros, reembolsos, MFA ni estados de servidor con una
+sesión autenticada: esos requisitos siguen siendo el criterio pendiente para
+pasar cada fila de `PARCIAL` a `CERRADO`.

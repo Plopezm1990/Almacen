@@ -1489,6 +1489,22 @@ El commit `1878e2b1` quedó publicado en el Deploy Preview 225 como deploy
 La comprobación del navegador integrado llega al formulario de Acceso sin
 bloqueo; no se introdujeron credenciales ni se hicieron escrituras de negocio.
 
+### Recorrido local adicional del preview v46 · 21/11/2026
+
+En el deploy `6b0170d2f16c14c121a5b9e5`, modo local y contexto `Local A1`, se
+recorrieron Inicio, TPV, Cocina, Caja, Clientes, Compras, Inventario, Personal
+y Configuración. El banco mostró el shell Órbita en todas las superficies y
+los estados propios de cada ruta: catálogo y sala del TPV, advertencia de
+conexión y cola vacía de Cocina, arqueo de Caja, filtros/paginación de
+Clientes, vacío de Proveedores, tabla y acciones de Productos, carga de
+Personal y selectores/motivo de Configuración. No se introdujeron credenciales,
+no se cobraron ventas y no se escribieron datos.
+
+Esta evidencia refuerza la composición visual y el recorrido de navegación,
+pero no sustituye la verificación autenticada de permisos, persistencia,
+estados de servidor, Plataforma administradora ni login/MFA. Las filas de la
+matriz permanecen `PARCIAL` por ese motivo.
+
 También se corrigió la prioridad de ruta: al pulsar Panel general, el shell
 mantiene `inicio` aunque Pase esté incrustado. La navegación marca el destino
 activo para que el siguiente recorrido no confunda la sub-superficie operativa
