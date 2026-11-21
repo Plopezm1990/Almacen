@@ -1299,3 +1299,9 @@ columna operativa más lateral estable en escritorio y una pila vertical en
 móvil; no se tocaron handlers, permisos, fiscalidad ni datos. Los contratos
 P01, marco, componentes, rutas y fiscal TPV pasan. El bloque permanece
 `PARCIAL` hasta verificar cada recorrido real y sus estados vacío/carga/error.
+
+Evidencia live del preview tras `3ff74403`: módulo `tpv`; tarjeta de producto
+`104 px` de alto; rejilla de dos columnas en el ancho táctil del banco;
+búsqueda `47 px`; lateral estable; `scrollWidth === innerWidth`; control
+visible mínimo `44 px`. El despliegue Netlify correspondiente quedó en
+`6b012b2dbbd76a7f1b53f032` (`ready`).

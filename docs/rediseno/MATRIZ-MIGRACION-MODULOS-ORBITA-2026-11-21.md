@@ -54,6 +54,10 @@ modificaron handlers, fiscalidad, permisos ni persistencia. El módulo sigue en
 `PARCIAL` hasta recorrer todos los estados reales (venta rápida, sala, cuenta
 abierta, tickets, vacío, carga y error) en escritorio y móvil.
 
+Evidencia live actual: tarjeta de producto de `104 px`, búsqueda de `47 px`,
+rejilla de dos columnas en el ancho táctil del banco, lateral estable,
+`scrollWidth === innerWidth` y control mínimo de `44 px`.
+
 ## Evidencia de base
 
 - `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`.
