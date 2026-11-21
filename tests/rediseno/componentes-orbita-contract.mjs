@@ -54,6 +54,17 @@ assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipog
 assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
 assert.match(css, /--la-mono:\s*["']IBM Plex Mono["']/, 'MFA usa --la-mono sin declararlo');
 assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no conserva la composición Órbita');
+
+// Toda variable --la-* consumida por la capa debe estar declarada en la
+// propia hoja. La única excepción es --la-orbita-puntero: la escribe en
+// tiempo de ejecución el movimiento del cursor del panel Órbita.
+const laTokensDefinidos = new Set([...css.matchAll(/--(la-[\w-]+)\s*:/g)].map((m) => m[1]));
+const laTokensUsados = new Set([...css.matchAll(/var\(--(la-[\w-]+)/g)].map((m) => m[1]));
+const laTokensDinamicos = new Set(['la-orbita-puntero']);
+for (const token of laTokensUsados) {
+  assert.ok(laTokensDefinidos.has(token) || laTokensDinamicos.has(token),
+    `la capa visual usa --${token} sin declararlo ni documentarlo como dinámico`);
+}
 assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v3-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);

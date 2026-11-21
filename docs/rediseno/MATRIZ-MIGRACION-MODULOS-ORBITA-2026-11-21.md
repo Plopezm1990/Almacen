@@ -606,3 +606,8 @@ dinámica escrita por el movimiento del cursor y conserva su fallback.
 
 La corrección quedó publicada en el deploy `6b015c30695cff02d317a7d6`
 (`ready`), con `commit_ref` `af3ba1dec857d8c8219a29a2b50bc98083b84338`.
+
+El contrato de componentes incorpora además un inventario automático de
+tokens `--la-*`: cada uso debe estar declarado en la hoja o documentado como
+propiedad dinámica. Así la normalización visual no puede introducir otra
+variable huérfana sin romper la batería.
