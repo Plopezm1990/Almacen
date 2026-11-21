@@ -1582,3 +1582,134 @@ html[data-la-diseno] #root .la-ui-divider { border-color: var(--c-divider) !impo
   html[data-la-diseno] #root .la-ui-card,
   html[data-la-diseno] #root .la-ui-panel { max-width: 100%; }
 }
+
+/* ========================================================================
+   Órbita · TPV y sala
+   ------------------------------------------------------------------------
+   El TPV conserva sus raíces operativas y handlers, pero todas sus superficies
+   comparten ahora la misma jerarquía: filtros arriba, catálogo como rejilla,
+   ticket/caja en una columna estable, mesas como tarjetas y paginación como
+   navegación explícita. En móvil la columna lateral baja debajo del catálogo
+   y el dock mantiene la acción principal dentro del alcance del pulgar.
+   ======================================================================== */
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] {
+  container-type: inline-size;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side {
+  min-width: 0;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .relative {
+  margin-block-end: var(--la-space-3);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .relative input {
+  min-height: var(--la-control-height);
+  border: 1px solid var(--c-border-control) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-categorias,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.items-center.gap-2.mb-3 {
+  align-items: center;
+  min-height: var(--la-control-height);
+  padding: var(--la-space-1);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-md);
+  background: color-mix(in srgb, var(--c-surface) 92%, transparent);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-categorias button,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.items-center.gap-2.mb-3 button {
+  min-height: var(--la-control-height);
+  border: 1px solid transparent;
+  border-radius: var(--la-radius-sm);
+  color: var(--c-ink-soft);
+  white-space: nowrap;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-categorias button[aria-pressed="true"],
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.items-center.gap-2.mb-3 button[aria-pressed="true"] {
+  border-color: var(--c-accent-fill) !important;
+  background: var(--c-accent-fill) !important;
+  color: var(--c-on-accent) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla {
+  gap: var(--la-space-3);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button {
+  display: flex;
+  min-height: 104px;
+  flex-direction: column;
+  justify-content: space-between;
+  gap: var(--la-space-2);
+  padding: var(--la-space-4) !important;
+  border: 1px solid var(--c-divider) !important;
+  border-block-start: 2px solid var(--c-accent-fill) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button:hover:not(:disabled),
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button:focus-visible {
+  border-color: var(--c-accent) !important;
+  box-shadow: var(--la-shadow-2);
+  transform: translateY(-1px);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button .mono {
+  color: var(--c-accent);
+  font-variant-numeric: tabular-nums;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-main > .flex.items-center.justify-between {
+  min-height: var(--la-control-height);
+  gap: var(--la-space-3);
+  padding-block: var(--la-space-2);
+  border-block: 1px solid var(--c-divider);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-mesas {
+  gap: var(--la-space-3);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-mesas > button {
+  min-height: 76px;
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side > * {
+  border-color: var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-surface) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side h2,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side h3 {
+  font-family: var(--la-display);
+  letter-spacing: -.02em;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-dock {
+  min-height: var(--la-control-height-large);
+  padding: var(--la-space-3);
+  border: 1px solid var(--c-accent-fill) !important;
+  border-radius: var(--la-radius-lg);
+  background: color-mix(in srgb, var(--c-surface) 96%, transparent) !important;
+  box-shadow: var(--la-shadow-2);
+  backdrop-filter: blur(12px);
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout {
+    grid-template-columns: minmax(0, 1fr);
+    gap: var(--la-space-4);
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side {
+    position: static;
+    max-height: none;
+    overflow: visible;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button {
+    min-height: 96px;
+    padding: var(--la-space-3) !important;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button { transform: none; }
+}
