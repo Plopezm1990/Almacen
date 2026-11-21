@@ -1502,6 +1502,36 @@ documento la clave TOTP ni códigos de un solo uso.
 pantalla única e introducir el código directamente en el navegador. Nunca
 enviar la clave ni el código por chat.
 
+### Recorrido autenticado del marco Órbita · 21/11/2026
+
+Con la sesión de propietario de QA-EMP-A/A1 se recorrieron en modo lectura
+Inicio/Pase, TPV, Cocina, Clientes, Productos, Personal, Configuración, Caja y
+Proveedores. Todas las rutas cargaron con la cabecera superior, navegación
+inferior, selector de empresa/local, buscador, avisos, perfil, estado QA y
+botón Apariencia del shell Órbita. Se observaron datos reales de QA (mesas,
+comandas, productos, clientes, empleados, proveedores y configuración) sin
+crear ni modificar datos. Cocina mostró explícitamente las comandas bloqueadas
+por falta de estación; Clientes mostró el NIF particular enmascarado; TPV
+mostró paginación y el resumen de ventas separado del detalle; Caja mostró
+apertura, arqueo y movimientos bajo demanda.
+
+La Plataforma también quedó comprobada con la misma sesión administrativa:
+panel de empresas, estados Activa/Desactivada y acciones contextuales visibles
+sin overlay. Esta evidencia cierra la composición autenticada de escritorio,
+pero no se convierte en un cierre funcional de los 12 módulos: las variantes
+móviles dedicadas, los estados de carga/vacío/error que no aparecieron en el
+recorrido y las operaciones que escriben datos siguen separadas en la matriz.
+
+### Batería posterior al recorrido · 21/11/2026
+
+La batería `tests/rediseno/*.mjs` completa queda en PASS: componentes, barrera
+de lectura, fail-closed, RPC/tablas, locales visibles, marco (24/24), rutas
+(20/20), migración modular (12/12, responsive y táctil 44 px), org-33,
+P01/P03/P05, fiscalidad TPV, propina, arranque resiliente, apariencia local
+(49/49) y política MFA (26/26). `git diff --check` está limpio. El árbol de
+trabajo quedó limpio en `rediseno/f0-base-qa`; PR #225 continúa en borrador y
+producción no se tocó.
+
 ### Corrección de salida del perfil Órbita · 21/11/2026
 
 Se reprodujo que `Perfil → Cerrar sesión` cerraba solo el menú en móvil. El
