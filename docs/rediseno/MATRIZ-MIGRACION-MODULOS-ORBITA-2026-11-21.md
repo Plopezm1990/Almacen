@@ -110,6 +110,17 @@ heredados en esa capa. Inicio sigue en `PARCIAL` hasta comprobar en QA las
 variantes de indicadores y los estados vacío/carga/error en los cinco
 viewports definidos.
 
+### Verificación posterior · commit `74b32091`
+
+El cambio se publicó en el Deploy Preview 225 como deploy
+`6b01359c82a0e124af379731`, estado `ready`, con `review_id=225` y sin tocar
+producción. La batería oficial sin base de datos volvió a registrar
+`NODE_ACTIVE_TOTAL=328`, `NODE_ACTIVE_PASS=305`, `NODE_ACTIVE_FAIL=23`,
+`UTILITIES_RUN=8`, `DIAGNOSTICS_RUN=5`, `INFRA_FAIL=0`; los 23 fallos son la
+misma lista histórica ya documentada. `git diff --check` y el árbol quedaron
+limpios. La revisión live autenticada de Inicio queda pendiente de completar
+el MFA en la sesión de QA.
+
 ### Clientes · primera migración de superficie
 
 La capa añadida en `2c709144` se limita a
