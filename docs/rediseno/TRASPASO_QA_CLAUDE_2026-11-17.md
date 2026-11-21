@@ -1483,6 +1483,14 @@ la integración común del shell y la escala en estos siete bloques; no sustituy
 el recorrido autenticado de datos, permisos, estados reales, Plataforma y
 Acceso, por lo que las filas siguen `PARCIAL`.
 
+### Acceso · revisión responsive · 21/11/2026
+
+La superficie independiente `.la-acceso` se comprobó en escritorio (`618×678`)
+y móvil (`390×844`). En ambos tamaños mostró el login, no tuvo overflow y
+conservó controles visibles de al menos `44 px`; en móvil se redujo a una sola
+columna. No se introdujeron credenciales. Queda pendiente la verificación
+autenticada de login, recuperación, MFA, expiración y selección de empresa/local.
+
 ### Deploy v19 y auditoría de rutas históricas · 21/11/2026
 
 El commit `a57e154d8cd3f9488b53a3361e32febed7937508` está publicado en el

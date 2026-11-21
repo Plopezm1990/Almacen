@@ -1361,3 +1361,13 @@ un mínimo visible de `44 px` en ambos tamaños. La tabla de evidencia es:
 La prueba es de marco visual, responsive y clasificación. No cierra las filas:
 queda pendiente el recorrido QA autenticado de datos, permisos, estados de
 negocio, Plataforma y Acceso.
+
+### Acceso · revisión responsive de la superficie independiente · 21/11/2026
+
+La ruta de acceso se comprobó fuera del shell autenticado porque utiliza la
+superficie `.la-acceso`. En el viewport integrado (`618×678`) y en `390×844`
+mostró «Iniciar sesión», mantuvo `overflow=false`, controles visibles de al
+menos `44 px` y la composición adaptada a una sola columna en móvil. No se
+introdujeron credenciales ni se alteró ninguna sesión. La fila Acceso sigue
+`PARCIAL` hasta probar login, recuperación, MFA, expiración y selección de
+empresa/local con una sesión QA real.
