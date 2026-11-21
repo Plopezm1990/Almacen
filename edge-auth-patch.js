@@ -981,6 +981,7 @@ function modoLocalNoReclamado() {
   var factorActual = null;
   var challengeActual = null;
   var enrolamientoEnCurso = false;
+  var observadorMfaReact = null;
 
   function nodo(tag, texto) {
     var el = document.createElement(tag);
@@ -1027,6 +1028,18 @@ function modoLocalNoReclamado() {
     if (!root) return false;
     var texto = String(root.textContent || "");
     return /segundo factor/i.test(texto) && !!root.querySelector('input[autocomplete="one-time-code"]');
+  }
+
+  function observarMfaReact() {
+    if (observadorMfaReact || typeof MutationObserver !== "function" || !document.body) return;
+    observadorMfaReact = new MutationObserver(function () {
+      if (mfaGateReactActivo() && overlay) {
+        limpiarOverlay();
+        observadorMfaReact.disconnect();
+        observadorMfaReact = null;
+      }
+    });
+    observadorMfaReact.observe(document.body, { childList: true, subtree: true });
   }
 
   function boton(texto) {
@@ -1221,6 +1234,7 @@ function modoLocalNoReclamado() {
         if (evento === "SIGNED_OUT") limpiarOverlay();
         else if (evento === "SIGNED_IN" || evento === "PASSWORD_RECOVERY" || evento === "TOKEN_REFRESHED" || evento === "MFA_CHALLENGE_VERIFIED") comprobarMfa();
       });
+      observarMfaReact();
       comprobarMfa();
     } catch (e) {}
   })();
