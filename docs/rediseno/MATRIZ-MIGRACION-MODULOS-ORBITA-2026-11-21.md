@@ -1783,3 +1783,8 @@ expande indefinidamente en móvil.
 
 Contrato reproducible: `node tests/rediseno/plantillas-orbita-contract.mjs`
 (`plantillas=10`, `modulos=12`, `movil=PASS`, `sin-rpc=PASS`).
+
+Publicación de esta tanda: SHA `b008bc6c583042740337aeaf02d9f7935401a575`,
+Deploy Preview 225 listo (`6b021314756178af22771d3a`). En el navegador de QA
+se confirmó la pantalla de Acceso, el enlace marcado de la capa de plantillas,
+`overflow=false` y un control visible mínimo de 44 px en viewport `758 × 678`.

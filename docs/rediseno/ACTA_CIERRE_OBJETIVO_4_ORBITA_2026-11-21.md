@@ -184,3 +184,8 @@ diálogos acotados al viewport, controles de 44 px y encapsulado del overflow.
 El contrato de plantillas verifica los diez tipos, los doce módulos, la
 ausencia de RPC y el comportamiento móvil; el recorrido QA funcional de cada
 capacidad permanece separado y no se da por hecho por una marca visual.
+
+La publicación de esta fase queda en `b008bc6c583042740337aeaf02d9f7935401a575`.
+Netlify la dejó lista en el Deploy Preview 225 (`6b021314756178af22771d3a`).
+La comprobación del navegador mostró Acceso interactivo, `overflow=false` y
+control mínimo de 44 px; producción no fue modificada y el PR sigue en borrador.

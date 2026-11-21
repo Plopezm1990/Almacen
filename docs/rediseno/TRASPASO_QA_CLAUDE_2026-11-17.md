@@ -1537,6 +1537,12 @@ de datos/permisos siguen siendo evidencias separadas; no se deben sustituir por
 esta comprobación estática. Producción permanece intacta y el PR #225 continúa
 en borrador.
 
+El commit publicado de esta fase es `b008bc6c583042740337aeaf02d9f7935401a575`;
+Netlify lo sirve en el Deploy Preview 225 como `6b021314756178af22771d3a`.
+La pantalla de Acceso del alias responde y acepta interacción; la comprobación
+DOM registró `overflow=false` y mínimo táctil de 44 px. La validación móvil
+autenticada de cada capacidad sigue siendo una evidencia de QA separada.
+
 ## Addendum · higiene CSS y aislamiento de legacy · 21/11/2026
 
 Se completó la siguiente pasada del objetivo visual sobre
