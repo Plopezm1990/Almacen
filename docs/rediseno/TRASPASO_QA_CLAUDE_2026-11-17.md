@@ -1462,6 +1462,29 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Revisión adicional · Plataforma previa y recuperación de acceso
+
+El último barrido visual encontró una excepción fuera de `#root`: el panel de
+Plataforma se monta como `.lap-root` bajo `body` y tenía una hoja inline propia
+con verde/beige, mientras que `restablecer-contrasena.html` era un documento
+independiente con la tarjeta antigua. Se corrigieron ambas superficies en la
+rama `rediseno/f0-base-qa`:
+
+1. `plataforma-panel.js` usa `--c-bg`, `--c-surface`, `--c-ink`,
+   `--c-accent-fill`, `--c-red`, `--c-amber` y la escala `--la-*` del diseño
+   activo. Barra, tarjetas, diálogos, estados, campos y botones ya comparten
+   el marco Órbita; no hay controles de 24 px como excepción de escritorio.
+2. `restablecer-contrasena.html` fija `data-la-diseno="orbita"`, carga
+   `la-apariencia.css` v43 y reemplaza los colores/radios heredados por los
+   tokens comunes. Sigue siendo una ruta independiente, pero ya no es una
+   identidad visual distinta.
+
+La caché del script queda marcada como `qa-orbita-platform-v2-20261121`.
+Contratos específicos y `git diff --check` pasan. No se ejecutó ninguna
+operación de negocio ni se tocó producción. Falta todavía la sesión de
+administrador de Plataforma y el recorrido real de recuperación/MFA para
+convertir esas filas de `PARCIAL` en `CERRADO`.
+
 ### Ajuste del shell · control lateral táctil · `6438b207`
 
 En la auditoría del punto 4 se encontró un control común que no cumplía el

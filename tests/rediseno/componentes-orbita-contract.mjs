@@ -9,6 +9,7 @@ const dashboardPremium = readFileSync(resolve(root, 'dashboard-premium-v2.js'), 
 const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
+const resetPassword = readFileSync(resolve(root, 'restablecer-contrasena.html'), 'utf8');
 
 const normalizeNewlines = (text) => text.replace(/\r\n/g, '\n');
 const localAccessBlock = (text) => {
@@ -54,6 +55,10 @@ assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipog
 assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
 assert.match(css, /--la-mono:\s*["']IBM Plex Mono["']/, 'MFA usa --la-mono sin declararlo');
 assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no conserva la composición Órbita');
+assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
+assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v43-20261121/, 'la recuperación no carga el contrato de apariencia');
+assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
+assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
 
 // Toda variable --la-* consumida por la capa debe estar declarada en la
 // propia hoja. La única excepción es --la-orbita-puntero: la escribe en

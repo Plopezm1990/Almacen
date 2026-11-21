@@ -611,3 +611,27 @@ El contrato de componentes incorpora además un inventario automático de
 tokens `--la-*`: cada uso debe estar declarado en la hoja o documentado como
 propiedad dinámica. Así la normalización visual no puede introducir otra
 variable huérfana sin romper la batería.
+
+### Plataforma y Acceso · superficies fuera de `#root` · revisión actual
+
+La auditoría del bloque 4 encontró dos superficies que no podían quedar
+cubiertas solo por los selectores `#root`: el Panel de Plataforma (`.lap-root`,
+montado bajo `body`) y `restablecer-contrasena.html` (documento independiente).
+Ambas conservaban colores y geometría propios del marco antiguo. Se corrigió
+sin tocar lógica, permisos, RPC ni handlers:
+
+- `plataforma-panel.js` consume ahora los tokens `--c-*` y `--la-*` del diseño
+  activo para barra, tarjetas, diálogos, estados, campos y botones. Todos sus
+  controles y campos tienen `44 px` mínimos también en escritorio. Se retiró el
+  fondo inline heredado del flujo de cambio de contraseña y se añadió la marca
+  de caché `qa-orbita-platform-v2-20261121` en `index.html`.
+- `restablecer-contrasena.html` fija el diseño inicial Órbita, carga la hoja
+  común v43 y usa sus tokens para fondo, tarjeta, tipografía, campos, botón,
+  mensajes y enlace de vuelta. Sus controles mantienen el suelo de `44 px`
+  aunque la página se abra sin sesión.
+
+Los contratos `p04-panel-contract`, `componentes-orbita-contract`,
+`marco-orbita-contract`, `migracion-modulos-contract` y `git diff --check`
+ pasan tras la corrección. Plataforma y Acceso siguen en `PARCIAL`: todavía se
+ necesita el recorrido autenticado de administración, recuperación, selección
+ de local y MFA para cerrar sus filas de QA.

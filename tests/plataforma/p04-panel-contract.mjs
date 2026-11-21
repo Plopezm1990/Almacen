@@ -23,6 +23,12 @@ const index = leer('index.html');
 const headers = leer('_headers');
 const migracion = leer(process.env.PLATAFORMA_MIGRACION || 'supabase/migrations/20261009120000_plataforma_f1_administrador_y_empresas.sql');
 
+assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v2-20261121/, 'el panel de Plataforma no invalida la caché de su capa Órbita');
+assert.match(panelSrc, /var\(--c-bg,#17191C\)/, 'Plataforma no consume el fondo semántico');
+assert.match(panelSrc, /var\(--la-font/, 'Plataforma no consume la tipografía semántica');
+assert.match(panelSrc, /min-height:var\(--la-control-height,44px\)/, 'Plataforma no fija el suelo táctil común');
+assert.doesNotMatch(panelSrc, /#F7F3E9|#0C2714|#E7D1A5|#B8AC91|#7F5823|#d9d2c0|#b7b0a0|#8d2e1f/, 'Plataforma conserva la paleta literal anterior');
+
 function cargar() {
   const ventana = { crypto: webcrypto };
   const ctx = { window: ventana, document: {}, console, setTimeout, Uint8Array, Date, Promise };
