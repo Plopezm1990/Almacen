@@ -1474,6 +1474,9 @@ huella CSS es `dc23dacac016d12d` y la marca es
 `qa-orbita-modules-v23-20261121`. El recorrido autenticado de TPV sigue
 pendiente para cerrar el bloque.
 
+La versión v23 está publicada en el Deploy Preview 225 como deploy
+`6b0137dac55d9e163e63c27e` (`ready`), commit `a9147300`.
+
 La publicación de esta corrección quedó en el deploy
 `6b01359c82a0e124af379731` (`ready`), commit `74b32091`, PR #225 en borrador.
 La batería sin base de datos conserva el resultado `328/305/23`, con

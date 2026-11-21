@@ -122,6 +122,9 @@ para que la pantalla no se alargue horizontalmente. La caché CSS pasó a
 `PARCIAL` hasta el recorrido QA de venta rápida, sala, cuentas, mesas,
 historial, vacío/carga/error y factura a empresa en escritorio y móvil.
 
+La versión v23 está publicada en el Deploy Preview 225 como deploy
+`6b0137dac55d9e163e63c27e` (`ready`), commit `a9147300`.
+
 ### Verificación posterior · commit `74b32091`
 
 El cambio se publicó en el Deploy Preview 225 como deploy
