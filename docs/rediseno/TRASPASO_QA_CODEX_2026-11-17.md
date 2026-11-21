@@ -237,6 +237,22 @@ Para referencia, lo que el servidor concede a **Camarero/a**:
 
 ## Lo que sigue, por orden
 
+### Continuidad de migración visual · 21/11/2026
+
+El objetivo vigente es migrar los doce módulos al marco Órbita sin declarar
+cierre solo porque exista un selector visual. En el preview 225 se comprobó en
+modo local, viewport `618×678`, que Inicio, TPV, Cocina, Caja y Clientes
+comparten `la-orbita-shell`, la marca de módulo/superficie, el ancho estable y
+controles visibles de al menos `44 px`. Inicio muestra el panel «El pulso del
+negocio»; TPV conserva venta rápida/sala/paginación; Cocina conserva estación y
+cola; Caja conserva apertura/arqueo; Clientes conserva vistas y filtros.
+
+El modo local llegó a «Cargando almacén…» durante varios segundos y después
+montó el panel; no hubo errores de consola. Se deja como observación de
+rendimiento del arranque, no como bloqueo: el loader ya tiene límite visible,
+mensaje accesible y reintento. La medición no sustituye el recorrido
+autenticado de QA ni autoriza cobros, reembolsos o escrituras.
+
 1. **Publicar el commit `88bb28ac` en el Deploy Preview #225 y repetir los tres
    casos de Pase** de la tabla A con un terminal que ya tenga otra cuenta
    activa. Confirmar que cada botón abre la cuenta/pedido pedido y que una

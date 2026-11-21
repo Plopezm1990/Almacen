@@ -93,6 +93,36 @@ P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
 Esta matriz es de seguimiento, no un cierre prematuro. El objetivo 4 sigue
 activo hasta que los doce módulos pasen individualmente a `CERRADO`.
 
+### Pasada local adicional · preview 225 · 21/11/2026
+
+Se hizo una pasada de renderizado en el Deploy Preview 225 desde el navegador
+integrado, en viewport táctil `618×678`, sin credenciales ni escrituras de
+negocio. El modo «Trabajar solo en este equipo» terminó mostrando el shell
+Órbita y permitió navegar por las rutas reales. La hidratación tarda unos
+segundos en este banco, pero no quedó bloqueada: tras esperar diez segundos el
+árbol ya mostraba el panel y la consola no registró errores ni advertencias.
+
+| Ruta | `data-la-orbita-module` | `data-la-orbita-surface` | `scrollWidth` | control mínimo visible |
+|---|---|---|---|---:|
+| Inicio / Panel general | `inicio` | `inicio` | igual al viewport | 44 px |
+| TPV | `tpv` | `tpv` | igual al viewport | 44 px |
+| Cocina | `cocina` | `cocina` | igual al viewport | 44 px |
+| Caja / Arqueo | `caja` | `caja` | igual al viewport | 44 px |
+| Clientes | `clientes` | `clientes` | igual al viewport | 44 px |
+
+En Inicio se observaron «El pulso del negocio», accesos rápidos, cuatro
+indicadores, selector de local, cabecera QA, buscador global, avisos, perfil,
+botón Apariencia y navegación inferior. TPV mantuvo venta rápida, sala,
+catálogo, paginación, historial y caja en la misma superficie. Cocina mostró
+cabecera, estado de conexión, estación y cola vacía. Caja mostró apertura y
+arqueo; Clientes mostró vistas guardadas, filtros, búsqueda y estado vacío.
+
+Esta evidencia cierra la comprobación de composición responsive para esas
+cinco rutas, pero no las convierte aún en `CERRADO`: falta recorrer cada acción
+con sesión QA y datos reales, además de los estados de carga/error y las rutas
+restantes de cada módulo. No se ejecutaron cobros, reembolsos ni cambios de
+datos en esta pasada.
+
 ### Corrección transversal · arranque local desde Acceso
 
 El botón «Trabajar solo en este equipo, sin sincronizar» cambiaba la fase de
