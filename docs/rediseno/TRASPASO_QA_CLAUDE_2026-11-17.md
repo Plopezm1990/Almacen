@@ -1472,6 +1472,16 @@ conserva el valor antiguo. Recurso `qa-orbita-modules-v59-20261121`, huella
 `39b48ae6ec69e7f4`. Contratos enfocados y diff limpios. La observación en modo
 local del Preview v59 confirmó el borde calculado coral para los cinco filtros.
 
+### Revisión móvil transversal · v60 · 21/11/2026
+
+Con viewport `390×844` y modo local se recorrieron Inicio/Pase embebido, TPV,
+Cocina, Caja, Clientes, Compras/Proveedores, Inventario/Productos, Personal,
+Configuración y Acceso. Todas las rutas devolvieron `overflow=false` y todos
+los controles visibles midieron al menos `44×44 px`. La evidencia incluye los
+estados de cola vacía, listado vacío, carga y error de sincronización que el
+modo local puede mostrar. No sustituye los recorridos autenticados ni el
+acceso de administrador de Plataforma.
+
 ### Restos visuales corregidos · v58 · 21/11/2026
 
 En la revisión efectiva del Preview 225 se localizaron tres estilos inline

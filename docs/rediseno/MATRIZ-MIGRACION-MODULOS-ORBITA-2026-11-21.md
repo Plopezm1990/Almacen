@@ -1199,3 +1199,18 @@ handlers y colores de datos no se alteran. Marca
 Contratos enfocados y `git diff --check`: PASS. La validación visual v59 en
 modo local del Preview confirmó que los cinco filtros calculan el borde coral
 Órbita y que el recurso servido es `qa-orbita-modules-v59-20261121`.
+
+### Revisión móvil transversal de módulos · v60 · 21/11/2026
+
+En una sesión limpia del Preview 225, en modo local y viewport `390×844`, se
+recorrieron Inicio (incluido el panel operativo), TPV, Cocina, Caja, Clientes,
+Compras/Proveedores, Inventario/Productos, Personal, Configuración y Acceso.
+Todas las superficies devolvieron `overflow=false` y ningún control visible
+por debajo de `44×44 px`. Se observaron estados vacíos/carga/error donde el
+modo local los ofrece: cola de Cocina sin comandas, Clientes sin registros,
+Proveedores vacío, Personal cargando y Configuración sin sesión sincronizada.
+
+Esta evidencia cierra la revisión responsive del marco y de los componentes
+comunes, pero no las condiciones funcionales: las filas siguen `PARCIAL` hasta
+probar con sesión QA, datos reales, permisos, estados de negocio y rutas de
+Plataforma/Pase que requieren acceso autenticado.
