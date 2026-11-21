@@ -642,6 +642,69 @@ html[data-la-diseno] .la-acceso-error {
   background: var(--c-red-soft) !important;
   color: var(--c-red) !important;
 }
+
+/* MFA no usa el formulario .la-acceso porque se monta en un paso separado.
+   Sus atributos de autenticación permiten normalizarlo sin cambiar el flujo
+   ni los handlers de Supabase. */
+html[data-la-diseno] #root main:has(input[autocomplete="one-time-code"]) {
+  box-sizing: border-box;
+  width: min(460px, calc(100% - 32px)) !important;
+  max-width: 460px !important;
+  padding: var(--la-space-7) !important;
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+  box-shadow: var(--la-shadow-2) !important;
+}
+html[data-la-diseno] #root main:has(input[autocomplete="one-time-code"]) h1 {
+  color: var(--c-ink) !important;
+  font-family: var(--la-display) !important;
+  font-size: var(--la-type-title) !important;
+}
+html[data-la-diseno] #root main:has(input[autocomplete="one-time-code"]) p,
+html[data-la-diseno] #root main:has(input[autocomplete="one-time-code"]) label {
+  color: var(--c-ink-soft) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root main:has(input[autocomplete="one-time-code"]) input[autocomplete="one-time-code"] {
+  box-sizing: border-box;
+  min-height: var(--la-control-height) !important;
+  border: 1px solid var(--c-border-control) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-bg) !important;
+  color: var(--c-ink) !important;
+  font-family: var(--la-mono) !important;
+  letter-spacing: .14em;
+}
+html[data-la-diseno] #root main:has(input[autocomplete="one-time-code"]) button[type="button"]:first-of-type {
+  min-height: var(--la-control-height) !important;
+  border: 1px solid var(--c-accent-fill) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-accent-fill) !important;
+  color: var(--c-on-accent) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root main:has(input[autocomplete="one-time-code"]) button[type="button"]:last-of-type {
+  min-height: var(--la-control-height) !important;
+  border: 1px solid transparent !important;
+  border-radius: var(--la-radius-md) !important;
+  background: transparent !important;
+  color: var(--c-accent) !important;
+  font-family: var(--la-font) !important;
+}
+html[data-la-diseno] #root main:has(input[autocomplete="one-time-code"]) [role="alert"] {
+  border: 1px solid color-mix(in srgb, var(--c-red) 42%, transparent) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-red-soft) !important;
+  color: var(--c-red) !important;
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main:has(input[autocomplete="one-time-code"]) {
+    width: calc(100% - 24px) !important;
+    padding: var(--la-space-5) !important;
+  }
+}
 @media (prefers-reduced-motion: reduce) { .la-orbita-sidebar { transition: none; } }
 
 @media (min-width: 768px) {

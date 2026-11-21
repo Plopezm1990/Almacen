@@ -1473,6 +1473,15 @@ huella P01 `471a45c1efb84092`. Los cinco módulos siguen `PARCIAL` hasta el
 recorrido autenticado de sus rutas y estados. Deploy Preview 225: 
 `6b0139add1ed5298ee9b64ab` (`ready`), commit `a1120082`.
 
+### Acceso · MFA alineado con Órbita · 21/11/2026
+
+El overlay de MFA ya no hereda la composición verde/dorada de su estilo inline.
+La capa `la-apariencia.css` v25 lo normaliza mediante el atributo estable
+`autocomplete="one-time-code"`: superficie, tipografía, campo, error y
+acciones usan tokens Órbita, con controles táctiles mínimos de `44 px` también
+en móvil. El flujo de autenticación no se tocó. Huella P01:
+`e9372afb3252f577`. Sigue pendiente el recorrido autenticado completo.
+
 ### TPV y sala · superficies secundarias · 21/11/2026
 
 La capa `la-apariencia.css` v23 extiende la migración visual de TPV a venta

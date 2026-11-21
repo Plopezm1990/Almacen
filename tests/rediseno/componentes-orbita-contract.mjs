@@ -10,7 +10,7 @@ const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v24-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v25-20261121/);
 assert.match(index, /dashboard-premium-v2\.js\?v=qa-orbita-panel-v3-20261121/);
 assert.match(dashboardPremium, /la-dashboard-detail-hidden/);
 assert.match(dashboardPremium, /Ver detalle operativo/);
@@ -76,6 +76,7 @@ for (const moduleName of [
   assert.ok(css.includes(`data-la-orbita-module="${moduleName}"`), `falta la superficie CSS del módulo ${moduleName}`);
 }
 assert.ok(css.includes('.la-acceso-entrar'), 'el acceso no recibe el contrato visual Órbita');
+assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no recibe la composición Órbita');
 assert.ok(shell.includes('"acceso"'), 'el shell conserva el identificador de acceso para la matriz de módulos');
 assert.ok(shell.includes('data-la-orbita-module'), 'el shell no expone la marca verificable de módulo');
 

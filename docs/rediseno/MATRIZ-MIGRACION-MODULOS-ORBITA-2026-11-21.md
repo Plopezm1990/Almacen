@@ -240,3 +240,13 @@ Los cinco módulos siguen `PARCIAL`: aún falta el recorrido autenticado de
 cada ruta, estados vacío/carga/error y comprobación conjunta escritorio/móvil
 con datos reales de QA. La revisión está publicada en Deploy Preview 225 como
 `6b0139add1ed5298ee9b64ab` (`ready`), commit `a1120082`.
+
+### Acceso · MFA alineado con Órbita · v25
+
+El paso MFA se monta fuera del formulario de login y conservaba una tarjeta
+verde/dorada inline. La capa v25 lo identifica por `autocomplete="one-time-code"`
+y normaliza tarjeta, título, campo numérico, error, botón primario y salida con
+los tokens Órbita; en móvil mantiene el ancho útil y controles de `44 px`.
+No se modifican desafío, verificación, inscripción, cierre de sesión ni
+handlers de autenticación. El bloque continúa `PARCIAL` hasta comprobar login,
+recuperación, MFA y selección de empresa/local en ambas superficies.
