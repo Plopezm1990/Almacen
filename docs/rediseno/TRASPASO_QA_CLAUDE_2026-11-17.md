@@ -1616,6 +1616,7 @@ con controles táctiles comunes, estados semánticos, tarjetas y tablas
 contenidas en móvil. La lógica, los permisos y los handlers permanecen
 intactos. Marca `qa-orbita-modules-v37-20261121`, huella P01
 `7360be9936c414f6`; queda pendiente el recorrido autenticado en QA.
+Deploy Preview 225: `6b0148194d9d3057193003d7` (`ready`), commit `2f3735b0`.
 
 ### Pase · variante Órbita · 21/11/2026
 

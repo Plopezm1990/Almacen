@@ -389,4 +389,5 @@ escala Órbita; en móvil los grupos se envuelven, las tablas mantienen scroll
 local y los formularios se apilan. No se modifican permisos, fichajes,
 turnos, datos ni handlers. Caché `qa-orbita-modules-v37-20261121`, huella P01
 `7360be9936c414f6`. Personal sigue `PARCIAL` hasta el recorrido autenticado
-en QA.
+en QA. Deploy Preview 225: `6b0148194d9d3057193003d7` (`ready`), commit
+`2f3735b0`.
