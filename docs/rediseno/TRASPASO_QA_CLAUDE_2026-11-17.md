@@ -1462,6 +1462,12 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+Tras v51 se ejecutó la batería completa de `tests/rediseno/*.mjs`:
+`ALL_REDISENO_TESTS_PASS=1`. El árbol permanece limpio y `git diff --check`
+continúa pasando. Estos contratos prueban la capa estática y sus bancos de
+datos locales; no sustituyen las sesiones autenticadas pendientes de la
+matriz.
+
 ### Acceso y arranque · tokens Órbita v51
 
 Se neutralizaron los colores Sello que seguían embebidos en el arte de

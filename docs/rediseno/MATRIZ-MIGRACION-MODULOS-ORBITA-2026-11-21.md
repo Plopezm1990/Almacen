@@ -1064,3 +1064,8 @@ El commit `5cb4a5ac` quedó publicado en el Preview 225 como deploy
 La apertura limpia del alias sirvió v51, mostró Acceso con Órbita y mantuvo
 `overflow=false`; el botón de reintento solo aparece cuando se activa el
 estado de error de arranque, por lo que no se fuerza en esta comprobación.
+
+La batería completa de `tests/rediseno/*.mjs` se repitió después de v51:
+`ALL_REDISENO_TESTS_PASS=1`. También pasaron P01, componentes Órbita, marco,
+rutas, migración modular, Apariencia, MFA, fiscalidad TPV, arranque resiliente,
+paridad y `git diff --check`.
