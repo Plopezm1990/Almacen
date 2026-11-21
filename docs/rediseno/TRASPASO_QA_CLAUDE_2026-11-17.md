@@ -1462,6 +1462,19 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Barrido local completo de navegación · v56 · 21/11/2026
+
+Se recorrieron las rutas del menú Más en el Preview 225 usando el modo local
+sin sincronización. Dirección, Compras (incluido Proveedores), Almacén,
+Ventas, Costes/Producción, Finanzas, Personal, Calidad y Sistema montaron el
+marco Órbita común; las rutas medidas devolvieron `overflow=false` y objetivo
+táctil mínimo de 44 px. Proveedores confirmó el estado vacío y su acción de
+alta dentro del shell, sin una segunda identidad visual.
+
+Es evidencia visual no autenticada. El siguiente paso sigue siendo el mismo:
+recorrer los doce bloques con sesión QA, datos y roles reales, y registrar
+acciones/estados antes de cambiar `PARCIAL` por `CERRADO`.
+
 ### Estado de migración visual por módulos · v55 · 21/11/2026
 
 La rama `rediseno/f0-base-qa` permanece en el SHA

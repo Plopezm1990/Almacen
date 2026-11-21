@@ -1137,3 +1137,19 @@ sus rutas autenticadas y estados de negocio.
 
 Batería tras la revisión: `ALL_REDISENO_TESTS_PASS=1`, `git diff --check`
 limpio. SHA de referencia: `09d2ad1a52f3ebc8394f276073f49e03617be062`.
+
+### Barrido local de las rutas del menú · v56 · 21/11/2026
+
+Con el mismo modo local se recorrieron las rutas expuestas por el menú Más,
+incluidos Dirección, Compras (Proveedores, Pedidos, Recepción, Albaranes y
+Facturas), Almacén (Resumen, Productos, Historial, Inventario ciego, Saldo,
+Mapa, Traspasos, Reconciliación y Etiquetas), Ventas (TPV, Cocina, Encargos,
+Clientes, Devoluciones y Descuentos), Costes/Producción, Finanzas, Personal,
+Calidad y Sistema. Cada ruta montó una superficie con `data-la-orbita-module`
+coherente, `overflow=false` y control visible mínimo de 44 px. Proveedores
+mostró además el estado vacío «Todavía no has añadido proveedores» y el CTA
+«Nuevo proveedor» dentro del mismo marco.
+
+Este barrido confirma que las rutas navegables ya no presentan un encabezado
+heredado distinto ni desborde en modo local. No se elevan filas a `CERRADO`:
+la prueba no ejerce datos, permisos, cobros, estados de servidor ni MFA.
