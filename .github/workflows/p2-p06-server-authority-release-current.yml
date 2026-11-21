@@ -3,10 +3,18 @@ name: "P2-P06 — Persistencia / autoridad de servidor"
 on:
   pull_request:
     branches: [release]
+    # La regla es que aqui este TODO archivo que el contrato lee. Si falta uno,
+    # el contrato no es un contrato: depende de que otro archivo haya tocado el
+    # PR por casualidad. Paso de verdad, no en teoria: el #220 cambio la rama
+    # del propietario en `edge-auth-patch.js`, que no estaba en esta lista, y el
+    # contrato no se entero; salto semanas despues en una rama que si tocaba
+    # `index.html`, y para entonces lo que exigia ya era la forma vieja.
     paths:
       - '.github/scripts/p2-p06/**'
       - '.github/workflows/p2-p06-server-authority-release-current.yml'
       - 'docs/plan-maestro/P2_P06_RELEASE_CURRENT.md'
+      - 'edge-auth-patch.js'
+      - 'index-storage-bootstrap.js'
       - 'index.html'
       - 'server-authority-storage-bridge.js'
       - 'supabase/migrations/20260922170000_p2_p06_server_authority_capabilities_release_current.sql'

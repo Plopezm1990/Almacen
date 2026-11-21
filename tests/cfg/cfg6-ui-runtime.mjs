@@ -510,6 +510,12 @@ async function parte2() {
     const props = { productos: [], local, configEmpresa: empresa, listarEstacionesA10: listar, listarComandasA10: async () => ({ ok: true, comandas: [] }), crearEstacionA10: async () => ({ ok: true }), actualizarEstacionA10: async () => ({ ok: true }), asignarProductoEstacionA10: async () => ({ ok: true }), enviarCambioComandaA10: async () => ({ ok: true }), reimprimirComandaA10: async () => ({ ok: true }), resolverMermaComandaA10: async () => ({ ok: true }), rolPerfil };
     await act(async () => { raiz.render(React.createElement(mod.CocinaA10, props)); });
     await esperar(20);
+    // 18/11/2026: la sesión, las estaciones y el cierre se plegaron tras «Mostrar
+    // gestión avanzada»; lo primero de la pantalla son las comandas. Hay que abrir
+    // ese desplegable antes de buscar el cierre. Se hace solo si existe, para que
+    // la prueba siga valiendo si algún día vuelve a estar desplegado.
+    const avanzada = boton('Mostrar gestión avanzada');
+    if (avanzada) await clic(avanzada);
     await clic(boton('Iniciar cierre'));
     await escribir(document.querySelector('input[type=number][step="0.01"]'), '10');
     await clic(boton('Confirmar cierre provisional'));

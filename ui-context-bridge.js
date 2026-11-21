@@ -40,6 +40,22 @@
     return { key: key, value: value, shared: false };
   }
 
+  function publicarContextoConfirmado(contexto, userId) {
+    if (typeof window.__laOwnerBootstrapSeedUiContext !== "function") {
+      throw new Error("Semilla segura del contexto UI no disponible");
+    }
+    window.__laOwnerBootstrapSeedUiContext(contexto, userId);
+    try {
+      window.dispatchEvent(new CustomEvent("contexto-ui-actualizado", {
+        detail: {
+          empresas: contexto.empresas,
+          locales: contexto.locales,
+          localActivoId: contexto.local_id || null
+        }
+      }));
+    } catch (e) {}
+  }
+
   async function clienteConSesion() {
     if (typeof window.getSupabaseClient !== "function") {
       throw new Error("Cliente Supabase no disponible");
@@ -65,8 +81,50 @@
     }
 
     if (CLAVES_CONTEXTO[key]) {
-      await esperarBarrera();
-      return respuesta(key, leerLocal(key));
+      if (await esperarBarrera()) return respuesta(key, leerLocal(key));
+
+      // La barrera no se abrió en los diez segundos que espera
+      // `esperarBarrera()`. Hasta el 20/11/2026 aquí se respondía igualmente
+      // con lo que hubiera en localStorage, y eso es una mentira con
+      // consecuencias: justo en ese momento puede no haber nada, porque
+      // `edge-auth-patch.js` aparta la copia local cuando era de otra cuenta
+      // (D01, copia local por cuenta) y en el Deploy Preview
+      // `reset-pruebas-preview.js` siembra `almacen:*` en la pantalla de
+      // acceso, antes de que exista cuenta alguna. Responder «[]» ahí no dice
+      // «todavía no lo sé»: dice «esta cuenta no tiene locales». Y quien lo
+      // recibe actúa: fuente.js lo toma por una instalación antigua de un solo
+      // local e INVENTA uno, con un identificador generado en el navegador,
+      // que después el propio puente rechaza por no ser de la cuenta.
+      //
+      // El mismo fichero ya considera fatal este agotamiento al escribir. Al
+      // leer se hace lo honesto: si el dispositivo tiene su propia copia, se
+      // usa; si no, se le pregunta al servidor, que es la autoridad y cuya RPC
+      // de contexto está permitida antes de la barrera precisamente para esto;
+      // y si tampoco se puede, se falla. Lo que no se hace es inventarse un
+      // vacío.
+      var guardado = leerLocal(key);
+      if (guardado) return respuesta(key, guardado);
+
+      var sesionado = await clienteConSesion();
+      var ctx = await sesionado.supabase.rpc("obtener_contexto_instalacion_ui");
+      if (ctx.error) throw ctx.error;
+      if (!ctx.data || ctx.data.state !== "ready") {
+        throw new Error("No se pudo confirmar el contexto empresa/local con el servidor");
+      }
+      if (ctx.data.generation !== generacionLocal()) {
+        throw new Error("La generación del contexto empresa/local no coincide");
+      }
+
+      // Solo se responde. No se siembra en localStorage: sembrar es lo que hace
+      // el arranque cuando la barrera se abre, y hacerlo aquí dejaría escrita
+      // una copia autorizada mientras la validación sigue pendiente.
+      var valorServidor;
+      if (key === "empresas") valorServidor = JSON.stringify(ctx.data.empresas || []);
+      else if (key === "locales") valorServidor = JSON.stringify(ctx.data.locales || []);
+      else valorServidor = JSON.stringify(
+        ctx.data.permite_todos_locales === true ? null : (ctx.data.local_id || null)
+      );
+      return respuesta(key, valorServidor);
     }
 
     return getAnterior(key, shared);
@@ -103,6 +161,34 @@
         var localPermitido = typeof parsed === "string" && parsed.length > 0 && localesPermitidos.some(function (local) {
           return local && local.activo !== false && !local.fusionadoEn && String(local.id) === parsed;
         });
+        // Una copia local anterior puede contener el «Local principal»
+        // generado por el cliente. Si la sesión ya tiene un local canónico
+        // autorizado, adopta ese valor y publica el contexto para que la UI
+        // no se quede mostrando una instalación fantasma.
+        //
+        // Pero hay que distinguir un ARRASTRE de una ELECCIÓN, y hasta el
+        // 20/11/2026 no se distinguía: cualquier local no autorizado se
+        // cambiaba en silencio por el canónico y la llamada respondía como si
+        // hubiera ido bien. Con eso, una cuenta de empleado que pedía un local
+        // ajeno recibía otro sin que nada se lo dijera, y el contrato que
+        // defiende justo eso -tests/ui-context-bridge.mjs- se puso en rojo.
+        //
+        // La diferencia está en si lo que se pide cambia algo. Si coincide con
+        // lo que ya hay guardado, es la copia vieja que el propio cliente
+        // arrastra al arrancar: eso se sana. Si es distinto, alguien está
+        // eligiendo, y una elección que no le corresponde se rechaza.
+        if (parsed !== null && !localPermitido && leerLocal(key) === value) {
+          var localCanonico = typeof contexto.data.local_id === "string" ? contexto.data.local_id : "";
+          var canonicoPermitido = localCanonico && localesPermitidos.some(function (local) {
+            return local && local.activo !== false && !local.fusionadoEn && String(local.id) === localCanonico;
+          });
+          if (canonicoPermitido) {
+            var valorCanonico = JSON.stringify(localCanonico);
+            guardarLocal(key, valorCanonico);
+            publicarContextoConfirmado(contexto.data, actual.sesion.user.id);
+            return respuesta(key, valorCanonico);
+          }
+        }
         if (parsed === null ? !permiteTodos : !localPermitido) {
           throw new Error("Local no autorizado para esta cuenta");
         }
@@ -118,10 +204,7 @@
         throw new Error("El servidor no confirmó el contexto empresa/local");
       }
 
-      if (typeof window.__laOwnerBootstrapSeedUiContext !== "function") {
-        throw new Error("Semilla segura del contexto UI no disponible");
-      }
-      window.__laOwnerBootstrapSeedUiContext(r.data, actual.sesion.user.id);
+      publicarContextoConfirmado(r.data, actual.sesion.user.id);
 
       // El servidor puede devolver algo distinto de lo que se le mando: al dar
       // de baja una empresa desactiva tambien sus locales. La semilla de arriba
@@ -131,7 +214,7 @@
       // anuncia el contexto confirmado para que la UI adopte el del servidor.
       try {
         window.dispatchEvent(new CustomEvent("contexto-ui-actualizado", {
-          detail: { empresas: r.data.empresas, locales: r.data.locales }
+          detail: { empresas: r.data.empresas, locales: r.data.locales, localActivoId: r.data.local_id || null }
         }));
       } catch (e) {}
 

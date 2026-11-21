@@ -1,0 +1,29 @@
+{
+ "bloque": "7 - Albaranes y facturas de compra",
+ "cosas_bien_hechas_del_producto": [
+  "Pegar el texto del albaran explica de donde sacar el texto y promete que nada se guarda todavia.",
+  "Eliminar un albaran enumera sus tres consecuencias, incluida la de devolver el pedido a pendiente.",
+  "La factura dice en una linea el modelo entero: una sola deuda, los albaranes recibidos se vinculan y los pendientes se recepcionan al confirmar.",
+  "Las devoluciones fijan que la salida nunca puede dejar existencias negativas, y el selector ensena el stock."
+ ],
+ "fecha": "2026-11-15",
+ "hallazgo_de_consistencia": {
+  "con_que_se_compara": [
+   "eliminar proveedor",
+   "eliminar pedido",
+   "cerrar pedido incompleto",
+   "eliminar albaran",
+   "dar de baja un empleado",
+   "desactivar un local",
+   "cancelar un conteo",
+   "eliminar una freidora",
+   "eliminar un registro de aceite",
+   "cancelar un encargo"
+  ],
+  "decision": "Anadir confirmacion a com-19 es coherente con el resto del programa, pero es un cambio de comportamiento en una accion de almacen. Queda medido y propuesto; la decision es del propietario.",
+  "que": "com-19, anular la entrada de un albaran, es la unica accion destructiva medida que NO confirma antes de actuar, y devuelve stock.",
+  "todas_las_anteriores": "confirman, y ademas explican las consecuencias en el propio panel."
+ },
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-EMP-A / QA-A1; medida a 1440x900",
+ "sha": "e959dcd0; https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}

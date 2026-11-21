@@ -138,7 +138,9 @@ assert.ok(src.includes('msg.includes("cuenta_destino_version_conflict")'));
 // Wiring completo desde la factoría hasta VentaRapida.
 assert.ok(src.includes("listarCuentasRepartoA08, moverCantidadLineaCuentaA08"));
 assert.ok(src.includes("movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria"));
-assert.ok(src.includes("renderSalaA07(), renderRepartoProductosA08(), renderPedidoOperativoA05()"));
+// tpv-26 mete «Unir cuentas» entre el reparto y el pedido operativo. Los tres
+// siguen pintandose, y en el mismo orden relativo, que es lo que defiende esto.
+assert.ok(src.includes("renderSalaA07(), renderRepartoProductosA08(), renderUnirCuentasA08(), renderPedidoOperativoA05()"));
 
 console.log("A08_1_DEDICATED_SNAPSHOT=PASS");
 console.log("A08_1_OPERATION_ID_SAFE=PASS");

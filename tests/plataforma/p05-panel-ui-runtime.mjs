@@ -476,6 +476,32 @@ async function abrirPanel(e, opts) {
   ok('9c. las dos no coinciden: se avisa en el segundo campo', e.log.updateUser.length === 0 && /no coinciden/.test(e.texto(e.q('[data-error-de="repite"]', dlg))));
   intentar('maria.lopez2026', 'maria.lopez2026');
   ok('9d. no puede contener el correo', e.log.updateUser.length === 0 && /correo/.test(e.texto(e.q('[data-error-de="nueva"]', dlg))));
+
+  // Medido en QA el 16/11/2026: el aviso de cada campo se veia, pero no se oia
+  // -sin role- y el foco se quedaba en el boton. Quien no mira la pantalla
+  // pulsa "Guardar" y no pasa nada que pueda percibir.
+  const errNueva = e.q('[data-error-de="nueva"]', dlg);
+  const campoNueva = e.campo('nueva', dlg);
+  ok('9d-bis. el aviso del campo se anuncia y el campo queda marcado como mal puesto',
+    errNueva.getAttribute('role') === 'alert' && campoNueva.getAttribute('aria-invalid') === 'true',
+    'role=' + errNueva.getAttribute('role') + ' aria-invalid=' + campoNueva.getAttribute('aria-invalid'));
+  ok('9d-ter. el foco va al campo que hay que corregir, no se queda en el boton',
+    e.d.activeElement === campoNueva, e.d.activeElement ? (e.d.activeElement.name || e.d.activeElement.tagName) : 'ninguno');
+  intentar('Abcdefghij12', 'Abcdefghij12x');
+  ok('9d-quater. al corregir un campo se le quita la marca y se le pone al otro',
+    campoNueva.getAttribute('aria-invalid') === null && e.campo('repite', dlg).getAttribute('aria-invalid') === 'true');
+
+  // El panel se monta bajo <body>, no bajo #root. Su hoja propia debe consumir
+  // el mismo contrato de tokens y mantener el suelo táctil de 44 px también
+  // en escritorio: es una superficie del mismo producto, no una excepción.
+  const hojas = [...e.d.querySelectorAll('style')].map((s) => s.textContent).join(' ');
+  ok('9d-quinquies. el panel consume tokens Órbita y mantiene 44 px',
+    /\.lap-root button[^{]*\{[^}]*min-height:var\(--la-control-height,44px\)/.test(hojas) &&
+    /\.lap-root button[^{]*\{[^}]*min-width:44px/.test(hojas) &&
+    /\.lap-campo input,[^{]*\{min-height:var\(--la-control-height,44px\)\}/.test(hojas) &&
+    /background:var\(--c-bg,#17191C\)/.test(hojas) &&
+    /font-family:var\(--la-font/.test(hojas),
+    'la hoja propia no hereda la escala y los tokens de Órbita');
   intentar('Clave-nueva-2026', 'Clave-nueva-2026');
   await esperar(() => recargas.length === 1, 'recarga tras el cambio');
   ok('9e. se envía la contraseña nueva y se quita la marca de "debe cambiarla"',

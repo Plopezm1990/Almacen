@@ -63,7 +63,7 @@ for (const forbidden of [
 }
 
 // A06 recovery now preserves A07 location and account responsibility.
-const recoverIni = src.indexOf("async function recuperarCuentaA06()");
+const recoverIni = src.indexOf("async function recuperarCuentaA06(");
 const recoverFin = src.indexOf("\n  function leerPedidoOperativoA05()", recoverIni);
 const recover = src.slice(recoverIni, recoverFin);
 assert.ok(recover.includes("responsableActual: data.cuenta.responsable_actual"), "A07.1 no conserva responsable real");

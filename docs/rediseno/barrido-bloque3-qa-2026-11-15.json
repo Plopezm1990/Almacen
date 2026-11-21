@@ -1,0 +1,51 @@
+{
+ "accesibilidad": "Cero campos sin nombre accesible, cero botones sin nombre, cero controles por debajo de 24 y cero desbordamientos horizontales en las 19, medido a 1440x900. Incluye org-31 con 232 campos.",
+ "bloque": "3 - Organizacion",
+ "cosas_bien_hechas_del_producto": [
+  "Cada seccion de configuracion exige un motivo del cambio, obligatorio, que queda en la auditoria.",
+  "Terminales dice que el servidor comprueba sesion y rol y que el PIN local no autoriza por si solo.",
+  "Fiscalidad avisa en pantalla de que en preview QA es solo lectura y no activa produccion.",
+  "Lo delicado de los permisos no puede bajar de Encargado, y lo marca con un candado.",
+  "Desactivar un local explica que no se borra ningun dato y pide la contrasena del propietario.",
+  "Para desactivar una empresa exige que haya al menos dos activas."
+ ],
+ "estado_dejado_en_qa": "Nada creado y nada modificado. Los dos locales de QA-EMP-A siguen activos, los dos terminales siguen como estaban y no se escribio ninguna contrasena.",
+ "fecha": "2026-11-15",
+ "hallazgos": [
+  {
+   "id": "org-25",
+   "que": "No existe como vista propia; la vinculacion vive en el formulario de equipos."
+  },
+  {
+   "id": "org-30",
+   "que": "No abre superficie propia: lleva a la seccion Permisos, que es org-31. Misma pantalla por dos caminos."
+  },
+  {
+   "id": "org-28",
+   "que": "Aviso obsoleto del producto: la vista dice que los cargos personalizados «aun no se crean desde esta vista» y el boton Nuevo cargo abre justo ese formulario."
+  },
+  {
+   "id": "org-06",
+   "que": "Confirma la prediccion hecha en frio: no ofrece «Anadir empresa» porque las altas las hace el administrador de la plataforma."
+  },
+  {
+   "id": "plataforma",
+   "que": "window.__laPlataformaActiva es true: en QA SI hay algun administrador de plataforma registrado, asi que el panel existe y lo que falta es la fila de un usuario concreto en private.plataforma_admins."
+  },
+  {
+   "id": "org-05",
+   "que": "El NIF de siembra QA000000A sale marcado «Formato no reconocido (revisar)»: validacion del producto sobre un dato de ensayo, no un defecto."
+  }
+ ],
+ "metodo": "Conducido con window.__laPuenteRediseno y clics programaticos. No se creo, modifico ni desactivo nada: los tres formularios que el plan daba por escrituras (alta de local, desactivar local y alta de equipo) abren su superficie sin escribir, y el panel de desactivar se cancelo.",
+ "recuento": {
+  "abiertas": 18,
+  "defectos_de_accesibilidad": 0,
+  "escrituras_previstas_que_no_hicieron_falta": 3,
+  "escrituras_realizadas": 0,
+  "no_construidas_descubiertas": 1,
+  "objetivo_alcanzable": 19
+ },
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-EMP-A / QA-A1; medida a 1440x900",
+ "sha": "90b1bdee; https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}

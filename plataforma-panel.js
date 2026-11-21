@@ -248,35 +248,40 @@
   }
 
   var ESTILOS =
-    ".lap-root{position:fixed;inset:0;z-index:10040;overflow-y:auto;-webkit-overflow-scrolling:touch;background:#F7F3E9;color:#102018;font-family:'IBM Plex Sans',system-ui,sans-serif;font-size:14px;line-height:1.45}" +
+    ".lap-root{position:fixed;inset:0;z-index:10040;overflow-y:auto;-webkit-overflow-scrolling:touch;background:var(--c-bg,#17191C);color:var(--c-ink,#F1F3F6);font-family:var(--la-font,'Inter','Segoe UI',system-ui,sans-serif);font-size:var(--la-type-body,14px);line-height:1.45}" +
     ".lap-root *{box-sizing:border-box}" +
-    ".lap-barra{background:#0C2714;color:#E7D1A5;padding:14px 16px;display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between}" +
-    ".lap-barra h1{margin:0;font-size:18px;color:#fff}.lap-barra small{display:block;color:#B8AC91;font-size:12px;word-break:break-all}" +
-    ".lap-cuerpo{max-width:880px;margin:0 auto;padding:16px}" +
+    ".lap-barra{background:var(--c-chrome,#15171B);color:var(--c-on-chrome,#fff);padding:var(--la-space-4,16px);display:flex;flex-wrap:wrap;gap:var(--la-space-2,8px);align-items:center;justify-content:space-between;border-bottom:1px solid var(--c-divider,#343941)}" +
+    ".lap-barra h1{margin:0;font-family:var(--la-display,var(--la-font));font-size:var(--la-type-section,18px);color:var(--c-on-chrome,#fff)}.lap-barra small{display:block;color:var(--c-ink-soft,#929DA7);font-size:var(--la-type-label,12px);word-break:break-all}" +
+    ".lap-cuerpo{max-width:880px;margin:0 auto;padding:var(--la-space-4,16px)}" +
     ".lap-fila{display:flex;flex-wrap:wrap;gap:8px;align-items:center}" +
-    ".lap-btn{appearance:none;border:1px solid #0C2714;background:#0C2714;color:#fff;border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer}" +
+    ".lap-btn{appearance:none;border:1px solid var(--c-accent-fill,#FF4B32);background:var(--c-accent-fill,#FF4B32);color:var(--c-on-accent,#17191C);border-radius:var(--la-radius-md,10px);padding:9px 14px;font:inherit;font-weight:700;cursor:pointer}" +
     ".lap-btn:disabled{opacity:.55;cursor:default}" +
-    ".lap-btn.sec{background:transparent;color:#0C2714}.lap-barra .lap-btn.sec{color:#E7D1A5;border-color:#7F6A3C}" +
-    ".lap-btn.peligro{background:#8d2e1f;border-color:#8d2e1f}.lap-btn.aviso{background:transparent;color:#8d2e1f;border-color:#8d2e1f}" +
+    ".lap-btn.sec{background:transparent;color:var(--c-ink,#F1F3F6);border-color:var(--c-border-control,#737D88)}.lap-barra .lap-btn.sec{color:var(--c-on-chrome,#fff);border-color:color-mix(in srgb,var(--c-on-chrome,#fff) 42%,transparent)}" +
+    ".lap-btn.peligro{background:var(--c-red-fill,#8E2A1E);border-color:var(--c-red-fill,#8E2A1E);color:var(--c-on-red,#fff)}.lap-btn.aviso{background:transparent;color:var(--c-amber,#FFCE89);border-color:var(--c-amber,#FFCE89)}" +
     ".lap-btn.peq{padding:6px 10px;font-size:13px}" +
-    ".lap-tarjeta{background:#fff;border:1px solid #d9d2c0;border-radius:14px;padding:14px;margin-top:12px}" +
-    ".lap-tarjeta h2{margin:0;font-size:16px}" +
+    ".lap-tarjeta{background:var(--c-surface,#202328);border:1px solid var(--c-divider,#343941);border-radius:var(--la-radius-lg,14px);padding:var(--la-space-4,16px);margin-top:var(--la-space-3,12px);box-shadow:var(--la-shadow-1,0 2px 12px rgba(0,0,0,.08))}" +
+    ".lap-tarjeta h2{margin:0;font-family:var(--la-display,var(--la-font));font-size:var(--la-type-section,18px)}" +
     ".lap-pill{display:inline-block;border-radius:999px;padding:2px 9px;font-size:12px;font-weight:700}" +
-    ".lap-pill.ok{background:#e3f1e6;color:#1d5a2c}.lap-pill.off{background:#fff0d6;color:#7a4b00}" +
-    ".lap-muted{color:#4B5A54;font-size:13px}" +
-    ".lap-banner{border-radius:10px;padding:10px 12px;margin-top:12px;font-size:13px}" +
-    ".lap-banner.ok{background:#e3f1e6;color:#1d5a2c}.lap-banner.mal{background:#fff0ed;color:#8d2e1f}.lap-banner.info{background:#fff7e7;color:#6a4b18;border:1px solid #d9b56d}" +
-    ".lap-velo{position:fixed;inset:0;z-index:10045;background:rgba(6,23,14,.62);display:flex;align-items:flex-start;justify-content:center;padding:16px;overflow-y:auto}" +
-    ".lap-dialogo{width:min(100%,520px);background:#F7F3E9;border:1px solid rgba(198,154,82,.55);border-radius:18px;padding:18px;margin:auto 0;box-shadow:0 24px 70px rgba(0,0,0,.38)}" +
-    ".lap-dialogo h2{margin:0 0 8px;font-size:18px;color:#0C2714}" +
-    ".lap-campo{display:block;margin-top:12px}.lap-campo>span{display:block;font-size:13px;font-weight:700;color:#263b30;margin-bottom:4px}" +
-    ".lap-campo input,.lap-campo textarea{width:100%;padding:11px;border-radius:10px;border:1px solid #b7b0a0;background:#fff;font:inherit;color:#102018}" +
-    ".lap-campo .lap-ayuda{font-size:12px;color:#4B5A54;margin-top:3px;font-weight:400}.lap-campo .lap-err{font-size:12px;color:#8d2e1f;margin-top:3px;font-weight:600}" +
+    ".lap-pill.ok{background:var(--c-accent-soft,#342727);color:var(--c-accent,#FF8E7D)}.lap-pill.off{background:var(--c-amber-soft,#362727);color:var(--c-amber,#FFCE89)}" +
+    ".lap-muted{color:var(--c-ink-soft,#929DA7);font-size:var(--la-type-label,12px)}" +
+    ".lap-banner{border-radius:var(--la-radius-md,10px);padding:var(--la-space-3,12px);margin-top:var(--la-space-3,12px);font-size:var(--la-type-label,12px)}" +
+    ".lap-banner.ok{background:var(--c-accent-soft,#342727);color:var(--c-accent,#FF8E7D)}.lap-banner.mal{background:var(--c-red-soft,#3B2627);color:var(--c-red,#FFB5A9)}.lap-banner.info{background:var(--c-amber-soft,#362727);color:var(--c-amber,#FFCE89);border:1px solid var(--c-amber,#FFCE89)}" +
+    ".lap-velo{position:fixed;inset:0;z-index:10045;background:color-mix(in srgb,var(--c-chrome,#15171B) 68%,transparent);display:flex;align-items:flex-start;justify-content:center;padding:var(--la-space-4,16px);overflow-y:auto}" +
+    ".lap-dialogo{width:min(100%,520px);background:var(--c-surface,#202328);border:1px solid var(--c-border-control,#737D88);border-radius:var(--la-radius-xl,18px);padding:var(--la-space-5,20px);margin:auto 0;box-shadow:var(--la-shadow-2,0 12px 32px rgba(0,0,0,.14));color:var(--c-ink,#F1F3F6)}" +
+    ".lap-dialogo h2{margin:0 0 8px;font-family:var(--la-display,var(--la-font));font-size:var(--la-type-section,18px);color:var(--c-ink,#F1F3F6)}" +
+    ".lap-campo{display:block;margin-top:var(--la-space-3,12px)}.lap-campo>span{display:block;font-size:var(--la-type-label,12px);font-weight:700;color:var(--c-ink-soft,#929DA7);margin-bottom:4px}" +
+    ".lap-campo input,.lap-campo textarea,.lap-campo select{width:100%;padding:11px;border-radius:var(--la-radius-md,10px);border:1px solid var(--c-border-control,#737D88);background:var(--c-bg,#17191C);font:inherit;color:var(--c-ink,#F1F3F6)}" +
+    ".lap-campo .lap-ayuda{font-size:var(--la-type-caption,11px);color:var(--c-ink-soft,#929DA7);margin-top:3px;font-weight:400}.lap-campo .lap-err{font-size:var(--la-type-caption,11px);color:var(--c-red,#FFB5A9);margin-top:3px;font-weight:600}" +
+    ".lap-kicker{font-size:var(--la-type-label,12px);letter-spacing:.12em;text-transform:uppercase;color:var(--c-accent,#FF8E7D);font-weight:700}" +
+    // Estas pantallas cuelgan de <body>, no de #root: declaran por eso su
+    // propia escala táctil, pero consumen los mismos tokens del shell.
+    ".lap-root button,.lap-root .lap-btn{min-height:var(--la-control-height,44px);min-width:44px}" +
+    ".lap-campo input,.lap-campo textarea,.lap-campo select{min-height:var(--la-control-height,44px)}" +
     ".lap-pie{display:flex;flex-wrap:wrap;gap:8px;justify-content:flex-end;margin-top:16px}" +
-    ".lap-caja{background:#fff;border:1px dashed #b7b0a0;border-radius:10px;padding:10px 12px;margin-top:10px;font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:13px;word-break:break-all}" +
-    ".lap-codigo{font-family:'IBM Plex Mono',ui-monospace,monospace;font-size:26px;letter-spacing:.12em;font-weight:700;text-align:center;background:#fff;border:1px solid #b7b0a0;border-radius:10px;padding:10px;margin-top:10px}" +
+    ".lap-caja{background:var(--c-bg,#17191C);border:1px dashed var(--c-border-control,#737D88);border-radius:var(--la-radius-md,10px);padding:10px 12px;margin-top:10px;font-family:var(--la-mono,ui-monospace,monospace);font-size:13px;word-break:break-all}" +
+    ".lap-codigo{font-family:var(--la-mono,ui-monospace,monospace);font-size:26px;letter-spacing:.12em;font-weight:700;text-align:center;background:var(--c-bg,#17191C);border:1px solid var(--c-border-control,#737D88);border-radius:var(--la-radius-md,10px);padding:10px;margin-top:10px}" +
     ".lap-btn.lap-atajo{position:fixed;left:0;top:50%;transform:translateY(-50%);z-index:45;opacity:.88;writing-mode:vertical-rl;padding:8px 5px;border-radius:0 8px 8px 0;font-size:10px;line-height:1.2;letter-spacing:.03em}" +
-    ".lap-cambio{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 20%,#153D27 0%,#0C2714 48%,#06170E 100%);overflow-y:auto;font-family:'IBM Plex Sans',system-ui,sans-serif}" +
+    ".lap-cambio{position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 20%,var(--c-chrome,#15171B) 0%,var(--c-bg,#17191C) 48%,#08090B 100%);overflow-y:auto;font-family:var(--la-font,'Inter','Segoe UI',system-ui,sans-serif)}" +
     ".lap-cambio .lap-dialogo{margin:auto}";
 
   function asegurarEstilos() {
@@ -480,10 +485,19 @@
   }
 
   function campo(etiqueta, input, ayuda, clave) {
-    var err = h("div", { class: "lap-err", style: "display:none", "data-error-de": clave || "" });
+    // role="alert" para que el aviso se oiga cuando aparece, y aria-invalid
+    // para que el campo se note mal puesto al volver a el. Antes el aviso solo
+    // se veia: pulsabas "Guardar" y, sin mirar, no pasaba nada.
+    var err = h("div", { class: "lap-err", role: "alert", style: "display:none", "data-error-de": clave || "" });
     return {
       nodo: h("label", { class: "lap-campo" }, h("span", null, etiqueta), input, ayuda ? h("div", { class: "lap-ayuda" }, ayuda) : null, err),
-      error: function (msg) { err.textContent = msg || ""; err.style.display = msg ? "block" : "none"; }
+      error: function (msg) {
+        err.textContent = msg || "";
+        err.style.display = msg ? "block" : "none";
+        if (msg) input.setAttribute("aria-invalid", "true");
+        else input.removeAttribute("aria-invalid");
+      },
+      enfocar: function () { try { input.focus(); } catch (e) {} }
     };
   }
 
@@ -997,7 +1011,7 @@
     }
     botonesBarra.push(boton("Cerrar sesión", "sec peq", function () { cerrarSesion(o.recargar, sesion.user.id); }));
 
-    var nodo = h("div", { id: ROOT_PANEL_ID, class: "lap-root", role: "main" },
+    var nodo = h("div", { id: ROOT_PANEL_ID, class: "lap-root", role: "main", "data-la-orbita-external": "plataforma", "data-la-orbita-surface": "plataforma" },
       h("div", { class: "lap-barra" },
         h("div", null, h("h1", null, "Plataforma · L&A Suite"), h("small", null, "Administrador: " + email)),
         h("div", { class: "lap-fila" }, botonesBarra)),
@@ -1083,9 +1097,9 @@
       c1.nodo, c2.nodo, error,
       h("div", { class: "lap-pie" }, boton("Cerrar sesión", "sec", function () { cerrarSesionCambio(); }), btn));
     var caja = h("div", { class: "lap-dialogo", role: "dialog", "aria-modal": "true", "aria-label": "Elige tu contraseña" },
-      h("div", { style: "font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#7F5823;font-weight:700" }, "L&A Suite · primer acceso"),
+      h("div", { class: "lap-kicker" }, "L&A Suite · primer acceso"),
       h("h2", { style: "margin-top:6px" }, "Elige tu contraseña"), form);
-    var raiz = h("div", { id: ROOT_CAMBIO_ID, class: "lap-cambio lap-root", style: "background:radial-gradient(circle at 50% 20%,#153D27 0%,#0C2714 48%,#06170E 100%)" }, caja);
+    var raiz = h("div", { id: ROOT_CAMBIO_ID, class: "lap-cambio lap-root", "data-la-orbita-external": "plataforma", "data-la-orbita-surface": "plataforma" }, caja);
     document.body.appendChild(raiz);
 
     var enCurso = false;
@@ -1102,7 +1116,9 @@
       c1.error(""); c2.error("");
       var motivo = validarCambioContrasena(i1.value, i2.value, email);
       if (motivo) {
-        (motivo.indexOf("coinciden") !== -1 ? c2 : c1).error(motivo);
+        var campoMal = motivo.indexOf("coinciden") !== -1 ? c2 : c1;
+        campoMal.error(motivo);
+        campoMal.enfocar();
         return;
       }
       enCurso = true;

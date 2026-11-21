@@ -1,0 +1,911 @@
+{
+ "abiertas_como_seccion": {
+  "arqueo_de_caja": [
+   {
+    "estado": "abierta; el servidor avisa de que la caja o el terminal ya tienen sesion activa",
+    "id": "caj-02",
+    "seccion": "Apertura de sesion de caja"
+   },
+   {
+    "estado": "abierta con su estado vacio real: 'Nada registrado este dia.'",
+    "id": "caj-03",
+    "seccion": "Entradas, retiradas y reembolsos"
+   },
+   {
+    "estado": "abierta, 4 campos, todos con nombre",
+    "id": "caj-04",
+    "seccion": "Entrada / Retirada, categoria, importe, concepto y motivo obligatorio"
+   },
+   {
+    "estado": "no abierta: no hay ningun movimiento registrado hoy que retirar",
+    "id": "caj-05",
+    "seccion": "Retirar un movimiento"
+   },
+   {
+    "estado": "abierta, 23 campos, todos con nombre",
+    "id": "caj-06",
+    "seccion": "Efectivo contado y 15 denominaciones"
+   },
+   {
+    "estado": "abierta; la accion de cierre escribe y no se ha pulsado",
+    "id": "caj-07",
+    "seccion": "Arqueo del dia y Guardar arqueo"
+   },
+   {
+    "estado": "abierta con datos reales: 2026-10-28 Activo -17,50 EUR y 2026-10-25 Activo Cuadra",
+    "id": "caj-08",
+    "seccion": "Historial de arqueos"
+   }
+  ],
+  "cocina": [
+   {
+    "estado": "abierta: sesion 0c59e0c2 ABIERTA, nuevo responsable con la lista real de empleados, motivo del relevo",
+    "id": "caj-21",
+    "seccion": "Sesion, responsable y terminales"
+   },
+   {
+    "estado": "abierta, pero sin segundo terminal: 'No hay otros terminales activos disponibles en este local'. Es la dependencia Q07/Q08 ya conocida",
+    "id": "caj-22",
+    "seccion": "Terminales vinculados"
+   },
+   {
+    "estado": "abierta; Iniciar cierre escribe y no se ha pulsado",
+    "id": "caj-23",
+    "seccion": "Cierre de sesion de caja"
+   },
+   {
+    "estado": "abierta: COCINA-QA, Cocina QA-A1, 9 rutas",
+    "id": "coc-02",
+    "seccion": "Estaciones y rutas"
+   },
+   {
+    "estado": "abierta: codigo, nombre y tipo COCINA/CHURRERIA/BARRA/BEBIDAS/OTRO",
+    "id": "coc-03",
+    "seccion": "Crear estacion"
+   },
+   {
+    "estado": "abierta: producto, estacion y prioridad",
+    "id": "coc-04",
+    "seccion": "Asignar producto a estacion"
+   },
+   {
+    "estado": "abierta con comandas reales; el detalle se dibuja en la propia lista",
+    "id": "coc-05",
+    "seccion": "Comandas"
+   },
+   {
+    "estado": "parcial: el filtro existe pero QA solo tiene estacion COCINA-QA, no hay CHURRERIA que seleccionar",
+    "id": "coc-08",
+    "seccion": "Filtro por estacion"
+   }
+  ],
+  "tpv_con_cuenta_abierta": [
+   {
+    "id": "tpv-06",
+    "seccion": "Asignar Mesa QA-A1-02, comensales"
+   },
+   {
+    "id": "tpv-08",
+    "seccion": "Cambiar responsable, con la lista real de empleados"
+   },
+   {
+    "id": "tpv-10",
+    "seccion": "Repartir productos"
+   },
+   {
+    "id": "tpv-11",
+    "seccion": "Descuento / cortesia: porcentaje, importe antes de IVA o cortesia, y motivo"
+   },
+   {
+    "estado": "abierta con su estado vacio: 'No hay autorizaciones pendientes para esta cuenta'",
+    "id": "tpv-12",
+    "seccion": "Autorizaciones"
+   },
+   {
+    "estado": "abierta con su estado vacio",
+    "id": "tpv-13",
+    "seccion": "Auditoria A09, historial de descuentos"
+   },
+   {
+    "estado": "abierta: total 1,32 EUR, confirmado 1,32, pendiente 0,00; la cuenta ya estaba pagada",
+    "id": "tpv-17",
+    "seccion": "Cobro F4"
+   },
+   {
+    "estado": "abierta: documento emitido en C05 y registrado en cadena, entorno QA, estado VALIDADA",
+    "id": "caj-15",
+    "seccion": "Fiscalizacion C07-D"
+   }
+  ]
+ },
+ "aviso_de_metodo": "La primera pasada se midio a 736 px de ancho, que esta por debajo del corte de 760 px, asi que el suelo tactil de 44 px estaba activo y 'cero controles cortos' no significaba nada. Repetida a 1440 px, que es la banda de raton. Las cifras de esta nota son las de 1440 px salvo donde se diga.",
+ "aviso_de_sesion": "La ventana de sesion son quince minutos (A-05) y se cuenta desde la ultima actividad, no desde el inicio. Trabajar a rafagas, con pausas para escribir en el repositorio, la agota sin aviso: ha caducado dos veces en mitad del barrido. Por eso cada tanda se guarda en cuanto se mide, y no al final.",
+ "barrido_movil_390": {
+  "ancho": 375,
+  "aviso_de_alcance": "en los paneles que se despliegan en linea, como configurar producto o crear estacion, la medida abarca la pantalla anfitriona, no solo el panel. Los indicadores que importan —nombres y tamanos— siguen siendo validos porque cuentan todo lo visible.",
+  "disparadores": {
+   "caj-04 movimiento de caja": {
+    "bajo24": 0,
+    "campos": 8
+   },
+   "caj-06 conteo por denominaciones": {
+    "bajo24": 0,
+    "campos": 19
+   },
+   "caj-17, caj-18 y caj-19 fiscalidad": {
+    "bajo24": 0,
+    "campos": 19
+   },
+   "coc-03 crear estacion": {
+    "bajo24": 0,
+    "campos": 101
+   },
+   "modal eliminar producto": {
+    "bajo24": 0,
+    "botones": 3,
+    "nota": "era uno de los dos pendientes de la pasada de accesibilidad. Cerrado con Cancelar, no se elimino nada. El texto explica bien que el borrado es logico y que el historial no se pierde"
+   },
+   "tpv-04 y tpv-05 configurar producto": {
+    "bajo24": 0,
+    "campos": 6
+   },
+   "tpv-21 detalle de venta": {
+    "bajo24": 0,
+    "botones": 3
+   },
+   "tpv-22 orden y color de categorias": {
+    "bajo24": 0,
+    "botones": 91,
+    "nota": "a 1440 px tenia 89 por debajo de 24x24; a 375 px, cero. Los dos suelos funcionan"
+   }
+  },
+  "pestanas": {
+   "caja": {
+    "botones": 4,
+    "campos": 4
+   },
+   "cocina": {
+    "botones": 138,
+    "campos": 101,
+    "nota": "el filtro de estacion ya tiene nombre: la etiqueta esta desplegada"
+   },
+   "configuracion": {
+    "botones": 10,
+    "campos": 5
+   },
+   "devoluciones": {
+    "botones": 4,
+    "campos": 5
+   },
+   "produccion": {
+    "botones": 1,
+    "campos": 0
+   },
+   "venta": {
+    "botones": 139,
+    "campos": 11
+   }
+  },
+  "puntero": "grueso: any-pointer coarse activo, asi que rigen los dos suelos",
+  "resultado": "Cero campos sin nombre accesible, cero botones sin nombre, cero controles por debajo de 44 y cero por debajo de 24, y ningun desbordamiento horizontal. En las seis pestanas anfitrionas y en los disparadores que abren superficie propia."
+ },
+ "capacidades_del_catalogo_relevantes": [
+  "ABC_CUENTA_OPERAR",
+  "ABC_CUENTA_REASIGNAR",
+  "ABC_CUENTA_REPARTIR",
+  "ABC_CUENTA_UNIR",
+  "ABC_REPARTO_REVERTIR",
+  "ABC_LINEA_CANCELAR",
+  "ABC_PEDIDO_CANCELAR",
+  "ABC_CANCELACION_SENSIBLE",
+  "ABC_COBRO_INICIAR",
+  "ABC_COBRO_EFECTIVO",
+  "ABC_COBRO_RESOLVER_INCIERTO",
+  "ABC_REEMBOLSO_SOLICITAR",
+  "ABC_REEMBOLSO_CONFIRMAR",
+  "ABC_CAJA_OPERAR",
+  "ABC_CIERRE_REABRIR",
+  "ABC_EMISOR_CAMBIAR",
+  "ABC_COMANDA_VER",
+  "ABC_COMANDA_REIMPRIMIR",
+  "ABC_COMANDA_CAMBIAR",
+  "ABC_COMANDA_CONFIGURAR",
+  "ABC_COMANDA_MERMA_DECIDIR",
+  "ABC_SALA_VER",
+  "ABC_SALA_CONFIGURAR",
+  "ABC_MESA_ASIGNAR",
+  "ABC_MESA_RESERVAR",
+  "ABC_MESA_BLOQUEAR"
+ ],
+ "con_respaldo_en_codigo_por_abrir": [
+  {
+   "id": "tpv-07",
+   "indicio": "Trasladar, 2 apariciones"
+  },
+  {
+   "id": "tpv-23",
+   "indicio": "conflicto de edicion y borrador local, 7 apariciones"
+  },
+  {
+   "id": "tpv-27",
+   "indicio": "Invitacion"
+  },
+  {
+   "id": "tpv-30",
+   "indicio": "pendiente de confirmacion, Iniciar tarjeta simulada"
+  },
+  {
+   "id": "tpv-32",
+   "indicio": "justificante, Enviar por correo"
+  },
+  {
+   "id": "caj-08",
+   "indicio": "Historial de arqueos"
+  },
+  {
+   "id": "caj-21",
+   "indicio": "Registrar relevo"
+  },
+  {
+   "id": "caj-22",
+   "indicio": "vincularTerminal, 26 apariciones"
+  },
+  {
+   "id": "caj-23",
+   "indicio": "cierre provisional, 13 apariciones"
+  },
+  {
+   "id": "caj-24",
+   "indicio": "Ensayar cierre"
+  },
+  {
+   "id": "caj-25",
+   "indicio": "Reabrir"
+  },
+  {
+   "id": "coc-06",
+   "indicio": "Reimprimir"
+  },
+  {
+   "id": "coc-07",
+   "indicio": "merma, Enviar cambio"
+  },
+  {
+   "id": "coc-10",
+   "indicio": "Produccion"
+  }
+ ],
+ "cuarta_tanda_con_datos_creados_y_deshechos": {
+  "principio": "Cada dato de ensayo que se crea para abrir una vista se deshace despues por la via que ofrece el propio programa, no borrando por detras. Asi la vista queda comprobada y QA queda como estaba.",
+  "vistas": [
+   {
+    "contenido": "el detalle se dibuja en la propia tarjeta: estado, estacion, pedido con su identificador y hora, producto, cantidad y prioridad",
+    "correccion": "en la tanda anterior di coc-06 y coc-07 por bloqueadas porque las comandas que mire estaban sin ruta. Era un error de muestreo: la cola tiene 22 BLOQUEADAS y tambien 64 enrutadas a Cocina QA-A1, con sus botones",
+    "donde": "Cocina, cola de comandas",
+    "id": "coc-05",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "boton Reimprimir a 44x81. No se pulso: reimprimir deja registro",
+    "donde": "cada comanda enrutada",
+    "id": "coc-06",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "campo Nota operativa para cocina, a 44 px y con nombre, mas el boton Enviar cambio a 44x99",
+    "donde": "cada comanda enrutada",
+    "id": "coc-07",
+    "matiz": "la decision de merma como tal, que es la capacidad ABC_COMANDA_MERMA_DECIDIR, necesita una comanda que declare merma, y eso no se puede provocar desde la interfaz. Lo que si esta abierto es el envio de cambio con su nota",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "la lista deja de estar vacia: aparece la entrada de ensayo y, al lado, el apunte automatico del cobro parcial anterior, ENTRADA Cobro ABC en efectivo COBRO_VENTA +0,50. El libro de caja recoge el cobro del TPV",
+    "donde": "Arqueo, entradas y retiradas",
+    "id": "caj-03",
+    "veredicto": "abierta y con datos"
+   },
+   {
+    "contenido": "entrada de 1,00 EUR con categoria REPOSICION_CAJA, concepto y motivo obligatorio. Guardada: 'Entrada confirmada'",
+    "donde": "Arqueo, + Anadir",
+    "id": "caj-04",
+    "nota": "el formulario no esta en pantalla hasta pulsar + Anadir",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 0,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "no es un borrado, es 'Revertir con motivo', con el campo Motivo obligatorio del reverso. Confirmado: 'Reverso confirmado. El movimiento original se conserva', y aparece un REVERSO_ENTRADA de -1,00 con su motivo. El ensayo queda a cero y con rastro",
+    "donde": "Arqueo, sobre un movimiento",
+    "id": "caj-05",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "contenido": "solicitud de 0,32 EUR sobre un pago en efectivo: 'Solicitud creada como PENDIENTE'",
+    "donde": "Devoluciones, reembolso B08",
+    "id": "caj-12",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 0,
+    "campos": 4,
+    "camposSinNombre": 0,
+    "contenido": "con la solicitud pendiente aparecen Confirmar efectivo y Cancelar solicitud. La cancelacion tiene doble paso y su propio campo: Cancelar solicitud abre Confirmar cancelacion con Motivo de cancelacion, distinto del motivo de la solicitud. Sin ese motivo el servidor responde 'Escribe el motivo de la cancelacion'. Resultado final: 'Solicitud cancelada y saldo liberado'",
+    "donde": "la solicitud pendiente",
+    "id": "caj-13",
+    "nota": "se cancelo en vez de confirmar: cancelar no mueve dinero y deja QA como estaba",
+    "veredicto": "abierta y ejercitada"
+   }
+  ]
+ },
+ "defecto_de_producto_encontrado": {
+  "antiguedad": "No es de esta rama: falta tambien en `release`. `asignarMesaCuentaA07` entro con 'A07.1 materialize real floor integration' y `moverMesaCuentaA07` con 'A07.2 materialize move and reassignment'; la segunda si se exporto y la primera nunca. Ningun contrato lo cubre, y por eso nadie se habia dado cuenta.",
+  "arreglo": "una palabra: anadir `asignarMesaCuentaA07` al objeto que devuelve `crearLogicaVenta`. Es un cambio de comportamiento del producto, no de presentacion, asi que no se ha aplicado sin preguntar.",
+  "causa": "`crearLogicaVenta` define `asignarMesaCuentaA07` en la linea 12863 pero NO la incluye entre los 48 nombres que devuelve. `AppConSesion` la desestructura de ese retorno, asi que llega `undefined`, y se la pasa igual a `VentaRapida`. El manejador `confirmarAsignacionMesaA07` empieza con `if (!mesaSeleccionadaA07 || typeof asignarMesaCuentaA07 !== \"function\") return;` y sale por ahi sin decir nada.",
+  "consecuencia": "tpv-06 se abre pero no opera, y tpv-07 no se puede alcanzar: el panel de traslado solo existe cuando la cuenta ya tiene mesa, y sin asignacion nunca la tiene. Dos vistas de las 61 dependen de esta palabra.",
+  "sintoma": "El panel 'Asignar <mesa>' se dibuja, el boton 'Asignar esta cuenta' esta habilitado, y al pulsarlo no pasa nada: la mesa sigue Libre, no aparece ningun mensaje de error y no sale ni una peticion de red. Comprobado instrumentando fetch: cero llamadas.",
+  "titulo": "Asignar una mesa a una cuenta no funciona, y falla en silencio"
+ },
+ "defectos_encontrados_y_corregidos": [
+  {
+   "arreglo": "aria-label Estacion de preparacion, en las dos copias de la fuente",
+   "donde": "filtro de estacion de cocina",
+   "que": "select sin nombre accesible"
+  },
+  {
+   "arreglo": "aria-label Cantidad, Quitar una unidad y Anadir una unidad, en las dos copias",
+   "donde": "linea del carrito del TPV",
+   "que": "el campo de cantidad sin nombre accesible, y los dos botones de icono de mas y menos sin nombre, aunque midan 44x44"
+  },
+  {
+   "arreglo": "suelo de 24x24 en la hoja de apariencia para cualquier puntero; 89 a 0 en la peor pantalla",
+   "donde": "toda la aplicacion",
+   "que": "controles por debajo de 24x24 con raton, que es el minimo de WCAG 2.2 AA 2.5.8: la X de cerrar de todos los modales a 17x17, las flechas de categoria a 18x19 y los colores a 20x20"
+  }
+ ],
+ "en_curso": true,
+ "estado_en_que_queda_qa": [
+  "Mesa QA-A1-01 queda Ocupada con la cuenta de ensayo asignada, resultado de verificar el arreglo.",
+  "Esa cuenta sigue con 0,50 EUR confirmados y 0,60 pendientes, con el intento de tarjeta simulada en Pendiente: es el fixture de tpv-19 y tpv-30.",
+  "Fichas de costo y Produccion a cero: la receta de ensayo y su produccion se retiraron.",
+  "El libro de caja queda a cero por el ensayo: la entrada de 1,00 y su reverso de -1,00 se conservan como rastro.",
+  "La sesion de caja queda ABIERTA, como estaba antes del ensayo de cierre.",
+  "No hay ninguna solicitud de reembolso pendiente."
+ ],
+ "falso_positivo_descartado": "En los volcados de texto aparecia una cadena de CSS dentro del TPV. Comprobado recorriendo los nodos de texto: su padre es un elemento style inyectado y no se ve en pantalla. No es un defecto. La leccion es que textContent incluye el contenido de los elementos style.",
+ "faltan_por_precondicion_de_ensayo": {
+  "cierre_provisional": [
+   "caj-24",
+   "caj-25"
+  ],
+  "comanda_enrutada": [
+   "coc-06",
+   "coc-07"
+  ],
+  "detalle_fiscal": [
+   "caj-18",
+   "caj-19"
+  ],
+  "devolucion_y_reembolso": [
+   "caj-10",
+   "caj-12",
+   "caj-13"
+  ],
+  "justificante_por_correo": [
+   "tpv-32"
+  ],
+  "movimiento_de_caja_del_dia": [
+   "caj-05"
+  ],
+  "nota": "El brief autoriza operaciones de ensayo en QA. Estas vistas necesitan que se cree antes el dato que las hace existir, y eso es la siguiente tanda.",
+  "orden_de_produccion": [
+   "coc-10",
+   "coc-11",
+   "coc-12"
+  ],
+  "pedido_de_ensayo_sin_cobrar": [
+   "tpv-04",
+   "tpv-05",
+   "tpv-07",
+   "tpv-15",
+   "tpv-16",
+   "tpv-18",
+   "tpv-19",
+   "tpv-21",
+   "tpv-23",
+   "tpv-27",
+   "tpv-30"
+  ],
+  "segundo_terminal": [
+   "caj-22"
+  ]
+ },
+ "fecha": "2026-11-14",
+ "guion": "docs/rediseno/guion-barrido-apertura-qa.js",
+ "hallazgo_de_datos_de_qa": "La cocina de QA tiene comandas BLOQUEADAS sin ruta de preparacion, y el programa lo dice con sus palabras: 'Sin ruta de preparacion: esta comanda esta bloqueada y no se imprimira'. No es un defecto de interfaz, es el producto informando de un hueco en los datos de ensayo. Afecta a coc-05, coc-06 y coc-07, que necesitan una comanda enrutada para ejercitarse.",
+ "hallazgo_de_la_barrera_kv": "Al volver a entrar, el programa muestra: 'Un cambio no se ha podido guardar (historialRespaldos). Comprueba tu conexion o reintenta ahora; mientras tanto queda guardado en este equipo'. Es el patron ya documentado de la lista cerrada de claves de almacen_kv: una clave que no esta permitida recibe 42501 y queda marcada como denegada, con respaldo local. No es un fallo de red.",
+ "leccion_de_metodo": "Muchas de estas 'vistas' no son modales con disparador, son SECCIONES de una pestana que ya estan en pantalla. Buscarlas como boton daba 'no encontrada' en falso: caj-08, el historial de arqueos, estaba a la vista con sus filas reales. Leer el texto completo de la pestana y mapear sus secciones resulta mas rapido y mas fiel que pulsar disparadores uno a uno.",
+ "medidas_1440": [
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 141,
+   "botonesSinNombre": 0,
+   "campoSinNombre": "select de filtro de estacion (Todas las estaciones / COCINA-QA)",
+   "campos": 100,
+   "camposSinNombre": 1,
+   "desbordaH": false,
+   "id": "coc-02",
+   "titulo": "Cocina y comandas",
+   "veredicto": "abierta"
+  },
+  {
+   "desbordaH": false,
+   "id": "coc-03",
+   "nota": "el formulario de estacion se despliega en la propia pantalla; la medida abarca la pantalla anfitriona",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 3,
+   "botonesSinNombre": 0,
+   "campos": 4,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "id": "caj-02",
+   "titulo": "Arqueo de caja",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 7,
+   "botonesSinNombre": 0,
+   "campos": 8,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "id": "caj-04",
+   "titulo": "Arqueo de caja",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 7,
+   "botonesSinNombre": 0,
+   "campos": 23,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "id": "caj-06",
+   "titulo": "Arqueo de caja",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "botonesBajo24": 0,
+   "botonesBajo44": 13,
+   "botonesSinNombre": 0,
+   "campos": 19,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "id": "caj-17",
+   "titulo": "Configuracion / Fiscalidad y AEAT",
+   "veredicto": "abierta"
+  },
+  {
+   "botonesBajo24": 1,
+   "botonesBajo44": 15,
+   "botonesSinNombre": 0,
+   "campos": 6,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "ejemplosBajo24": [
+    "Cambiar a modo oscuro 24x67"
+   ],
+   "id": "tpv-02",
+   "titulo": "TPV / Venta rapida",
+   "veredicto": "abierta"
+  },
+  {
+   "botonesBajo24": 89,
+   "botonesBajo44": 89,
+   "botonesSinNombre": 0,
+   "campos": 0,
+   "camposSinNombre": 0,
+   "desbordaH": false,
+   "ejemplosBajo24": [
+    "Cerrar 17x17",
+    "Subir Al peso 18x19",
+    "Bajar Al peso 18x19",
+    "AZUL para Al peso 20x20",
+    "NARANJA 20x20",
+    "VERDE 20x20"
+   ],
+   "hallazgo": "89 controles por debajo de 24x24 con raton. Todos tienen nombre accesible, pero el tamano esta por debajo del minimo de WCAG 2.2 AA 2.5.8. Es el peor caso encontrado hasta ahora y no lo tapa el suelo tactil, que solo rige por debajo de 760 px o con puntero grueso.",
+   "id": "tpv-22",
+   "titulo": "Orden y color de categorias",
+   "veredicto": "abierta"
+  }
+ ],
+ "medidas_736_primera_pasada": [
+  {
+   "campos": 1,
+   "camposSinNombre": 0,
+   "id": "tpv-06",
+   "panel": "Asignar Mesa QA-A1-02 / Comensales",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "campos": 2,
+   "camposSinNombre": 0,
+   "id": "tpv-08",
+   "panel": "Nuevo responsable, con la lista real de empleados",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "campos": 0,
+   "camposSinNombre": 0,
+   "id": "tpv-10",
+   "panel": "Repartir productos",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "campos": 3,
+   "camposSinNombre": 0,
+   "id": "tpv-11",
+   "panel": "Descuento / cortesia: tipo, porcentaje, motivo",
+   "veredicto": "abierta en linea"
+  },
+  {
+   "campos": 0,
+   "id": "tpv-34",
+   "panel": "Ticket con QR fiscal de ensayo",
+   "veredicto": "abierta"
+  },
+  {
+   "campos": 5,
+   "camposSinNombre": 0,
+   "id": "caj-09",
+   "titulo": "Devoluciones / De cliente",
+   "veredicto": "abierta"
+  },
+  {
+   "campos": 4,
+   "camposSinNombre": 0,
+   "id": "caj-11",
+   "titulo": "Reembolso economico B08",
+   "veredicto": "abierta"
+  }
+ ],
+ "objetivo": "Punto 1: barrido de apertura de Servicio, Cocina y Caja y fiscalidad, 61 vistas pendientes",
+ "pendientes_por_precondicion": {
+  "autorizacion_pendiente": [
+   "tpv-12",
+   "tpv-13"
+  ],
+  "comanda_en_cola": [
+   "coc-05",
+   "coc-06",
+   "coc-07"
+  ],
+  "cuenta_con_lineas": [
+   "tpv-04",
+   "tpv-05",
+   "tpv-15",
+   "tpv-16",
+   "tpv-18",
+   "tpv-19",
+   "tpv-21"
+  ],
+  "orden_de_produccion": [
+   "coc-10",
+   "coc-11",
+   "coc-12"
+  ],
+  "pago_seleccionado": [
+   "caj-12",
+   "caj-13"
+  ],
+  "sesion_de_caja_abierta": [
+   "caj-03",
+   "caj-05",
+   "caj-07",
+   "caj-08"
+  ]
+ },
+ "quinta_tanda_cierre_de_caja_reversible": {
+  "principio": "La cadena de cierre es reversible por diseno, asi que sirve de ensayo limpio: se recorrio entera y la sesion quedo como estaba.",
+  "recorrido": "ABIERTA -> EN_CIERRE -> CIERRE_PROVISIONAL -> ensayo C12 -> reabrir -> ABIERTA",
+  "vistas": [
+   {
+    "bajo24": 0,
+    "bajo44": 0,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "al iniciar el cierre la sesion pasa a EN_CIERRE y pide el efectivo contado. El servidor adelanta su propio calculo: esperado 108,36 = fondo 0,00 + entradas 112,36 - salidas 4,00, y avisa de que se recalcula al confirmar",
+    "id": "caj-23",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "contenido": "Ensayar cierre C12, que el propio panel describe como comprobacion sin modificar el cierre. Resultado: 'Ensayo C12: BLOQUEADO. La sesion no puede avanzar al cierre porque existe un bloqueo operativo que debe resolverse'. Efectivo esperado 108.36, contado 108.36, diferencia 0.00, documentos conciliados 0, pendientes 0. Hay efectos pendientes y pagos pendientes",
+    "id": "caj-24",
+    "nota": "los dos bloqueos son el pedido de ensayo y el intento de tarjeta simulada pendientes de la tanda anterior. El producto se niega a cerrar en definitivo, que es lo correcto, y la aritmetica del efectivo cuadra al centimo",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 0,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "Motivo de reapertura y Reabrir cierre provisional. Reabierto con motivo, la sesion vuelve a ABIERTA",
+    "id": "caj-25",
+    "veredicto": "abierta y ejercitada"
+   }
+  ]
+ },
+ "recuento": {
+  "abiertas_y_medidas": 51,
+  "con_veredicto": 61,
+  "pendientes": 0,
+  "sin_construir_en_el_producto": 10,
+  "terminado": true,
+  "total_objetivo": 61
+ },
+ "segunda_tanda_con_pedido_de_ensayo": {
+  "dependencias_que_declara_el_propio_programa": [
+   "El cobro exige enviar el pedido antes.",
+   "El pago mixto exige un cobro parcial previo y se completa contra el saldo del servidor.",
+   "El pago mixto no existe en venta rapida de mostrador, donde solo hay Efectivo y Tarjeta: vive en el cobro F4 de sala.",
+   "Con un intento de tarjeta pendiente el servidor no permite iniciar otro cobro sobre ese saldo."
+  ],
+  "estado_que_queda_en_qa": "La cuenta de Mesa QA-A1-01 (cuenta 27ac5cb...) queda con 0,50 EUR confirmados y 0,60 EUR pendientes, con un intento de tarjeta simulada en estado Pendiente. No es un atasco por error: en modo simulado el intento queda pendiente hasta que el adaptador del proveedor lo resuelva, y el boton de recuperar o reintentar no lo cierra. Sirve de fixture permanente para tpv-19 y tpv-30, pero ocupa la mesa.",
+  "operaciones_de_ensayo_realizadas": [
+   "Carrito de mostrador con Cafe solo (QA) y su variante Pequeno, y vaciado despues.",
+   "Pedido de sala guardado sobre Mesa QA-A1-01, tipo de cuenta Mesa, 1,10 EUR.",
+   "Enviado a preparacion y puesto En preparacion.",
+   "Cobro parcial en efectivo de 0,50 EUR sobre 1,10, con 1,00 recibido y 0,50 de cambio.",
+   "Completar pago mixto con tarjeta simulada: el intento queda pendiente."
+  ],
+  "vistas": [
+   {
+    "bajo24": 1,
+    "bajo44": 7,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "variantes obligatorias (QA Tamano, minimo 1), suplementos con precio (Mediano +0,30, Grande +0,60, Leche de avena +0,20, Doble shot +0,50) y Sin lactosa",
+    "donde": "Configurar Cafe solo (QA)",
+    "id": "tpv-04",
+    "nota": "el unico por debajo de 24 era la X de cerrar a 17x17, ya corregida con el suelo de 24",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Alergenos: sin declarar, y Nota para cocina (opcional)",
+    "donde": "el mismo panel de configurar producto",
+    "id": "tpv-05",
+    "nota": "tpv-04 y tpv-05 son la misma superficie",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Borrador local activo. 1 linea(s), se conserva 24 h desde la ultima modificacion, caduca 15/11/2026 0:25:48",
+    "donde": "aviso de borrador local",
+    "id": "tpv-23",
+    "veredicto": "abierta"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 1,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "estado Abierto, aviso de que el pedido esta guardado y todavia no se ha enviado a preparacion, y el boton Enviar pedido a preparacion. En sala el carrito pide ademas Tipo de cuenta: Barra, Mesa, Terraza, Para llevar, Otro",
+    "donde": "Pedido operativo",
+    "id": "tpv-16",
+    "veredicto": "abierta"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 1,
+    "campos": 1,
+    "camposSinNombre": 0,
+    "contenido": "Cancelar linea y Cancelar pedido, con el campo Motivo de cancelacion (obligatorio para cancelar) a 44 px y con nombre",
+    "donde": "Pedido operativo",
+    "id": "tpv-15",
+    "veredicto": "abierta"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 5,
+    "campos": 2,
+    "camposSinNombre": 0,
+    "contenido": "Total 1,10, Confirmado 0,00, Pendiente 1,10, Cuenta: Lista para cobrar. Antes de enviar el pedido el propio panel avisa: Envia el pedido antes de cobrar",
+    "donde": "Cobro F4",
+    "id": "tpv-17",
+    "veredicto": "abierta"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 5,
+    "campos": 2,
+    "camposSinNombre": 0,
+    "contenido": "importes rapidos Exacto, 5, 10 y 20, mas Exacto para este pago y Efectivo recibido. Con 5,00 sobre 1,10 aparece Cambio a devolver 3,90; con 1,00 sobre 0,50, Cambio a devolver 0,50. La aritmetica cuadra",
+    "donde": "Cobro F4",
+    "id": "tpv-18",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 6,
+    "campos": 2,
+    "camposSinNombre": 0,
+    "contenido": "tras el cobro parcial: Efectivo confirmado, saldo restante calculado por el servidor 0.60, y el boton Completar pago mixto con tarjeta. El panel avisa de que ese boton usa el saldo del servidor y no el calculo local del navegador",
+    "donde": "Cobro F4",
+    "id": "tpv-19",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "bajo24": 0,
+    "bajo44": 1,
+    "campos": 4,
+    "camposSinNombre": 0,
+    "contenido": "Existe un intento pendiente, autorizado o desconocido, y no se permite iniciar otro cobro sobre ese saldo. Incluye Abrir incidencia B04 con Motivo, Codigo proveedor, Referencia proveedor y Evidencia (JSON opcional o nota), mas Recuperar o reintentar el mismo intento",
+    "donde": "Cobro F4, estado del intento",
+    "id": "tpv-30",
+    "veredicto": "abierta y ejercitada"
+   }
+  ]
+ },
+ "sesion": "Propietario real, QA-EMP-A / QA-A1",
+ "sexta_tanda_cierre_del_punto_1": {
+  "arreglo_verificado_en_qa": "Con 88d96b77 desplegado, Mesa QA-A1-01 paso de 'Libre, 0/4' a 'Ocupada, 2/4, 1 cuenta(s)' al pulsar Asignar esta cuenta. El boton ya llega al servidor. tpv-06 deja de ser una vista que se abre sin operar.",
+  "dato_de_ensayo_creado_y_retirado": "Para que produccion existiera hacia falta una receta. Se creo 'QA ensayo punto 1 - receta de prueba', vinculada a Articulo varios (QA) con un Croissant (QA) de ingrediente, se uso para las tres vistas, y despues se anulo la produccion y se elimino la receta. Fichas de costo y Produccion vuelven a cero, como estaban.",
+  "defecto_nuevo_encontrado_y_corregido": "El campo de cantidad real de cada ingrediente del formulario de produccion no tenia nombre accesible. Es el mismo patron que el de la linea del carrito. Etiquetado con el nombre del ingrediente: 'Cantidad real de <ingrediente>', mismo texto en las dos copias de la fuente y paridad exacta.",
+  "observacion": "Eliminar una ficha de costo no pide confirmacion: un clic en el icono y desaparece. No es del alcance de este bloque y no se ha tocado, pero contrasta con el resto del producto, que confirma dos veces y pide motivo hasta para cancelar una solicitud de reembolso.",
+  "vistas": [
+   {
+    "contenido": "asignacion real de la cuenta a la mesa, comprobada en el mapa de sala",
+    "id": "tpv-06",
+    "medida_en": "375 px",
+    "veredicto": "abierta y operativa"
+   },
+   {
+    "contenido": "'Trasladar a Mesa QA-A1-02' con Comensales y Motivo del traslado. Dos campos, los dos con nombre, ningun control por debajo de 24 ni de 44, sin desbordamiento. No se traslado: la vista estaba abierta y medida, y mover la cuenta dejaria dos en la misma mesa sin necesidad",
+    "id": "tpv-07",
+    "medida_en": "375 px",
+    "veredicto": "abierta y medida"
+   },
+   {
+    "contenido": "con una ficha de costo sembrada aparece el formulario completo: que producir, cuantas unidades, ajuste de ingredientes con su stock disponible, otros costes de la tanda, unidades buenas realmente obtenidas, notas y el coste previsto por unidad. Confirmada: 'Produccion registrada'",
+    "id": "coc-10",
+    "medida_en": "375 px",
+    "veredicto": "abierta y ejercitada"
+   },
+   {
+    "contenido": "tras registrar: 'Estan en el almacen, todavia no en el mostrador. Para poder venderlas en Venta rapida hay que pasarlas al piso de venta', con el boton 'Enviar las 1,00 al piso de venta'. No se pulso",
+    "id": "coc-12",
+    "medida_en": "375 px",
+    "veredicto": "abierta y medida"
+   },
+   {
+    "contenido": "en el historial, Anular y Corregir. La confirmacion explica lo que hace: 'Se devolveran los ingredientes al almacen y se quitaran las unidades elaboradas. Se borran tambien sus movimientos, para que no cuenten dos veces en los informes'. Anulada: el historial vuelve a cero",
+    "id": "coc-11",
+    "medida_en": "375 px",
+    "veredicto": "abierta y ejercitada"
+   }
+  ]
+ },
+ "sha": "3163c683 mas la etiqueta de la estacion de cocina, sin publicar",
+ "sin_rastro_en_el_producto": {
+  "metodo": "Sonda de texto sobre source-recovery/fuente-recuperado.js con varios terminos por vista, y revision del contexto de cada coincidencia debil para no dar por inexistente lo que solo cambia de nombre.",
+  "vistas": [
+   {
+    "estado": "sin pantalla propia",
+    "id": "tpv-09",
+    "matiz": "el servidor si conoce el concepto: hay un error cuentas_recuperables_no_autorizadas y la nocion de varias cuentas abiertas por mesa. Falta la pantalla, no el contrato.",
+    "ojo": "la matriz la daba por origen Codigo; no lo es",
+    "pantalla": "Recuperar cuenta y tickets aparcados"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-24",
+    "pantalla": "Funciones rapidas del TPV"
+   },
+   {
+    "estado": "sin pantalla propia",
+    "id": "tpv-26",
+    "matiz": "existe la capacidad ABC_CUENTA_UNIR, 'Unir cuentas', en el catalogo de permisos. El permiso esta; la pantalla no.",
+    "pantalla": "Unir mesas"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-28",
+    "matiz": "hay medio de pago Transferencia, que no es lo mismo",
+    "pantalla": "Bizum y estado de pago"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-29",
+    "pantalla": "Propina y vale regalo"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-31",
+    "pantalla": "Solicitar factura a empresa"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "tpv-33",
+    "pantalla": "Pantalla para cliente"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "caj-16",
+    "pantalla": "Rectificacion fiscal"
+   },
+   {
+    "estado": "sin rastro",
+    "id": "caj-20",
+    "pantalla": "Factura electronica entre empresas"
+   },
+   {
+    "estado": "no existe para tickets de venta",
+    "id": "tpv-32",
+    "matiz": "la vista de ticket solo ofrece Imprimir o Guardar PDF. El 'Enviar por correo' que aparece en la fuente, con icono de sobre, pertenece a los pedidos a proveedor (setCorreoPedido), no al justificante de una venta. Y 'justificante' en el TPV es el campo de concepto de un movimiento de caja, no un envio",
+    "pantalla": "Enviar justificante por correo"
+   }
+  ]
+ },
+ "tercera_tanda_sin_escribir_nada": {
+  "nota": "Todas estas se abrieron solo leyendo y navegando. Ninguna operacion de escritura.",
+  "vistas": [
+   {
+    "contenido": "Expediente de piloto sandbox. Estado inicial PENDIENTE_EMPRESA, empresa QA-EMP-A, local QA-A1, entorno SANDBOX. El panel declara que es solo lectura en preview QA, que no crea expedientes, no cambia estados, no usa secretos y no activa produccion",
+    "donde": "Configuracion, Fiscalidad y AEAT",
+    "id": "caj-19",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Procesamiento fiscal QA: reclama y resuelve hasta 10 elementos de la cola en modo QA_SIMULADOR, sin enviar nada a la AEAT. Emisor fiscal vinculado a Local A1: QA Fiscal A2, NIF QA-A2-TEST, entidad simulada que nunca podra activarse para emision real",
+    "donde": "Configuracion, Fiscalidad y AEAT",
+    "id": "caj-17",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Presentacion y asesoria: canal previsto, acreditacion prevista, nombre de la asesoria o proveedor, correo de contacto y NIF del presentador. Mas permiso del panel, duracion en dias, via, estado revisado, referencia externa opaca, huella SHA-256 de la evidencia y vigencia",
+    "donde": "Configuracion, Fiscalidad y AEAT",
+    "id": "caj-18",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "selector de la venta original con ventas reales de QA, y el aviso de que stock y reembolso se confirman juntos: si una parte falla, no se guarda ninguna",
+    "donde": "Devoluciones, De cliente",
+    "id": "caj-10",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "perfil de proveedor Simulador configurable B08, pago original con los pagos confirmados y su importe disponible, importe a reembolsar y motivo obligatorio. Cuatro campos, todos con nombre",
+    "donde": "Devoluciones, Reembolso economico B08",
+    "id": "caj-12",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "el producto Articulo varios (QA) existe y abre el mismo panel configurable, con alergenos y nota para cocina",
+    "donde": "catalogo del TPV",
+    "id": "tpv-27",
+    "matiz": "la mitad de invitacion no es una pantalla aparte: se resuelve con el tipo Cortesia del panel de descuento, que es tpv-11",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "ticket completo: empresa, local, numero TPV-000035, conceptos, subtotal, IVA, total, cobrado en efectivo, entregado y cambio, QR tributario con VERI*FACTU QA y EMISION REAL DESACTIVADA, y la URL de validacion de la AEAT. Boton Imprimir o Guardar PDF",
+    "donde": "Historial de ventas, detalle, Ver ticket",
+    "id": "tpv-20",
+    "veredicto": "abierta"
+   },
+   {
+    "contenido": "Venta V-20261113-2278E8, 2026-11-13, efectivo, ACTIVA, su linea, total original e ID interno, con Ver ticket o reimprimir y Anular venta. No se pulso anular",
+    "donde": "Historial de ventas, detalle de la venta",
+    "id": "tpv-21",
+    "veredicto": "abierta"
+   }
+  ]
+ },
+ "tpv-07_precondicion_averiguada": "Buscar el traslado en la interfaz no daba con el. Leyendo la fuente queda claro por que: el mismo panel tiene dos ramas segun una variable de ubicacion. Sin ubicacion sale 'Asignar <mesa>' con comensales, que es tpv-06. Con ubicacion sale 'Trasladar a <mesa>' con comensales, Motivo del traslado y el boton Trasladar cuenta, que es tpv-07. Es decir: la cuenta tiene que estar ya asignada a una mesa para poder trasladarla. El pedido de ensayo se guardo como tipo Mesa pero sin asignar, asi que Mesa QA-A1-01 seguia Libre y siempre salia la rama de asignar. Queda hacerlo en este orden: asignar y despues seleccionar la otra mesa.",
+ "tpv-09_matiz_nuevo": "Al abrir el catalogo con una venta rapida en curso aparece 'Venta rapida en curso. La cuenta se conserva en el servidor para continuarla sin duplicar la venta' con el boton 'Continuar en Sala'. Asi que la continuacion de una cuenta SI existe; lo que no hay es la pantalla de cuentas aparcadas con su lista, que es lo que pide tpv-09.",
+ "url": "https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}

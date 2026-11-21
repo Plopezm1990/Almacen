@@ -1,0 +1,17 @@
+{
+ "bloque": "Ficha de costo",
+ "fecha": "2026-11-15",
+ "hallazgo_de_consistencia": {
+  "comparacion": "Confirman: eliminar proveedor, eliminar pedido, cerrar pedido, eliminar albaran, dar de baja un empleado, desactivar un local, cancelar un conteo, eliminar una freidora, eliminar un registro de aceite, cancelar un encargo, eliminar una entrevista, anular una nomina y cerrar sesion. Trece que preguntan.",
+  "comprobado": "Cero apariciones de confirmarEliminar, setConfirm o window.confirm en todo el componente FichasCosto.",
+  "decision": "Anadir confirmacion es coherente con esas trece, pero es un cambio de comportamiento: decision del propietario.",
+  "es_el_segundo": "El primero fue anular la entrada de un albaran, ya corregido haciendo que use la confirmacion que ya existia. Este BORRA, no marca.",
+  "que": "Eliminar una ficha de costo NO confirma: el icono llama a deleteFichaCosto directamente."
+ },
+ "honestidad": "No llegue a leer el panel de confirmacion porque no lo hay: mi script busco un boton de confirmar, encontro otro de la pagina y lo pulso. El borrado ya habia ocurrido con el icono.",
+ "inv31_confirmada": "16 campos con nombre, mas \"+ Anadir ingrediente / insumo\". Se creo una receta de ensayo con el aceite como ingrediente.",
+ "inv32": "No construida: ni detalle aparte ni impresion. Cero apariciones de Imprimir, PDF, print o Detalle en FichasCosto.",
+ "limpieza": "La receta de ensayo se borro; la vista volvio a \"Todavia no has creado ninguna ficha de costo\".",
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-A1, a 1440x900. Con una ficha de costo de ensayo creada y borrada.",
+ "sha": "6b537d29; https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}

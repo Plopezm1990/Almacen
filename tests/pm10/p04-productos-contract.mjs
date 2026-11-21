@@ -48,4 +48,42 @@ assert.doesNotMatch(src, /costo: Number\(editForm\.costo\) \|\| 0,[\s\S]{0,300}s
 assert.match(src, /const creado = addProducto\(form\);[\s\S]{0,180}setError\(creado\?\.error/);
 assert.match(src, /const actualizado = updateProducto\(editFor, editForm\);[\s\S]{0,220}setEditError\(actualizado\?\.error/);
 assert.match(src, /function guardarProductoNuevo\(\)[\s\S]{0,900}costo: nuevoProd\.costo/);
+// ---- El aviso tiene que estar escrito para quien rellena el formulario. ----
+//
+// Hasta el 16/11/2026 el validador metía el nombre interno del campo en el texto:
+// dejabas "Stock mínimo (reorden)" en blanco y la pantalla respondía
+// "stockMinimo es obligatorio." — comprobado pulsando en QA. Eso es cómo lo
+// llamamos nosotros, no cómo se llama la casilla que el usuario está mirando.
+{
+  const sinNombreInterno = (r) => {
+    assert.equal(r.ok, false);
+    assert.doesNotMatch(r.error, /stockMinimo|udsPorCaja|precioVenta|ivaCompra|ivaVenta|costoUnitario|precioBruto|ivaPct/,
+      `el aviso no puede enseñar el nombre interno del campo: ${r.error}`);
+    return r.error;
+  };
+
+  const vacio = sinNombreInterno(validar({ nombre: 'X', costo: 1 }));
+  assert.match(vacio, /"Stock mínimo"/, 'tiene que nombrar la casilla como se ve en pantalla');
+
+  const fuera = sinNombreInterno(validar({ nombre: 'X', costo: 1, stockMinimo: 0, udsPorCaja: 0 }));
+  assert.match(fuera, /"Unidades por caja"/);
+
+  const tope = sinNombreInterno(validar({ nombre: 'X', costo: 1, stockMinimo: 0, ivaCompra: 101 }));
+  assert.match(tope, /"IVA de compra"/);
+  assert.match(tope, /no puede ser mayor que 100/);
+
+  // El código y el campo siguen siendo los de siempre: lo que cambia es el texto.
+  const r = validar({ nombre: 'X', costo: 1 });
+  assert.equal(r.campo, 'stockMinimo');
+  assert.equal(r.codigo, 'campo_obligatorio');
+
+  // Y en una lista de líneas, dice de cuál se trata.
+  const etiqueta = ctx.etiquetaCampoPM10;
+  assert.equal(typeof etiqueta, 'function');
+  assert.equal(etiqueta('lineas.2.cantidad'), '"Cantidad" (línea 3)');
+  assert.equal(etiqueta('stockMinimo'), '"Stock mínimo"');
+  assert.equal(etiqueta('campoQueNadieHaBautizado'), '"campoQueNadieHaBautizado"');
+  console.log('P04_AVISOS_CON_EL_NOMBRE_DE_LA_CASILLA=PASS');
+}
+
 console.log('PM10 P04 LA-011 productos: contrato OK');

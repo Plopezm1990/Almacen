@@ -5,27 +5,33 @@ const MASTER='./la-suite-logo.svg';
 const ICON='./la-suite-icon.svg';
 const css=`
 .la-dashboard-v2{position:relative}
-.la-dashboard-v2 .la-kpi-grid{display:grid!important;gap:12px!important}
-.la-dashboard-v2 .la-kpi-card{position:relative!important;background:linear-gradient(145deg,#0D351F 0%,#0A2B1A 100%)!important;border:1px solid rgba(201,154,75,.28)!important;border-radius:18px!important;box-shadow:inset 0 1px 0 rgba(255,255,255,.025),0 10px 24px rgba(0,0,0,.10)!important;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease!important}
+.la-dashboard-v2.la-dashboard-detail-hidden{display:none!important}
+.la-dashboard-detail-toggle{width:100%;display:flex;align-items:center;justify-content:space-between;gap:var(--la-space-3);margin:var(--la-space-3) 0 var(--la-space-4);padding:var(--la-space-3) var(--la-space-4);border:1px solid color-mix(in srgb,var(--c-accent) 34%,transparent);border-radius:var(--la-radius-lg);background:linear-gradient(135deg,var(--c-surface),var(--c-bg));color:var(--c-ink);font:600 var(--la-type-body)/1.2 var(--la-font);cursor:pointer;min-height:var(--la-control-height-large);box-shadow:var(--la-shadow-1)}
+.la-dashboard-detail-toggle::after{content:'›';font-size:22px;line-height:1;color:var(--c-accent);transition:transform .18s ease}
+.la-dashboard-detail-toggle[aria-expanded='true']::after{transform:rotate(90deg)}
+.la-dashboard-v2.la-dashboard-detail-visible{display:block;padding:var(--la-space-4);border:1px solid color-mix(in srgb,var(--c-accent) 26%,transparent);border-radius:var(--la-radius-xl);background:linear-gradient(145deg,color-mix(in srgb,var(--c-surface) 92%,transparent),color-mix(in srgb,var(--c-bg) 88%,transparent));box-shadow:var(--la-shadow-1)}
+.la-dashboard-v2.la-dashboard-detail-visible::before{content:'Detalle operativo';display:block;margin:0 0 var(--la-space-3);color:var(--c-accent);font:700 var(--la-type-caption)/1 var(--la-font);letter-spacing:.11em;text-transform:uppercase}
+.la-dashboard-v2 .la-kpi-grid{display:grid!important;gap:var(--la-space-3)!important}
+.la-dashboard-v2 .la-kpi-card{position:relative!important;background:linear-gradient(145deg,var(--c-surface) 0%,var(--c-bg) 100%)!important;border:1px solid color-mix(in srgb,var(--c-accent) 28%,transparent)!important;border-radius:var(--la-radius-xl)!important;box-shadow:inset 0 1px 0 color-mix(in srgb,var(--c-ink) 3%,transparent),var(--la-shadow-1)!important;transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease!important}
 .la-dashboard-v2 .la-kpi-card:active{transform:scale(.985)}
-.la-dashboard-v2 .la-kpi-card .mono{color:#E0B35D!important}
-.la-dashboard-v2 .la-kpi-card[data-la-alert='critical'] .mono{color:#EF7467!important}
-.la-premium-section-title{font-size:15px;font-weight:700;margin:22px 0 10px;color:#F5EAD4;letter-spacing:-.01em}
-.la-quick-actions{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px;margin-bottom:20px}
-.la-quick-action{border:1px solid rgba(201,154,75,.24);background:linear-gradient(145deg,#0D351F,#092819);border-radius:14px;min-height:74px;padding:9px 4px;color:#E9DDBF;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:5px;font-size:10px;font-weight:600;text-align:center;cursor:pointer}
-.la-quick-action .la-qa-icon{font-size:21px;line-height:1;color:#D9A84F}
+.la-dashboard-v2 .la-kpi-card .mono{color:var(--c-accent)!important}
+.la-dashboard-v2 .la-kpi-card[data-la-alert='critical'] .mono{color:var(--c-red)!important}
+.la-premium-section-title{font-size:var(--la-type-section);font-weight:700;margin:var(--la-space-6) 0 var(--la-space-2);color:var(--c-ink);letter-spacing:-.01em}
+.la-quick-actions{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:var(--la-space-2);margin-bottom:var(--la-space-5)}
+.la-quick-action{border:1px solid color-mix(in srgb,var(--c-accent) 24%,transparent);background:linear-gradient(145deg,var(--c-surface),var(--c-bg));border-radius:var(--la-radius-lg);min-height:74px;padding:var(--la-space-2) var(--la-space-1);color:var(--c-ink);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--la-space-1);font-size:var(--la-type-caption);font-weight:600;text-align:center;cursor:pointer}
+.la-quick-action .la-qa-icon{font-size:var(--la-icon-lg);line-height:1;color:var(--c-accent)}
 .la-quick-action[data-la-unavailable='1']{display:none!important}
-.la-premium-alerts{display:grid;gap:8px;margin-bottom:14px}
-.la-alert-row{width:100%;display:flex;align-items:center;gap:10px;padding:12px 13px;border-radius:14px;background:linear-gradient(145deg,#0D351F,#092819);border:1px solid rgba(201,154,75,.22);text-align:left;color:#F1E8D5;cursor:pointer}
+.la-premium-alerts{display:grid;gap:var(--la-space-2);margin-bottom:var(--la-space-3)}
+.la-alert-row{width:100%;display:flex;align-items:center;gap:var(--la-space-2);padding:var(--la-space-3);border-radius:var(--la-radius-lg);background:linear-gradient(145deg,var(--c-surface),var(--c-bg));border:1px solid color-mix(in srgb,var(--c-accent) 22%,transparent);text-align:left;color:var(--c-ink);cursor:pointer}
 .la-alert-row.la-info{cursor:default}
-.la-alert-row .la-alert-icon{width:31px;height:31px;flex:0 0 31px;border-radius:50%;display:grid;place-items:center;background:rgba(201,154,75,.12);color:#DFAE52;font-size:16px}
-.la-alert-row.critical{border-color:rgba(232,91,79,.35)}
-.la-alert-row.critical .la-alert-icon{background:rgba(232,91,79,.13);color:#EE6D61}
-.la-alert-copy{min-width:0;flex:1}.la-alert-copy b{display:block;font-size:12.5px;margin-bottom:1px}.la-alert-copy span{display:block;font-size:10.5px;color:#99AB9F;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.la-alert-chevron{color:#DFAE52;font-size:22px}
-.la-report-cta{width:100%;border:0;border-radius:15px;background:linear-gradient(100deg,#A8742F,#E3B75F,#BE8A3C);color:#102A1B;font-size:13px;font-weight:800;padding:14px 16px;display:flex;align-items:center;justify-content:center;gap:9px;box-shadow:0 8px 22px rgba(169,116,47,.18);margin:12px 0 22px;cursor:pointer}
+.la-alert-row .la-alert-icon{width:var(--la-icon-lg);height:var(--la-icon-lg);padding:var(--la-space-1);flex:0 0 var(--la-icon-lg);border-radius:var(--la-radius-pill);display:grid;place-items:center;background:color-mix(in srgb,var(--c-accent) 12%,transparent);color:var(--c-accent);font-size:var(--la-type-body)}
+.la-alert-row.critical{border-color:color-mix(in srgb,var(--c-red) 35%,transparent)}
+.la-alert-row.critical .la-alert-icon{background:color-mix(in srgb,var(--c-red) 13%,transparent);color:var(--c-red)}
+.la-alert-copy{min-width:0;flex:1}.la-alert-copy b{display:block;font-size:var(--la-type-label);margin-bottom:var(--la-space-1)}.la-alert-copy span{display:block;font-size:var(--la-type-caption);color:var(--c-ink-soft);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.la-alert-chevron{color:var(--c-accent);font-size:var(--la-type-title)}
+.la-report-cta{width:100%;border:0;border-radius:var(--la-radius-lg);background:linear-gradient(100deg,var(--c-accent-fill),var(--c-accent));color:var(--c-on-accent);font-size:var(--la-type-body);font-weight:800;padding:var(--la-space-3) var(--la-space-4);display:flex;align-items:center;justify-content:center;gap:var(--la-space-2);box-shadow:var(--la-shadow-1);margin:var(--la-space-3) 0 var(--la-space-6);cursor:pointer}
 .la-dashboard-v2 .la-dashboard-brand{object-fit:contain!important;filter:drop-shadow(0 5px 10px rgba(0,0,0,.22))}
 .la-brand-master{object-fit:contain!important;filter:drop-shadow(0 6px 12px rgba(0,0,0,.24))}
-.la-nav-toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:10050;background:#102F20;color:#F5EAD4;border:1px solid rgba(201,154,75,.5);border-radius:13px;padding:10px 14px;font:600 12px/1.25 'IBM Plex Sans',sans-serif;box-shadow:0 10px 28px rgba(0,0,0,.28);max-width:min(88vw,380px);text-align:center;opacity:0;transition:opacity .18s ease;pointer-events:none}.la-nav-toast.show{opacity:1}
+.la-nav-toast{position:fixed;left:50%;bottom:92px;transform:translateX(-50%);z-index:10050;background:var(--c-chrome);color:var(--c-ink);border:1px solid color-mix(in srgb,var(--c-accent) 50%,transparent);border-radius:var(--la-radius-lg);padding:var(--la-space-2) var(--la-space-3);font:600 var(--la-type-label)/1.25 var(--la-font);box-shadow:var(--la-shadow-2);max-width:min(88vw,380px);text-align:center;opacity:0;transition:opacity .18s ease;pointer-events:none}.la-nav-toast.show{opacity:1}
 @media(max-width:767px){
   .la-dashboard-v2 .la-kpi-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important}
   .la-dashboard-v2 .la-kpi-card{padding:14px!important;min-height:126px!important}
@@ -177,14 +183,53 @@ function addAlerts(root){
   if(!root.querySelector('.la-report-cta')){const cta=document.createElement('button');cta.type='button';cta.className='la-report-cta';cta.dataset.laInjected='1';cta.innerHTML='<span>▥</span><span>Ver informe completo</span><span>›</span>';cta.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();goToModule('informes')});wrap.insertAdjacentElement('afterend',cta)}
 }
 function hideOldMobileBlocks(root){if(window.innerWidth>767)return;['Alertas de reposición','Caducidades próximas','Movimiento reciente de almacén'].forEach(label=>{const n=all('div',root).find(el=>textEq(el,label));if(n){let p=n;for(let i=0;i<4&&p;i++,p=p.parentElement){if(p.parentElement===root||(p.className&&String(p.className).includes('rounded'))){p.dataset.laOldBlock='1';break}}}});root.querySelectorAll('[data-la-old-block="1"]').forEach(el=>el.style.display='none')}
-function enhanceDashboard(){
-  const d=findDashboard();if(!d)return;const {root,heading}=d;root.classList.add('la-dashboard-v2');if(norm(heading.textContent)!=='resumen general')heading.textContent='Resumen general';let first=null;
-  kpis.forEach(([label,id])=>{const b=nearestCardFromText(label,root);if(b){b.classList.add('la-kpi-card');b.dataset.laKpi=id;if(id==='stock'){const m=b.querySelector('.mono');if(m&&numberOf(m.textContent)>0)b.dataset.laAlert='critical';else delete b.dataset.laAlert}if(!first)first=b}});
-  if(first&&first.parentElement){const grid=first.parentElement;grid.classList.add('la-kpi-grid');addQuickActions(root,grid);addAlerts(root)}
-  const headerImg=heading.parentElement&&heading.parentElement.parentElement&&heading.parentElement.parentElement.querySelector('img');if(headerImg){headerImg.src=MASTER;headerImg.alt='L&A Suite';headerImg.classList.add('la-dashboard-brand')}
-  hideOldMobileBlocks(root);
+function ensureDashboardDetailToggle(root){
+  const panel=document.querySelector('.la-panel-diseno');
+  if(!panel||!root||!panel.parentElement)return;
+  let toggle=panel.parentElement.querySelector('.la-dashboard-detail-toggle');
+  if(!toggle){
+    toggle=document.createElement('button');
+    toggle.type='button';
+    toggle.className='la-dashboard-detail-toggle';
+    toggle.dataset.laInjected='1';
+    toggle.innerHTML='<span>Ver detalle operativo</span><span class="sr-only"> del panel principal</span>';
+    panel.insertAdjacentElement('afterend',toggle);
+    toggle.addEventListener('click',e=>{
+      e.preventDefault();
+      e.stopPropagation();
+      const visible=root.dataset.laDetalleVisible==='1';
+      root.dataset.laDetalleVisible=visible?'0':'1';
+      syncDashboardDetail(root,toggle);
+    });
+  }
+  syncDashboardDetail(root,toggle);
 }
-let scheduled=false;function refresh(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;replaceBrand();enhanceDashboard()})}
+function syncDashboardDetail(root,toggle){
+  const visible=root.dataset.laDetalleVisible==='1';
+  root.classList.toggle('la-dashboard-detail-hidden',!visible);
+  root.classList.toggle('la-dashboard-detail-visible',visible);
+  root.setAttribute('aria-hidden',visible?'false':'true');
+  toggle.setAttribute('aria-expanded',String(visible));
+  toggle.querySelector('span')?.replaceChildren(document.createTextNode(visible?'Ocultar detalle operativo':'Ver detalle operativo'));
+}
+function removeOrphanDashboardToggle(){
+  // React desmonta el panel de Inicio antes de montar TPV/Cocina/Caja. El
+  // botón se inserta junto al panel, así que si no retiramos el nodo queda
+  // visible en la siguiente ruta como un control antiguo sin destino.
+  all('.la-dashboard-detail-toggle').forEach(toggle=>{
+    if(!toggle.closest('.la-panel-diseno')) toggle.remove();
+  });
+}
+function enhanceDashboard(){
+  const d=findDashboard();if(!d){removeOrphanDashboardToggle();return;}const {root,heading}=d;
+  root.classList.add('la-dashboard-v2');
+  if(norm(heading.textContent)!=='resumen general')heading.textContent='Resumen general';
+  root.dataset.laDetalleVisible=root.dataset.laDetalleVisible==='1'?'1':'0';
+  ensureDashboardDetailToggle(root);
+  const headerImg=heading.parentElement&&heading.parentElement.parentElement&&heading.parentElement.parentElement.querySelector('img');
+  if(headerImg){headerImg.src=MASTER;headerImg.alt='L&A Suite';headerImg.classList.add('la-dashboard-brand')}
+}
+let scheduled=false;function refresh(){if(scheduled)return;scheduled=true;requestAnimationFrame(()=>{scheduled=false;replaceBrand();enhanceDashboard();removeOrphanDashboardToggle()})}
 const mo=new MutationObserver(muts=>{if(muts.some(m=>Array.from(m.addedNodes||[]).some(n=>!(n.nodeType===1&&n.closest&&n.closest('[data-la-injected="1"]')))))refresh()});
 mo.observe(document.documentElement,{childList:true,subtree:true});window.addEventListener('resize',refresh);window.addEventListener('load',refresh);refresh();
 })();

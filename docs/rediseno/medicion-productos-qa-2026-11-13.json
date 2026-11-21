@@ -1,0 +1,104 @@
+{
+  "titulo": "Medicion del alta de producto y sus modales en QA",
+  "fecha": "2026-11-13",
+  "entorno": "deploy-preview-225--chic-entremet-9107cf.netlify.app",
+  "sesion": "pm07.smoke@qa.invalid (aal2 con codigo del propietario)",
+  "empresa_local": "QA-EMP-A / QA-A1",
+  "ancho": "390 x 844",
+  "metodo": "Guion de docs/rediseno/guion-medir-productos-qa.js. Solo abre, mide y cierra: no se guardo nada.",
+  "superficies": [
+    {
+      "superficie": "lista",
+      "campos": 1,
+      "campos_bajo_44": 0,
+      "desborda": false
+    },
+    {
+      "superficie": "alta de producto",
+      "campos": 23,
+      "campos_bajo_44": 0,
+      "columnas": "una",
+      "desborda": false
+    },
+    {
+      "superficie": "ajuste entre productos",
+      "campos": 5,
+      "campos_bajo_44": 0,
+      "campos_sin_etiqueta": 0,
+      "desborda": false
+    },
+    {
+      "superficie": "registrar salida",
+      "campos": 4,
+      "campos_bajo_44": 0,
+      "campos_sin_etiqueta": 0,
+      "desborda": false
+    },
+    {
+      "superficie": "editar producto",
+      "campos": 4,
+      "campos_bajo_44": 0,
+      "campos_sin_etiqueta": 0,
+      "desborda": false
+    },
+    {
+      "superficie": "kardex",
+      "campos": 0,
+      "botones": 2,
+      "botones_bajo_44": 0,
+      "tablas": 1,
+      "tablas_convertidas": 1,
+      "desborda": false
+    }
+  ],
+  "defecto_encontrado": {
+    "que": "Los botones se quedaban muy por debajo del objetivo tactil, aunque los campos ya lo cumplian.",
+    "medida_antes": "82 de 99 botones de la pantalla de productos por debajo de 44 px",
+    "ejemplos": [
+      "acciones de fila Kardex, Editar y Registrar salida a 32 px",
+      "los catorce alergenos del alta a 31 px",
+      "el cierre de cada modal a 17 x 17 px",
+      "«Ver 2 productos eliminados» a 17 px"
+    ],
+    "correccion": "#root button { min-height: 44px; min-width: 44px } dentro del corte de 760 px, en la-apariencia.css",
+    "medida_despues": "0 de 99 por debajo, sin desbordamiento; el cierre de modal pasa a 44 x 44",
+    "comprobado_en": [
+      "productos (99 botones)",
+      "venta / TPV (135)",
+      "cocina (136)",
+      "caja",
+      "reportes",
+      "personal (94)"
+    ],
+    "nota": "La correccion se probo inyectada en la pagina real antes de escribirla en la hoja, para no publicar a ciegas."
+  },
+  "pendiente": [
+    "Modal de eliminar producto y aviso de contenido de envase, que disparan avisos sobre datos reales.",
+    "Las cuatro etiquetas del historial de ventas del TPV."
+  ],
+  "nombre_accesible": {
+    "medido_en": [
+      "productos",
+      "clientes",
+      "proveedores",
+      "auditoria",
+      "personal",
+      "encargos",
+      "pedidos",
+      "conteo",
+      "venta",
+      "caja"
+    ],
+    "campos_visibles": 38,
+    "sin_nombre_accesible": 7,
+    "con_marcador_de_posicion": 3,
+    "sin_marcador_ni_etiqueta": 4,
+    "correccion_generica": "la-tablas-fichas.js copia el marcador de posicion a aria-label cuando el campo no tiene otro nombre. Probado en vivo: en el TPV baja de 6 a 4.",
+    "pendiente_en_el_bundle": [
+      "TPV, historial de ventas: select de forma de pago (primera opcion «Todos los pagos»)",
+      "TPV, historial de ventas: select de estado (primera opcion «Todas»)",
+      "TPV, historial de ventas: dos input[type=date] del rango de fechas"
+    ],
+    "criterio": "No se inventa nombre para un campo que no tiene ni marcador: eso exige una etiqueta de verdad en su pantalla."
+  }
+}

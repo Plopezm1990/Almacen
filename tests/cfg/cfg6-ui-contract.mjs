@@ -42,7 +42,11 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   const cuenta = (s) => t.split(s).length - 1;
   assert.equal(cuenta('{ id: "configuracion", label: "Configuraci\\xF3n", icon: Cog },'), 1, nombre + ": entrada de menú «Configuración»");
   assert.equal(cuenta('pick(["auditoria", "respaldos", "notificaciones", "locales", "configuracion", "errores_sistema"])'), 1, nombre + ": en el grupo Sistema");
-  assert.equal(cuenta('tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D })'), 1, nombre + ": montaje de la pestaña, con el perfil Propietario y el worker QA");
+  // El 18/11/2026 entró una propiedad más, `cargarMapaSala`, para la gestión de sala de
+  // org-33. Lo que este contrato defiende no es la lista entera: es que la pestaña se monte
+  // con el perfil de Propietario y con el worker fiscal de QA. Eso se sigue exigiendo; que
+  // la lista pueda crecer, no.
+  assert.equal(cuenta('tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D'), 1, nombre + ": montaje de la pestaña, con el perfil Propietario y el worker QA");
   assert.equal(cuenta('tab === "configuracion"'), 1, nombre + ": una única pestaña «configuracion»");
   assert.equal(cuenta("function ConfiguracionLocal("), 1, nombre + ": una única pantalla");
   assert.ok(t.indexOf("function ConfiguracionLocal(") < t.indexOf("function PoliticasDescuentos("), nombre + ": el componente va junto a la pantalla modelo");
@@ -59,8 +63,8 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
   assert.equal(cuenta("NOMBRES_ROLES.map("), 0, nombre + ": ninguna lista de selección usa ya todos los roles");
   assert.ok(cuenta("var ROLES_EMPLEADO = {") === 1 && mapaRoles.includes('"Churrero/a"'), nombre + ": el mapa de pestañas de quien ya tiene un rol retirado no se toca");
   // Reabrir cierre (D14).
-  assert.equal(cuenta('resolverMermaComandaA10, rolPerfil = "" }) {'), 1, nombre + ": la pantalla de cierre recibe el perfil");
-  assert.equal(cuenta('resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "" }), tab === "encargos"'), 1, nombre + ": y se le pasa el rol del perfil");
+  assert.equal(cuenta('resolverMermaComandaA10, rolPerfil = "", pedidoDestino'), 1, nombre + ": la pantalla de cierre recibe el perfil");
+  assert.equal(cuenta('resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "", pedidoDestino: pedidoDestinoCocina'), 1, nombre + ": y se le pasa el rol del perfil");
   assert.equal(cuenta('const [puedeReabrirCierre, setPuedeReabrirCierre] = (0, import_react4.useState)(null);'), 1);
   assert.equal(cuenta('puedeReabrirCierre === false ? null : h3('), 2, nombre + ": el motivo y el botón de reabrir solo se ocultan cuando se SABE que no hay permiso");
   assert.equal(cuenta('puedeReabrirCierre === false ? h3("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Solo el Propietario (o quien él autorice en Configuración) puede reabrir un cierre provisional.") : null,'), 1);
@@ -105,7 +109,39 @@ for (const l of llamadas) {
 assert.equal(llamadas.filter((l) => l.nombre.startsWith("abc_configurar_")).length, 9, "nueve llamadas que cambian algo, incluyendo terminales y cajas físicas");
 assert.ok(!/\.supabase|supabase\.rpc\(/.test(comp.replace(/const \{ data, error \} = await supabase\.rpc\(nombre, parametros\);/, "")), "el componente solo llama al servidor a través de configRpc");
 const tablas = [...comp.matchAll(/\.from\("([a-z_]+)"\)/g)].map((m) => m[1]);
-assert.deepEqual(tablas, ["terminales_tpv"], "la única lectura directa de una tabla es la de los terminales del local (como hace el resto de la aplicación)");
+// 20/11/2026. Esta comprobación estuvo en rojo a propósito durante dos días y
+// ya no lo está. Queda escrito por qué, porque la lista de abajo no se puede
+// volver a tocar sin repetir el mismo trabajo.
+//
+// El 18/11 la gestión de sala de org-33 añadió tres lecturas directas más:
+// `catalogo_tpv_tarifas_horario`, `catalogo_tpv_productos` y
+// `catalogo_tpv_tarifa_precios`. Las dos de tarifas no las creaba ninguna
+// migración de este repositorio y sin embargo existían en QA: preguntadas al
+// servidor respondían «permission denied for table», no «Could not find the
+// table». Estaban hechas a mano. Se dejó esto rojo porque la pantalla leía
+// tablas que el despliegue no sabía crear, y era el único sitio donde alguien
+// se iba a enterar.
+//
+// El 20/11 se volcaron sus definiciones desde los catálogos del sistema de QA y
+// se escribió 20261120120000_rediseno_org33_tarifas_horario.sql con el texto del
+// volcado, probada contra un Postgres de verdad en
+// tests/rediseno/org33-tarifas-pglite-contract.mjs. Las tres tablas tienen
+// ahora política de solo lectura por local (`private.la_tiene_local`) y permiso
+// de `select` para authenticated, igual que el resto de `catalogo_tpv_*`: leer
+// el catálogo directamente es el diseño, no un atajo. Escribir sigue siendo
+// cosa de las RPC.
+//
+// Lo que esta comprobación sigue sujetando es que no aparezca una CUARTA
+// lectura directa sin que nadie lo decida. Si hay que añadir una, se añade aquí
+// con el motivo escrito y con su migración ya en el repositorio.
+assert.deepEqual(
+  tablas,
+  ["terminales_tpv", "catalogo_tpv_tarifas_horario", "catalogo_tpv_productos", "catalogo_tpv_tarifa_precios"],
+  "las únicas lecturas directas son los terminales del local y los tres catálogos del TPV, todos con migración en el repositorio y política de solo lectura por local",
+);
+// El trinquete de verdad está en tests/rediseno/lo-que-el-cliente-llama-existe-en-migraciones-contract.mjs,
+// que cruza TODAS las tablas y RPC del cliente con las migraciones. Aquí sólo se
+// fija esta pantalla.
 assert.ok(!/\.(insert|update|delete|upsert)\(/.test(comp), "el componente no escribe en ninguna tabla");
 assert.ok(!/Borrar|Eliminar/.test(comp), "no hay botones de borrar: los equipos se desactivan");
 assert.match(comp, /\.select\("id,nombre"\)\.eq\("empresa_id", empresaId\)\.eq\("local_id", localId\)\.eq\("activo", true\)/, "solo terminales activos de este local");
@@ -157,7 +193,18 @@ const ficha = comp.slice(comp.indexOf("function ConfiguracionLocal("));
 assert.match(ficha, /if \(!esPropietario\) contenido = h\(Card, \{ className: "mb-4" \}, "Solo un usuario con rol Propietario puede ver y cambiar la configuración\."\);\s+else if \(!empresaId \|\| !localId\) contenido = h\(Card, \{ className: "mb-4" \}, "Selecciona un local concreto para configurarlo\."\);\s+else contenido = h\(/,
   "sin perfil Propietario o sin local concreto no se monta ninguna sección (y por tanto no se llama al servidor)");
 assert.ok(ficha.indexOf("ConfigDia, {") > ficha.indexOf("else contenido = h("), "las secciones solo se montan en la rama con permiso");
-assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["terminales", "Terminales y cajas"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\]\];/);
+// La octava sección se añadió el 15/11/2026 con la política opcional de
+// verificación en dos pasos, y la novena —«Sala y mesas», en segundo lugar— el
+// 18/11/2026 con la gestión de sala y las tarifas por horario de org-33. Esta
+// lista estuvo desfasada desde ese día: la pantalla tenía nueve secciones y el
+// contrato seguía pinchando ocho. Lo que hay dentro de cada una lo fijan sus
+// propios contratos (tests/m03/m03-mfa-enforcement-contract.mjs para la de
+// verificación; tests/rediseno/org33-tarifas-pglite-contract.mjs para lo que
+// la de sala guarda en el servidor); aquí sólo se fija que están, en este
+// orden, y dentro de la rama con permiso como las demás.
+assert.match(ficha, /const secciones = \[\["dia", "Día y cajas"\], \["sala", "Sala y mesas"\], \["modalidades", "Modalidades"\], \["equipos", "Equipos"\], \["terminales", "Terminales y cajas"\], \["fiscalidad", "Fiscalidad y AEAT"\], \["cargos", "Cargos y permisos"\], \["permisos", "Permisos"\], \["mfa", "Verificación en dos pasos"\]\];/);
+assert.ok(ficha.indexOf('ConfigMfa, {') > ficha.indexOf('else contenido = h('), 'la sección de verificación en dos pasos también se monta solo con permiso');
+assert.ok(ficha.indexOf('ConfigSala, {') > ficha.indexOf('else contenido = h('), 'la sección de sala y mesas también se monta solo con permiso');
 assert.equal((comp.match(/Escribe el motivo del cambio\./g) || []).length >= 4, true, "cada sección exige el motivo");
 assert.match(comp, /B\u00E1sico, Est\u00E1ndar y Churrero\/a ya no se pueden asignar a nadie nuevo y no tienen ning\u00FAn permiso\./, "la pantalla explica la retirada de roles");
 assert.doesNotMatch(comp, /Barra[^.\n]*bloquead/i, "Barra ya no está bloqueada: el TPV elige otra modalidad habilitada (pieza 6e)");
@@ -175,8 +222,32 @@ assert.match(comp, /p_permitido: c3\.permitido,/, "heredar se envía como nulo")
 assert.match(comp, /await cargar\(true\);\s+\}\s+\};\s+const verRetirados/, "tras un fallo se recarga sin borrar el mensaje de error");
 
 // 5b. El panel fiscal es multiempresa, usa solo RPC y continúa siendo un borrador no activable.
-const fiscal = comp.slice(comp.indexOf("var FISCAL_CONFIG_INICIAL ="), comp.indexOf("function ConfiguracionLocal("));
+//
+// 20/11/2026. Esta rodaja iba de `FISCAL_CONFIG_INICIAL` hasta
+// `function ConfiguracionLocal(`, y eso dejó de ser el panel fiscal. Entre los
+// dos se fueron metiendo piezas nuevas —el 15/11 las de verificación en dos
+// pasos, el 18/11 `ConfigSala` con las mesas, las zonas y las tarifas de
+// org-33—, así que la lista de RPC «del panel fiscal» acabó recogiendo
+// `abc_crear_mesa`, `abc_guardar_tarifa_horario` y compañía. La tentación es
+// añadirlas a la lista autorizada; sería tapar exactamente lo que esta
+// comprobación vigila, que es que el panel fiscal no llame a nada más.
+//
+// Es el mismo error que cortar `ConfiguracionLocal` por el primer
+// `\nfunction `: una rodaja que crece sola convierte una comprobación en un
+// adorno. Ahora termina donde de verdad termina el panel, en la primera pieza
+// de la sección de verificación en dos pasos, y si mañana alguien mete algo
+// entre medias la rodaja se queda corta y esto se pone rojo en vez de
+// ensancharse en silencio.
+const fiscalIni = comp.indexOf("var FISCAL_CONFIG_INICIAL =");
+const fiscalFin = comp.indexOf("function clienteNubeMfa(", fiscalIni);
+assert.ok(fiscalIni >= 0, "existe el panel Fiscalidad y AEAT");
+assert.ok(fiscalFin > fiscalIni, "la pieza de verificación en dos pasos sigue viniendo detrás del panel fiscal: si se movió, hay que rehacer esta rodaja, no ampliarla");
+const fiscal = comp.slice(fiscalIni, fiscalFin);
 assert.ok(fiscal.length > 1000, "existe el panel Fiscalidad y AEAT");
+// Se buscan las declaraciones, no los nombres: justo antes de `clienteNubeMfa`
+// hay un comentario que explica la sección de verificación en dos pasos y que
+// nombra sus piezas, y ese comentario sí pertenece a la frontera.
+assert.ok(!/function (?:ConfigSala|ConfigMfa|MfaPoliticaCargos|MfaMiCuenta)\(/.test(fiscal), "la rodaja del panel fiscal no se ha tragado otras secciones");
 assert.deepEqual([...new Set([...fiscal.matchAll(/configRpc\("([a-z_0-9]+)"/g)].map((m) => m[1]))].sort(),
   ["abc_c07d_leer_piloto_sandbox", "abc_fiscal_guardar_borrador", "abc_fiscal_guardar_representacion", "abc_fiscal_invitar_asesoria", "abc_fiscal_leer_borrador", "abc_fiscal_leer_representacion", "abc_fiscal_listar_delegaciones", "abc_fiscal_listar_emisores", "abc_fiscal_revocar_delegacion"], "el panel usa solo las RPC fiscales autorizadas");
 assert.doesNotMatch(fiscal, /\.from\(|\.insert\(|\.update\(|\.delete\(|\.upsert\(/, "el panel fiscal no accede a tablas directamente");

@@ -1,0 +1,212 @@
+{
+ "bloque": "2 - Inventario y Compras",
+ "conteo_de_ensayo": {
+  "estado_final": "Cerrado como parcial con su motivo. El almacen quedo DESCONGELADO, comprobado: el aviso desaparece. Queda un conteo del 2026-11-14 en el historial, de piso de venta, con 1 de 21 contado.",
+  "inv-16_y_inv-17": "No ejercitadas. Exigen aplicar ajustes y luego revertirlos, y aplicar ajustes desde un conteo de 1 de 21 crearia movimientos de stock reales sin necesidad. El historial de QA ya acredita que existen: el conteo del 27/10 registra 'Ajustes: 3 producto(s)' y 'Cancelacion ... 3 reverso(s)'.",
+  "principio": "Un dato de ensayo abrio seis vistas de una vez, como estaba previsto.",
+  "vistas": [
+   {
+    "contenido": "Al abrirlo avisa: 'Almacen congelado. Mientras haya un conteo abierto no se pueden registrar entradas ni salidas, para que el descuadre no salga falseado'. Campos Contado por y Revisado por (opcional).",
+    "id": "inv-11",
+    "que": "Iniciar conteo y asignar responsable"
+   },
+   {
+    "contenido": "Tabla agrupada por proveedor, con Queseria Prueba Alb S.L. y 'Sin proveedor asignado', columnas numero, descripcion, unidad de medida y conteo. Dos tablas, las dos en modo ficha.",
+    "id": "inv-12",
+    "que": "Contar por proveedor o producto"
+   },
+   {
+    "contenido": "aparece el control 'Encontre un producto que no esta en el sistema' al empezar a revisar.",
+    "id": "inv-13",
+    "que": "Crear producto durante el conteo"
+   },
+   {
+    "contenido": "Resultado ordenado por impacto economico, con clase ABC por producto, sistema, conteo final, diferencia, impacto en euros y un selector de motivo del descuadre: rotura, merma o caducidad, robo o perdida, error de captura, devolucion no registrada, otro.",
+    "id": "inv-14",
+    "que": "Diferencias y motivos"
+   },
+   {
+    "contenido": "'Has contado 1 de 21 productos. Los 20 restantes quedaran identificados como pendientes; no se trataran como cero', con motivo del cierre parcial obligatorio y las opciones Seguir contando o Confirmar cierre parcial.",
+    "id": "inv-15",
+    "que": "Cerrar o aplicar ajustes"
+   },
+   {
+    "contenido": "del conteo historico del 27/10: productos descuadrados 3, impacto neto -2,73 EUR, con Imprimir o guardar PDF, enviar PDF por WhatsApp y ver la hoja ya rellena.",
+    "id": "inv-20",
+    "que": "Vista de conteo y clasificacion ABC"
+   }
+  ]
+ },
+ "cosas_bien_hechas_del_producto": [
+  "Congela el almacen mientras hay un conteo abierto, y explica por que.",
+  "Los pendientes de un cierre parcial no se tratan como cero, y lo dice.",
+  "El resultado se ordena por impacto economico, no por orden de catalogo.",
+  "El historial conserva cierre, ajustes, cancelacion y motivo de cada conteo."
+ ],
+ "defecto_encontrado_y_corregido": {
+  "arreglo": "aria-label 'Conteo de <producto>' con el nombre real de cada fila, mismo texto en las dos copias de la fuente, +53 caracteres. PARIDAD_CUERPO_EXACTA=1.",
+  "donde": "Inventario ciego, captura de conteos",
+  "nota": "Es el mismo patron que la cantidad del carrito y la del ingrediente de produccion: campos numericos en tabla, etiquetados solo por su columna. Van tres.",
+  "que": "21 de 24 campos sin nombre accesible: el campo de conteo de cada producto. Es el campo principal de la pantalla, uno por fila, y ninguno decia nada."
+ },
+ "fecha": "2026-11-14",
+ "quince_pestanas": {
+  "detalle": {
+   "albaranes": {
+    "bot": 6,
+    "campos": 1,
+    "titulo": "Entrada de albaranes"
+   },
+   "conteo": {
+    "bot": 926
+   },
+   "devoluciones": {
+    "bot": 4,
+    "campos": 5
+   },
+   "diagnostico": {
+    "bot": 4
+   },
+   "etiquetas": {
+    "bot": 5,
+    "campos": 1
+   },
+   "facturas": {
+    "bot": 1,
+    "campos": 1
+   },
+   "fichas": {
+    "bot": 1
+   },
+   "mermas": {
+    "bot": 2,
+    "campos": 2
+   },
+   "pagos": {
+    "bot": 6
+   },
+   "pedidos": {
+    "bot": 1,
+    "titulo": "Pedidos de compra"
+   },
+   "productos": {
+    "bot": 97,
+    "campos": 1,
+    "tablas": "1, en modo ficha"
+   },
+   "proveedores": {
+    "bot": 4
+   },
+   "recepcion": {
+    "bot": 0,
+    "titulo": "Recepcion de mercancia"
+   },
+   "saldo": {
+    "bot": 7,
+    "tablas": "1, en modo ficha"
+   },
+   "traspasos": {
+    "bot": 3,
+    "campos": 7
+   }
+  },
+  "las_cinco_nuevas_confirmadas": {
+   "conteo": "Inventario ciego",
+   "diagnostico": "Reconciliacion de stock",
+   "etiquetas": "Etiquetas y catalogo",
+   "pagos": "Cuentas por pagar",
+   "saldo": "Saldo de almacen"
+  },
+  "resultado": "Las quince abren y miden limpio: cero campos sin nombre accesible, cero botones sin nombre, cero controles por debajo de 24 ni de 44, y ningun desbordamiento horizontal."
+ },
+ "recuento": {
+  "objetivo": 49,
+  "pendientes": 27,
+  "pestanas_medidas": 15,
+  "sin_aclarar": 2,
+  "sin_construir": 2,
+  "vistas_abiertas": 20
+ },
+ "segunda_tanda_disparadores_sin_dato": {
+  "hallazgo_lateral": "La pestana de proveedores avisa: '1 proveedor(es) se dieron de alta automaticamente desde la foto de un albaran y estan pendientes de revisar', y la ficha de Queseria Prueba Alb S.L. sale marcada 'Creado por IA · revisar'. Es rastro de que el flujo de lectura de albaran por foto se ejercito en QA en algun momento, aunque hoy sus funciones de borde no sean alcanzables desde el preview.",
+  "nota": "Catorce vistas mas, sin crear ningun dato. Todas limpias: ningun campo sin nombre, ningun control por debajo de 24 ni de 44, sin desbordamiento.",
+  "sin_aclarar": {
+   "com-29 y com-30": "Los botones existen con su etiqueta real, 'Marcar como pagada' y 'Eliminar', sobre dos facturas directas pendientes de 100.000,00 y 75,80 EUR. Al pulsarlos no aparecio ninguna superficie propia y nada cambio: 'Ver facturas ya pagadas' sigue en 0 y las dos facturas siguen pendientes. Comprobado a proposito, porque marcar una pagada habria sido una escritura que no buscaba. No lo doy por defecto: puede ser que pidan una confirmacion que no se dibujo o que mi clic programatico no fuera al elemento correcto. Queda por aclarar, y conviene hacerlo a mano antes de llamarlo defecto."
+  },
+  "vistas": [
+   {
+    "contenido": "formulario por pasos, 23 campos, empieza en '1 · Identificacion'",
+    "id": "inv-03",
+    "que": "Alta de producto"
+   },
+   {
+    "contenido": "5 campos. Lo explica bien: 'para cuando en el conteo sobra de uno y falta de otro porque se confundieron'",
+    "id": "inv-04",
+    "que": "Ajuste entre productos"
+   },
+   {
+    "contenido": "'Kardex — Agua 50 cl (QA). Stock actual: 74 unidad. Historico de 61 movimiento(s)'",
+    "id": "inv-05",
+    "que": "Kardex de producto"
+   },
+   {
+    "contenido": "seccion en linea: producto, direccion almacen a piso de venta, cantidad y Confirmar movimiento",
+    "id": "inv-23",
+    "que": "Traspasar a otra ubicacion"
+   },
+   {
+    "contenido": "seccion en linea: local destino, producto que sale, producto que recibe y cantidad",
+    "id": "inv-24",
+    "que": "Traspasar entre locales"
+   },
+   {
+    "contenido": "Reconciliacion de stock, con filtros discrepancias, con deficit, correctos y todos",
+    "id": "inv-26",
+    "que": "Movimientos en discrepancia"
+   },
+   {
+    "contenido": "misma pantalla; explica que un deficit por si solo no es un descuadre",
+    "id": "inv-27",
+    "que": "Confirmar correccion de stock"
+   },
+   {
+    "contenido": "etiquetas de vitrina y catalogo, con seleccion e imprimir",
+    "id": "inv-29",
+    "que": "Catalogo y alergenos"
+   },
+   {
+    "contenido": "abierta con su estado vacio real: las dos recetas de ensayo se retiraron",
+    "id": "inv-30",
+    "que": "Fichas de coste y recetas"
+   },
+   {
+    "contenido": "16 campos, todos con nombre",
+    "id": "inv-31",
+    "que": "Editar receta, ingredientes y coste"
+   },
+   {
+    "contenido": "6 campos. 'Todo lo que se ha perdido: caducidad, roturas, deterioro, autoconsumo'",
+    "id": "inv-34",
+    "que": "Registrar merma"
+   },
+   {
+    "contenido": "10 campos, nombre, NIF, direccion, web",
+    "id": "com-02",
+    "que": "Alta y edicion de proveedor"
+   },
+   {
+    "contenido": "en linea en la pestana, con sus datos y Editar y Marcar como revisado",
+    "id": "com-03",
+    "que": "Ficha de proveedor"
+   },
+   {
+    "contenido": "8 campos. Junta las facturas que entran por albaranes con las directas de luz, alquiler o gestoria",
+    "id": "com-28",
+    "que": "Factura directa"
+   }
+  ]
+ },
+ "sesion": "Propietario real, QA-EMP-A / QA-A1, ancho 736 px",
+ "sha": "09648259 mas la etiqueta del conteo ciego",
+ "url": "https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}

@@ -3,6 +3,7 @@ import fs from "node:fs";
 import assert from "node:assert/strict";
 
 const recovered = fs.readFileSync("source-recovery/fuente-recuperado.js", "utf8");
+const pase = fs.readFileSync("la-pase-panel.js", "utf8");
 const a06 = fs.readFileSync("supabase/migrations/20260924040000_abc_f3_a06_account_recovery.sql", "utf8");
 const a06a11 = fs.readFileSync("supabase/migrations/20260927113403_abc_f3_a06_recovery_server_operating_day.sql", "utf8");
 
@@ -38,7 +39,7 @@ assert.ok(
   "A06.1: crearLogicaVenta no devuelve los adaptadores operativos"
 );
 
-const start = recovered.indexOf("async function recuperarCuentaA06()");
+const start = recovered.indexOf("async function recuperarCuentaA06(");
 const end = recovered.indexOf("\n  function leerPedidoOperativoA05()", start);
 assert.ok(start >= 0 && end > start, "A06.1: adaptador de recuperación no localizable");
 const adapter = recovered.slice(start, end);
@@ -115,6 +116,34 @@ assert.ok(
   recovered.includes("const localPersistido = typeof leerPedidoOperativoA05"),
   "A06.1: no pinta primero el snapshot local durante corte/reinicio"
 );
+
+// Navegación desde Pase: la cuenta de destino viaja junto a la mesa y el TPV
+// no puede caer silenciosamente en la cuenta que ya tenía el terminal.
+for (const required of [
+  "const cuentaDestinoId = mesaDestino?.localId === local?.id",
+  "const cuentaObjetivoId = cuentaDestinoId || (cuentas.length === 1 ? cuentas[0].cuenta_id : null)",
+  "cuentaIdDestino: cuentaObjetivoId",
+  "La cuenta solicitada ya no está en esta mesa. Vuelve a Pase y actualiza el estado."
+]) {
+  assert.ok(recovered.includes(required), `A06.1: enlace Pase→TPV incompleto: ${required}`);
+}
+assert.ok(
+  pase.includes('destinoMesa(mesa, pedido.cuenta_id)'),
+  "A06.1: Pase no transmite la cuenta concreta del pedido"
+);
+assert.ok(
+  pase.includes("function destinoCuenta(cuentaId)")
+    && pase.includes("destinoMesa(mesa, pedido.cuenta_id) : destinoCuenta(pedido.cuenta_id)"),
+  "A06.1: Pase no conserva el destino de una cuenta sin mesa"
+);
+for (const required of [
+  "if (cuentaDestinoId && !mesaDestinoId && typeof recuperarCuentaA06 === \"function\")",
+  "cuentaIdDestino: cuentaDestinoId",
+  "Cuenta recuperada desde la cola.",
+  "La cuenta seleccionada no se puede recuperar."
+]) {
+  assert.ok(recovered.includes(required), `A06.1: recuperación de cuenta sin mesa incompleta: ${required}`);
+}
 
 // A06.1 no habilita pagos, facturación, stock ni reapertura de cuentas cerradas.
 for (const forbidden of [

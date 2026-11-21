@@ -77,7 +77,7 @@
   // sincronización mientras la sesión siga en AAL1; de lo contrario, el
   // arranque histórico llegaría a las RPC protegidas antes de que el usuario
   // terminase el desafío MFA.
-  async function mfaAutorizadaParaAplicacion(supabase) {
+  async function mfaAutorizadaParaAplicacion(supabase, sesion) {
     if (!supabase || !supabase.auth || !supabase.auth.mfa) return false;
     var aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal && aal.error) throw aal.error;
@@ -88,7 +88,27 @@
     var hayFactorVerificado = totp.concat(phone).some(function (factor) {
       return factor && factor.status === "verified";
     });
-    return hayFactorVerificado && aal && aal.data && aal.data.currentLevel === "aal2";
+    // Quien tiene un factor inscrito completa su desafio siempre: se lo puso
+    // porque quiere que se le pida.
+    if (hayFactorVerificado) return aal && aal.data && aal.data.currentLevel === "aal2";
+    // Sin factor inscrito, desde el 15/11/2026 solo se bloquea si el servidor
+    // lo exige para esta persona. Por defecto no se exige a nadie.
+    return !(await mfaExigidaPorElServidorBootstrap(sesion));
+  }
+
+  // Si el servidor todavia no tiene la politica -cliente desplegado antes que
+  // la migracion- se mantiene la conducta de M-03 y se sigue exigiendo. Fallar
+  // hacia "no se exige" dejaria sin proteccion, durante esa ventana, justo a
+  // quien hoy la tiene.
+  async function mfaExigidaPorElServidorBootstrap(sesion) {
+    try {
+      var r = await rpcP4("mfa_politica_leer", sesion, {});
+      return !!(r && r.exigida_para_mi);
+    } catch (e) {
+      var m = String(e && e.message ? e.message : e || "");
+      if (/could not find the function|PGRST202|HTTP 404/i.test(m)) return true;
+      throw e;
+    }
   }
 
   async function rpcP4(nombre, sesion, cuerpo) {
@@ -122,14 +142,14 @@
     root.id = ROOT_SETUP_ID;
     root.setAttribute("role", "dialog");
     root.setAttribute("aria-modal", "true");
-    root.style.cssText = "position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:24px;background:radial-gradient(circle at 50% 20%,#153D27 0%,#0C2714 48%,#06170E 100%);font-family:'IBM Plex Sans',system-ui,sans-serif;color:#102018";
+    root.style.cssText = "position:fixed;inset:0;z-index:10050;display:flex;align-items:center;justify-content:center;padding:var(--la-space-5,20px);background:radial-gradient(circle at 50% 20%,var(--c-chrome,#15171B) 0%,var(--c-bg,#17191C) 48%,#08090B 100%);font-family:var(--la-font,'Inter','Segoe UI',system-ui,sans-serif);color:var(--c-ink,#F1F3F6)";
 
     var tarjeta = document.createElement("div");
-    tarjeta.style.cssText = "width:min(100%,520px);background:#F7F3E9;border:1px solid rgba(198,154,82,.55);border-radius:22px;padding:26px;box-shadow:0 24px 70px rgba(0,0,0,.38)";
+    tarjeta.style.cssText = "box-sizing:border-box;width:min(100%,520px);background:var(--c-surface,#202329);color:var(--c-ink,#F1F3F6);border:1px solid var(--c-divider,#343941);border-radius:var(--la-radius-xl,16px);padding:var(--la-space-6,24px);box-shadow:var(--la-shadow-2,0 24px 70px rgba(0,0,0,.38))";
     tarjeta.innerHTML =
-      '<div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:#7F5823;font-weight:700">L&amp;A Suite · instalación inicial</div>' +
-      '<h1 style="margin:8px 0 8px;font-size:25px;line-height:1.15;color:#0C2714">' + htmlSeguro(titulo) + '</h1>' +
-      '<p style="margin:0 0 18px;color:#4B5A54;font-size:14px;line-height:1.5">' + htmlSeguro(descripcion) + '</p>';
+      '<div style="font-size:12px;letter-spacing:.12em;text-transform:uppercase;color:var(--c-accent,#FF6A4F);font-weight:700">L&amp;A Suite · instalación inicial</div>' +
+      '<h1 style="margin:8px 0 8px;font-size:25px;line-height:1.15;color:var(--c-ink,#F1F3F6)">' + htmlSeguro(titulo) + '</h1>' +
+      '<p style="margin:0 0 18px;color:var(--c-ink-soft,#929DA7);font-size:14px;line-height:1.5">' + htmlSeguro(descripcion) + '</p>';
     root.appendChild(tarjeta);
     document.body.appendChild(root);
     var cargando = document.getElementById("cargando");
@@ -144,7 +164,7 @@
       op.descripcion || "No se abrirá el panel ni se sincronizarán datos hasta resolver el estado del servidor."
     );
     var aviso = document.createElement("div");
-    aviso.style.cssText = "padding:12px 14px;border-radius:12px;background:#fff7e7;border:1px solid #d9b56d;color:#6a4b18;font-size:13px;line-height:1.45";
+    aviso.style.cssText = "padding:12px 14px;border-radius:var(--la-radius-md,10px);background:var(--c-amber-soft,#2A2112);border:1px solid var(--c-amber,#D9A441);color:var(--c-amber,#F0C36A);font-size:13px;line-height:1.45";
     aviso.textContent = mensaje || "El estado de instalación no es válido.";
     tarjeta.appendChild(aviso);
 
@@ -152,7 +172,7 @@
       var boton = document.createElement("button");
       boton.type = "button";
       boton.textContent = op.textoBoton || "Reintentar comprobación";
-      boton.style.cssText = "margin-top:16px;width:100%;padding:12px 16px;border:0;border-radius:12px;background:#0C2714;color:#fff;font-weight:700;cursor:pointer";
+      boton.style.cssText = "box-sizing:border-box;margin-top:var(--la-space-4,16px);width:100%;min-height:var(--la-control-height,44px);padding:10px 16px;border:1px solid var(--c-accent-fill,#FF4B32);border-radius:var(--la-radius-md,10px);background:var(--c-accent-fill,#FF4B32);color:var(--c-on-accent,#17191C);font-weight:700;cursor:pointer";
       boton.addEventListener("click", function () {
         // Volver a comprobar aqui solo es posible si llegamos a tener cliente
         // y usuario. Cuando no los hay -- el caso mas habitual, que el
@@ -174,12 +194,12 @@
 
     var formulario = document.createElement("form");
     formulario.innerHTML =
-      '<label style="display:block;margin:12px 0 6px;font-size:13px;font-weight:700;color:#263b30">Nombre de la empresa</label>' +
-      '<input name="empresa" autocomplete="organization" maxlength="120" required style="box-sizing:border-box;width:100%;padding:12px;border-radius:10px;border:1px solid #b7b0a0;background:#fff;font:inherit" placeholder="Ej. L&A Hostelería" />' +
-      '<label style="display:block;margin:14px 0 6px;font-size:13px;font-weight:700;color:#263b30">Nombre del primer local</label>' +
-      '<input name="local" maxlength="120" required style="box-sizing:border-box;width:100%;padding:12px;border-radius:10px;border:1px solid #b7b0a0;background:#fff;font:inherit" placeholder="Ej. Local principal" />' +
-      '<div data-error style="display:none;margin-top:12px;padding:10px 12px;border-radius:10px;background:#fff0ed;color:#8d2e1f;font-size:13px"></div>' +
-      '<button type="submit" style="margin-top:16px;width:100%;padding:13px 16px;border:0;border-radius:12px;background:#0C2714;color:#fff;font-weight:700;cursor:pointer">Crear instalación inicial</button>';
+      '<label style="display:block;margin:12px 0 6px;font-size:13px;font-weight:700;color:var(--c-ink,#F1F3F6)">Nombre de la empresa</label>' +
+      '<input name="empresa" autocomplete="organization" maxlength="120" required style="box-sizing:border-box;width:100%;min-height:var(--la-control-height,44px);padding:10px 12px;border-radius:var(--la-radius-md,10px);border:1px solid var(--c-border-control,#4A515B);background:var(--c-bg,#17191C);color:var(--c-ink,#F1F3F6);font:inherit" placeholder="Ej. L&A Hostelería" />' +
+      '<label style="display:block;margin:14px 0 6px;font-size:13px;font-weight:700;color:var(--c-ink,#F1F3F6)">Nombre del primer local</label>' +
+      '<input name="local" maxlength="120" required style="box-sizing:border-box;width:100%;min-height:var(--la-control-height,44px);padding:10px 12px;border-radius:var(--la-radius-md,10px);border:1px solid var(--c-border-control,#4A515B);background:var(--c-bg,#17191C);color:var(--c-ink,#F1F3F6);font:inherit" placeholder="Ej. Local principal" />' +
+      '<div data-error style="display:none;margin-top:12px;padding:10px 12px;border-radius:var(--la-radius-md,10px);background:var(--c-red-soft,#321A1D);color:var(--c-red,#FF7B79);font-size:13px"></div>' +
+      '<button type="submit" style="box-sizing:border-box;margin-top:var(--la-space-4,16px);width:100%;min-height:var(--la-control-height,44px);padding:10px 16px;border:1px solid var(--c-accent-fill,#FF4B32);border-radius:var(--la-radius-md,10px);background:var(--c-accent-fill,#FF4B32);color:var(--c-on-accent,#17191C);font-weight:700;cursor:pointer">Crear instalación inicial</button>';
     tarjeta.appendChild(formulario);
 
     formulario.addEventListener("submit", async function (evento) {
@@ -266,7 +286,7 @@
     try {
       // M03: dejar visible la pantalla MFA, pero sin liberar el bootstrap ni
       // ejecutar ninguna RPC de contexto, hasta que la sesión esté elevada.
-      if (!(await mfaAutorizadaParaAplicacion(supabase))) {
+      if (!(await mfaAutorizadaParaAplicacion(supabase, sesion))) {
         if (miSecuencia !== secuencia) return;
         liberarVistaSinSesion();
         return;
