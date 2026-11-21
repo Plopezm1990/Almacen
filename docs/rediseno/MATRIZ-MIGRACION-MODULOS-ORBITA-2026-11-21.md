@@ -822,3 +822,25 @@ recorrió TPV (`tpv`), Cocina (`cocina`), Caja (`caja`), Clientes (`clientes`),
 Proveedores (`compras`), Productos (`inventario`), Personal (`personal`) y
 Configuración (`configuracion`), todos con mínimo 44 px y sin desbordamiento
 horizontal. Es evidencia visual local, no cierre de permisos ni datos reales.
+
+### Plataforma y Acceso · cierre de la normalización de controles · 21/11/2026
+
+Se corrigió la última diferencia común detectada fuera de los recorridos
+autenticados: las áreas de texto de `#la-plataforma-root` y
+`#la-plataforma-cambio-root` quedaban fuera de la altura, borde y radio Órbita
+que ya usaban inputs y selectores. También se fijó un foco visible común para
+botones, campos y acciones de login, MFA y Plataforma. No se modifican lógica,
+sesiones, permisos, RPC ni datos.
+
+La hoja queda publicada con la marca `qa-orbita-modules-v46-20261121` y la
+huella P01 `ebbf90ccdde80bb4`. Los 12 módulos siguen deliberadamente en
+`PARCIAL`: esta corrección cierra la consistencia estática de los componentes,
+pero no sustituye el recorrido autenticado de cada ruta, especialmente el
+acceso administrador de Plataforma y el flujo login/recuperación/MFA de
+Acceso.
+
+Evidencia de esta revisión: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`,
+`REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12 responsive=PASS
+tactil=44`, `MARCO_ORBITA_CONTRACT=PASS (23/23)`,
+`MARCO_ORBITA_RUTAS_CONTRACT=PASS (20 rutas)`, batería completa
+`tests/rediseno/*.mjs` en verde y `git diff --check` limpio.

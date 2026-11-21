@@ -1462,6 +1462,28 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Revisión final de controles externos · Plataforma y Acceso · 21/11/2026
+
+La auditoría del marco común encontró una excepción concreta en los paneles
+previos al shell: los `textarea` de Plataforma no recibían el mismo contrato
+Órbita que `input` y `select`. Se añadió la normalización de altura mínima,
+borde, radio, fondo y foco visible a ambos contenedores (`#la-plataforma-root`
+y `#la-plataforma-cambio-root`). Login, recuperación y MFA reciben el mismo
+foco visible para campos, botones y roles accionables. Es CSS scoped y no toca
+handlers, autenticación, permisos, RPC ni datos.
+
+La caché de `la-apariencia.css` pasa a `qa-orbita-modules-v46-20261121`;
+huella P01 `ebbf90ccdde80bb4`. La batería completa `tests/rediseno/*.mjs`
+queda verde, con P01, componentes, módulos 12/12, marco 23/23, rutas 20/20,
+Pase, fiscalidad, MFA, Apariencia, org-33, botones solo icono y arranque
+resiliente en PASS; `git diff --check` también pasa.
+
+Esto no cierra por sí solo las filas de matriz: sigue pendiente el recorrido
+autenticado de cada módulo con datos y estados reales, la cuenta de
+administrador de Plataforma y la comprobación completa de Acceso (login,
+recuperación, MFA, expiración y selección de empresa/local). El PR #225 se
+mantiene en borrador y producción permanece intacta.
+
 También se corrigió la prioridad de ruta: al pulsar Panel general, el shell
 mantiene `inicio` aunque Pase esté incrustado. La navegación marca el destino
 activo para que el siguiente recorrido no confunda la sub-superficie operativa

@@ -24,7 +24,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v45-20261121/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v46-20261121/);
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(index, /var\(--c-bg, #17191C\)/, 'la pantalla de carga conserva la superficie antigua');
 assert.doesNotMatch(index, /#0C2714|#F7F3E9|#E7D1A5|#B8AC91|#7F5823|#C69A52|#D2AD68/, 'el arranque conserva la paleta antigua');
@@ -57,12 +57,14 @@ assert.ok(css.includes('main[data-la-orbita-module="plataforma"] .la-ui-card'), 
 assert.ok(css.includes('main[data-la-orbita-module="plataforma"] [role="alert"]'), 'Plataforma no normaliza errores');
 assert.ok(css.includes('#la-plataforma-root .lap-tarjeta'), 'Plataforma previa no normaliza tarjetas');
 assert.ok(css.includes('#la-plataforma-root .lap-btn'), 'Plataforma previa no normaliza controles');
+assert.ok(css.includes('#la-plataforma-root .lap-campo textarea'), 'Plataforma previa no normaliza áreas de texto');
+assert.ok(css.includes('.la-acceso button:focus-visible') && css.includes('.lap-btn:focus-visible'), 'Acceso y Plataforma no exponen foco Órbita');
 assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipográfico inexistente');
 assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
 assert.match(css, /--la-mono:\s*["']IBM Plex Mono["']/, 'MFA usa --la-mono sin declararlo');
 assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no conserva la composición Órbita');
 assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
-assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v45-20261121/, 'la recuperación no carga el contrato de apariencia');
+assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v46-20261121/, 'la recuperación no carga el contrato de apariencia');
 assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
 assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
 

@@ -3104,6 +3104,22 @@ html[data-la-diseno] .la-acceso [role="button"] {
   min-height: var(--la-control-height) !important;
   border-radius: var(--la-radius-md) !important;
 }
+html[data-la-diseno] .la-acceso input:focus-visible,
+html[data-la-diseno] .la-acceso select:focus-visible,
+html[data-la-diseno] .la-acceso textarea:focus-visible,
+html[data-la-diseno] .la-acceso button:focus-visible,
+html[data-la-diseno] .la-acceso [role="button"]:focus-visible,
+html[data-la-diseno] #la-plataforma-root .lap-btn:focus-visible,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-btn:focus-visible,
+html[data-la-diseno] #la-plataforma-root .lap-campo input:focus-visible,
+html[data-la-diseno] #la-plataforma-root .lap-campo select:focus-visible,
+html[data-la-diseno] #la-plataforma-root .lap-campo textarea:focus-visible,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-campo input:focus-visible,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-campo select:focus-visible,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-campo textarea:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--c-accent-fill) 52%, transparent) !important;
+  outline-offset: 2px;
+}
 html[data-la-diseno] .la-acceso .la-acceso-entrar {
   width: 100%;
   background: var(--c-accent-fill) !important;
@@ -3171,8 +3187,10 @@ html[data-la-diseno] #la-plataforma-cambio-root .lap-btn {
 }
 html[data-la-diseno] #la-plataforma-root .lap-campo input,
 html[data-la-diseno] #la-plataforma-root .lap-campo select,
+html[data-la-diseno] #la-plataforma-root .lap-campo textarea,
 html[data-la-diseno] #la-plataforma-cambio-root .lap-campo input,
-html[data-la-diseno] #la-plataforma-cambio-root .lap-campo select {
+html[data-la-diseno] #la-plataforma-cambio-root .lap-campo select,
+html[data-la-diseno] #la-plataforma-cambio-root .lap-campo textarea {
   min-height: var(--la-control-height) !important;
   border-radius: var(--la-radius-md) !important;
   border-color: var(--c-border-control) !important;
