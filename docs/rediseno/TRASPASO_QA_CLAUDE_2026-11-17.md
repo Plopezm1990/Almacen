@@ -1289,3 +1289,13 @@ El cambio se publicó en el deploy `6b012a4769a7c7ccd57b055e` (`ready`) con la
 misma política de QA y PR #225 en borrador. Evidencia live en Codex: Inicio
 `data-la-orbita-module="inicio"`; `Abrir TPV` → `tpv`; `scrollWidth ===
 innerWidth`; control visible mínimo 44 px.
+
+### TPV y sala · avance visual `3ff74403`
+
+Se aplicó la primera capa específica del bloque TPV/sala sobre las raíces
+existentes: catálogo y filtros de categoría, tarjetas de producto, paginación,
+mesas, columna de ticket/caja y dock móvil. La distribución sigue siendo una
+columna operativa más lateral estable en escritorio y una pila vertical en
+móvil; no se tocaron handlers, permisos, fiscalidad ni datos. Los contratos
+P01, marco, componentes, rutas y fiscal TPV pasan. El bloque permanece
+`PARCIAL` hasta verificar cada recorrido real y sus estados vacío/carga/error.
