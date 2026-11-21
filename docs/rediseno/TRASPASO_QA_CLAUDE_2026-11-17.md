@@ -1253,3 +1253,25 @@ No quedan acciones técnicas de este objetivo. Las excepciones deliberadas son
 checkbox/radio/range nativos y la densidad de TPV en modo caja completo; todo
 lo demás queda gobernado por la escala Órbita. PR #225 continúa en borrador y
 producción sigue fuera de alcance.
+
+## Objetivo 4 · migración visual por módulos · avance 21/11/2026
+
+La matriz de seguimiento es `docs/rediseno/MATRIZ-MIGRACION-MODULOS-ORBITA-2026-11-21.md`.
+La migración se mantiene por bloques y no se declara cerrada por el mero hecho
+de cargar el shell: los doce módulos siguen en estados PARCIAL, MARCO o BASE
+hasta completar la revisión visual de sus rutas reales.
+
+En esta tanda se corrigió un defecto de identificación en Pase. El panel que
+Inicio monta en el preview usa `.la-pase` como raíz semántica, mientras que el
+recorrido histórico puede usar `#la-pase`. El shell y la capa CSS aceptan ambas
+raíces. El commit es `467c27fc`; la caché pasó a
+`qa-orbita-modules-v16-20261121` y el preview se publicó en el deploy
+`6b0128d77f7636fabd402947` (PR #225, borrador).
+
+Evidencia live tras el despliegue: en Codex, Inicio quedó marcado como módulo
+`pase` cuando está presente el panel real; el acceso `Abrir TPV` cambió la
+superficie a `tpv` y montó `.tpv-layout`; en el ancho disponible del banco no
+hubo overflow (`scrollWidth === innerWidth`) y el control visible mínimo fue
+44 px. Los contratos P01, marco, rutas, componentes y `git diff --check`
+siguen pasando. La batería global se debe ejecutar después de estabilizar la
+siguiente tanda; no se hicieron cobros, reembolsos ni cambios de datos en QA.
