@@ -1725,3 +1725,61 @@ La excepción deliberada son los defaults HEX dentro de variables semánticas y
 los diseños de propuesta no Órbita: no se eliminan porque son fallback de
 resiliencia o composiciones seleccionables. En el marco activo Órbita ninguna
 de esas propuestas puede sobrescribir el shell ni su escala.
+
+## Plantillas Órbita reutilizables y cobertura de vistas · 21/11/2026
+
+La composición común deja de depender de ajustes artesanales por pantalla. Se
+añadió `la-plantillas-orbita.js`, una capa aditiva que solo marca el DOM que ya
+monta el producto con `data-la-orbita-template` y
+`data-la-orbita-mobile-template`. No crea rutas, no llama RPC, no sustituye
+handlers y no altera datos ni permisos. El shell sigue siendo el dueño de la
+navegación y la capa de tablas sigue leyendo sus cabeceras reales.
+
+| Plantilla | Uso | Módulos principales |
+|---|---|---|
+| `panel` | KPIs, actividad, estados y acciones rápidas | Inicio |
+| `listado` | filtros, vistas, paginación y filas | Clientes, Compras, Personal |
+| `ficha` | entidad, datos y actividad | Clientes y fichas de gestión |
+| `formulario` | campos por bloques, validación y estados | Acceso y formularios comunes |
+| `tabla` | tabla desktop y fichas móviles con `data-etiqueta` | Inventario y listados con tabla |
+| `detalle` | panel lateral, modal y confirmación | Caja, detalle y diálogos |
+| `tpv` | catálogo, cuenta, sala y cobro | TPV y sala |
+| `cola-operativa` | estados, filtros y cola de trabajo | Pase y Cocina |
+| `configuracion` | secciones, controles y avisos | Configuración y Plataforma |
+| `movil` | navegación inferior, cabecera compacta y adaptación táctil | Las 12 superficies |
+
+Asignación verificable de las doce superficies: `inicio→panel`, `tpv→tpv`,
+`pase→cola-operativa`, `cocina→cola-operativa`, `caja→detalle`,
+`clientes→listado`, `compras→listado`, `inventario→tabla`,
+`personal→listado`, `configuracion→configuracion`,
+`plataforma→configuracion` y `acceso→formulario`. Formularios, tablas,
+diálogos y colas anidados reciben su subplantilla sin reemplazar el componente
+que los controla.
+
+### Decisión de alcance para las vistas sin capa independiente
+
+No se crean pantallas ficticias para igualar la maqueta. La matriz conserva una
+decisión explícita por familia:
+
+| Familia citada por la maqueta | Decisión | Motivo y cobertura |
+|---|---|---|
+| Recuperación de contraseña | Cubierta | Es una entrada HTML independiente, pero carga la hoja Órbita y usa la plantilla `formulario`/Acceso; se mantiene su handler de recuperación. |
+| Bizum y estado de pago | Retirada de matriz de producto | No existe backend Bizum en QA ni en las migraciones; Transferencia no se presenta como Bizum. |
+| Pantalla para cliente | Futura, no simulada | Requiere una superficie externa y contrato de dispositivo; no se inventa una vista de cobro. |
+| Impresión de receta | Cubierta por Fichas de coste/Recetas | La composición de receta vive en Inventario; la salida de impresión es una capacidad, no otra pantalla Órbita. |
+| Prueba de impresora y cajón | Cubierta por Configuración/Equipos | Es un estado/acción del equipo, no un módulo visual adicional. |
+| Plataforma y equipos | Cubierta | `#la-plataforma-root`, cambio de contraseña y Equipos reciben `configuracion` + `movil`. |
+| Funciones fiscales | Cubierta | TPV/Caja consumen las tarjetas fiscales y sus estados; el contrato funcional queda separado del marco. |
+| Inventario y Organización pendientes | Cubierta o futura según backend | Las rutas existentes reciben `tabla`, `listado` o `configuracion`; las capacidades sin migración permanecen futuras y no se representan como falsas. |
+
+### Revisión móvil del sistema
+
+La plantilla `movil` se aplica a cada raíz de módulo. Las tablas se convierten
+en fichas con las cabeceras reales, los filtros y acciones conservan objetivos
+de al menos 44 px, los diálogos se limitan al ancho disponible, y el CSS
+encapsula el desplazamiento de tabla para que la página no adquiera scroll
+horizontal. La cola Pase mantiene su límite/paginación existente y no se
+expande indefinidamente en móvil.
+
+Contrato reproducible: `node tests/rediseno/plantillas-orbita-contract.mjs`
+(`plantillas=10`, `modulos=12`, `movil=PASS`, `sin-rpc=PASS`).

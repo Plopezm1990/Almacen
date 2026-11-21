@@ -444,6 +444,91 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
 }
 
 /* ========================================================================
+   Órbita · plantillas de pantalla reutilizables
+   ------------------------------------------------------------------------
+   `la-plantillas-orbita.js` no pinta ni sustituye componentes: marca la
+   plantilla que ya corresponde al módulo y permite que todas las pantallas
+   consuman la misma escala. Las reglas son deliberadamente aditivas para no
+   cambiar handlers, rutas ni el orden de los datos.
+   ======================================================================== */
+main[data-la-orbita-template],
+[data-la-orbita-external] {
+  min-width: 0;
+  max-width: 100%;
+  container-type: inline-size;
+}
+
+main[data-la-orbita-template="panel"] .la-ui-card,
+main[data-la-orbita-template="listado"] .la-ui-card,
+main[data-la-orbita-template="ficha"] .la-ui-card,
+main[data-la-orbita-template="detalle"] .la-ui-card,
+main[data-la-orbita-template="configuracion"] .la-ui-card,
+main[data-la-orbita-template="formulario"] .la-ui-card {
+  border-radius: var(--la-radius-lg);
+  box-shadow: var(--la-shadow-1);
+}
+
+main[data-la-orbita-template="tpv"],
+main[data-la-orbita-template="cola-operativa"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+main[data-la-orbita-template="tpv"] .tpv-layout,
+main[data-la-orbita-template="cola-operativa"] .la-pase-cola,
+main[data-la-orbita-template="cola-operativa"] .la-operacion-cocina {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-la-plantilla="tabla"] {
+  max-width: 100%;
+  min-width: 0;
+}
+
+[data-la-plantilla="tabla"] table {
+  max-width: 100%;
+}
+
+[data-la-plantilla="cola-operativa"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+[data-la-orbita-mobile-template="movil"] {
+  min-width: 0;
+  max-width: 100%;
+}
+
+@media (max-width: 767px) {
+  main[data-la-orbita-template],
+  [data-la-orbita-external] {
+    width: 100%;
+    overflow-x: clip;
+  }
+  main[data-la-orbita-template="tabla"] [data-la-plantilla="tabla"],
+  main[data-la-orbita-template="listado"] [data-la-plantilla="tabla"],
+  main[data-la-orbita-template="inventario"] [data-la-plantilla="tabla"] {
+    overflow-x: auto;
+    overscroll-behavior-inline: contain;
+    -webkit-overflow-scrolling: touch;
+  }
+  [data-la-plantilla="formulario"] {
+    min-width: 0;
+    max-width: 100%;
+  }
+  [data-la-plantilla="detalle"].la-orbita-dialog,
+  dialog[data-la-plantilla="detalle"] {
+    width: min(100% - 24px, 560px);
+    max-width: calc(100vw - 24px);
+    max-height: calc(100dvh - 24px);
+  }
+  [data-la-plantilla="cola-operativa"] {
+    max-height: none;
+  }
+}
+
+/* ========================================================================
    Órbita · módulos de gestión
    ------------------------------------------------------------------------
    Primera capa común para Compras, Inventario, Personal, Configuración y

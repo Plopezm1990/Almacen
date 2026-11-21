@@ -1499,6 +1499,44 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Plantillas Órbita compartidas · 21/11/2026
+
+La siguiente fase añade `la-plantillas-orbita.js` y su contrato
+`tests/rediseno/plantillas-orbita-contract.mjs`. Es una capa de presentación
+aditiva: observa las raíces que ya monta el producto, asigna la plantilla
+correspondiente y no ejecuta lógica de negocio. El mapa vigente es:
+
+`inicio→panel`, `tpv→tpv`, `pase/cocina→cola-operativa`, `caja→detalle`,
+`clientes/compras/personal→listado`, `inventario→tabla`,
+`configuracion/plataforma→configuracion` y `acceso→formulario`; todas las
+raíces reciben además `movil`.
+
+La capa de tablas mantiene una sola implementación: extrae los `<th>` reales y
+los copia a `data-etiqueta`, de modo que cualquier tabla nueva se convierte en
+ficha móvil sin tocar su componente. El CSS compartido limita formularios,
+diálogos y colas al ancho disponible, conserva objetivos táctiles de 44 px y
+encapsula el desplazamiento horizontal solo dentro de la tabla.
+
+#### Decisiones sobre pantallas que no son una vista real del producto
+
+Recuperación de contraseña queda cubierta por Acceso/formulario aunque su
+entrada HTML sea independiente. Plataforma, Equipos y fiscalidad quedan
+cubiertos por sus superficies reales. Receta e impresora/cajón son capacidades
+dentro de Inventario/Configuración. Bizum y pantalla para cliente se dejan como
+futuras integraciones porque no existe contrato de backend QA; no se simulan ni
+se añaden pantallas ficticias. Inventario y Organización usan las plantillas de
+tabla/listado/configuración cuando existe ruta real y permanecen futuras cuando
+la capacidad aún no tiene backend.
+
+#### Comprobación
+
+El contrato `REDISENO_PLANTILLAS_ORBITA_CONTRACT=PASS` exige diez plantillas,
+doce módulos, marca móvil, observador de remontajes, tablas con cabeceras reales
+y ausencia de `fetch`/RPC en la capa. La batería funcional y la aceptación QA
+de datos/permisos siguen siendo evidencias separadas; no se deben sustituir por
+esta comprobación estática. Producción permanece intacta y el PR #225 continúa
+en borrador.
+
 ## Addendum · higiene CSS y aislamiento de legacy · 21/11/2026
 
 Se completó la siguiente pasada del objetivo visual sobre

@@ -154,3 +154,33 @@ conservan como excepciones intencionadas; no sobrescriben el marco cuando
 **Estado:** retirada/aislamiento CSS antiguo cerrada para el marco Órbita. La
 limpieza futura de los puentes MFA/Inventario queda como trabajo de sustitución
 del componente histórico, no como regla visual activa sin documentar.
+
+## Fase de plantillas reutilizables y cobertura de pantallas · 21/11/2026
+
+Se incorporó `la-plantillas-orbita.js` como registro único de composición.
+Las pantallas reales no se duplican para cada propuesta: el registro asigna
+una plantilla de panel, listado, ficha, formulario, tabla, detalle, TPV,
+cola-operativa, configuración y móvil a cada superficie. Las subraíces
+(`form`, `table`, `dialog` y colas) reciben su subplantilla de forma aditiva.
+No se modificaron handlers, rutas, RPC, datos, permisos ni la paridad de
+`source-recovery`.
+
+La asignación estática es 12/12 módulos y el contrato exige que la capa no
+contenga `fetch`, Supabase ni llamadas RPC. `la-tablas-fichas.js` sigue siendo
+la única capa que convierte cabeceras reales en etiquetas móviles; no se
+reimplementó por pantalla.
+
+La auditoría de vistas sin capa nueva queda cerrada por decisión: recuperación
+de contraseña está cubierta por Acceso/formulario; Plataforma, Equipos y las
+funciones fiscales están cubiertas por sus superficies reales; Impresión de
+receta y prueba de impresora/cajón son capacidades dentro de Inventario o
+Configuración; Bizum y pantalla para cliente quedan fuera como futuras
+integraciones sin backend QA. No se añadieron pantallas falsas para satisfacer
+el recuento de la maqueta.
+
+La revisión móvil queda expresada como sistema: navegación inferior y cabecera
+del shell, formularios por bloques, tablas con fichas, filtros desplegables,
+diálogos acotados al viewport, controles de 44 px y encapsulado del overflow.
+El contrato de plantillas verifica los diez tipos, los doce módulos, la
+ausencia de RPC y el comportamiento móvil; el recorrido QA funcional de cada
+capacidad permanece separado y no se da por hecho por una marca visual.
