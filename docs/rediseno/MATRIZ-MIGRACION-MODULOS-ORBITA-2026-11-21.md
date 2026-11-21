@@ -1423,3 +1423,16 @@ Esta tanda fue de lectura: no se creó cuenta, no se añadió producto, no se
 abrió fondo y no se ejecutó cobro. Las dos filas permanecen `PARCIAL` hasta
 completar sus variantes móviles, estados de carga/vacío/error y las operaciones
 de negocio que correspondan.
+
+### Acceso/MFA · cierre de la fuga visual fuera de `#root` · 21/11/2026
+
+El parche de autenticación monta el diálogo M-03 directamente bajo `body`, por
+lo que las reglas que solo cubrían `#root` dejaban una superficie antigua
+(pizarra/verde, tarjeta blanca, Georgia, botón teal) fuera del marco Órbita. Se
+añadió una normalización específica para `[role="dialog"][aria-labelledby="la-m03-titulo"]`:
+overlay, tarjeta, título, texto, campo OTP, acción primaria, alerta y resumen
+usan los tokens del tema, la tipografía común y la altura táctil de `44 px`.
+No se tocaron handlers, MFA, paridad de fuente ni permisos. La hoja vigente es
+`qa-orbita-modules-v64-20261121` (huella P01 `c60d679be077a8b8`). La fila
+Acceso continúa `PARCIAL` porque la prueba funcional de MFA y la sesión de
+administrador de Plataforma siguen fuera de esta tanda.

@@ -1462,6 +1462,22 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Acceso/MFA · diálogo montado fuera del shell · 21/11/2026
+
+Se detectó una fuga visual en M-03: `edge-auth-patch.js` crea el diálogo de
+MFA como hijo directo de `body`, no dentro de `#root`. Por eso la capa Órbita
+no podía alcanzarlo con los selectores de acceso existentes y permanecían
+colores y tipografía del diseño anterior. La solución es solo de apariencia:
+`la-apariencia.css` normaliza el overlay, tarjeta, título, texto, campo OTP,
+botones, alerta y resumen mediante los tokens `--c-*`, la tipografía común y
+`--la-control-height`; se conserva la lógica de autenticación, los handlers y
+la paridad de `fuente.js`.
+
+La caché activa queda en `qa-orbita-modules-v64-20261121`, huella P01
+`c60d679be077a8b8`. Contratos de capas y componentes pasan. La prueba MFA real
+y la revisión con un administrador de Plataforma siguen pendientes; no se
+debe marcar Acceso ni Plataforma como terminados por este cambio aislado.
+
 ### Recorrido QA autenticado · Cocina y Clientes · 21/11/2026
 
 Con sesión real de propietario `pm07.smoke@qa.invalid` en QA-EMP-A / QA-A1,
