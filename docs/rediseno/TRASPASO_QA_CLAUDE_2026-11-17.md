@@ -1462,6 +1462,22 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Corrección del arranque local · 21/11/2026 · `2c3c84a6`
+
+Se aisló la ruta de «Trabajar solo en este equipo, sin sincronizar» para que
+la hidratación inicial lea directamente `localStorage` (`almacen:<clave>`)
+cuando esa elección está activa. Antes, cada una de las 37 claves atravesaba
+el adaptador asíncrono aunque no había sesión ni nube que consultar; una
+IndexedDB bloqueada o una pestaña vieja podía convertir el arranque en una
+espera de decenas de segundos. En QA autenticado no se modifica nada: sigue
+usando Supabase, RPC, RLS y los límites por intento.
+
+El contrato `preview-arranque-resiliente-contract.mjs` exige el atajo y pasa
+(`PREVIEW_ARRANQUE_RESILIENTE=PASS`), junto con la paridad de `fuente.js` y
+`git diff --check`. La corrección es soporte de verificación local y no
+autoriza a marcar los doce módulos como `CERRADO`: queda pendiente el
+recorrido QA autenticado individual de cada bloque.
+
 ### Objetivo 4 · refuerzo de la envolvente modular v47 · 21/11/2026
 
 Se publicó `la-apariencia.css?v=qa-orbita-modules-v47-20261121`, con huella

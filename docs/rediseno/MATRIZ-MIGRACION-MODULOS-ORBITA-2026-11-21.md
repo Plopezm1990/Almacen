@@ -162,6 +162,22 @@ La ampliación de la evidencia de Compras, Inventario, Personal y Configuración
 está en `aeafd3629134177018cf5a789c9de9b3e8e0272d`; su Deploy Preview asociado
 es `6b0165979a8ca4a5e6bbc99b`, también `ready`.
 
+### Arranque local sin espera remota · 21/11/2026 · commit posterior `2c3c84a6`
+
+La hidratación de la suite conserva un atajo explícito para el botón «Trabajar
+solo en este equipo, sin sincronizar»: las 37 claves iniciales se leen desde
+la copia `almacen:*` del dispositivo sin resolver sesión, contexto operativo,
+Supabase ni la cola de IndexedDB. El camino autenticado de QA no cambia y
+continúa pasando por el adaptador, sus RPC y RLS. Esto elimina una espera
+acumulativa cuando una pestaña antigua deja una promesa de almacenamiento
+pendiente; si una copia local está dañada, se muestra el estado de carga fallida
+existente y se conserva el reintento, sin borrar datos.
+
+La regla está cubierta por `PREVIEW_ARRANQUE_RESILIENTE=PASS` y publicada en
+el Deploy Preview 225. Es una corrección de arranque, no un cierre visual de
+los módulos: las doce filas continúan en `PARCIAL` hasta recorrer sus rutas
+autenticadas y estados reales.
+
 ### Corrección transversal · arranque local desde Acceso
 
 El botón «Trabajar solo en este equipo, sin sincronizar» cambiaba la fase de

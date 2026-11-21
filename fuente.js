@@ -101805,6 +101805,22 @@ async function loadKey(key, fallback, retries = 2) {
   // no resuelve su promesa. No dejamos que una sola clave congele el montaje
   // de los doce módulos: en modo local fallamos rápido; en QA damos margen a
   // la consulta remota, pero seguimos teniendo un techo por intento.
+  // En modo «solo este equipo» no hay contexto remoto que resolver. Leer la
+  // copia local directamente evita pasar 37 veces por el adaptador asíncrono
+  // (y por IndexedDB en el historial), que en un navegador con una conexión
+  // antigua podía convertir un arranque local en una espera de decenas de
+  // segundos. Este atajo está deliberadamente condicionado al modo elegido
+  // por el usuario; QA autenticado sigue usando el adaptador y sus RPC/RLS.
+  if (typeof window !== "undefined" && window.__modoPruebasLocal === true) {
+    try {
+      const valorLocal = window.localStorage && window.localStorage.getItem(`almacen:${key}`);
+      if (valorLocal === null) return fallback;
+      return JSON.parse(valorLocal);
+    } catch (errorLocal) {
+      notificarFalloCargaPM16(key, motivoFalloCargaPM16(errorLocal), errorLocal);
+      return fallback;
+    }
+  }
   const limiteLectura = typeof window !== "undefined" && window.__nubeActiva === true ? 7500 : 1500;
   for (let attempt = 0; attempt <= retries; attempt++) {
     let res;
