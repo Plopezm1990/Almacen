@@ -1634,6 +1634,7 @@ roles, datos y handlers: controles táctiles comunes, tarjetas, estados y
 tablas contenidas en móvil. Marca `qa-orbita-modules-v39-20261121`, huella P01
 `f26769170c7cdfa3`; queda pendiente el recorrido autenticado con privilegio de
 administración en QA.
+Deploy Preview 225: `6b014af5313583e7553eee86` (`ready`), commit `45722dc5`.
 
 ### Pase · variante Órbita · 21/11/2026
 

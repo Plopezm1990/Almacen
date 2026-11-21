@@ -412,3 +412,4 @@ local y los formularios se apilan sin overflow. No se modifican permisos,
 roles, datos ni handlers. Caché `qa-orbita-modules-v39-20261121`, huella P01
 `f26769170c7cdfa3`. Plataforma sigue `PARCIAL` hasta el recorrido autenticado
 con privilegio de administración en QA.
+Deploy Preview 225: `6b014af5313583e7553eee86` (`ready`), commit `45722dc5`.
