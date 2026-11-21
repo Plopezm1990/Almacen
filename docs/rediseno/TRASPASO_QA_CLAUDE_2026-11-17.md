@@ -1609,6 +1609,14 @@ permisos y handlers permanecen intactos. Marca `qa-orbita-modules-v36-20261121`,
 huella P01 `b0199d11c27752d6`; queda pendiente el recorrido autenticado en QA.
 Deploy Preview 225: `6b0147c47a019a8ab1360f4d` (`ready`), commit `e015abb2`.
 
+### Personal · empleados, cargos, permisos, turnos y fichajes · v37
+
+Se aplicó la escala Órbita a empleados, cargos, permisos, turnos y fichajes,
+con controles táctiles comunes, estados semánticos, tarjetas y tablas
+contenidas en móvil. La lógica, los permisos y los handlers permanecen
+intactos. Marca `qa-orbita-modules-v37-20261121`, huella P01
+`7360be9936c414f6`; queda pendiente el recorrido autenticado en QA.
+
 ### Pase · variante Órbita · 21/11/2026
 
 Se corrigió la variante `.la-orbita-pase`: el panel ya no usa el fondo

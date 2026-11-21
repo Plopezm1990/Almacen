@@ -380,3 +380,13 @@ persistencia, permisos ni handlers. Caché `qa-orbita-modules-v36-20261121`,
 huella P01 `b0199d11c27752d6`. Inventario sigue `PARCIAL` hasta el recorrido
 autenticado en QA. Deploy Preview 225:
 `6b0147c47a019a8ab1360f4d` (`ready`), commit `e015abb2`.
+
+### Personal · empleados, cargos, permisos, turnos y fichajes · v37
+
+La capa v37 normaliza Personal para empleados, cargos, permisos, turnos y
+fichajes: tarjetas, botones, campos, estados, detalles y tablas comparten la
+escala Órbita; en móvil los grupos se envuelven, las tablas mantienen scroll
+local y los formularios se apilan. No se modifican permisos, fichajes,
+turnos, datos ni handlers. Caché `qa-orbita-modules-v37-20261121`, huella P01
+`7360be9936c414f6`. Personal sigue `PARCIAL` hasta el recorrido autenticado
+en QA.
