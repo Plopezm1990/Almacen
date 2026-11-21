@@ -1713,3 +1713,98 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-dock {
 @media (prefers-reduced-motion: reduce) {
   html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button { transform: none; }
 }
+
+/* ========================================================================
+   Órbita · Cocina y comandas
+   ------------------------------------------------------------------------
+   Cocina mantiene el contrato operativo del servidor (estaciones, rutas,
+   estados, reimpresión y decisiones de merma). Esta capa ordena la lectura:
+   cabecera, mensajes de estado, gestión avanzada y cola de comandas, con la
+   misma tarjeta, densidad, foco y escala táctil que TPV y Caja.
+   ======================================================================== */
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina {
+  min-width: 0;
+  container-type: inline-size;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .flex.items-center.justify-between {
+  min-height: var(--la-control-height-large);
+  margin-block-end: var(--la-space-4);
+  padding: var(--la-space-4) var(--la-space-5);
+  border: 1px solid var(--c-divider);
+  border-block-start: 2px solid var(--c-accent-fill);
+  border-radius: var(--la-radius-lg);
+  background: var(--c-surface);
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .flex.items-center.justify-between h2 {
+  margin: 0;
+  font-family: var(--la-display);
+  font-size: var(--la-type-title);
+  letter-spacing: -.025em;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .la-ui-card {
+  border: 1px solid var(--c-divider) !important;
+  border-radius: var(--la-radius-lg) !important;
+  background: var(--c-surface) !important;
+  box-shadow: var(--la-shadow-1);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > [role="alert"],
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > [role="status"] {
+  min-height: var(--la-control-height);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-md);
+  padding: var(--la-space-3) var(--la-space-4) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .la-ui-card > .text-\[12\.5px\].font-semibold,
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .la-ui-card > .text-\[12px\].font-semibold {
+  color: var(--c-ink);
+  font-family: var(--la-display);
+  font-size: var(--la-type-section);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .la-ui-card:last-child {
+  overflow: hidden;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .la-ui-card:last-child > .la-ui-card {
+  margin-block-end: var(--la-space-3) !important;
+  padding: var(--la-space-4) !important;
+  border: 1px solid var(--c-divider) !important;
+  border-inline-start: 3px solid var(--c-accent-fill) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent) !important;
+  box-shadow: none;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .la-ui-card:last-child > .la-ui-card > div:first-child {
+  min-height: var(--la-control-height);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .la-ui-card:last-child select {
+  min-height: var(--la-control-height);
+  border: 1px solid var(--c-border-control) !important;
+  border-radius: var(--la-radius-md) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina .la-ui-card input {
+  min-height: var(--la-control-height);
+  border-color: var(--c-border-control) !important;
+  background: var(--c-surface) !important;
+  color: var(--c-ink) !important;
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina .la-ui-card .flex.items-center.justify-between {
+  gap: var(--la-space-3);
+}
+html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina .la-ui-card .flex.gap-1\.5.flex-wrap {
+  gap: var(--la-space-2);
+}
+@media (max-width: 767px) {
+  html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .flex.items-center.justify-between {
+    align-items: flex-start;
+    flex-wrap: wrap;
+    padding: var(--la-space-3);
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .la-ui-card {
+    padding: var(--la-space-4) !important;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="cocina"] .la-operacion-cocina > .la-ui-card:last-child > .la-ui-card {
+    padding: var(--la-space-3) !important;
+  }
+}
