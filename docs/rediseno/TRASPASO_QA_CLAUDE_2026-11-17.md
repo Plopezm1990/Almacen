@@ -1497,6 +1497,9 @@ declarase. Se añadió IBM Plex Mono en `:root`, se actualizó la marca CSS a
 propiedad `--la-orbita-puntero` queda documentada como dinámica, no como token
 huérfano.
 
+La corrección quedó publicada en el deploy `6b015c30695cff02d317a7d6`
+(`ready`), con `commit_ref` `af3ba1dec857d8c8219a29a2b50bc98083b84338`.
+
 ### Acceso · revisión responsive no autenticada · 21/11/2026
 
 La pantalla `.la-acceso` se observó directamente en el preview a **390 × 844**

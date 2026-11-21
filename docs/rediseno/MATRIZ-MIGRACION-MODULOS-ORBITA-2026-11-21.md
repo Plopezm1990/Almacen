@@ -603,3 +603,6 @@ declaración en la capa Órbita. Se añadió el token IBM Plex Mono en `:root`, 
 actualizó la caché a `qa-orbita-modules-v43-20261121` y se protegió con un
 contrato estático. `--la-orbita-puntero` no es un hueco: es una propiedad
 dinámica escrita por el movimiento del cursor y conserva su fallback.
+
+La corrección quedó publicada en el deploy `6b015c30695cff02d317a7d6`
+(`ready`), con `commit_ref` `af3ba1dec857d8c8219a29a2b50bc98083b84338`.
