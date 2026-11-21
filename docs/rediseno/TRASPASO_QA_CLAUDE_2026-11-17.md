@@ -1472,6 +1472,11 @@ Inventario ciego, saldo/mapa de almacén, traspasos y etiquetas/catálogo bajo
 no altera datos, handlers, permisos ni RPC. Marca:
 `qa-orbita-shell-v17-20261121`, huella `56ec6757a3d12e3a`.
 
+Evidencia live en el Preview 225, modo local y sin escrituras: Reconciliación
+devuelve módulo y superficie `inventario`, `overflow=false` y control visible
+mínimo de `44 px`; el navegador confirmó el recurso
+`la-orbita-shell.js?v=qa-orbita-shell-v17-20261121`.
+
 También se verificó Configuración en v61, modo local y Local A1. Las ocho
 familias de ajustes y el estado de error sin sesión se renderizan dentro del
 shell Órbita; el motivo obligatorio y los controles de corte/cajas/umbral están
