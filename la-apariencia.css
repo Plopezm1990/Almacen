@@ -109,6 +109,25 @@ html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
 .la-orbita-sidebar-item:hover,
 .la-orbita-sidebar-item[aria-current="page"] { background: color-mix(in srgb, var(--c-on-chrome, #fff) 13%, transparent); color: var(--c-on-chrome, #fff); }
 .la-orbita-sidebar-item svg { flex: none; }
+/* La navegación histórica conserva estilos inline del tema anterior. La
+   marca semántica que añade la-orbita-shell permite que el marco activo gane
+   sin tocar sus handlers. El estado inicial se reconoce por el estilo inline
+   que React ya escribe; los clics posteriores usan aria-current. */
+html[data-la-diseno] .la-orbita-sidebar [data-la-orbita-nav-item] {
+  display: flex !important; align-items: center; gap: 10px; width: 100%;
+  min-height: 44px !important; padding: 9px 10px !important;
+  border: 0 !important; border-radius: 9px !important;
+  background: transparent !important;
+  color: color-mix(in srgb, var(--c-on-chrome, #fff) 78%, transparent) !important;
+  font: 500 13px/1.2 var(--la-font) !important;
+  text-align: left; cursor: pointer;
+}
+html[data-la-diseno] .la-orbita-sidebar [data-la-orbita-nav-item]:hover,
+html[data-la-diseno] .la-orbita-sidebar [data-la-orbita-nav-item][aria-current="page"],
+html[data-la-diseno] .la-orbita-sidebar [data-la-orbita-nav-item][style*="rgba(255, 255, 255, 0.12)"] {
+  background: color-mix(in srgb, var(--c-on-chrome, #fff) 13%, transparent) !important;
+  color: var(--c-on-chrome, #fff) !important;
+}
 .la-orbita-sidebar.la-orbita-colapsada { padding-inline: 10px !important; }
 .la-orbita-sidebar.la-orbita-colapsada .la-shell-label,
 .la-orbita-sidebar.la-orbita-colapsada .text-\[13px\],
