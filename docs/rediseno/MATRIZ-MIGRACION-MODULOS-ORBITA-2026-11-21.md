@@ -574,3 +574,10 @@ aserción al contrato de componentes para impedir regresiones. No se tocaron
 handlers, permisos, datos ni rutas. La corrección está publicada solo en
 `rediseno/f0-base-qa`; PR #225 continúa en borrador y producción permanece
 fuera de alcance.
+
+El deploy de comprobación de esta revisión es
+`6b015a051778aed939b61a43` (`ready`), con `commit_ref` exacto
+`bc8043b217701c7f29198a718a8f759b2680bb08`, disponible en
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app`. El escaneo de
+secretos no encontró coincidencias y se procesaron las siete reglas de
+cabeceras sin error.

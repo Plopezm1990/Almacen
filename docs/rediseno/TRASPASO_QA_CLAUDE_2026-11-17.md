@@ -1471,6 +1471,12 @@ ajustó a `44×44 px`, se actualizó la versión de caché CSS a
 comprueba. La corrección no modifica lógica ni datos y solo se publicó en la
 rama de QA; PR #225 sigue en borrador y producción no se toca.
 
+El deploy correspondiente quedó `ready` como
+`6b015a051778aed939b61a43`, con `commit_ref` exacto
+`bc8043b217701c7f29198a718a8f759b2680bb08`, en el alias estable del Preview
+225. La batería `tests/rediseno/*.mjs` terminó sin fallos y `git diff --check`
+quedó limpio.
+
 ### Acceso · revisión responsive no autenticada · 21/11/2026
 
 La pantalla `.la-acceso` se observó directamente en el preview a **390 × 844**
