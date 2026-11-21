@@ -1470,7 +1470,8 @@ estados (`role=status`) y tablas consumen los tokens Órbita para fondo,
 contraste, bordes y hover, también en móvil. Se conservan lógica, datos,
 permisos, ordenación y handlers. Marca `qa-orbita-modules-v24-20261121`,
 huella P01 `471a45c1efb84092`. Los cinco módulos siguen `PARCIAL` hasta el
-recorrido autenticado de sus rutas y estados.
+recorrido autenticado de sus rutas y estados. Deploy Preview 225: 
+`6b0139add1ed5298ee9b64ab` (`ready`), commit `a1120082`.
 
 ### TPV y sala · superficies secundarias · 21/11/2026
 

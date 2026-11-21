@@ -238,4 +238,5 @@ handlers ni datos. La caché CSS pasa a
 
 Los cinco módulos siguen `PARCIAL`: aún falta el recorrido autenticado de
 cada ruta, estados vacío/carga/error y comprobación conjunta escritorio/móvil
-con datos reales de QA.
+con datos reales de QA. La revisión está publicada en Deploy Preview 225 como
+`6b0139add1ed5298ee9b64ab` (`ready`), commit `a1120082`.
