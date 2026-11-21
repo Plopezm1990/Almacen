@@ -362,7 +362,15 @@
       ["auditoria", "auditoria"],
       ["informes|resultados", "informes"]
     ];
-    var coincidencia = conocidas.find(function (entrada) { return new RegExp(entrada[0], "i").test(label); });
+    // Las etiquetas visibles pueden llevar tildes (Configuración, Dirección,
+    // Administración). Clasificar sobre una copia sin diacríticos evita que
+    // una pantalla acabe con un slug duplicado como
+    // «configuracion-configuracion» y quede fuera del CSS scoped de Órbita.
+    var labelParaCoincidencia = label
+      .toLocaleLowerCase("es")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+    var coincidencia = conocidas.find(function (entrada) { return new RegExp(entrada[0], "i").test(labelParaCoincidencia); });
     return coincidencia ? coincidencia[1] : (label ? slugRuta(label) : "pantalla");
   }
 
