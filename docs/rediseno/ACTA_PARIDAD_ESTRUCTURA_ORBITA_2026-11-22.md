@@ -379,3 +379,23 @@ Plataforma P04 y Compras P10). El quinto se comprobará en la siguiente corrida
 CI, donde el job exporta `CFG6_UI_DEPS`, `CFG6E_UI_DEPS` y `CFG_SCOPE_DEPS`
 desde la ruta instalada. El objetivo sigue abierto hasta que la puerta remota
 quede verde.
+
+### Corrección de visibilidad del panel de Plataforma · 22/11/2026
+
+La primera corrida remota confirmó que el único fallo restante era
+`tests/plataforma/p05-panel-ui-runtime.mjs` (98/102): los mensajes de error
+del cambio de contraseña y el campo de motivo de copia dependían únicamente
+de la clase `.lap-hidden`. En `jsdom` no existe cálculo de estilos, por lo que
+la evidencia de visibilidad quedaba ambigua aunque la hoja CSS fuese correcta.
+
+`plataforma-panel.js` ahora mantiene también `style.display` sincronizado con
+el estado visible en los avisos, errores de campo, el motivo de copia y su
+botón de descarga. Esto conserva la presentación Órbita, mejora el anuncio de
+errores para lectores de pantalla y no cambia rutas, permisos, handlers,
+datos ni operaciones administrativas.
+
+Resultado local: `PLATAFORMA_P05_PANEL_UI: 99/99`,
+`PLATAFORMA_P05_PANEL_UI_RUNTIME=PASS` y `git diff --check=PASS`. El cambio
+queda pendiente de la nueva ejecución remota antes de considerar verde la
+puerta completa; el cierre global de los doce módulos sigue requiriendo la
+evidencia autenticada separada de Plataforma y Acceso/MFA.

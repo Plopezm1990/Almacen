@@ -459,6 +459,10 @@
       },
       error: function (msg) {
         error.textContent = msg || "";
+        // Mantener una señal de visibilidad explícita además de la clase.
+        // Esto evita estados ambiguos en navegadores/lectores que no calculan
+        // inmediatamente la hoja del panel (y hace observable el error en QA).
+        error.style.display = msg ? "block" : "none";
         error.classList.toggle("lap-hidden", !msg);
       },
       ocupado: function (valor) {
@@ -496,6 +500,7 @@
       nodo: h("label", { class: "lap-campo" }, h("span", null, etiqueta), input, ayuda ? h("div", { class: "lap-ayuda" }, ayuda) : null, err),
       error: function (msg) {
         err.textContent = msg || "";
+        err.style.display = msg ? "block" : "none";
         err.classList.toggle("lap-hidden", !msg);
         if (msg) input.setAttribute("aria-invalid", "true");
         else input.removeAttribute("aria-invalid");
@@ -791,7 +796,9 @@
           d.ocupado(false);
           avisoCopia.textContent = "Copia descargada (" + numero(r.filas_total) + " filas). Ya puedes continuar sin motivo.";
           cMotivo.nodo.classList.add("lap-hidden");
+          cMotivo.nodo.style.display = "none";
           btnCopia.classList.add("lap-hidden");
+          btnCopia.style.display = "none";
           sinCopia = false;
           resumen.copia_hecha = true;
         } catch (e) {
@@ -1147,6 +1154,7 @@
         else if (code === "reauthentication_needed" || /reauthentication/i.test(m)) m = "Por seguridad, cierra sesión, vuelve a entrar con la contraseña inicial y repite el cambio.";
         else m = traducirError(e);
         error.textContent = m;
+        error.style.display = "block";
         error.classList.remove("lap-hidden");
       }
     }

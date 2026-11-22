@@ -3333,3 +3333,14 @@ seguridad. `hotfix-barrera-reset-local`, `p1-empty-kv-first-run`, Plataforma
 P04 y Compras P10 pasan localmente; P05 queda para la corrida CI con las
 dependencias exportadas de forma explícita. No cerrar el objetivo global hasta
 ver el gate remoto en verde.
+
+### P05 de Plataforma reparado localmente · 22/11/2026
+
+La ejecución local con la misma carpeta de dependencias UI que usa Actions
+reprodujo los tres avisos agotados de P05 y el caso `8d`: el contrato esperaba
+`display:block/none`, mientras el panel solo cambiaba `.lap-hidden`. Se
+corrigió el componente común en `plataforma-panel.js` para sincronizar ambas
+señales en errores, errores de campo, el motivo de copia y el botón de
+descarga. El recorrido completo queda en `99/99` y
+`PLATAFORMA_P05_PANEL_UI_RUNTIME=PASS`; no se ejecutaron operaciones QA ni se
+tocó producción. Falta confirmar la nueva corrida remota de CI.
