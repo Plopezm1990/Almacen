@@ -288,6 +288,13 @@ La superficie quedó en una sola columna operativa, con controles táctiles y
 real; el estado vacío «No hay comandas para este filtro» y la gestión de
 sesión conservaron la cabecera, la barra inferior y los controles Órbita. En
 los controles medidos de Cocina todos los botones quedaron a 44 px de alto.
+
+Caja se comprobó en el mismo viewport: apertura, movimientos, contado,
+denominaciones, notas, guardado e historial se muestran en una sola columna;
+los cinco botones medidos tienen 44 px de alto y el overflow es 0. El menú
+móvil `Más` conserva la organización por áreas `SERVICIO`, `CAJA Y
+FISCALIDAD`, `COMPRAS`, `INVENTARIO`, `EQUIPO`, `CALIDAD`, `INFORMES`,
+`ORGANIZACIÓN` y `SISTEMA`, sin cambiar las rutas que ya tenía cada acción.
 ### Evidencia live de la barra móvil · commit daa43731
 
 En Deploy Preview 225 (`daa43731`), con `QA-EMP-A / QA-A1`, la accesibilidad

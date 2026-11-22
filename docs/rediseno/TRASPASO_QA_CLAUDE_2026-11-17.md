@@ -3273,3 +3273,8 @@ paginación, sala y cobro sin mutación. La superficie se mantuvo en una
 columna y sin overflow horizontal. `Ir a Cocina` mostró la cola real, el
 estado vacío y la gestión de sesión dentro del mismo shell; los botones
 medidos conservaron 44 px de alto.
+
+Caja también quedó verificada en una columna, con cinco botones a 44 px y
+overflow 0. El menú móvil `Más` mantiene las áreas Servicio, Caja y
+fiscalidad, Compras, Inventario, Equipo, Calidad, Informes, Organización y
+Sistema; solo cambia la presentación del shell, no las rutas ni handlers.
