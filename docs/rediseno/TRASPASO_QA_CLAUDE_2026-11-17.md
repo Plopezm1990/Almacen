@@ -1505,6 +1505,23 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Recorrido visual móvil autenticado adicional · 22/11/2026
+
+En `deploy-preview-225`, `QA-EMP-A / QA-A1`, viewport móvil de la revisión
+(`390×844`), se recorrieron sin mutación Inicio/Pase, TPV, Cocina, Clientes,
+Proveedores, Productos, Personal, Configuración y Caja. El log del recorrido
+confirma los destinos reales, la barra inferior y la cabecera común. Se
+observaron estados de negocio reales: TPV con paginación y resumen separado de
+historial, Cocina sin comandas y sin sesión de caja, Clientes con vistas y NIF
+enmascarado, Caja con historial bajo demanda e Inventario con tabla y acciones.
+
+No se cerraron filas por esta tanda: faltan Plataforma con administrador,
+Acceso/MFA en sesión separada, captura de escritorio y una comprobación
+independiente de overflow/control táctil para cada ruta. No se ejecutaron
+operaciones que escriban datos. El aviso `operation_id_conflict` del QR fiscal
+es un dato de ensayo que ya estaba en QA y queda documentado como excepción,
+no como regresión visual.
+
 ### Plantillas reutilizables y estados · 22/11/2026
 
 La estructura visual común no se limita al contenedor de cada módulo. En

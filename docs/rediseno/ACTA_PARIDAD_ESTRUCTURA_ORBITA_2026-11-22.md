@@ -94,3 +94,29 @@ La caché del recurso queda fijada como
 `qa-orbita-plantillas-v2-20261122`; el contrato P01 fija su huella y obliga a
 actualizarla si la capa cambia. La batería de plantillas comprueba 10 plantillas,
 12 módulos, ausencia de RPC y la presencia de los cuatro estados comunes.
+
+### Auditoría visual autenticada adicional · móvil 390×844 · 22/11/2026
+
+En el Deploy Preview 225, con `QA-EMP-A / QA-A1` y la sesión de propietario
+ya existente, se recorrieron sin escribir datos: Inicio con el panel Pase
+«El turno en directo», TPV, Cocina, Clientes, Proveedores (Compras), Productos
+(Inventario), Personal, Configuración y Arqueo de caja. En todos se conservó
+la cabecera Órbita, la navegación inferior, el selector `Local A1`, el estado
+QA, Buscar, Avisos, Perfil y Apariencia.
+
+La evidencia visible confirmó además las composiciones que exige la maqueta:
+TPV separa el resumen de ventas del botón «Ver historial completo» y muestra
+catálogo con paginación; Clientes expone vistas guardadas, filtros, ficha,
+NIF enmascarado y paginación; Cocina muestra el estado vacío de comandas; Caja
+separa apertura, movimientos y «Historial de arqueos»; Configuración agrupa
+sus pestañas por bloques; Inventario conserva la tabla real con sus acciones
+Kardex/Editar/Registrar salida; Personal usa fichas repetibles de empleado.
+
+No se ejecutaron cobros, reembolsos, aperturas, cambios de configuración ni
+operaciones de inventario. En TPV se observó el dato de ensayo existente
+`operation_id_conflict` en el QR fiscal pendiente; es un estado de QA previo,
+no una mutación de esta revisión. Plataforma requiere una cuenta de
+administrador específica y Acceso/MFA requiere una sesión separada, por lo que
+ambas superficies siguen abiertas en la matriz. Esta pasada es evidencia real
+de composición móvil, pero no sustituye la captura de escritorio ni el cierre
+por estado de cada fila.
