@@ -362,3 +362,20 @@ Verificación local: `MANIFEST_VALIDATOR_NEGATIVE_TESTS=PASS`, inventario
 `tests/rediseno/*.mjs` en PASS, incluido `CIERRE_LIMPIO_PLAN=PASS`. La
 validación CI remota debe repetirse sobre el commit que contiene esta
 corrección; el PR #225 permanece en borrador y producción no se toca.
+
+### Alineación de contratos Node detectada por la puerta · 22/11/2026
+
+La repetición de la puerta con el inventario corregido ejecutó los 332
+contratos Node y señaló cinco expectativas desfasadas, no un fallo de datos o
+de negocio: `p04` esperaba la marca de plataforma v2 en vez de v4, `p10`
+buscaba el script del dashboard sin su query de caché, `hotfix-barrera`
+rechazaba el query actual de `edge-auth`, `p1` modelaba el adaptador asíncrono
+incluso en el atajo local y `p05` no recibía explícitamente la carpeta de
+dependencias UI entre pasos de Actions. Se actualizaron esos contratos y el
+workflow; no se rebajaron aserciones de seguridad ni se cambió el producto.
+
+Los cuatro casos sin dependencias externas pasan localmente (`hotfix`, `p1`,
+Plataforma P04 y Compras P10). El quinto se comprobará en la siguiente corrida
+CI, donde el job exporta `CFG6_UI_DEPS`, `CFG6E_UI_DEPS` y `CFG_SCOPE_DEPS`
+desde la ruta instalada. El objetivo sigue abierto hasta que la puerta remota
+quede verde.

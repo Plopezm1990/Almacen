@@ -23,7 +23,7 @@ const index = leer('index.html');
 const headers = leer('_headers');
 const migracion = leer(process.env.PLATAFORMA_MIGRACION || 'supabase/migrations/20261009120000_plataforma_f1_administrador_y_empresas.sql');
 
-assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v2-20261121/, 'el panel de Plataforma no invalida la caché de su capa Órbita');
+assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v4-20261122/, 'el panel de Plataforma no invalida la caché de su capa Órbita');
 assert.match(panelSrc, /var\(--c-bg,#17191C\)/, 'Plataforma no consume el fondo semántico');
 assert.match(panelSrc, /var\(--la-font/, 'Plataforma no consume la tipografía semántica');
 assert.match(panelSrc, /min-height:var\(--la-control-height,44px\)/, 'Plataforma no fija el suelo táctil común');

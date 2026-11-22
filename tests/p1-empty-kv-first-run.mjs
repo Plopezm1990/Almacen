@@ -36,7 +36,7 @@ function makeLocalStorage(initial = {}, options = {}) {
   };
 }
 
-function makeContext(localStorage) {
+function makeContext(localStorage, { localMode = true } = {}) {
   const events = [];
   class TestCustomEvent {
     constructor(type, init = {}) { this.type = type; this.detail = init.detail; }
@@ -60,7 +60,7 @@ function makeContext(localStorage) {
   };
   context.window = context;
   context.globalThis = context;
-  context.__modoPruebasLocal = true;
+  context.__modoPruebasLocal = localMode;
   context.dispatchEvent = (event) => { events.push(event); return true; };
   vm.createContext(context);
   vm.runInContext(storageScript, context, { filename: "index-storage.js" });
@@ -82,7 +82,8 @@ function cloudClient({ data = null, error = null } = {}) {
   };
 }
 
-// 1) First-run limpio: ausencia local normal => fallback sin warning/reintento.
+// 1) First-run limpio: en modo local la copia directa evita el adaptador
+// asíncrono y devuelve el fallback sin warning/reintento.
 {
   const { context, events } = makeContext(makeLocalStorage());
   let calls = 0;
@@ -91,7 +92,7 @@ function cloudClient({ data = null, error = null } = {}) {
   const fallback = [];
   const loaded = await context.loadKey("productos", fallback);
   assert.equal(loaded, fallback);
-  assert.equal(calls, 1, "Una ausencia normal no debe provocar reintentos");
+  assert.equal(calls, 0, "Una ausencia local normal no debe pasar por el adaptador ni reintentarse");
   assert.equal(events.filter((e) => e.type === "fallo-carga").length, 0);
 }
 
@@ -107,7 +108,7 @@ function cloudClient({ data = null, error = null } = {}) {
 // 3) Cloud read válido sigue teniendo prioridad y actualiza la caché.
 {
   const local = makeLocalStorage();
-  const { context, events } = makeContext(local);
+  const { context, events } = makeContext(local, { localMode: false });
   context.__nubeActiva = true;
   context.__empresaActivaIdParaContexto = "E1";
   context.__localActivoIdParaContexto = "L1";
@@ -120,7 +121,7 @@ function cloudClient({ data = null, error = null } = {}) {
 
 // 4) Ausencia en nube + ausencia local también es first-run normal.
 {
-  const { context, events } = makeContext(makeLocalStorage());
+  const { context, events } = makeContext(makeLocalStorage(), { localMode: false });
   context.__nubeActiva = true;
   context.__nubeCliente = cloudClient({ data: null, error: null });
   const loaded = await context.loadKey("productos", []);
@@ -130,7 +131,7 @@ function cloudClient({ data = null, error = null } = {}) {
 
 // 5) Error de acceso real de nube, sin caché local, debe seguir propagándose a loadKey.
 {
-  const { context, events } = makeContext(makeLocalStorage());
+  const { context, events } = makeContext(makeLocalStorage(), { localMode: false });
   context.__nubeActiva = true;
   context.__nubeCliente = cloudClient({ error: new Error("permiso denegado") });
   const loaded = await context.loadKey("productos", []);
@@ -151,7 +152,7 @@ function cloudClient({ data = null, error = null } = {}) {
 
 // 7) Cuota sigue clasificada como cuota.
 {
-  const { context, events } = makeContext(makeLocalStorage());
+  const { context, events } = makeContext(makeLocalStorage(), { localMode: false });
   const quota = new Error("quota");
   quota.name = "QuotaExceededError";
   context.storage.get = async () => { throw quota; };
@@ -163,7 +164,7 @@ function cloudClient({ data = null, error = null } = {}) {
 
 // 8) JSON corrupto conserva la señal específica de corrupción.
 {
-  const { context, events } = makeContext(makeLocalStorage());
+  const { context, events } = makeContext(makeLocalStorage(), { localMode: false });
   context.storage.get = async () => ({ key: "productos", value: "{", shared: false });
   await context.loadKey("productos", []);
   const fallo = events.find((e) => e.type === "fallo-carga");

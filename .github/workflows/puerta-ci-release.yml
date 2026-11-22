@@ -136,7 +136,17 @@ jobs:
       - name: Contratos activos Node según manifiesto (incluye build de Netlify previo)
         id: node_run
         shell: bash
+        env:
+          # El paso anterior instala las dependencias en esta ruta y la
+          # exporta mediante GITHUB_ENV. El valor explícito mantiene la
+          # batería reproducible si el runner pierde ese entorno entre pasos.
+          CFG6_UI_DEPS: ${{ runner.temp }}/cfg-deps
+          CFG6E_UI_DEPS: ${{ runner.temp }}/cfg-deps
+          CFG_SCOPE_DEPS: ${{ runner.temp }}/cfg-deps
         run: |
+          export CFG6_UI_DEPS="${CFG6_UI_DEPS:-$RUNNER_TEMP/cfg-deps}"
+          export CFG6E_UI_DEPS="${CFG6E_UI_DEPS:-$RUNNER_TEMP/cfg-deps}"
+          export CFG_SCOPE_DEPS="${CFG_SCOPE_DEPS:-$RUNNER_TEMP/cfg-deps}"
           set +e
           bash tests/ci/ejecutar_bateria_no_db.sh > /tmp/node_run.log 2>&1
           code=$?

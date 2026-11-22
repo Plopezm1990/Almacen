@@ -3321,3 +3321,15 @@ negativos en PASS, todos los contratos de `tests/rediseno` en PASS y
 `git diff --check` limpio. Hay que repetir la puerta remota al publicar el
 commit; si aparece un fallo nuevo de negocio debe aislarse por su job, sin
 volver a ocultarlo ajustando conteos.
+
+### Cinco expectativas Node alineadas con la rama · 22/11/2026
+
+La ejecución remota posterior al inventario encontró cinco contratos que aún
+tenían referencias previas al rediseño: la marca de caché de Plataforma,
+el selector del dashboard con query, el `edge-auth` con query, el atajo de
+primera ejecución local y la variable de dependencias del runtime de P05.
+Se corrigieron las expectativas y el workflow, manteniendo las aserciones de
+seguridad. `hotfix-barrera-reset-local`, `p1-empty-kv-first-run`, Plataforma
+P04 y Compras P10 pasan localmente; P05 queda para la corrida CI con las
+dependencias exportadas de forma explícita. No cerrar el objetivo global hasta
+ver el gate remoto en verde.
