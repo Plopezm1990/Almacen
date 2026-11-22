@@ -3249,3 +3249,13 @@ Deploy Preview 225 (`https://deploy-preview-225--chic-entremet-9107cf.netlify.ap
 sesión `QA-EMP-A / QA-A1`: la barra inferior expuso `Inicio`, `Sala`, `Caja`,
 `Resultados` y `Más`; el shell conservó selector, QA, Buscar, Avisos, Perfil y
 Apariencia. No se escribieron datos.
+
+### Corrección de compresión de accesos en Inicio móvil · 22/11/2026
+
+La evidencia visual del preview mostró que el encabezado de Inicio podía
+encoger sus tres acciones a 44 px de ancho, provocando texto vertical. La
+plantilla móvil común se corrigió para apilar encabezado y acciones y usar una
+rejilla de dos columnas con ancho completo. Se conserva la semántica y la
+altura táctil de 44 px; no se tocaron datos, permisos, rutas ni handlers.
+Recurso: `la-apariencia.css?v=qa-orbita-modules-v72-20261122`.
+Contratos: componentes Órbita PASS y recorridos móviles PASS.

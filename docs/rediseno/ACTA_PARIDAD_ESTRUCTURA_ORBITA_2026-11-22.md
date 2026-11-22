@@ -258,6 +258,20 @@ handler de arqueo existentes. El cambio es de etiqueta y prioridad móvil,
 idéntico en `fuente.js` y `source-recovery/fuente-recuperado.js`; no añade
 rutas, RPC, permisos ni datos. La marca de caché de la fuente pasó a
 `qa-orbita-titular-v6-mobile-nav-20261122`.
+
+### Corrección de compresión de accesos en Inicio móvil · 22/11/2026
+
+La revisión live del preview reveló un caso que no cubrían los contratos
+estáticos: en una anchura pequeña el encabezado flex de Inicio dejaba los
+accesos rápidos en columnas de 44 px y el texto se apilaba verticalmente.
+La plantilla móvil común ahora apila contexto/titular y acciones, fuerza los
+accesos a ocupar el ancho disponible y los dispone en dos columnas legibles,
+manteniendo una altura táctil mínima de 44 px. El cambio es solo CSS, afecta a
+las plantillas de panel en móvil y no modifica rutas, datos, RPC, permisos ni
+handlers. Se publicó con `la-apariencia.css?v=qa-orbita-modules-v72-20261122`.
+
+Contrato y regresión: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS` y
+`REDISENO_MOVIL_RECORRIDOS_ORBITA_CONTRACT=PASS`.
 ### Evidencia live de la barra móvil · commit daa43731
 
 En Deploy Preview 225 (`daa43731`), con `QA-EMP-A / QA-A1`, la accesibilidad

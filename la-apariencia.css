@@ -449,6 +449,34 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
   .la-orbita-context-menu { inset-block-start: 58px; inset-inline-start: 10px; }
   .la-orbita-profile-menu { inset-block-start: 58px; inset-inline-end: 10px; }
   .la-orbita-page-title-wrap { align-items: flex-start; flex-wrap: wrap; gap: 8px; }
+  /* La cabecera de las plantillas no puede encoger los accesos a 44 px:
+     antes el flex-wrap del marco dejaba cada acción en una columna estrecha
+     y el texto se pintaba vertical en pantallas pequeñas. En móvil la
+     jerarquía de Órbita es título/contexto y, debajo, acciones legibles. */
+  html[data-la-diseno] #root .la-panel-diseno-cab {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr);
+    align-items: start;
+    gap: var(--la-space-2);
+    min-width: 0;
+  }
+  html[data-la-diseno] #root .la-panel-diseno-cab > * {
+    min-width: 0;
+    max-width: 100%;
+  }
+  html[data-la-diseno] #root .la-panel-diseno-cab .la-panel-accesos {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    width: 100%;
+    min-width: 0;
+  }
+  html[data-la-diseno] #root .la-panel-diseno-cab .la-panel-accesos button {
+    width: 100%;
+    min-width: 0;
+    min-height: var(--la-control-height-large);
+    justify-content: center;
+    overflow-wrap: anywhere;
+  }
 }
 
 /* ========================================================================
