@@ -78,6 +78,7 @@ assert.ok(css.includes('.la-acceso button:focus-visible') && css.includes('.lap-
 assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v4-20261122/, 'Plataforma no invalida la caché tras marcar la superficie externa');
 assert.match(platformPanel, /data-la-orbita-external["']:\s*["']plataforma["']/g, 'Plataforma no expone su marca externa Órbita');
 assert.match(platformPanel, /data-la-orbita-surface["']:\s*["']plataforma["']/g, 'Plataforma no expone su superficie Órbita');
+assert.match(platformPanel, /data-la-orbita-module["']:\s*["']plataforma["']/g, 'Plataforma externa no queda clasificada como módulo');
 assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipográfico inexistente');
 assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
 assert.ok(css.includes('.la-acceso-arte .la-acceso-entorno') && css.includes('#error-arranque button'), 'Acceso y arranque no heredan la paleta Órbita');
@@ -96,6 +97,8 @@ const shellVisual = css.slice(css.indexOf('.la-orbita-sidebar'), css.indexOf('/*
 assert.doesNotMatch(shellVisual, /rgba\(255,255,255|#8CC3FF|#c7d5ce|#8fb0a1/i,
   'el shell no debe imponer colores literales sobre las paletas activas');
 assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
+assert.match(resetPassword, /data-la-orbita-module="acceso"/, 'la recuperación no queda clasificada como módulo de Acceso');
+assert.match(resetPassword, /data-la-orbita-template="formulario"/, 'la recuperación no usa la plantilla de formulario');
 assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v69-20261122/, 'la recuperación no carga el contrato de apariencia');
 assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
 assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
