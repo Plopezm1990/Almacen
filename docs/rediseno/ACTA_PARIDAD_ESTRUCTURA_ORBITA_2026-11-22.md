@@ -334,7 +334,7 @@ Esto corrige un falso rojo del contrato de caché; no relaja ninguna
 comprobación de paridad ni de responsive.
 
 El commit final de esta tanda es `20f4e27b32e42940f43d8f4f6df5b28ae828c0d3`.
-Netlify lo publicó como deploy de QA `6b0369007365691bc416dc54` (`ready`).
+Netlify lo publicó como deploy de QA `6b0369397534725882c7d6cd` (`ready`).
 El PR #225 sigue abierto, en borrador y apuntando a `release`; producción no
 se ha tocado.
 ### Evidencia live de la barra móvil · commit daa43731
