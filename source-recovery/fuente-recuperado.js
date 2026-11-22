@@ -17052,7 +17052,7 @@ const PANELES_REDISENO = {
   pulso: { titulo: "Control operativo", indicadores: ["saldo", "margen", "pedidos", "stockbajo", "descuadresstock"], accesos: ["venta", "cocina", "caja", "resumen_almacen"] },
   patio: { titulo: "Mi turno", indicadores: ["pedidos", "caducidades", "conteos"], accesos: ["venta", "cocina", "recepcion", "fichaje"] },
   sello: { titulo: "Panel de gesti\xF3n", indicadores: ["saldo", "margen", "pedidos", "personal"], accesos: ["clientes", "facturas", "reportes"] },
-  orbita: { titulo: "El pulso", destacado: "del negocio.", indicadores: ["ventas", "margen", "pedidos", "stockbajo"], accesos: ["venta", "cocina", "resultados"] }
+  orbita: { titulo: "El turno,", destacado: "en movimiento.", indicadores: ["ventas", "margen", "pedidos", "stockbajo"], accesos: ["venta", "cocina", "resultados"] }
 };
 const ACCESOS_PANEL_REDISENO = {
   venta: ["Abrir TPV", ShoppingBag],
@@ -17100,9 +17100,8 @@ function PanelDiseno({ diseno, contexto, tarjetas, puedeConsultar, navegar, abri
       onPointerMove: esOrbita ? moverLinea : undefined,
       onPointerLeave: esOrbita ? (e2) => e2.currentTarget.style.removeProperty("--la-orbita-puntero") : undefined
     },
-    contexto && h("p", { className: "la-panel-contexto" }, esOrbita ? "Panel de operaci\xF3n \u00B7 " + contexto : contexto),
-    h("h2", null, esOrbita && h("span", { "aria-hidden": true }, "\u2728 "),
-      panel.titulo, panel.destacado && h("em", null, " " + panel.destacado)),
+    contexto && h("p", { className: "la-panel-contexto" }, esOrbita ? "OPERACI\xD3N EN VIVO \xB7 " + contexto : contexto),
+    h("h2", null, panel.titulo, panel.destacado && h("em", null, " " + panel.destacado)),
     accesos.length > 0 && h("div", { className: "la-panel-accesos", "aria-label": "Accesos r\xE1pidos" },
       accesos.map((id) => {
         const [texto, Icono] = ACCESOS_PANEL_REDISENO[id];

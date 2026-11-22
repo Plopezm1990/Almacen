@@ -15,6 +15,12 @@ const ownerBootstrap = readFileSync(resolve(root, 'owner-bootstrap-post-reset.js
 const platformPanel = readFileSync(resolve(root, 'plataforma-panel.js'), 'utf8');
 const appearance = readFileSync(resolve(root, 'la-apariencia.js'), 'utf8');
 
+for (const [name, text] of [['fuente.js', source], ['source-recovery/fuente-recuperado.js', recovery]]) {
+  assert.match(text, /orbita:\s*\{ titulo: "El turno,", destacado: "en movimiento\."/, `${name} no alinea el titular Órbita con la maqueta`);
+  assert.match(text, /esOrbita \? "OPERACI\\xD3N EN VIVO \\xB7 " \+ contexto/, `${name} no conserva el eyebrow de operación de la maqueta`);
+  assert.doesNotMatch(text, /h\("h2", null, esOrbita && h\("span", \{ "aria-hidden": true \}, "\\u2728 "/, `${name} no debe añadir un adorno que no existe en la maqueta`);
+}
+
 const normalizeNewlines = (text) => text.replace(/\r\n/g, '\n');
 const localAccessBlock = (text) => {
   const start = text.indexOf('function entrarSinNube()');

@@ -1505,6 +1505,22 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Alineación de la jerarquía de Inicio con Órbita · 22/11/2026
+
+Se alineó únicamente la presentación del panel real con la maqueta: el eyebrow
+de Órbita ahora es `OPERACIÓN EN VIVO · <empresa/local>` y el titular es
+`El turno, en movimiento.`. Se conserva la organización real de QA, los cuatro
+indicadores (`ventas`, `margen`, `pedidos`, `stockbajo`), los accesos, rutas,
+permisos y handlers; no se han creado datos ficticios ni se ha ejecutado una
+operación de escritura.
+
+La modificación es idéntica en `fuente.js` y
+`source-recovery/fuente-recuperado.js`. Validado: `node --check`, paridad
+`SOURCE_RECOVERY_CHECK=PASS` y `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`.
+Quedan abiertas, como antes, la sesión autenticada específica de Plataforma,
+Acceso/MFA y el cierre individual de las 12 superficies; este cambio no las
+declara cerradas.
+
 ### Corrección final de raíces externas y caché · 22/11/2026
 
 La raíz real de los dos paneles externos de Plataforma es el propio elemento

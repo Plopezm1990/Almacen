@@ -42,7 +42,7 @@ for (const pieza of ['mesaId', 'cuentaId', 'operatingDay', 'destinoMesa', 'desti
   assert.ok(panel.includes(pieza), `Pase ha perdido la protección de destino ${pieza}.`);
 }
 
-assert.match(fuente, /orbita:\s*\{\s*titulo:\s*"El pulso"/);
+assert.match(fuente, /orbita:\s*\{\s*titulo:\s*"El turno,",\s*destacado:\s*"en movimiento\."/);
 assert.match(fuente, /orbita:[^\n]*indicadores:\s*\["ventas"/);
 assert.ok(fuente.includes('id: "ventas"') && fuente.includes('unidadesVentaConSignoPM09(movimiento)'), 'Órbita debe usar ventas reales del ledger, no una cifra inventada.');
 assert.ok(fuente.includes('la-operacion la-operacion-cocina'), 'Cocina debe exponer la raíz visual compartida de Órbita.');

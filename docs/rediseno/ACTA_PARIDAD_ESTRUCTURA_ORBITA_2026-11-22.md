@@ -205,3 +205,19 @@ ids, clases, atributos de superficie y handlers. Antes eran `<div role="main">`
 y las reglas genéricas de plantilla no podían alcanzarlas mediante
 `main[data-la-orbita-module]`. El contrato de componentes lo fija y la batería
 lo verifica; no cambia ninguna operación ni permiso.
+
+### Titular de Inicio alineado con la maqueta · 22/11/2026
+
+La composición real de Inicio conserva los indicadores, accesos, permisos,
+datos y handlers del negocio, pero su jerarquía textual ya usa la misma
+estructura semántica que la maqueta Órbita: el eyebrow pasa a
+`OPERACIÓN EN VIVO · <empresa/local>` y el titular a `El turno, en movimiento.`.
+Se retiró el adorno de estrella que no existe en la maqueta. No se cambió el
+contenido de los indicadores ni se añadió una fuente de datos ficticia.
+
+El cambio se aplicó de forma idéntica en `fuente.js` y
+`source-recovery/fuente-recuperado.js`; la comprobación de paridad de
+`source-recovery` sigue en `PARIDAD_CUERPO_EXACTA=1` y el contrato de
+componentes exige el nuevo titular en ambos artefactos. La evidencia real de
+QA mantiene la separación: la organización y los valores siguen siendo los
+de `QA-EMP-A / QA-A1`, mientras la presentación coincide con la maqueta.
