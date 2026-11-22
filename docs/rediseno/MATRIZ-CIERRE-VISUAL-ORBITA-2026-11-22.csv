@@ -6,6 +6,7 @@ tpv-32;FUTURA_BACKEND;No es un hueco visual; entrega por correo no está aplicad
 tpv-33;FUTURA_PRODUCTO;No es un hueco visual; no existe canal de pantalla para cliente;Definir dispositivo, privacidad y tiempo real antes de UI;Producto decide P2
 enc-05;REENCUADRADA;Cerrada visualmente dentro de Encargos;La confirmación de reembolso usa modal Órbita propio;Mantener bajo cancelar/devolver y no crear pantalla independiente;QA funcional autorizado si se cambia dinero
 caj-20;FUTURA_BACKEND;No es un hueco visual; factura electrónica interoperable no tiene contrato;Definir formato, proveedor y requisitos legales;Fiscal y backend
+shell-orbita-org;CERRADA_QA;El menú del programa real usa la misma organización de áreas que la maqueta Órbita;La navegación conserva los ids, capacidades, rutas y handlers existentes mientras agrupa visualmente por Inicio, Servicio, Caja y fiscalidad, Compras, Inventario, Equipo, Calidad y Administración;Commit 081c4383 · preview 225 verificado en móvil
 inv-32;DECISION_PRODUCTO;No existe detalle/impresión de receta;No inventar una pantalla de maqueta;Construir solo si impresión de receta es requisito;Producto decide
 inv-35;FUTURA_PRODUCTO;Servidor conoce variantes pero no hay biblioteca UI;No es un hueco del shell Órbita;Definir CRUD, versiones, límites y permisos;Producto P2
 inv-36;CUBIERTA_POR_OTRA;Parte de inv-35;No mantener formulario duplicado;Cerrar junto con inv-35 o retirar fila;Producto
