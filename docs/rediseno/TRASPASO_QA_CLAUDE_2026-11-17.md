@@ -1522,6 +1522,9 @@ de la matriz funcional. Plataforma sigue pendiente de una cuenta de
 administrador y Acceso/MFA de una sesión específica; las 12 filas deben cerrar
 sus variantes y estados individualmente antes de marcar el objetivo completo.
 
+Referencia de esta tanda: commit `88b3812c`, rama `rediseno/f0-base-qa`, PR
+#225 en borrador, preview `https://deploy-preview-225--chic-entremet-9107cf.netlify.app`.
+
 La página `restablecer-contrasena.html` se abrió en el preview 225 el
 22/11/2026 y se comprobó sin mutación: tarjeta Órbita, logo, correo, botón de
 recuperación y retorno con escala común. La evidencia de Plataforma/MFA sigue

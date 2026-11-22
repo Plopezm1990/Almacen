@@ -162,3 +162,7 @@ continúa requiriendo una sesión de administrador y Acceso/MFA una sesión
 separada. También queda pendiente completar el cierre individual de los 12
 módulos con sus estados de carga/error/vacío y sus variantes móvil/escritorio
 según la matriz.
+
+La documentación de esta auditoría queda en el commit `88b3812c` de
+`rediseno/f0-base-qa`; el PR #225 sigue en borrador y el preview asociado es
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app`.
