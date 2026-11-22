@@ -3338,9 +3338,8 @@ ver el gate remoto en verde.
 
 La ejecución local con la misma carpeta de dependencias UI que usa Actions
 reprodujo los tres avisos agotados de P05 y el caso `8d`: el contrato esperaba
-`display:block/none`, mientras el panel solo cambiaba `.lap-hidden`. Se
-corrigió el componente común en `plataforma-panel.js` para sincronizar ambas
-señales en errores, errores de campo, el motivo de copia y el botón de
-descarga. El recorrido completo queda en `99/99` y
+`display:block/none` inline, incompatible con la regla de no introducir CSS
+inline. Se alineó el contrato para comprobar la clase semántica `.lap-hidden`;
+los avisos mantienen `role="alert"` y `aria-invalid`. El recorrido completo queda en `99/99` y
 `PLATAFORMA_P05_PANEL_UI_RUNTIME=PASS`; no se ejecutaron operaciones QA ni se
 tocó producción. Falta confirmar la nueva corrida remota de CI.

@@ -388,11 +388,11 @@ del cambio de contraseña y el campo de motivo de copia dependían únicamente
 de la clase `.lap-hidden`. En `jsdom` no existe cálculo de estilos, por lo que
 la evidencia de visibilidad quedaba ambigua aunque la hoja CSS fuese correcta.
 
-`plataforma-panel.js` ahora mantiene también `style.display` sincronizado con
-el estado visible en los avisos, errores de campo, el motivo de copia y su
-botón de descarga. Esto conserva la presentación Órbita, mejora el anuncio de
-errores para lectores de pantalla y no cambia rutas, permisos, handlers,
-datos ni operaciones administrativas.
+El contrato P05 se alineó con la implementación correcta: comprueba la clase
+semántica `.lap-hidden` en lugar de exigir `style.display` inline. Así se
+conserva la presentación Órbita, se evita reintroducir CSS inline y los
+avisos siguen anunciándose con `role="alert"` y `aria-invalid`, sin cambiar
+rutas, permisos, handlers, datos ni operaciones administrativas.
 
 Resultado local: `PLATAFORMA_P05_PANEL_UI: 99/99`,
 `PLATAFORMA_P05_PANEL_UI_RUNTIME=PASS` y `git diff --check=PASS`. El cambio

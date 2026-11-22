@@ -433,7 +433,7 @@ async function abrirPanel(e, opts) {
   f.clic(f.boton('Descargar copia ahora', f.dialogo()));
   await esperar(() => f.log.descargas.length === 1, 'copia descargada desde el diálogo');
   await esperar(() => /Ya puedes continuar sin motivo/.test(f.texto(f.dialogo())), 'aviso de copia hecha');
-  ok('8d. descargar la copia quita la exigencia del motivo', f.campo('motivo', f.dialogo()).closest('label').style.display === 'none');
+  ok('8d. descargar la copia quita la exigencia del motivo', f.campo('motivo', f.dialogo()).closest('label').classList.contains('lap-hidden'));
   f.escribir(f.campo('nombre', f.dialogo()), 'Café Cerrado'); f.escribir(f.campo('contrasena', f.dialogo()), 'x');
   f.clic(f.boton('Preparar borrado', f.dialogo()));
   await esperar(() => f.q('[data-codigo]'), 'código tras la copia');
@@ -517,7 +517,7 @@ async function abrirPanel(e, opts) {
     const d2 = f.dialogo();
     f.escribir(f.campo('nueva', d2), 'Clave-nueva-2026'); f.escribir(f.campo('repite', d2), 'Clave-nueva-2026');
     f.clic(f.boton('Guardar contraseña y entrar', d2));
-    await esperar(() => f.q('.lap-banner.mal', d2) && f.q('.lap-banner.mal', d2).style.display === 'block', `error ${codigo}`);
+    await esperar(() => f.q('.lap-banner.mal', d2) && !f.q('.lap-banner.mal', d2).classList.contains('lap-hidden'), `error ${codigo}`);
     ok(`9g. ${codigo}: mensaje claro y la pantalla sigue abierta para reintentar`, esperado.test(f.texto(f.q('.lap-banner.mal', d2))) && !!f.q('#la-plataforma-cambio-root') && f.boton('Guardar contraseña y entrar', d2).disabled === false, f.texto(f.q('.lap-banner.mal', d2)));
   }
   const antes = recargas.length;
