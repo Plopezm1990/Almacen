@@ -1519,7 +1519,9 @@ La modificación es idéntica en `fuente.js` y
 `SOURCE_RECOVERY_CHECK=PASS` y `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`.
 Quedan abiertas, como antes, la sesión autenticada específica de Plataforma,
 Acceso/MFA y el cierre individual de las 12 superficies; este cambio no las
-declara cerradas.
+declara cerradas. La URL de `fuente.js` quedó versionada como
+`qa-orbita-titular-v5-20261122` para evitar que una pestaña reutilice el texto
+antiguo desde caché.
 
 ### Corrección final de raíces externas y caché · 22/11/2026
 

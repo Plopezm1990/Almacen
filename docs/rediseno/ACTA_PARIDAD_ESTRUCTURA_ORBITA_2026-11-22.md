@@ -220,4 +220,6 @@ El cambio se aplicó de forma idéntica en `fuente.js` y
 `source-recovery` sigue en `PARIDAD_CUERPO_EXACTA=1` y el contrato de
 componentes exige el nuevo titular en ambos artefactos. La evidencia real de
 QA mantiene la separación: la organización y los valores siguen siendo los
-de `QA-EMP-A / QA-A1`, mientras la presentación coincide con la maqueta.
+de `QA-EMP-A / QA-A1`, mientras la presentación coincide con la maqueta. La
+referencia del módulo se publicó con la marca de caché
+`qa-orbita-titular-v5-20261122` para no reutilizar el bundle anterior.
