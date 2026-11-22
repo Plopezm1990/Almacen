@@ -179,3 +179,10 @@ privilegios prevista: no se fuerza ni se inventa una ruta de administración
 desde una cuenta de empresa. La prueba autenticada de Plataforma queda
 pendiente de la cuenta de administrador específica, no de un defecto visual
 del shell.
+
+Como corrección estructural adicional, las dos raíces externas de Plataforma
+(panel y primer acceso) ahora se montan como `<main>` además de conservar sus
+ids, clases, atributos de superficie y handlers. Antes eran `<div role="main">`
+y las reglas genéricas de plantilla no podían alcanzarlas mediante
+`main[data-la-orbita-module]`. El contrato de componentes lo fija y la batería
+lo verifica; no cambia ninguna operación ni permiso.

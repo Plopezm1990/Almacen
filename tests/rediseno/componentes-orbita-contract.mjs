@@ -79,6 +79,8 @@ assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v4-20261122/, 'P
 assert.match(platformPanel, /data-la-orbita-external["']:\s*["']plataforma["']/g, 'Plataforma no expone su marca externa Órbita');
 assert.match(platformPanel, /data-la-orbita-surface["']:\s*["']plataforma["']/g, 'Plataforma no expone su superficie Órbita');
 assert.match(platformPanel, /data-la-orbita-module["']:\s*["']plataforma["']/g, 'Plataforma externa no queda clasificada como módulo');
+assert.match(platformPanel, /h\("main",\s*\{ id: ROOT_PANEL_ID/, 'la raíz principal de Plataforma no consume la semántica main de las plantillas');
+assert.match(platformPanel, /h\("main",\s*\{ id: ROOT_CAMBIO_ID/, 'la pantalla de primer acceso de Plataforma no consume la semántica main de las plantillas');
 assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipográfico inexistente');
 assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
 assert.ok(css.includes('.la-acceso-arte .la-acceso-entorno') && css.includes('#error-arranque button'), 'Acceso y arranque no heredan la paleta Órbita');

@@ -1505,6 +1505,12 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+Corrección estructural incluida después: `la-plataforma-root` y
+`la-plataforma-cambio-root` se crean como `<main>` semánticos, manteniendo los
+atributos externos de Órbita y todos los handlers existentes. Esto permite que
+las plantillas comunes alcancen Plataforma igual que el resto de módulos. El
+contrato de componentes y la batería completa pasan.
+
 ### Auditoría de escritorio Órbita · 22/11/2026
 
 En el Deploy Preview 225, con sesión QA autenticada en `QA-EMP-A / QA-A1` y
