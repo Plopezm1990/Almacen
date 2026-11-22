@@ -137,3 +137,28 @@ primaria y retorno visibles, sin overflow ni controles pequeños. No se envió
 ningún enlace ni se alteró ninguna cuenta. Plataforma queda pendiente de la
 sesión de administrador específica; su composición está cubierta por contrato
 y por la marca de plantilla, pero no se inventa una prueba autenticada.
+
+### Auditoría de composición en escritorio · 22/11/2026
+
+Se abrió el Deploy Preview 225 con sesión QA autenticada en `QA-EMP-A / QA-A1`
+con viewport 1440×900. La misma cabecera y navegación Órbita permanecen
+visibles al cambiar de ruta: logo y contexto de empresa/local, distintivo QA,
+Buscar, Avisos, Perfil y Apariencia; el menú lateral conserva las áreas
+`Operación`, `Servicio`, `Caja y fiscalidad`, `Compras`, `Inventario`,
+`Equipo`, `Calidad`, `Informes`, `Organización` y `Sistema`.
+
+Rutas comprobadas sin mutación de datos: Inicio/Pase, TPV, Cocina, Clientes,
+Arqueo de caja, Proveedores, Productos, Personal y Configuración. En todas se
+observó el mismo shell y la misma jerarquía Órbita; además se verificaron las
+composiciones específicas: catálogo y sala del TPV, estado vacío de Cocina,
+vistas guardadas/filtros/NIF en Clientes, apertura-movimientos-historial en
+Caja, ficha de proveedor, tabla real de Inventario, fichas repetibles de
+Personal y pestañas agrupadas de Configuración. No se pulsaron acciones que
+escriben datos.
+
+Esta evidencia cierra la comprobación visual del shell en escritorio, pero no
+convierte automáticamente en `CERRADA_QA` las filas funcionales: Plataforma
+continúa requiriendo una sesión de administrador y Acceso/MFA una sesión
+separada. También queda pendiente completar el cierre individual de los 12
+módulos con sus estados de carga/error/vacío y sus variantes móvil/escritorio
+según la matriz.

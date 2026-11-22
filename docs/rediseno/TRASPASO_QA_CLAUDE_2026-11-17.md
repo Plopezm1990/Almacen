@@ -1505,6 +1505,23 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Auditoría de escritorio Órbita · 22/11/2026
+
+En el Deploy Preview 225, con sesión QA autenticada en `QA-EMP-A / QA-A1` y
+viewport 1440×900, se recorrieron Inicio/Pase, TPV, Cocina, Clientes, Arqueo
+de caja, Proveedores, Productos, Personal y Configuración. El shell común se
+mantiene entre rutas: cabecera, contexto empresa/local, distintivo QA,
+buscador, avisos, perfil, Apariencia y navegación lateral agrupada por las
+áreas de la maqueta. Se observaron además las composiciones reales de cada
+módulo (estado vacío de Cocina, filtros y NIF en Clientes, historial de caja,
+tabla de Inventario y pestañas de Configuración) sin ejecutar operaciones de
+escritura.
+
+Esto es evidencia live de estructura visual de escritorio, no un cierre falso
+de la matriz funcional. Plataforma sigue pendiente de una cuenta de
+administrador y Acceso/MFA de una sesión específica; las 12 filas deben cerrar
+sus variantes y estados individualmente antes de marcar el objetivo completo.
+
 La página `restablecer-contrasena.html` se abrió en el preview 225 el
 22/11/2026 y se comprobó sin mutación: tarjeta Órbita, logo, correo, botón de
 recuperación y retorno con escala común. La evidencia de Plataforma/MFA sigue
