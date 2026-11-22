@@ -597,8 +597,9 @@ html[data-la-diseno] #root main[data-la-orbita-module] [role="option"] {
 /* Botones con solo un icono no pueden depender del ancho del SVG: el área
    pulsable completa también debe ser 44×44 px, especialmente en Personal,
    donde exportar, borrar y anular se emiten como botones desnudos. */
-html[data-la-diseno] #root main[data-la-orbita-module] button:has(> svg:only-child),
-html[data-la-diseno] #root main[data-la-orbita-module] [role="button"]:has(> svg:only-child) {
+html[data-la-diseno] #root main[data-la-orbita-module] .la-orbita-icon-only,
+html[data-la-diseno] #root main[data-la-orbita-module] button:has(> svg:only-child):not(.la-orbita-control),
+html[data-la-diseno] #root main[data-la-orbita-module] [role="button"]:has(> svg:only-child):not(.la-orbita-control) {
   width: var(--la-control-height) !important;
   min-width: var(--la-control-height) !important;
   min-height: var(--la-control-height) !important;

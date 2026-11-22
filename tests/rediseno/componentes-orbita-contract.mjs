@@ -117,6 +117,7 @@ assert.ok(css.includes('#root > div[style*="#F7F3E9"] > main'), 'MFA error no re
 assert.ok(css.includes('[style*="#C69A52"]') && css.includes('[class*="md:hidden"][class*="items-center"][class*="justify-between"]'), 'la cabecera móvil no remapea los acentos heredados');
 assert.ok(css.includes('button[style*="rgba(255,255,255,0.08)"]') && css.includes('padding-inline: var(--la-space-3)'), 'Seguridad no remapea el botón heredado de la cabecera');
 assert.ok(css.includes('button:has(> svg:only-child)') && css.includes('min-width: var(--la-control-height)'), 'los botones solo icono no garantizan un objetivo táctil cuadrado');
+assert.match(shell, /la-orbita-icon-only/, 'el shell debe distinguir botones solo-icono de acciones con texto');
 const shellVisual = css.slice(css.indexOf('.la-orbita-sidebar'), css.indexOf('/* ========================================================================\n   Órbita · módulos de gestión'));
 assert.doesNotMatch(shellVisual, /rgba\(255,255,255|#8CC3FF|#c7d5ce|#8fb0a1/i,
   'el shell no debe imponer colores literales sobre las paletas activas');

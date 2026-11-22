@@ -328,6 +328,16 @@
       'button, input, select, textarea, [role="button"], [role="tab"], [role="menuitem"], [role="option"]'
     ), function (control) {
       control.classList.add("la-orbita-control");
+      /* `:has(> svg:only-child)` también coincide con un botón que tiene un
+         SVG y texto, porque los nodos de texto no cuentan como hermanos para
+         `:only-child`. Marca de forma explícita solo los controles cuyo texto
+         visible está vacío para que la regla de 44×44 no comprima acciones
+         como «Nuevo cliente» o «Abrir TPV». */
+      if (!textoVisible(control) && control.querySelector(":scope > svg")) {
+        control.classList.add("la-orbita-icon-only");
+      } else {
+        control.classList.remove("la-orbita-icon-only");
+      }
       if (control.getAttribute("aria-disabled") === "true" || control.disabled) control.classList.add("la-orbita-control-disabled");
     });
     Array.prototype.forEach.call(main.querySelectorAll('input, select, textarea'), function (field) {
