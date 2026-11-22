@@ -6,6 +6,7 @@ const root = resolve(import.meta.dirname, '../..');
 const index = readFileSync(resolve(root, 'index.html'), 'utf8');
 const css = readFileSync(resolve(root, 'la-apariencia.css'), 'utf8');
 const dashboardPremium = readFileSync(resolve(root, 'dashboard-premium-v2.js'), 'utf8');
+const pasePanel = readFileSync(resolve(root, 'la-pase-panel.js'), 'utf8');
 const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
@@ -76,6 +77,9 @@ assert.ok(css.includes('#la-plataforma-root .lap-btn'), 'Plataforma previa no no
 assert.ok(css.includes('#la-plataforma-root .lap-campo textarea'), 'Plataforma previa no normaliza áreas de texto');
 assert.ok(css.includes('.la-acceso button:focus-visible') && css.includes('.lap-btn:focus-visible'), 'Acceso y Plataforma no exponen foco Órbita');
 assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v4-20261122/, 'Plataforma no invalida la caché tras marcar la superficie externa');
+assert.match(index, /la-pase-panel\.js\?v=qa-orbita-pase-v5-20261122/, 'Pase no invalida la caché tras corregir su jerarquía');
+assert.match(pasePanel, /destino\.querySelector\(":scope > \.la-panel-diseno"\)/, 'Pase no busca el panel principal como ancla de composición');
+assert.match(pasePanel, /destino\.insertBefore\(nodo, ancla\.nextSibling\)/, 'Pase vuelve a insertarse antes del panel y rompe la jerarquía Órbita');
 assert.match(platformPanel, /data-la-orbita-external["']:\s*["']plataforma["']/g, 'Plataforma no expone su marca externa Órbita');
 assert.match(platformPanel, /data-la-orbita-surface["']:\s*["']plataforma["']/g, 'Plataforma no expone su superficie Órbita');
 assert.match(platformPanel, /data-la-orbita-module["']:\s*["']plataforma["']/g, 'Plataforma externa no queda clasificada como módulo');

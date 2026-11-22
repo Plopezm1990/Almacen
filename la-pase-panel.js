@@ -561,8 +561,18 @@
     var focoPrevio = previo && previo.contains(document.activeElement) ? document.activeElement : null;
     var firmaFoco = focoPrevio && focoPrevio.tagName === "BUTTON"
       ? [focoPrevio.parentElement?.className, focoPrevio.getAttribute("aria-label") || focoPrevio.textContent] : null;
-    if (previo && previo.parentNode) previo.parentNode.replaceChild(nodo, previo);
-    else destino.insertBefore(nodo, destino.firstChild);
+    if (previo && previo.parentNode) {
+      previo.parentNode.replaceChild(nodo, previo);
+    } else {
+      /* Órbita presenta primero el panel de operación y después el detalle
+         operativo. Pase conserva sus datos reales, pero no debe desplazar el
+         encabezado/indicadores del panel principal al primer lugar del DOM. */
+      var ancla = destino.querySelector(":scope > .la-panel-diseno") ||
+        destino.querySelector(":scope > .la-ui-card") || destino.firstElementChild;
+      if (ancla && ancla.nextSibling) destino.insertBefore(nodo, ancla.nextSibling);
+      else if (ancla) destino.appendChild(nodo);
+      else destino.appendChild(nodo);
+    }
     if (firmaFoco) {
       Array.from(nodo.querySelectorAll("button:not([disabled])")).find(function (boton) {
         return boton.parentElement?.className === firmaFoco[0] &&

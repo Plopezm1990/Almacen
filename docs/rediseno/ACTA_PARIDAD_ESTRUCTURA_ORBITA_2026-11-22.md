@@ -85,6 +85,17 @@ otra escala visual. La batería completa `tests/rediseno/*.mjs` queda en
 
 ### Plantillas y estados comunes · revisión 22/11/2026
 
+### Jerarquía de Inicio y Pase · revisión 22/11/2026
+
+En Inicio, Pase se monta después del bloque principal `.la-panel-diseno` (y
+después del selector de local si el panel todavía no existe). Antes se
+insertaba como primer hijo de `main`, desplazando «El pulso del negocio» por
+encima de la jerarquía de la maqueta Órbita. El cambio solo reordena nodos de
+presentación: mantiene el plano, la cola, los estados reales, los accesos y
+los mismos handlers. El recurso se sirve con
+`qa-orbita-pase-v5-20261122`, huella P01 `529762222952d1f6`; no hay RPC nuevo
+ni mutación de datos.
+
 La capa `la-plantillas-orbita.js` queda en versión semántica 2. Además de
 marcar la plantilla principal de cada uno de los 12 módulos y las subplantillas
 de formulario, tabla, detalle y cola, etiqueta los estados que ya emite el
