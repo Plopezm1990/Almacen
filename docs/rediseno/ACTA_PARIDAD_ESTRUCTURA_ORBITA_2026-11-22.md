@@ -332,6 +332,11 @@ incluido el cambio semántico de controles icon-only. La batería completa de
 `tests/rediseno/*.mjs` queda en PASS y `git diff --check` no informa errores.
 Esto corrige un falso rojo del contrato de caché; no relaja ninguna
 comprobación de paridad ni de responsive.
+
+El commit final de esta tanda es `20f4e27b32e42940f43d8f4f6df5b28ae828c0d3`.
+Netlify lo publicó como deploy de QA `6b0369007365691bc416dc54` (`ready`).
+El PR #225 sigue abierto, en borrador y apuntando a `release`; producción no
+se ha tocado.
 ### Evidencia live de la barra móvil · commit daa43731
 
 En Deploy Preview 225 (`daa43731`), con `QA-EMP-A / QA-A1`, la accesibilidad
