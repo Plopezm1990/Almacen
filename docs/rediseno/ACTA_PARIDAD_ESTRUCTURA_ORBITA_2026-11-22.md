@@ -53,15 +53,18 @@ de recuperación conserva exactamente la misma definición.
   `rediseno/f0-base-qa`; no se ha tocado producción.
 - La comprobación de datos, permisos y rutas sigue siendo la del programa
   real: QA conserva `QA Empresa A, S.L.`, sus locales y sus membresías.
-- Tras publicar el commit, hay que abrir el Deploy Preview 225 con una sesión
-  de QA y comprobar en escritorio y móvil que los diez rótulos aparecen en el
-  lateral y que la barra móvil mantiene los destinos operativos permitidos.
+- En el Deploy Preview 225, con `QA Empresa A, S.L. · Local A1`, se verificó
+  live en móvil el menú «Más»: aparecen los diez rótulos de la maqueta y sus
+  destinos reales; la barra inferior mantiene Inicio, Resultados y Arqueo de
+  caja, y Pase conserva sus estados y accesos operativos.
 - Las pantallas que no son producto real o están bloqueadas por backend siguen
   clasificadas en `MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`; esta corrección
   no las inventa ni cambia su alcance.
 
 ## Estado
 
-Implementación de la organización Órbita: **aplicada y publicada en la rama**;
-la comprobación live del preview anterior sigue mostrando la versión previa
-hasta que Netlify termine el despliegue del commit `fb53b58e`.
+Implementación de la organización Órbita: **aplicada, publicada y verificada
+en el preview 225** con el commit `be7532d3` (código `fb53b58e`). La evidencia
+live cubre el recorrido móvil; la cobertura de escritorio queda respaldada
+por el contrato responsive y la revisión visual de shell, pendiente de una
+captura autenticada de escritorio si se necesita una prueba fotográfica.
