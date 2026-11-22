@@ -1505,6 +1505,16 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Clasificación de Plataforma y Acceso · 22/11/2026
+
+Las superficies previas al shell ya no quedan anónimas para la composición:
+`plataforma-panel.js` expone `data-la-orbita-module="plataforma"` y la
+plantilla `configuracion`; la recuperación expone `data-la-orbita-module="acceso"`
+y la plantilla `formulario` con variante móvil. Siguen siendo superficies
+externas por diseño y no se inventan rutas ni lógica. El recorrido autenticado
+de Plataforma/MFA requiere la cuenta de administrador y se mantiene separado
+de esta evidencia estática.
+
 ### Recorrido visual móvil autenticado adicional · 22/11/2026
 
 En `deploy-preview-225`, `QA-EMP-A / QA-A1`, viewport móvil de la revisión

@@ -75,7 +75,7 @@ assert.ok(css.includes('#la-plataforma-root .lap-tarjeta'), 'Plataforma previa n
 assert.ok(css.includes('#la-plataforma-root .lap-btn'), 'Plataforma previa no normaliza controles');
 assert.ok(css.includes('#la-plataforma-root .lap-campo textarea'), 'Plataforma previa no normaliza áreas de texto');
 assert.ok(css.includes('.la-acceso button:focus-visible') && css.includes('.lap-btn:focus-visible'), 'Acceso y Plataforma no exponen foco Órbita');
-assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v3-20261121/, 'Plataforma no invalida la caché tras marcar la superficie externa');
+assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v4-20261122/, 'Plataforma no invalida la caché tras marcar la superficie externa');
 assert.match(platformPanel, /data-la-orbita-external["']:\s*["']plataforma["']/g, 'Plataforma no expone su marca externa Órbita');
 assert.match(platformPanel, /data-la-orbita-surface["']:\s*["']plataforma["']/g, 'Plataforma no expone su superficie Órbita');
 assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipográfico inexistente');

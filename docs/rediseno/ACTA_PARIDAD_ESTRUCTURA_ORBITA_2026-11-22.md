@@ -120,3 +120,13 @@ administrador específica y Acceso/MFA requiere una sesión separada, por lo que
 ambas superficies siguen abiertas en la matriz. Esta pasada es evidencia real
 de composición móvil, pero no sustituye la captura de escritorio ni el cierre
 por estado de cada fila.
+
+### Plataformas previas y recuperación · marcas de plantilla · 22/11/2026
+
+Las dos superficies que no pasan por el contenedor React también quedan
+inscritas en la misma organización visual. `plataforma-panel.js` marca sus
+raíces como módulo `plataforma` (plantilla `configuracion`) y
+`restablecer-contrasena.html` marca la recuperación como módulo `acceso`
+(plantilla `formulario`, móvil común). Conservan sus raíces, handlers,
+permisos, persistencia y rutas propias; la marca solo permite que la capa de
+plantillas, estados y responsive las trate igual que al resto de la suite.
