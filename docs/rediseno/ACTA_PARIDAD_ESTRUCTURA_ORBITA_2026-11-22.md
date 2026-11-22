@@ -399,3 +399,12 @@ Resultado local: `PLATAFORMA_P05_PANEL_UI: 99/99`,
 queda pendiente de la nueva ejecución remota antes de considerar verde la
 puerta completa; el cierre global de los doce módulos sigue requiriendo la
 evidencia autenticada separada de Plataforma y Acceso/MFA.
+
+### Puerta remota verde tras P05 · 22/11/2026
+
+La nueva ejecución de GitHub Actions sobre `80d2cf56b92313891b0f68f02a28574107ccf802`
+terminó con `node-y-postgres=success`, `pm33-p05-supabase-full=success`,
+`gate-final=success` y el resto de la puerta sin fallos. El contrato P05 se
+validó con la regla de visibilidad semántica y el contrato de CSS legacy sigue
+sin estilos inline de Plataforma. PR #225 continúa `draft=true` contra
+`release`; producción permanece intacta.

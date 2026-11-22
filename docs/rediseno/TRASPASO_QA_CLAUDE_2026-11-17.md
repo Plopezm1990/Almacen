@@ -3343,3 +3343,9 @@ inline. Se alineó el contrato para comprobar la clase semántica `.lap-hidden`;
 los avisos mantienen `role="alert"` y `aria-invalid`. El recorrido completo queda en `99/99` y
 `PLATAFORMA_P05_PANEL_UI_RUNTIME=PASS`; no se ejecutaron operaciones QA ni se
 tocó producción. Falta confirmar la nueva corrida remota de CI.
+
+La puerta remota ya quedó verde sobre `80d2cf56b92313891b0f68f02a28574107ccf802`:
+`node-y-postgres`, `pm33-p05-supabase-full` y `gate-final` terminaron con
+éxito. El PR #225 sigue en borrador y producción no se ha tocado. Esto cierra
+la incidencia de CI, pero no convierte por sí solo la evidencia parcial de los
+recorridos autenticados de Plataforma/Acceso en cierre visual global.
