@@ -33,8 +33,8 @@ const checks = [
   [css.includes('data-la-orbita-surface="general"') && css.includes('data-la-orbita-surface="tpv"'), 'tratamiento visual consistente por superficie'],
   [css.includes('.la-orbita-page-title-wrap') && css.includes('.la-orbita-page-title::after'), 'cabecera de contenido común para módulos'],
   [css.includes('min-height: 44px'), 'objetivo táctil mínimo de los controles del marco'],
-  [source.includes('orbita: [') && source.includes('["Caja y fiscalidad", ["finanzas"]]') && source.includes('["Administración", ["sistema"]]'), 'Órbita conserva la organización de áreas de la maqueta'],
-  [recovery.includes('orbita: [') && recovery.includes('["Caja y fiscalidad", ["finanzas"]]') && recovery.includes('["Administración", ["sistema"]]'), 'la recuperación conserva la organización de áreas de Órbita'],
+  [source.includes('orbita: [') && source.includes('["Caja y fiscalidad", ["caja_fiscalidad"]]') && source.includes('["Informes", ["informes"]]') && source.includes('["Organización", ["organizacion"]]') && source.includes('["Sistema", ["sistema"]]') && source.includes('gruposParaAgrupar'), 'Órbita conserva la organización de áreas de la maqueta'],
+  [recovery.includes('orbita: [') && recovery.includes('["Caja y fiscalidad", ["caja_fiscalidad"]]') && recovery.includes('["Informes", ["informes"]]') && recovery.includes('["Organización", ["organizacion"]]') && recovery.includes('["Sistema", ["sistema"]]') && recovery.includes('gruposParaAgrupar'), 'la recuperación conserva la organización de áreas de Órbita'],
   [source.includes('const definicion = distribucion[diseno] || null;') && recovery.includes('const definicion = distribucion[diseno] || null;'), 'Órbita se aplica al diseño activo y no queda como definición inerte'],
 ];
 

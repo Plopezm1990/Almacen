@@ -16481,12 +16481,14 @@ function agruparNavegacionRediseno(grupos, diseno) {
     orbita: [
       [null, ["inicio"]],
       ["Servicio", ["ventas"]],
-      ["Caja y fiscalidad", ["finanzas"]],
+      ["Caja y fiscalidad", ["caja_fiscalidad"]],
       ["Compras", ["compras"]],
       ["Inventario", ["almacen", "produccion"]],
       ["Equipo", ["personal"]],
       ["Calidad", ["calidad"]],
-      ["Administración", ["sistema"]]
+      ["Informes", ["informes"]],
+      ["Organización", ["organizacion"]],
+      ["Sistema", ["sistema"]]
     ],
     claro: [
       ["Inicio", ["inicio"]],
@@ -16502,18 +16504,36 @@ function agruparNavegacionRediseno(grupos, diseno) {
       ["Control", ["finanzas", "calidad", "sistema"]]
     ]
   };
+  /* La maqueta separa fiscalidad/informes y organización/sistema. Los grupos
+     históricos del producto no se mutan: para Órbita se crean vistas de
+     presentación que reutilizan exactamente los mismos items y handlers. */
+  const gruposParaAgrupar = diseno === "orbita" ? grupos.flatMap((grupo) => {
+    if (grupo.id === "finanzas") {
+      return [
+        { ...grupo, id: "caja_fiscalidad", titulo: "Caja y fiscalidad", items: grupo.items.filter((item) => ["pagos", "libroiva", "caja", "tesoreria"].includes(item.id)) },
+        { ...grupo, id: "informes", titulo: "Informes", items: grupo.items.filter((item) => ["resultados", "reportes", "estacionalidad"].includes(item.id)) }
+      ];
+    }
+    if (grupo.id === "sistema") {
+      return [
+        { ...grupo, id: "organizacion", titulo: "Organización", items: grupo.items.filter((item) => ["locales", "configuracion"].includes(item.id)) },
+        { ...grupo, id: "sistema", titulo: "Sistema", items: grupo.items.filter((item) => ["auditoria", "respaldos", "notificaciones", "errores_sistema"].includes(item.id)) }
+      ];
+    }
+    return [grupo];
+  }) : grupos;
   const definicion = distribucion[diseno] || null;
   if (!definicion) return grupos;
   const usados = new Set(definicion.flatMap(([, ids]) => ids));
   const agrupados = definicion.map(([titulo, ids]) => {
-    const partes = ids.map((id) => grupos.find((grupo) => grupo.id === id)).filter(Boolean);
+    const partes = ids.map((id) => gruposParaAgrupar.find((grupo) => grupo.id === id)).filter(Boolean);
     return {
       titulo,
       items: partes.flatMap((parte) => parte.items),
       devolucionProveedor: partes.some((parte) => parte.devolucionProveedor)
     };
   });
-  return agrupados.concat(grupos.filter((grupo) => !usados.has(grupo.id)));
+  return agrupados.concat(gruposParaAgrupar.filter((grupo) => !usados.has(grupo.id)));
 }
 function CabeceraClaro({ grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor }) {
   const [abierto, setAbierto] = (0, import_react4.useState)(null);
