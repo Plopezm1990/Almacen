@@ -130,3 +130,10 @@ raíces como módulo `plataforma` (plantilla `configuracion`) y
 (plantilla `formulario`, móvil común). Conservan sus raíces, handlers,
 permisos, persistencia y rutas propias; la marca solo permite que la capa de
 plantillas, estados y responsive las trate igual que al resto de la suite.
+
+La recuperación se abrió en el Deploy Preview 225 el 22/11/2026 y se
+comprobó visualmente sin mutación: tarjeta Órbita, logo, correo, acción
+primaria y retorno visibles, sin overflow ni controles pequeños. No se envió
+ningún enlace ni se alteró ninguna cuenta. Plataforma queda pendiente de la
+sesión de administrador específica; su composición está cubierta por contrato
+y por la marca de plantilla, pero no se inventa una prueba autenticada.

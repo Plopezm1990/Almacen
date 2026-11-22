@@ -1505,6 +1505,12 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+La página `restablecer-contrasena.html` se abrió en el preview 225 el
+22/11/2026 y se comprobó sin mutación: tarjeta Órbita, logo, correo, botón de
+recuperación y retorno con escala común. La evidencia de Plataforma/MFA sigue
+requiriendo `owner.a@qa.invalid` y su autenticador; no se considera verificada
+por inspección de código.
+
 ### Clasificación de Plataforma y Acceso · 22/11/2026
 
 Las superficies previas al shell ya no quedan anónimas para la composición:
