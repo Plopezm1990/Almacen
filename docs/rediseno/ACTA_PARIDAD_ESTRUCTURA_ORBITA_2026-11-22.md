@@ -344,3 +344,21 @@ mostró exactamente cinco controles en la barra inferior: `Inicio`, `Sala`,
 `Caja`, `Resultados` y `Más`, sin overflow horizontal. El shell mantuvo
 `Local A1`, `QA`, `Buscar`, `Avisos`, `Perfil` y `Apariencia`. `Sala` conduce
 al TPV real y no se escribieron datos de negocio durante la comprobación.
+
+### Inventario de contratos y puerta de CI · 22/11/2026
+
+La primera ejecución de la puerta sobre la corrección transversal de Clientes
+falló después de que el contrato de negocio pasara: el validador detectó que
+`tests/rediseno/cierre-limpio-plan-contract.mjs` existía en el árbol real pero
+no estaba declarado en `tests/ci/manifiesto_clasificacion.json` (387/388).
+Se corrigió el inventario y sus conteos (`388` entradas, `371` contratos
+activos, `332` Node) y la puerta dejó de depender de los valores históricos
+fijos `324/363`: el gate final lee ahora los conteos activos del manifiesto y
+los compara con los resultados calculados por los jobs. No se cambió ninguna
+ruta, handler, permiso, dato ni lógica de negocio.
+
+Verificación local: `MANIFEST_VALIDATOR_NEGATIVE_TESTS=PASS`, inventario
+`388`, contratos activos `371`, `git diff --check=PASS` y todos los
+`tests/rediseno/*.mjs` en PASS, incluido `CIERRE_LIMPIO_PLAN=PASS`. La
+validación CI remota debe repetirse sobre el commit que contiene esta
+corrección; el PR #225 permanece en borrador y producción no se toca.

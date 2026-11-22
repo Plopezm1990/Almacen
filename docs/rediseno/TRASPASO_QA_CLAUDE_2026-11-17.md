@@ -3303,3 +3303,21 @@ acciones de tarjeta horizontales y legibles. Contratos de componentes y
 recorridos móviles permanecen en PASS. Esta evidencia no cierra aún el
 objetivo global: Plataforma autenticada, Acceso/MFA y el cierre individual
 desktop/mobile de los doce módulos siguen separados en la matriz.
+
+### Inventario CI corregido · 22/11/2026
+
+La puerta de CI no falló por la capa visual ni por el contrato F4: el validador
+encontró una deriva entre el árbol y el inventario, porque
+`tests/rediseno/cierre-limpio-plan-contract.mjs` no estaba en
+`tests/ci/manifiesto_clasificacion.json`. Se añadió como
+`active_contract/node`, se actualizaron los conteos a `388` entradas, `371`
+activos y `332` Node, y el gate final pasó a leer el esperado desde el propio
+manifiesto en vez de comparar con `324/363` históricos. El cambio es de
+infraestructura de comprobación: no modifica producto, datos, permisos,
+handlers ni producción.
+
+Resultado local después de la corrección: validador del manifiesto y sus casos
+negativos en PASS, todos los contratos de `tests/rediseno` en PASS y
+`git diff --check` limpio. Hay que repetir la puerta remota al publicar el
+commit; si aparece un fallo nuevo de negocio debe aislarse por su job, sin
+volver a ocultarlo ajustando conteos.
