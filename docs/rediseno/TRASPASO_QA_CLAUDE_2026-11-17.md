@@ -1505,6 +1505,23 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Plantillas reutilizables y estados · 22/11/2026
+
+La estructura visual común no se limita al contenedor de cada módulo. En
+`la-plantillas-orbita.js` v2 se conservan las 10 plantillas (`panel`,
+`listado`, `ficha`, `formulario`, `tabla`, `detalle`, `tpv`, `cola-operativa`,
+`configuracion` y `movil`) y los 12 mapeos de módulo. Cada raíz sigue marcando
+formularios, tablas, diálogos y colas; ahora también etiqueta los estados
+existentes como `data-la-orbita-state="vacio|carga|error|estado"` para que la
+hoja Órbita los trate con una sola escala. La capa no hace llamadas al servidor
+ni modifica rutas, datos, permisos o handlers. Marca de caché:
+`qa-orbita-plantillas-v2-20261122`.
+
+La prueba `plantillas-orbita-contract.mjs` y la batería completa quedan como
+evidencia estática; las filas de matriz que requieren sesión autenticada siguen
+siendo `PARCIAL` hasta recorrerlas con la cuenta y viewport indicados en el
+plan. No convertir esas filas en cerradas solo por esta capa semántica.
+
 ### Organización exacta de la navegación Órbita · 22/11/2026
 
 La maqueta y el programa real ya comparten el primer nivel de experiencia:

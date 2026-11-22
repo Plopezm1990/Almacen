@@ -26,3 +26,4 @@ sis-13;NO_EJERCITADA;Excepción intencionada;Restablecer QA destruiría evidenci
 tpv-31;CERRADA_QA;Pasa;Factura completa a empresa verificada en QA;Mantener evidencia live;QA
 caj-16;CERRADA_QA;Pasa;Rectificación fiscal verificada en QA;Mantener evidencia live;QA
 org-33;CERRADA_QA;Pasa;Sala y mesas verificadas en móvil y escritorio;Mantener evidencia live;QA
+plantillas-orbita-estados;CERRADA_CONTRATO;La capa común marca las 10 plantillas, 12 módulos y estados vacío/carga/error/estado;No cambia datos, permisos, rutas ni handlers;Verificar cada fila PARCIAL con sesión autenticada según el plan;Pendiente publicar commit

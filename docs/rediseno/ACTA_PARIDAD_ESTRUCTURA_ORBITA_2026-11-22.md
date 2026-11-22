@@ -78,3 +78,19 @@ La página independiente `restablecer-contrasena.html` también apunta a la
 misma marca de apariencia, evitando que el acceso de recuperación quede con
 otra escala visual. La batería completa `tests/rediseno/*.mjs` queda en
 `ALL_REDISENO_TESTS_PASS` y `git diff --check` permanece limpio.
+
+### Plantillas y estados comunes · revisión 22/11/2026
+
+La capa `la-plantillas-orbita.js` queda en versión semántica 2. Además de
+marcar la plantilla principal de cada uno de los 12 módulos y las subplantillas
+de formulario, tabla, detalle y cola, etiqueta los estados que ya emite el
+producto: `vacio`, `carga`, `error` y `estado`. Las marcas
+`data-la-orbita-state` y las clases `la-orbita-state-*` son aditivas: no crean
+datos, no cambian handlers ni sustituyen componentes. Permiten que la misma
+regla de Órbita se aplique a estados equivalentes aunque una pantalla histórica
+use una clase distinta.
+
+La caché del recurso queda fijada como
+`qa-orbita-plantillas-v2-20261122`; el contrato P01 fija su huella y obliga a
+actualizarla si la capa cambia. La batería de plantillas comprueba 10 plantillas,
+12 módulos, ausencia de RPC y la presencia de los cuatro estados comunes.

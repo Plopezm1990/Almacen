@@ -33,12 +33,17 @@ for (const moduleName of modules) {
   assert.ok(shell.includes(`"${moduleName}"`) || shell.includes(`'${moduleName}'`), `el shell no conserva ${moduleName}`);
 }
 
-assert.match(index, /la-plantillas-orbita\.js\?v=qa-orbita-plantillas-v1-20261121/,
+assert.match(index, /la-plantillas-orbita\.js\?v=qa-orbita-plantillas-v2-20261122/,
   'la capa de plantillas no está enlazada con marca de caché');
 assert.equal((index.match(/la-plantillas-orbita\.js/g) || []).length, 1,
   'la capa de plantillas debe cargarse una sola vez');
 assert.match(layer, /data-la-orbita-template/);
 assert.match(layer, /data-la-orbita-mobile-template/);
+assert.match(layer, /data-la-orbita-state/);
+assert.match(layer, /tipo: "vacio"/);
+assert.match(layer, /tipo: "carga"/);
+assert.match(layer, /tipo: "error"/);
+assert.match(layer, /data-la-plantillas-version\", \"2\"/);
 assert.match(layer, /MutationObserver/);
 assert.match(layer, /window\.LAPlantillasOrbita/);
 assert.doesNotMatch(layer, /fetch\s*\(|supabase|\.rpc\s*\(/i,

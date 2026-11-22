@@ -45,7 +45,7 @@ const CAPAS = [
   { archivo: 'la-apariencia.js', marca: 'qa-apariencia-contexto-v2-20261121', huella: '787e3036904bc526', etiqueta: 'script' },
   { archivo: 'la-apariencia-editor.js', marca: 'qa-apariencia-contexto-20261113', huella: '423e462949e5edea', etiqueta: 'script' },
   { archivo: 'la-orbita-shell.js', marca: 'qa-orbita-shell-v21-20261122', huella: '0006e35072dfddcf', etiqueta: 'script' },
-  { archivo: 'la-plantillas-orbita.js', marca: 'qa-orbita-plantillas-v1-20261121', huella: '4165ee9154559885', etiqueta: 'script' },
+  { archivo: 'la-plantillas-orbita.js', marca: 'qa-orbita-plantillas-v2-20261122', huella: '74cdf874f16ed04a', etiqueta: 'script' },
   { archivo: 'la-pase-panel.js', marca: 'qa-orbita-pase-20261121', huella: 'b8165e13534e6e41', etiqueta: 'script' },
   { archivo: 'la-tablas-fichas.js', marca: 'qa-tablas-fichas-20261113', huella: 'bea4568d3b696332', etiqueta: 'script' },
 ];

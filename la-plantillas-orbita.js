@@ -36,9 +36,30 @@
 
   function poner(nodo, plantilla) {
     if (!nodo || !plantilla) return;
-    nodo.setAttribute("data-la-orbita-template", plantilla);
-    nodo.setAttribute("data-la-plantilla", plantilla);
+    if (nodo.getAttribute("data-la-orbita-template") !== plantilla) {
+      nodo.setAttribute("data-la-orbita-template", plantilla);
+    }
+    if (nodo.getAttribute("data-la-plantilla") !== plantilla) {
+      nodo.setAttribute("data-la-plantilla", plantilla);
+    }
     nodo.classList.add("la-orbita-template-" + plantilla.replace(/[^a-z0-9]+/g, "-"));
+  }
+
+  function marcarEstados(main) {
+    var estados = [
+      { selector: '[data-empty], .empty-state, .la-ui-empty', tipo: "vacio" },
+      { selector: '[data-loading], .loading-state, [aria-busy="true"]', tipo: "carga" },
+      { selector: '[data-error], .error-state, [role="alert"]', tipo: "error" },
+      { selector: '[role="status"]', tipo: "estado" }
+    ];
+    estados.forEach(function (entrada) {
+      Array.prototype.forEach.call(main.querySelectorAll(entrada.selector), function (nodo) {
+        if (nodo.getAttribute("data-la-orbita-state") !== entrada.tipo) {
+          nodo.setAttribute("data-la-orbita-state", entrada.tipo);
+        }
+        nodo.classList.add("la-orbita-state-" + entrada.tipo);
+      });
+    });
   }
 
   function marcarSubplantillas(main) {
@@ -80,8 +101,9 @@
       var plantilla = plantillaPrincipal(main);
       poner(main, plantilla);
       main.setAttribute("data-la-orbita-mobile-template", "movil");
-      main.setAttribute("data-la-plantillas-version", "1");
+      main.setAttribute("data-la-plantillas-version", "2");
       marcarSubplantillas(main);
+      marcarEstados(main);
     });
   }
 
