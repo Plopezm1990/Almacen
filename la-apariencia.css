@@ -470,7 +470,7 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
     width: 100%;
     min-width: 0;
   }
-  html[data-la-diseno] #root .la-panel-diseno-cab .la-panel-accesos button {
+  html[data-la-diseno] #root main[data-la-orbita-module] .la-panel-diseno-cab .la-panel-accesos button {
     width: 100% !important;
     min-width: 0 !important;
     max-width: none !important;

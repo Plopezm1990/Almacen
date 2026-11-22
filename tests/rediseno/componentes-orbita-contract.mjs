@@ -207,8 +207,8 @@ assert.ok(css.includes('.la-acceso-entrar'), 'el acceso no recibe el contrato vi
 assert.ok(css.includes('main:has(input[autocomplete="one-time-code"])'), 'MFA no recibe la composición Órbita');
 assert.ok(css.includes('.la-orbita-bottom-nav'), 'la barra inferior móvil no recibe el marco Órbita');
 assert.ok(css.includes('.la-orbita-bottom-item[aria-current="page"]'), 'la barra inferior móvil no expone estado activo');
-assert.match(css, /#root \.la-panel-diseno-cab[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/, 'las cabeceras de panel no se apilan en móvil');
-assert.match(css, /#root \.la-panel-diseno-cab \.la-panel-accesos[\s\S]*width:\s*100%/, 'los accesos rápidos no ocupan el ancho disponible en móvil');
+assert.match(css, /#root(?: main\[data-la-orbita-module\])? \.la-panel-diseno-cab[\s\S]*grid-template-columns:\s*minmax\(0, 1fr\)/, 'las cabeceras de panel no se apilan en móvil');
+assert.match(css, /#root(?: main\[data-la-orbita-module\])? \.la-panel-diseno-cab \.la-panel-accesos[\s\S]*width:\s*100%/, 'los accesos rápidos no ocupan el ancho disponible en móvil');
 assert.ok(css.includes('.la-orbita-sidebar [data-la-orbita-nav-item]'), 'la navegación heredada no consume la escala Órbita');
 assert.ok(css.includes('.la-orbita-sidebar [style*="rgba(184, 139, 69, 0.07)"]'), 'el halo antiguo del logo no se remapea al acento Órbita');
 assert.ok(css.includes('main[data-la-orbita-module="tpv"] button[style*="border-left"]') && css.includes('border-inline-start: 2px solid var(--c-accent-fill) !important'), 'los filtros de categoría del TPV conservan bordes heredados');
