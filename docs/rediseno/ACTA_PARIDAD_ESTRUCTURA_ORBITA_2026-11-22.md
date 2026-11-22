@@ -223,3 +223,15 @@ QA mantiene la separación: la organización y los valores siguen siendo los
 de `QA-EMP-A / QA-A1`, mientras la presentación coincide con la maqueta. La
 referencia del módulo se publicó con la marca de caché
 `qa-orbita-titular-v5-20261122` para no reutilizar el bundle anterior.
+
+La hoja visual se sirve ahora como `qa-orbita-modules-v71-20261122`: la nueva
+composición de Inicio añade las regiones «Pulso de ventas» y «Pendientes del
+día» con movimientos, pedidos y stock reales, y la caché de la hoja se
+invalida junto con el contrato P01 (`3c8439689917ad15`).
+
+Las dos regiones son estructurales y no sustituyen el dashboard de negocio:
+el gráfico resume los últimos movimientos de venta que ya llegaron al cliente,
+y la lista enlaza a Pedidos o Productos según el registro real. Si las
+colecciones están vacías se muestra el estado vacío Órbita, no una cifra
+inventada. En móvil pasan a una sola columna sin overflow y sus acciones
+mantienen el objetivo táctil común.

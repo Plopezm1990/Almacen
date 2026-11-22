@@ -118229,7 +118229,7 @@ const ACCESOS_PANEL_REDISENO = {
   reportes: ["Ver Informes", ChartColumn],
   resultados: ["Consultar resultados", TrendingUp]
 };
-function PanelDiseno({ diseno, contexto, tarjetas, puedeConsultar, navegar, abrirIndicador }) {
+function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPendientes = [], stockBajo = [], puedeConsultar, navegar, abrirIndicador }) {
   const h = import_react4.default.createElement;
   const panelRef = (0, import_react4.useRef)(null);
   (0, import_react4.useEffect)(() => {
@@ -118251,6 +118251,25 @@ function PanelDiseno({ diseno, contexto, tarjetas, puedeConsultar, navegar, abri
     .filter((item) => item && puedeConsultar(item.tab));
   const accesos = panel.accesos.filter(puedeConsultar);
   const esOrbita = diseno === "orbita";
+  const ventasRecientes = Array.isArray(movimientos) ? movimientos
+    .map((movimiento) => Math.max(0, unidadesVentaConSignoPM09(movimiento)) * Math.abs(Number(movimiento.ingresoUnitario) || 0) * (1 + (Number(movimiento.ivaVentaAplicado) || 0) / 100))
+    .filter((importe) => importe > 0)
+    .slice(-7) : [];
+  const maxVentaReciente = Math.max(1, ...ventasRecientes);
+  const pendientesOrbita = [
+    ...(Array.isArray(pedidosPendientes) ? pedidosPendientes.slice(0, 3).map((pedido) => ({
+      clave: `pedido-${pedido.id}`,
+      titulo: "Recepción pendiente",
+      detalle: `${(pedido.items || []).length} producto(s)${pedido.estado ? ` · ${pedido.estado}` : ""}`,
+      tab: "pedidos"
+    })) : []),
+    ...(Array.isArray(stockBajo) ? stockBajo.slice(0, 3).map((producto) => ({
+      clave: `stock-${producto.id}`,
+      titulo: "Stock bajo",
+      detalle: producto.nombre || "Producto sin nombre",
+      tab: "productos"
+    })) : [])
+  ].slice(0, 4);
   function moverLinea(e2) {
     if (e2.pointerType !== "mouse" || !window.matchMedia("(prefers-reduced-motion: no-preference)").matches) return;
     const rect = e2.currentTarget.getBoundingClientRect();
@@ -118278,6 +118297,39 @@ function PanelDiseno({ diseno, contexto, tarjetas, puedeConsultar, navegar, abri
       h(ACCESOS_PANEL_REDISENO[item.tab]?.[1] || ClipboardList, { size: 18, "aria-hidden": true }),
       h("span", null, item.titulo),
       h("strong", null, item.valor)))
+    ),
+    esOrbita && h("div", { className: "la-panel-orbita-resumen" },
+      h("article", { className: "la-panel-orbita-card" },
+        h("div", { className: "la-panel-orbita-card-head" },
+          h("div", null,
+            h("h3", null, "Pulso de ventas"),
+            h("p", null, ventasRecientes.length > 0 ? "Últimos movimientos de venta" : "Sin ventas en el periodo cargado")),
+          h("strong", { className: "la-panel-orbita-total" }, `€${fmt(ventasRecientes.reduce((total, importe) => total + importe, 0))}`)),
+        ventasRecientes.length > 0 ? h("div", { className: "la-panel-orbita-chart", role: "img", "aria-label": "Ventas recientes" },
+          ventasRecientes.map((importe, indice) => h("span", {
+            key: `${indice}-${importe}`,
+            className: "la-panel-orbita-bar",
+            style: { "--la-orbita-bar-nivel": String(Math.max(8, Math.round(importe / maxVentaReciente * 100))) },
+            title: `€${fmt(importe)}`
+          }))
+        ) : h(Empty, { text: "Aún no hay ventas registradas." })
+      ),
+      h("article", { className: "la-panel-orbita-card" },
+        h("div", { className: "la-panel-orbita-card-head" },
+          h("div", null,
+            h("h3", null, "Pendientes del día"),
+            h("p", null, pendientesOrbita.length > 0 ? "Acciones que requieren atención" : "No hay pendientes abiertos")),
+          h("span", { className: "la-panel-orbita-badge" }, String(pendientesOrbita.length))),
+        pendientesOrbita.length > 0 ? h("div", { className: "la-panel-orbita-pendientes" },
+          pendientesOrbita.map((pendiente) => h("button", {
+            key: pendiente.clave,
+            type: "button",
+            onClick: () => puedeConsultar(pendiente.tab) && navegar(pendiente.tab)
+          },
+          h("span", { className: "la-panel-orbita-pendiente-titulo" }, pendiente.titulo),
+          h("span", { className: "la-panel-orbita-pendiente-detalle" }, pendiente.detalle)))
+        ) : h(Empty, { text: "Todo está al día." })
+      )
     )
   );
 }
@@ -118556,7 +118608,8 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
   const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t22) => itemsPermitidos.includes(t22.tab)) : tarjetas;
   const tarjetaAbierta = tarjetasVisibles.find((t22) => t22.id === abierta);
   const panelDiseno = diseno && puedeVerPanelRediseno ? /* @__PURE__ */ import_react4.default.createElement(PanelDiseno, {
-    diseno, contexto, tarjetas: tarjetasVisibles, puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
+    diseno, contexto, tarjetas: tarjetasVisibles, movimientos, pedidosPendientes, stockBajo,
+    puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
     abrirIndicador: (item) => {
       setAbierta(item.id);
       requestAnimationFrame(() => document.querySelector('[data-la-panel-detalle]')?.focus());

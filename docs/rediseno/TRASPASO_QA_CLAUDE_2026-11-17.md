@@ -1523,6 +1523,14 @@ declara cerradas. La URL de `fuente.js` quedó versionada como
 `qa-orbita-titular-v5-20261122` para evitar que una pestaña reutilice el texto
 antiguo desde caché.
 
+La composición de Inicio se completó con dos regiones que faltaban frente a la
+maqueta: «Pulso de ventas» (últimos movimientos del ledger) y «Pendientes del
+día» (pedidos pendientes y productos bajo mínimo). Son datos derivados de las
+colecciones ya cargadas; no hay fixtures, RPC ni escrituras nuevas. Las filas
+son accionables y respetan las capacidades del usuario; con cero datos se
+renderiza el estado vacío. La hoja se versionó como
+`qa-orbita-modules-v71-20261122`, con huella P01 `3c8439689917ad15`.
+
 ### Corrección final de raíces externas y caché · 22/11/2026
 
 La raíz real de los dos paneles externos de Plataforma es el propio elemento

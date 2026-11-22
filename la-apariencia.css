@@ -1479,6 +1479,107 @@ html:not([data-la-paleta]):not([data-la-personalizada]) [data-la-panel="orbita"]
   }
 }
 
+/* Órbita · composición de Inicio de la maqueta: pulso y pendientes. */
+[data-la-panel="orbita"] .la-panel-orbita-resumen {
+  display: grid;
+  grid-template-columns: minmax(0, 1.35fr) minmax(0, 1fr);
+  gap: var(--la-space-3);
+  min-width: 0;
+}
+[data-la-panel="orbita"] .la-panel-orbita-card {
+  min-width: 0;
+  padding: var(--la-space-4);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-lg);
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  box-shadow: var(--la-shadow-1);
+}
+[data-la-panel="orbita"] .la-panel-orbita-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--la-space-3);
+  min-width: 0;
+}
+[data-la-panel="orbita"] .la-panel-orbita-card h3 {
+  margin: 0;
+  color: var(--c-ink);
+  font-size: var(--la-type-section);
+  line-height: 1.2;
+}
+[data-la-panel="orbita"] .la-panel-orbita-card p {
+  margin: var(--la-space-1) 0 0;
+  color: var(--c-ink-soft);
+  font-size: var(--la-type-label);
+}
+[data-la-panel="orbita"] .la-panel-orbita-total {
+  color: var(--c-ink);
+  font: 700 var(--la-type-section)/1.2 var(--la-mono);
+  white-space: nowrap;
+}
+[data-la-panel="orbita"] .la-panel-orbita-chart {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  align-items: end;
+  gap: var(--la-space-2);
+  min-height: 118px;
+  margin-block-start: var(--la-space-4);
+  padding-block-end: var(--la-space-2);
+  border-block-end: 1px solid var(--c-divider);
+}
+[data-la-panel="orbita"] .la-panel-orbita-bar {
+  display: block;
+  --la-orbita-bar-nivel: 8;
+  min-height: 8px;
+  height: calc(var(--la-orbita-bar-nivel, 8) * 1%);
+  border-radius: var(--la-radius-sm) var(--la-radius-sm) 2px 2px;
+  background: linear-gradient(180deg, var(--c-accent), var(--c-accent-fill));
+  opacity: .9;
+}
+[data-la-panel="orbita"] .la-panel-orbita-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  min-height: 28px;
+  padding-inline: var(--la-space-2);
+  border-radius: 999px;
+  background: var(--c-accent-soft);
+  color: var(--c-ink);
+  font: 700 var(--la-type-label)/1 var(--la-mono);
+}
+[data-la-panel="orbita"] .la-panel-orbita-pendientes {
+  display: grid;
+  gap: var(--la-space-2);
+  margin-block-start: var(--la-space-4);
+}
+[data-la-panel="orbita"] .la-panel-orbita-pendientes button {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  min-height: var(--la-control-height);
+  padding: var(--la-space-2) var(--la-space-3);
+  border: 1px solid var(--c-divider);
+  border-radius: var(--la-radius-md);
+  background: var(--c-bg);
+  color: var(--c-ink);
+  text-align: start;
+}
+[data-la-panel="orbita"] .la-panel-orbita-pendiente-titulo {
+  font-weight: 700;
+}
+[data-la-panel="orbita"] .la-panel-orbita-pendiente-detalle {
+  overflow: hidden;
+  color: var(--c-ink-soft);
+  font-size: var(--la-type-label);
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+@media (max-width: 767px) {
+  [data-la-panel="orbita"] .la-panel-orbita-resumen { grid-template-columns: 1fr; }
+  [data-la-panel="orbita"] .la-panel-orbita-card { padding: var(--la-space-3); }
+}
+
 /* ---------- 1 - Oliva - referencia general (verde y oro de la marca) ----- */
 html[data-la-diseno="oliva"] {
   --c-bg: #F7F2E8;  --c-surface: #FFFDF8;
