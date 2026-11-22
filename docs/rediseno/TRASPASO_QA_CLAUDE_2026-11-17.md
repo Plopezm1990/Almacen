@@ -1505,6 +1505,28 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Corrección final de raíces externas y caché · 22/11/2026
+
+La raíz real de los dos paneles externos de Plataforma es el propio elemento
+`.lap-root`. La regla anterior solo alcanzaba a un descendiente con esa clase,
+por lo que esas superficies podían conservar un fondo histórico aunque el
+resto de la suite estuviera en Órbita. La hoja ahora cubre ambos casos y la
+recuperación de contraseña carga la misma versión de apariencia que `index`.
+La marca pasa a `qa-orbita-modules-v70-20261122`, con huella P01
+`5b98269158858639`.
+
+Commit desplegado: `2ea3e32f8c7688c39f666cad34e9ff1040fd54d2`.
+Deploy Preview 225: `6b035941e49c210c1faa7579`, estado `ready`, alias
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app`.
+PR #225 continúa abierto en borrador sobre `release`; producción no se ha
+modificado. Batería `tests/rediseno/*.mjs`: `ALL_REDISENO_TESTS_PASS=1`;
+`git diff --check`: `PASS`.
+
+Esto cierra la corrección contractual de la superficie de Plataforma, pero no
+la validación autenticada de las diez vistas de administración ni de Acceso/MFA.
+Esas dos superficies siguen separadas de los recorridos QA ya evidenciados y no
+deben marcarse como cerradas por inspección estática.
+
 Corrección estructural incluida después: `la-plataforma-root` y
 `la-plataforma-cambio-root` se crean como `<main>` semánticos, manteniendo los
 atributos externos de Órbita y todos los handlers existentes. Esto permite que
