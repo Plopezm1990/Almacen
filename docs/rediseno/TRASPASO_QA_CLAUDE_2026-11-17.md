@@ -3349,3 +3349,9 @@ La puerta remota ya quedó verde sobre `80d2cf56b92313891b0f68f02a28574107ccf802
 éxito. El PR #225 sigue en borrador y producción no se ha tocado. Esto cierra
 la incidencia de CI, pero no convierte por sí solo la evidencia parcial de los
 recorridos autenticados de Plataforma/Acceso en cierre visual global.
+
+La batería local actual de `tests/rediseno/*.mjs` queda en **22/22 PASS** y
+`git diff --check` está limpio. La evidencia restante no es un fallo de
+contrato: es la verificación viva con sesión administradora de Plataforma y
+la sesión real de Acceso/MFA, que debe hacerse en el preview sin registrar
+credenciales en el traspaso.

@@ -408,3 +408,10 @@ terminó con `node-y-postgres=success`, `pm33-p05-supabase-full=success`,
 validó con la regla de visibilidad semántica y el contrato de CSS legacy sigue
 sin estilos inline de Plataforma. PR #225 continúa `draft=true` contra
 `release`; producción permanece intacta.
+
+La repetición local de cierre sobre este árbol ejecutó los 22 contratos de
+`tests/rediseno/*.mjs`: **22/22 PASS**, con `git diff --check` limpio. Esta
+batería prueba la estructura del shell, las rutas de los 12 módulos, las diez
+plantillas, el responsive, el suelo táctil, los estados semánticos, MFA,
+Apariencia y el arranque resiliente. No sustituye la evidencia viva que exige
+una sesión autenticada para Plataforma y Acceso/MFA.
