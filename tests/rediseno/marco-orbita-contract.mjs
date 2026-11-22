@@ -37,6 +37,8 @@ const checks = [
   [source.includes('orbita: [') && source.includes('["Caja y fiscalidad", ["caja_fiscalidad"]]') && source.includes('["Informes", ["informes"]]') && source.includes('["Organización", ["organizacion"]]') && source.includes('["Sistema", ["sistema"]]') && source.includes('gruposParaAgrupar'), 'Órbita conserva la organización de áreas de la maqueta'],
   [recovery.includes('orbita: [') && recovery.includes('["Caja y fiscalidad", ["caja_fiscalidad"]]') && recovery.includes('["Informes", ["informes"]]') && recovery.includes('["Organización", ["organizacion"]]') && recovery.includes('["Sistema", ["sistema"]]') && recovery.includes('gruposParaAgrupar'), 'la recuperación conserva la organización de áreas de Órbita'],
   [source.includes('const definicion = distribucion[diseno] || null;') && recovery.includes('const definicion = distribucion[diseno] || null;'), 'Órbita se aplica al diseño activo y no queda como definición inerte'],
+  [source.includes('"Propietario": ["dashboard", "venta", "caja", "resultados"]') && recovery.includes('"Propietario": ["dashboard", "venta", "caja", "resultados"]'), 'la barra móvil de Propietario conserva el orden Inicio/Sala/Caja/Resultados de la maqueta'],
+  [source.includes('const ETIQUETA_PESTANA = { dashboard: "Inicio", venta: "Sala", caja: "Caja",') && recovery.includes('const ETIQUETA_PESTANA = { dashboard: "Inicio", venta: "Sala", caja: "Caja",'), 'la barra móvil conserva las etiquetas Sala y Caja de la maqueta'],
 ];
 
 const failures = checks.filter(([ok]) => !ok);

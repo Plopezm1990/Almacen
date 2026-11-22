@@ -245,3 +245,16 @@ permisos, sesión, handlers, operaciones ni datos. La recuperación de
 contraseña ya declaraba `formulario` + `movil` en su HTML independiente.
 
 El contrato de componentes mantiene `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`.
+
+### Navegación móvil del Propietario · revisión 22/11/2026
+
+La maqueta Órbita presenta cinco destinos persistentes: `Inicio`, `Sala`,
+`Caja`, `Resultados` y `Más`. La suite real mantenía tres destinos para
+Propietario (`Inicio`, `Resultados`, `Arqueo de caja`) y dejaba Sala dentro de
+TPV. Se alineó la organización sin duplicar lógica: la barra ahora expone
+`Inicio / Sala / Caja / Resultados / Más`; `Sala` sigue navegando al TPV real,
+que conserva su selector Venta rápida/Sala, y `Caja` sigue usando la ruta y el
+handler de arqueo existentes. El cambio es de etiqueta y prioridad móvil,
+idéntico en `fuente.js` y `source-recovery/fuente-recuperado.js`; no añade
+rutas, RPC, permisos ni datos. La marca de caché de la fuente pasó a
+`qa-orbita-titular-v6-mobile-nav-20261122`.

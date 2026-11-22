@@ -3234,3 +3234,12 @@ Verificación: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`,
 
 La cuenta y las operaciones de Plataforma siguen requiriendo una sesión QA
 administradora específica; no se inventan credenciales ni se toca producción.
+
+### Diferencia de maqueta móvil corregida · 22/11/2026
+
+Para Propietario, la barra inferior del preview queda organizada como la
+maqueta: `Inicio / Sala / Caja / Resultados / Más`. `Sala` es el acceso visual
+al TPV/Sala real y `Caja` conserva el arqueo real; no se cambian handlers,
+permisos ni rutas. Paridad mantenida en las dos copias de la fuente. Contrato
+de marco: `30/30 PASS`; recorridos móviles: `12 módulos, overflow=PASS,
+touch=44`.

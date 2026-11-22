@@ -101382,7 +101382,7 @@ var CONFIG_PANTALLAS_ROL = [
   ["ABC_PANTALLA_AUDITORIA_CONSULTAR", "Auditoría"], ["ABC_PANTALLA_RESPALDOS_CONSULTAR", "Respaldos"], ["ABC_PANTALLA_NOTIFICACIONES_CONSULTAR", "Notificaciones"], ["ABC_PANTALLA_LOCALES_CONSULTAR", "Locales"], ["ABC_PANTALLA_CONFIGURACION_CONSULTAR", "Configuración"], ["ABC_PANTALLA_ERRORES_SISTEMA_CONSULTAR", "Errores del sistema"]
 ];
 var TAB_PRIORITIES_MOVIL = {
-  "Propietario": ["dashboard", "resultados", "caja"],
+  "Propietario": ["dashboard", "venta", "caja", "resultados"],
   "Encargado": ["dashboard", "venta", "cocina", "fichaje"],
   "Est\xE1ndar": ["dashboard", "venta", "cocina", "fichaje"],
   "Cajero/a": ["dashboard", "venta", "cocina", "fichaje"],
@@ -117964,7 +117964,7 @@ function BotonItemSheet({ it: it2, tab, onPick }) {
 function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor }) {
   const [abierto, setAbierto] = (0, import_react4.useState)(false);
   const idsFijos = new Set(pestanasFijas.map((it2) => it2.id));
-  const ETIQUETA_PESTANA = { dashboard: "Inicio", fichaje: "Fichaje" };
+  const ETIQUETA_PESTANA = { dashboard: "Inicio", venta: "Sala", caja: "Caja", fichaje: "Fichaje" };
   const otros = grupos.map((g2) => ({ ...g2, items: g2.items.filter((it2) => !idsFijos.has(it2.id)) })).filter((g2) => g2.items.length > 0 || g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor);
   const hayBadgeEnOtros = otros.some((g2) => g2.items.some((it2) => it2.badge > 0));
   return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { "data-la-barra-inferior": "", className: "md:hidden flex shrink-0", style: { background: C2.surface, borderTop: `1px solid ${C2.line}` } }, pestanasFijas.map((it2) => {
