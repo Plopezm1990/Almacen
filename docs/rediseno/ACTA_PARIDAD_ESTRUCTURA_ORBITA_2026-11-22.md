@@ -272,6 +272,12 @@ handlers. Se publicó con `la-apariencia.css?v=qa-orbita-modules-v72-20261122`.
 
 Contrato y regresión: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS` y
 `REDISENO_MOVIL_RECORRIDOS_ORBITA_CONTRACT=PASS`.
+
+La corrección quedó publicada en el commit `6a86363e` y en el deploy
+`6b03663920c1aa7338d980e7` (`ready`). En QA-A1, a 758 CSS px de anchura, los
+botones medidos fueron `335×48`, `335×48` y `335×48`, con
+`scrollWidth - clientWidth = 0`; la captura live ya muestra `Abrir TPV`,
+`Ir a Cocina` y `Consultar resultados` como acciones horizontales legibles.
 ### Evidencia live de la barra móvil · commit daa43731
 
 En Deploy Preview 225 (`daa43731`), con `QA-EMP-A / QA-A1`, la accesibilidad

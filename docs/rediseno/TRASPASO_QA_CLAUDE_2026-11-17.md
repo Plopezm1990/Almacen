@@ -3259,3 +3259,9 @@ rejilla de dos columnas con ancho completo. Se conserva la semántica y la
 altura táctil de 44 px; no se tocaron datos, permisos, rutas ni handlers.
 Recurso: `la-apariencia.css?v=qa-orbita-modules-v72-20261122`.
 Contratos: componentes Órbita PASS y recorridos móviles PASS.
+
+Evidencia live posterior: commit `6a86363e`, deploy
+`6b03663920c1aa7338d980e7` (`ready`). En QA-A1 los tres accesos se miden a
+`335×48` en una anchura de 758 CSS px y no hay overflow horizontal. La
+composición deja de apilar el texto verticalmente y queda alineada con la
+jerarquía móvil de Órbita.
