@@ -1505,6 +1505,23 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Organización exacta de la navegación Órbita · 22/11/2026
+
+La maqueta y el programa real ya comparten el primer nivel de experiencia:
+`Inicio`, `Servicio`, `Caja y fiscalidad`, `Compras`, `Inventario`, `Equipo`,
+`Calidad`, `Informes`, `Organización` y `Sistema`. Para conseguirlo se
+construyeron vistas de presentación sobre los grupos históricos de la suite;
+los ids de pantalla, capacidades `ABC_*`, rutas y handlers no se duplican ni
+se sustituyen. El cambio está en `fuente.js` y en
+`source-recovery/fuente-recuperado.js`, commit `fb53b58e`, rama
+`rediseno/f0-base-qa`.
+
+El contrato `marco-orbita-contract.mjs` queda en `27/27`, la matriz registra
+`shell-orbita-org=CERRADA_QA`, y la revisión móvil mantiene navegación
+inferior, menú «Más», overflow cero y controles de 44 px. La verificación
+visual live del preview debe repetirse cuando Netlify haya desplegado
+`fb53b58e`; producción permanece intacta y el PR #225 continúa en borrador.
+
 ### Paridad de organización Órbita · 22/11/2026
 
 La revisión comparativa con la maqueta detectó que el shell visual ya estaba

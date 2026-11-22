@@ -19,12 +19,14 @@ el diseño activo es `orbita` pasa a ser:
 |---:|---|---|
 | 1 | Inicio | Inicio |
 | 2 | Servicio | Ventas, TPV, Cocina, Encargos y Clientes |
-| 3 | Caja y fiscalidad | Finanzas y análisis, caja, libro de IVA y resultados |
+| 3 | Caja y fiscalidad | Cuentas por pagar, libro de IVA, arqueo y tesorería |
 | 4 | Compras | Proveedores, pedidos, recepción, albaranes y facturas |
 | 5 | Inventario | Almacén, producción y mermas |
 | 6 | Equipo | Personal, turnos, fichajes y nóminas |
 | 7 | Calidad | Control sanitario y aceite |
-| 8 | Administración | Auditoría, respaldos, notificaciones, locales y configuración |
+| 8 | Informes | Resultados, reportes y rotación, estacionalidad |
+| 9 | Organización | Locales y configuración |
+| 10 | Sistema | Auditoría, respaldos, notificaciones y errores del sistema |
 
 La agrupación solo cambia el primer nivel visual. Se conservan los ids de
 las pantallas, las capacidades `ABC_*`, los handlers de navegación, la
@@ -34,7 +36,7 @@ y `sello` mantienen sus agrupaciones específicas.
 ## Contratos ejecutados
 
 ```text
-MARCO_ORBITA_CONTRACT=PASS (26/26)
+MARCO_ORBITA_CONTRACT=PASS (27/27)
 REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS
 REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12 responsive=PASS tactil=44
 git diff --check = PASS
@@ -42,8 +44,8 @@ git diff --check = PASS
 
 El contrato del marco incluye ahora una aserción de que la distribución
 Órbita contiene `Servicio`, `Caja y fiscalidad`, `Compras`, `Inventario`,
-`Equipo`, `Calidad` y `Administración`, y que el espejo de recuperación
-conserva exactamente la misma definición.
+`Equipo`, `Calidad`, `Informes`, `Organización` y `Sistema`, y que el espejo
+de recuperación conserva exactamente la misma definición.
 
 ## Límites y siguiente evidencia
 
@@ -52,7 +54,7 @@ conserva exactamente la misma definición.
 - La comprobación de datos, permisos y rutas sigue siendo la del programa
   real: QA conserva `QA Empresa A, S.L.`, sus locales y sus membresías.
 - Tras publicar el commit, hay que abrir el Deploy Preview 225 con una sesión
-  de QA y comprobar en escritorio y móvil que los ocho rótulos aparecen en el
+  de QA y comprobar en escritorio y móvil que los diez rótulos aparecen en el
   lateral y que la barra móvil mantiene los destinos operativos permitidos.
 - Las pantallas que no son producto real o están bloqueadas por backend siguen
   clasificadas en `MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`; esta corrección
@@ -60,5 +62,6 @@ conserva exactamente la misma definición.
 
 ## Estado
 
-Implementación de la organización Órbita: **aplicada en la rama**, pendiente
-de publicación y comprobación visual live posterior al despliegue.
+Implementación de la organización Órbita: **aplicada y publicada en la rama**;
+la comprobación live del preview anterior sigue mostrando la versión previa
+hasta que Netlify termine el despliegue del commit `fb53b58e`.
