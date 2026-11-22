@@ -96,6 +96,10 @@ los mismos handlers. El recurso se sirve con
 `qa-orbita-pase-v5-20261122`, huella P01 `529762222952d1f6`; no hay RPC nuevo
 ni mutación de datos.
 
+La comprobación live en Deploy Preview 225, con `QA-EMP-A / QA-A1`, devuelve
+el orden de hijos del `main` como selector de local → `.la-panel-diseno` →
+`#la-pase-panel` → detalle heredado y `scrollWidth - clientWidth = 0`.
+
 La capa `la-plantillas-orbita.js` queda en versión semántica 2. Además de
 marcar la plantilla principal de cada uno de los 12 módulos y las subplantillas
 de formulario, tabla, detalle y cola, etiqueta los estados que ya emite el

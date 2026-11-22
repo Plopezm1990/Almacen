@@ -1527,6 +1527,12 @@ la validación autenticada de las diez vistas de administración ni de Acceso/MF
 Esas dos superficies siguen separadas de los recorridos QA ya evidenciados y no
 deben marcarse como cerradas por inspección estática.
 
+La misma sesión QA confirmó después la jerarquía de Inicio/Pase en el preview:
+el selector de local queda primero, `.la-panel-diseno` segundo y
+`#la-pase-panel` tercero, con el detalle operativo después y sin overflow
+horizontal (`scrollWidth - clientWidth = 0`). Esto deja la estructura del panel
+alineada con la maqueta sin ocultar ni duplicar el plano, la cola o sus accesos.
+
 Corrección estructural incluida después: `la-plataforma-root` y
 `la-plataforma-cambio-root` se crean como `<main>` semánticos, manteniendo los
 atributos externos de Órbita y todos los handlers existentes. Esto permite que
