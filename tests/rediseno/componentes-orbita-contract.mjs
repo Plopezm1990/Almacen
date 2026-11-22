@@ -95,6 +95,12 @@ assert.match(platformPanel, /data-la-orbita-surface["']:\s*["']plataforma["']/g,
 assert.match(platformPanel, /data-la-orbita-module["']:\s*["']plataforma["']/g, 'Plataforma externa no queda clasificada como módulo');
 assert.match(platformPanel, /h\("main",\s*\{ id: ROOT_PANEL_ID/, 'la raíz principal de Plataforma no consume la semántica main de las plantillas');
 assert.match(platformPanel, /h\("main",\s*\{ id: ROOT_CAMBIO_ID/, 'la pantalla de primer acceso de Plataforma no consume la semántica main de las plantillas');
+assert.match(platformPanel, /ROOT_PANEL_ID[\s\S]*data-la-orbita-template["']:\s*["']configuracion["']/,
+  'el panel de Plataforma no declara la plantilla de configuración desde su primer render');
+assert.match(platformPanel, /ROOT_CAMBIO_ID[\s\S]*data-la-orbita-template["']:\s*["']formulario["']/,
+  'el primer acceso de Plataforma no declara la plantilla de formulario desde su primer render');
+assert.match(platformPanel, /data-la-orbita-mobile-template["']:\s*["']movil["']/g,
+  'las superficies externas de Plataforma no declaran la plantilla móvil común');
 assert.match(css, /#la-plataforma-root\.lap-root[\s\S]{0,180}background:\s*var\(--c-bg\)/, 'el fondo Órbita no alcanza la raíz principal de Plataforma');
 assert.match(css, /#la-plataforma-cambio-root\.lap-root[\s\S]{0,180}background:\s*var\(--c-bg\)/, 'el fondo Órbita no alcanza la raíz de primer acceso de Plataforma');
 assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipográfico inexistente');

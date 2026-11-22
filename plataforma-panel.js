@@ -1014,7 +1014,7 @@
     }
     botonesBarra.push(boton("Cerrar sesión", "sec peq", function () { cerrarSesion(o.recargar, sesion.user.id); }));
 
-    var nodo = h("main", { id: ROOT_PANEL_ID, class: "lap-root", role: "main", "data-la-orbita-module": "plataforma", "data-la-orbita-external": "plataforma", "data-la-orbita-surface": "plataforma" },
+    var nodo = h("main", { id: ROOT_PANEL_ID, class: "lap-root", role: "main", "data-la-orbita-module": "plataforma", "data-la-orbita-external": "plataforma", "data-la-orbita-surface": "plataforma", "data-la-orbita-template": "configuracion", "data-la-orbita-mobile-template": "movil", "data-la-plantilla": "configuracion" },
       h("div", { class: "lap-barra" },
         h("div", null, h("h1", null, "Plataforma · L&A Suite"), h("small", null, "Administrador: " + email)),
         h("div", { class: "lap-fila" }, botonesBarra)),
@@ -1102,7 +1102,7 @@
     var caja = h("div", { class: "lap-dialogo", role: "dialog", "aria-modal": "true", "aria-label": "Elige tu contraseña" },
       h("div", { class: "lap-kicker" }, "L&A Suite · primer acceso"),
       h("h2", { class: "lap-mt-2" }, "Elige tu contraseña"), form);
-    var raiz = h("main", { id: ROOT_CAMBIO_ID, class: "lap-cambio lap-root", "data-la-orbita-module": "plataforma", "data-la-orbita-external": "plataforma", "data-la-orbita-surface": "plataforma" }, caja);
+    var raiz = h("main", { id: ROOT_CAMBIO_ID, class: "lap-cambio lap-root", "data-la-orbita-module": "plataforma", "data-la-orbita-external": "plataforma", "data-la-orbita-surface": "plataforma", "data-la-orbita-template": "formulario", "data-la-orbita-mobile-template": "movil", "data-la-plantilla": "formulario" }, caja);
     document.body.appendChild(raiz);
 
     var enCurso = false;

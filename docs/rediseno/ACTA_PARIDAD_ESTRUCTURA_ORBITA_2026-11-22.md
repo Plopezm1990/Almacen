@@ -235,3 +235,13 @@ y la lista enlaza a Pedidos o Productos según el registro real. Si las
 colecciones están vacías se muestra el estado vacío Órbita, no una cifra
 inventada. En móvil pasan a una sola columna sin overflow y sus acciones
 mantienen el objetivo táctil común.
+### Superficies externas: plantilla desde el primer render · revisión 22/11/2026
+
+`plataforma-panel.js` declara desde la creación de cada raíz su plantilla
+Órbita (`configuracion` para el panel administrativo y `formulario` para el
+primer acceso), además de `movil`. El primer frame recibe así la misma
+composición semántica que el resto de la aplicación sin modificar ids,
+permisos, sesión, handlers, operaciones ni datos. La recuperación de
+contraseña ya declaraba `formulario` + `movil` en su HTML independiente.
+
+El contrato de componentes mantiene `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`.

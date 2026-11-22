@@ -3217,3 +3217,20 @@ contrato de componentes una aserción que detecta el retorno de la paleta
 heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
+## Continuación Codex · superficies externas Órbita · 22/11/2026
+
+En `rediseno/f0-base-qa`, el panel administrativo y el primer acceso de
+Plataforma declaran sus plantillas Órbita en el primer render:
+`configuracion`/`movil` para el panel y `formulario`/`movil` para el cambio de
+contraseña. Esto evita un primer frame sin composición mientras el observador
+semántico recorre el DOM. No se modifican RPC, permisos, sesiones, rutas ni
+datos. `restablecer-contrasena` ya tenía la misma declaración desde HTML.
+
+Verificación: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`,
+`MARCO_ORBITA_CONTRACT=PASS (28/28)`, `REDISENO_PLANTILLAS_ORBITA_CONTRACT=PASS`,
+`REDISENO_MIGRACION_MODULOS_CONTRACT=PASS`, `REDISENO_P01_CAPAS_Y_MIGRACIONES_OK=1`,
+`REDISENO_CSS_ORBITA_CONTRACT=PASS`, `REDISENO_MOVIL_RECORRIDOS_ORBITA_CONTRACT=PASS`,
+`CIERRE_LIMPIO_PLAN=PASS`, `git diff --check=PASS`.
+
+La cuenta y las operaciones de Plataforma siguen requiriendo una sesión QA
+administradora específica; no se inventan credenciales ni se toca producción.
