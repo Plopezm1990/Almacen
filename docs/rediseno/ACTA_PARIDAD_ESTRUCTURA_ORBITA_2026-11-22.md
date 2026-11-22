@@ -415,3 +415,26 @@ batería prueba la estructura del shell, las rutas de los 12 módulos, las diez
 plantillas, el responsive, el suelo táctil, los estados semánticos, MFA,
 Apariencia y el arranque resiliente. No sustituye la evidencia viva que exige
 una sesión autenticada para Plataforma y Acceso/MFA.
+
+### Auditoría de estructura por módulo · estado verificable · 22/11/2026
+
+| Módulo | Plantilla/superficie Órbita | Contrato estructural | Evidencia viva actual | Cierre que falta |
+|---|---|---|---|---|
+| Inicio y panel general | `panel` / `inicio` | PASS | QA móvil y escritorio parcial | estados y recorrido autenticado completo |
+| TPV y sala | `tpv` / `tpv` | PASS | TPV/sala y Q07-Q08 verificados | cierre individual de todos los estados |
+| Pase | `cola` / `pase` | PASS | panel y cola comprobados | sesión autenticada separada y recorrido completo |
+| Cocina | `cola` / `cocina` | PASS | cola móvil y estados comprobados | escritorio + vacío/carga/error dedicado |
+| Caja | `detalle` / `caja` | PASS | apertura, cobro, cierre y móvil comprobados | recorrido individual completo sin mutación adicional |
+| Clientes | `listado` / `clientes` | PASS | móvil con filtros, NIF, ficha y paginación | escritorio y estados dedicados |
+| Compras | `listado`/`detalle` / `compras` | PASS | Proveedores y Productos recorridos | recepción, albarán y factura por ruta |
+| Inventario | `tabla` / `inventario` | PASS | Productos y movimientos recorridos | mermas, caducidad y ajustes por ruta |
+| Personal | `ficha` / `personal` | PASS | fichas y permisos estructurales | fichajes, turnos y estados por ruta |
+| Configuración | `configuracion` / `configuracion` | PASS | empresa, local y apariencia recorridos | equipos/fiscalidad con estados dedicados |
+| Plataforma | `configuracion` + `formulario` / `plataforma` | PASS | contratos P05 99/99 | sesión administradora viva en desktop/móvil |
+| Acceso | `formulario` / `acceso` | PASS | recuperación live | login, expiración y MFA con sesión real |
+
+Esta tabla es deliberadamente conservadora: `PASS` en contrato demuestra que
+la estructura visual y la organización están integradas en el código; no
+convierte una ruta no recorrida con sesión real en evidencia viva. El cierre
+del objetivo requiere completar únicamente las dos columnas finales pendientes,
+sin modificar datos de producción ni crear operaciones QA no autorizadas.
