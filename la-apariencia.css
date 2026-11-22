@@ -241,6 +241,13 @@ html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
   background: color-mix(in srgb, var(--c-on-chrome, #fff) 8%, transparent); color: var(--c-on-chrome, #fff); font-size: 20px; cursor: pointer;
 }
 .la-orbita-sidebar-group { margin-block: 10px; }
+.la-orbita-zone-label {
+  padding: 13px 10px 4px;
+  color: color-mix(in srgb, var(--c-on-chrome, #fff) 48%, transparent);
+  font: 700 10px/1.2 var(--la-font);
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
 .la-orbita-sidebar-title { padding: 8px 10px 5px; color: color-mix(in srgb, var(--c-on-chrome, #fff) 58%, transparent); font-size: 10px; font-weight: 700; letter-spacing: .1em; text-transform: uppercase; }
 .la-orbita-sidebar-item { display: flex; align-items: center; gap: 10px; width: 100%; min-height: 44px; padding: 9px 10px; border: 0; border-radius: 9px; background: transparent; color: color-mix(in srgb, var(--c-on-chrome, #fff) 78%, transparent); font: 500 13px/1.2 var(--la-font); text-align: left; cursor: pointer; }
 .la-orbita-sidebar-item:hover,
@@ -275,6 +282,7 @@ html[data-la-diseno] .la-orbita-sidebar [style*="rgba(184, 139, 69, 0.07)"] {
 .la-orbita-sidebar.la-orbita-colapsada .la-shell-label,
 .la-orbita-sidebar.la-orbita-colapsada .text-\[13px\],
 .la-orbita-sidebar.la-orbita-colapsada .text-\[10\.5px\] { display: none !important; }
+.la-orbita-sidebar.la-orbita-colapsada .la-orbita-zone-label { display: none !important; }
 .la-orbita-sidebar.la-orbita-colapsada button { justify-content: center; padding-inline: 8px; }
 .la-orbita-sidebar .la-orbita-legacy-tool { display: none !important; }
 .la-orbita-header {

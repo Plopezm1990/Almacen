@@ -216,6 +216,29 @@
     });
   }
 
+  /* La maqueta no solo nombra las áreas: las agrupa en dos momentos de
+     trabajo. Añadimos esas etiquetas al lateral existente sin mover sus
+     botones ni crear una segunda navegación. */
+  function marcarZonasSidebar(sidebar) {
+    if (!sidebar || sidebar.querySelector("[data-la-orbita-zone-label]")) return;
+    var secciones = Array.prototype.filter.call(sidebar.children, function (nodo) {
+      return nodo && nodo.nodeType === 1 && !nodo.classList.contains("la-orbita-zone-label");
+    });
+    var tituloDe = function (seccion) {
+      var titulo = seccion.querySelector(":scope > .la-orbita-sidebar-title, :scope > div");
+      return textoVisible(titulo);
+    };
+    var insertar = function (antesDe, clave, texto) {
+      if (!antesDe) return;
+      var etiqueta = h("div", { class: "la-orbita-zone-label", "data-la-orbita-zone-label": clave, texto: texto });
+      sidebar.insertBefore(etiqueta, antesDe);
+    };
+    var operacion = secciones.find(function (seccion) { return /servicio/i.test(tituloDe(seccion)); });
+    var administracion = secciones.find(function (seccion) { return /informes|organizaci[oó]n|sistema/i.test(tituloDe(seccion)); });
+    insertar(operacion, "operacion", "Operación");
+    insertar(administracion, "administracion", "Administración");
+  }
+
   function crearSidebarParaClaro(legacy) {
     if (!legacy || marco.querySelector(".la-orbita-sidebar")) return marco.querySelector(".la-orbita-sidebar");
     var sidebar = h("aside", { class: "la-orbita-sidebar", "aria-label": "Navegación principal" });
@@ -261,12 +284,14 @@
       legacy.classList.add("la-orbita-legacy-header");
       var sidebarClaro = crearSidebarParaClaro(legacy);
       sincronizarSidebarClaro(legacy, sidebarClaro);
+      marcarZonasSidebar(sidebarClaro);
       return sidebarClaro;
     }
     var sidebar = marco.querySelector(":scope > aside");
     if (sidebar) {
       sidebar.classList.add("la-orbita-sidebar");
       marcarNavegacion(sidebar);
+      marcarZonasSidebar(sidebar);
     }
     return sidebar;
   }

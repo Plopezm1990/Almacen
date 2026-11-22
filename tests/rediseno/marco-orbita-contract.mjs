@@ -9,7 +9,7 @@ const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
 const checks = [
-  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v20-20261121') && index.includes('la-apariencia.css?v=qa-orbita-modules-v68-20261121'), 'index carga las capas Órbita con sus marcas de caché'],
+  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v21-20261122') && index.includes('la-apariencia.css?v=qa-orbita-modules-v69-20261122'), 'index carga las capas Órbita con sus marcas de caché'],
   [shell.includes('var superficie = ruta === "inicio" ? "inicio"'), 'Inicio conserva la identidad de módulo sobre subpaneles'],
   [shell.includes('data-la-orbita-header') && shell.includes('data-la-orbita-qa'), 'capa común con cabecera y estado QA'],
   [shell.includes('crearSidebarParaClaro') && shell.includes('la-orbita-legacy-header'), 'la propuesta claro deja de conservar una cabecera de marco alternativa'],
@@ -23,6 +23,7 @@ const checks = [
   [shell.includes('marcarHerramientasLegadas') && shell.includes('la-orbita-legacy-tool'), 'controles duplicados neutralizados en la navegación antigua'],
   [shell.includes('rutaActiva') && shell.includes('data-la-orbita-route'), 'cada ruta queda identificada dentro del marco común'],
   [shell.includes('data-la-orbita-surface') && shell.includes('la-operacion-cocina'), 'superficies TPV, Pase, Cocina y Caja quedan marcadas'],
+  [shell.includes('marcarZonasSidebar') && shell.includes('data-la-orbita-zone-label') && css.includes('.la-orbita-zone-label'), 'lateral Órbita conserva las zonas Operación y Administración de la maqueta'],
   [shell.includes('El destino elegido por la navegación manda') && shell.includes('laOrbitaRouteBound'), 'Inicio conserva prioridad sobre subpaneles incrustados'],
   [shell.includes('la-orbita-page-title') && shell.includes('SectionTitle'), 'títulos de módulos históricos reciben la jerarquía Órbita'],
   [shell.includes('data-la-barra-inferior') && shell.includes('la-orbita-bottom-nav'), 'navegación inferior móvil conservada dentro del marco común'],
