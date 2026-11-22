@@ -1525,6 +1525,13 @@ sus variantes y estados individualmente antes de marcar el objetivo completo.
 Referencia de esta tanda: commit `88b3812c`, rama `rediseno/f0-base-qa`, PR
 #225 en borrador, preview `https://deploy-preview-225--chic-entremet-9107cf.netlify.app`.
 
+En el despliegue posterior `72df522c`, una pestaña limpia cargó Inicio/Pase con
+datos reales de `QA-EMP-A / QA-A1`. La sesión de propietario de empresa no
+ofrece Plataforma en el menú de Perfil: solo muestra seguridad, tema, modo
+empleado y cierre de sesión. No se debe convertir esa ausencia en un fallo ni
+abrir la ruta manualmente; la validación de Plataforma requiere la cuenta
+administradora separada documentada en la matriz.
+
 La página `restablecer-contrasena.html` se abrió en el preview 225 el
 22/11/2026 y se comprobó sin mutación: tarjeta Órbita, logo, correo, botón de
 recuperación y retorno con escala común. La evidencia de Plataforma/MFA sigue

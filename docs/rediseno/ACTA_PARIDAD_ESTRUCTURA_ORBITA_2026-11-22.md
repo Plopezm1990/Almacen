@@ -166,3 +166,16 @@ según la matriz.
 La documentación de esta auditoría queda en el commit `88b3812c` de
 `rediseno/f0-base-qa`; el PR #225 sigue en borrador y el preview asociado es
 `https://deploy-preview-225--chic-entremet-9107cf.netlify.app`.
+
+### Preview actualizado y frontera de Plataforma · 22/11/2026
+
+El alias del preview volvió a desplegarse con el commit documental
+`72df522c`. Al abrirlo en una pestaña limpia, el arranque terminó en el panel
+Órbita de `QA-EMP-A / QA-A1`, con Pase, selector de local, accesos rápidos,
+indicadores y barra móvil visibles. El menú de Perfil de la sesión de
+propietario normal mostró únicamente Cuenta y seguridad, Cambiar tema, Modo
+empleado y Cerrar sesión; no mostró Plataforma. Esto confirma la separación de
+privilegios prevista: no se fuerza ni se inventa una ruta de administración
+desde una cuenta de empresa. La prueba autenticada de Plataforma queda
+pendiente de la cuenta de administrador específica, no de un defecto visual
+del shell.
