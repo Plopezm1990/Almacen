@@ -295,6 +295,34 @@ los cinco botones medidos tienen 44 px de alto y el overflow es 0. El menú
 móvil `Más` conserva la organización por áreas `SERVICIO`, `CAJA Y
 FISCALIDAD`, `COMPRAS`, `INVENTARIO`, `EQUIPO`, `CALIDAD`, `INFORMES`,
 `ORGANIZACIÓN` y `SISTEMA`, sin cambiar las rutas que ya tenía cada acción.
+
+### Corrección transversal de botones con texto en Clientes y módulos comunes · 22/11/2026
+
+La revisión de Clientes detectó un defecto transversal que no pertenecía a la
+pantalla: el selector CSS `button:has(> svg:only-child)` consideraba que un
+botón con un icono y texto era «solo icono», porque los nodos de texto no
+participan en `:only-child`. En móvil eso comprimía acciones como `Nuevo
+cliente` y podía apilar el texto verticalmente.
+
+La capa Órbita ahora marca de forma semántica los controles realmente
+icon-only (`.la-orbita-icon-only`) después de inspeccionar su texto visible y
+mantiene el selector CSS antiguo únicamente como fallback para botones sin la
+marca de control Órbita. Así, `Nuevo cliente`, `Abrir ficha`, `Editar` y
+`Anonimizar` conservan su etiqueta y su acción horizontal, mientras los
+controles que solo muestran un icono siguen cumpliendo el área táctil mínima.
+No se modifican datos, rutas, permisos, handlers ni lógica de Clientes.
+
+En el preview 225, con `QA-EMP-A / QA-A1` y el shell móvil Órbita, Clientes
+mostró `Nuevo cliente`, vistas guardadas, búsqueda, filtros Estado/Tipo,
+tarjetas reales, NIF particular enmascarado, acciones de ficha y paginación.
+La captura live confirma que `Nuevo cliente` y las acciones de cada tarjeta se
+leen horizontalmente; no se ejecutó ninguna escritura.
+
+La corrección está en `87f53c5f`; los contratos de componentes y recorridos
+móviles permanecen en PASS. La comprobación móvil de Clientes queda como
+`EVIDENCIA_LIVE`; el cierre conjunto de los doce módulos sigue pendiente de
+Plataforma autenticada, Acceso/MFA y la pasada desktop/mobile individual de
+cierre.
 ### Evidencia live de la barra móvil · commit daa43731
 
 En Deploy Preview 225 (`daa43731`), con `QA-EMP-A / QA-A1`, la accesibilidad

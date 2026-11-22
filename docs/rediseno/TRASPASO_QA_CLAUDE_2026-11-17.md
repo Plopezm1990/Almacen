@@ -3278,3 +3278,21 @@ Caja también quedó verificada en una columna, con cinco botones a 44 px y
 overflow 0. El menú móvil `Más` mantiene las áreas Servicio, Caja y
 fiscalidad, Compras, Inventario, Equipo, Calidad, Informes, Organización y
 Sistema; solo cambia la presentación del shell, no las rutas ni handlers.
+
+### Clientes · corrección transversal de acciones comprimidas · `87f53c5f` · 22/11/2026
+
+La revisión móvil de Clientes encontró que el fallback `:has(> svg:only-child)`
+clasificaba erróneamente cualquier botón con un SVG y un texto como botón solo
+icono. En el ancho móvil el texto de `Nuevo cliente` podía quedar comprimido y
+apilado. La solución no cambia la pantalla ni su lógica: `marcarComponentesOrbita`
+añade `.la-orbita-icon-only` únicamente cuando no existe texto visible y la
+capa CSS deja el selector antiguo solo como fallback para controles que no
+sean de Órbita.
+
+Preview 225, QA-EMP-A/QA-A1, sin mutación: Clientes conserva cabecera y barra
+inferior Órbita, vistas guardadas, búsqueda, filtros, tarjetas, NIF enmascarado,
+acciones de ficha y paginación. La captura live muestra `Nuevo cliente` y las
+acciones de tarjeta horizontales y legibles. Contratos de componentes y
+recorridos móviles permanecen en PASS. Esta evidencia no cierra aún el
+objetivo global: Plataforma autenticada, Acceso/MFA y el cierre individual
+desktop/mobile de los doce módulos siguen separados en la matriz.
