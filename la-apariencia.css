@@ -471,9 +471,11 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
     min-width: 0;
   }
   html[data-la-diseno] #root .la-panel-diseno-cab .la-panel-accesos button {
-    width: 100%;
-    min-width: 0;
-    min-height: var(--la-control-height-large);
+    width: 100% !important;
+    min-width: 0 !important;
+    max-width: none !important;
+    min-height: var(--la-control-height-large) !important;
+    justify-self: stretch;
     justify-content: center;
     overflow-wrap: anywhere;
   }
