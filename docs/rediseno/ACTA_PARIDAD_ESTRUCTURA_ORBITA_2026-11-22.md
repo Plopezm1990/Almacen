@@ -68,3 +68,8 @@ en el preview 225** con el commit `be7532d3` (código `fb53b58e`). La evidencia
 live cubre el recorrido móvil; la cobertura de escritorio queda respaldada
 por el contrato responsive y la revisión visual de shell, pendiente de una
 captura autenticada de escritorio si se necesita una prueba fotográfica.
+
+La revisión posterior del shell añade las etiquetas de zona `Operación` y
+`Administración` en el lateral de escritorio, igual que la maqueta. El shell y
+la hoja visual se publican con las marcas de caché `qa-orbita-shell-v21-20261122`
+y `qa-orbita-modules-v69-20261122`; contrato del marco: `28/28 PASS`.
