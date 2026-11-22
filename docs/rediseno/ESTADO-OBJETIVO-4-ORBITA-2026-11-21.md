@@ -2,7 +2,7 @@
 
 Fecha: 21/11/2026  
 Rama: `rediseno/f0-base-qa` · PR #225 en borrador  
-Último SHA auditado: `b348cf0d` (evidencia móvil de Acceso, MFA y Plataforma)
+Último SHA auditado: `8c5d195c17fd094d4c23662e1ec78867dc810ee` (cierre limpio vigente; los SHA anteriores son evidencia histórica)
 
 ## Resultado de la implementación
 
@@ -135,5 +135,25 @@ Con el cierre definitivo de QA-A1 y la batería final de 18 scripts Node sin
 fallos, el objetivo de migración de los 12 módulos al marco Órbita queda
 **TERMINADO en QA**. El cierre global está en
 `ACTA_CIERRE_OBJETIVO_4_ORBITA_2026-11-21.md`; la matriz conserva las notas
-históricas para trazabilidad. Último SHA:
+históricas para trazabilidad. Último SHA histórico de esa tanda:
 `9258f2222429c7e377c0afdd20b66feaa21d7876`.
+
+## Addendum de cierre limpio · 22/11/2026
+
+La referencia vigente de la rama es `8c5d195c17fd094d4c23662e1ec78867dc810ee`.
+Las referencias de SHA anteriores que aparecen en secciones históricas no
+representan el estado actual; el acta final y la matriz canónica deben leerse
+con este addendum.
+
+Se cerraron las excepciones visuales que sí afectaban a superficies activas:
+Encargos usa ahora confirmación Órbita para reembolsos tras devolución o
+cancelación, y Clientes activo usa modales Órbita para anonimizar y eliminar.
+La página de recuperación queda documentada como acceso independiente
+tokenizado, sin shell autenticado por diseño.
+
+La matriz `MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv` clasifica las filas que
+siguen sin pantalla como futuras, reencuadradas, cubiertas, fuera de producto o
+bloqueadas externamente. No se deben interpretar como deuda visual del shell.
+Las confirmaciones nativas de navegación con formulario sin guardar y de
+revisión humana de nóminas permanecen como excepciones heredadas explícitas:
+eliminarlas requiere un cambio asíncrono de flujo, no un bypass silencioso.

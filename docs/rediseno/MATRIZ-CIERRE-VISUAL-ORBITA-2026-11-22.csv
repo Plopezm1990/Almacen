@@ -1,0 +1,27 @@
+ID;decision_cierre;estado_visual;impacto_visual;proxima_accion
+tpv-24;FUTURA_PRODUCTO;No es un hueco visual; superficie y contrato de funciones rápidas no existen;No construir hasta aprobar catálogo, permisos y fixture;Producto decide P2
+tpv-28;FUTURA_BACKEND;No es un hueco visual; Bizum requiere proveedor, webhook e idempotencia;No simularlo como Transferencia;Producto y backend
+tpv-29;DIVIDIDA;Propina cerrada; vale regalo futuro;La parte visual de propina está cerrada; no crear UI de vale sin contrato de saldo;Producto decide vale regalo
+tpv-32;FUTURA_BACKEND;No es un hueco visual; entrega por correo no está aplicada;No construir hasta disponer de proveedor, estados y reintentos;Backend y producto
+tpv-33;FUTURA_PRODUCTO;No es un hueco visual; no existe canal de pantalla para cliente;Definir dispositivo, privacidad y tiempo real antes de UI;Producto decide P2
+enc-05;REENCUADRADA;Cerrada visualmente dentro de Encargos;La confirmación de reembolso usa modal Órbita propio;Mantener bajo cancelar/devolver y no crear pantalla independiente;QA funcional autorizado si se cambia dinero
+caj-20;FUTURA_BACKEND;No es un hueco visual; factura electrónica interoperable no tiene contrato;Definir formato, proveedor y requisitos legales;Fiscal y backend
+inv-32;DECISION_PRODUCTO;No existe detalle/impresión de receta;No inventar una pantalla de maqueta;Construir solo si impresión de receta es requisito;Producto decide
+inv-35;FUTURA_PRODUCTO;Servidor conoce variantes pero no hay biblioteca UI;No es un hueco del shell Órbita;Definir CRUD, versiones, límites y permisos;Producto P2
+inv-36;CUBIERTA_POR_OTRA;Parte de inv-35;No mantener formulario duplicado;Cerrar junto con inv-35 o retirar fila;Producto
+org-23;FUTURA_HARDWARE;Configuración solo registra equipos;No declarar prueba de impresora/cajón sin puente local;Definir protocolo y permisos;Producto e infraestructura
+org-25;REENCUADRADA;Cubierta por Terminales/Equipos org-22;No crear pantalla duplicada;Ampliar org-22 si el vínculo es requisito;Producto
+org-34;FUTURA_O_RETIRO;No existe contrato de plantilla de negocio;No inventar presets;Aprobar catálogo o retirar fila;Producto
+org-35;FUTURA_O_RETIRO;No existe superficie de teclas por cargo;No inventar personalización;Aprobar precedencia y restauración o retirar fila;Producto
+org-36;FUTURA_BACKEND;No existe puente de impresión ejecutable;No es una carencia del shell;Definir integración, secretos y health-check;Arquitectura
+sis-14;FUERA_PRODUCTO;Andamio de la maqueta;No construir en la suite;Retirar de la matriz de pantallas de producto;Documentación QA
+sis-15;FUERA_PRODUCTO;Andamio de la maqueta;No construir en la suite;Retirar de la matriz de pantallas de producto;Documentación QA
+sis-16;FUERA_PRODUCTO;El producto falla cerrado y oculta módulos;No necesita pantalla adicional;Conservar pruebas de denegación y retirar como pantalla;Seguridad
+acc-08;BLOQUEADA_QA;No bloquea el diseño; QA no está vacío;No vaciar QA;Requiere decisión de instalación
+org-08..org-17;BLOQUEADA_ACCESO;No bloquea el diseño;Falta administrador de Plataforma autorizado;No inventar credenciales;Propietario proporciona sesión si se necesita
+per-21;BLOQUEADA_INFRA;No bloquea el diseño;Edge Function ausente en QA;No duplicar función en la UI;Infraestructura QA
+per-24..per-25;BLOQUEADA_PERMISOS;No bloquea el diseño;Permisos de servidor QA pendientes;No conceder privilegios desde el cliente;Administrador QA
+sis-13;NO_EJERCITADA;Excepción intencionada;Restablecer QA destruiría evidencia;No usar durante este cierre;QA
+tpv-31;CERRADA_QA;Pasa;Factura completa a empresa verificada en QA;Mantener evidencia live;QA
+caj-16;CERRADA_QA;Pasa;Rectificación fiscal verificada en QA;Mantener evidencia live;QA
+org-33;CERRADA_QA;Pasa;Sala y mesas verificadas en móvil y escritorio;Mantener evidencia live;QA

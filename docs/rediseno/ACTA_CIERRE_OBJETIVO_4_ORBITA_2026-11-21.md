@@ -59,7 +59,8 @@ se restauró QA y no se tocó producción.
 ## Último cambio
 
 La evidencia móvil de Acceso, MFA y Plataforma quedó publicada en el commit
-`b348cf0d` de `rediseno/f0-base-qa`. El PR #225 sigue en borrador.
+`b348cf0d` de `rediseno/f0-base-qa` (referencia histórica de esa tanda). El PR
+#225 sigue en borrador.
 
 ## Cierre funcional posterior · punto 2 · 21/11/2026
 
@@ -119,8 +120,9 @@ camino de cada tanda anterior. Las salvedades no bloqueantes son la mejora
 futura de paginación/búsqueda de la cola Pase y el bookkeeping pendiente de
 migraciones de Apariencia. No reabren el objetivo ni alteran su cierre.
 
-**Resultado:** objetivo 4 Órbita terminado en QA. El último SHA de la rama es
-`9258f2222429c7e377c0afdd20b66feaa21d7876`; PR #225 sigue en borrador.
+**Resultado:** objetivo 4 Órbita terminado en QA. El SHA de cierre de aquella
+tanda fue `9258f2222429c7e377c0afdd20b66feaa21d7876`; la referencia vigente es
+la indicada en el addendum de cierre limpio (`8c5d195c17fd094d4c23662e1ec78867dc810ee`). PR #225 sigue en borrador.
 
 ## Auditoría y retirada de CSS antiguo · 21/11/2026
 
@@ -222,3 +224,56 @@ La publicación de esta fase queda en `b008bc6c583042740337aeaf02d9f7935401a575`
 Netlify la dejó lista en el Deploy Preview 225 (`6b021314756178af22771d3a`).
 La comprobación del navegador mostró Acceso interactivo, `overflow=false` y
 control mínimo de 44 px; producción no fue modificada y el PR sigue en borrador.
+
+## Cierre limpio del plan visual · 22/11/2026
+
+Este addendum es la referencia vigente para no confundir la maqueta con el
+producto. La rama auditada es `rediseno/f0-base-qa` en
+`8c5d195c17fd094d4c23662e1ec78867dc810ee8`; el PR #225 continúa en borrador y
+producción permanece intacta.
+
+### Decisiones visuales resueltas
+
+- `restablecer-contrasena.html` queda como superficie independiente de Acceso:
+  carga los tokens y la escala Órbita, mantiene controles táctiles y no monta la
+  navegación de una sesión que todavía no existe. La excepción queda
+  intencionada y documentada, no se considera una pantalla legacy sin capa.
+- Encargos ya no abre un diálogo nativo para decidir el reembolso después de
+  cancelar o devolver: la decisión se muestra en un `Modal` Órbita, con opción
+  explícita de reembolsar o dejar pendiente para Caja, y el mismo flujo existe
+  en `fuente.js` y `source-recovery/fuente-recuperado.js`.
+- Clientes activo ya no usa `window.confirm` para anonimizar o eliminar una
+  ficha: ambas acciones tienen modales Órbita, son cancelables y conservan los
+  mismos handlers, permisos y resultados.
+
+### Excepciones nativas acotadas
+
+Quedan dos confirmaciones nativas fuera de las superficies operativas nuevas:
+la guarda de formulario sin guardar al cambiar de pantalla/local y la revisión
+humana de nóminas. Son protecciones de navegación heredadas que requieren una
+refactorización asíncrona del puente de contexto y no deben sustituirse por un
+`true` automático. Se conservan como excepción explícita y no afectan a los
+flujos de Encargos o Clientes ya migrados.
+
+La función `Clientes` que aún conserva una confirmación nativa en el código
+fuente no se monta en ninguna ruta: la superficie activa es `ClientesPunto3`,
+que ya usa modales Órbita. Se conserva únicamente por paridad y contratos de
+recuperación; no es una excepción de runtime ni una deuda visual activa.
+
+### Matriz canónica de alcance
+
+La clasificación vigente de las filas históricas está en
+`docs/rediseno/MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`. Las filas futuras,
+bloqueadas por backend/permisos o pertenecientes únicamente a la maqueta no
+son defectos visuales y no generan pantallas ficticias. `enc-05` y `org-25` se
+reencuadran bajo sus superficies reales; `sis-14`, `sis-15` y `sis-16` salen
+del inventario de pantallas de producto; `tpv-31`, `caj-16` y `org-33` quedan
+cerradas con evidencia QA.
+
+### Verificación del cierre limpio
+
+El contrato `tests/rediseno/cierre-limpio-plan-contract.mjs` comprueba la
+ausencia de confirmaciones nativas en Encargos y Clientes activo, la presencia
+de la excepción documentada de recuperación, el cierre de los doce módulos y
+la existencia de decisiones para las filas de alcance. No se ejecutaron
+cobros, reembolsos ni mutaciones nuevas en QA durante este cierre.

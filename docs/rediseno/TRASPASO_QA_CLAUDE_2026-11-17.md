@@ -2,6 +2,12 @@
 
 Continuar en `Plopezm1990/Almacen`, rama `rediseno/f0-base-qa`, [PR #225 en borrador contra `release`](https://github.com/Plopezm1990/Almacen/pull/225). Trabajar en el [Deploy Preview #225](https://deploy-preview-225--chic-entremet-9107cf.netlify.app/), proyecto Supabase QA `qjqorixtkilwsndqayyx`, empresa `QA-EMP-A`, local `QA-A1`. Mantener el PR sin fusionar y verificar el SHA del preview antes de cada tanda. La última referencia funcional comprobada es `9d4e6d74` y la evidencia se publicó en `9e6f4cef`. [Puerta general de CI de `9e6f4cef`](https://github.com/Plopezm1990/Almacen/actions/runs/43952689302).
 
+> **Aviso de vigencia (22/11/2026):** este traspaso acumula tandas históricas.
+> La referencia actual es `8c5d195c17fd094d4c23662e1ec78867dc810ee` y el
+> estado vigente de pendientes es `MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`.
+> Las listas antiguas de tareas, estados `PARCIAL` y SHA anteriores no son
+> instrucciones nuevas ni describen deuda visual actual.
+
 ## Reanudar por aquí
 
 > **Estado vigente (17/11/2026):** la lista histórica de este apartado queda sustituida por «Cierre formal del punto 1» al final del documento. Q07, Q08, albarán, anticipos, permisos de Camarero/a y regresión Pase → TPV ya están cerrados con evidencia de QA; no reabrirlos. Solo siguen opcionales los puntos indicados allí.
@@ -1498,6 +1504,35 @@ contrato de componentes una aserción que detecta el retorno de la paleta
 heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
+
+## Traspaso de cierre limpio del rediseño · 22/11/2026
+
+La rama vigente es `rediseno/f0-base-qa` en `8c5d195c17fd094d4c23662e1ec78867dc810ee`.
+El objetivo visual Órbita de los doce módulos sigue cerrado; las cifras
+históricas de 21/23 filas abiertas no deben reutilizarse.
+
+La matriz canónica actual es
+`docs/rediseno/MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`. Su función es
+separar deuda visual real de producto futuro, integración/backend, pantallas de
+maqueta y bloqueos de QA. No se crean pantallas falsas para igualar el número
+del prototipo.
+
+Cambios de coherencia visual incorporados en esta tanda:
+
+- Encargos: reembolso posterior a cancelar/devolver mediante `Modal` Órbita,
+  sin `window.confirm`.
+- Clientes activo: anonimizar y eliminar mediante modales Órbita, con
+  cancelación y preservación de los handlers existentes.
+- Recuperación de contraseña: excepción independiente tokenizada, documentada
+  como acceso sin sesión y no como pantalla legacy perdida.
+
+Excepciones pendientes pero no bloqueantes: confirmaciones de formulario sin
+guardar al cambiar de pantalla/local y confirmación humana de nóminas. Ambas
+requieren refactorización asíncrona del puente de contexto y se mantienen
+explícitamente, sin permitir que un fallo del diálogo ejecute la acción.
+
+No usar `sis-13`, no vaciar QA, no tocar producción y no ejecutar cobros o
+reembolsos nuevos sin autorización expresa.
 
 ### Cierre de recorridos móviles Órbita · 21/11/2026
 

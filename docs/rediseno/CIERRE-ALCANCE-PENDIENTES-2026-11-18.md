@@ -134,3 +134,14 @@ vale regalo/contabilidad fiscal, paginación o búsqueda ampliada de la cola de
 Pase, positivo de Cajero/a con MFA y el bookkeeping de migraciones de
 Apariencia. No se ejecutaron cobros, reembolsos ni documentos adicionales para
 esta actualización; QA sigue aislado y producción fuera de alcance.
+
+## Vigencia de la clasificación · 22/11/2026
+
+Las cifras de este documento son una fotografía histórica de la auditoría del
+18/11. La clasificación vigente y única para el cierre visual es
+`MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`. Sus estados (`CERRADA_QA`,
+`REENCUADRADA`, `CUBIERTA_POR_OTRA`, `FUTURA_*`, `FUERA_PRODUCTO`,
+`BLOQUEADA_EXTERNAMENTE` e `INTENCIONAL_NO_EJERCITADA`) sustituyen cualquier
+lectura literal de `No construida` en las tablas históricas. No queda ninguna
+fila sin decisión; lo que sigue siendo futuro o bloqueado no se presenta como
+defecto visual del rediseño.

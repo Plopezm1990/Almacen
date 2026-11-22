@@ -3,6 +3,11 @@
 Fecha: 21/11/2026  
 Rama: `rediseno/f0-base-qa` · PR #225 en borrador
 
+> **Aviso de vigencia (22/11/2026):** las tablas y notas de este documento
+> son trazabilidad histórica. El estado actual de cada pendiente está en
+> `MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`; sus clasificaciones sustituyen
+> cualquier `PARCIAL` o `No construida` que aparezca más abajo.
+
 Esta matriz evita confundir “usa el shell” con “está migrado visualmente”. Un
 módulo solo pasa a `CERRADO` cuando tiene el marco común, sus componentes
 visuales normalizados, revisión de escritorio y móvil, estados de carga/error/
@@ -1164,6 +1169,15 @@ El commit `c395ae58` se publicó en el Deploy Preview 225 como
 `6b018c8b82a0e124af450238` (`ready`, escaneo de secretos sin coincidencias).
 El alias estable sigue siendo
 `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
+
+## Vigencia · cierre limpio 22/11/2026
+
+Esta matriz conserva la trazabilidad de recorridos y decisiones históricas.
+Para el estado actual de pendientes y para no duplicar IDs, la fuente
+canónica es `MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`, que clasifica todas
+las filas abiertas como cerradas, reencuadradas, cubiertas, futuras, fuera de
+producto o bloqueadas externamente. Por tanto, ninguna aparición histórica de
+`No construida` aquí implica por sí sola deuda visual pendiente.
 
 Los contratos de componentes, marco y capas pasan con esta marca. La fila de
 Inventario continúa `PARCIAL`: falta el recorrido autenticado de movimientos,

@@ -123403,6 +123403,8 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   const [entregarId, setEntregarId] = (0, import_react4.useState)(null);
   const [errorEntrega, setErrorEntrega] = (0, import_react4.useState)("");
   const [medioPagoEntrega, setMedioPagoEntrega] = (0, import_react4.useState)("Efectivo");
+  const [reembolsoPendiente, setReembolsoPendiente] = (0, import_react4.useState)(null);
+  const [errorReembolso, setErrorReembolso] = (0, import_react4.useState)("");
   const [verEntregados, setVerEntregados] = (0, import_react4.useState)(false);
   const [verHistorial, setVerHistorial] = (0, import_react4.useState)(false);
   const [clienteNuevo, setClienteNuevo] = (0, import_react4.useState)("");
@@ -123453,6 +123455,24 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   const addLinea = () => setForm((f22) => ({ ...f22, lineas: [...f22.lineas, lineaEncargo()] }));
   const quitarLinea = (idx) => setForm((f22) => ({ ...f22, lineas: f22.lineas.filter((_22, i33) => i33 !== idx) }));
   const totalForm = !form ? 0 : form.lineas.reduce((a22, l22) => a22 + (Number(l22.cantidad) || 0) * (Number(l22.precioUnitario) || 0), 0);
+  async function confirmarReembolsoOrbita() {
+    const pendiente = reembolsoPendiente;
+    if (!pendiente || !revertirAnticipoEncargo) return;
+    setReembolsoPendiente(null);
+    setErrorReembolso("");
+    const fallos = [];
+    const sufijoPorConcepto = { "Señal": "senal", "Resto entrega": "resto" };
+    for (const cobro of pendiente.cobros || []) {
+      const sufijo = cobro.sufijo || sufijoPorConcepto[cobro.concepto];
+      if (!sufijo) continue;
+      const pagoId = `pago-encargo:${pendiente.encargoId}:${sufijo}`;
+      const reverso = await revertirAnticipoEncargo(pagoId, pendiente.motivo);
+      if (!reverso.ok && reverso.codigo !== "sin_conexion") {
+        fallos.push(`€${fmt(Number(cobro.importe) || 0)}${cobro.concepto ? ` (${cobro.concepto})` : ""}: ${reverso.error || "error desconocido"}`);
+      }
+    }
+    if (fallos.length) setErrorReembolso(`No se pudo completar el reembolso: ${fallos.join("; ")}`);
+  }
   async function submit() {
     if (submitBloqueadoEncargoPM10.current) return;
     submitBloqueadoEncargoPM10.current = true;
@@ -123558,18 +123578,9 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
       }
       setErrorDevolver("");
       setDevolverId(null);
-      if (resultado.cobrosParaReembolsar && resultado.cobrosParaReembolsar.length > 0 && revertirAnticipoEncargo && typeof window !== "undefined" && window.confirm) {
+      if (resultado.cobrosParaReembolsar && resultado.cobrosParaReembolsar.length > 0 && revertirAnticipoEncargo) {
         const totalCobrado = resultado.cobrosParaReembolsar.reduce((a22, c22) => a22 + (Number(c22.importe) || 0), 0);
-        const reembolsar = window.confirm(`Se cobraron €${fmt(totalCobrado)} por este encargo. \xBFReembolsar ahora al cliente?`);
-        if (reembolsar) {
-          for (const cobro of resultado.cobrosParaReembolsar) {
-            const pagoId = `pago-encargo:${devolverId}:${cobro.sufijo}`;
-            const reverso = await revertirAnticipoEncargo(pagoId, `Reembolso por devoluci\xF3n: ${motivoDevolver}`);
-            if (!reverso.ok && reverso.codigo !== "sin_conexion" && typeof window.alert === "function") {
-              window.alert(`No se pudo reembolsar €${fmt(Number(cobro.importe) || 0)} (${cobro.concepto}): ${reverso.error || "error desconocido"}. Rev\xEDsalo en caja.`);
-            }
-          }
-        }
+        setReembolsoPendiente({ encargoId: devolverId, cobros: resultado.cobrosParaReembolsar, totalCobrado, motivo: `Reembolso por devoluci\xF3n: ${motivoDevolver}`, titulo: "\xBFReembolsar el anticipo?", descripcion: `Se cobraron €${fmt(totalCobrado)} por este encargo. Puedes reembolsarlo ahora al cliente o dejarlo pendiente para Caja.` });
       }
     } }, "S\xED, devolver"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setDevolverId(null) }, "Volver")));
   })(), entregarId && (() => {
@@ -123622,27 +123633,12 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
       }
       setErrorEliminar("");
       setConfirmDeleteId(null);
-      if (resultado.tieneCobrosPendientesDeResolver && revertirAnticipoEncargo && typeof window !== "undefined" && window.confirm) {
+      if (resultado.tieneCobrosPendientesDeResolver && revertirAnticipoEncargo) {
         const totalCobrado = resultado.cobros.reduce((a22, c22) => a22 + (Number(c22.importe) || 0), 0);
-        const reembolsar = window.confirm(`Este encargo ten\xEDa €${fmt(totalCobrado)} cobrados. \xBFQuieres reembolsarlos ahora? (Aceptar = reembolsar, Cancelar = quedarte con el importe como se\xF1al perdida)`);
-        if (reembolsar) {
-          const sufijoPorConcepto = { "Se\xF1al": "senal", "Resto entrega": "resto" };
-          for (const cobro of resultado.cobros) {
-            const sufijo = sufijoPorConcepto[cobro.concepto];
-            // El id del cobro en el documento local no siempre coincide con el id de
-            // fila del ledger real (pagos_encargo): se reconstruye a partir del mismo
-            // esquema determinista que usa registrarAnticipoEncargo.
-            if (!sufijo) continue;
-            const pagoId = `pago-encargo:${confirmDeleteId}:${sufijo}`;
-            const reverso = await revertirAnticipoEncargo(pagoId, `Reembolso por cancelaci\xF3n: ${motivoCancelar}`);
-            if (!reverso.ok && reverso.codigo !== "sin_conexion" && typeof window.alert === "function") {
-              window.alert(`No se pudo reembolsar el cobro de €${fmt(Number(cobro.importe) || 0)}: ${reverso.error || "error desconocido"}. Rev\xEDsalo en caja.`);
-            }
-          }
-        }
+        setReembolsoPendiente({ encargoId: confirmDeleteId, cobros: resultado.cobros, totalCobrado, motivo: `Reembolso por cancelaci\xF3n: ${motivoCancelar}`, titulo: "\xBFReembolsar los cobros?", descripcion: `Este encargo tenía €${fmt(totalCobrado)} cobrados. Puedes reembolsarlos ahora o dejar el importe como señal perdida para resolverlo después en Caja.` });
       }
     } }, "S\xED, cancelar encargo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setConfirmDeleteId(null) }, "Volver")));
-  })());
+  })(), reembolsoPendiente && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setReembolsoPendiente(null), title: reembolsoPendiente.titulo }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, reembolsoPendiente.descripcion), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex flex-wrap gap-2 mt-3" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: confirmarReembolsoOrbita }, "Reembolsar ahora"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setReembolsoPendiente(null) }, "Dejar pendiente"))), errorReembolso && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setErrorReembolso(""), title: "Reembolso pendiente de revisión" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", role: "alert" }, errorReembolso), /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: () => setErrorReembolso("") }, "Cerrar")));
 }
 function enmascararNifClienteSuite(nif, tipoCliente) {
   const limpio = String(nif || "").trim();
@@ -123820,6 +123816,8 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
   const [pagina, setPagina] = (0, import_react4.useState)(1);
   const [vistaNueva, setVistaNueva] = (0, import_react4.useState)(null);
   const [errorVista, setErrorVista] = (0, import_react4.useState)("");
+  const [anonimizarPendiente, setAnonimizarPendiente] = (0, import_react4.useState)(null);
+  const [eliminarPendiente, setEliminarPendiente] = (0, import_react4.useState)(null);
   const [clienteAbierto, setClienteAbierto] = (0, import_react4.useState)(null);
   const [fichaTab, setFichaTab] = (0, import_react4.useState)("Resumen");
   const vistaStorageKey = `la_clientes_vistas:${empresaId || "sin-empresa"}`;
@@ -123853,6 +123851,18 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
     reiniciarForm(); setShowForm(false);
   }
   function editar(c22) { setForm({ ...blank, ...c22 }); setEditingId(c22.id); setError(""); setShowForm(true); }
+  function confirmarAnonimizacion() {
+    if (!anonimizarPendiente || !anonimizarCliente) return;
+    const ok = anonimizarCliente(anonimizarPendiente.id);
+    setAnonimizarPendiente(null);
+    if (!ok) setError("No se pudo anonimizar el cliente.");
+  }
+  function confirmarEliminacion() {
+    if (!eliminarPendiente || !deleteCliente) return;
+    const ok = deleteCliente(eliminarPendiente.id);
+    setEliminarPendiente(null);
+    if (!ok) setError("No se pudo eliminar la ficha del cliente.");
+  }
   function guardarVista() {
     setErrorVista("");
     setVistaNueva("Mi vista de clientes");
@@ -123899,7 +123909,7 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
     error && h("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, error),
     h("div", { className: "flex gap-2 md:col-span-3" }, h(Btn, { onClick: guardar }, editingId ? "Guardar cambios" : "Guardar cliente"), h(Btn, { variant: "ghost", onClick: () => { setShowForm(false); reiniciarForm(); } }, "Cancelar"))
   ));
-  const listView = h("div", { className: "space-y-2 mb-4" }, filas.map((c22) => h(Card, { key: c22.id }, h("div", { className: "flex items-start justify-between gap-3" }, h("div", null, h("div", { className: "font-semibold flex items-center gap-1.5" }, c22.nombre, h(Pill2, { color: c22.tipoCliente === "Empresa" ? C2.accent : C2.inkSoft }, c22.tipoCliente || "Particular"), c22.anonimizado && h(Pill2, { color: C2.inkSoft }, "Anonimizado")), h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, [c22.telefono, c22.email].filter(Boolean).join(" · ")), c22.nif && h("div", { className: "text-[11.5px] mono mt-1", style: { color: C2.inkSoft } }, "NIF/CIF: ", enmascararNifClienteSuite(c22.nif, c22.tipoCliente))), h("div", { className: "text-right" }, h("div", { className: "mono font-semibold" }, "€", fmt(c22.facturado)), h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, c22.nEncargos, " encargo(s)"))), h("div", { className: "mt-2 flex flex-wrap items-center gap-2" }, h("span", { className: "text-[11.5px] mr-auto", style: { color: C2.inkSoft } }, c22.ultima ? `Última compra: ${c22.ultima}` : "Sin compras registradas"), h(Btn, { small: true, onClick: () => { setClienteAbierto(c22); setFichaTab("Resumen"); } }, "Abrir ficha"), h(Btn, { small: true, variant: "ghost", onClick: () => editar(c22) }, "Editar"), anonimizarCliente && !c22.anonimizado && h(Btn, { small: true, variant: "danger", onClick: () => { if (window.confirm(`¿Anonimizar a ${c22.nombre}? Se borran los datos identificativos y no se puede deshacer.`)) anonimizarCliente(c22.id); } }, "Anonimizar"), h(Btn, { small: true, variant: "danger", ariaLabel: `Eliminar el cliente ${c22.nombre}`, onClick: () => { if (window.confirm(`¿Eliminar la ficha de ${c22.nombre}? Los encargos históricos se conservarán sin asociar esta ficha.`)) deleteCliente(c22.id); } }, h(Trash2, { size: 13 })) ))));
+  const listView = h("div", { className: "space-y-2 mb-4" }, filas.map((c22) => h(Card, { key: c22.id }, h("div", { className: "flex items-start justify-between gap-3" }, h("div", null, h("div", { className: "font-semibold flex items-center gap-1.5" }, c22.nombre, h(Pill2, { color: c22.tipoCliente === "Empresa" ? C2.accent : C2.inkSoft }, c22.tipoCliente || "Particular"), c22.anonimizado && h(Pill2, { color: C2.inkSoft }, "Anonimizado")), h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, [c22.telefono, c22.email].filter(Boolean).join(" · ")), c22.nif && h("div", { className: "text-[11.5px] mono mt-1", style: { color: C2.inkSoft } }, "NIF/CIF: ", enmascararNifClienteSuite(c22.nif, c22.tipoCliente))), h("div", { className: "text-right" }, h("div", { className: "mono font-semibold" }, "€", fmt(c22.facturado)), h("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, c22.nEncargos, " encargo(s)"))), h("div", { className: "mt-2 flex flex-wrap items-center gap-2" }, h("span", { className: "text-[11.5px] mr-auto", style: { color: C2.inkSoft } }, c22.ultima ? `Última compra: ${c22.ultima}` : "Sin compras registradas"), h(Btn, { small: true, onClick: () => { setClienteAbierto(c22); setFichaTab("Resumen"); } }, "Abrir ficha"), h(Btn, { small: true, variant: "ghost", onClick: () => editar(c22) }, "Editar"), anonimizarCliente && !c22.anonimizado && h(Btn, { small: true, variant: "danger", onClick: () => setAnonimizarPendiente({ id: c22.id, nombre: c22.nombre }) }, "Anonimizar"), h(Btn, { small: true, variant: "danger", ariaLabel: `Eliminar el cliente ${c22.nombre}`, onClick: () => setEliminarPendiente({ id: c22.id, nombre: c22.nombre }) }, h(Trash2, { size: 13 })) ))));
   const ficha = clienteAbierto && h(Card, { className: "mb-4", style: { border: "2px solid " + C2.accent } }, h("div", { className: "flex items-center justify-between gap-2 mb-3" }, h("div", null, h("div", { className: "font-semibold text-[16px]" }, clienteAbierto.nombre), h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, clienteAbierto.tipoCliente || "Particular", clienteAbierto.nif ? " · NIF/CIF protegido en el listado" : "")), h(Btn, { small: true, variant: "ghost", onClick: () => setClienteAbierto(null) }, "Cerrar ficha")), h("div", { className: "flex flex-wrap gap-2 mb-3", role: "tablist", "aria-label": "Secciones de la ficha" }, ["Resumen", "Actividad", "Fiscal"].map((tab2) => h(Btn, { key: tab2, small: true, variant: fichaTab === tab2 ? "primary" : "ghost", onClick: () => setFichaTab(tab2), role: "tab", "aria-selected": fichaTab === tab2 }, tab2))), fichaTab === "Resumen" && h("div", { className: "grid md:grid-cols-2 gap-2 text-[12.5px]" }, h("div", null, h("b", null, "Teléfono: "), clienteAbierto.telefono || "—"), h("div", null, h("b", null, "Correo: "), clienteAbierto.email || "—"), h("div", null, h("b", null, "Dirección: "), clienteAbierto.direccion || "—"), h("div", null, h("b", null, "Última compra: "), clienteAbierto.ultima || "Sin compras registradas"), h("div", null, h("b", null, "Facturado: "), "€", fmt(clienteAbierto.facturado || 0)), h("div", null, h("b", null, "Encargos entregados: "), clienteAbierto.nEncargos || 0)), fichaTab === "Fiscal" && h("div", { className: "text-[12.5px]" }, h("div", { className: "mb-2" }, h("b", null, "NIF/CIF: "), clienteAbierto.nif || "No indicado"), h("div", { className: "mb-2" }, h("b", null, "Datos fiscales: "), clienteAbierto.datosFiscales || "No indicados"), h("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "El NIF particular se muestra enmascarado en el listado; el dato completo solo aparece dentro de la ficha autorizada.")), fichaTab === "Actividad" && h("div", { className: "space-y-2" }, (clienteAbierto.actividad || []).length ? (clienteAbierto.actividad || []).slice().reverse().map((evento, i33) => h("div", { key: i33, className: "p-2 rounded-lg", style: { background: C2.bg } }, h("div", { className: "text-[12px] font-semibold" }, evento.accion || "Cambio", " · ", new Date(evento.fecha).toLocaleString("es-ES")), h("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Actor: ", evento.actor || "Usuario actual"), (evento.cambios || []).map((cambio, j2) => h("div", { key: j2, className: "text-[11.5px]" }, cambio.campo, ": ", cambio.anterior, " → ", cambio.nuevo)))) : h(Empty, { text: "Todavía no hay actividad registrada." })));
   const paginator = h("nav", { "aria-label": "Paginación de clientes", className: "flex flex-wrap items-center gap-2 mb-4" }, h("span", { role: "status", className: "text-[12px] mr-auto", style: { color: C2.inkSoft } }, filtradas.length ? `${(paginaSegura - 1) * porPagina + 1}–${Math.min(paginaSegura * porPagina, filtradas.length)} de ${filtradas.length} clientes` : "0 clientes"), h(Btn, { variant: "ghost", disabled: paginaSegura <= 1, onClick: () => setPagina(paginaSegura - 1) }, "Anterior"), h(Btn, { variant: "ghost", disabled: paginaSegura >= paginas, onClick: () => setPagina(paginaSegura + 1) }, "Siguiente"));
   const productosJuntos = ventaCruzada.base < 3
@@ -123922,6 +123932,8 @@ function ClientesPunto3({ analisisClientes = [], clientesDormidos = [], ventaCru
     ficha,
     h("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Productos que se piden juntos"),
     productosJuntos,
+    anonimizarPendiente && h(Modal, { onClose: () => setAnonimizarPendiente(null), title: "Anonimizar cliente" }, h("div", { className: "text-[12.5px] mb-3" }, `Se borrarán los datos identificativos de ${anonimizarPendiente.nombre}. El historial de encargos se conservará sin asociar esta ficha y no se puede deshacer.`), h("div", { className: "flex flex-wrap gap-2" }, h(Btn, { variant: "danger", onClick: confirmarAnonimizacion }, "Sí, anonimizar"), h(Btn, { variant: "ghost", onClick: () => setAnonimizarPendiente(null) }, "Cancelar"))),
+    eliminarPendiente && h(Modal, { onClose: () => setEliminarPendiente(null), title: "Eliminar cliente" }, h("div", { className: "text-[12.5px] mb-3" }, `Se eliminará la ficha de ${eliminarPendiente.nombre}. Los encargos históricos se conservarán sin asociar esta ficha.`), h("div", { className: "flex flex-wrap gap-2" }, h(Btn, { variant: "danger", onClick: confirmarEliminacion }, "Sí, eliminar"), h(Btn, { variant: "ghost", onClick: () => setEliminarPendiente(null) }, "Cancelar"))),
     vistaNueva === null ? null : h(Modal, { onClose: () => setVistaNueva(null), title: "Guardar vista" },
       h("div", { className: "text-[12.5px] mb-3" }, "Guarda la b\xFAsqueda y los filtros que tienes ahora mismo para volver a ellos con un toque."),
       h(Field, { label: "Nombre de la vista" }, h(Input, {
