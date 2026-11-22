@@ -73,3 +73,8 @@ La revisión posterior del shell añade las etiquetas de zona `Operación` y
 `Administración` en el lateral de escritorio, igual que la maqueta. El shell y
 la hoja visual se publican con las marcas de caché `qa-orbita-shell-v21-20261122`
 y `qa-orbita-modules-v69-20261122`; contrato del marco: `28/28 PASS`.
+
+La página independiente `restablecer-contrasena.html` también apunta a la
+misma marca de apariencia, evitando que el acceso de recuperación quede con
+otra escala visual. La batería completa `tests/rediseno/*.mjs` queda en
+`ALL_REDISENO_TESTS_PASS` y `git diff --check` permanece limpio.
