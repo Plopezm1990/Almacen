@@ -3279,6 +3279,13 @@ overflow 0. El menú móvil `Más` mantiene las áreas Servicio, Caja y
 fiscalidad, Compras, Inventario, Equipo, Calidad, Informes, Organización y
 Sistema; solo cambia la presentación del shell, no las rutas ni handlers.
 
+### Contratos de caché alineados con las capas publicadas · 22/11/2026
+
+La batería completa de `tests/rediseno/*.mjs` pasó después de actualizar las
+huellas del contrato a `la-apariencia.css` v72 y `la-orbita-shell.js` v22. El
+rojo anterior era únicamente un contrato que seguía esperando v71/v21; no era
+un fallo de ejecución. `git diff --check` también pasa.
+
 ### Clientes · corrección transversal de acciones comprimidas · `87f53c5f` · 22/11/2026
 
 La revisión móvil de Clientes encontró que el fallback `:has(> svg:only-child)`

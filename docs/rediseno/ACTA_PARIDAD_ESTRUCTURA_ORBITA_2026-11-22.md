@@ -323,6 +323,15 @@ móviles permanecen en PASS. La comprobación móvil de Clientes queda como
 `EVIDENCIA_LIVE`; el cierre conjunto de los doce módulos sigue pendiente de
 Plataforma autenticada, Acceso/MFA y la pasada desktop/mobile individual de
 cierre.
+
+### Batería de contratos tras la corrección transversal · 22/11/2026
+
+La huella de los contratos de publicación se actualizó para reflejar las
+capas realmente servidas (`la-apariencia.css` v72 y `la-orbita-shell.js` v22),
+incluido el cambio semántico de controles icon-only. La batería completa de
+`tests/rediseno/*.mjs` queda en PASS y `git diff --check` no informa errores.
+Esto corrige un falso rojo del contrato de caché; no relaja ninguna
+comprobación de paridad ni de responsive.
 ### Evidencia live de la barra móvil · commit daa43731
 
 En Deploy Preview 225 (`daa43731`), con `QA-EMP-A / QA-A1`, la accesibilidad
