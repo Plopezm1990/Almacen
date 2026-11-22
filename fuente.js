@@ -117635,6 +117635,21 @@ function leerDisenoNavegacion() {
 }
 function agruparNavegacionRediseno(grupos, diseno) {
   const distribucion = {
+    /* Órbita sigue la misma arquitectura de áreas que la maqueta: el primer
+       nivel responde a cómo se trabaja (servicio, caja, compras, inventario
+       y equipo), no a la procedencia histórica de cada componente. Los ids y
+       los handlers siguen siendo los del producto real; solo cambia el
+       agrupador que se presenta en el marco visual. */
+    orbita: [
+      [null, ["inicio"]],
+      ["Servicio", ["ventas"]],
+      ["Caja y fiscalidad", ["finanzas"]],
+      ["Compras", ["compras"]],
+      ["Inventario", ["almacen", "produccion"]],
+      ["Equipo", ["personal"]],
+      ["Calidad", ["calidad"]],
+      ["Administración", ["sistema"]]
+    ],
     claro: [
       ["Inicio", ["inicio"]],
       ["Servicio", ["ventas"]],
@@ -117649,7 +117664,7 @@ function agruparNavegacionRediseno(grupos, diseno) {
       ["Control", ["finanzas", "calidad", "sistema"]]
     ]
   };
-  const definicion = diseno === "claro" || diseno === "sello" ? distribucion[diseno] : null;
+  const definicion = distribucion[diseno] || null;
   if (!definicion) return grupos;
   const usados = new Set(definicion.flatMap(([, ids]) => ids));
   const agrupados = definicion.map(([titulo, ids]) => {

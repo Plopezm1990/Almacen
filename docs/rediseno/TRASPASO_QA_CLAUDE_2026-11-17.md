@@ -1505,6 +1505,22 @@ heredada. No se modificaron datos, indicadores, handlers, permisos ni rutas.
 Inicio permanece `PARCIAL`: falta la validación autenticada de sus variantes y
 estados en QA.
 
+### Paridad de organización Órbita · 22/11/2026
+
+La revisión comparativa con la maqueta detectó que el shell visual ya estaba
+presente, pero la navegación de `orbita` seguía usando los nombres internos
+del producto (`Ventas`, `Finanzas y análisis`, `Sistema`). Se corrigió la
+distribución del primer nivel en `fuente.js` y
+`source-recovery/fuente-recuperado.js` para presentar la misma organización
+de la maqueta: `Inicio`, `Servicio`, `Caja y fiscalidad`, `Compras`,
+`Inventario`, `Equipo`, `Calidad` y `Administración`.
+
+El cambio es de presentación y agrupación: no cambia rutas, ids, capacidades,
+permisos, datos ni handlers. La evidencia y los límites están en
+`ACTA_PARIDAD_ESTRUCTURA_ORBITA_2026-11-22.md`. El preview debe verificarse
+después del siguiente deploy para confirmar los rótulos en escritorio y la
+barra inferior en móvil.
+
 ## Traspaso de cierre limpio del rediseño · 22/11/2026
 
 La rama vigente es `rediseno/f0-base-qa` en `8c5d195c17fd094d4c23662e1ec78867dc810ee`.

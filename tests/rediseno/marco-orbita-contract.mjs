@@ -5,6 +5,8 @@ const root = resolve(import.meta.dirname, '../..');
 const index = readFileSync(resolve(root, 'index.html'), 'utf8');
 const shell = readFileSync(resolve(root, 'la-orbita-shell.js'), 'utf8');
 const css = readFileSync(resolve(root, 'la-apariencia.css'), 'utf8');
+const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
+const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
 const checks = [
   [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v20-20261121') && index.includes('la-apariencia.css?v=qa-orbita-modules-v68-20261121'), 'index carga las capas Órbita con sus marcas de caché'],
@@ -31,6 +33,9 @@ const checks = [
   [css.includes('data-la-orbita-surface="general"') && css.includes('data-la-orbita-surface="tpv"'), 'tratamiento visual consistente por superficie'],
   [css.includes('.la-orbita-page-title-wrap') && css.includes('.la-orbita-page-title::after'), 'cabecera de contenido común para módulos'],
   [css.includes('min-height: 44px'), 'objetivo táctil mínimo de los controles del marco'],
+  [source.includes('orbita: [') && source.includes('["Caja y fiscalidad", ["finanzas"]]') && source.includes('["Administración", ["sistema"]]'), 'Órbita conserva la organización de áreas de la maqueta'],
+  [recovery.includes('orbita: [') && recovery.includes('["Caja y fiscalidad", ["finanzas"]]') && recovery.includes('["Administración", ["sistema"]]'), 'la recuperación conserva la organización de áreas de Órbita'],
+  [source.includes('const definicion = distribucion[diseno] || null;') && recovery.includes('const definicion = distribucion[diseno] || null;'), 'Órbita se aplica al diseño activo y no queda como definición inerte'],
 ];
 
 const failures = checks.filter(([ok]) => !ok);
