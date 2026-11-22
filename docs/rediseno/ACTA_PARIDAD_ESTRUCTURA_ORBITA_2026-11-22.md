@@ -258,3 +258,10 @@ handler de arqueo existentes. El cambio es de etiqueta y prioridad móvil,
 idéntico en `fuente.js` y `source-recovery/fuente-recuperado.js`; no añade
 rutas, RPC, permisos ni datos. La marca de caché de la fuente pasó a
 `qa-orbita-titular-v6-mobile-nav-20261122`.
+### Evidencia live de la barra móvil · commit daa43731
+
+En Deploy Preview 225 (`daa43731`), con `QA-EMP-A / QA-A1`, la accesibilidad
+mostró exactamente cinco controles en la barra inferior: `Inicio`, `Sala`,
+`Caja`, `Resultados` y `Más`, sin overflow horizontal. El shell mantuvo
+`Local A1`, `QA`, `Buscar`, `Avisos`, `Perfil` y `Apariencia`. `Sala` conduce
+al TPV real y no se escribieron datos de negocio durante la comprobación.

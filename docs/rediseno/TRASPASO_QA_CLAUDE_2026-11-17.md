@@ -3243,3 +3243,9 @@ al TPV/Sala real y `Caja` conserva el arqueo real; no se cambian handlers,
 permisos ni rutas. Paridad mantenida en las dos copias de la fuente. Contrato
 de marco: `30/30 PASS`; recorridos móviles: `12 módulos, overflow=PASS,
 touch=44`.
+### Evidencia live de la barra móvil · commit daa43731
+
+Deploy Preview 225 (`https://deploy-preview-225--chic-entremet-9107cf.netlify.app`),
+sesión `QA-EMP-A / QA-A1`: la barra inferior expuso `Inicio`, `Sala`, `Caja`,
+`Resultados` y `Más`; el shell conservó selector, QA, Buscar, Avisos, Perfil y
+Apariencia. No se escribieron datos.
