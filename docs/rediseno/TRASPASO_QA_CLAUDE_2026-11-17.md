@@ -3265,3 +3265,11 @@ Evidencia live posterior: commit `6a86363e`, deploy
 `335×48` en una anchura de 758 CSS px y no hay overflow horizontal. La
 composición deja de apilar el texto verticalmente y queda alineada con la
 jerarquía móvil de Órbita.
+
+### Evidencia móvil adicional de TPV y Cocina · 22/11/2026
+
+En QA-A1, `Sala` mostró el TPV real con sus modos, catálogo, filtros,
+paginación, sala y cobro sin mutación. La superficie se mantuvo en una
+columna y sin overflow horizontal. `Ir a Cocina` mostró la cola real, el
+estado vacío y la gestión de sesión dentro del mismo shell; los botones
+medidos conservaron 44 px de alto.

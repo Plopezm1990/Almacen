@@ -278,6 +278,16 @@ La corrección quedó publicada en el commit `6a86363e` y en el deploy
 botones medidos fueron `335×48`, `335×48` y `335×48`, con
 `scrollWidth - clientWidth = 0`; la captura live ya muestra `Abrir TPV`,
 `Ir a Cocina` y `Consultar resultados` como acciones horizontales legibles.
+
+### Evidencia móvil adicional de TPV y Cocina · 22/11/2026
+
+Con la misma sesión QA-A1, el recorrido `Sala` abrió el TPV real con Venta
+rápida/Sala, catálogo, filtros, paginación, sala y cobro sin cambiar datos.
+La superficie quedó en una sola columna operativa, con controles táctiles y
+`scrollWidth - clientWidth = 0`. Desde Inicio, `Ir a Cocina` abrió la cola
+real; el estado vacío «No hay comandas para este filtro» y la gestión de
+sesión conservaron la cabecera, la barra inferior y los controles Órbita. En
+los controles medidos de Cocina todos los botones quedaron a 44 px de alto.
 ### Evidencia live de la barra móvil · commit daa43731
 
 En Deploy Preview 225 (`daa43731`), con `QA-EMP-A / QA-A1`, la accesibilidad
