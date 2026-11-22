@@ -3668,6 +3668,8 @@ html[data-la-diseno] #la-plataforma-cambio-root {
   color: var(--c-ink) !important;
   font-family: var(--la-font) !important;
 }
+html[data-la-diseno] #la-plataforma-root.lap-root,
+html[data-la-diseno] #la-plataforma-cambio-root.lap-root,
 html[data-la-diseno] #la-plataforma-root .lap-root,
 html[data-la-diseno] #la-plataforma-cambio-root .lap-root {
   background: var(--c-bg) !important;

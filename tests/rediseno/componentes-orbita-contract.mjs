@@ -26,7 +26,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v69-20261122/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v70-20261122/);
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,
   'la ausencia de configuración de empresa debe conservar Órbita como fallback visual');
@@ -81,6 +81,8 @@ assert.match(platformPanel, /data-la-orbita-surface["']:\s*["']plataforma["']/g,
 assert.match(platformPanel, /data-la-orbita-module["']:\s*["']plataforma["']/g, 'Plataforma externa no queda clasificada como módulo');
 assert.match(platformPanel, /h\("main",\s*\{ id: ROOT_PANEL_ID/, 'la raíz principal de Plataforma no consume la semántica main de las plantillas');
 assert.match(platformPanel, /h\("main",\s*\{ id: ROOT_CAMBIO_ID/, 'la pantalla de primer acceso de Plataforma no consume la semántica main de las plantillas');
+assert.match(css, /#la-plataforma-root\.lap-root[\s\S]{0,180}background:\s*var\(--c-bg\)/, 'el fondo Órbita no alcanza la raíz principal de Plataforma');
+assert.match(css, /#la-plataforma-cambio-root\.lap-root[\s\S]{0,180}background:\s*var\(--c-bg\)/, 'el fondo Órbita no alcanza la raíz de primer acceso de Plataforma');
 assert.doesNotMatch(css, /var\(--la-font-sans\)/, 'Plataforma usa un token tipográfico inexistente');
 assert.ok(css.includes('.la-acceso .la-acceso-campo'), 'Acceso no normaliza campos');
 assert.ok(css.includes('.la-acceso-arte .la-acceso-entorno') && css.includes('#error-arranque button'), 'Acceso y arranque no heredan la paleta Órbita');
@@ -101,7 +103,7 @@ assert.doesNotMatch(shellVisual, /rgba\(255,255,255|#8CC3FF|#c7d5ce|#8fb0a1/i,
 assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
 assert.match(resetPassword, /data-la-orbita-module="acceso"/, 'la recuperación no queda clasificada como módulo de Acceso');
 assert.match(resetPassword, /data-la-orbita-template="formulario"/, 'la recuperación no usa la plantilla de formulario');
-assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v69-20261122/, 'la recuperación no carga el contrato de apariencia');
+assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v70-20261122/, 'la recuperación no carga el contrato de apariencia');
 assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
 assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
 

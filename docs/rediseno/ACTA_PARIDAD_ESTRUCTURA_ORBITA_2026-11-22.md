@@ -72,7 +72,11 @@ captura autenticada de escritorio si se necesita una prueba fotográfica.
 La revisión posterior del shell añade las etiquetas de zona `Operación` y
 `Administración` en el lateral de escritorio, igual que la maqueta. El shell y
 la hoja visual se publican con las marcas de caché `qa-orbita-shell-v21-20261122`
-y `qa-orbita-modules-v69-20261122`; contrato del marco: `28/28 PASS`.
+y `qa-orbita-modules-v70-20261122`; contrato del marco: `28/28 PASS`. La
+revisión v70 corrige además la raíz de las superficies externas de Plataforma:
+su propia clase `.lap-root` recibe ya el fondo y la tinta Órbita, no solo un
+descendiente con esa clase. Huella contractual de `la-apariencia.css`:
+`5b98269158858639`.
 
 La página independiente `restablecer-contrasena.html` también apunta a la
 misma marca de apariencia, evitando que el acceso de recuperación quede con
