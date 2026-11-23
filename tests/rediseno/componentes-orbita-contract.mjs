@@ -19,6 +19,13 @@ for (const [name, text] of [['fuente.js', source], ['source-recovery/fuente-recu
   assert.match(text, /orbita:\s*\{ titulo: "El turno,", destacado: "en movimiento\."/, `${name} no alinea el titular Órbita con la maqueta`);
   assert.match(text, /esOrbita \? "OPERACIÓN EN VIVO"/, `${name} no conserva el eyebrow de operación de la maqueta`);
   assert.doesNotMatch(text, /h\("h2", null, esOrbita && h\("span", \{ "aria-hidden": true \}, "\\u2728 "/, `${name} no debe añadir un adorno que no existe en la maqueta`);
+  // 23/11/2026: la tarjeta "Hola, [nombre] / Turno de hoy / Fichaje"
+  // (InicioEmpleado) no está en la maqueta de Inicio Órbita. Hasta esta fecha
+  // se montaba sin condición cuando `modoEmpleado` estaba activo, encima del
+  // panel nativo de Órbita. La función de fichar sigue intacta y alcanzable
+  // desde Registro horario; aquí solo se deja de componer en Inicio cuando
+  // el diseño activo es Órbita.
+  assert.match(text, /modoEmpleado && !inicioOrbita && [\s\S]{0,80}createElement\(InicioEmpleado,/, `${name} debe ocultar InicioEmpleado cuando el Inicio nativo de Órbita está activo`);
 }
 assert.match(source, /la-panel-orbita-resumen[\s\S]*Pulso de ventas[\s\S]*Pendientes del d\xEDa/, 'Inicio no conserva la composición de pulso y pendientes de la maqueta');
 assert.match(recovery, /la-panel-orbita-resumen[\s\S]*Pulso de ventas[\s\S]*Pendientes del d\xEDa/, 'source-recovery no conserva la composición de pulso y pendientes');
@@ -88,7 +95,8 @@ assert.ok(css.includes('#la-plataforma-root .lap-btn'), 'Plataforma previa no no
 assert.ok(css.includes('#la-plataforma-root .lap-campo textarea'), 'Plataforma previa no normaliza áreas de texto');
 assert.ok(css.includes('.la-acceso button:focus-visible') && css.includes('.lap-btn:focus-visible'), 'Acceso y Plataforma no exponen foco Órbita');
 assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v4-20261122/, 'Plataforma no invalida la caché tras marcar la superficie externa');
-assert.match(index, /la-pase-panel\.js\?v=qa-orbita-pase-v5-20261122/, 'Pase no invalida la caché tras corregir su jerarquía');
+assert.match(index, /la-pase-panel\.js\?v=qa-orbita-pase-v6-20261123/, 'Pase no invalida la caché tras excluirse del Inicio de Órbita');
+assert.match(pasePanel, /return diseno === "pase" \|\| diseno === "ascua";/, 'esPanelServicio no debe volver a montar el panel heredado de Pase sobre el Inicio nativo de Órbita');
 assert.match(pasePanel, /destino\.querySelector\(":scope > \.la-panel-diseno"\)/, 'Pase no busca el panel principal como ancla de composición');
 assert.match(pasePanel, /destino\.insertBefore\(nodo, ancla\.nextSibling\)/, 'Pase vuelve a insertarse antes del panel y rompe la jerarquía Órbita');
 assert.match(platformPanel, /data-la-orbita-external["']:\s*["']plataforma["']/g, 'Plataforma no expone su marca externa Órbita');

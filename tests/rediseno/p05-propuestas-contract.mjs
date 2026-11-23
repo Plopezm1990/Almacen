@@ -49,7 +49,16 @@ assert.ok(fuente.includes('la-operacion la-operacion-cocina'), 'Cocina debe expo
 assert.ok(fuente.includes('la-operacion la-operacion-caja'), 'Caja debe exponer la raíz visual compartida de Órbita.');
 assert.ok(css.includes('html[data-la-diseno="orbita"] .tpv-layout'), 'TPV debe tener composición Órbita explícita.');
 assert.ok(css.includes('html[data-la-diseno="orbita"] #la-pase:not(.la-ascua)'), 'Pase debe heredar la composición Órbita cuando sea el marco activo.');
-assert.match(panel, /diseno === "pase" \|\| diseno === "ascua" \|\| diseno === "orbita"/);
+// 23/11/2026: esPanelServicio ya no incluye "orbita". Hasta esa fecha montaba
+// el panel de servicio de Pase ENCIMA del panel nativo de Inicio de Órbita
+// (PANELES_REDISENO.orbita, en fuente.js), duplicando el turno en dos
+// tarjetas en la misma pantalla -algo que la maqueta no muestra. Ver
+// docs/rediseno/CORRECCION_CIERRE_FINAL_ORBITA_2026-11-23.md. La composición
+// `la-orbita-pase` sigue en el fichero para cuando Pase es el diseño activo
+// dentro del marco Órbita (línea 51 de este contrato); lo que ya no ocurre es
+// que se monte también sobre el Inicio nativo de Órbita.
+assert.match(panel, /diseno === "pase" \|\| diseno === "ascua"/);
+assert.doesNotMatch(panel, /return diseno === "pase" \|\| diseno === "ascua" \|\| diseno === "orbita"/, 'Pase no debe volver a activarse para el Inicio nativo de Órbita');
 assert.ok(panel.includes('la-orbita-pase'), 'Pase debe montarse dentro del marco Órbita.');
 assert.ok(html.includes('la-apariencia.css?v='), 'La hoja de apariencia no tiene marca de caché.');
 

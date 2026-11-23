@@ -46,7 +46,16 @@
   }
 
   function esPanelServicio(diseno) {
-    return diseno === "pase" || diseno === "ascua" || diseno === "orbita";
+    // Órbita tiene su propio panel de Inicio nativo (PANELES_REDISENO.orbita,
+    // en fuente.js): un titular, tres indicadores y accesos, igual que la
+    // maqueta. Hasta el 23/11/2026 esta función también devolvía cierto para
+    // "orbita", así que este panel se montaba ENCIMA de ese panel nativo,
+    // duplicando el turno en dos tarjetas distintas en la misma pantalla de
+    // Inicio -algo que ni la maqueta ni el comentario de cabecera de este
+    // fichero describen ("cuando la empresa usa el diseño Pase", en singular).
+    // Corregido con el usuario viendo las dos capturas una junto a la otra.
+    // Detalle completo: docs/rediseno/CORRECCION_CIERRE_FINAL_ORBITA_2026-11-23.md
+    return diseno === "pase" || diseno === "ascua";
   }
 
   /* ------------------------------------------------------------ utilidades */
