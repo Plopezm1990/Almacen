@@ -239,3 +239,30 @@ Sin pulsar acciones de escritura, el preview recargado mostró además:
 Estas observaciones cubren composición, estado vacío/alerta y escala del marco
 en la sesión actual; no sustituyen la ronda pendiente de Clientes, Personal,
 Configuración, Plataforma y Acceso con sus estados específicos.
+
+### Barrido live de Clientes, Personal y Configuración · 23/11/2026
+
+La misma sesión autenticada de QA en Local A1 se llevó después a las tres
+superficies que quedaban sin lectura propia en esta acta. La comprobación fue
+solo de lectura; no se creó, editó, eliminó ni guardó ningún registro.
+
+- **Clientes**: título, vistas guardadas (`Todos`, `Particulares`, `Empresas`,
+  `Activos`), búsqueda, filtros de estado y tipo, ficha y paginación visibles.
+  El DOM expone `data-la-orbita-module="clientes"` y
+  `data-la-orbita-surface="clientes"`; `scrollWidth - clientWidth = 0` y el
+  menor control medido es de 44 px.
+- **Personal**: listado real de empleados, estados de baja/reactivación,
+  exportación, historial, EPI y cuentas de acceso visibles bajo la cabecera
+  común. El DOM expone `data-la-orbita-module="personal"` y
+  `data-la-orbita-surface="personal"`; overflow 0 y mínimo táctil 44 px.
+- **Configuración**: selector de bloques (Día y cajas, Sala y mesas,
+  Modalidades, Equipos, Terminales y cajas, Fiscalidad y AEAT, Cargos y
+  permisos, Permisos y Verificación en dos pasos), motivo obligatorio y estado
+  de carga visibles. El DOM expone `data-la-orbita-module="configuracion"` y
+  `data-la-orbita-surface="configuracion"`; overflow 0 y mínimo táctil 44 px.
+
+Con este barrido quedan observados en vivo, en la sesión de QA, Inicio, TPV,
+Cocina, Caja, Clientes, Compras, Inventario, Personal y Configuración. La
+evidencia separada de Plataforma y Acceso/MFA permanece en
+`EVIDENCIA_LIVE_ORBITA_2026-11-23.md` y en la matriz; no se repiten acciones
+administrativas ni se introducen mutaciones para cerrar el rediseño visual.

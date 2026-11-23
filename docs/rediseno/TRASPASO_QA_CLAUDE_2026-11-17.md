@@ -3489,3 +3489,23 @@ aviso de caja cerrada), `caja` (apertura/arqueo/historial bajo demanda),
 Órbita, `scrollWidth` coincidió con `clientWidth` en 758 px y el menor control
 medido fue de 44 px. Queda separada la comprobación específica de Clientes,
 Personal, Configuración, Plataforma y Acceso.
+
+### Barrido live adicional · Clientes, Personal y Configuración · 23/11/2026
+
+La misma sesión autenticada de QA-A1 completó las tres superficies restantes
+del programa que no tenían lectura propia en esta acta. Todo fue de lectura:
+no se realizaron altas, ediciones, bajas, cobros, reembolsos ni cambios de
+configuración.
+
+| Superficie | Evidencia | Overflow | Mínimo táctil |
+|---|---|---:|---:|
+| Clientes | Vistas guardadas, búsqueda, filtros de estado/tipo, ficha, NIF enmascarado y paginación | 0 | 44 px |
+| Personal | Listado real, estados de baja/reactivación, exportación, historial, EPI y cuentas de acceso | 0 | 44 px |
+| Configuración | Bloques de ajustes, motivo obligatorio, controles deshabilitados y estado de carga | 0 | 44 px |
+
+Las tres superficies exponen las marcas semánticas del shell Órbita
+(`clientes`, `personal`, `configuracion`) tanto en `main[data-la-orbita-module]`
+como en `data-la-orbita-surface`. Plataforma y Acceso/MFA conservan la
+evidencia autenticada separada ya registrada en
+`EVIDENCIA_LIVE_ORBITA_2026-11-23.md`; no se repitieron acciones destructivas
+ni se alteró QA.
