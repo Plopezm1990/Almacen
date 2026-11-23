@@ -108,12 +108,25 @@ seleccionables (`QA Empresa A, S.L. · Local A1`), shell Órbita y la pestaña
 `← Plataforma`. El retorno confirma la separación de privilegios y la
 integración de la superficie externa sin copiar datos ni cambiar handlers.
 
+### Acceso y MFA
+
+Desde `Configuración → Verificación en dos pasos` se comprobó la pantalla de
+seguridad con una sesión de plataforma autenticada. La interfaz informa que
+la cuenta tiene la verificación en dos pasos activa y que el acceso requiere
+un código de seis cifras de la aplicación autenticadora. También muestra de
+forma explícita que la migración de la política por cargo todavía no está
+aplicada en este entorno y que esa política será obligatoria para
+Propietario, Encargado y Cajero/a. La comprobación fue de lectura: no se
+añadió, eliminó ni verificó ningún factor MFA y no se cerró ninguna sesión.
+
 ## Cierre que sigue pendiente
 
 Esta evidencia no permite marcar terminado el objetivo global por sí sola.
 Quedan por cerrar con evidencia live separada: una captura autenticada de
 escritorio; las rutas completas de Caja, Compras (recepción/albarán/factura),
-Inventario (mermas/caducidad/ajustes) y Acceso/MFA/expiración. Plataforma ya
-queda observada en QA, aunque sus operaciones destructivas no se ejercitaron.
-Los contratos estructurales y la batería local siguen siendo necesarios y no
-se sustituyen por esta revisión manual.
+Inventario (mermas/caducidad/ajustes) y el recorrido de Acceso (login,
+recuperación, expiración y desafío MFA). La pantalla de política MFA y el
+panel de Plataforma ya quedan observados en QA, aunque sus operaciones
+destructivas y el desafío de seis cifras no se ejercitaron. Los contratos
+estructurales y la batería local siguen siendo necesarios y no se sustituyen
+por esta revisión manual.

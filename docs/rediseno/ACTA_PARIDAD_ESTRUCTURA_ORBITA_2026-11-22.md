@@ -460,5 +460,9 @@ Configuración, Plataforma y Acceso/MFA.
 Con `owner.a@qa.invalid` se observó además el panel `Plataforma · L&A Suite`,
 11 empresas activas y 1 desactivada, controles de 44 px y el salto
 `Abrir mi aplicación` ↔ `← Plataforma`. No se ejecutaron acciones de alta,
-baja, reactivación, borrado ni cambio de dueño. Plataforma queda observada en
-QA; Acceso/MFA/expiración y el cierre live de escritorio permanecen abiertos.
+baja, reactivación, borrado ni cambio de dueño. En `Configuración →
+Verificación en dos pasos` se confirmó que la cuenta tiene MFA activo, que el
+acceso requiere un código de seis cifras y que la política por cargo aún no
+está aplicada en QA. No se modificaron factores ni sesiones. Plataforma y la
+pantalla de política MFA quedan observadas en QA; el desafío MFA, login,
+expiración y el cierre live de escritorio permanecen abiertos.
