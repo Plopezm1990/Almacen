@@ -135,6 +135,13 @@ eliminarse; el siguiente ajuste debe reordenarla dentro de la misma jerarquía
 visual de la maqueta, llevando margen/stock a un bloque secundario y dejando
 la operación de Pase como la superficie operativa enlazada.
 
+Tras la comparación se añadió en `la-apariencia.css` una corrección acotada:
+en escritorio los indicadores de Inicio Órbita usan tres columnas, igual que
+la maqueta; si el producto aporta un cuarto indicador, permanece visible en
+una segunda fila y en móvil se conservan dos columnas. No se cambiaron datos,
+handlers, permisos ni rutas. Contratos CSS, shell y recorridos móviles pasan
+tras el ajuste.
+
 ## Cierre que sigue pendiente
 
 Esta evidencia no permite marcar terminado el objetivo global por sí sola.
