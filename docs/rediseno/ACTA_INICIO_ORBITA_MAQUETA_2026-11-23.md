@@ -81,9 +81,9 @@ devuelve `PARIDAD_CUERPO_EXACTA=1` y `SOURCE_RECOVERY_CHECK=PASS`.
 
 Marcas de caché de la publicación:
 
-- `la-apariencia.css?v=qa-orbita-shell-v78-20261123`
-- `fuente.js?v=qa-orbita-home-v8-20261123`
-- `la-orbita-shell.js?v=qa-orbita-shell-v24-20261123`
+- `la-apariencia.css?v=qa-orbita-shell-v80-20261123`
+- `fuente.js?v=qa-orbita-home-v10-20261123`
+- `la-orbita-shell.js?v=qa-orbita-shell-v27-20261123`
 
 ## Verificaciones locales
 
