@@ -140,3 +140,9 @@ La revisión usa los recursos originales de grano, Inter e Instrument Serif, sit
 El contenido de los indicadores y el periodo del gráfico siguen siendo los del producto. La maqueta presenta ventas del día, ocupación y comandas, y agrupa el gráfico por día. Esta revisión no acredita equivalencia del resto de las pantallas.
 
 Comprobación autenticada en el preview del PR #225 sobre la revisión 0ee63ff7. A 390 px, el documento medía 390 px y el planeta medía 100 px dentro de una tarjeta de 358 px. A 1440 px, el documento medía 1440 px, el planeta 172 px y el titular 73 px. Se abrió Más → Compras → Albaranes desde Local A1 y aparecieron Entrada de albaranes, Filtrar por mes y los registros existentes. Los botones de edición quedaron sin accionar.
+
+En la revisión `6de4f70f` el shell deja de fijar la etiqueta «Órbita» cuando se
+cambia de propuesta. La subcabecera y la ayuda del botón Apariencia leen el
+diseño activo (`Oliva`, `Claro`, `Pulso`, `Patio`, `Rumbo`, `Sello`, `Órbita`,
+`Ascua` o `Pase`). La selección sigue resolviéndose en `la-apariencia.js` y
+no modifica datos, permisos ni handlers.
