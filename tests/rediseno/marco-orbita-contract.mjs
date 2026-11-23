@@ -9,7 +9,7 @@ const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
 const checks = [
-  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v29-20261123') && index.includes('la-apariencia.css?v=qa-orbita-shell-v81-20261123'), 'index carga las capas Órbita con sus marcas de caché'],
+  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v30-20261123') && index.includes('la-apariencia.css?v=qa-orbita-shell-v82-20261123'), 'index carga las capas Órbita con sus marcas de caché'],
   [shell.includes('var superficie = ruta === "inicio" ? "inicio"'), 'Inicio conserva la identidad de módulo sobre subpaneles'],
   [shell.includes('data-la-orbita-header') && shell.includes('data-la-orbita-qa'), 'capa común con cabecera y estado QA'],
   [shell.includes('crearSidebarParaClaro') && shell.includes('la-orbita-legacy-header'), 'la propuesta claro deja de conservar una cabecera de marco alternativa'],
@@ -18,7 +18,8 @@ const checks = [
   [shell.includes('abrirPanelParaContexto') && shell.includes('Abrir Panel general'), 'selector de contexto accesible desde cualquier pantalla'],
   [shell.includes('abrirBusqueda') && shell.includes('event.key.toLowerCase() !== "k"'), 'buscador global con acceso Ctrl/Cmd K'],
   [shell.includes('data-la-orbita-alertas') && shell.includes('la-orbita-appearance'), 'avisos y acción Apariencia expuestos desde la cabecera'],
-  [shell.includes('data-la-orbita-propuesta') && shell.includes('nombreDisenoActivo'), 'la cabecera refleja el diseño activo de Apariencia'],
+  [shell.includes('nombreDisenoActivo') && shell.includes('data-la-orbita-appearance'), 'Apariencia conserva el diseño activo en su acción funcional'],
+  [!shell.includes('la-orbita-subheader') && !shell.includes('Opciones de demo'), 'el marco no muestra controles de maqueta sin funcionalidad'],
   [shell.includes('la-apariencia:cambio') && shell.includes('actualizarCabecera'), 'la cabecera se sincroniza al cambiar propuesta o paleta sin recargar'],
   [shell.includes('la-orbita-profile-menu') && shell.includes('Cuenta y seguridad'), 'perfil común con acciones de cuenta, tema, empleado y salida'],
   [shell.includes('cliente.auth.signOut({ scope: "local" })') && shell.includes('window.location.reload()'), 'salida del perfil Órbita no depende del encabezado oculto'],

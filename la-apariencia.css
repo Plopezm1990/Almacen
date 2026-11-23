@@ -314,8 +314,7 @@ html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-det
 html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-detalle .la-orbita-sidebar-detail { display: flex !important; }
 .la-orbita-sidebar-compacta .la-orbita-sidebar-section { margin-block: 2px !important; }
 .la-orbita-sidebar-compacta .la-orbita-sidebar-summary,
-.la-orbita-sidebar-compacta .la-orbita-sidebar-more,
-.la-orbita-sidebar-compacta .la-orbita-sidebar-demo {
+.la-orbita-sidebar-compacta .la-orbita-sidebar-more {
   display: flex !important; align-items: center; gap: 10px; width: 100%; min-height: 44px;
   padding: 9px 10px; border: 0; border-radius: 9px; text-align: left; cursor: pointer;
 }
@@ -325,18 +324,15 @@ html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-det
   background: color-mix(in srgb, var(--c-on-chrome, #fff) 13%, transparent) !important;
   color: var(--c-on-chrome, #fff) !important;
 }
-.la-orbita-sidebar-compacta .la-orbita-sidebar-more,
-.la-orbita-sidebar-compacta .la-orbita-sidebar-demo {
+.la-orbita-sidebar-compacta .la-orbita-sidebar-more {
   margin-top: 7px; border: 1px solid color-mix(in srgb, var(--c-on-chrome, #fff) 16%, transparent);
   background: color-mix(in srgb, var(--c-on-chrome, #fff) 4%, transparent);
   color: color-mix(in srgb, var(--c-on-chrome, #fff) 82%, transparent);
   font: 600 12px/1.2 var(--la-font);
 }
 .la-orbita-sidebar-compacta .la-orbita-sidebar-more { margin-top: auto; }
-.la-orbita-sidebar-compacta .la-orbita-sidebar-more:hover,
-.la-orbita-sidebar-compacta .la-orbita-sidebar-demo:hover { border-color: var(--c-accent-fill); color: var(--c-on-chrome, #fff); }
-.la-orbita-sidebar-compacta.la-orbita-colapsada .la-orbita-sidebar-more,
-.la-orbita-sidebar-compacta.la-orbita-colapsada .la-orbita-sidebar-demo { justify-content: center; padding-inline: 8px; font-size: 0; }
+.la-orbita-sidebar-compacta .la-orbita-sidebar-more:hover { border-color: var(--c-accent-fill); color: var(--c-on-chrome, #fff); }
+.la-orbita-sidebar-compacta.la-orbita-colapsada .la-orbita-sidebar-more { justify-content: center; padding-inline: 8px; font-size: 0; }
 .la-orbita-header {
   grid-column: 2; grid-row: 1;
   display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
@@ -360,11 +356,6 @@ html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-det
 .la-orbita-qa { min-height: 26px; display: inline-flex; align-items: center; padding: 0 9px; border-radius: 999px; background: var(--c-accent-soft); color: var(--c-accent); font: 700 11px/1 var(--la-font); letter-spacing: .04em; }
 .la-orbita-qa[data-qa="qa"] { background: var(--c-amber-soft); color: var(--c-amber); }
 .la-orbita-appearance { border-color: var(--c-accent-fill); }
-.la-orbita-subheader { flex: 0 0 100%; display: flex; align-items: center; gap: 20px; min-height: 34px; padding-block-start: 7px; border-top: 1px solid var(--c-divider, var(--c-line)); color: var(--c-ink-soft); font: 600 12px/1.2 var(--la-font); }
-.la-orbita-demo-label { margin-inline-end: auto; }
-.la-orbita-subheader-alerts, .la-orbita-index-link { min-height: 32px; padding: 5px 8px; border: 0; border-radius: 8px; background: transparent; color: var(--c-ink-soft); font: inherit; text-decoration: none; cursor: pointer; }
-.la-orbita-subheader-alerts:hover, .la-orbita-index-link:hover { background: var(--c-accent-soft); color: var(--c-accent); }
-.la-orbita-proposal-label { color: var(--c-accent); font-size: 14px; }
 .la-orbita-context-menu { position: absolute; inset-block-start: calc(var(--la-shell-header-height) - 4px); inset-inline-start: clamp(14px, 2vw, 28px); z-index: 10020; display: grid; gap: 3px; width: min(340px, calc(100vw - 28px)); max-height: 55vh; overflow: auto; padding: 7px; border: 1px solid var(--c-border-control); border-radius: 12px; background: var(--c-surface); box-shadow: var(--la-shadow-2); }
 .la-orbita-context-menu button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--c-ink); font: 600 12.5px/1.2 var(--la-font); text-align: left; cursor: pointer; }
 .la-orbita-context-menu button:hover { background: var(--c-accent-soft); color: var(--c-accent); }
@@ -509,9 +500,6 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
   .la-orbita-appearance { font-size: 0; }
   .la-orbita-appearance::after { content: "✦"; font-size: 17px; }
   .la-orbita-qa { min-height: 24px; padding-inline: 7px; font-size: 10px; }
-  .la-orbita-subheader { min-height: 31px; padding-block-start: 3px; gap: 7px; font-size: 10.5px; }
-  .la-orbita-subheader-alerts, .la-orbita-index-link { min-height: 30px; padding-inline: 5px; }
-  .la-orbita-proposal-label { font-size: 12px; }
   .la-orbita-main { grid-column: 1; grid-row: 2; padding: 12px !important; }
   .la-orbita-bottom-nav {
     grid-column: 1;

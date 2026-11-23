@@ -3527,3 +3527,13 @@ se observó la clase `la-orbita-sidebar-compacta`, la anchura de 248 px, 10
 resúmenes visibles, 36 destinos secundarios ocultos y la expansión completa
 al pulsar `Más módulos`. Contratos y `git diff --check` pasan; el PR #225
 sigue en borrador y producción no se tocó.
+
+### Limpieza de controles de maqueta · shell v30
+
+El preview ya no muestra la franja superior `Demostración / Avisos / Órbita /
+Índice` ni el botón lateral `Opciones de demo`: no tenían funcionalidad en el
+producto real. Se conservan la cabecera funcional, `Más módulos`, el acceso a
+Apariencia, el selector de empresa/local, búsqueda, avisos y perfil. La
+publicación usa las marcas `qa-orbita-shell-v30-20261123` y
+`qa-orbita-shell-v82-20261123`; la batería de contratos y `git diff --check`
+están en verde.

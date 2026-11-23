@@ -295,3 +295,19 @@ Contratos ejecutados: `MARCO_ORBITA_CONTRACT=PASS (34/34)`,
 `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`,
 `REDISENO_P01_CAPAS_Y_MIGRACIONES_OK=1` y `git diff --check` limpio.
 Producción permanece intacta y el PR #225 sigue en borrador.
+
+### Retirada de controles de maqueta sin función · shell v30 · 23/11/2026
+
+A petición de revisión visual se retiraron dos elementos que pertenecían a la
+maqueta, pero no aportaban una capacidad operativa en el programa real:
+
+- la franja superior `Demostración / Avisos / Órbita / Índice`;
+- el botón lateral `Opciones de demo`.
+
+La cabecera conserva únicamente controles funcionales: empresa/local, estado
+QA, búsqueda, avisos reales, perfil y Apariencia. Los módulos y el botón
+`Más módulos` no se modifican. La rama sirve
+`la-orbita-shell.js?v=qa-orbita-shell-v30-20261123` y
+`la-apariencia.css?v=qa-orbita-shell-v82-20261123`; contratos completos y
+`git diff --check` pasan. Producción sigue intacta y el PR #225 continúa en
+borrador.

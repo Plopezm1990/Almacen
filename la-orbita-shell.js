@@ -378,23 +378,6 @@
       sidebar.appendChild(toggle);
     }
 
-    /* El punto de entrada de la maqueta es visual; el destino sigue siendo la
-       pantalla existente de Opciones de demo, sin tocar la navegación React. */
-    var demo = sidebar.querySelector("[data-la-orbita-demo-entry]");
-    if (!demo) {
-      demo = h("button", {
-        type: "button",
-        class: "la-orbita-sidebar-demo",
-        "data-la-orbita-demo-entry": "",
-        title: "Opciones de demo",
-        texto: "?  Opciones de demo"
-      });
-      demo.addEventListener("click", function () {
-        var propuesta = new URLSearchParams(location.hash.split("?")[1] || "").get("propuesta") || "7";
-        location.hash = "#/screen/sis-15?propuesta=" + encodeURIComponent(propuesta);
-      });
-      sidebar.appendChild(demo);
-    }
     sincronizarSidebarCompacto(sidebar);
   }
 
@@ -659,12 +642,6 @@
       var cantidad = marco.querySelectorAll(".la-orbita-alert").length;
       textoSiCambia(avisos, cantidad ? "Avisos " + cantidad : "Avisos");
     }
-    var propuesta = cabecera.querySelector("[data-la-orbita-propuesta]");
-    if (propuesta) {
-      var nombre = nombreDisenoActivo();
-      textoSiCambia(propuesta, nombre);
-      propuesta.setAttribute("aria-label", "Diseño activo: " + nombre);
-    }
     var apariencia = cabecera.querySelector("[data-la-orbita-appearance]");
     if (apariencia) apariencia.setAttribute("title", "Cambiar apariencia · " + nombreDisenoActivo());
   }
@@ -747,16 +724,11 @@
     var apariencia = h("button", { type: "button", class: "la-orbita-header-button la-orbita-appearance", "data-la-orbita-appearance": "", texto: "Apariencia" });
     apariencia.addEventListener("click", function () { if (typeof window.LAApariencia?.abrirEditor === "function") window.LAApariencia.abrirEditor(); });
     derecha.append(buscar, alertas, perfil, apariencia);
-    var subcabecera = h("nav", { class: "la-orbita-subheader", "data-la-orbita-subheader": "", "aria-label": "Contexto de Órbita" }, [
-      h("span", { class: "la-orbita-demo-label", texto: "Demostración" }),
-      h("button", { type: "button", class: "la-orbita-subheader-alerts", "aria-label": "Avisos del local", texto: "Avisos", onclick: function () {
-        var aviso = marco && marco.querySelector(".la-orbita-alert");
-        if (aviso) aviso.scrollIntoView({ block: "nearest" });
-      } }),
-      h("span", { class: "la-orbita-proposal-label", "data-la-orbita-propuesta": "", texto: "Órbita" }),
-      h("a", { class: "la-orbita-index-link", href: (location.href.replace(/#\/screen\/[^?]+/, "#/screen/sis-14") || "#/screen/sis-14"), texto: "Índice" })
-    ]);
-    cabecera.append(izquierda, derecha, subcabecera);
+    /* La franja «Demostración / Órbita / Índice» pertenecía a la maqueta de
+       revisión y no tiene capacidad operativa en el producto real. El marco
+       termina en la cabecera funcional: contexto, QA, búsqueda, avisos,
+       perfil y Apariencia. */
+    cabecera.append(izquierda, derecha);
     marco.appendChild(cabecera);
     actualizarCabecera();
     return cabecera;
