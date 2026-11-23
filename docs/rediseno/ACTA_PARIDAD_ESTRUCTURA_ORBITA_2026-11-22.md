@@ -175,12 +175,13 @@ Caja, ficha de proveedor, tabla real de Inventario, fichas repetibles de
 Personal y pestañas agrupadas de Configuración. No se pulsaron acciones que
 escriben datos.
 
-Esta evidencia cierra la comprobación visual del shell en escritorio, pero no
-convierte automáticamente en `CERRADA_QA` las filas funcionales: Plataforma
-continúa requiriendo una sesión de administrador y Acceso/MFA una sesión
-separada. También queda pendiente completar el cierre individual de los 12
-módulos con sus estados de carga/error/vacío y sus variantes móvil/escritorio
-según la matriz.
+Esta evidencia cierra la comprobación visual desktop del punto 3 para los ocho
+módulos operativos indicados (TPV/Sala, Cocina, Caja, Clientes, Compras,
+Inventario, Personal y Configuración). No convierte automáticamente en
+`CERRADA_QA` las filas funcionales ni el objetivo global: Plataforma continúa
+requiriendo una sesión de administrador, Acceso/MFA una sesión separada y los
+estados de carga/error/vacío se mantienen como comprobaciones de cada fila en
+la matriz.
 
 La documentación de esta auditoría queda en el commit `88b3812c` de
 `rediseno/f0-base-qa`; el PR #225 sigue en borrador y el preview asociado es

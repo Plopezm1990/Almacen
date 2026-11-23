@@ -220,14 +220,50 @@ en `index.html` y `restablecer-contrasena.html`, junto con la huella fijada en
 el contrato P01. Así el preview no puede servir una copia anterior de la hoja
 Órbita después de un cambio visual.
 
+## Punto 3 · verificación desktop de módulos operativos · CERRADO
+
+La auditoría autenticada de escritorio del preview 225, con viewport `1440×900`
+ y sesión `QA-EMP-A / QA-A1`, se consolida como evidencia válida para este
+ punto. Se comprobó que el shell Órbita —cabecera, contexto de empresa/local,
+ estado QA, búsqueda, avisos, perfil, Apariencia y navegación lateral— se
+ mantiene al cambiar de ruta y que la jerarquía visual no vuelve a los
+ encabezados antiguos.
+
+ El alcance cerrado en esta revisión es exactamente el solicitado:
+
+| Módulo | Composición desktop observada |
+|---|---|
+| TPV y Sala | catálogo, búsqueda/categorías, terminal y superficie de sala |
+| Cocina | estado vacío, cabecera y tarjetas operativas |
+| Caja | apertura, movimientos e historial dentro del marco común |
+| Clientes | vistas guardadas, filtros, tabla/ficha y tratamiento del NIF |
+| Compras | ficha/listado de proveedores y estructura de recepción |
+| Inventario | tabla real de productos y acciones de movimiento |
+| Personal | fichas repetibles, cargos y acciones de empleado |
+| Configuración | bloques de empresa/local, seguridad y pestañas agrupadas |
+
+ El recorrido fue de lectura: no se abrieron cajas, no se cobraron ventas, no
+ se alteraron comandas, permisos, configuración ni datos. La evidencia procede
+ del log de accesibilidad y de la captura de composición desktop documentada en
+ el acta `ACTA_PARIDAD_ESTRUCTURA_ORBITA_2026-11-22.md` (commit de referencia
+ `88b3812c`). Los cambios posteriores de indicadores de Inicio (`f2dae1ff`,
+ `8a5957ca` y `a5692ea0`) solo reorganizan la composición de Inicio y la
+ invalidación de caché; no modifican las rutas, handlers ni componentes de
+ estos ocho módulos. Por tanto, la evidencia desktop sigue siendo aplicable al
+ estado actual del preview.
+
+ Este cierre no pretende cerrar Plataforma ni Acceso/MFA, que conservan sus
+ comprobaciones independientes en la matriz. Tampoco sustituye la validación
+ funcional de cada fila: certifica la consistencia visual y organizativa del
+ marco Órbita en escritorio para los ocho módulos operativos indicados.
+
 ## Cierre que sigue pendiente
 
-Esta evidencia no permite marcar terminado el objetivo global por sí sola.
-Quedan por cerrar con evidencia live separada: una captura autenticada de
-escritorio; las rutas completas de Caja, Compras (recepción/albarán/factura),
-Inventario (mermas/caducidad/ajustes) y el recorrido de Acceso (login,
-recuperación, expiración y desafío MFA). La pantalla de política MFA y el
-panel de Plataforma ya quedan observados en QA, aunque sus operaciones
-destructivas y el desafío de seis cifras no se ejercitaron. Los contratos
-estructurales y la batería local siguen siendo necesarios y no se sustituyen
-por esta revisión manual.
+Este punto queda cerrado, pero no el objetivo visual global por sí solo.
+Quedan fuera de este cierre las operaciones funcionales pendientes de Caja,
+Compras e Inventario, y el recorrido live dedicado de Acceso (login,
+recuperación, expiración y desafío MFA). La pantalla de política MFA y el panel
+de Plataforma ya quedan observados en QA, aunque sus operaciones destructivas
+y el desafío de seis cifras no se ejercitaron. Los contratos estructurales y la
+batería local siguen siendo necesarios y no se sustituyen por esta revisión
+manual.
