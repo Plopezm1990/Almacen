@@ -1848,3 +1848,33 @@ visual.
 Implementación de esta revisión: `3df79dc278f979d3c3c3f09e1400691d42a94744`.
 Deploy Preview 225 listo en `6b02176e17a3179765460a94`; el alias estable es
 `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
+
+## Auditoría de paridad visual vigente · 23/11/2026
+
+Esta sección es el estado de trabajo del objetivo actual; las etiquetas
+`PARCIAL` históricas anteriores no se reinterpretan automáticamente. El shell
+Órbita y la selección de apariencia están publicados en la rama de QA en
+`6d494cce` (la última modificación funcional del shell es `79c2cdbe`). La
+cabecera escucha `la-apariencia:cambio`, la matriz de propuestas cubre 9
+diseños/6 paletas y el menú móvil de Compras expone Proveedores, Pedidos,
+Recepción, Albaranes y Facturas.
+
+La evidencia está separada así:
+
+1. **Contrato estático cerrado:** capas, shell, plantillas, módulos,
+   responsive, objetivos táctiles, propuestas y paridad de fuente pasan sus
+   contratos. El marco alcanza `32/32`, la batería de rediseño `22/22` y la
+   frontera de publicación Netlify `80` entradas.
+2. **Evidencia live ya disponible:** Inicio Órbita, menú `Más`, Compras →
+   Albaranes y los recorridos desktop/móvil registrados en el acta de
+   23/11/2026, sin mutaciones de datos.
+3. **Criterio que aún debe evidenciarse para cerrar el objetivo completo:**
+   repetir el mismo recorrido autenticado de cada módulo en los dos anchos,
+   incluyendo carga, vacío, error y rutas reales, y conservar una captura o
+   log por superficie. Una prueba estática no convierte por sí sola una fila
+   funcional en `CERRADO`.
+
+No se debe fusionar el PR #225 ni cambiar producción mientras falte esa
+trazabilidad live. Las operaciones que escriben datos, MFA positivo y
+acciones destructivas siguen fuera de esta auditoría salvo autorización
+explícita en QA.
