@@ -8,11 +8,23 @@ Que el programa tenga **la misma parte visual que la maqueta** preparada con
 Codex, **sin tocar ninguna funcionalidad**, yendo **pantalla por pantalla** y
 **sin empezar una hasta haber terminado la anterior**.
 
-La maqueta de referencia es la **propuesta 7, Órbita**, en vista móvil:
+La maqueta de referencia es la **propuesta 7, Órbita**, y tiene **dos
+referencias, las dos obligatorias**:
 
-```
-http://192.168.1.129:8765/index.html?vista=movil#/screen/ini-01?propuesta=7
-```
+| Dispositivo | Maqueta | Se compara a |
+| --- | --- | --- |
+| **Ordenador** | `http://192.168.1.129:8765/index.html#/screen/ini-01?propuesta=7` | 1440×900 |
+| **Móvil** | `http://192.168.1.129:8765/index.html?vista=movil#/screen/ini-01?propuesta=7` | 390×844 |
+
+Para cualquier otra pantalla basta con cambiar `ini-01` por su ID; la lista de
+trabajo trae ya los dos enlaces de cada una.
+
+**El programa en ordenador se compara con la maqueta de ordenador, y el
+programa en móvil con la maqueta móvil.** No es la misma pantalla a otro tamaño:
+la composición cambia. En ordenador hay un lateral fijo con los grupos Operación
+y Gestión, una cabecera con selector de local, buscador «Ctrl K» y usuario, y los
+bloques se reparten en columnas; en móvil hay una barra inferior y los bloques se
+apilan. Igualar uno no iguala el otro.
 
 Su código está en `output/LA-Suite-Traspaso-QA/prototipo/dist/` (`orbita.css`,
 `orbita.js`, `orbita-movil.html`) y su sistema visual en
@@ -51,6 +63,11 @@ Reglas que no se saltan en ninguna pantalla:
    otras propuestas no se rompan mientras se trabaja.
 5. **Ninguna pantalla se da por terminada con la batería en rojo** ni con la
    paridad de `fuente.js` rota.
+6. **No se copian los controles de la demostración.** La maqueta lleva cosas que
+   solo existen para enseñarla y no son del producto: «Demostración», el botón
+   «Propuesta 7 · Órbita», «Índice de pantallas», «Opciones de demo» y los datos
+   de Casa Oliva. Se respetan su sitio y su espacio, pero no se trasladan al
+   programa.
 
 ## Fase 0 · Antes de la primera pantalla
 
@@ -66,12 +83,15 @@ montada. Mientras esto no esté arreglado, ninguna pantalla se puede verificar.
 
 **0.2 · Herramienta de comparación lado a lado.** El panel del navegador de esta
 sesión no es fiable para capturas. Se monta un guion con `playwright-core` (ya
-está en el proyecto) y el Edge del sistema que, para un ID de pantalla, captura
-**la maqueta y el programa al mismo tamaño** y los junta en una sola imagen:
+está en el proyecto) y el Edge del sistema que, para un ID de pantalla, saca
+**cuatro capturas y las junta en dos imágenes**:
 
-- móvil **390×844**, que es la referencia que mandaste;
-- escritorio **1440×900**, porque la maqueta también lo tiene y el mismo CSS
-  sirve a los dos: arreglar solo el móvil puede romper el escritorio.
+- **ordenador, 1440×900**: maqueta de ordenador junto al programa en ordenador;
+- **móvil, 390×844**: maqueta móvil junto al programa en móvil.
+
+Las dos imágenes van a la evidencia de cada pantalla. El mismo CSS sirve a los
+dos tamaños, así que se comprueban siempre los dos aunque el cambio parezca de
+uno solo.
 
 **0.3 · Quitar el andamio de diagnóstico** (`diagnostico-capas-almacen-preview.js`
 y su línea en `index.html`) en cuanto el atasco esté resuelto.
@@ -84,9 +104,11 @@ muestra el contenido del panel Pase («El turno en directo»), no el de Órbita.
 Cada pantalla pasa por los mismos ocho pasos, en este orden. La siguiente no
 empieza hasta que la anterior tiene el paso 8.
 
-1. **Captura de referencia.** La maqueta Órbita, en 390×844 y 1440×900, con el
-   perfil equivalente (Propietaria en la maqueta, Propietario en QA).
-2. **Captura del estado actual** del programa en QA, mismo tamaño, mismo perfil.
+1. **Captura de referencia.** La maqueta de ordenador a 1440×900 y la maqueta
+   móvil a 390×844, con el perfil equivalente (Propietaria en la maqueta,
+   Propietario en QA).
+2. **Captura del estado actual** del programa en QA, en los mismos dos tamaños y
+   con el mismo perfil.
 3. **Lista de diferencias**, una por línea, clasificada en una de tres:
    - *de estilo* → se arregla en `la-apariencia.css`;
    - *de estructura* (orden, agrupación, un elemento de más o de menos) → se
@@ -103,13 +125,15 @@ empieza hasta que la anterior tiene el paso 8.
 8. **Cierre:** tu visto bueno, fila de `ORDEN-PANTALLAS-ORBITA.csv` en
    «Terminada» con la evidencia, commit, despliegue al preview.
 
-**Terminada** significa las cuatro cosas a la vez: igual en móvil, igual en
-escritorio, batería en verde y tu visto bueno. Si falta una, no está terminada.
+**Terminada** significa las cuatro cosas a la vez: **igual a la maqueta de
+ordenador en ordenador**, **igual a la maqueta móvil en móvil**, batería en verde
+y tu visto bueno. Si falta una, no está terminada.
 
 ## El orden
 
-La lista completa, con el enlace a la maqueta de cada pantalla y su estado de
-hoy en QA, está en **`docs/rediseno/ORDEN-PANTALLAS-ORBITA.csv`**. Va por
+La lista completa está en **`docs/rediseno/ORDEN-PANTALLAS-ORBITA.csv`**: cada
+pantalla con **su enlace a la maqueta de ordenador y su enlace a la maqueta
+móvil**, su estado de hoy en QA y las columnas para el estado visual y la firma. Va por
 bloques: primero lo que se usa cada día en el turno, después el acceso, después
 la gestión, y al final lo que se toca poco.
 
@@ -147,7 +171,25 @@ marco común** —cabecera, barra inferior móvil, lateral de escritorio—, que
 después aparece en las otras 235. Una vez terminada `ini-01`, las siguientes
 heredan el marco ya igualado y solo hay que trabajar su contenido.
 
-Lo que enseña la maqueta en móvil, de arriba abajo:
+Lo que enseña la **maqueta de ordenador**:
+
+- **Lateral fijo** a la izquierda, con la marca arriba y dos grupos:
+  *Operación* (Inicio, Servicio, Caja y fiscalidad, Compras, Inventario) y
+  *Gestión* (Equipo, Calidad, Informes, Organización, Sistema). La entrada
+  activa, resaltada.
+- **Cabecera**: selector de local y empresa a la izquierda, buscador «Buscar en
+  la suite · Ctrl K» y avisos en el centro-derecha, y el usuario con su cargo a
+  la derecha.
+- **Bloque principal** a todo el ancho: etiqueta «Operación en vivo», el titular
+  «⚡ El turno, *en movimiento.*», la frase con la fecha, las acciones **Abrir
+  TPV** y **Ver sala**, y **la esfera con su órbita** a la derecha, sobre fondo
+  con grano.
+- **Las tres tarjetas en una fila**, cada una con su flecha de acceso en la
+  esquina.
+- **«Pulso de ventas» y «Pendientes del día» uno al lado del otro**, el gráfico
+  más ancho.
+
+Lo que enseña la **maqueta móvil**, de arriba abajo:
 
 - Etiqueta «Operación en vivo» con guiones; titular «⚡ El turno, *en
   movimiento.*» con la segunda línea en serifa cursiva y degradado.
@@ -187,7 +229,8 @@ firmando una a una**; solo cambia que habrá menos diferencias que corregir.
 | --- | --- |
 | Un cambio visual rompe una función | Solo capa visual; batería entera y recorrido funcional en cada pantalla |
 | Un estilo de una pantalla descoloca otra | Todo colgado de Órbita; captura de las pantallas ya terminadas del mismo bloque antes de cerrar |
-| Igualar el móvil rompe el escritorio | Las dos medidas son obligatorias para dar una pantalla por terminada |
+| Igualar el móvil rompe el ordenador, o al revés | Las dos referencias son obligatorias; cada una se compara con su propia maqueta, no con la otra estirada |
+| Se cuela un control de la demostración | Regla 6: «Demostración», «Propuesta 7», «Índice de pantallas» y «Opciones de demo» no se trasladan |
 | La maqueta enseña algo que el programa no hace | No se finge: se anota como diferencia de función y se decide contigo |
 | Un cargo restringido ve una pantalla descolocada | Paso 6 del ciclo, con la cuenta Camarero/a |
 | El programa se atasca | Fase 0.1: no se empieza hasta resolverlo |
