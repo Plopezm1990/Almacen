@@ -190,19 +190,23 @@ eliminarse; el siguiente ajuste debe reordenarla dentro de la misma jerarquía
 visual de la maqueta, llevando margen/stock a un bloque secundario y dejando
 la operación de Pase como la superficie operativa enlazada.
 
-Tras la comparación se añadió en `la-apariencia.css` una corrección acotada:
-en escritorio los indicadores de Inicio Órbita usan tres columnas, igual que
-la maqueta; si el producto aporta un cuarto indicador, permanece visible en
-una segunda fila y en móvil se conservan dos columnas. No se cambiaron datos,
-handlers, permisos ni rutas. Contratos CSS, shell y recorridos móviles pasan
-tras el ajuste.
+Tras la comparación se aplicó una corrección acotada en los dos artefactos de
+fuente (`fuente.js` y `source-recovery/fuente-recuperado.js`): Órbita separa
+los tres primeros indicadores en la región `Indicadores principales` y pasa
+cualquier indicador adicional —por ejemplo margen o stock— a
+`Indicadores secundarios`. Así la jerarquía coincide con la maqueta sin
+perder ningún dato, permiso, ruta ni handler. La segunda región usa los mismos
+controles, estados y objetivo táctil; en móvil se apila sin scroll horizontal.
+La hoja añade el estilo de esa región y en escritorio conserva tres columnas
+para los indicadores principales. Contratos CSS, shell y recorridos móviles
+pasan tras el ajuste.
 
 También se compactó en móvil la tarjeta de contexto de Inicio: Empresa y Local
 se mantienen como selectores operativos en dos columnas y el texto de ámbito
 ocupa la fila completa. Esto aproxima la composición de la maqueta sin quitar
 el selector del programa real.
 
-La corrección de caché quedó registrada con la marca `qa-orbita-modules-v73-20261123`
+La corrección de caché quedó registrada con la marca `qa-orbita-modules-v74-20261123`
 en `index.html` y `restablecer-contrasena.html`, junto con la huella fijada en
 el contrato P01. Así el preview no puede servir una copia anterior de la hoja
 Órbita después de un cambio visual.

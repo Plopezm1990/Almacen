@@ -1501,6 +1501,32 @@ html[data-la-diseno="orbita"]:not([data-la-paleta]):not([data-la-personalizada])
 html:not([data-la-paleta]):not([data-la-personalizada]) [data-la-panel="orbita"] .la-panel-indicadores button:nth-child(2) { border-block-start-color: #B0A6FF; }
 html:not([data-la-paleta]):not([data-la-personalizada]) [data-la-panel="orbita"] .la-panel-indicadores button:nth-child(3) { border-block-start-color: #8CC3FF; }
 [data-la-panel="orbita"] .la-panel-indicadores svg { color: var(--c-accent); }
+[data-la-panel="orbita"] .la-panel-orbita-secundarios {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 180px), 1fr));
+  gap: var(--la-space-2);
+  margin-block-start: var(--la-space-3);
+}
+[data-la-panel="orbita"] .la-panel-orbita-secundarios button {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: center;
+  gap: var(--la-space-2);
+  min-height: var(--la-control-height);
+  padding: var(--la-space-2) var(--la-space-3);
+  border: 1px solid var(--c-divider);
+  border-block-start: 2px solid var(--c-accent);
+  border-radius: var(--la-radius-md);
+  background: color-mix(in srgb, var(--c-surface) 94%, transparent);
+  color: var(--c-ink);
+  text-align: start;
+}
+[data-la-panel="orbita"] .la-panel-orbita-secundarios button strong {
+  font-family: var(--la-mono);
+}
+@media (max-width: 767px) {
+  [data-la-panel="orbita"] .la-panel-orbita-secundarios { grid-template-columns: 1fr; }
+}
 @media (pointer: fine) and (prefers-reduced-motion: no-preference) {
   [data-la-panel="orbita"] .la-panel-diseno-cab::after {
     content: "";

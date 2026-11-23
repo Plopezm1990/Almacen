@@ -36,7 +36,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v73-20261123/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-modules-v74-20261123/);
 assert.match(index, /fuente\.js\?v=qa-orbita-titular-v6-mobile-nav-20261122/, 'fuente.js debe invalidar la caché tras alinear la navegación móvil');
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,
@@ -124,7 +124,7 @@ assert.doesNotMatch(shellVisual, /rgba\(255,255,255|#8CC3FF|#c7d5ce|#8fb0a1/i,
 assert.match(resetPassword, /data-la-diseno="orbita"/, 'la recuperación no fija la propuesta Órbita antes de iniciar sesión');
 assert.match(resetPassword, /data-la-orbita-module="acceso"/, 'la recuperación no queda clasificada como módulo de Acceso');
 assert.match(resetPassword, /data-la-orbita-template="formulario"/, 'la recuperación no usa la plantilla de formulario');
-assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v73-20261123/, 'la recuperación no carga el contrato de apariencia');
+  assert.match(resetPassword, /la-apariencia\.css\?v=qa-orbita-modules-v74-20261123/, 'la recuperación no carga el contrato de apariencia');
 assert.match(resetPassword, /min-height:var\(--la-control-height,44px\)/, 'la recuperación conserva controles por debajo de 44 px');
 assert.doesNotMatch(resetPassword, /#153D27|#0C2714|#C69A52|#8A6028/, 'la recuperación conserva colores literales del marco antiguo');
 

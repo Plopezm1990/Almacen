@@ -229,6 +229,19 @@ composición de Inicio añade las regiones «Pulso de ventas» y «Pendientes de
 día» con movimientos, pedidos y stock reales, y la caché de la hoja se
 invalida junto con el contrato P01 (`3c8439689917ad15`).
 
+### Indicadores de Inicio · jerarquía Órbita · revisión 23/11/2026
+
+La comparación directa con la maqueta mostró que el producto podía aportar un
+cuarto indicador real además de los tres indicadores operativos que encabezan
+Órbita. Para no ocultar información ni mezclar densidades, `PanelDiseno` ahora
+renderiza los tres primeros en `Indicadores principales` y los restantes en
+`Indicadores secundarios`. La navegación de cada tarjeta, sus permisos y sus
+handlers son los mismos; solo cambia la región visual. El espejo de
+`source-recovery` recibe exactamente el mismo cuerpo y la hoja
+`la-apariencia.css` mantiene tres columnas en escritorio y apilado accesible en
+móvil. La marca de caché resultante es `qa-orbita-modules-v74-20261123`, con
+huella P01 `59c3f42c92436847`.
+
 Las dos regiones son estructurales y no sustituyen el dashboard de negocio:
 el gráfico resume los últimos movimientos de venta que ya llegaron al cliente,
 y la lista enlaza a Pedidos o Productos según el registro real. Si las

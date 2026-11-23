@@ -17089,6 +17089,8 @@ function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPend
     .filter((item) => item && puedeConsultar(item.tab));
   const accesos = panel.accesos.filter(puedeConsultar);
   const esOrbita = diseno === "orbita";
+  const indicadoresPrimarios = esOrbita ? indicadores.slice(0, 3) : indicadores;
+  const indicadoresSecundarios = esOrbita ? indicadores.slice(3) : [];
   const ventasRecientes = Array.isArray(movimientos) ? movimientos
     .map((movimiento) => Math.max(0, unidadesVentaConSignoPM09(movimiento)) * Math.abs(Number(movimiento.ingresoUnitario) || 0) * (1 + (Number(movimiento.ivaVentaAplicado) || 0) / 100))
     .filter((importe) => importe > 0)
@@ -17128,11 +17130,19 @@ function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPend
           h(Icono, { size: 17, "aria-hidden": true }), texto);
       }))
     ),
-    indicadores.length > 0 && h("div", { className: "la-panel-indicadores" },
-      indicadores.map((item) => h("button", {
+    indicadoresPrimarios.length > 0 && h("div", { className: "la-panel-indicadores", "aria-label": esOrbita ? "Indicadores principales" : "Indicadores" },
+      indicadoresPrimarios.map((item) => h("button", {
         key: item.id, type: "button", onClick: () => { if (puedeConsultar(item.tab)) abrirIndicador(item); }
       },
       h(ACCESOS_PANEL_REDISENO[item.tab]?.[1] || ClipboardList, { size: 18, "aria-hidden": true }),
+      h("span", null, item.titulo),
+      h("strong", null, item.valor)))
+    ),
+    indicadoresSecundarios.length > 0 && h("div", { className: "la-panel-orbita-secundarios", "aria-label": "Indicadores secundarios" },
+      indicadoresSecundarios.map((item) => h("button", {
+        key: item.id, type: "button", onClick: () => { if (puedeConsultar(item.tab)) abrirIndicador(item); }
+      },
+      h(ACCESOS_PANEL_REDISENO[item.tab]?.[1] || ClipboardList, { size: 17, "aria-hidden": true }),
       h("span", null, item.titulo),
       h("strong", null, item.valor)))
     ),
