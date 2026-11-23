@@ -2857,6 +2857,16 @@ html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-dashboard-v2
     padding: var(--la-space-4);
     border-radius: var(--la-radius-lg) !important;
   }
+  /* El contexto Empresa/Local conserva ambos selectores, pero adopta la
+     composición compacta de la maqueta móvil en lugar de ocupar toda la
+     primera pantalla en una columna. */
+  html[data-la-diseno] #root main[data-la-orbita-module="inicio"] > .la-ui-card:first-child > .grid.grid-cols-1.gap-3.items-end {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: end;
+  }
+  html[data-la-diseno] #root main[data-la-orbita-module="inicio"] > .la-ui-card:first-child > .grid.grid-cols-1.gap-3.items-end > :last-child {
+    grid-column: 1 / -1;
+  }
   html[data-la-diseno] #root main[data-la-orbita-module="inicio"] .la-panel-accesos {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
