@@ -3479,3 +3479,13 @@ los estilos scoped del módulo. La comprobación live post-recarga confirmó
 `data-la-orbita-module=inventario`, `data-la-orbita-surface=inventario`,
 tabla visible, `scrollWidth=clientWidth` y objetivo táctil mínimo de 44 px.
 No se modificaron datos ni acciones de inventario.
+
+### Barrido live operativo de la misma sesión · 23/11/2026
+
+El preview confirmó, sin acciones de escritura, `cocina` (vacío honesto y
+aviso de caja cerrada), `caja` (apertura/arqueo/historial bajo demanda),
+`compras` → Proveedores (registro QA y aviso de revisión) e `inventario`
+→ Resumen de almacén (tabla y movimientos). En los cuatro casos el shell fue
+Órbita, `scrollWidth` coincidió con `clientWidth` en 758 px y el menor control
+medido fue de 44 px. Queda separada la comprobación específica de Clientes,
+Personal, Configuración, Plataforma y Acceso.

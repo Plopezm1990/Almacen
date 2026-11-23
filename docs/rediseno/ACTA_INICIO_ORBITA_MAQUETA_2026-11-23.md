@@ -219,3 +219,23 @@ una tabla visible, sin scroll horizontal (`scrollWidth=758` y
 `clientWidth=758`) y controles con mínimo de 44 px. El contrato del marco pasa
 de 32/32 a **33/33** y P01 fija la huella
 `885a6191da101d8d` con `qa-orbita-shell-v28-20261123`.
+
+### Barrido live adicional de superficies operativas · 23/11/2026
+
+Sin pulsar acciones de escritura, el preview recargado mostró además:
+
+- **Cocina**: `data-la-orbita-module="cocina"`, cola vacía honesta
+  (`No hay comandas para este filtro`), aviso de sesión de caja cerrada,
+  `scrollWidth=clientWidth=758` y controles táctiles desde 44 px.
+- **Caja**: `data-la-orbita-module="caja"`, apertura/arqueo/historial
+  visibles y el historial bajo demanda, `scrollWidth=758` y mínimo táctil de
+  44 px; no se abrió sesión ni se guardó arqueo.
+- **Compras → Proveedores**: `data-la-orbita-module="compras"`, proveedor QA
+  visible con aviso de revisión, sin overflow y mínimo táctil de 44 px.
+- **Inventario → Resumen de almacén**: `data-la-orbita-module="inventario"`,
+  tabla de stock y movimientos reales visibles, sin overflow y mínimo táctil
+  de 44 px.
+
+Estas observaciones cubren composición, estado vacío/alerta y escala del marco
+en la sesión actual; no sustituyen la ronda pendiente de Clientes, Personal,
+Configuración, Plataforma y Acceso con sus estados específicos.
