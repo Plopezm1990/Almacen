@@ -154,3 +154,28 @@ evento `la-apariencia:cambio`. Al cambiar una propuesta o una paleta, la
 subcabecera, la ayuda de Apariencia y la marca del diseño activo se actualizan
 sin recargar ni navegar. La huella queda fijada en el contrato de capas
 (`f21b3bbf6b80dd41`) para impedir que el CDN sirva una versión anterior.
+
+### Ajuste de paridad de indicadores y navegación · 23/11/2026
+
+La revisión `c94a6863` corrige dos diferencias que todavía quedaban en el
+Inicio de Órbita:
+
+- Las tarjetas principales ahora son exactamente `Ventas de hoy`, `Mesas
+  ocupadas` y `Comandas activas`, en el mismo orden que la maqueta. Las dos
+  últimas leen el mapa de sala y la cola de comandas mediante los puentes
+  reales ya autorizados (`cargarMapaSalaA07({ paraPanel: true })` y
+  `listarEstacionesA10.listarPedidosTurno`). No se introducen datos ficticios,
+  RPC nuevas ni permisos nuevos. Mientras cargan muestran `…`; si el servidor
+  falla muestran `—` y el motivo.
+- La línea decorativa de Administración empieza ahora en Equipo/Calidad, igual
+  que en la maqueta, y no altera rutas ni capacidades.
+
+El contrato `ini01-kpi-sala-comandas-contract.mjs` protege ambas fuentes
+(`fuente.js` y `source-recovery/fuente-recuperado.js`) y verifica que no haya
+polling propio. La huella del shell pasa a
+`qa-orbita-shell-v27-20261123` (`e756829705ce10e5`). La batería local de
+rediseño queda en **22/22 PASS**, la puerta de manifiesto en **389 entradas /
+372 activas / 333 Node**, la paridad de recuperación en PASS y
+`git diff --check` limpio. Esta evidencia cubre el Inicio; aún no sustituye
+la comprobación visual autenticada de cada módulo restante frente a la
+maqueta.

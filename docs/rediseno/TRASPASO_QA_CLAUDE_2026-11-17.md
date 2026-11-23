@@ -3441,3 +3441,22 @@ los módulos restantes frente a la maqueta en ambas superficies.
 El contrato del marco se amplió a `32/32` para proteger explícitamente ese
 evento de sincronización. El estado publicado de la rama queda en
 `79c2cdbe` (PR #225 sigue en borrador); producción no se toca.
+
+### Inicio Órbita: indicadores reales y agrupación final · 23/11/2026
+
+En `c94a6863` se alineó el Inicio con la composición de la maqueta sin tocar
+la lógica de negocio. `PANELES_REDISENO.orbita.indicadores` pide ahora
+`ventas`, `mesasocupadas` y `comandasactivas`. Las dos tarjetas nuevas
+reutilizan los puentes/RPC existentes del mapa de sala y de la cola de cocina;
+no hay constantes, datos simulados ni `setInterval`. El estado de carga no
+presenta un cero inventado y el error del servidor queda visible.
+
+También se corrigió la zona decorativa de Administración para incluir Equipo y
+Calidad antes de Informes, manteniendo intactos destinos, permisos y handlers.
+La huella del shell es `qa-orbita-shell-v27-20261123`
+(`e756829705ce10e5`). El contrato nuevo
+`tests/rediseno/ini01-kpi-sala-comandas-contract.mjs` pasa para las dos copias
+de fuente; la batería `tests/rediseno/*.mjs` queda en **22/22**, el manifiesto
+en **389/372/333**, la paridad exacta y `git diff --check` pasan. Sigue
+pendiente la evidencia live autenticada del resto de módulos frente a la
+maqueta; este cambio solo cierra la diferencia demostrada en Inicio.
