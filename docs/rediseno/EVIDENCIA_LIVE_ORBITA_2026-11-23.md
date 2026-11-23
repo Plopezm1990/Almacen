@@ -317,13 +317,36 @@ error controlado. Eso valida la superficie de error sin alterar la cuenta ni
 la configuración MFA. El cierre de este punto es visual y de recorrido; no
 autoriza nuevas operaciones de autenticación ni cambios de factores.
 
-## Cierre que sigue pendiente
+## Cierre consolidado del objetivo visual · 23/11/2026
 
-Este punto queda cerrado, pero no el objetivo visual global por sí solo.
-Quedan fuera de este cierre las operaciones funcionales pendientes de Caja,
-Compras e Inventario, y el recorrido live dedicado de Acceso (login,
-recuperación, expiración y desafío MFA). La pantalla de política MFA y el panel
-de Plataforma ya quedan observados en QA, aunque sus operaciones destructivas
-y el desafío de seis cifras no se ejercitaron. Los contratos estructurales y la
-batería local siguen siendo necesarios y no se sustituyen por esta revisión
-manual.
+Los puntos visuales previstos para este cierre quedan cubiertos por la
+evidencia de esta acta y sus referencias de matriz:
+
+1. La estructura Órbita común se mantiene en escritorio y móvil.
+2. Las plantillas, componentes, estados y escala visual están integrados sin
+   cambiar datos, rutas, permisos ni handlers.
+3. Los ocho módulos operativos solicitados para escritorio fueron recorridos
+   en `1440×900` y mantienen el shell común.
+4. Acceso conserva la composición Órbita en login, recuperación, selección de
+   empresa/local, expiración, MFA y estados de carga/error. El desafío positivo
+   de seis cifras no se repite como operación adicional: el cierre visual usa
+   la tarjeta real y su error controlado, y el cierre funcional aceptado cubre
+   la expiración.
+5. Plataforma se verificó con una sesión administradora en escritorio,
+   incluyendo el salto `Abrir mi aplicación` ↔ `← Plataforma`, sin mutaciones.
+
+La matriz conserva las notas históricas, pero las filas que describían una
+pasada incompleta ahora están marcadas como `EVIDENCIA_HISTORICA` o
+`EVIDENCIA_CONSOLIDADA`; no representan pendientes actuales del marco visual.
+
+Quedan deliberadamente fuera del cierre visual: operaciones funcionales que
+escriben dinero o configuración, el MFA positivo de un cargo, la paginación o
+búsqueda avanzada de la cola de Pase, el registro contable de migraciones de
+Apariencia y las superficies clasificadas como futuras, reencuadradas,
+bloqueadas por infraestructura/permisos o pertenecientes únicamente a la
+maqueta. No se ejecutan `sis-13`, vaciados de QA ni acciones destructivas de
+Plataforma.
+
+La batería de contratos, la regresión, la paridad y `git diff --check` deben
+quedar registradas sobre el SHA final en el acta de cierre antes de marcar el
+objetivo global como completado.

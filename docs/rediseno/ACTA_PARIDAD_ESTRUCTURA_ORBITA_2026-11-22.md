@@ -519,3 +519,26 @@ comandas`, aviso de caja cerrada, apertura requerida, gestión de estaciones y
 cola vacía) y Caja (`Arqueo de caja`, apertura, fecha, efectivo esperado,
 movimientos, contado, denominaciones, notas e historial). No se abrió caja, no
 se guardó arqueo, no se cambió una estación ni se alteró una comanda.
+
+## Addendum · cierre final de los siete puntos · 23/11/2026
+
+La evidencia live posterior cierra las dos superficies que aparecían abiertas
+en las notas históricas: Acceso visual y Plataforma en escritorio. La matriz
+conserva esas notas como historial y marca como vigentes las filas
+`qa-20261123-acceso-visual-live` y `org-08..org-17`.
+
+El cierre final se limita al rediseño visual y de organización. Se actualizaron
+la matriz, este acta, el traspaso a Claude y el acta final
+`ACTA_CIERRE_FINAL_REDISENO_ORBITA_2026-11-23.md`. No se ejecutaron cobros,
+reembolsos, altas, bajas, borrados, cambios de dueño, cambios de permisos,
+`sis-13`, vaciados de QA ni acciones de producción.
+
+La batería actual es `REDISENO_BATTERY total=22 fallos=0`; la paridad de fuente
+es `PARIDAD_CUERPO_EXACTA=1` / `SOURCE_RECOVERY_CHECK=PASS`; `node --check`
+para ambas fuentes y `git diff --check` están limpios. El PR #225 continúa en
+borrador sobre `rediseno/f0-base-qa`.
+
+Las tareas opcionales o fuera de este objetivo (MFA positivo de Cajero/a,
+paginación avanzada de Pase, bookkeeping de Apariencia, operaciones
+funcionales con escritura y superficies futuras/bloqueadas) quedan listadas
+en el acta final sin bloquear el cierre visual.

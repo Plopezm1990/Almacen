@@ -3355,3 +3355,25 @@ La batería local actual de `tests/rediseno/*.mjs` queda en **22/22 PASS** y
 contrato: es la verificación viva con sesión administradora de Plataforma y
 la sesión real de Acceso/MFA, que debe hacerse en el preview sin registrar
 credenciales en el traspaso.
+
+## Addendum de cierre visual final · Codex · 23/11/2026
+
+La nota anterior queda supersedida en lo relativo a Plataforma y Acceso: las
+dos superficies ya cuentan con evidencia live. Plataforma se verificó en
+escritorio con `owner.a@qa.invalid`, incluyendo empresas, locales, usuarios,
+estados, salto a la aplicación y retorno a Plataforma. Acceso se comprobó en
+login, recuperación, selección de empresa/local, expiración, MFA y estados de
+carga/error. No se documentan credenciales ni se modificaron factores.
+
+Se completó el cierre documental en este orden: matriz con estados históricos y
+vigentes, acta de paridad, evidencia live y
+`ACTA_CIERRE_FINAL_REDISENO_ORBITA_2026-11-23.md`. Los bloqueos de
+infraestructura/permisos (`per-21`, `per-24..per-25`), la instalación no vacía
+`acc-08`, `sis-13`, el MFA positivo de un cargo, el bookkeeping de Apariencia,
+la paginación avanzada de Pase y las pantallas futuras quedan fuera del
+objetivo visual y se conservan como decisiones explícitas.
+
+Comprobaciones finales sobre la rama `rediseno/f0-base-qa`: 22 contratos de
+`tests/rediseno/*.mjs` en PASS, `PARIDAD_CUERPO_EXACTA=1`,
+`SOURCE_RECOVERY_CHECK=PASS`, `node --check` para las dos fuentes y
+`git diff --check` limpio. PR #225 permanece en borrador; producción intacta.
