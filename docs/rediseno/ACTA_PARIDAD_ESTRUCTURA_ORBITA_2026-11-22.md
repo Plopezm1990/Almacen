@@ -187,6 +187,16 @@ La documentación de esta auditoría queda en el commit `88b3812c` de
 `rediseno/f0-base-qa`; el PR #225 sigue en borrador y el preview asociado es
 `https://deploy-preview-225--chic-entremet-9107cf.netlify.app`.
 
+### Punto 4 · Acceso visual · cerrado
+
+El login, la recuperación independiente, el desafío MFA, sus estados de carga
+y error, la selección de empresa/local, la expiración y los controles táctiles
+quedan alineados con Órbita. La tarjeta MFA se observó en vivo con su alerta de
+código inválido; la recuperación se abrió sin enviar el formulario. La
+expiración y la selección autenticada de local están respaldadas por el
+recorrido funcional aceptado en `QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`.
+No se cambiaron factores, contraseñas, cuentas ni datos de QA.
+
 ### Preview actualizado y frontera de Plataforma · 22/11/2026
 
 El alias del preview volvió a desplegarse con el commit documental

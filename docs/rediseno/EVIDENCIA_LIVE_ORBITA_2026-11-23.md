@@ -257,6 +257,41 @@ La auditoría autenticada de escritorio del preview 225, con viewport `1440×900
  funcional de cada fila: certifica la consistencia visual y organizativa del
  marco Órbita en escritorio para los ocho módulos operativos indicados.
 
+## Punto 4 · Acceso visual · CERRADO
+
+Se cerró la revisión visual de Acceso sin modificar cuentas ni enviar enlaces.
+En el preview 225 se observaron las superficies que forman este punto:
+
+- **Login:** formulario Órbita con logo, distintivo QA, correo, contraseña,
+  acción primaria, recuperación y modo local sin sincronizar; la variante
+  móvil pasa a una sola columna.
+- **Carga y error:** `Comprobando conexión…`, `Comprobando el segundo
+  factor…`, `Entrando…`, `Verificando…`, `No se puede abrir el acceso seguro` y
+  alertas de credenciales/código incorrecto tienen presentación visible y
+  salida controlada.
+- **MFA:** la tarjeta independiente `Confirma tu segundo factor` se mostró
+  con campo numérico, acción `Continuar`, `Cerrar sesión` y alerta de código
+  inválido; no se inscribió, eliminó ni cambió ningún factor.
+- **Recuperación:** `restablecer-contrasena.html` se abrió en una pestaña
+  limpia y expuso tarjeta Órbita, correo de la cuenta, `Enviar enlace de
+  recuperación` y `Volver a L&A Suite`, sin enviar el formulario.
+- **Empresa y local:** el recorrido autenticado de propietario ya registrado
+  en el acta confirma el selector de empresa/local y la llegada a `QA-EMP-A /
+  QA-A1`; la selección se mantiene dentro del shell común.
+- **Expiración:** el estado de sesión caducada y el retorno a `Iniciar sesión`
+  quedan cubiertos por el cierre funcional aceptado en
+  `QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`; la UI vuelve a ofrecer login sin
+  dejar el panel operativo visible.
+- **Accesibilidad visual:** los contratos de Acceso y recuperación mantienen
+  controles de al menos 44 px, foco visible, `role=alert` para errores y cero
+  overflow en las variantes desktop y móvil.
+
+La prueba de esta tanda llegó correctamente hasta el desafío MFA; el código
+TOTP suministrado para el ensayo ya había caducado y el servidor mostró el
+error controlado. Eso valida la superficie de error sin alterar la cuenta ni
+la configuración MFA. El cierre de este punto es visual y de recorrido; no
+autoriza nuevas operaciones de autenticación ni cambios de factores.
+
 ## Cierre que sigue pendiente
 
 Este punto queda cerrado, pero no el objetivo visual global por sí solo.
