@@ -106899,6 +106899,8 @@ function GestionAlmacen() {
       diseno: disenoNavegacion,
       contexto: contextoActivoPM15,
       puedeVerPanelRediseno,
+      cargarMapaSala: () => cargarMapaSalaA07({ paraPanel: true }),
+      listarPedidosTurno: listarEstacionesA10.listarPedidosTurno,
       itemsPermitidos: typeof window !== "undefined" && window.__nubeActiva ? miPerfil?.rol === "Propietario" ? null : itemsPermitidosEmpleado : modoEmpleado ? itemsPermitidosEmpleado : null,
       valorInventario: valorInventarioInforme,
       valorUtillaje: valorUtillajeInforme,
@@ -118236,7 +118238,7 @@ const PANELES_REDISENO = {
   pulso: { titulo: "Control operativo", indicadores: ["saldo", "margen", "pedidos", "stockbajo", "descuadresstock"], accesos: ["venta", "cocina", "caja", "resumen_almacen"] },
   patio: { titulo: "Mi turno", indicadores: ["pedidos", "caducidades", "conteos"], accesos: ["venta", "cocina", "recepcion", "fichaje"] },
   sello: { titulo: "Panel de gesti\xF3n", indicadores: ["saldo", "margen", "pedidos", "personal"], accesos: ["clientes", "facturas", "reportes"] },
-  orbita: { titulo: "El turno,", destacado: "en movimiento.", indicadores: ["ventas", "margen", "pedidos", "stockbajo"], accesos: ["venta", "cocina", "resultados"] }
+  orbita: { titulo: "El turno,", destacado: "en movimiento.", indicadores: ["ventas", "mesasocupadas", "comandasactivas"], accesos: ["venta", "cocina", "resultados"] }
 };
 const ACCESOS_PANEL_REDISENO = {
   venta: ["Abrir TPV", ShoppingBag],
@@ -118389,7 +118391,7 @@ function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPend
     )
   );
 }
-function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, almacenCongelado = false, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null, diseno, contexto, puedeVerPanelRediseno }) {
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, almacenCongelado = false, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null, diseno, contexto, puedeVerPanelRediseno, cargarMapaSala, listarPedidosTurno }) {
   const entradas30 = movimientos.filter((m22) => esEntrada(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const salidas30 = movimientos.filter((m22) => esSalida(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const [abierta, setAbierta] = (0, import_react4.useState)(null);
@@ -118398,6 +118400,45 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
   // El resultado de la merma se queda en el dialogo en vez de cerrarlo sin decir
   // nada: antes se cerraba igual hubiera descontado o no.
   const [resultadoMermaLote, setResultadoMermaLote] = (0, import_react4.useState)(null);
+  // Inicio de Órbita (23/11/2026): "Mesas ocupadas" y "Comandas activas" en la
+  // maqueta se leen con las MISMAS funciones reales que ya usaba el panel de
+  // servicio retirado (abc_listar_mapa_sala y abc_listar_comandas_estacion vía
+  // listarPedidosTurno), con las mismas políticas RLS. No se inventa ningún
+  // dato: mientras no hay respuesta del servidor se muestra "…", y si falla se
+  // muestra el motivo en vez de un cero. Solo se pide cuando el diseño activo
+  // es Órbita, y una sola vez por cambio de diseño: no hay temporizador propio.
+  const [estadoSalaOrbita, setEstadoSalaOrbita] = (0, import_react4.useState)({ cargando: true, ocupadas: 0, total: 0, error: null });
+  const [estadoComandasOrbita, setEstadoComandasOrbita] = (0, import_react4.useState)({ cargando: true, total: 0, error: null });
+  (0, import_react4.useEffect)(() => {
+    if (diseno !== "orbita") return;
+    let vigente = true;
+    if (typeof cargarMapaSala === "function") {
+      setEstadoSalaOrbita((prev) => ({ ...prev, cargando: true }));
+      cargarMapaSala().then((r2) => {
+        if (!vigente) return;
+        if (r2 && r2.ok) {
+          const mesas = (r2.zonas || []).flatMap((z2) => z2.mesas || []);
+          setEstadoSalaOrbita({ cargando: false, ocupadas: mesas.filter((m22) => m22.estado_efectivo === "OCUPADA").length, total: mesas.length, error: null });
+        } else {
+          setEstadoSalaOrbita({ cargando: false, ocupadas: 0, total: 0, error: r2?.error || "No se pudo consultar la sala." });
+        }
+      });
+    }
+    if (typeof listarPedidosTurno === "function") {
+      setEstadoComandasOrbita((prev) => ({ ...prev, cargando: true }));
+      listarPedidosTurno().then((r2) => {
+        if (!vigente) return;
+        if (r2 && r2.ok) {
+          setEstadoComandasOrbita({ cargando: false, total: r2.total ?? (r2.pedidos || []).length, error: null });
+        } else {
+          setEstadoComandasOrbita({ cargando: false, total: 0, error: r2?.error || "No se pudieron consultar las comandas." });
+        }
+      });
+    }
+    return () => {
+      vigente = false;
+    };
+  }, [diseno]);
   const diasTexto = (d2) => d2 < 0 ? `vencido hace ${Math.abs(d2)} d` : d2 === 0 ? "hoy" : `en ${d2} d`;
   const diasColor = (d2) => d2 < 0 ? C2.red : d2 <= 7 ? C2.amber : C2.inkSoft;
   const descuadresStock = diagnosticoStock.filter((d2) => !d2.coincide).sort((a22, b2) => Math.abs(b2.diferencia) - Math.abs(a22.diferencia));
@@ -118428,6 +118469,26 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
       nota: "importe bruto de los movimientos de venta cargados",
       tab: "resultados",
       tabNombre: "Resultados",
+      items: []
+    },
+    {
+      id: "mesasocupadas",
+      titulo: "Mesas ocupadas",
+      valor: estadoSalaOrbita.cargando ? "…" : estadoSalaOrbita.error ? "—" : `${estadoSalaOrbita.ocupadas} / ${estadoSalaOrbita.total}`,
+      nota: estadoSalaOrbita.error || "Sala y terraza",
+      color: estadoSalaOrbita.error ? C2.red : C2.ink,
+      tab: "venta",
+      tabNombre: "TPV",
+      items: []
+    },
+    {
+      id: "comandasactivas",
+      titulo: "Comandas activas",
+      valor: estadoComandasOrbita.cargando ? "…" : estadoComandasOrbita.error ? "—" : estadoComandasOrbita.total,
+      nota: estadoComandasOrbita.error || "Enviadas, en preparación o listas",
+      color: estadoComandasOrbita.error ? C2.red : C2.ink,
+      tab: "cocina",
+      tabNombre: "Cocina",
       items: []
     },
     {

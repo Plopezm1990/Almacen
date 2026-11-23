@@ -249,8 +249,15 @@
       var etiqueta = h("div", { class: "la-orbita-zone-label", "data-la-orbita-zone-label": clave, texto: texto });
       sidebar.insertBefore(etiqueta, antesDe);
     };
+    // 23/11/2026: la maqueta pone "Equipo" y "Calidad" en la zona de gestión
+    // (junto a Informes, Organización y Sistema), no en la de operación. El
+    // orden real de las secciones para Órbita es Servicio, Caja y fiscalidad,
+    // Compras, Inventario, Equipo, Calidad, Informes, Organización, Sistema
+    // (agruparNavegacionRediseno), así que la expresión que buscaba el inicio
+    // de "Administración" solo en "informes|organización|sistema" encontraba
+    // primero "Informes" y dejaba Equipo y Calidad colgando de "Operación".
     var operacion = secciones.find(function (seccion) { return /servicio/i.test(tituloDe(seccion)); });
-    var administracion = secciones.find(function (seccion) { return /informes|organizaci[oó]n|sistema/i.test(tituloDe(seccion)); });
+    var administracion = secciones.find(function (seccion) { return /equipo|calidad|informes|organizaci[oó]n|sistema/i.test(tituloDe(seccion)); });
     insertar(operacion, "operacion", "Operación");
     insertar(administracion, "administracion", "Administración");
   }
