@@ -41,6 +41,22 @@
     node.textContent = value;
   }
 
+  function nombreDisenoActivo() {
+    var id = document.documentElement.getAttribute("data-la-diseno") || "orbita";
+    var nombres = {
+      oliva: "Oliva",
+      claro: "Claro",
+      pulso: "Pulso",
+      patio: "Patio",
+      rumbo: "Rumbo",
+      sello: "Sello",
+      orbita: "Órbita",
+      ascua: "Ascua",
+      pase: "Pase"
+    };
+    return nombres[id] || "Órbita";
+  }
+
   function activarBotonOriginal(clon, original) {
     clon.addEventListener("click", function () { original.click(); });
     clon.addEventListener("keydown", function (event) {
@@ -499,6 +515,14 @@
       var cantidad = marco.querySelectorAll(".la-orbita-alert").length;
       textoSiCambia(avisos, cantidad ? "Avisos " + cantidad : "Avisos");
     }
+    var propuesta = cabecera.querySelector("[data-la-orbita-propuesta]");
+    if (propuesta) {
+      var nombre = nombreDisenoActivo();
+      textoSiCambia(propuesta, nombre);
+      propuesta.setAttribute("aria-label", "Diseño activo: " + nombre);
+    }
+    var apariencia = cabecera.querySelector("[data-la-orbita-appearance]");
+    if (apariencia) apariencia.setAttribute("title", "Cambiar apariencia · " + nombreDisenoActivo());
   }
 
   function crearCabecera(sidebar) {
@@ -576,7 +600,7 @@
       cabecera.appendChild(perfilMenu);
       perfil.setAttribute("aria-expanded", "true");
     });
-    var apariencia = h("button", { type: "button", class: "la-orbita-header-button la-orbita-appearance", texto: "Apariencia" });
+    var apariencia = h("button", { type: "button", class: "la-orbita-header-button la-orbita-appearance", "data-la-orbita-appearance": "", texto: "Apariencia" });
     apariencia.addEventListener("click", function () { if (typeof window.LAApariencia?.abrirEditor === "function") window.LAApariencia.abrirEditor(); });
     derecha.append(buscar, alertas, perfil, apariencia);
     var subcabecera = h("nav", { class: "la-orbita-subheader", "data-la-orbita-subheader": "", "aria-label": "Contexto de Órbita" }, [
@@ -585,7 +609,7 @@
         var aviso = marco && marco.querySelector(".la-orbita-alert");
         if (aviso) aviso.scrollIntoView({ block: "nearest" });
       } }),
-      h("span", { class: "la-orbita-proposal-label", texto: "Órbita" }),
+      h("span", { class: "la-orbita-proposal-label", "data-la-orbita-propuesta": "", texto: "Órbita" }),
       h("a", { class: "la-orbita-index-link", href: (location.href.replace(/#\/screen\/[^?]+/, "#/screen/sis-14") || "#/screen/sis-14"), texto: "Índice" })
     ]);
     cabecera.append(izquierda, derecha, subcabecera);
