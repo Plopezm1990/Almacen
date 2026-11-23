@@ -1488,6 +1488,16 @@ html[data-la-diseno="orbita"]:not([data-la-paleta]):not([data-la-personalizada])
   background: color-mix(in srgb, var(--c-surface) 94%, transparent);
   backdrop-filter: blur(10px);
 }
+/* La maqueta Órbita presenta tres indicadores operativos por fila en
+   escritorio. El producto puede aportar un cuarto indicador (por ejemplo,
+   stock bajo); se conserva y pasa a una segunda fila, sin ocultar datos ni
+   cambiar sus handlers. En móvil la regla específica de dos columnas sigue
+   siendo la dominante. */
+@media (min-width: 768px) {
+  html[data-la-diseno="orbita"] #root main[data-la-orbita-module="inicio"] .la-panel-indicadores {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
 html:not([data-la-paleta]):not([data-la-personalizada]) [data-la-panel="orbita"] .la-panel-indicadores button:nth-child(2) { border-block-start-color: #B0A6FF; }
 html:not([data-la-paleta]):not([data-la-personalizada]) [data-la-panel="orbita"] .la-panel-indicadores button:nth-child(3) { border-block-start-color: #8CC3FF; }
 [data-la-panel="orbita"] .la-panel-indicadores svg { color: var(--c-accent); }
