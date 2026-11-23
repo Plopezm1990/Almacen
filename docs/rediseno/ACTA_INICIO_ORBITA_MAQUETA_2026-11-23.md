@@ -266,3 +266,32 @@ Cocina, Caja, Clientes, Compras, Inventario, Personal y Configuración. La
 evidencia separada de Plataforma y Acceso/MFA permanece en
 `EVIDENCIA_LIVE_ORBITA_2026-11-23.md` y en la matriz; no se repiten acciones
 administrativas ni se introducen mutaciones para cerrar el rediseño visual.
+
+### Lateral de escritorio alineado con la maqueta · shell v29 · 23/11/2026
+
+La comparación visual solicitada entre la maqueta y el programa mostró una
+diferencia concreta: la barra histórica exponía todas las pantallas hijas a la
+vez, mientras la maqueta presenta solo el primer nivel. En `7675eedc` el shell
+Órbita conserva los botones y sus handlers originales, pero los organiza así:
+
+- **Operación:** Inicio y Servicio.
+- **Administración:** Caja y fiscalidad, Compras, Inventario, Equipo, Calidad,
+  Informes, Organización y Sistema.
+- **Herramientas:** `Más módulos` despliega los destinos históricos completos y
+  `Opciones de demo` mantiene el acceso a la ruta existente `sis-15`.
+
+El primer nivel queda visible con una anchura de 248 px y el detalle se oculta
+solo por CSS hasta que el usuario abre `Más módulos`. Tras las
+re-renderizaciones de React el shell vuelve a marcar los botones, por lo que
+no reaparecen elementos antiguos por un cambio de pantalla. El navegador no
+crea rutas nuevas ni sustituye handlers; solo cambia etiquetas y composición
+visual. En el preview 225 se confirmó `qa-orbita-shell-v29-20261123`,
+`la-orbita-sidebar-compacta`, 10 entradas de primer nivel, 36 destinos
+secundarios ocultos y despliegue correcto de todos ellos al abrir `Más
+módulos`. El mínimo táctil del marco continúa en 44 px.
+
+Contratos ejecutados: `MARCO_ORBITA_CONTRACT=PASS (34/34)`,
+`MARCO_ORBITA_RUTAS_CONTRACT=PASS (20 rutas)`,
+`REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`,
+`REDISENO_P01_CAPAS_Y_MIGRACIONES_OK=1` y `git diff --check` limpio.
+Producción permanece intacta y el PR #225 sigue en borrador.

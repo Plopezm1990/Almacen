@@ -3509,3 +3509,21 @@ como en `data-la-orbita-surface`. Plataforma y Acceso/MFA conservan la
 evidencia autenticada separada ya registrada en
 `EVIDENCIA_LIVE_ORBITA_2026-11-23.md`; no se repitieron acciones destructivas
 ni se alteró QA.
+
+### Cambio visual pendiente de traspaso · lateral compacto v29 · `7675eedc`
+
+La diferencia entre la maqueta y el programa no estaba en los destinos, sino
+en la densidad del menú lateral. El shell de escritorio ahora muestra el
+primer nivel de Órbita (Inicio, Servicio, Caja y fiscalidad, Compras,
+Inventario, Equipo, Calidad, Informes, Organización y Sistema) y conserva el
+resto de las pantallas bajo `Más módulos`. `Opciones de demo` lleva a la ruta
+real `sis-15`; no es una pantalla simulada. El cambio se aplica sobre los
+botones existentes, sin cambiar datos, permisos, handlers ni rutas.
+
+La implementación es idempotente frente a los repintados de React y se sirve
+con `la-apariencia.css?v=qa-orbita-shell-v81-20261123` y
+`la-orbita-shell.js?v=qa-orbita-shell-v29-20261123`. En el Deploy Preview 225
+se observó la clase `la-orbita-sidebar-compacta`, la anchura de 248 px, 10
+resúmenes visibles, 36 destinos secundarios ocultos y la expansión completa
+al pulsar `Más módulos`. Contratos y `git diff --check` pasan; el PR #225
+sigue en borrador y producción no se tocó.
