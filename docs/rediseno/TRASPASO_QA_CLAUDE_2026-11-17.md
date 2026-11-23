@@ -3392,6 +3392,26 @@ Archivos de publicación: `fuente.js`,
 `source-recovery/fuente-recuperado.js`, `la-apariencia.css`,
 `la-orbita-shell.js`, `index.html` y sus contratos de marcas de caché.
 Resultado local: 22/22 contratos de rediseño, paridad exacta, sintaxis y
-`git diff --check` en PASS. Falta únicamente observar el deploy de este SHA en
-390×844, 430×932, tablet y escritorio antes de cerrar el objetivo como
-completado.
+`git diff --check` en PASS. El deploy `6b0432b201edef6e69bc9606` (preview #225)
+sirve el commit `4e7edbbf`; la observación live confirmó el planeta orbital,
+la cabecera Órbita y `Más` con rejilla de dos columnas y las secciones previstas.
+No se alteraron datos ni acciones de QA.
+
+### Cierre live de Inicio Órbita · 23/11/2026
+
+Se comprobó sin sesión mutante en el deploy inmutable de QA:
+
+- Inicio presenta una sola composición visible, con el dashboard histórico
+  aislado y `Ver detalle operativo` como acceso secundario.
+- El hero muestra planeta, anillos, puntos, grano, coordenadas y animación
+  desactivable por `prefers-reduced-motion`.
+- La cabecera contiene marca L&A, contexto, estado QA, avisos, perfil y la
+  segunda fila `Demostración · Avisos · Órbita · Índice`.
+- `Más` muestra `En Inicio`, `Módulos` y `Herramientas` en dos columnas, con
+  destinos reales; el botón de cierre y los elementos táctiles cumplen 44 px.
+- La evidencia está respaldada por `22/22` contratos de rediseño,
+  `PARIDAD_CUERPO_EXACTA=1`, `SOURCE_RECOVERY_CHECK=PASS`, comprobaciones de
+  sintaxis y `git diff --check`.
+
+Limitación conocida: la batería shell global no se ejecuta en este Windows por
+la imposibilidad de iniciar `bash.exe`; queda cubierta por el gate remoto de CI.

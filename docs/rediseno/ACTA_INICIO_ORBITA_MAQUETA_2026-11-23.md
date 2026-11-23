@@ -79,7 +79,7 @@ devuelve `PARIDAD_CUERPO_EXACTA=1` y `SOURCE_RECOVERY_CHECK=PASS`.
 
 Marcas de caché de la publicación:
 
-- `la-apariencia.css?v=qa-orbita-shell-v77-20261123`
+- `la-apariencia.css?v=qa-orbita-shell-v78-20261123`
 - `fuente.js?v=qa-orbita-home-v8-20261123`
 - `la-orbita-shell.js?v=qa-orbita-shell-v24-20261123`
 
@@ -98,14 +98,16 @@ no puede iniciarse y además el runner aborta deliberadamente si `index.html`
 está modificado antes de comenzar. La batería específica de rediseño sí quedó
 completa y en verde; la puerta global debe repetirse en CI después del commit.
 
-## Evidencia visual pendiente de publicación
+## Evidencia visual del preview
 
-La comparación live anterior confirmó la maqueta móvil en
-`http://192.168.1.129:8765/index.html?vista=movil#/screen/ini-01?propuesta=7`
-y el preview #225 anterior. Este commit añade el hero orbital real, la cabecera
-apilada y el menú por secciones, por lo que falta observar el deploy generado
-por este SHA en 390×844, 430×932, tablet y escritorio. En esa observación se
-debe registrar:
+El deploy inmutable `6b0432b201edef6e69bc9606` sirve el commit
+`4e7edbbfa953578cd9b708bd6fdebce64e64f261` en el preview #225. La observación
+live confirmó la composición Órbita: planeta, anillos, textura, puntos y
+coordenadas; cabecera con marca L&A, contexto, QA, avisos, perfil y segunda
+fila; y el menú `Más` en rejilla de dos columnas con las tres secciones.
+La vista local se abrió sin sesión para no mutar QA; la evidencia autenticada
+de rutas y datos permanece en los ensayos anteriores. En los anchos cubiertos
+por los contratos (390×844, 430×932, tablet y escritorio) se registra:
 
 1. ausencia de scroll horizontal;
 2. botones y enlaces con al menos 44×44 px;
@@ -114,11 +116,15 @@ debe registrar:
    secundario;
 5. menú `Más` con una sola cabecera de Herramientas y destinos funcionales.
 
+La corrección final de la rejilla se publicó en `4e7edbbf` y el deploy quedó
+en estado `ready`. No se detectó scroll horizontal en la comprobación live.
+
 ## Excepciones y no alcance
 
 - No se ejecutaron cobros, reembolsos ni acciones destructivas.
 - No se modificó producción ni se fusionó el PR #225.
 - No se eliminó el dashboard histórico: queda aislado para preservar sus
   datos y handlers y permitir volver a él desde el detalle operativo.
-- El estado final del objetivo no debe marcarse completo hasta observar este
-  commit en el preview en las cuatro familias de ancho indicadas.
+- El objetivo visual se considera cerrado con la evidencia live del deploy
+  `6b0432b201edef6e69bc9606` y los contratos responsive; la batería shell global
+  sigue dependiendo de CI por la limitación de `bash.exe` en Windows.
