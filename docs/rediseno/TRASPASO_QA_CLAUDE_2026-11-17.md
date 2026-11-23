@@ -3470,3 +3470,12 @@ oculto y `#la-pase-panel` no existe en esta propuesta. El Inicio expone las
 tres tarjetas de la maqueta y el menú `Más` conserva sus tres grupos; el
 submenú Compras muestra los seis destinos reales, incluido Albaranes. No se
 ejecutó ninguna operación que escriba datos.
+
+### Inventario: clasificación de Resumen de almacén · `563c2618`
+
+La ruta `Resumen de almacén` se incorporó a la superficie semántica
+`inventario` del shell. Antes quedaba como `resumen-de-almacen` y podía evitar
+los estilos scoped del módulo. La comprobación live post-recarga confirmó
+`data-la-orbita-module=inventario`, `data-la-orbita-surface=inventario`,
+tabla visible, `scrollWidth=clientWidth` y objetivo táctil mínimo de 44 px.
+No se modificaron datos ni acciones de inventario.

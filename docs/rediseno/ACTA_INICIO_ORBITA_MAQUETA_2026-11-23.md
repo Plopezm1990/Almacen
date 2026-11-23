@@ -204,3 +204,18 @@ La recarga no ejecutó acciones de escritura. Esta evidencia confirma la
 corrección de la duplicación y de la caché en el preview; no sustituye los
 recorridos live pendientes de los módulos que todavía no tienen captura
 autenticada propia.
+
+### Corrección de alcance visual de Inventario · shell v28 · 23/11/2026
+
+En la revisión live de la ruta `Resumen de almacén` se detectó que el shell la
+marcaba como `resumen-de-almacen`, aunque pertenece al bloque Inventario. Eso
+dejaba fuera de esa pantalla parte del CSS scoped de Órbita. La revisión
+`563c2618` añade esa etiqueta a la clasificación semántica del shell; no
+modifica la ruta, la tabla, los datos ni los handlers.
+
+Tras recargar el preview 225, la lectura autenticada confirmó
+`data-la-orbita-module="inventario"`, `data-la-orbita-surface="inventario"`,
+una tabla visible, sin scroll horizontal (`scrollWidth=758` y
+`clientWidth=758`) y controles con mínimo de 44 px. El contrato del marco pasa
+de 32/32 a **33/33** y P01 fija la huella
+`885a6191da101d8d` con `qa-orbita-shell-v28-20261123`.
