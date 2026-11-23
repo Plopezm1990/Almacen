@@ -347,6 +347,6 @@ bloqueadas por infraestructura/permisos o pertenecientes únicamente a la
 maqueta. No se ejecutan `sis-13`, vaciados de QA ni acciones destructivas de
 Plataforma.
 
-La batería de contratos, la regresión, la paridad y `git diff --check` deben
-quedar registradas sobre el SHA final en el acta de cierre antes de marcar el
-objetivo global como completado.
+La batería de contratos, la regresión, la paridad y `git diff --check` quedaron
+registradas sobre el SHA `db7ac239` en
+`ACTA_CIERRE_FINAL_REDISENO_ORBITA_2026-11-23.md`.
