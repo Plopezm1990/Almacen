@@ -66,6 +66,24 @@ responsive con stock, coste, PVP, IVA, margen, ABC y acciones `Kardex`,
 `Editar`, `Registrar salida` y `Eliminar producto`. También se vieron estados
 de stock bajo y productos eliminados.
 
+La ruta `Mermas` mostró filtros por periodo y motivo, totales del periodo,
+desglose por motivo y tres registros QA persistidos (lote, autoconsumo y merma
+manual), con sus cantidades y valores a coste. La pantalla se observó sin
+registrar una nueva merma.
+
+### Caja y compras operativas
+
+`Caja` mostró la apertura de sesión, fondo inicial, arqueo, efectivo esperado,
+otras ventas, movimientos y ajustes, contado por denominaciones, notas e
+historial. La sesión no se abrió ni se guardó un arqueo en esta comprobación.
+
+`Recepción de mercancía` mostró el estado vacío honesto `No hay pedidos
+pendientes de recibir`. `Entrada de albaranes` mostró tres albaranes QA con
+proveedor, fecha, líneas, base, IVA y total, junto a las acciones `Ver`,
+`Anular para editar` y `Eliminar`; no se pulsó ninguna. `Facturas` mostró el
+resumen mensual con base, IVA, total y el estado vacío `No hay facturas
+confirmadas en este mes`, sin crear factura.
+
 ### Personal
 
 La ruta mostró la plantilla de empleados con altas, bajas, vacaciones,
@@ -88,6 +106,13 @@ mantuvieron sin editar.
 - Clientes: **PASS observado** para filtros, ficha, NIF y paginación.
 - Compras / Proveedores: **PASS observado** para listado y ficha.
 - Inventario / Productos: **PASS observado** para tabla, filtros y acciones.
+- Inventario / Mermas: **PASS observado** para filtros, totales, motivos y
+  persistencia de los registros QA existentes.
+- Caja: **PASS observado** para la estructura de apertura, arqueo, movimientos
+  e historial; la operación de apertura/cierre no se repitió.
+- Compras / Recepción, Albaranes y Facturas: **PASS observado** para estados
+  vacíos, listados, resumen fiscal y acciones disponibles; no se ejecutaron
+  nuevas escrituras.
 - Personal: **PASS observado** para ficha, cargos y acciones de empleado.
 - Configuración: **PASS observado** para bloques de empresa/local y seguridad.
 - Plataforma: **PASS observado** para panel administrativo, suelo táctil y

@@ -466,3 +466,10 @@ acceso requiere un código de seis cifras y que la política por cargo aún no
 está aplicada en QA. No se modificaron factores ni sesiones. Plataforma y la
 pantalla de política MFA quedan observadas en QA; el desafío MFA, login,
 expiración y el cierre live de escritorio permanecen abiertos.
+
+En la misma sesión se observaron además las superficies operativas que no
+requieren escritura: Caja con apertura, arqueo, movimientos, contado e
+historial; Recepción con su vacío honesto; Albaranes con tres entradas QA y
+acciones disponibles; Facturas con resumen mensual y vacío; y Mermas con
+filtros, totales y tres registros QA persistidos. No se abrió caja, no se
+guardó arqueo, no se creó ningún documento ni se registró una nueva merma.
