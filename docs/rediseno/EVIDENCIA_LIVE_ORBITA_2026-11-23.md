@@ -190,6 +190,11 @@ se mantienen como selectores operativos en dos columnas y el texto de ámbito
 ocupa la fila completa. Esto aproxima la composición de la maqueta sin quitar
 el selector del programa real.
 
+La corrección de caché quedó registrada con la marca `qa-orbita-modules-v73-20261123`
+en `index.html` y `restablecer-contrasena.html`, junto con la huella fijada en
+el contrato P01. Así el preview no puede servir una copia anterior de la hoja
+Órbita después de un cambio visual.
+
 ## Cierre que sigue pendiente
 
 Esta evidencia no permite marcar terminado el objetivo global por sí sola.
