@@ -3437,3 +3437,7 @@ Contratos ejecutados tras el cambio: capas y migraciones PASS, marco Órbita
 paridad `fuente.js`/`fuente-recuperado.js` PASS, frontera Netlify 80 entradas y
 `git diff --check` PASS. Sigue pendiente la comprobación visual exhaustiva de
 los módulos restantes frente a la maqueta en ambas superficies.
+
+El contrato del marco se amplió a `32/32` para proteger explícitamente ese
+evento de sincronización. El estado publicado de la rama queda en
+`79c2cdbe` (PR #225 sigue en borrador); producción no se toca.
