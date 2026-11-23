@@ -680,6 +680,7 @@
     });
     observador.observe(document.getElementById("root") || document.body, { childList: true, subtree: true });
     window.addEventListener("la-apariencia:contexto-cambiado", actualizarCabecera);
+    window.addEventListener("la-apariencia:cambio", actualizarCabecera);
     window.addEventListener("resize", actualizarCabecera);
   }
   if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", iniciar); else iniciar();

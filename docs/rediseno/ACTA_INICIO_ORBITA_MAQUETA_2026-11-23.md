@@ -146,3 +146,11 @@ cambia de propuesta. La subcabecera y la ayuda del botón Apariencia leen el
 diseño activo (`Oliva`, `Claro`, `Pulso`, `Patio`, `Rumbo`, `Sello`, `Órbita`,
 `Ascua` o `Pase`). La selección sigue resolviéndose en `la-apariencia.js` y
 no modifica datos, permisos ni handlers.
+
+### Sincronización inmediata del marco · revisión 23/11/2026
+
+La revisión siguiente (`qa-orbita-shell-v26-20261123`) escucha también el
+evento `la-apariencia:cambio`. Al cambiar una propuesta o una paleta, la
+subcabecera, la ayuda de Apariencia y la marca del diseño activo se actualizan
+sin recargar ni navegar. La huella queda fijada en el contrato de capas
+(`f21b3bbf6b80dd41`) para impedir que el CDN sirva una versión anterior.

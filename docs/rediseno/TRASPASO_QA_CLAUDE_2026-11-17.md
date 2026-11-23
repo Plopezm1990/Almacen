@@ -3424,3 +3424,16 @@ La primera versión del menú Órbita agrupaba Compras usando solo el destino
 como tarjetas independientes, manteniendo `setTab`, capacidades y handlers
 existentes. El contrato de componentes comprueba explícitamente la tarjeta
 `Albaranes`; la paridad fuente/recovery y la sintaxis siguen en PASS.
+
+### Cambio de propuesta/paleta sin recarga · 23/11/2026
+
+El shell común se actualizó a `qa-orbita-shell-v26-20261123` para escuchar
+`la-apariencia:cambio`, además de `la-apariencia:contexto-cambiado`. Así, la
+cabecera y el botón Apariencia reflejan inmediatamente la propuesta y paleta
+activas en cualquier módulo. La huella P01 es `f21b3bbf6b80dd41`.
+
+Contratos ejecutados tras el cambio: capas y migraciones PASS, marco Órbita
+31/31, propuestas 9/9 diseños y 6/6 paletas, plantillas 10/10 y módulos 12/12;
+paridad `fuente.js`/`fuente-recuperado.js` PASS, frontera Netlify 80 entradas y
+`git diff --check` PASS. Sigue pendiente la comprobación visual exhaustiva de
+los módulos restantes frente a la maqueta en ambas superficies.
