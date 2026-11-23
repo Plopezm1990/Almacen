@@ -63,7 +63,9 @@ maqueta:
   Búsqueda global.
 - **Módulos**: Inicio, Servicio, Caja y fiscalidad, Compras, Inventario,
   Equipo, Calidad, Informes, Organización y Sistema, filtrados por los destinos
-  realmente disponibles para el rol.
+  realmente disponibles para el rol. Dentro de Compras se exponen de forma
+  independiente Proveedores, Pedidos, Recepción, Albaranes y Facturas para no
+  ocultar operaciones reales detrás de un único acceso.
 - **Herramientas**: Apariencia, Buscar en la suite, Buscar registros, Índice
   de pantallas y Opciones de demo.
 

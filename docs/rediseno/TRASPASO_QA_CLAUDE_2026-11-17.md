@@ -3415,3 +3415,12 @@ Se comprobó sin sesión mutante en el deploy inmutable de QA:
 
 Limitación conocida: la batería shell global no se ejecuta en este Windows por
 la imposibilidad de iniciar `bash.exe`; queda cubierta por el gate remoto de CI.
+
+### Corrección de navegación móvil de Compras · 23/11/2026
+
+La primera versión del menú Órbita agrupaba Compras usando solo el destino
+`proveedores`, aunque las rutas y permisos de `pedidos`, `recepcion`,
+`albaranes` y `facturas` ya existían. El menú ahora expone los cinco destinos
+como tarjetas independientes, manteniendo `setTab`, capacidades y handlers
+existentes. El contrato de componentes comprueba explícitamente la tarjeta
+`Albaranes`; la paridad fuente/recovery y la sintaxis siguen en PASS.

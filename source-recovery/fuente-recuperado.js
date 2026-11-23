@@ -16821,7 +16821,7 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
   const itemOpcionesDemo = { id: "opciones-demo", label: "Opciones de demo", icon: Cog };
   const orbitaMenu = diseno === "orbita" ? [
     { titulo: "En Inicio", items: [itemPorId("dashboard", "Panel general"), itemInicioEmpleado, itemPorId("direccion", "Panel de dirección"), itemPorId("buscar", "Búsqueda global")].filter(Boolean) },
-    { titulo: "Módulos", items: [itemPorId("dashboard", "Inicio"), itemPorId("venta", "Servicio"), itemPorId("caja", "Caja y fiscalidad"), itemPorId("proveedores", "Compras"), itemPorId("resumen_almacen", "Inventario"), itemPorId("personal", "Equipo"), itemPorId("appcc", "Calidad"), itemPorId("resultados", "Informes"), itemPorId("locales", "Organización"), itemPorId("configuracion", "Sistema")].filter(Boolean) }
+    { titulo: "Módulos", items: [itemPorId("dashboard", "Inicio"), itemPorId("venta", "Servicio"), itemPorId("caja", "Caja y fiscalidad"), itemPorId("proveedores", "Proveedores"), itemPorId("pedidos", "Pedidos"), itemPorId("recepcion", "Recepción"), itemPorId("albaranes", "Albaranes"), itemPorId("facturas", "Facturas"), itemPorId("resumen_almacen", "Inventario"), itemPorId("personal", "Equipo"), itemPorId("appcc", "Calidad"), itemPorId("resultados", "Informes"), itemPorId("locales", "Organización"), itemPorId("configuracion", "Sistema")].filter(Boolean) }
   ] : otros;
   const accionesHerramientas = diseno === "orbita" ? [
     typeof window.LAApariencia?.abrirEditor === "function" ? { id: "apariencia", label: "Apariencia", icon: Cog, onPick: () => { setAbierto(false); requestAnimationFrame(() => window.LAApariencia.abrirEditor()); } } : null,
