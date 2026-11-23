@@ -206,6 +206,15 @@ se mantienen como selectores operativos en dos columnas y el texto de ámbito
 ocupa la fila completa. Esto aproxima la composición de la maqueta sin quitar
 el selector del programa real.
 
+Tras publicar la invalidación de caché `qa-orbita-indicadores-v7-20261123`,
+se volvió a abrir el preview 225 y se leyó el árbol de accesibilidad en la
+sesión de `QA-EMP-A / QA-A1`. La pantalla expone exactamente tres botones bajo
+`Indicadores principales` (`Ventas registradas`, `Margen promedio` y
+`Pedidos pendientes`) y un botón bajo `Indicadores secundarios` (`Productos
+en stock bajo`). La captura móvil conserva la barra inferior, los accesos de
+Inicio y el panel Pase; no hay desplazamiento horizontal ni se perdió el
+indicador adicional.
+
 La corrección de caché quedó registrada con la marca `qa-orbita-modules-v74-20261123`
 en `index.html` y `restablecer-contrasena.html`, junto con la huella fijada en
 el contrato P01. Así el preview no puede servir una copia anterior de la hoja
