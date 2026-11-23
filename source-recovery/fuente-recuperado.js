@@ -5728,7 +5728,9 @@ function GestionAlmacen() {
     const requiereFiltro = modoEmpleado || window.__nubeActiva && miPerfil.rol !== "Propietario";
     return (!requiereFiltro || itemsPermitidosEmpleado.includes(id)) && puedeConsultarPantallaPM13(id);
   }
-  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }), tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, modoEmpleado && /* @__PURE__ */ import_react4.default.createElement(InicioEmpleado, { nombre: nombreActivoEmpleado, rol: rolEfectivoEmpleadoNav, contextoLocal: contextoActivoPM15, empleadoIdResuelto: empleadoActivoResuelto ? empleadoActivoResuelto.id : null, turnoHoy: empleadoActivoResuelto ? turnosDelLocalActivo.find((t22) => t22.empleadoId === empleadoActivoResuelto.id && t22.fecha === todayISO()) : void 0, fichajesHoyEmpleado: empleadoActivoResuelto ? fichajesDelLocalActivo.filter((f22) => f22.empleadoId === empleadoActivoResuelto.id && f22.fecha === todayISO() && f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true") : [], fichar, itemsPermitidos: itemsPermitidosEmpleado, setTab: cambiarTabPM15 }), /* @__PURE__ */ import_react4.default.createElement(
+  const selectorInformes = (tab === "dashboard" || tab === "resultados" || tab === "libroiva") && /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal });
+  const inicioOrbita = tab === "dashboard" && disenoNavegacion === "orbita";
+  const contenido = /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, !inicioOrbita && selectorInformes, tab === "dashboard" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, modoEmpleado && /* @__PURE__ */ import_react4.default.createElement(InicioEmpleado, { nombre: nombreActivoEmpleado, rol: rolEfectivoEmpleadoNav, contextoLocal: contextoActivoPM15, empleadoIdResuelto: empleadoActivoResuelto ? empleadoActivoResuelto.id : null, turnoHoy: empleadoActivoResuelto ? turnosDelLocalActivo.find((t22) => t22.empleadoId === empleadoActivoResuelto.id && t22.fecha === todayISO()) : void 0, fichajesHoyEmpleado: empleadoActivoResuelto ? fichajesDelLocalActivo.filter((f22) => f22.empleadoId === empleadoActivoResuelto.id && f22.fecha === todayISO() && f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true") : [], fichar, itemsPermitidos: itemsPermitidosEmpleado, setTab: cambiarTabPM15 }), /* @__PURE__ */ import_react4.default.createElement(
     Dashboard,
     {
       empresa: empresaDelLocalActivo,
@@ -5762,7 +5764,7 @@ function GestionAlmacen() {
       registrarSalida,
       almacenCongelado
     }
-  )), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
+  )), inicioOrbita && selectorInformes, tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
     PanelDireccion,
     {
       movimientos,
@@ -16801,6 +16803,7 @@ function BotonItemSheet({ it: it2, tab, onPick }) {
 }
 function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor, diseno = (typeof document !== "undefined" && document.querySelector("[data-la-contenedor]")?.getAttribute("data-la-contenedor")) || "" }) {
   const [abierto, setAbierto] = (0, import_react4.useState)(false);
+  const [enCompras, setEnCompras] = (0, import_react4.useState)(false);
   const idsFijos = new Set(pestanasFijas.map((it2) => it2.id));
   const ETIQUETA_PESTANA = { dashboard: "Inicio", venta: "Sala", caja: "Caja", fichaje: "Fichaje" };
   const otros = grupos.map((g2) => ({ ...g2, items: g2.items.filter((it2) => !idsFijos.has(it2.id)) })).filter((g2) => g2.items.length > 0 || g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor);
@@ -16819,9 +16822,10 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
   const itemInicioEmpleado = { id: "inicio-empleado", label: "Inicio del empleado", icon: UserRound };
   const itemIndice = { id: "indice", label: "Índice de pantallas", icon: Files };
   const itemOpcionesDemo = { id: "opciones-demo", label: "Opciones de demo", icon: Cog };
+  const grupoCompras = { titulo: "Compras", items: [itemPorId("proveedores", "Proveedores"), itemPorId("pedidos", "Pedidos"), itemPorId("recepcion", "Recepción"), itemPorId("albaranes", "Albaranes"), itemPorId("facturas", "Facturas")].filter(Boolean), devolucionProveedor: true };
   const orbitaMenu = diseno === "orbita" ? [
     { titulo: "En Inicio", items: [itemPorId("dashboard", "Panel general"), itemInicioEmpleado, itemPorId("direccion", "Panel de dirección"), itemPorId("buscar", "Búsqueda global")].filter(Boolean) },
-    { titulo: "Módulos", items: [itemPorId("dashboard", "Inicio"), itemPorId("venta", "Servicio"), itemPorId("caja", "Caja y fiscalidad"), itemPorId("proveedores", "Proveedores"), itemPorId("pedidos", "Pedidos"), itemPorId("recepcion", "Recepción"), itemPorId("albaranes", "Albaranes"), itemPorId("facturas", "Facturas"), itemPorId("resumen_almacen", "Inventario"), itemPorId("personal", "Equipo"), itemPorId("appcc", "Calidad"), itemPorId("resultados", "Informes"), itemPorId("locales", "Organización"), itemPorId("configuracion", "Sistema")].filter(Boolean) }
+    { titulo: "Módulos", items: [itemPorId("dashboard", "Inicio"), itemPorId("venta", "Servicio"), itemPorId("caja", "Caja y fiscalidad"), grupoCompras.items.length || mostrarEnlaceDevolucionProveedor ? { id: "menu-compras", label: "Compras", icon: ShoppingBag } : null, itemPorId("resumen_almacen", "Inventario"), itemPorId("personal", "Equipo"), itemPorId("appcc", "Calidad"), itemPorId("resultados", "Informes"), itemPorId("locales", "Organización"), itemPorId("configuracion", "Sistema")].filter(Boolean) }
   ] : otros;
   const accionesHerramientas = diseno === "orbita" ? [
     typeof window.LAApariencia?.abrirEditor === "function" ? { id: "apariencia", label: "Apariencia", icon: Cog, onPick: () => { setAbierto(false); requestAnimationFrame(() => window.LAApariencia.abrirEditor()); } } : null,
@@ -16831,6 +16835,7 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
     { ...itemOpcionesDemo, onPick: () => { setAbierto(false); abrirRutaDemo("sis-15"); } }
   ].filter(Boolean) : [];
   const renderOrbitaGrupo = (g2, gi) => import_react4.default.createElement("div", { key: gi, className: "la-orbita-more-group mb-3" }, g2.titulo && import_react4.default.createElement("div", { className: "la-orbita-more-title text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, g2.titulo), import_react4.default.createElement("div", { className: "la-orbita-more-grid" }, g2.items.map((it2) => import_react4.default.createElement(BotonItemSheet, { key: it2.id + "-" + g2.titulo, it: it2, tab, onPick: () => {
+    if (it2.id === "menu-compras") { setEnCompras(true); return; }
     if (it2.id === "inicio-empleado") { setAbierto(false); abrirRutaDemo("ini-02"); return; }
     if (setTab(it2.id)) setAbierto(false);
   } }))), g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor && import_react4.default.createElement("button", { onClick: () => { if (irADevolucionProveedor()) setAbierto(false); }, className: "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1", style: { background: tab === "devoluciones" ? C2.accentSoft : C2.bg, color: C2.ink } }, import_react4.default.createElement(ArrowLeftRight, { size: 17, color: tab === "devoluciones" ? C2.accent : C2.inkSoft }), import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, "Devoluciones a proveedor")));
@@ -16851,11 +16856,15 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
     );
   }), /* @__PURE__ */ import_react4.default.createElement(
     "button",
-    { onClick: () => setAbierto(true), className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
+    { onClick: () => { setEnCompras(false); setAbierto(true); }, className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
     /* @__PURE__ */ import_react4.default.createElement(Ellipsis, { size: 20, color: C2.inkSoft }),
     /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: C2.inkSoft } }, "M\xE1s"),
     hayBadgeEnOtros && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-1.5 right-[28%] w-2 h-2 rounded-full", style: { background: C2.red } })
-  )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, orbitaMenu.map(renderOrbitaGrupo), orbitaMenu.length > 0 && renderHerramientas()));
+  )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, diseno === "orbita" && enCompras
+    ? import_react4.default.createElement(import_react4.default.Fragment, null,
+      import_react4.default.createElement("button", { type: "button", autoFocus: true, className: "la-volver-modulos", onClick: () => setEnCompras(false) }, "← Volver a módulos"),
+      renderOrbitaGrupo(grupoCompras, "compras"))
+    : orbitaMenu.map(renderOrbitaGrupo), !enCompras && orbitaMenu.length > 0 && renderHerramientas()));
 }
 function Card({ children, className = "", style = {} }) {
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: `la-ui-card rounded-xl p-4 ${className}`, style: { background: C2.surface, border: `1px solid ${C2.line}`, ...style } }, children);
@@ -17144,16 +17153,24 @@ function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPend
       h("span", { className: "la-panel-orbita-point la-panel-orbita-point-violet" }),
       h("span", { className: "la-panel-orbita-coordinate", texto: "- - -" })
     ),
-    contexto && h("p", { className: "la-panel-contexto" }, esOrbita ? "OPERACI\xD3N EN VIVO \xB7 " + contexto : contexto),
+    contexto && h("p", { className: "la-panel-contexto" }, esOrbita ? "OPERACIÓN EN VIVO" : contexto),
     h("h2", null, panel.titulo, panel.destacado && h("em", null, " " + panel.destacado)),
+    esOrbita && h("p", { className: "la-panel-turno-contexto" }, contexto, h("time", null, new Date().toLocaleDateString("es-ES", { day: "numeric", month: "long", year: "numeric" }))),
     accesos.length > 0 && h("div", { className: "la-panel-accesos", "aria-label": "Accesos r\xE1pidos" },
-      accesos.map((id) => {
+      (esOrbita ? accesos.filter(id => id === "venta") : accesos).map((id) => {
         const [texto, Icono] = ACCESOS_PANEL_REDISENO[id];
         return h("button", { key: id, type: "button", onClick: () => { if (puedeConsultar(id)) navegar(id); } },
           h(Icono, { size: 17, "aria-hidden": true }), texto);
-      }))
+      }),
+      esOrbita && puedeConsultar("venta") && h("button", { type: "button", onClick: () => {
+        const plano = panelRef.current?.closest("main")?.querySelector(".la-pase-plano");
+        if (plano) { plano.tabIndex = -1; plano.focus(); plano.scrollIntoView({ block: "start" }); }
+        else navegar("venta");
+      } }, h(ClipboardList, { size: 17, "aria-hidden": true }), "Ver sala"))
     ),
-    esOrbita && puedeConsultar("resumen_almacen") && h("div", { className: "la-panel-orbita-detalle" },
+    esOrbita && h("div", { className: "la-panel-orbita-detalle" },
+      accesos.filter(id => id !== "venta").map(id => h("button", { key: id, type: "button", onClick: () => navegar(id) }, ACCESOS_PANEL_REDISENO[id][0])),
+      puedeConsultar("resumen_almacen") &&
       h("button", { type: "button", onClick: () => navegar("resumen_almacen") },
         h(Package, { size: 17, "aria-hidden": true }),
         "Ver detalle operativo"

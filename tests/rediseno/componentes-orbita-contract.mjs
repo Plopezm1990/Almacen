@@ -17,7 +17,7 @@ const appearance = readFileSync(resolve(root, 'la-apariencia.js'), 'utf8');
 
 for (const [name, text] of [['fuente.js', source], ['source-recovery/fuente-recuperado.js', recovery]]) {
   assert.match(text, /orbita:\s*\{ titulo: "El turno,", destacado: "en movimiento\."/, `${name} no alinea el titular Órbita con la maqueta`);
-  assert.match(text, /esOrbita \? "OPERACI\\xD3N EN VIVO \\xB7 " \+ contexto/, `${name} no conserva el eyebrow de operación de la maqueta`);
+  assert.match(text, /esOrbita \? "OPERACIÓN EN VIVO"/, `${name} no conserva el eyebrow de operación de la maqueta`);
   assert.doesNotMatch(text, /h\("h2", null, esOrbita && h\("span", \{ "aria-hidden": true \}, "\\u2728 "/, `${name} no debe añadir un adorno que no existe en la maqueta`);
 }
 assert.match(source, /la-panel-orbita-resumen[\s\S]*Pulso de ventas[\s\S]*Pendientes del d\xEDa/, 'Inicio no conserva la composición de pulso y pendientes de la maqueta');
@@ -36,8 +36,8 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v78-20261123/);
-assert.match(index, /fuente\.js\?v=qa-orbita-home-v9-20261123/, 'fuente.js debe invalidar la caché tras alinear la composición de Inicio');
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v79-20261123/);
+assert.match(index, /fuente\.js\?v=qa-orbita-home-v10-20261123/, 'fuente.js debe invalidar la caché tras alinear la composición de Inicio');
 assert.match(source, /itemPorId\("albaranes", "Albaranes"\)/, 'El menú móvil Órbita debe exponer Albaranes');
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,

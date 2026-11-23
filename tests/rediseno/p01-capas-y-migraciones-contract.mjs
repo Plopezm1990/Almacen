@@ -40,11 +40,11 @@ import assert from 'node:assert/strict';
 // son más baratas que un despliegue que sirve lo de ayer y lo da por bueno.
 
 const CAPAS = [
-  { archivo: 'la-apariencia.css', marca: 'qa-orbita-shell-v78-20261123', huella: 'bc06d32fbefea50e', etiqueta: 'link' },
+  { archivo: 'la-apariencia.css', marca: 'qa-orbita-shell-v79-20261123', huella: 'a05dd59073535683', etiqueta: 'link' },
   { archivo: 'la-pase.css', marca: 'qa-orbita-pase-v4-20261121', huella: 'dd215794abf0ac14', etiqueta: 'link' },
   { archivo: 'la-apariencia.js', marca: 'qa-apariencia-contexto-v2-20261121', huella: '787e3036904bc526', etiqueta: 'script' },
   { archivo: 'la-apariencia-editor.js', marca: 'qa-apariencia-contexto-20261113', huella: '423e462949e5edea', etiqueta: 'script' },
-  { archivo: 'la-orbita-shell.js', marca: 'qa-orbita-shell-v24-20261123', huella: 'd2344206a0dc5538', etiqueta: 'script' },
+  { archivo: 'la-orbita-shell.js', marca: 'qa-orbita-shell-v25-20261123', huella: '8c39b7fd799a4f0f', etiqueta: 'script' },
   { archivo: 'la-plantillas-orbita.js', marca: 'qa-orbita-plantillas-v2-20261122', huella: '74cdf874f16ed04a', etiqueta: 'script' },
   { archivo: 'la-pase-panel.js', marca: 'qa-orbita-pase-v5-20261122', huella: '529762222952d1f6', etiqueta: 'script' },
   { archivo: 'la-tablas-fichas.js', marca: 'qa-tablas-fichas-20261113', huella: 'bea4568d3b696332', etiqueta: 'script' },

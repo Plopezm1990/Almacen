@@ -4038,3 +4038,146 @@ html[data-la-diseno] #la-plataforma-cambio-root .lap-pill {
     grid-template-columns: minmax(0, 1fr);
   }
 }
+@font-face {
+  font-family: "Órbita Inter";
+  src: url("recursos-orbita/inter.woff2") format("woff2");
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Órbita Serif";
+  src: url("recursos-orbita/instrument-serif-italic.woff2") format("woff2");
+  font-style: italic;
+  font-display: swap;
+}
+.la-volver-modulos {
+  min-height: 44px;
+  color: var(--c-ink);
+  padding-inline: .75rem;
+  margin-bottom: .5rem;
+}
+html[data-la-diseno="orbita"] #root main[data-la-orbita-module="inicio"] .la-panel-diseno[data-la-panel="orbita"] {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  gap: 12px;
+  overflow: visible;
+  background: none !important;
+  border: 0 !important;
+  box-shadow: none;
+  font-family: "Órbita Inter", var(--la-font);
+}
+html[data-la-diseno="orbita"] #root main[data-la-orbita-module="inicio"] [data-la-panel="orbita"] {
+  .la-panel-diseno-cab {
+    display: block;
+    isolation: isolate;
+    overflow: hidden;
+    min-height: 276px;
+    padding: 32px 36px;
+    border: 1px solid var(--c-border-control);
+    border-radius: 20px;
+    background: radial-gradient(ellipse at 79% 43%, #6663ab38, transparent 49%), var(--c-surface);
+  }
+  .la-panel-diseno-cab::before {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    inset: 0;
+    background: url("recursos-orbita/grano.png") repeat;
+    opacity: .16;
+    pointer-events: none;
+  }
+  .la-panel-diseno-cab::after { content: none; }
+  .la-panel-orbita-visual {
+    z-index: -1;
+    position: absolute;
+    inset: 0 0 0 auto;
+    height: auto;
+    width: 53%;
+    min-width: 0;
+    margin: 0;
+  }
+  .la-panel-orbita-sphere {
+    width: min(42%,172px);
+    background: radial-gradient(circle at 33% 25%,#b1a4ff, #7c75d6 16%, #3d4389 37%, #262b53 63%, #1c203d 82%);
+  }
+  .la-panel-orbita-sphere::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    border-radius: inherit;
+    background: url("recursos-orbita/grano.png");
+    opacity: .46;
+  }
+  .la-panel-contexto {
+    display: inline-flex;
+    align-items: center;
+    gap: 8px;
+    margin: 0;
+    padding: 5px 10px;
+    border: 1px solid var(--c-border-control);
+    border-radius: 999px;
+    background: var(--c-surface);
+    font: 650 11px/1.4 "Órbita Inter", sans-serif;
+    letter-spacing: .08em;
+  }
+  .la-panel-contexto::before {
+    content: "";
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--c-accent-fill);
+  }
+  h2 {
+    margin: 12px 0 8px;
+    font: 770 clamp(36px,5.7vw,73px)/.96 "Órbita Inter", sans-serif;
+    letter-spacing: -.075em;
+    color: var(--c-ink);
+    background: none;
+    -webkit-text-fill-color: currentColor;
+  }
+  h2 em {
+    display: block;
+    width: fit-content;
+    padding-right: .13em;
+    font: italic 400 1.11em/.96 "Órbita Serif",Georgia,serif;
+    letter-spacing: -.035em;
+  }
+  .la-panel-turno-contexto { margin: 12px 0; color: var(--c-ink-soft); }
+  .la-panel-turno-contexto time { display: block; font-size: .85em; }
+  .la-panel-diseno-cab .la-panel-accesos {
+    display: inline-grid;
+    width: auto;
+    max-width: 100%;
+    grid-template-columns: repeat(2,minmax(0,auto));
+    gap: 8px;
+  }
+  .la-panel-indicadores { grid-template-columns: repeat(3,minmax(0,1fr)); gap: 8px; }
+  .la-panel-indicadores button {
+    grid-template-columns: minmax(0,1fr);
+    align-content: start;
+    justify-items: start;
+    gap: 8px;
+    padding: 10px;
+    overflow-wrap: anywhere;
+  }
+  .la-panel-indicadores svg { box-sizing: content-box; padding: 6px; border-radius: 6px; background: var(--c-accent-soft); }
+  .la-panel-indicadores strong { grid-column: 1; }
+  .la-panel-orbita-secundarios { order: 1; }
+  .la-panel-orbita-detalle { order: 2; flex-wrap: wrap; gap: 8px; justify-content: start; }
+  .la-panel-orbita-detalle button { width: auto; }
+  @media (max-width: 767px) {
+    .la-panel-diseno-cab { min-height: 0; padding: 18px 13px 15px; border-radius: 13px; }
+    h2 { font-size: clamp(35px,10vw,50px); }
+    .la-panel-orbita-visual { width: 56%; opacity: .47; }
+    .la-panel-orbita-sphere { width: 50%; }
+    .la-panel-indicadores { gap: 5px; }
+    .la-panel-indicadores button { padding: 7px; }
+  }
+}
+html[data-la-diseno="orbita"]:not([data-la-paleta]):not([data-la-personalizada]) #root [data-la-panel="orbita"] h2 em {
+  background: linear-gradient(105deg,#d0abff,#b0a6ff 45%,#8cc3ff);
+  background-clip: text;
+  -webkit-text-fill-color: transparent;
+}

@@ -445,7 +445,7 @@
         tituloViejo.classList.remove("la-orbita-page-title");
       });
       var titulo = main.querySelector("h2");
-      if (titulo && !titulo.closest(".la-operacion-cocina, .la-operacion-caja, #la-pase, .la-pase, .tpv-layout")) {
+      if (titulo && !titulo.closest('[data-la-panel="orbita"]') && !titulo.closest(".la-operacion-cocina, .la-operacion-caja, #la-pase, .la-pase, .tpv-layout")) {
         titulo.classList.add("la-orbita-page-title");
         if (titulo.parentElement) titulo.parentElement.classList.add("la-orbita-page-title-wrap");
       }

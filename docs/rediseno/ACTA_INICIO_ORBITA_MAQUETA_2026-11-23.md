@@ -130,3 +130,11 @@ en estado `ready`. No se detectó scroll horizontal en la comprobación live.
 - El objetivo visual se considera cerrado con la evidencia live del deploy
   `6b0432b201edef6e69bc9606` y los contratos responsive; la batería shell global
   sigue dependiendo de CI por la limitación de `bash.exe` en Windows.
+
+## Revisión comparada del Inicio y del menú móvil, 23 de noviembre
+
+Se reabre la conclusión de equivalencia visual anterior. En la sesión de QA de Local A1, el selector de local precedía al titular, la esfera ocupaba una fila completa en móvil y la capa general añadía al titular el tamaño y subrayado de las páginas interiores. La maqueta original de la propuesta 7 sitúa la esfera detrás del contenido, a la derecha. Su menú presenta Compras como un módulo.
+
+La revisión usa los recursos originales de grano, Inter e Instrument Serif, sitúa el contexto de local en el titular y conserva el selector operativo debajo del panel. Las tres tarjetas principales comparten fila. Los accesos secundarios pasan después del resumen. Más → Compras agrupa los destinos disponibles para el rol, incluido Albaranes cuando corresponde. Ver sala lleva al plano operativo del panel, con acceso al TPV como alternativa si el plano todavía no está montado.
+
+El contenido de los indicadores y el periodo del gráfico siguen siendo los del producto. La maqueta presenta ventas del día, ocupación y comandas, y agrupa el gráfico por día. Esta revisión no acredita equivalencia del resto de las pantallas.
