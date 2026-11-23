@@ -90,14 +90,30 @@ mantuvieron sin editar.
 - Inventario / Productos: **PASS observado** para tabla, filtros y acciones.
 - Personal: **PASS observado** para ficha, cargos y acciones de empleado.
 - Configuración: **PASS observado** para bloques de empresa/local y seguridad.
+- Plataforma: **PASS observado** para panel administrativo, suelo táctil y
+  salto Plataforma ↔ aplicación.
 - No se realizaron escrituras ni operaciones financieras.
+
+### Plataforma
+
+Con la cuenta administradora `owner.a@qa.invalid` se verificó el panel
+`Plataforma · L&A Suite` en el mismo preview. El panel mostró 11 empresas
+activas y 1 desactivada, con sus locales, usuarios, dueños y acciones
+administrativas. Los controles mantuvieron el suelo táctil mínimo de 44 px.
+No se pulsaron `Desactivar`, `Reactivar`, `Eliminar para siempre`, `Añadir
+dueño` ni `Dar de alta una empresa`.
+
+El botón `Abrir mi aplicación` llevó al programa real con empresa y local
+seleccionables (`QA Empresa A, S.L. · Local A1`), shell Órbita y la pestaña
+`← Plataforma`. El retorno confirma la separación de privilegios y la
+integración de la superficie externa sin copiar datos ni cambiar handlers.
 
 ## Cierre que sigue pendiente
 
 Esta evidencia no permite marcar terminado el objetivo global por sí sola.
 Quedan por cerrar con evidencia live separada: una captura autenticada de
 escritorio; las rutas completas de Caja, Compras (recepción/albarán/factura),
-Inventario (mermas/caducidad/ajustes), Personal, Configuración y Acceso; y una
-sesión de administrador de Plataforma. Los contratos estructurales y la
-batería local siguen siendo necesarios y no se sustituyen por esta revisión
-manual.
+Inventario (mermas/caducidad/ajustes) y Acceso/MFA/expiración. Plataforma ya
+queda observada en QA, aunque sus operaciones destructivas no se ejercitaron.
+Los contratos estructurales y la batería local siguen siendo necesarios y no
+se sustituyen por esta revisión manual.

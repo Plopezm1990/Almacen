@@ -456,3 +456,9 @@ La evidencia reproducible completa está en
 escrituras y no sustituye las rutas todavía marcadas como pendientes en la
 tabla por módulo, especialmente escritorio autenticado, Caja, Personal,
 Configuración, Plataforma y Acceso/MFA.
+
+Con `owner.a@qa.invalid` se observó además el panel `Plataforma · L&A Suite`,
+11 empresas activas y 1 desactivada, controles de 44 px y el salto
+`Abrir mi aplicación` ↔ `← Plataforma`. No se ejecutaron acciones de alta,
+baja, reactivación, borrado ni cambio de dueño. Plataforma queda observada en
+QA; Acceso/MFA/expiración y el cierre live de escritorio permanecen abiertos.
