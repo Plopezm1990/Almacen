@@ -438,3 +438,21 @@ la estructura visual y la organización están integradas en el código; no
 convierte una ruta no recorrida con sesión real en evidencia viva. El cierre
 del objetivo requiere completar únicamente las dos columnas finales pendientes,
 sin modificar datos de producción ni crear operaciones QA no autorizadas.
+
+### Evidencia live adicional · 23/11/2026
+
+La sesión autenticada de QA-EMP-A / Local A1 confirmó en la vista responsive
+del Deploy Preview 225 el shell común y el menú `Más` con las áreas `Servicio`,
+`Caja y fiscalidad`, `Compras`, `Inventario`, `Equipo`, `Calidad`, `Informes`,
+`Organización` y `Sistema`. En la misma sesión se recorrieron Cocina,
+Clientes, Proveedores e Inventario/Productos en solo lectura. Se observaron
+los estados de advertencia de caja cerrada, carga y vacío de Cocina; vistas
+guardadas, filtros, NIF enmascarado y paginación de Clientes; ficha de
+Proveedor; y tabla de Productos con stock bajo, filtros y acciones de Kardex,
+edición y salida.
+
+La evidencia reproducible completa está en
+`docs/rediseno/EVIDENCIA_LIVE_ORBITA_2026-11-23.md`. Esta tanda no ejecutó
+escrituras y no sustituye las rutas todavía marcadas como pendientes en la
+tabla por módulo, especialmente escritorio autenticado, Caja, Personal,
+Configuración, Plataforma y Acceso/MFA.
