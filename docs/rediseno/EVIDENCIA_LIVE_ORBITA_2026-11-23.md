@@ -66,6 +66,21 @@ responsive con stock, coste, PVP, IVA, margen, ABC y acciones `Kardex`,
 `Editar`, `Registrar salida` y `Eliminar producto`. También se vieron estados
 de stock bajo y productos eliminados.
 
+### Personal
+
+La ruta mostró la plantilla de empleados con altas, bajas, vacaciones,
+historial, EPI, exportación de datos, edición y creación de cuenta de acceso.
+También se observaron cargos reales de QA (`Encargado`, `Cajero/a` y
+`Camarero/a`) sin abrir diálogos ni cambiar permisos.
+
+### Configuración
+
+La ruta mostró la ficha `QA Empresa A, S.L. · Local A1`, el aviso de que los
+cambios quedan auditados y los bloques de Día y cajas, Sala y mesas,
+Modalidades, Equipos, Terminales y cajas, Fiscalidad y AEAT, Cargos y
+permisos, Permisos y Verificación en dos pasos. Los campos y botones se
+mantuvieron sin editar.
+
 ## Resultado de esta tanda
 
 - Shell y organización móvil: **PASS observado**.
@@ -73,6 +88,8 @@ de stock bajo y productos eliminados.
 - Clientes: **PASS observado** para filtros, ficha, NIF y paginación.
 - Compras / Proveedores: **PASS observado** para listado y ficha.
 - Inventario / Productos: **PASS observado** para tabla, filtros y acciones.
+- Personal: **PASS observado** para ficha, cargos y acciones de empleado.
+- Configuración: **PASS observado** para bloques de empresa/local y seguridad.
 - No se realizaron escrituras ni operaciones financieras.
 
 ## Cierre que sigue pendiente
