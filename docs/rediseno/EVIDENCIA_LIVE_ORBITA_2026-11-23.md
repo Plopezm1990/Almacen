@@ -99,6 +99,18 @@ llegó a la vista TPV del mismo Local A1, conservando el terminal y la
 superficie de sala/cobro. No se abrió una cuenta nueva ni se cobró; la
 comprobación se limitó al salto y a la lectura del destino.
 
+### Cocina y Caja · comprobación visual adicional
+
+En Cocina se confirmó la jerarquía `Cocina y comandas` → aviso de caja cerrada
+→ apertura requerida → gestión avanzada de estaciones → cola de comandas. La
+cola queda en estado vacío (`No hay comandas para este filtro`) cuando no hay
+datos, y el botón de apertura se mantiene visible sin ejecutarlo.
+
+En Caja se confirmó la composición `Arqueo de caja` → apertura de sesión →
+fecha y efectivo esperado → movimientos y ajustes → efectivo contado →
+denominaciones → notas → guardar arqueo → historial. Los controles respetan la
+escala táctil y no se abrió la sesión ni se guardó el arqueo.
+
 ### Personal
 
 La ruta mostró la plantilla de empleados con altas, bajas, vacaciones,

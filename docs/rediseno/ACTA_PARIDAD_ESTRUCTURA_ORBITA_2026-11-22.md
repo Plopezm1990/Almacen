@@ -479,3 +479,9 @@ terminal, búsqueda F2, categorías, paginación, Sala y mesas, cobro F4,
 fiscalidad QA y resumen de ventas. Al no existir sesión de caja, el preview
 mostró el aviso y mantuvo los cobros deshabilitados. No se realizó ningún
 cobro ni se modificó una cuenta.
+
+La revisión móvil adicional confirmó la composición de Cocina (`Cocina y
+comandas`, aviso de caja cerrada, apertura requerida, gestión de estaciones y
+cola vacía) y Caja (`Arqueo de caja`, apertura, fecha, efectivo esperado,
+movimientos, contado, denominaciones, notas e historial). No se abrió caja, no
+se guardó arqueo, no se cambió una estación ni se alteró una comanda.
