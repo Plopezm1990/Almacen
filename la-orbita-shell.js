@@ -225,6 +225,7 @@
             item.removeAttribute("aria-current");
           });
           button.setAttribute("aria-current", "page");
+          sincronizarSidebarCompacto(sidebar);
           marcarSuperficie(marco && marco.querySelector(":scope > main"), sidebar);
           sincronizarBarraInferior(marco && marco.querySelector(":scope > [data-la-barra-inferior]"), marco && marco.getAttribute("data-la-orbita-route"));
         });
@@ -260,6 +261,141 @@
     var administracion = secciones.find(function (seccion) { return /equipo|calidad|informes|organizaci[oó]n|sistema/i.test(tituloDe(seccion)); });
     insertar(operacion, "operacion", "Operación");
     insertar(administracion, "administracion", "Administración");
+  }
+
+  /* La maqueta de Órbita muestra una navegación de primer nivel corta y
+     legible. El producto histórico, en cambio, expone todas sus pantallas
+     hijas en el lateral. No sustituimos esos botones ni sus handlers: los
+     agrupamos visualmente y dejamos el detalle completo detrás de «Más
+     módulos», de modo que ninguna ruta ni permiso desaparece. */
+  function sincronizarSidebarCompacto(sidebar) {
+    if (!sidebar || !sidebar.classList.contains("la-orbita-sidebar-compacta")) return;
+    var secciones = Array.prototype.filter.call(sidebar.children, function (nodo) {
+      return nodo && nodo.nodeType === 1 &&
+        !nodo.hasAttribute("data-la-orbita-zone-label") &&
+        !nodo.hasAttribute("data-la-orbita-more-toggle");
+    });
+    Array.prototype.forEach.call(secciones, function (seccion) {
+      var botones = Array.prototype.slice.call(seccion.querySelectorAll(":scope > button"));
+      if (!botones.length) return;
+      var resumen = seccion.querySelector(":scope > [data-la-orbita-sidebar-summary]");
+      if (!resumen) return;
+      var hayActivo = botones.some(function (button) {
+        return button.getAttribute("aria-current") === "page" || /rgba\(255, 255, 255, 0\.12\)/i.test(String(button.getAttribute("style") || ""));
+      });
+      if (hayActivo) resumen.setAttribute("aria-current", "page");
+      else resumen.removeAttribute("aria-current");
+    });
+  }
+
+  function compactarSidebar(sidebar) {
+    if (!sidebar) return;
+    sidebar.dataset.laOrbitaCompacto = "1";
+    sidebar.classList.add("la-orbita-sidebar-compacta");
+
+    var tituloDe = function (seccion) {
+      var titulo = seccion.querySelector(":scope > div:first-child");
+      return textoVisible(titulo);
+    };
+    var secciones = Array.prototype.filter.call(sidebar.children, function (nodo) {
+      return nodo && nodo.nodeType === 1 &&
+        !nodo.hasAttribute("data-la-orbita-zone-label");
+    });
+    var grupos = [
+      { match: /^servicio$/i, label: "Servicio", destino: /tpv/i },
+      { match: /caja y fiscalidad/i, label: "Caja y fiscalidad", destino: /arqueo/i },
+      { match: /^compras$/i, label: "Compras", destino: /proveedores/i },
+      { match: /^inventario$/i, label: "Inventario", destino: /resumen de almac[eé]n/i },
+      { match: /^equipo$/i, label: "Equipo", destino: /^personal$/i },
+      { match: /^calidad$/i, label: "Calidad", destino: /control sanitario/i },
+      { match: /^informes$/i, label: "Informes", destino: /^resultados$/i },
+      { match: /^organizaci[oó]n$/i, label: "Organización", destino: /^locales$/i },
+      { match: /^sistema$/i, label: "Sistema", destino: /^auditor[ií]a$/i }
+    ];
+
+    var utility = secciones.find(function (seccion) {
+      return /panel general/i.test(textoVisible(seccion.querySelector(":scope > button:first-of-type")));
+    });
+    if (utility) {
+      utility.classList.add("la-orbita-sidebar-section", "la-orbita-sidebar-utility");
+      Array.prototype.forEach.call(utility.querySelectorAll(":scope > button"), function (button, index) {
+        button.classList.toggle("la-orbita-sidebar-detail", index > 0);
+      });
+      var resumenInicio = utility.querySelector(":scope > button:first-of-type");
+      if (resumenInicio) {
+        resumenInicio.classList.add("la-orbita-sidebar-summary");
+        resumenInicio.setAttribute("data-la-orbita-sidebar-summary", "");
+        resumenInicio.dataset.laOrbitaSummaryLabel = "Inicio";
+        resumenInicio.dataset.laOrbitaOriginalLabel = resumenInicio.dataset.laOrbitaOriginalLabel || textoVisible(resumenInicio);
+        var inicioTexto = resumenInicio.querySelector(".la-shell-label") || resumenInicio.querySelector("span:last-of-type");
+        if (inicioTexto) inicioTexto.textContent = "Inicio";
+        resumenInicio.setAttribute("title", "Inicio");
+      }
+    }
+
+    grupos.forEach(function (grupo) {
+      var seccion = secciones.find(function (candidato) { return grupo.match.test(tituloDe(candidato)); });
+      if (!seccion) return;
+      seccion.classList.add("la-orbita-sidebar-section");
+      var titulo = seccion.querySelector(":scope > div:first-child");
+      if (titulo) {
+        titulo.classList.add("la-orbita-sidebar-title");
+        titulo.setAttribute("data-la-orbita-sidebar-title", grupo.label);
+      }
+      var botones = Array.prototype.slice.call(seccion.querySelectorAll(":scope > button"));
+      var resumen = botones.find(function (button) { return grupo.destino.test(textoVisible(button)); }) || botones[0];
+      botones.forEach(function (button) {
+        button.classList.add("la-orbita-sidebar-detail");
+        button.removeAttribute("data-la-orbita-sidebar-summary");
+      });
+      if (!resumen) return;
+      resumen.classList.remove("la-orbita-sidebar-detail");
+      resumen.classList.add("la-orbita-sidebar-summary");
+      resumen.setAttribute("data-la-orbita-sidebar-summary", "");
+      resumen.dataset.laOrbitaSummaryLabel = grupo.label;
+      resumen.dataset.laOrbitaOriginalLabel = resumen.dataset.laOrbitaOriginalLabel || textoVisible(resumen);
+      var texto = resumen.querySelector(".la-shell-label") || resumen.querySelector("span:last-of-type");
+      if (texto) texto.textContent = grupo.label;
+      resumen.setAttribute("title", grupo.label);
+    });
+
+    var toggle = sidebar.querySelector("[data-la-orbita-more-toggle]");
+    if (!toggle) {
+      toggle = h("button", {
+        type: "button",
+        class: "la-orbita-sidebar-more",
+        "data-la-orbita-more-toggle": "",
+        "aria-expanded": "false",
+        "aria-label": "Mostrar todos los módulos",
+        texto: "☷  Más módulos"
+      });
+      toggle.addEventListener("click", function () {
+        var abierto = sidebar.classList.toggle("la-orbita-sidebar-mostrando-detalle");
+        toggle.setAttribute("aria-expanded", String(abierto));
+        toggle.textContent = abierto ? "×  Menos módulos" : "☷  Más módulos";
+        toggle.setAttribute("aria-label", abierto ? "Ocultar módulos secundarios" : "Mostrar todos los módulos");
+      });
+      sidebar.appendChild(toggle);
+    }
+
+    /* El punto de entrada de la maqueta es visual; el destino sigue siendo la
+       pantalla existente de Opciones de demo, sin tocar la navegación React. */
+    var demo = sidebar.querySelector("[data-la-orbita-demo-entry]");
+    if (!demo) {
+      demo = h("button", {
+        type: "button",
+        class: "la-orbita-sidebar-demo",
+        "data-la-orbita-demo-entry": "",
+        title: "Opciones de demo",
+        texto: "?  Opciones de demo"
+      });
+      demo.addEventListener("click", function () {
+        var propuesta = new URLSearchParams(location.hash.split("?")[1] || "").get("propuesta") || "7";
+        location.hash = "#/screen/sis-15?propuesta=" + encodeURIComponent(propuesta);
+      });
+      sidebar.appendChild(demo);
+    }
+    sincronizarSidebarCompacto(sidebar);
   }
 
   function crearSidebarParaClaro(legacy) {
@@ -315,6 +451,7 @@
       sidebar.classList.add("la-orbita-sidebar");
       marcarNavegacion(sidebar);
       marcarZonasSidebar(sidebar);
+      compactarSidebar(sidebar);
     }
     return sidebar;
   }

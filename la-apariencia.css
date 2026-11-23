@@ -285,6 +285,58 @@ html[data-la-diseno] .la-orbita-sidebar [style*="rgba(184, 139, 69, 0.07)"] {
 .la-orbita-sidebar.la-orbita-colapsada .la-orbita-zone-label { display: none !important; }
 .la-orbita-sidebar.la-orbita-colapsada button { justify-content: center; padding-inline: 8px; }
 .la-orbita-sidebar .la-orbita-legacy-tool { display: none !important; }
+/* Navegación compacta de la maqueta: se ve el primer nivel y el detalle
+   histórico queda disponible bajo «Más módulos». */
+.la-orbita-sidebar.la-orbita-sidebar-compacta {
+  width: 248px !important;
+  padding: 16px 12px !important;
+}
+.la-orbita-sidebar-compacta > div:first-child { margin-bottom: 14px !important; }
+.la-orbita-sidebar-compacta > div:first-child > div:first-child {
+  display: flex !important; align-items: center; gap: 9px;
+  width: 100%; min-height: 42px; margin-bottom: 10px !important;
+  padding: 3px !important; border: 0 !important; background: transparent !important;
+}
+.la-orbita-sidebar-compacta > div:first-child > div:first-child .la-brand-master {
+  width: 36px !important; height: 36px !important; max-height: 36px !important; object-fit: contain;
+}
+.la-orbita-sidebar-compacta > div:first-child > div:first-child::after {
+  content: "L&A Suite"; color: var(--c-on-chrome, #fff); font: 700 14px/1 var(--la-font);
+}
+.la-orbita-sidebar-compacta > div:first-child > div:nth-child(2) { display: none !important; }
+.la-orbita-sidebar-compacta > div:first-child > div:nth-child(3) {
+  margin: 0 4px 0 !important; color: color-mix(in srgb, var(--c-on-chrome, #fff) 72%, transparent) !important;
+  font-size: 11px !important; line-height: 1.25 !important;
+}
+.la-orbita-sidebar-compacta .la-orbita-sidebar-title { display: none !important; }
+html[data-la-diseno] .la-orbita-sidebar-compacta .la-orbita-sidebar-detail { display: none !important; }
+html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-detalle .la-orbita-sidebar-title { display: block !important; }
+html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-detalle .la-orbita-sidebar-detail { display: flex !important; }
+.la-orbita-sidebar-compacta .la-orbita-sidebar-section { margin-block: 2px !important; }
+.la-orbita-sidebar-compacta .la-orbita-sidebar-summary,
+.la-orbita-sidebar-compacta .la-orbita-sidebar-more,
+.la-orbita-sidebar-compacta .la-orbita-sidebar-demo {
+  display: flex !important; align-items: center; gap: 10px; width: 100%; min-height: 44px;
+  padding: 9px 10px; border: 0; border-radius: 9px; text-align: left; cursor: pointer;
+}
+.la-orbita-sidebar-compacta .la-orbita-sidebar-summary { color: color-mix(in srgb, var(--c-on-chrome, #fff) 84%, transparent); }
+.la-orbita-sidebar-compacta .la-orbita-sidebar-summary:hover,
+.la-orbita-sidebar-compacta .la-orbita-sidebar-summary[aria-current="page"] {
+  background: color-mix(in srgb, var(--c-on-chrome, #fff) 13%, transparent) !important;
+  color: var(--c-on-chrome, #fff) !important;
+}
+.la-orbita-sidebar-compacta .la-orbita-sidebar-more,
+.la-orbita-sidebar-compacta .la-orbita-sidebar-demo {
+  margin-top: 7px; border: 1px solid color-mix(in srgb, var(--c-on-chrome, #fff) 16%, transparent);
+  background: color-mix(in srgb, var(--c-on-chrome, #fff) 4%, transparent);
+  color: color-mix(in srgb, var(--c-on-chrome, #fff) 82%, transparent);
+  font: 600 12px/1.2 var(--la-font);
+}
+.la-orbita-sidebar-compacta .la-orbita-sidebar-more { margin-top: auto; }
+.la-orbita-sidebar-compacta .la-orbita-sidebar-more:hover,
+.la-orbita-sidebar-compacta .la-orbita-sidebar-demo:hover { border-color: var(--c-accent-fill); color: var(--c-on-chrome, #fff); }
+.la-orbita-sidebar-compacta.la-orbita-colapsada .la-orbita-sidebar-more,
+.la-orbita-sidebar-compacta.la-orbita-colapsada .la-orbita-sidebar-demo { justify-content: center; padding-inline: 8px; font-size: 0; }
 .la-orbita-header {
   grid-column: 2; grid-row: 1;
   display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
