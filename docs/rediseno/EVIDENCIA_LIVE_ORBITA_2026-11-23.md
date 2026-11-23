@@ -167,6 +167,11 @@ una segunda fila y en móvil se conservan dos columnas. No se cambiaron datos,
 handlers, permisos ni rutas. Contratos CSS, shell y recorridos móviles pasan
 tras el ajuste.
 
+También se compactó en móvil la tarjeta de contexto de Inicio: Empresa y Local
+se mantienen como selectores operativos en dos columnas y el texto de ámbito
+ocupa la fila completa. Esto aproxima la composición de la maqueta sin quitar
+el selector del programa real.
+
 ## Cierre que sigue pendiente
 
 Esta evidencia no permite marcar terminado el objetivo global por sí sola.
