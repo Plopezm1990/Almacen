@@ -163,6 +163,31 @@ seleccionables (`QA Empresa A, S.L. · Local A1`), shell Órbita y la pestaña
 `← Plataforma`. El retorno confirma la separación de privilegios y la
 integración de la superficie externa sin copiar datos ni cambiar handlers.
 
+## Punto 5 · Plataforma en escritorio · CERRADO
+
+Se repitió la comprobación en la sesión de administrador `owner.a@qa.invalid`
+desde el navegador de escritorio del preview 225. La superficie externa
+mantiene la organización Órbita sin barra móvil ni cambios de contexto: título,
+administrador, acciones superiores y tarjetas de empresa quedan en una única
+jerarquía de lectura.
+
+La lectura live confirmó:
+
+- 11 empresas activas y 1 desactivada.
+- Locales, usuarios y propietarios visibles por empresa.
+- Estados `Activa` y `Desactivada` diferenciados.
+- Acciones superiores `Abrir mi aplicación`, `Cerrar sesión`, `Actualizar` y
+  `+ Dar de alta una empresa` visibles y con suelo táctil de 44 px.
+- Acciones por empresa visibles, sin ejecutar `Desactivar`, `Reactivar`,
+  `Eliminar para siempre…` ni `Añadir dueño`.
+- `Abrir mi aplicación` conserva el contexto `QA Empresa A, S.L. · Local A1`,
+  muestra el shell Órbita real y el selector de empresa/local.
+- `← Plataforma` devuelve al panel administrativo sin perder la sesión ni
+  copiar datos entre superficies.
+
+Este cierre es visual y de navegación. No se alteraron empresas, locales,
+usuarios, propietarios ni configuraciones de QA.
+
 ### Acceso y MFA
 
 Desde `Configuración → Verificación en dos pasos` se comprobó la pantalla de

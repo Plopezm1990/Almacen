@@ -197,6 +197,16 @@ expiración y la selección autenticada de local están respaldadas por el
 recorrido funcional aceptado en `QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`.
 No se cambiaron factores, contraseñas, cuentas ni datos de QA.
 
+### Punto 5 · Plataforma en escritorio · cerrado
+
+Con `owner.a@qa.invalid` autenticado en QA se repitió el panel de Plataforma
+en el navegador de escritorio. Se verificaron las 11 empresas activas y 1
+desactivada, sus locales, usuarios, propietarios y estados; también los
+controles superiores, el enlace `Abrir mi aplicación` hacia
+`QA Empresa A, S.L. · Local A1` y el retorno `← Plataforma`. Los controles
+conservan el mínimo de 44 px y la jerarquía Órbita. No se pulsaron acciones de
+alta, baja, reactivación, borrado ni cambio de propietario.
+
 ### Preview actualizado y frontera de Plataforma · 22/11/2026
 
 El alias del preview volvió a desplegarse con el commit documental

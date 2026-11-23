@@ -19,7 +19,7 @@ sis-14;FUERA_PRODUCTO;Andamio de la maqueta;No construir en la suite;Retirar de 
 sis-15;FUERA_PRODUCTO;Andamio de la maqueta;No construir en la suite;Retirar de la matriz de pantallas de producto;Documentación QA
 sis-16;FUERA_PRODUCTO;El producto falla cerrado y oculta módulos;No necesita pantalla adicional;Conservar pruebas de denegación y retirar como pantalla;Seguridad
 acc-08;BLOQUEADA_QA;No bloquea el diseño; QA no está vacío;No vaciar QA;Requiere decisión de instalación
-org-08..org-17;EVIDENCIA_LIVE;Panel Plataforma observado con owner.a@qa.invalid;11 empresas activas y 1 desactivada, controles >=44px y salto Abrir mi aplicación ↔ ← Plataforma sin escrituras;No ejercitar operaciones administrativas destructivas;Preview 225 · evidencia live 2026-11-23
+org-08..org-17;EVIDENCIA_LIVE;Punto 5 cerrado en escritorio: panel Plataforma observado con owner.a@qa.invalid;11 empresas activas y 1 desactivada, locales, usuarios, propietarios, controles >=44px y salto Abrir mi aplicación ↔ ← Plataforma sin escrituras;No ejercitar operaciones administrativas destructivas;Preview 225 · evidencia live 2026-11-23 · sesión desktop
 per-21;BLOQUEADA_INFRA;No bloquea el diseño;Edge Function ausente en QA;No duplicar función en la UI;Infraestructura QA
 per-24..per-25;BLOQUEADA_PERMISOS;No bloquea el diseño;Permisos de servidor QA pendientes;No conceder privilegios desde el cliente;Administrador QA
 sis-13;NO_EJERCITADA;Excepción intencionada;Restablecer QA destruiría evidencia;No usar durante este cierre;QA
