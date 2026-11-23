@@ -19,6 +19,7 @@ const checks = [
   [shell.includes('abrirBusqueda') && shell.includes('event.key.toLowerCase() !== "k"'), 'buscador global con acceso Ctrl/Cmd K'],
   [shell.includes('data-la-orbita-alertas') && shell.includes('la-orbita-appearance'), 'avisos y acción Apariencia expuestos desde la cabecera'],
   [shell.includes('data-la-orbita-propuesta') && shell.includes('nombreDisenoActivo'), 'la cabecera refleja el diseño activo de Apariencia'],
+  [shell.includes('la-apariencia:cambio') && shell.includes('actualizarCabecera'), 'la cabecera se sincroniza al cambiar propuesta o paleta sin recargar'],
   [shell.includes('la-orbita-profile-menu') && shell.includes('Cuenta y seguridad'), 'perfil común con acciones de cuenta, tema, empleado y salida'],
   [shell.includes('cliente.auth.signOut({ scope: "local" })') && shell.includes('window.location.reload()'), 'salida del perfil Órbita no depende del encabezado oculto'],
   [shell.includes('marcarHerramientasLegadas') && shell.includes('la-orbita-legacy-tool'), 'controles duplicados neutralizados en la navegación antigua'],
