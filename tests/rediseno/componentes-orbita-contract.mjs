@@ -36,7 +36,7 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v77-20261123/);
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v78-20261123/);
 assert.match(index, /fuente\.js\?v=qa-orbita-home-v8-20261123/, 'fuente.js debe invalidar la caché tras alinear la composición de Inicio');
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,

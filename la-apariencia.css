@@ -317,6 +317,8 @@ html[data-la-diseno] .la-orbita-sidebar [style*="rgba(184, 139, 69, 0.07)"] {
 .la-orbita-context-menu button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--c-ink); font: 600 12.5px/1.2 var(--la-font); text-align: left; cursor: pointer; }
 .la-orbita-context-menu button:hover { background: var(--c-accent-soft); color: var(--c-accent); }
 .la-orbita-context-menu button[aria-checked="true"] { background: var(--c-accent-soft); color: var(--c-accent); font-weight: 700; }
+.la-orbita-more-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.la-orbita-more-grid > button { min-height: 44px; margin-bottom: 0 !important; }
 .la-orbita-context-empty { margin: 4px; color: var(--c-ink-soft); font-size: 12px; line-height: 1.4; }
 .la-orbita-profile-menu { position: absolute; inset-block-start: calc(var(--la-shell-header-height) - 4px); inset-inline-end: clamp(14px, 2vw, 28px); z-index: 10020; display: grid; gap: 3px; width: min(230px, calc(100vw - 28px)); padding: 7px; border: 1px solid var(--c-border-control); border-radius: 12px; background: var(--c-surface); box-shadow: var(--la-shadow-2); }
 .la-orbita-profile-menu button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--c-ink); font: 600 12.5px/1.2 var(--la-font); text-align: left; cursor: pointer; }
