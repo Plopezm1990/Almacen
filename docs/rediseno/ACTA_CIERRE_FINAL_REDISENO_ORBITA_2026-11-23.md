@@ -5,7 +5,9 @@
 **PR:** #225, borrador, contra `release`  
 **Entorno:** Deploy Preview 225 / QA únicamente  
 **Producción:** no modificada  
-**SHA de verificación:** `db7ac239` (commit que publica este acta y la matriz consolidada).
+**SHA de verificación:** `b17eec81` (commit que publica la evidencia live
+adicional de Clientes, Personal y Configuración junto con el acta, el
+traspaso y la matriz).
 
 ## Resultado
 
