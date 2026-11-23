@@ -473,3 +473,9 @@ historial; Recepción con su vacío honesto; Albaranes con tres entradas QA y
 acciones disponibles; Facturas con resumen mensual y vacío; y Mermas con
 filtros, totales y tres registros QA persistidos. No se abrió caja, no se
 guardó arqueo, no se creó ningún documento ni se registró una nueva merma.
+
+El TPV se recorrió también en móvil con Local A1: modo Venta rápida/Sala,
+terminal, búsqueda F2, categorías, paginación, Sala y mesas, cobro F4,
+fiscalidad QA y resumen de ventas. Al no existir sesión de caja, el preview
+mostró el aviso y mantuvo los cobros deshabilitados. No se realizó ningún
+cobro ni se modificó una cuenta.

@@ -84,6 +84,16 @@ proveedor, fecha, líneas, base, IVA y total, junto a las acciones `Ver`,
 resumen mensual con base, IVA, total y el estado vacío `No hay facturas
 confirmadas en este mes`, sin crear factura.
 
+### TPV y sala
+
+El TPV real se recorrió en móvil con Local A1 seleccionado. La composición
+incluye el selector de modo (`Venta rápida` / `Sala-restaurante`), terminal
+del navegador, búsqueda F2, categorías, rejilla de productos, paginación,
+Sala y mesas, cobro F4, estado fiscal QA y resumen de ventas. La pantalla
+mostró correctamente el aviso de que el terminal no tiene una sesión de caja
+abierta y mantuvo las acciones de cobro deshabilitadas mientras no exista esa
+sesión. No se cobró ni se modificó la cuenta durante este recorrido.
+
 ### Personal
 
 La ruta mostró la plantilla de empleados con altas, bajas, vacaciones,
@@ -113,6 +123,9 @@ mantuvieron sin editar.
 - Compras / Recepción, Albaranes y Facturas: **PASS observado** para estados
   vacíos, listados, resumen fiscal y acciones disponibles; no se ejecutaron
   nuevas escrituras.
+- TPV / Sala: **PASS observado** para modos de venta, terminal, búsqueda,
+  categorías, paginación, sala, cobro y resumen; caja cerrada mantenida como
+  estado honesto.
 - Personal: **PASS observado** para ficha, cargos y acciones de empleado.
 - Configuración: **PASS observado** para bloques de empresa/local y seguridad.
 - Plataforma: **PASS observado** para panel administrativo, suelo táctil y
