@@ -119,6 +119,22 @@ aplicada en este entorno y que esa política será obligatoria para
 Propietario, Encargado y Cajero/a. La comprobación fue de lectura: no se
 añadió, eliminó ni verificó ningún factor MFA y no se cerró ninguna sesión.
 
+### Comparación directa con la maqueta Órbita
+
+Se comparó la pantalla `Panel general · L&A Suite · Órbita` de la maqueta
+(`index.html#/screen/ini-01?propuesta=7`) con Inicio del programa real en el
+preview. La cabecera, selector de empresa/local, búsqueda, avisos, perfil,
+botón Apariencia y navegación inferior están presentes en ambos. La brecha
+restante es de composición y no de datos: la maqueta ordena tres indicadores
+operativos y después dos bloques paralelos (`Pulso de ventas` y `Pendientes
+del día`), mientras que el programa real conserva cuatro indicadores
+(`Ventas registradas`, `Margen promedio`, `Pedidos pendientes` y `Productos en
+stock bajo`) y añade el bloque operativo Pase (`Plano de sala`, estado de caja,
+pedidos en servicio y accesos del turno). La información real no debe
+eliminarse; el siguiente ajuste debe reordenarla dentro de la misma jerarquía
+visual de la maqueta, llevando margen/stock a un bloque secundario y dejando
+la operación de Pase como la superficie operativa enlazada.
+
 ## Cierre que sigue pendiente
 
 Esta evidencia no permite marcar terminado el objetivo global por sí sola.
