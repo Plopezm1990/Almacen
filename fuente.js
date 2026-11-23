@@ -117961,12 +117961,45 @@ function BotonItemSheet({ it: it2, tab, onPick }) {
     !!it2.badge && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-auto text-[13px] font-semibold px-2 py-1 rounded-full mono", style: { background: it2.badgeColor || C2.accentFill, color: it2.badgeTextColor || C2.onAccent, boxShadow: `0 0 0 1px ${C2.badgeRing}` } }, it2.badge)
   );
 }
-function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor }) {
+function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor, diseno = (typeof document !== "undefined" && document.querySelector("[data-la-contenedor]")?.getAttribute("data-la-contenedor")) || "" }) {
   const [abierto, setAbierto] = (0, import_react4.useState)(false);
   const idsFijos = new Set(pestanasFijas.map((it2) => it2.id));
   const ETIQUETA_PESTANA = { dashboard: "Inicio", venta: "Sala", caja: "Caja", fichaje: "Fichaje" };
   const otros = grupos.map((g2) => ({ ...g2, items: g2.items.filter((it2) => !idsFijos.has(it2.id)) })).filter((g2) => g2.items.length > 0 || g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor);
   const hayBadgeEnOtros = otros.some((g2) => g2.items.some((it2) => it2.badge > 0));
+  const todosLosItems = grupos.flatMap((g2) => g2.items || []);
+  const itemPorId = (id, label = null) => {
+    const item = todosLosItems.find((it2) => it2.id === id);
+    return item ? { ...item, label: label || item.label } : null;
+  };
+  const abrirRutaDemo = (id) => {
+    const enlace = Array.prototype.slice.call(document.querySelectorAll("a")).find((a22) => String(a22.getAttribute("href") || "").includes("#/screen/" + id));
+    if (enlace) { enlace.click(); return; }
+    const propuesta = new URLSearchParams(location.hash).get("propuesta") || new URLSearchParams(location.search).get("propuesta") || "7";
+    location.hash = "#/screen/" + id + "?propuesta=" + encodeURIComponent(propuesta);
+  };
+  const itemInicioEmpleado = { id: "inicio-empleado", label: "Inicio del empleado", icon: UserRound };
+  const itemIndice = { id: "indice", label: "Índice de pantallas", icon: Files };
+  const itemOpcionesDemo = { id: "opciones-demo", label: "Opciones de demo", icon: Cog };
+  const orbitaMenu = diseno === "orbita" ? [
+    { titulo: "En Inicio", items: [itemPorId("dashboard", "Panel general"), itemInicioEmpleado, itemPorId("direccion", "Panel de dirección"), itemPorId("buscar", "Búsqueda global")].filter(Boolean) },
+    { titulo: "Módulos", items: [itemPorId("dashboard", "Inicio"), itemPorId("venta", "Servicio"), itemPorId("caja", "Caja y fiscalidad"), itemPorId("proveedores", "Compras"), itemPorId("resumen_almacen", "Inventario"), itemPorId("personal", "Equipo"), itemPorId("appcc", "Calidad"), itemPorId("resultados", "Informes"), itemPorId("locales", "Organización"), itemPorId("configuracion", "Sistema")].filter(Boolean) }
+  ] : otros;
+  const accionesHerramientas = diseno === "orbita" ? [
+    typeof window.LAApariencia?.abrirEditor === "function" ? { id: "apariencia", label: "Apariencia", icon: Cog, onPick: () => { setAbierto(false); requestAnimationFrame(() => window.LAApariencia.abrirEditor()); } } : null,
+    { id: "buscar-suite", label: "Buscar en la suite", icon: Search, onPick: () => { setAbierto(false); document.querySelector('[aria-label="Buscar (Ctrl K)"]')?.click(); } },
+    { id: "buscar-registros", label: "Buscar registros", icon: Search, onPick: () => { setAbierto(false); if (setTab("buscar")) return; abrirRutaDemo("buscar"); } },
+    { ...itemIndice, onPick: () => { setAbierto(false); abrirRutaDemo("sis-14"); } },
+    { ...itemOpcionesDemo, onPick: () => { setAbierto(false); abrirRutaDemo("sis-15"); } }
+  ].filter(Boolean) : [];
+  const renderOrbitaGrupo = (g2, gi) => import_react4.default.createElement("div", { key: gi, className: "la-orbita-more-group mb-3" }, g2.titulo && import_react4.default.createElement("div", { className: "la-orbita-more-title text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, g2.titulo), import_react4.default.createElement("div", { className: "la-orbita-more-grid" }, g2.items.map((it2) => import_react4.default.createElement(BotonItemSheet, { key: it2.id + "-" + g2.titulo, it: it2, tab, onPick: () => {
+    if (it2.id === "inicio-empleado") { setAbierto(false); abrirRutaDemo("ini-02"); return; }
+    if (setTab(it2.id)) setAbierto(false);
+  } }))), g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor && import_react4.default.createElement("button", { onClick: () => { if (irADevolucionProveedor()) setAbierto(false); }, className: "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1", style: { background: tab === "devoluciones" ? C2.accentSoft : C2.bg, color: C2.ink } }, import_react4.default.createElement(ArrowLeftRight, { size: 17, color: tab === "devoluciones" ? C2.accent : C2.inkSoft }), import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, "Devoluciones a proveedor")));
+  const renderHerramientas = () => import_react4.default.createElement("div", { className: "la-orbita-more-group mb-3" }, [
+    import_react4.default.createElement("div", { key: "herramientas-titulo", className: "la-orbita-more-title text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, "Herramientas"),
+    import_react4.default.createElement("div", { key: "herramientas-items", className: "la-orbita-more-grid" }, accionesHerramientas.map((accion) => import_react4.default.createElement("button", { key: accion.id, type: "button", onClick: accion.onPick, className: "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1", style: { background: C2.bg, color: C2.ink } }, [import_react4.default.createElement(accion.icon, { key: "icon", size: 17, color: C2.inkSoft }), import_react4.default.createElement("span", { key: "label", className: "text-[13px] font-medium" }, accion.label)])))
+  ]);
   return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement("div", { "data-la-barra-inferior": "", className: "md:hidden flex shrink-0", style: { background: C2.surface, borderTop: `1px solid ${C2.line}` } }, pestanasFijas.map((it2) => {
     const Icon2 = it2.icon;
     const active = tab === it2.id;
@@ -117984,27 +118017,7 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
     /* @__PURE__ */ import_react4.default.createElement(Ellipsis, { size: 20, color: C2.inkSoft }),
     /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: C2.inkSoft } }, "M\xE1s"),
     hayBadgeEnOtros && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-1.5 right-[28%] w-2 h-2 rounded-full", style: { background: C2.red } })
-  )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, typeof window.LAApariencia?.abrirEditor === "function" && /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, {
-    it: { id: "apariencia", label: "Apariencia", icon: Cog },
-    tab,
-    onPick: () => {
-      setAbierto(false);
-      requestAnimationFrame(() => window.LAApariencia.abrirEditor());
-    }
-  }), otros.map((g2, gi) => /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-3" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, g2.titulo), g2.items.map((it2) => /* @__PURE__ */ import_react4.default.createElement(BotonItemSheet, { key: it2.id, it: it2, tab, onPick: () => {
-    if (setTab(it2.id)) setAbierto(false);
-  } })), g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor && /* @__PURE__ */ import_react4.default.createElement(
-    "button",
-    {
-      onClick: () => {
-        if (irADevolucionProveedor()) setAbierto(false);
-      },
-      className: "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1",
-      style: { background: tab === "devoluciones" ? C2.accentSoft : C2.bg, color: C2.ink }
-    },
-    /* @__PURE__ */ import_react4.default.createElement(ArrowLeftRight, { size: 17, color: tab === "devoluciones" ? C2.accent : C2.inkSoft }),
-    /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, "Devoluciones a proveedor")
-  )))));
+  )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, orbitaMenu.map(renderOrbitaGrupo), orbitaMenu.length > 0 && renderHerramientas()));
 }
 function Card({ children, className = "", style = {} }) {
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: `la-ui-card rounded-xl p-4 ${className}`, style: { background: C2.surface, border: `1px solid ${C2.line}`, ...style } }, children);
@@ -118283,6 +118296,16 @@ function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPend
       onPointerMove: esOrbita ? moverLinea : undefined,
       onPointerLeave: esOrbita ? (e2) => e2.currentTarget.style.removeProperty("--la-orbita-puntero") : undefined
     },
+    esOrbita && h("div", { className: "la-panel-orbita-visual", "aria-hidden": "true" },
+      h("div", { className: "la-panel-orbita-grid" }),
+      h("div", { className: "la-panel-orbita-ring la-panel-orbita-ring-outer" }),
+      h("div", { className: "la-panel-orbita-ring la-panel-orbita-ring-inner" }),
+      h("div", { className: "la-panel-orbita-ring la-panel-orbita-ring-cross" }),
+      h("div", { className: "la-panel-orbita-sphere" }),
+      h("span", { className: "la-panel-orbita-point la-panel-orbita-point-coral" }),
+      h("span", { className: "la-panel-orbita-point la-panel-orbita-point-violet" }),
+      h("span", { className: "la-panel-orbita-coordinate", texto: "- - -" })
+    ),
     contexto && h("p", { className: "la-panel-contexto" }, esOrbita ? "OPERACI\xD3N EN VIVO \xB7 " + contexto : contexto),
     h("h2", null, panel.titulo, panel.destacado && h("em", null, " " + panel.destacado)),
     accesos.length > 0 && h("div", { className: "la-panel-accesos", "aria-label": "Accesos r\xE1pidos" },
@@ -118291,6 +118314,12 @@ function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPend
         return h("button", { key: id, type: "button", onClick: () => { if (puedeConsultar(id)) navegar(id); } },
           h(Icono, { size: 17, "aria-hidden": true }), texto);
       }))
+    ),
+    esOrbita && puedeConsultar("resumen_almacen") && h("div", { className: "la-panel-orbita-detalle" },
+      h("button", { type: "button", onClick: () => navegar("resumen_almacen") },
+        h(Package, { size: 17, "aria-hidden": true }),
+        "Ver detalle operativo"
+      )
     ),
     indicadoresPrimarios.length > 0 && h("div", { className: "la-panel-indicadores", "aria-label": esOrbita ? "Indicadores principales" : "Indicadores" },
       indicadoresPrimarios.map((item) => h("button", {
@@ -118625,7 +118654,7 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
       requestAnimationFrame(() => document.querySelector('[data-la-panel-detalle]')?.focus());
     }
   }) : null;
-  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, panelDiseno, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[18px] font-semibold" }, "Panel general"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))), /* @__PURE__ */ import_react4.default.createElement("img", { src: (empresa && empresa.logo) || LOGO_PROYECTO, alt: "", style: { height: 56, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Toca cualquier cifra para ver el detalle."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" }, tarjetasVisibles.map((t22) => {
+  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, panelDiseno, /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-dashboard-legacy" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-4 pb-3", style: { borderBottom: `2px solid ${C2.accent}` } }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[18px] font-semibold" }, "Panel general"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, (/* @__PURE__ */ new Date()).toLocaleDateString("es-ES", { weekday: "long", day: "numeric", month: "long", year: "numeric" }))), /* @__PURE__ */ import_react4.default.createElement("img", { src: (empresa && empresa.logo) || LOGO_PROYECTO, alt: "", style: { height: 56, width: "auto" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Toca cualquier cifra para ver el detalle."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-3 mb-3" }, tarjetasVisibles.map((t22) => {
     const activa = abierta === t22.id;
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",

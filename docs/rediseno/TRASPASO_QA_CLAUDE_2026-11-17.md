@@ -3377,3 +3377,21 @@ Comprobaciones finales sobre la rama `rediseno/f0-base-qa`: 22 contratos de
 `tests/rediseno/*.mjs` en PASS, `PARIDAD_CUERPO_EXACTA=1`,
 `SOURCE_RECOVERY_CHECK=PASS`, `node --check` para las dos fuentes y
 `git diff --check` limpio. PR #225 permanece en borrador; producción intacta.
+
+## Addendum de implementación · Inicio Órbita y maqueta móvil · 23/11/2026
+
+Se implementó la alineación estructural de Inicio descrita en
+`ACTA_INICIO_ORBITA_MAQUETA_2026-11-23.md`. El dashboard histórico sigue
+montado y conserva datos/handlers, pero queda visualmente aislado en Órbita;
+el hero real incorpora planeta, anillos, puntos, textura, coordenadas y
+`prefers-reduced-motion`; la cabecera móvil muestra marca, empresa/local,
+avatar, avisos y contexto; y `Más` usa las secciones En Inicio, Módulos y
+Herramientas con rejilla de dos columnas.
+
+Archivos de publicación: `fuente.js`,
+`source-recovery/fuente-recuperado.js`, `la-apariencia.css`,
+`la-orbita-shell.js`, `index.html` y sus contratos de marcas de caché.
+Resultado local: 22/22 contratos de rediseño, paridad exacta, sintaxis y
+`git diff --check` en PASS. Falta únicamente observar el deploy de este SHA en
+390×844, 430×932, tablet y escritorio antes de cerrar el objetivo como
+completado.

@@ -477,7 +477,17 @@
     var contexto = contextoActual();
     ultimoContexto = contexto;
     var texto = cabecera.querySelector("[data-la-orbita-context-label]");
-    textoSiCambia(texto, contexto);
+    var partesContexto = String(contexto || "Selecciona empresa y local").split(/\s*[·|/]\s*/).map(function (parte) { return parte.trim(); }).filter(Boolean);
+    var localContexto = partesContexto.find(function (parte) { return /^local\b|^sala\b|^terraza\b/i.test(parte); }) || partesContexto[0] || "Local";
+    var empresaContexto = partesContexto.filter(function (parte) { return parte !== localContexto; }).join(" · ") || "Empresa";
+    var contextoEmpresa = texto && texto.querySelector("[data-la-orbita-context-empresa]");
+    var contextoLocal = texto && texto.querySelector("[data-la-orbita-context-local]");
+    if (contextoEmpresa && contextoLocal) {
+      textoSiCambia(contextoEmpresa, empresaContexto);
+      textoSiCambia(contextoLocal, localContexto);
+    } else {
+      textoSiCambia(texto, contexto);
+    }
     var qa = cabecera.querySelector("[data-la-orbita-qa]");
     if (qa) {
       var esQa = window.__modoPruebasQA === true || /deploy-preview-/i.test(location.hostname);
@@ -494,12 +504,20 @@
   function crearCabecera(sidebar) {
     if (marco.querySelector("[data-la-orbita-header]")) return marco.querySelector("[data-la-orbita-header]");
     cabecera = h("header", { class: "la-orbita-header", "data-la-orbita-header": "", role: "banner" });
-    var contexto = h("button", { type: "button", class: "la-orbita-context", "aria-haspopup": "menu", texto: "Selecciona empresa y local" });
+    var contexto = h("button", { type: "button", class: "la-orbita-context", "aria-haspopup": "menu" });
+    contexto.append(
+      h("span", { class: "la-orbita-context-company", "data-la-orbita-context-empresa": "", texto: "Empresa" }),
+      h("span", { class: "la-orbita-context-local", "data-la-orbita-context-local": "", texto: "Local" })
+    );
     contexto.setAttribute("data-la-orbita-context-label", "");
     contexto.setAttribute("aria-expanded", "false");
     contextoBoton = contexto;
     contexto.addEventListener("click", abrirContexto);
-    var izquierda = h("div", { class: "la-orbita-header-context" }, [h("span", { class: "la-orbita-brand", texto: "L&A Suite" }), contexto]);
+    var marca = h("span", { class: "la-orbita-brand" }, [
+      h("span", { class: "la-orbita-brand-mark", texto: "L&A" }),
+      h("span", { class: "la-orbita-brand-text", texto: "L&A Suite" })
+    ]);
+    var izquierda = h("div", { class: "la-orbita-header-context" }, [marca, contexto]);
     var qa = h("span", { class: "la-orbita-qa", "data-la-orbita-qa": "", texto: "QA" });
     izquierda.appendChild(qa);
     var derecha = h("div", { class: "la-orbita-header-actions" });
@@ -510,7 +528,7 @@
       var aviso = marco.querySelector(".la-orbita-alert");
       if (aviso) aviso.scrollIntoView({ block: "nearest" });
     });
-    var perfil = h("button", { type: "button", class: "la-orbita-header-button", "aria-haspopup": "menu", "aria-expanded": "false", texto: "Perfil" });
+    var perfil = h("button", { type: "button", class: "la-orbita-header-button la-orbita-profile", "aria-label": "Perfil", "aria-haspopup": "menu", "aria-expanded": "false", texto: "AV" });
     perfil.addEventListener("click", function () {
       if (perfilMenu && perfilMenu.isConnected) {
         perfilMenu.remove();
@@ -561,7 +579,16 @@
     var apariencia = h("button", { type: "button", class: "la-orbita-header-button la-orbita-appearance", texto: "Apariencia" });
     apariencia.addEventListener("click", function () { if (typeof window.LAApariencia?.abrirEditor === "function") window.LAApariencia.abrirEditor(); });
     derecha.append(buscar, alertas, perfil, apariencia);
-    cabecera.append(izquierda, derecha);
+    var subcabecera = h("nav", { class: "la-orbita-subheader", "data-la-orbita-subheader": "", "aria-label": "Contexto de Órbita" }, [
+      h("span", { class: "la-orbita-demo-label", texto: "Demostración" }),
+      h("button", { type: "button", class: "la-orbita-subheader-alerts", "aria-label": "Avisos del local", texto: "Avisos", onclick: function () {
+        var aviso = marco && marco.querySelector(".la-orbita-alert");
+        if (aviso) aviso.scrollIntoView({ block: "nearest" });
+      } }),
+      h("span", { class: "la-orbita-proposal-label", texto: "Órbita" }),
+      h("a", { class: "la-orbita-index-link", href: (location.href.replace(/#\/screen\/[^?]+/, "#/screen/sis-14") || "#/screen/sis-14"), texto: "Índice" })
+    ]);
+    cabecera.append(izquierda, derecha, subcabecera);
     marco.appendChild(cabecera);
     actualizarCabecera();
     return cabecera;
