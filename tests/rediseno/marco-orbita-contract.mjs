@@ -9,7 +9,7 @@ const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
 const checks = [
-  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v27-20261123') && index.includes('la-apariencia.css?v=qa-orbita-shell-v80-20261123'), 'index carga las capas Órbita con sus marcas de caché'],
+  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v28-20261123') && index.includes('la-apariencia.css?v=qa-orbita-shell-v80-20261123'), 'index carga las capas Órbita con sus marcas de caché'],
   [shell.includes('var superficie = ruta === "inicio" ? "inicio"'), 'Inicio conserva la identidad de módulo sobre subpaneles'],
   [shell.includes('data-la-orbita-header') && shell.includes('data-la-orbita-qa'), 'capa común con cabecera y estado QA'],
   [shell.includes('crearSidebarParaClaro') && shell.includes('la-orbita-legacy-header'), 'la propuesta claro deja de conservar una cabecera de marco alternativa'],
@@ -24,6 +24,7 @@ const checks = [
   [shell.includes('cliente.auth.signOut({ scope: "local" })') && shell.includes('window.location.reload()'), 'salida del perfil Órbita no depende del encabezado oculto'],
   [shell.includes('marcarHerramientasLegadas') && shell.includes('la-orbita-legacy-tool'), 'controles duplicados neutralizados en la navegación antigua'],
   [shell.includes('rutaActiva') && shell.includes('data-la-orbita-route'), 'cada ruta queda identificada dentro del marco común'],
+  [shell.includes('resumen de almacen') && shell.includes('return "inventario"'), 'Resumen de almacén entra en la superficie visual de Inventario'],
   [shell.includes('data-la-orbita-surface') && shell.includes('la-operacion-cocina'), 'superficies TPV, Pase, Cocina y Caja quedan marcadas'],
   [shell.includes('marcarZonasSidebar') && shell.includes('data-la-orbita-zone-label') && css.includes('.la-orbita-zone-label'), 'lateral Órbita conserva las zonas Operación y Administración de la maqueta'],
   [shell.includes('El destino elegido por la navegación manda') && shell.includes('laOrbitaRouteBound'), 'Inicio conserva prioridad sobre subpaneles incrustados'],

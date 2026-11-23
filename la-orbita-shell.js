@@ -398,7 +398,7 @@
     /* Traspasos conserva una raíz operativa histórica de Caja, pero pertenece
        al bloque de Inventario. Resolverlo antes de mirar esa clase evita que
        la capa visual de Caja gane por accidente. */
-    if (/traspasos|reconciliacion|inventario ciego|saldo de almacen|mapa de almacen|etiquetas y catalogo/.test(textoRutaInicial)) return "inventario";
+    if (/resumen de almacen|traspasos|reconciliacion|inventario ciego|saldo de almacen|mapa de almacen|etiquetas y catalogo/.test(textoRutaInicial)) return "inventario";
     /* Inicio puede incrustar el panel Pase para dar contexto operativo. La
        raíz del dashboard tiene prioridad: la cola embebida no debe cambiar la
        identidad del módulo ni la navegación activa. */
@@ -420,7 +420,7 @@
       ["caja|arqueo", "caja"],
       ["clientes", "clientes"],
       ["compras|proveedores|pedidos|recepcion|albaranes|facturas", "compras"],
-      ["inventario|productos|historial de producto|mermas|caducidad|ajustes|reconciliaci[oó]n|inventario ciego|saldo de almac[eé]n|mapa de almac[eé]n|traspasos|etiquetas y cat[aá]logo", "inventario"],
+      ["resumen de almac[eé]n|inventario|productos|historial de producto|mermas|caducidad|ajustes|reconciliaci[oó]n|inventario ciego|saldo de almac[eé]n|mapa de almac[eé]n|traspasos|etiquetas y cat[aá]logo", "inventario"],
       ["encargos|devoluciones|descuentos|cortesias|cupones", "tpv"],
       ["\\bpersonal\\b|\\bempleados\\b|\\bcargos\\b|\\bpermisos\\b|\\bturnos\\b|\\bfichajes\\b|registro horario|cuadrante de turnos|coste de personal", "personal"],
       ["configuracion|empresa|locales|terminales|equipos|fiscal", "configuracion"],
