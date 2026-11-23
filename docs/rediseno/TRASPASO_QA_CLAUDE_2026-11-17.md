@@ -3460,3 +3460,13 @@ de fuente; la batería `tests/rediseno/*.mjs` queda en **22/22**, el manifiesto
 en **389/372/333**, la paridad exacta y `git diff --check` pasan. Sigue
 pendiente la evidencia live autenticada del resto de módulos frente a la
 maqueta; este cambio solo cierra la diferencia demostrada en Inicio.
+
+### Confirmación live post-publicación · `e0528883`
+
+Tras publicar la marca v27 y recargar la pestaña del preview (la pestaña
+anterior conservaba v26 en caché), la lectura del DOM de QA confirmó que
+`data-la-diseno=orbita`, el módulo es `inicio`, el dashboard histórico está
+oculto y `#la-pase-panel` no existe en esta propuesta. El Inicio expone las
+tres tarjetas de la maqueta y el menú `Más` conserva sus tres grupos; el
+submenú Compras muestra los seis destinos reales, incluido Albaranes. No se
+ejecutó ninguna operación que escriba datos.

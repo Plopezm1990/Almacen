@@ -179,3 +179,28 @@ rediseño queda en **22/22 PASS**, la puerta de manifiesto en **389 entradas /
 `git diff --check` limpio. Esta evidencia cubre el Inicio; aún no sustituye
 la comprobación visual autenticada de cada módulo restante frente a la
 maqueta.
+
+### Verificación live tras publicar v27 · 23/11/2026
+
+Después del push `e0528883`, el HTML del preview 225 sirve
+`la-orbita-shell.js?v=qa-orbita-shell-v27-20261123`. La pestaña que conservaba
+una sesión anterior fue recargada antes de medir, para no confundir una copia
+de caché con el estado publicado. En el DOM autenticado de Local A1 se
+observó:
+
+- `html[data-la-diseno="orbita"]` y `main[data-la-orbita-module="inicio"]`;
+- `.la-dashboard-legacy` con `display: none`, por lo que el panel histórico no
+  se pinta junto al nuevo;
+- ausencia de `#la-pase-panel` en Órbita (ese panel queda reservado para Pase y
+  Ascua);
+- las tres tarjetas del Inicio: `Ventas de hoy`, `Mesas ocupadas` y
+  `Comandas activas`. Las tarjetas muestran el dato cuando el servidor lo
+  confirma y `—` durante un vacío/error, sin fabricar ceros;
+- `Más` dividido en `En Inicio`, `Módulos` y `Herramientas`. El submenú de
+  Compras expone `Proveedores`, `Pedidos`, `Recepción`, `Albaranes`, `Facturas`
+  y `Devoluciones a proveedor`.
+
+La recarga no ejecutó acciones de escritura. Esta evidencia confirma la
+corrección de la duplicación y de la caché en el preview; no sustituye los
+recorridos live pendientes de los módulos que todavía no tienen captura
+autenticada propia.
