@@ -94,6 +94,11 @@ mostró correctamente el aviso de que el terminal no tiene una sesión de caja
 abierta y mantuvo las acciones de cobro deshabilitadas mientras no exista esa
 sesión. No se cobró ni se modificó la cuenta durante este recorrido.
 
+Desde los `Accesos del turno` de Pase se pulsó `Abrir TPV` y la navegación
+llegó a la vista TPV del mismo Local A1, conservando el terminal y la
+superficie de sala/cobro. No se abrió una cuenta nueva ni se cobró; la
+comprobación se limitó al salto y a la lectura del destino.
+
 ### Personal
 
 La ruta mostró la plantilla de empleados con altas, bajas, vacaciones,
