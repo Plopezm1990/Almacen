@@ -9,7 +9,7 @@ const source = readFileSync(resolve(root, 'fuente.js'), 'utf8');
 const recovery = readFileSync(resolve(root, 'source-recovery/fuente-recuperado.js'), 'utf8');
 
 const checks = [
-  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v25-20261123') && index.includes('la-apariencia.css?v=qa-orbita-shell-v79-20261123'), 'index carga las capas Órbita con sus marcas de caché'],
+  [index.includes('la-orbita-shell.js?v=qa-orbita-shell-v25-20261123') && index.includes('la-apariencia.css?v=qa-orbita-shell-v80-20261123'), 'index carga las capas Órbita con sus marcas de caché'],
   [shell.includes('var superficie = ruta === "inicio" ? "inicio"'), 'Inicio conserva la identidad de módulo sobre subpaneles'],
   [shell.includes('data-la-orbita-header') && shell.includes('data-la-orbita-qa'), 'capa común con cabecera y estado QA'],
   [shell.includes('crearSidebarParaClaro') && shell.includes('la-orbita-legacy-header'), 'la propuesta claro deja de conservar una cabecera de marco alternativa'],
