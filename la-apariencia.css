@@ -260,7 +260,10 @@ html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > .tpv-rejilla 
   grid-row: 2; min-height: 0; overflow: hidden; align-content: stretch;
   grid-template-rows: repeat(var(--tpv-filas, 2), minmax(0, 1fr)); grid-auto-rows: 0;
 }
-html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-rejilla > button { min-height: 0 !important; overflow: hidden; }
+/* main.la-orbita-main .tpv-layout: más específico que la regla general del TPV de
+   Órbita (.tpv-layout .tpv-rejilla > button, min-height 104px !important), que
+   si no impide ajustar las filas al alto disponible. */
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root main.la-orbita-main .tpv-layout .tpv-rejilla > button { min-height: 0 !important; overflow: hidden; padding: 10px 12px !important; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-paginas] { grid-row: 3; justify-content: center !important; gap: 16px !important; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root [data-tpv-paginas] .la-ui-button { min-height: 44px; min-width: 120px; justify-content: center; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side {
@@ -300,7 +303,9 @@ html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa-volver {
   border: 1px solid var(--c-line, #343941); background: var(--c-surface, #202328); color: var(--c-ink, #F1F3F6);
 }
 @media (max-width: 767px) {
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root { --tpv-caja-banda: clamp(200px, 34dvh, 300px); }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root { --tpv-caja-banda: clamp(190px, 30dvh, 280px); }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root main.la-orbita-main .tpv-layout .tpv-rejilla > button { padding: 8px 10px !important; gap: 4px !important; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root main.la-orbita-main .tpv-layout .tpv-rejilla > button > :first-child { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > h2 { display: none; }
   /* Móvil: la cabecera es una sola barra que se desliza en horizontal (la
      barra, no la página), con el selector de modo primero. */

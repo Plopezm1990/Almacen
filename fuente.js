@@ -128409,7 +128409,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const medir = () => {
       const alto = el.clientHeight;
       const hueco = parseFloat(getComputedStyle(el).rowGap) || 8;
-      const minimo = window.matchMedia("(min-width: 1024px)").matches ? 96 : 104;
+      /* Alto mínimo de una fila: lo que necesita la tarjeta más alta (nombre en
+         dos líneas, precio y «sin stock»), medido en vivo el 25/11/2026. */
+      const minimo = 96;
       const filas = Math.max(1, Math.floor((alto + hueco) / (minimo + hueco)));
       setFilasRejillaCaja((previas) => previas === filas ? previas : filas);
     };
