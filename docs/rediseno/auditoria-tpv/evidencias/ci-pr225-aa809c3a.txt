@@ -1,0 +1,41 @@
+Header rules - chic-entremet-9107cf | pass
+a06-postgres-contract | pass
+a07-postgres-contract | pass
+a08-postgres-contract | pass
+a09_postgres17 | pass
+c01-session-contract | pass
+c02-cash-movements | pass
+c03-cash-contract | pass
+c04-close-contract | pass
+c05-postgres | pass
+c06-postgres | pass
+c07-postgres | pass
+c08-postgres | pass
+c09-postgres | pass
+c10-postgres | pass
+c11-postgres | pass
+c12-postgres | pass
+cfg-sql | pass
+configuracion (16) | pass
+configuracion (17) | pass
+contrato | pass
+delegacion (16) | pass
+delegacion (17) | pass
+f4-b02-b03 | pass
+f4-b04 | pass
+f4-b08 | pass
+f4-b08-adapter | pass
+f4-b08-ui | pass
+f4-b11-offline | pass
+gate-final | pass
+node-y-postgres | pass
+pm12-p08-supabase-full | pass
+pm33-p05-supabase-full | pass
+unit-cobro-efectivo | pass
+unit-iva-ticket | pass
+unit-legacy-sync | pass
+validar | pass
+Pages changed - chic-entremet-9107cf | skipping
+Redirect rules - chic-entremet-9107cf | skipping
+netlify/chic-entremet-9107cf/deploy-preview | pass
+p2-p06 | pass

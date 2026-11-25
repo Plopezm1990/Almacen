@@ -1,0 +1,22 @@
+funcion | migracion | permiso | mfa(aal2) | local/empresa | idempotencia | bloqueo FOR UPDATE | version esperada | importe servidor | auth.uid
+abc_iniciar_cobro | 20260927203000_abc_f3_a08_2_paymen | si | -- | si | si | si | -- | si | si
+abc_confirmar_efectivo | 20260927203000_abc_f3_a08_2_paymen | si | -- | si | si | si | -- | si | si
+abc_preparar_checkout_cuenta | 20261031170000_abc_f4_cobro_pedido | si | -- | si | si | si | si | si | si
+abc_enviar_pedido | 20261102100000_abc_f3_a10c_prepara | si | -- | si | si | si | si | -- | si
+abc_crear_pedido | 20260924010000_abc_f3_a03_server_a | si | -- | si | si | si | si | -- | si
+abc_agregar_linea_pedido | 20260924010000_abc_f3_a03_server_a | si | -- | si | si | si | si | si | si
+abc_unir_cuentas | 20260927203000_abc_f3_a08_2_paymen | si | -- | si | si | si | si | si | si
+abc_mover_cantidad_linea_cuenta | 20260927203000_abc_f3_a08_2_paymen | si | -- | si | si | si | si | si | si
+abc_aplicar_descuento_cuenta | 20260924160739_abc_f3_a09_descuent | si | -- | si | si | si | si | si | si
+abc_aprobar_descuento_cuenta | 20260924160739_abc_f3_a09_descuent | si | -- | si | si | si | -- | si | si
+abc_solicitar_reembolso | 20261003100000_abc_config_d13_reem | si | -- | si | si | si | -- | si | si
+abc_aprobar_reembolso | 20261003100000_abc_config_d13_reem | si | -- | si | si | si | -- | si | si
+abc_confirmar_reembolso_efectivo | 20261003100000_abc_config_d13_reem | si | -- | si | si | si | -- | si | si
+abc_abrir_sesion_caja | 20261002190000_abc_config_pieza1_d | si | -- | si | si | si | -- | -- | si
+abc_finalizar_cierre_sesion_caja | 20261001140000_abc_f5_c04_close_re | si | -- | si | si | si | -- | -- | si
+abc_registrar_movimiento_caja | 20260924002000_abc_f2_m04b_movimie | si | -- | si | si | si | -- | -- | si
+abc_cerrar_cuenta_pagada | 20261108170000_a02_cerrar_y_sellar | si | -- | si | si | si | si | si | si
+abc_recuperar_cuenta | 20260927113403_abc_f3_a06_recovery | si | -- | si | si | -- | si | si | si
+abc_c07d_emitir_checkout | 20261027160000_abc_f7_c07d_d2_emis | si | -- | si | si | si | -- | si | si
+abc_registrar_movimiento_anticipo | 20260930110000_abc_f4_b06_advance_ | si | -- | si | si | si | -- | si | si
+abc_registrar_propina_efectivo | 20261024070000_t6_propina_efectivo | si | -- | si | si | si | -- | -- | si

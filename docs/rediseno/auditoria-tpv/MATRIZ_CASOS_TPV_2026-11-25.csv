@@ -1,0 +1,68 @@
+﻿ID caso;Área;Caso;ID matriz pantallas;Dispositivo;Rol;Resultado;Tipo de evidencia;Evidencia;Hallazgo;Notas
+V-01;Entorno;El Deploy Preview apunta a QA y no a producción;—;1440x900;sin sesión;PASS;Navegador QA en vivo;mediciones-visuales-aa809c3a.json (entorno);;NUBE_URL qjqorixtkilwsndqayyx, __modoPruebasQA true
+V-02;Entorno;SHA local, remoto, PR y Deploy Preview coinciden;—;—;—;PASS;Consulta git/gh + navegador;INFORME §1;;aa809c3a
+V-03;Modo caja;La página no se desplaza a 1440x900;tpv-01;1440x900;modo local;PASS;Navegador QA en vivo;01-modo-caja-venta-rapida-1440x900.jpg;;
+V-04;Modo caja;La página no se desplaza a 1024x768;tpv-01;1024x768;modo local;PASS;Navegador QA en vivo;02-modo-caja-venta-rapida-1024x768.jpg;;8 productos y 0 cortados con panel visible (sesión previa, misma SHA)
+V-05;Modo caja;La página no se desplaza a 390x844;tpv-01;390x844;modo local;PASS;Navegador QA en vivo;03-modo-caja-venta-rapida-390x844.jpg;;
+V-06;Modo caja;La página no se desplaza a 320x640 (estrés);tpv-01;320x640;modo local;PASS;Navegador QA en vivo;04-modo-caja-venta-rapida-320x640.jpg;H-11;Solo 2 productos por página
+V-07;Modo caja;Controles de al menos 44x44 px;tpv-01;1440/390/320;modo local;PASS;Navegador QA en vivo;mediciones-visuales-aa809c3a.json;;1024 sin conclusión por ResizeObserver en pausa
+V-08;Modo caja;Todos los controles con nombre accesible;tpv-01;cuatro tamaños;modo local;PASS;Navegador QA en vivo;mediciones-visuales-aa809c3a.json;;
+V-09;Modo caja;Ningún control fuera de la pantalla ni contenido recortado;tpv-01;1440/390;modo local;PASS;Navegador QA en vivo;mediciones-visuales-aa809c3a.json;;
+V-10;Modo caja;Acción principal destacada (Cobrar / Guardar);tpv-17;cuatro tamaños;modo local;FAIL;Navegador QA en vivo;boton_cobrar_1440 + capturas 01-04;H-01;Guardar con líneas: NO PROBADO
+V-11;Modo caja;Ningún elemento fijo tapa la banda de cobro;tpv-17;cuatro tamaños;modo local;FAIL;Navegador QA en vivo;aviso_sincronizacion_1440;H-02;
+V-12;Modo caja;Contraste AA del texto;tpv-01;cuatro tamaños;modo local;FAIL;Navegador QA en vivo;mediciones-visuales-aa809c3a.json;H-08;Categoría activa 3,33:1
+V-13;Modo caja;Categorías paginadas sin desplazamiento;tpv-22;1024/390;modo local;FAIL;Navegador QA en vivo;capturas 02 y 03;H-09;A 1440 caben
+V-14;Modo caja;Capas abren a pantalla completa y vuelven con «Volver al pedido» y Esc;tpv-09/tpv-17/tpv-25;1440x900;modo local;PASS;Navegador QA en vivo;capas_1440;;Ventas del día, ···, Cobro, Terminal
+V-15;Modo caja;Capas accesibles (rol diálogo, foco dentro, retorno al origen);—;1440x900;modo local;FAIL;Navegador QA en vivo;capas_1440;H-03;
+V-16;Modo caja;Escanear con una capa abierta no altera el ticket;tpv-02;—;—;NO PROBADO;Inspección de código;manejarEnterEscaneo + foco observado;H-03;Riesgo deducido
+V-17;Modo caja;Sala: aparece «Mesas» y la composición no se desplaza;tpv-03;1440x900;modo local;PASS;Navegador QA en vivo;caja_sala;;Sin mesas reales: necesita servidor
+V-18;Modo caja;Salida del modo caja restaura lateral, cabecera y pestañas;tpv-01;1440x900;modo local;PASS;Navegador QA en vivo;sesión 25/11 misma serie (2d49edef y posteriores);;
+V-19;Modo caja;Coincidencia con la referencia Órbita aprobada;tpv-01;1440x900;—;BLOQUEADO;Decisión de producto;H-07;H-07;Propuesta 1 aprobada en sesión, maqueta sin actualizar
+V-20;Modo caja;Móvil: acceso visible a Terminal y Salir;tpv-01;390/320;modo local;FAIL;Navegador QA en vivo;capturas 03 y 04;H-10;
+V-21;TPV normal;Fuera del modo caja se conserva el diseño de dos columnas;tpv-01;1440x900;modo local;PASS;Navegador QA en vivo;sesión 25/11;;Tarjetas de cuenta conservan fondo, radio y sombra
+F-01;Venta rápida;Añadir producto al ticket;tpv-02;—;—;BLOQUEADO;—;—;;En modo local el TPV exige servidor para variantes · falta sesión QA
+F-02;Venta rápida;Editar cantidades, quitar líneas;tpv-02;—;—;BLOQUEADO;—;—;;Falta sesión QA
+F-03;Venta rápida;Guardar (F9) → cobrar → ticket;tpv-16/tpv-17/tpv-20;—;Propietario;PASS (previo);Documento previo;QA_OPERACIONES_ESCRITURA_2026-11-21.md;;TPV-43, efectivo exacto 1,00 € · sin repetir hoy
+F-04;Sala;Mesa → cuenta → pedido → cocina → servido → cobro → cierre;tpv-03/coc-01/tpv-17;—;Propietario;PASS (previo);Documento previo;QA_PUNTO1_EVIDENCIA_ECONOMICA_2026-11-21.md;;Sin repetir hoy
+F-05;Pase;Pase → cuenta correcta en TPV;tpv-03;—;—;PASS (previo);Documento previo;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;Sin repetir hoy
+F-06;Cuentas;Recuperar cuenta desde otro terminal;tpv-09;—;—;PASS (previo);Documento previo;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;abc_recuperar_cuenta A1/A2
+F-07;Cuentas;Aparcar/recuperar, unir cuentas, repartir productos;tpv-09/tpv-10/tpv-26;—;—;NO PROBADO;Inspección de código;abc_unir_cuentas, abc_consultar_reparto_cuenta referenciadas;;Necesita sesión y lote autorizado
+F-08;Cobro;Efectivo con cambio y redondeo a céntimos;tpv-18;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código;fuente.js cobro F4 (C-01);;Ensayo previo 15/11: 5,00 recibidos y 2,36 de cambio
+F-09;Cobro;Pago mixto;tpv-19;—;—;NO PROBADO;Inspección de código;abc_estado_pago_mixto_cuenta;;
+F-10;Cobro;Tarjeta simulada, transferencia, otro;tpv-17;—;—;NO PROBADO;—;—;;
+F-11;Cobro;Bizum;tpv-28;—;—;NO APLICA;Matriz de pantallas;No construida;;Ausente
+F-12;Descuentos;Solicitar y aprobar descuento o cortesía;tpv-11/tpv-12;—;—;NO PROBADO;Inspección de código;abc_aplicar/aprobar_descuento_cuenta;;
+F-13;Anulación;Anular venta deja rastro y no borra;tpv-21;—;Propietario;PASS (previo);Documento previo;QA_OPERACIONES_ESCRITURA_2026-11-21.md;;V-20261121-65D717 ANULADA
+F-14;Reembolso;Reembolso económico B08 con un único movimiento de caja;caj-11/caj-12;—;Propietario;PASS (previo);Documento previo;QA_PUNTO1_EVIDENCIA_ECONOMICA_2026-11-21.md;;
+F-15;Caja;Apertura duplicada rechazada;caj-02;—;Propietario;PASS (previo);Documento previo;QA_PUNTO1_EVIDENCIA_ECONOMICA_2026-11-21.md;;
+F-16;Caja;Arqueo y cierre con operaciones pendientes;caj-06/caj-23;—;—;NO PROBADO;—;—;;
+F-17;Encargos;Anticipo: aplicar, devolver y no duplicar;enc-04/enc-05;—;—;FAIL (parcial);Inspección de código + matriz;enc-05 No construida;H-05;
+F-18;Documentos;Ticket fiscal QA con simulador, sin envío real;tpv-34/caj-17;—;Propietario;PASS (previo);Documento previo;QA_OPERACIONES_ESCRITURA_2026-11-21.md;H-06;SIMULADOR_C07D, AEAT real desactivada
+F-19;Documentos;Impresión y reimpresión;tpv-25/coc-06;—;—;NO PROBADO;Inspección de código;window.print, reimprimirComanda;;Sin dispositivo
+F-20;Stock;Venta con stock insuficiente;—;—;—;NO PROBADO;Inspección de código;«Vas a dejar en negativo»;H-15;Decisión de producto
+C-01;Concurrencia;Cobro idempotente ante reintento;tpv-30;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código;pendiente con payOperationId/cashOperationId/intentoId;;
+C-02;Concurrencia;Versión obsoleta de cuenta o línea rechazada;tpv-23;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código + migraciones;p_expected_*_version;;
+C-03;Concurrencia;Doble clic en Guardar no duplica;tpv-16;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código;disabled: enviandoVenta || cargandoA04;;
+C-04;Concurrencia;Dos terminales sobre la misma cuenta;tpv-23;—;—;BLOQUEADO;Documento previo parcial;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;Necesita dos sesiones y lote autorizado
+C-05;Concurrencia;Recarga o desconexión tras escritura;—;—;—;BLOQUEADO;—;—;;Necesita lote autorizado
+C-06;Contexto;Sin local activo o «Todos los locales» bloquea operaciones;—;—;—;PASS (código);Inspección de código;«Selecciona un local …» en cada operación;;
+C-07;Contexto;Sesión caducada con mensaje accionable;—;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código;«Tu sesión ha caducado. Vuelve a entrar.»;;
+V-22;Modo caja;Foco de teclado visible en los controles;tpv-01;1440x900;modo local;PASS;Navegador QA en vivo;sesión 25/11 (contorno 2,4 px);;Paginación desactivada en página 1 no enfocable (correcto)
+V-23;TPV normal;Nombres de producto dentro de su tarjeta;tpv-01;1440x900;modo local;FAIL;Navegador QA en vivo;05-tpv-normal-1440x900.jpg;H-16;10 de 20 nombres se salen de tarjetas de 135 px
+V-24;TPV normal;Composición frente a la maqueta Órbita tpv-01;tpv-01;1440x900;—;FAIL (diferencias);Navegador QA en vivo;05-tpv-normal-1440x900.jpg · 06-maqueta-orbita-tpv01-1440x900.jpg;H-07;Sin ruta de navegación, título grande ni multiplicadores de cantidad · datos de maqueta no comparados
+S-08;Servidor;Funciones críticas con permiso, local, auth.uid, idempotencia y bloqueo de filas;—;—;—;PASS (código);Inspección de migraciones;validaciones-servidor-funciones-criticas.txt;;21 funciones · sin verificar en servidor
+S-01;Servidor;Funciones del TPV SECURITY DEFINER con search_path fijo;—;—;—;PASS;Consulta de servidor;servidor-qa-2026-11-25.md (Q4);;Todas SECURITY DEFINER con search_path vacío salvo abc_preparar_bizum_qa (invoker)
+S-02;Servidor;Ejecución revocada a public/anon y concedida a authenticated;—;—;—;PASS;Consulta de servidor;servidor-qa-2026-11-25.md (Q4);;anon y public no ejecutan ninguna abc_*
+S-03;Servidor;Tablas operativas solo SELECT por RLS de local;—;—;—;PASS;Consulta de servidor;servidor-qa-2026-11-25.md (Q2 · R1);;Solo SELECT por RLS y sin privilegios de escritura para authenticated
+S-04;Servidor;Encargos solo modificables por funciones validadas;enc-02;—;—;FAIL;Consulta de servidor;servidor-qa-2026-11-25.md (Q2 · R1 · Q7);H-04;INSERT/UPDATE con privilegio y política · sin triggers de validación
+S-05;Servidor;movimientos_registro con RLS activado;—;—;—;PASS;Consulta de servidor;servidor-qa-2026-11-25.md (Q1);;RLS activado · H-14 descartado
+S-06;Servidor;Todo lo que llama el cliente está versionado;—;—;—;FAIL;Consulta de servidor;servidor-qa-2026-11-25.md (Q4);H-06;14 funciones en QA sin migración · incluye simuladores de cobro ejecutables por authenticated
+S-07;Seguridad;CSP impide eval en el cliente;—;1440x900;—;PASS;Navegador QA en vivo;EvalError script-src 'self';;
+S-09;Servidor;Sin privilegios de escritura de authenticated en tablas del núcleo;—;—;—;PASS;Consulta de servidor;servidor-qa-2026-11-25.md (R1);;Defensa además de RLS
+S-10;Servidor;Repositorio y QA con las mismas migraciones;—;—;—;FAIL;Consulta de servidor;servidor-qa-2026-11-25.md (R2 · R3 · R5);H-17;mfa_politica_opcional no aplicada · apariencia y tarifas aplicadas fuera del historial
+S-11;Servidor;pagos_encargo sin privilegios de escritura innecesarios;—;—;—;FAIL;Consulta de servidor;servidor-qa-2026-11-25.md (R1);H-18;Tiene INSERT/UPDATE/DELETE aunque solo hay política SELECT · RLS lo bloquea
+P-01;Permisos;Camarero/a sin caja ni efectivo ni reembolso;caj-01;—;Camarero/a;PASS (previo);Documento previo;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;Ensayo SQL revertido
+P-02;Permisos;Cajero/a sin MFA sin cobro;tpv-17;—;Cajero/a;PASS (previo);Documento previo + consulta de servidor;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md · servidor-qa-2026-11-25.md (R2);H-17;La guarda activa en QA exige aal2 a Cajero/a (M03) · la migración de MFA opcional no está aplicada
+P-03;Permisos;Matriz completa por rol en vivo;—;—;todos;BLOQUEADO;—;—;;Necesita sesiones por rol
+A-01;Pruebas;Batería no DB completa;—;—;—;PASS;Prueba automatizada;bateria-no-db-aa809c3a.log;;336/336, árbol limpio
+A-02;Pruebas;Comprobaciones del PR #225 (incluye contratos PostgreSQL);—;—;—;PASS;Prueba automatizada;ci-pr225-aa809c3a.txt;;39 pass, 2 skipping (Netlify)
