@@ -36,6 +36,23 @@
 
   function textoVisible(node) { return String(node && node.textContent || "").replace(/\s+/g, " ").trim(); }
 
+  function iconoCabecera(path) {
+    var svg = document.createElementNS("http://www.w3.org/2000/svg", "svg");
+    svg.setAttribute("viewBox", "0 0 24 24");
+    svg.setAttribute("width", "22");
+    svg.setAttribute("height", "22");
+    svg.setAttribute("aria-hidden", "true");
+    svg.setAttribute("fill", "none");
+    svg.setAttribute("stroke", "currentColor");
+    svg.setAttribute("stroke-width", "1.8");
+    svg.setAttribute("stroke-linecap", "round");
+    svg.setAttribute("stroke-linejoin", "round");
+    var trazo = document.createElementNS("http://www.w3.org/2000/svg", "path");
+    trazo.setAttribute("d", path);
+    svg.appendChild(trazo);
+    return svg;
+  }
+
   function textoSiCambia(node, value) {
     if (!node || node.textContent === value) return;
     node.textContent = value;
@@ -640,7 +657,9 @@
     var avisos = cabecera.querySelector("[data-la-orbita-alertas]");
     if (avisos) {
       var cantidad = marco.querySelectorAll(".la-orbita-alert").length;
-      textoSiCambia(avisos, cantidad ? "Avisos " + cantidad : "Avisos");
+      var etiquetaAvisos = cantidad ? "Avisos " + cantidad : "Avisos";
+      textoSiCambia(avisos.querySelector(".la-orbita-alerts-label"), etiquetaAvisos);
+      avisos.setAttribute("aria-label", etiquetaAvisos);
     }
     var apariencia = cabecera.querySelector("[data-la-orbita-appearance]");
     if (apariencia) apariencia.setAttribute("title", "Cambiar apariencia · " + nombreDisenoActivo());
@@ -666,12 +685,15 @@
     izquierda.appendChild(qa);
     var derecha = h("div", { class: "la-orbita-header-actions" });
     var buscar = h("button", { type: "button", class: "la-orbita-header-button la-orbita-header-search", "aria-label": "Buscar en la suite (Ctrl K)" }, [
-      h("span", { class: "la-orbita-header-search-icon", "aria-hidden": "true", texto: "⌕" }),
+      iconoCabecera("M21 21l-5-5M18 10a8 8 0 1 1-16 0 8 8 0 0 1 16 0"),
       h("span", { class: "la-orbita-header-search-label", texto: "Buscar en la suite" }),
       h("kbd", { class: "la-orbita-header-search-key", "aria-hidden": "true", texto: "Ctrl K" })
     ]);
     buscar.addEventListener("click", abrirBusqueda);
-    var alertas = h("button", { type: "button", class: "la-orbita-header-button", "data-la-orbita-alertas": "", texto: "Avisos" });
+    var alertas = h("button", { type: "button", class: "la-orbita-header-button", "data-la-orbita-alertas": "", "aria-label": "Avisos" }, [
+      iconoCabecera("M18 8a6 6 0 0 0-12 0c0 7-3 7-3 9h18c0-2-3-2-3-9M10 21h4M12 2V1"),
+      h("span", { class: "la-orbita-alerts-label", texto: "Avisos" })
+    ]);
     alertas.addEventListener("click", function () {
       var aviso = marco.querySelector(".la-orbita-alert");
       if (aviso) aviso.scrollIntoView({ block: "nearest" });
@@ -724,7 +746,10 @@
       cabecera.appendChild(perfilMenu);
       perfil.setAttribute("aria-expanded", "true");
     });
-    var apariencia = h("button", { type: "button", class: "la-orbita-header-button la-orbita-appearance", "data-la-orbita-appearance": "", texto: "Apariencia" });
+    var apariencia = h("button", { type: "button", class: "la-orbita-header-button la-orbita-appearance", "data-la-orbita-appearance": "", "aria-label": "Apariencia" }, [
+      iconoCabecera("M12 3a9 9 0 1 0 0 18h1a2 2 0 0 0 1-4c-1-1 0-3 2-3h2a3 3 0 0 0 3-3c0-5-4-8-9-8ZM7 10h.01M10 7h.01M15 7h.01M17 10h.01"),
+      h("span", { texto: "Apariencia" })
+    ]);
     apariencia.addEventListener("click", function () { if (typeof window.LAApariencia?.abrirEditor === "function") window.LAApariencia.abrirEditor(); });
     derecha.append(alertas, perfil);
     /* La franja «Demostración / Órbita / Índice» pertenecía a la maqueta de
@@ -766,6 +791,14 @@
     marcarHerramientasLegadas(sidebar);
     prepararToggle(sidebar);
     crearCabecera(sidebar);
+    /* El selector original conserva el handler React que usa la cabecera.
+       Se retira solo su tarjeta duplicada, y solo si no incluye Empresa. */
+    selectorsContexto().forEach(function (select) {
+      var tarjeta = select.closest(".no-imprimir");
+      if (tarjeta && tarjeta.querySelectorAll("select").length === 1 && /Mostrando (solo|datos consolidados)/i.test(textoVisible(tarjeta))) {
+        tarjeta.classList.add("la-orbita-context-duplicate");
+      }
+    });
     var main = marco.querySelector(":scope > main");
     if (main) main.classList.add("la-orbita-main");
     var bottom = marco.querySelector(":scope > [data-la-barra-inferior]");
