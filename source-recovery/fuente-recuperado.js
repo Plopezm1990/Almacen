@@ -3837,6 +3837,15 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     if (tab !== "devoluciones") setOrigenDevolucionOrbita("cliente");
   }, [tab]);
+  /* 25/11/2026 (todos los diseños): el aviso "entra en modo proveedor" es un
+     contador que Devoluciones lee al montarse. No se ponía a cero, así que
+     tras usar una vez «Devoluciones a proveedor» cualquier entrada posterior
+     a Devoluciones abría en modo proveedor. Al salir de la pantalla (que se
+     desmonta) se pone a cero: la siguiente entrada normal abre en modo
+     clientes y la entrada por «Devoluciones a proveedor» sigue igual. */
+  (0, import_react4.useEffect)(() => {
+    if (tab !== "devoluciones") setSaltoDevolucionProveedor(0);
+  }, [tab]);
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
   const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
