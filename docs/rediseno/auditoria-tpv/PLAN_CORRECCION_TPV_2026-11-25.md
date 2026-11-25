@@ -22,6 +22,7 @@ al cobro diario y, por último, la comodidad.
 | 6b | Nombres de producto en el TPV normal | H-16 | a | — |
 | 6c | Segundo factor solo para Propietario y alineación de migraciones | H-17 | c, d | Decisión E6 tomada · autorización para cambiar QA |
 | 7 | Funciones de QA sin migración y privilegios sobrantes | H-06, H-18 | c | — |
+| 8 | Hallazgos del lote L1: pendientes del modo local, arqueo diario, venta rápida a medias, tarjeta simulada, cierre | H-19 a H-28 | a, b, c | Pasos 0-2 |
 
 ## a) Visual y organización
 
@@ -126,6 +127,24 @@ Propietario la active). Pasos originales, para otros entornos:
 Propietario sin segundo factor es rechazado por el servidor en las operaciones protegidas;
 el contrato de la política de segundo factor lo cubre.
 
+## f) Correcciones nuevas del lote L1 (propuestas, sin implementar)
+
+- **F1 · H-19 (P1).** Asociar los pendientes del modo local a empresa y usuario, no subirlos
+  a otra empresa. *Aceptación:* iniciar sesión tras trabajar en modo local no escribe en el
+  servidor sin confirmación; prueba automatizada con dos empresas.
+- **F2 · H-24 (P1).** El arqueo diario usa el esperado del servidor. *Aceptación:* con la
+  misma sesión, «Arqueo de caja» y el cierre de la sesión muestran el mismo esperado.
+- **F3 · H-20 y H-21.** «Cobrar ahora» cancela o permite cancelar la cuenta si falla el
+  envío; cancelar el último pedido cierra la cuenta sin pagos. *Aceptación:* tras un envío
+  rechazado se puede iniciar otra venta rápida; la cuenta queda CERRADA.
+- **F4 · H-22.** Mostrar el cobro de la cuenta enviada. *Aceptación:* tras «Enviar pedido» en
+  venta rápida aparece el cobro sin retomar la cuenta.
+- **F5 · H-27 y H-23.** Camino de interfaz para resolver tarjeta y reembolso de tarjeta en
+  QA; repetir la venta mixta por ese camino. *Aceptación:* cobro y reembolso con tarjeta
+  simulada completos sin consola y documento fiscal emitido.
+- **F6 · H-25, H-26 y H-28.** Cierre de caja en Caja y fiscalidad, bloqueos con texto claro
+  y una acción para las cuentas abiertas de días cerrados.
+
 ## e) Decisiones de producto pendientes
 
 - **E1 · Referencia del modo caja (H-07).** Confirmar la propuesta 1 «doble banda» como
@@ -146,7 +165,10 @@ el contrato de la política de segundo factor lo cubre.
 **L0 · Lectura del servidor — AUTORIZADO Y EJECUTADO el 25/11.** Dos notebooks de solo
 lectura en QA (`d74a43f4-…` y `932cd704-…`); sin cambios de datos.
 
-**L1 · Escrituras sintéticas en QA (propuesta, no ejecutada).**
+**L1 · Escrituras sintéticas en QA — AUTORIZADO Y EJECUTADO el 25/11** (con cambios sobre
+el texto de abajo: producto agua, caja abierta y cerrada, 3 reembolsos; dos terminales **sin
+ejecutar**). Resultado y cifras en `evidencias/lote-L1-ejecucion-2026-11-25.md`. Texto
+original de la propuesta:
 
 - **Actor y lugar:** Propietario `pm07.smoke@qa.invalid` en QA-EMP-A / QA-A1, terminal
   `QA terminal A1`; para concurrencia, una segunda sesión en `QA terminal A2`.

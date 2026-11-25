@@ -20,29 +20,29 @@ V-18;Modo caja;Salida del modo caja restaura lateral, cabecera y pestañas;tpv-0
 V-19;Modo caja;Coincidencia con la referencia Órbita aprobada;tpv-01;1440x900;—;BLOQUEADO;Decisión de producto;H-07;H-07;Propuesta 1 aprobada en sesión, maqueta sin actualizar
 V-20;Modo caja;Móvil: acceso visible a Terminal y Salir;tpv-01;390/320;modo local;FAIL;Navegador QA en vivo;capturas 03 y 04;H-10;
 V-21;TPV normal;Fuera del modo caja se conserva el diseño de dos columnas;tpv-01;1440x900;modo local;PASS;Navegador QA en vivo;sesión 25/11;;Tarjetas de cuenta conservan fondo, radio y sombra
-F-01;Venta rápida;Añadir producto al ticket;tpv-02;—;—;BLOQUEADO;—;—;;En modo local el TPV exige servidor para variantes · falta sesión QA
-F-02;Venta rápida;Editar cantidades, quitar líneas;tpv-02;—;—;BLOQUEADO;—;—;;Falta sesión QA
-F-03;Venta rápida;Guardar (F9) → cobrar → ticket;tpv-16/tpv-17/tpv-20;—;Propietario;PASS (previo);Documento previo;QA_OPERACIONES_ESCRITURA_2026-11-21.md;;TPV-43, efectivo exacto 1,00 € · sin repetir hoy
+F-01;Venta rápida;Añadir producto al ticket;tpv-02;—;—;PASS;Navegador QA en vivo;evidencias/lote-L1-ejecucion-2026-11-25.md;;Refresco y agua añadidos al ticket desde la rejilla
+F-02;Venta rápida;Editar cantidades, quitar líneas;tpv-02;—;—;NO PROBADO;—;—;;No se editaron cantidades ni se quitaron líneas en el lote
+F-03;Venta rápida;Guardar (F9) → cobrar → ticket;tpv-16/tpv-17/tpv-20;—;Propietario;PASS;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-22;Agua 1,00 € guardar y cobrar en efectivo exacto · documento TPV-44 · hay que retomar la cuenta para ver el cobro
 F-04;Sala;Mesa → cuenta → pedido → cocina → servido → cobro → cierre;tpv-03/coc-01/tpv-17;—;Propietario;PASS (previo);Documento previo;QA_PUNTO1_EVIDENCIA_ECONOMICA_2026-11-21.md;;Sin repetir hoy
 F-05;Pase;Pase → cuenta correcta en TPV;tpv-03;—;—;PASS (previo);Documento previo;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;Sin repetir hoy
 F-06;Cuentas;Recuperar cuenta desde otro terminal;tpv-09;—;—;PASS (previo);Documento previo;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;abc_recuperar_cuenta A1/A2
 F-07;Cuentas;Aparcar/recuperar, unir cuentas, repartir productos;tpv-09/tpv-10/tpv-26;—;—;NO PROBADO;Inspección de código;abc_unir_cuentas, abc_consultar_reparto_cuenta referenciadas;;Necesita sesión y lote autorizado
-F-08;Cobro;Efectivo con cambio y redondeo a céntimos;tpv-18;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código;fuente.js cobro F4 (C-01);;Ensayo previo 15/11: 5,00 recibidos y 2,36 de cambio
-F-09;Cobro;Pago mixto;tpv-19;—;—;NO PROBADO;Inspección de código;abc_estado_pago_mixto_cuenta;;
-F-10;Cobro;Tarjeta simulada, transferencia, otro;tpv-17;—;—;NO PROBADO;—;—;;
+F-08;Cobro;Efectivo con cambio y redondeo a céntimos;tpv-18;—;—;PASS (solo efectivo exacto);Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;;Cobro 1,00 € exacto y 0,50 € exacto · el cambio con redondeo no se probó hoy (ensayo previo 15/11)
+F-09;Cobro;Pago mixto;tpv-19;—;—;PASS (con reserva);Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-27;Efectivo 0,50 € y tarjeta simulada 0,50 € · la tarjeta se resolvió desde la consola y no desde un botón
+F-10;Cobro;Tarjeta simulada, transferencia, otro;tpv-17;—;—;FAIL (parcial);Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-27;La tarjeta simulada queda PENDIENTE sin camino en la interfaz · transferencia y otro no probados
 F-11;Cobro;Bizum;tpv-28;—;—;NO APLICA;Matriz de pantallas;No construida;;Ausente
 F-12;Descuentos;Solicitar y aprobar descuento o cortesía;tpv-11/tpv-12;—;—;NO PROBADO;Inspección de código;abc_aplicar/aprobar_descuento_cuenta;;
 F-13;Anulación;Anular venta deja rastro y no borra;tpv-21;—;Propietario;PASS (previo);Documento previo;QA_OPERACIONES_ESCRITURA_2026-11-21.md;;V-20261121-65D717 ANULADA
-F-14;Reembolso;Reembolso económico B08 con un único movimiento de caja;caj-11/caj-12;—;Propietario;PASS (previo);Documento previo;QA_PUNTO1_EVIDENCIA_ECONOMICA_2026-11-21.md;;
+F-14;Reembolso;Reembolso económico B08 con un único movimiento de caja;caj-11/caj-12;—;Propietario;PASS;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-27;Efectivo 1,00 € y 0,50 € con un único movimiento de caja cada uno · el de tarjeta quedó pendiente y se canceló
 F-15;Caja;Apertura duplicada rechazada;caj-02;—;Propietario;PASS (previo);Documento previo;QA_PUNTO1_EVIDENCIA_ECONOMICA_2026-11-21.md;;
-F-16;Caja;Arqueo y cierre con operaciones pendientes;caj-06/caj-23;—;—;NO PROBADO;—;—;;
+F-16;Caja;Arqueo y cierre con operaciones pendientes;caj-06/caj-23;—;—;PASS (parcial);Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-24/H-26;Cierre provisional con bloqueo EFECTOS_PENDIENTES y cierre final al liberarlo · el arqueo diario mostraba otro esperado
 F-17;Encargos;Anticipo: aplicar, devolver y no duplicar;enc-04/enc-05;—;—;FAIL (parcial);Inspección de código + matriz;enc-05 No construida;H-05;
 F-18;Documentos;Ticket fiscal QA con simulador, sin envío real;tpv-34/caj-17;—;Propietario;PASS (previo);Documento previo;QA_OPERACIONES_ESCRITURA_2026-11-21.md;H-06;SIMULADOR_C07D, AEAT real desactivada
 F-19;Documentos;Impresión y reimpresión;tpv-25/coc-06;—;—;NO PROBADO;Inspección de código;window.print, reimprimirComanda;;Sin dispositivo
-F-20;Stock;Venta con stock insuficiente;—;—;—;NO PROBADO;Inspección de código;«Vas a dejar en negativo»;H-15;Decisión de producto
-C-01;Concurrencia;Cobro idempotente ante reintento;tpv-30;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código;pendiente con payOperationId/cashOperationId/intentoId;;
+F-20;Stock;Venta con stock insuficiente;—;—;—;FAIL (decisión pendiente);Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-15;Agua con piso de venta 0 marcada sin stock · el ticket no avisó y el servidor descontó del almacén
+C-01;Concurrencia;Cobro idempotente ante reintento;tpv-30;—;—;PASS;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;;Doble clic en Cobrar efectivo 0,50 € · un solo pago y una sola entrada de caja
 C-02;Concurrencia;Versión obsoleta de cuenta o línea rechazada;tpv-23;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código + migraciones;p_expected_*_version;;
-C-03;Concurrencia;Doble clic en Guardar no duplica;tpv-16;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código;disabled: enviandoVenta || cargandoA04;;
+C-03;Concurrencia;Doble clic en Guardar no duplica;tpv-16;—;—;PASS;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;;Doble clic en Guardar pedido · una cuenta un pedido y una línea
 C-04;Concurrencia;Dos terminales sobre la misma cuenta;tpv-23;—;—;BLOQUEADO;Documento previo parcial;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;Necesita dos sesiones y lote autorizado
 C-05;Concurrencia;Recarga o desconexión tras escritura;—;—;—;BLOQUEADO;—;—;;Necesita lote autorizado
 C-06;Contexto;Sin local activo o «Todos los locales» bloquea operaciones;—;—;—;PASS (código);Inspección de código;«Selecciona un local …» en cada operación;;
@@ -64,6 +64,15 @@ S-11;Servidor;pagos_encargo sin privilegios de escritura innecesarios;—;—;�
 P-01;Permisos;Camarero/a sin caja ni efectivo ni reembolso;caj-01;—;Camarero/a;PASS (previo);Documento previo;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;Ensayo SQL revertido
 P-02;Permisos;Cajero/a sin MFA sin cobro;tpv-17;—;Cajero/a;PASS (previo);Documento previo + consulta de servidor;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md · servidor-qa-2026-11-25.md (R2);H-17;La guarda activa en QA exige aal2 a Cajero/a (M03) · la migración de MFA opcional no está aplicada
 P-03;Permisos;Matriz completa por rol en vivo;—;—;todos;BLOQUEADO;—;—;;Necesita sesiones por rol
-P-04;Permisos;Segundo factor solo para Propietario (decisión E6) tras aplicarlo en QA;—;—;Propietario/Encargado/Cajero/a/Camarero/a;PASS;Consulta de servidor;HALLAZGOS H-17 (simulación de mfa_politica_leer y la_usuario_activo por cargo · transacción deshecha);H-17;Inicio de sesión real en el navegador NO PROBADO: sin contraseñas de Encargado o Cajero/a
+P-04;Permisos;Segundo factor solo para Propietario (decisión E6) tras aplicarlo en QA;—;—;Propietario/Encargado/Cajero/a/Camarero/a;PASS;Consulta de servidor;HALLAZGOS H-17 (simulación de mfa_politica_leer y la_usuario_activo por cargo · transacción deshecha);H-17;Servidor: simulación por cargo · En vivo (25/11): el Propietario pidió el código y accedió con aal2 · Encargado y Cajero/a en el navegador NO PROBADO: sin contraseñas
 A-01;Pruebas;Batería no DB completa;—;—;—;PASS;Prueba automatizada;bateria-no-db-aa809c3a.log;;336/336, árbol limpio
 A-02;Pruebas;Comprobaciones del PR #225 (incluye contratos PostgreSQL);—;—;—;PASS;Prueba automatizada;ci-pr225-aa809c3a.txt;;39 pass, 2 skipping (Netlify)
+L-01;Caja;Abrir sesión de caja con fondo 0,00 € desde el arqueo;caj-01;1440x900;Propietario;PASS;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;;Sesión 14d01b2f ABIERTA · sin sesiones abiertas antes
+L-02;Venta rápida;Cancelar pedido guardado sin cobro;tpv-16;1440x900;Propietario;PASS (con defecto);Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-21;Pedido y línea CANCELADOS sin cobro ni caja · la cuenta comercial sigue ABIERTA
+L-03;Venta rápida;Enviar un producto que exige preparación sin ruta a cocina;tpv-16;1440x900;Propietario;FAIL;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-20;El servidor rechaza el envío y la venta rápida deja la cuenta abierta · 21 de 22 productos afectados
+L-04;Caja;Cerrar sesión de caja con esperado igual a contado;caj-06/caj-23;1440x900;Propietario;PASS;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-25;Esperado 0,00 € contado 0,00 € · sesión CERRADA_FINAL · el cierre está en Cocina y comandas
+L-05;Caja;Arqueo diario muestra el esperado del servidor;caj-06;1440x900;Propietario;FAIL;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-24;La pantalla mostró 1,00 € y el servidor esperaba 0,00 € · no se guardó ningún arqueo
+L-06;Caja;Bloqueo del cierre explicado al usuario;caj-23;1440x900;Propietario;FAIL;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-26;El bloqueo EFECTOS_PENDIENTES se mostró como Pendiente operativo
+L-07;Entorno;Pendientes del modo local no se suben a otra empresa;—;1440x900;Propietario;FAIL;Navegador QA en vivo + consulta de servidor;HALLAZGOS H-19;H-19;Productos y historialRespaldos subidos a QA-EMP-A · limpiado con autorización del usuario
+L-08;Cobro;Documento fiscal emitido en la venta mixta;tpv-34;1440x900;Propietario;NO CONCLUYENTE;Consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;H-23;La venta con tarjeta resuelta desde la consola no tiene documento · repetir por la interfaz
+L-09;Cuentas;Cuentas abiertas de días cerrados;tpv-09;1440x900;Propietario;FAIL;Navegador QA en vivo;evidencias/lote-L1-ejecucion-2026-11-25.md;H-28;85 cuentas abiertas · 83 de días cerrados que nadie cierra

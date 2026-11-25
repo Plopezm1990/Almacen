@@ -29,17 +29,22 @@ desplegado y la discrepancia queda como decisión pendiente (H-07).
 
 **Lo que no se pudo hacer, y por qué:**
 
-- **Sin sesión de QA.** El sistema de permisos bloquea leer la contraseña de prueba, y el
-  usuario pidió probar sin su intervención. Las pruebas en vivo se hicieron con
-  «Trabajar solo en este equipo, sin sincronizar»: sin base de datos, sin rol de servidor y
-  sin poder añadir productos (el TPV exige el servidor para variantes).
+- **Sin sesión de QA al principio.** El sistema de permisos bloquea leer la contraseña de
+  prueba, y el usuario pidió probar sin su intervención. Las primeras pruebas en vivo se
+  hicieron con «Trabajar solo en este equipo, sin sincronizar»: sin base de datos, sin rol
+  de servidor y sin poder añadir productos. **Después** el usuario inició sesión como
+  Propietario (con segundo factor) y se ejecutó el lote L1 (ver más abajo).
 - **Lectura del servidor.** Primero se revisaron las 214 migraciones del repositorio. Con
   autorización del usuario («Crea el notebook») se crearon dos notebooks de solo lectura en
   el proyecto QA y se consultaron RLS, políticas, privilegios efectivos, funciones,
   triggers, la guarda de segundo factor y el historial de migraciones
   (`evidencias/servidor-qa-2026-11-25.md`).
-- **Sin escrituras.** Ningún cobro, envío a cocina, movimiento de caja ni de stock. El lote
-  L1 está propuesto en el plan, no ejecutado.
+- **Escrituras solo con autorización.** Hasta el lote L1 no hubo ningún cobro, envío a
+  cocina, movimiento de caja ni de stock. El lote L1 **se ejecutó el 25/11** con la
+  autorización del usuario, con cambios respecto del plan original (producto, apertura y
+  cierre de caja, 3 reembolsos). Detalle y cifras antes y después en
+  `evidencias/lote-L1-ejecucion-2026-11-25.md`. **No se ejecutó** el caso de dos terminales
+  (C-04) ni la recarga tras escritura (C-05).
 - **Panel del navegador oculto.** El navegador pausa `requestAnimationFrame` y
   `ResizeObserver` en segundo plano. Para medir se sustituyó `requestAnimationFrame` por un
   temporizador y se reinstaló el mismo `la-orbita-shell.js` publicado. Tras cambiar de
@@ -121,14 +126,20 @@ caja directa). Ver `evidencias/inventario-rpc-migraciones.txt`.
 
 ### Lo que falla, por gravedad
 
-Ningún P0 ni P1 **con la evidencia disponible**. P2: H-01 «Cobrar» sin estilo principal,
+Ningún P0. **P1: H-19 los pendientes del modo local se subieron a la empresa de quien
+inició sesión después (incidente de esta auditoría, mitigado por casualidad) y H-24 la
+pantalla «Arqueo de caja» mostró un esperado distinto del que calcula el servidor.** P2: H-01 «Cobrar» sin estilo principal,
 H-02 el aviso de sincronización lo tapa, H-03 capas sin diálogo y con el foco en el
 buscador oculto, **H-04 encargos modificables directamente por cualquier miembro del local
 (confirmado en servidor)**, H-05 revertir anticipo sin interfaz, **H-06 14 funciones de QA
 sin migración, incluidos simuladores de cobro ejecutables por `authenticated`**, H-07
 referencia del modo caja sin decidir y diferencias con la maqueta, H-16 nombres de producto
 fuera de su tarjeta en el TPV normal, **H-17 QA no tiene las mismas migraciones que el
-repositorio (segundo factor)**. P3: H-08 a H-13 y H-18. Decisión pendiente: H-15.
+repositorio (segundo factor)**, y del lote L1: H-20 productos sin ruta a cocina dejan la
+venta rápida a medias, H-21 cancelar un pedido deja la cuenta abierta, H-22 tras enviar no
+aparece el cobro, H-23 la venta mixta sin documento fiscal (causa por confirmar), H-27 la
+tarjeta simulada y su reembolso no se completan desde la aplicación. P3: H-08 a H-13, H-18,
+H-25, H-26 y H-28. Decisión pendiente: H-15.
 Descartado tras consultar el servidor: H-14. Detalle en
 [hallazgos](HALLAZGOS_TPV_2026-11-25.md).
 
@@ -145,11 +156,16 @@ Capturas `evidencias/05-tpv-normal-1440x900.jpg` y
 
 No se comparan los productos, precios ni nombres de ejemplo de la maqueta.
 
-### Resumen de la matriz (67 casos)
+### Resumen de la matriz (77 casos, tras el lote L1)
 
-14 PASS en vivo · 5 PASS por consulta de servidor · 3 PASS automatizado o consulta git/gh ·
-10 PASS por documento previo · 7 PASS solo deducido del código · 13 FAIL · 8 NO PROBADO ·
-6 BLOQUEADO · 1 NO APLICA.
+46 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
+20 FAIL (incluidos los parciales) · 5 NO PROBADO · 4 BLOQUEADO · 1 NO CONCLUYENTE ·
+1 NO APLICA. Antes del lote eran 67 casos con 6 BLOQUEADO.
+
+**Resultado del lote L1, en una frase:** el cobro en efectivo, el pago mixto, los dos dobles
+clics, el reembolso en efectivo y el cierre de caja funcionan y no duplican nada; fallan
+los caminos laterales (productos sin ruta, tarjeta simulada, arqueo diario, mensajes del
+cierre).
 
 ## 5. Relación con la matriz de pantallas existente
 
@@ -166,14 +182,24 @@ matriz de casos solo los relaciona.
 | `gh pr checks 225` | aa809c3a | 39 pass, 2 skipping | Los contratos PostgreSQL se ejecutan en CI, no en local |
 | Medidor visual en el navegador (`evidencias/mediciones-visuales-aa809c3a.json`) | aa809c3a | ver § 4 | Modo local; panel oculto |
 | Inventario de migraciones (`evidencias/inventario-rpc-migraciones.txt`) | aa809c3a | ver § 3 | Lo que dicen las migraciones, no el servidor |
-| Notebooks de solo lectura en QA (`evidencias/servidor-qa-2026-11-25.md`) | servidor QA | ver § 4 | Usuario de solo lectura; no se leyó el código de las 14 funciones sin migración |
+| Notebooks de solo lectura en QA (`evidencias/servidor-qa-2026-11-25.md`) | servidor QA | ver § 4 | Usuario de solo lectura; solo se leyó después el código de `abc_qa_confirmar_pago_simulado` |
+| Lote L1 en el navegador y consultas SQL de lectura (`evidencias/lote-L1-ejecucion-2026-11-25.md`) | aa809c3a | 77 casos de la matriz | Una sesión, un terminal; la tarjeta simulada se resolvió desde la consola |
 
 No se cambió ningún test para obtener verde.
 
 ## 7. Datos de QA creados o modificados
 
-**Datos operativos (ventas, caja, stock): ninguno.** El modo local solo escribió en el
-almacenamiento de la pestaña de pruebas del navegador.
+**Datos operativos creados por el lote L1 (autorizado, 25/11):** 3 pedidos, 3 cuentas
+comerciales, 2 ventas fiscales y 1 documento fiscal QA, 3 pagos, 3 reembolsos (uno
+cancelado), 4 movimientos de caja con neto 0,00 € y una sesión de caja abierta y cerrada
+(`14d01b2f-0276-42ac-82cf-0d41bf5828a3`, CERRADA_FINAL). Stock: Agua 50 cl de QA-A1,
+almacén 73 → 71; el refresco no cambió. **Quedan:** la cuenta `d9e28655…` abierta sin
+líneas activas (H-21) y 2 unidades de agua sin reponer. Cifras antes y después en
+`evidencias/lote-L1-ejecucion-2026-11-25.md`.
+
+**Incidente del modo local (H-19):** `historialRespaldos` de QA-EMP-A se reescribió dos veces
+con el mismo contenido; `productos` no cambió. Se vaciaron las dos claves locales con
+autorización del usuario.
 
 **Cambio de configuración de seguridad en QA (autorizado por el usuario el 25/11):**
 

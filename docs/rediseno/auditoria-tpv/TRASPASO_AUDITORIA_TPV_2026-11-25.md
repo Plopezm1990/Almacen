@@ -7,22 +7,36 @@
 - **PR #225:** borrador, sin fusionar.
 - **Documentos:** `docs/rediseno/auditoria-tpv/`, que incluye el informe, los hallazgos, la
   matriz de casos, el plan de corrección, este traspaso y la carpeta `evidencias/`.
-- **Datos de QA modificados:** ningún dato operativo. Cambio de configuración de seguridad
-  autorizado: política de segundo factor (ver «Decisiones ya tomadas»).
+- **Datos de QA modificados:** los del lote L1 (ventas sintéticas, reembolsos, caja abierta y
+  cerrada; ver `evidencias/lote-L1-ejecucion-2026-11-25.md`) y el cambio de configuración de
+  seguridad autorizado: política de segundo factor (ver «Decisiones ya tomadas»).
 - **Elementos creados en el proyecto QA (autorizados):** dos notebooks de solo lectura,
   `d74a43f4-c389-45c1-b365-e6a0620d107e` y `932cd704-cf01-4ee8-9230-20dab2162975`. Se pueden
   borrar cuando ya no hagan falta.
 - **Código, permisos o migraciones cambiados por la auditoría:** ninguno.
+
+## Estado tras el lote L1 (25/11)
+
+- **Ejecutado:** ventas en efectivo y mixta, doble clic en Guardar y en Cobrar, reembolsos,
+  cierre de caja (CERRADA_FINAL). Hallazgos nuevos: H-19 a H-28.
+- **Sin ejecutar:** dos terminales (C-04) y recarga tras escritura (C-05).
+- **QA queda:** sin sesiones de caja abiertas; cuenta `d9e28655…` abierta sin líneas; stock
+  del agua 71.
+- **Antes de repetir pruebas en este navegador:** vaciar el modo local y no iniciar sesión
+  con pendientes locales (H-19).
+- **Si hace falta una tarjeta simulada:** hoy solo se resuelve llamando a la función de
+  QA desde la consola (H-27). Los reembolsos de tarjeta quedan pendientes y bloquean el
+  cierre: se cancelan desde la pantalla.
 
 ## Para retomar
 
 1. **Lo primero, desbloquear la verificación** (plan, paso 0):
    - **Lectura del servidor: hecha el 25/11** (`evidencias/servidor-qa-2026-11-25.md`).
      Para repetirla, ejecutar los dos notebooks de QA.
-   - **Sesión de QA en el panel del navegador (pendiente):** el usuario inicia sesión. La
-     auditoría no puede leer contraseñas de prueba, porque el sistema de permisos lo
-     bloquea.
-2. **Después, corregir H-01, H-02 y H-03.** Son baratos y afectan al cobro diario.
+   - **Sesión de QA en el panel del navegador: hecha.** El usuario inició sesión como
+     Propietario (la auditoría no lee contraseñas ni códigos).
+2. **Después, corregir H-19 y H-24 (P1)**, y H-01, H-02 y H-03, que son baratos y afectan
+   al cobro diario. Plan, apartado f).
 3. **Con sesión y el lote L1 autorizado,** convertir los BLOQUEADO y NO PROBADO de la
    matriz en PASS o FAIL con evidencia en vivo y de servidor.
 

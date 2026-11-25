@@ -3,8 +3,10 @@
 SHA auditada: `aa809c3a265eda1d797b7afdb8ce92d9c1ff483b` (rama `rediseno/f0-base-qa`,
 PR #225 en borrador, igual en local, remoto y Deploy Preview).
 Entorno: Deploy Preview #225 apuntando a QA `qjqorixtkilwsndqayyx`. Producción no se
-tocó. No se hizo ninguna escritura de datos en QA. Con autorización del usuario se crearon
-dos notebooks de solo lectura en el proyecto QA para consultar el servidor
+tocó. H-01 a H-18 salen de la auditoría sin escrituras operativas; **H-19 a H-28 salen del
+lote L1** autorizado, ejecutado el 25/11 con escrituras sintéticas en QA (detalle en
+`evidencias/lote-L1-ejecucion-2026-11-25.md`). Con autorización del usuario se crearon dos
+notebooks de solo lectura en el proyecto QA para consultar el servidor
 (`evidencias/servidor-qa-2026-11-25.md`).
 
 ## Cómo leer este documento
@@ -16,9 +18,8 @@ dos notebooks de solo lectura en el proyecto QA para consultar el servidor
   migraciones · `AUTO` prueba automatizada · `PREVIO` documento anterior sin repetir ·
   `DEDUCIDO` inferencia razonada, no reproducida · `SERVIDOR` consulta de solo lectura al
   servidor QA.
-- Ningún hallazgo es P0 o P1 **con la evidencia disponible**. Eso no demuestra que no
-  existan: los recorridos con escritura y los dos terminales siguen bloqueados (ver el
-  informe).
+- Ningún hallazgo es P0. **H-19 y H-24 son P1** con la evidencia disponible. Los dos
+  terminales (C-04) y la recarga tras escritura (C-05) siguen sin probar (ver el informe).
 
 | ID | Sev. | Título | Evidencia |
 |---|---|---|---|
@@ -40,6 +41,16 @@ dos notebooks de solo lectura en el proyecto QA para consultar el servidor
 | H-16 | P2 | TPV normal: los nombres de producto se salen de su tarjeta | VIVO + CÓDIGO |
 | H-17 | P2 | QA no tiene las mismas migraciones que el repositorio (segundo factor) — segundo factor **corregido en QA** el 25/11 | SERVIDOR |
 | H-18 | P3 | `pagos_encargo` con privilegios de escritura innecesarios | SERVIDOR |
+| H-19 | P1 | Los pendientes del modo local se suben a la primera empresa con sesión | VIVO + SERVIDOR |
+| H-20 | P2 | 21 de 22 productos de QA-A1 no se pueden enviar: sin ruta a cocina | VIVO + SERVIDOR |
+| H-21 | P2 | Cancelar el pedido deja la cuenta comercial abierta | SERVIDOR |
+| H-22 | P2 | En venta rápida, tras guardar y enviar no aparece el cobro | VIVO |
+| H-23 | P2 | La venta mixta no emitió documento fiscal (causa por confirmar) | SERVIDOR |
+| H-24 | P1 | «Arqueo de caja» mostraba un esperado distinto del servidor | VIVO + SERVIDOR + CÓDIGO |
+| H-25 | P3 | El cierre de la sesión de caja está escondido | VIVO |
+| H-26 | P3 | Los bloqueos del cierre se muestran con texto genérico | VIVO + SERVIDOR |
+| H-27 | P2 | Ni el cobro ni el reembolso con tarjeta simulada se completan desde la aplicación | VIVO + SERVIDOR |
+| H-28 | P3 | 85 cuentas abiertas en el local, 83 de días cerrados | VIVO |
 
 ---
 
@@ -146,7 +157,10 @@ dos notebooks de solo lectura en el proyecto QA para consultar el servidor
   - **dispositivos simulados:** `abc_simular_apertura_cajon`, `abc_simular_impresion_ticket`;
   - **configuración:** `abc_guardar_tipo_negocio`.
 
-  **No se ha leído su código:** no se sabe si comprueban el rol o el entorno por dentro.
+  **Leída después:** `abc_qa_confirmar_pago_simulado` solo acepta QA-EMP-A / QA-A1 y exige
+  Propietario (definición leída el 25/11). **El resto sigue sin leer.** Además existe la
+  función Edge `qa-card-worker`, sin código en el repositorio ni llamada desde la aplicación
+  (H-27).
 - **Impacto:** parte del comportamiento de cobro, fiscal y de cierre de QA no se puede
   reproducir ni revisar desde el repositorio. Si un simulador de cobro ejecutable por
   cualquier usuario autenticado llegara a otro entorno, podría dar por pagado lo que no lo
@@ -221,7 +235,10 @@ dos notebooks de solo lectura en el proyecto QA para consultar el servidor
 ## H-15 · Decisión · Venta con stock insuficiente
 
 - **Evidencia (CÓDIGO):** el carrito muestra «Vas a dejar en negativo: …» y no bloquea
-  «Guardar pedido». No se ha comprobado qué hace el servidor.
+  «Guardar pedido». **Comprobado el 25/11 (VIVO + SERVIDOR):** con «Agua 50 cl (QA)», cuyo
+  piso de venta es 0, la tarjeta del producto marca «sin stock» pero el ticket **no avisó**
+  (el aviso mira el stock total, 73). El servidor aceptó guardar, enviar y cobrar las dos
+  ventas y descontó las unidades del **almacén** (73 → 71) sin tocar el piso.
 - **Decisión pendiente:** permitir el stock negativo con aviso, exigir autorización o
   bloquear.
 
@@ -287,6 +304,123 @@ dos notebooks de solo lectura en el proyecto QA para consultar el servidor
   bloquea esas escrituras. Hoy no es explotable.
 - **Recomendación:** revocar esos privilegios para que la protección no dependa de que
   nunca se añada por error una política de escritura.
+
+## H-19 · P1 · Los pendientes del modo local se suben a la primera empresa con sesión
+
+- **Evidencia (VIVO + SERVIDOR, 25/11):** el botón «Trabajar solo en este equipo, sin
+  sincronizar» guarda escrituras en `almacen__pendientes` y `almacen__pendientes_contexto`.
+  Al iniciar sesión después en el mismo navegador, esos pendientes se **subieron a
+  QA-EMP-A**: `productos` (37 artículos con stock distinto) y `historialRespaldos`.
+- **Qué se verificó en el servidor:** `productos` no cambió (la función
+  `abc_productos_guardar_lista` ignora el stock en su camino rápido); `historialRespaldos` se
+  reescribió dos veces (20:41:30 y 20:43:31) con los mismos 5 respaldos automáticos del 13 al
+  17/11. Con el usuario se vaciaron las dos claves locales y se comprobó que no hubo más
+  escrituras.
+- **Impacto:** los datos de pruebas locales de un equipo pueden acabar en la empresa de
+  quien inicie sesión después. Aquí la protección fue una casualidad de implementación, no un
+  diseño.
+- **Aviso de método:** esta auditoría provocó el incidente al iniciar sesión sin vaciar antes
+  el estado local; quedó documentado y se avisó al usuario.
+- **Recomendación:** asociar los pendientes a la empresa y al usuario que los creó, no
+  subirlos a otra empresa y pedir confirmación antes de descartarlos.
+
+## H-20 · P2 · 21 de 22 productos de QA-A1 no se pueden enviar: sin ruta a cocina
+
+- **Evidencia (VIVO + SERVIDOR):** el refresco se guardó (pedido ABIERTO) y el servidor
+  rechazó el envío: «producto que requiere preparación pero no tiene una ruta activa a
+  cocina». En `catalogo_tpv_productos` de QA-A1, **21 de 22** productos tienen
+  `requiere_preparacion = true`; solo «Agua 50 cl (QA)» es `false`.
+- **Con «Cobrar ahora» (venta rápida):** guarda, intenta enviar y, si falla, deja la cuenta
+  abierta. Mientras siga abierta el terminal **no deja iniciar otra venta rápida** («Hay una
+  cuenta abierta en este terminal»).
+- **Dos causas:** (1) datos de QA sin rutas para esos productos; (2) la venta rápida no limpia
+  ni ofrece cancelar la cuenta que ella misma dejó a medias.
+- **Recomendación:** que «Cobrar ahora» cancele la cuenta o ofrezca «Cancelar y empezar de
+  nuevo» si falla el envío, y comprobar la ruta antes de guardar.
+
+## H-21 · P2 · Cancelar el pedido deja la cuenta comercial abierta
+
+- **Evidencia (SERVIDOR):** tras «Cancelar pedido», el pedido y su línea quedaron
+  CANCELADO y CANCELADA; la cuenta `d9e28655…` **siguió ABIERTA**, sin líneas activas, y
+  figura entre las cuentas abiertas del local.
+- **Consecuencia:** las cuentas abiertas se acumulan (ver H-28).
+- **Recomendación:** cerrar la cuenta cuando su último pedido se cancela y no tiene pagos,
+  o dar una acción visible para cerrarla.
+
+## H-22 · P2 · En venta rápida, tras guardar y enviar no aparece el cobro
+
+- **Evidencia (VIVO, dos veces):** después de «Guardar pedido» y «Enviar pedido», el panel
+  muestra «Venta rápida en curso» y «Continuar en Sala», pero **no** el cobro «F4». Hubo que
+  ir a «Buscar cuentas abiertas», pulsar «Retomar» en la cuenta y entonces aparece.
+- **Recomendación:** mostrar el cobro de la cuenta recién enviada o llevar directamente a él.
+
+## H-23 · P2 · La venta mixta no emitió documento fiscal — causa por confirmar
+
+- **Evidencia (SERVIDOR):** la venta 1 (efectivo) tiene documento QA `TPV-000044` en
+  `abc_c05_documentos_emitidos`. La venta 2 (efectivo + tarjeta) tiene `ventas_fiscales`
+  CERRADA pero **ningún documento**, y refrescar el cobro no lo emitió.
+- **Reserva:** la tarjeta se resolvió llamando a `abc_qa_confirmar_pago_simulado` desde la
+  consola, no desde la interfaz. Si la emisión se dispara desde el cliente tras el cobro, ese
+  camino no se ejecutó. **No hay evidencia de que sea un defecto del producto**; hay que
+  repetir el caso por la interfaz cuando exista un camino para resolver la tarjeta (H-27).
+
+## H-24 · P1 · «Arqueo de caja» (cierre diario) mostraba un esperado distinto del servidor
+
+- **Evidencia (VIVO + SERVIDOR):** con el efectivo neto de la sesión en 0,00 € y el servidor
+  esperando 0,00 €, la pantalla «Arqueo de caja» mostró **«Efectivo esperado 1,00 €»** con
+  «Base efectivo 2,65 · anulaciones venta −1,65 · ajustes/reembolsos caja 0,00». Los dos
+  reembolsos en efectivo (−1,50 €) no aparecían: «Nada registrado este día». El cierre de la
+  sesión de caja (otra pantalla) sí calculó 0,00 € con «Entradas 1,50 − Salidas 1,50».
+- **Causa en el código (CÓDIGO):** el arqueo diario calcula el esperado en el cliente con el
+  historial de movimientos local (`resumenMediosVentaCajaPM09`) y con los movimientos de caja
+  del día; no usa el cálculo del servidor.
+- **No se guardó ningún arqueo diario**, así que no hay datos erróneos en QA. La causa exacta
+  de los 2,65 € de base no se reprodujo.
+- **Impacto potencial:** un descuadre falso al cerrar el día. Es P1 con la evidencia de
+  pantalla; falta confirmar si se repite con los datos del servidor sincronizados del todo.
+- **Recomendación:** que el arqueo diario muestre el esperado que calcula el servidor.
+
+## H-25 · P3 · El cierre de la sesión de caja está escondido
+
+- **Evidencia (VIVO):** para iniciar y finalizar el cierre hay que ir a **Servicio → Cocina y
+  comandas → Mostrar gestión avanzada**. «Caja y fiscalidad → Arqueo de caja» solo abre la
+  sesión y el cierre diario; son dos cierres con nombres parecidos.
+- **Recomendación:** una sola entrada «Cerrar caja» en Caja y fiscalidad.
+
+## H-26 · P3 · Los bloqueos del cierre se muestran con un texto genérico
+
+- **Evidencia (VIVO + SERVIDOR):** el servidor devolvió el bloqueo `EFECTOS_PENDIENTES`; la
+  pantalla lo mostró como «Pendiente operativo». El cliente busca `detalle`, `tipo` o
+  `codigo` en un objeto, pero el servidor envía una lista de textos.
+- **Impacto:** quien cierra no sabe qué resolver. Aquí era un reembolso de tarjeta pendiente.
+- **Recomendación:** traducir cada código («Reembolsos de tarjeta pendientes del proveedor»).
+
+## H-27 · P2 · Ni el cobro ni el reembolso con tarjeta simulada se pueden completar desde la aplicación
+
+- **Evidencia (VIVO + SERVIDOR):** «Iniciar tarjeta simulada» deja el pago y el intento en
+  PENDIENTE con el aviso «lo resolverá el adaptador de proveedor». La pantalla no ofrece
+  ningún botón para resolverlo («Recuperar/reintentar mismo intento» no es una aprobación).
+  El reembolso de tarjeta deja un efecto `PROVIDER_REEMBOLSO` PENDIENTE que **bloquea el
+  cierre definitivo**; solo se pudo salir cancelando la solicitud.
+- **Cómo se resolvió el cobro:** llamando a `abc_qa_confirmar_pago_simulado` desde la consola
+  del navegador, con el Propietario (la función existe en QA sin migración, H-06). No es un
+  camino de la interfaz y no se usó para nada más.
+- **Función de QA sin código:** `qa-card-worker` (función Edge, `verify_jwt`) resuelve
+  intentos de tarjeta y usa la clave de servicio. **Ningún archivo del repositorio ni la
+  aplicación la llaman**; se suma a H-06.
+- **Impacto:** no se puede probar de punta a punta un cobro con tarjeta ni su reembolso en
+  QA; el cierre de caja puede quedarse bloqueado por un efecto que nada resuelve.
+- **Recomendación:** un botón «Aprobar/Rechazar tarjeta simulada» solo en QA (sin consola) y
+  que el simulador también resuelva los reembolsos de tarjeta.
+
+## H-28 · P3 · 85 cuentas abiertas en el local, 83 de días ya cerrados
+
+- **Evidencia (VIVO):** «85 cuenta(s) abierta(s) · €265,73 en total; 83 son de días
+  operativos ya cerrados, por €264,73. Desde aquí no se retoman y tampoco se cierran solas».
+- **Consecuencia:** acumulan ruido en la lista (ver H-21) y no hay acción visible para
+  cerrarlas.
+- **Recomendación:** decidir quién las cierra y cuándo (cierre automático del día o botón de
+  limpieza con permiso).
 
 ## No son defectos (descartados durante la auditoría)
 
