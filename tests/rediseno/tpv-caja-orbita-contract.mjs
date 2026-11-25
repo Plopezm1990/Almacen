@@ -78,6 +78,12 @@ hay(`${S} :is(.la-orbita-sidebar, .la-orbita-pestanas, .la-orbita-bottom-nav, .t
 hay(`${O} main.la-orbita-main { height: 100dvh; max-height: 100dvh !important; overflow: hidden !important;`, 'la pantalla no se desplaza');
 hay(`grid-template-rows: repeat(var(--tpv-filas, 2), minmax(0, 1fr));`, 'filas de productos según el alto');
 hay(`grid-template-areas: "cab total" "aviso total" "lineas accion";`, 'banda de cuenta y cobro');
+// Comprobado en vivo el 25/11/2026: sin «align-items: stretch» la zona de
+// productos no llenaba su fila (la rejilla del TPV trae align-items:start) y
+// quedaba un hueco de ~170 px sobre la cuenta.
+hay('grid-template-rows: minmax(0, 1fr) auto; gap: 10px; align-items: stretch;', 'el catálogo llena su fila, sin hueco');
+// En móvil la cabecera es una barra deslizable (la barra, no la página).
+hay(`${O} .tpv-cabecera { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }`, 'cabecera de una fila en móvil');
 hay(`${O} .tpv-capa[data-activa="1"] { display: none; }`, 'capas cerradas en caja');
 assert.match(css, /\.tpv-capa\[data-abierta="1"\] \{\n  display: flex; flex-direction: column; gap: 12px; position: fixed; inset: 0; z-index: 40;/, 'capa abierta a pantalla completa, por debajo de los diálogos (z-50)');
 hay('.tpv-side > .tpv-capa > *:not(.tpv-capa-cabecera) {', 'las tarjetas dentro de una capa conservan su estilo fuera del modo caja');

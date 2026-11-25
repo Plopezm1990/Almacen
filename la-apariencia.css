@@ -233,7 +233,7 @@ html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-raiz { display: flex
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-raiz > * { margin-bottom: 0 !important; flex: none; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-raiz > .tpv-layout {
   flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr);
-  grid-template-rows: minmax(0, 1fr) auto; gap: 10px;
+  grid-template-rows: minmax(0, 1fr) auto; gap: 10px; align-items: stretch;
 }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 48px; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > h2 { margin-right: auto; }
@@ -292,13 +292,25 @@ html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa[data-abierta="1
   padding: 16px; overflow-y: auto; border-radius: 0 !important; background: var(--c-bg, #17191C) !important;
 }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa-cabecera { display: flex; align-items: center; gap: 12px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa[data-abierta="1"]:not(:has(> :not(.tpv-capa-cabecera)))::after {
+  content: "No hay nada que mostrar aquí ahora mismo."; color: var(--c-ink-soft, #929DA7);
+}
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa-volver {
   min-height: 44px; padding: 0 16px; border-radius: 10px; cursor: pointer; font-weight: 600;
   border: 1px solid var(--c-line, #343941); background: var(--c-surface, #202328); color: var(--c-ink, #F1F3F6);
 }
 @media (max-width: 767px) {
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root { --tpv-caja-banda: clamp(220px, 40dvh, 340px); }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root { --tpv-caja-banda: clamp(200px, 34dvh, 300px); }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > h2 { display: none; }
+  /* Móvil: la cabecera es una sola barra que se desliza en horizontal (la
+     barra, no la página), con el selector de modo primero. */
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > * { flex: none; white-space: nowrap; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-herramientas { flex-wrap: nowrap; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-paginas] {
+    display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto; text-align: center; gap: 8px !important; font-size: 11px;
+  }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root [data-tpv-paginas] .la-ui-button { min-width: 0; padding-inline: 10px; }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-buscar] { grid-column: 1; grid-row: 1; }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-categorias] { grid-column: 1; grid-row: 2; }
