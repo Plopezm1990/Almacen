@@ -311,3 +311,6 @@ QA, búsqueda, avisos reales, perfil y Apariencia. Los módulos y el botón
 `la-apariencia.css?v=qa-orbita-shell-v82-20261123`; contratos completos y
 `git diff --check` pasan. Producción sigue intacta y el PR #225 continúa en
 borrador.
+## Cabecera Órbita · opción 2 · 25/11/2026
+
+La cabecera de escritorio se organiza en dos niveles: arriba aparecen el logo maestro dorado `la-suite-logo.svg`, la búsqueda global, Avisos y el perfil; abajo quedan el selector real de empresa/local, el indicador QA y Apariencia. El logo se sirve en SVG para mantener la nitidez. En móvil se mantienen ambos niveles en 104 px con búsqueda y avisos compactos y controles táctiles de al menos 44 px. Los handlers originales de búsqueda, contexto, avisos, perfil y Apariencia siguen conectados. El contrato Rediseno pasó tras el cambio; marcas de caché shell v31 y CSS v83.

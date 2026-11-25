@@ -659,14 +659,17 @@
     contextoBoton = contexto;
     contexto.addEventListener("click", abrirContexto);
     var marca = h("span", { class: "la-orbita-brand" }, [
-      h("span", { class: "la-orbita-brand-mark", texto: "L&A" }),
-      h("span", { class: "la-orbita-brand-text", texto: "L&A Suite" })
+      h("img", { class: "la-orbita-brand-logo", src: "./la-suite-logo.svg", alt: "L&A Suite", width: "76", height: "64" })
     ]);
-    var izquierda = h("div", { class: "la-orbita-header-context" }, [marca, contexto]);
+    var izquierda = h("div", { class: "la-orbita-header-context" }, [contexto]);
     var qa = h("span", { class: "la-orbita-qa", "data-la-orbita-qa": "", texto: "QA" });
     izquierda.appendChild(qa);
     var derecha = h("div", { class: "la-orbita-header-actions" });
-    var buscar = h("button", { type: "button", class: "la-orbita-header-button", "aria-label": "Buscar (Ctrl K)", texto: "⌕ Buscar" });
+    var buscar = h("button", { type: "button", class: "la-orbita-header-button la-orbita-header-search", "aria-label": "Buscar en la suite (Ctrl K)" }, [
+      h("span", { class: "la-orbita-header-search-icon", "aria-hidden": "true", texto: "⌕" }),
+      h("span", { class: "la-orbita-header-search-label", texto: "Buscar en la suite" }),
+      h("kbd", { class: "la-orbita-header-search-key", "aria-hidden": "true", texto: "Ctrl K" })
+    ]);
     buscar.addEventListener("click", abrirBusqueda);
     var alertas = h("button", { type: "button", class: "la-orbita-header-button", "data-la-orbita-alertas": "", texto: "Avisos" });
     alertas.addEventListener("click", function () {
@@ -723,12 +726,14 @@
     });
     var apariencia = h("button", { type: "button", class: "la-orbita-header-button la-orbita-appearance", "data-la-orbita-appearance": "", texto: "Apariencia" });
     apariencia.addEventListener("click", function () { if (typeof window.LAApariencia?.abrirEditor === "function") window.LAApariencia.abrirEditor(); });
-    derecha.append(buscar, alertas, perfil, apariencia);
+    derecha.append(alertas, perfil);
     /* La franja «Demostración / Órbita / Índice» pertenecía a la maqueta de
        revisión y no tiene capacidad operativa en el producto real. El marco
        termina en la cabecera funcional: contexto, QA, búsqueda, avisos,
        perfil y Apariencia. */
-    cabecera.append(izquierda, derecha);
+    var superior = h("div", { class: "la-orbita-header-upper" }, [marca, buscar, derecha]);
+    var inferior = h("div", { class: "la-orbita-header-lower" }, [izquierda, apariencia]);
+    cabecera.append(superior, inferior);
     marco.appendChild(cabecera);
     actualizarCabecera();
     return cabecera;

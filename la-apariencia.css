@@ -199,7 +199,7 @@ html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#dc
    ------------------------------------------------------------------------- */
 .la-orbita-shell {
   --la-shell-width: 264px;
-  --la-shell-header-height: 104px;
+  --la-shell-header-height: 120px;
   position: relative;
   display: grid !important;
   grid-template-columns: var(--la-shell-width) minmax(0, 1fr);
@@ -335,19 +335,24 @@ html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-det
 .la-orbita-sidebar-compacta.la-orbita-colapsada .la-orbita-sidebar-more { justify-content: center; padding-inline: 8px; font-size: 0; }
 .la-orbita-header {
   grid-column: 2; grid-row: 1;
-  display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap;
-  min-width: 0; padding: 10px clamp(14px, 2vw, 28px);
+  display: grid; grid-template-rows: minmax(0, 1fr) 52px;
+  min-width: 0; padding: 0 clamp(14px, 2vw, 28px);
   background: var(--c-surface); color: var(--c-ink);
   border-bottom: 1px solid var(--c-divider, var(--c-line));
-  box-shadow: var(--la-shadow-1);
   z-index: 20;
 }
+.la-orbita-header-upper, .la-orbita-header-lower { display: flex; align-items: center; min-width: 0; gap: 16px; }
+.la-orbita-header-upper { border-bottom: 1px solid var(--c-divider, var(--c-line)); }
+.la-orbita-header-lower { justify-content: space-between; }
 .la-orbita-header-context, .la-orbita-header-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
-.la-orbita-brand { display: inline-flex; align-items: center; gap: 8px; color: var(--c-accent); font-weight: 700; letter-spacing: .01em; white-space: nowrap; }
-.la-orbita-brand-mark { display: inline-flex; align-items: center; justify-content: center; min-width: 30px; min-height: 30px; padding-inline: 4px; border: 1px solid color-mix(in srgb, var(--c-accent) 62%, transparent); border-radius: 8px; background: color-mix(in srgb, var(--c-accent) 15%, transparent); color: var(--c-accent); font: 700 10px/1 var(--la-font); letter-spacing: -.04em; }
-.la-orbita-brand-text { font-size: 14px; }
+.la-orbita-brand { display: inline-flex; flex: 0 0 auto; align-items: center; }
+.la-orbita-brand-logo { display: block; width: 76px; height: 64px; object-fit: contain; }
+.la-orbita-header-search { display: flex; align-items: center; gap: 12px; width: clamp(190px, 30vw, 480px); min-width: 0; margin-inline-start: auto; padding-inline: 16px !important; border-radius: 999px !important; text-align: left; }
+.la-orbita-header-search-icon { font-size: 22px; line-height: 1; }
+.la-orbita-header-search-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; }
+.la-orbita-header-search-key { margin-inline-start: auto; white-space: nowrap; color: var(--c-ink-soft); font: 11px/1 var(--la-font); }
 .la-orbita-context, .la-orbita-header-button { min-height: 44px; padding: 0 12px; border: 1px solid var(--c-border-control); border-radius: 10px; background: var(--c-bg); color: var(--c-ink); font: 600 12px/1.2 var(--la-font); cursor: pointer; }
-.la-orbita-context { display: grid; justify-items: start; align-content: center; gap: 2px; max-width: min(38vw, 340px); overflow: hidden; text-align: left; }
+.la-orbita-context { display: grid; justify-items: start; align-content: center; gap: 2px; max-width: min(48vw, 460px); overflow: hidden; text-align: left; }
 .la-orbita-context-company, .la-orbita-context-local { display: block; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .la-orbita-context-company { color: var(--c-ink-soft); font-size: 10px; font-weight: 500; }
 .la-orbita-context-local { color: var(--c-ink); font-size: 12px; font-weight: 700; }
@@ -356,6 +361,10 @@ html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-det
 .la-orbita-qa { min-height: 26px; display: inline-flex; align-items: center; padding: 0 9px; border-radius: 999px; background: var(--c-accent-soft); color: var(--c-accent); font: 700 11px/1 var(--la-font); letter-spacing: .04em; }
 .la-orbita-qa[data-qa="qa"] { background: var(--c-amber-soft); color: var(--c-amber); }
 .la-orbita-appearance { border-color: var(--c-accent-fill); }
+@media (max-width: 1050px) and (min-width: 768px) {
+  .la-orbita-header-search { width: clamp(150px, 24vw, 260px); }
+  .la-orbita-header-search-key { display: none; }
+}
 .la-orbita-context-menu { position: absolute; inset-block-start: calc(var(--la-shell-header-height) - 4px); inset-inline-start: clamp(14px, 2vw, 28px); z-index: 10020; display: grid; gap: 3px; width: min(340px, calc(100vw - 28px)); max-height: 55vh; overflow: auto; padding: 7px; border: 1px solid var(--c-border-control); border-radius: 12px; background: var(--c-surface); box-shadow: var(--la-shadow-2); }
 .la-orbita-context-menu button { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--c-ink); font: 600 12.5px/1.2 var(--la-font); text-align: left; cursor: pointer; }
 .la-orbita-context-menu button:hover { background: var(--c-accent-soft); color: var(--c-accent); }
@@ -477,26 +486,22 @@ body:has(.la-orbita-header) #la-ed-lanzador { display: none; }
 .la-orbita-search-option { min-height: 44px; padding: 8px 10px; border: 0; border-radius: 8px; background: transparent; color: var(--c-ink); font: 600 13px/1.2 var(--la-font); text-align: left; cursor: pointer; }
 .la-orbita-search-option:hover { background: var(--c-accent-soft); color: var(--c-accent); }
 @media (max-width: 767px) {
-  .la-orbita-shell { grid-template-columns: minmax(0,1fr); grid-template-rows: 94px minmax(0,1fr) auto; min-height: 100dvh !important; height: 100dvh; }
+  .la-orbita-shell { grid-template-columns: minmax(0,1fr); grid-template-rows: 104px minmax(0,1fr) auto; min-height: 100dvh !important; height: 100dvh; }
   .la-orbita-sidebar { display: none !important; }
-  .la-orbita-header { grid-column: 1; grid-row: 1; min-height: 94px; padding: 7px 10px 5px; gap: 4px; }
+  .la-orbita-header { grid-column: 1; grid-row: 1; grid-template-rows: 52px 52px; min-height: 104px; padding: 0 10px; }
+  .la-orbita-header-upper, .la-orbita-header-lower { gap: 6px; }
+  .la-orbita-brand-logo { width: 52px; height: 44px; }
+  .la-orbita-header-search { width: 44px; min-width: 44px; padding: 0 !important; justify-content: center; }
+  .la-orbita-header-search-label, .la-orbita-header-search-key { display: none; }
   .la-orbita-header-context { min-width: 0; gap: 5px; }
-  .la-orbita-brand { display: inline-flex; gap: 5px; }
-  .la-orbita-brand-mark { min-width: 29px; min-height: 29px; font-size: 9px; }
-  .la-orbita-brand-text { display: inline; font-size: 12px; }
-  .la-orbita-context { max-width: 45vw; padding-inline: 9px; }
+  .la-orbita-context { max-width: min(58vw, 270px); padding-inline: 9px; }
   .la-orbita-context-company { font-size: 9px; }
   .la-orbita-context-local { font-size: 11px; }
   .la-orbita-header-actions { gap: 4px; }
-  .la-orbita-header-actions .la-orbita-header-button:first-child,
-  .la-orbita-header-actions .la-orbita-appearance { display: none; }
   .la-orbita-header-button { min-width: 44px; padding: 0 8px; font-size: 11px; }
-  .la-orbita-header-button:first-child { font-size: 0; }
-  .la-orbita-header-button:first-child::after { content: "⌕"; font-size: 20px; }
-  .la-orbita-header-button:nth-child(2) { font-size: 0; }
-  .la-orbita-header-button:nth-child(2)::after { content: "!"; font-size: 15px; }
-  .la-orbita-header-button:nth-child(3) { font-size: 0; }
-  .la-orbita-header-button:nth-child(3)::after { content: "◉"; font-size: 16px; }
+  .la-orbita-header-actions [data-la-orbita-alertas] { font-size: 0; }
+  .la-orbita-header-actions [data-la-orbita-alertas]::after { content: "!"; font-size: 15px; }
+  .la-orbita-profile { font-size: 12px; }
   .la-orbita-appearance { font-size: 0; }
   .la-orbita-appearance::after { content: "✦"; font-size: 17px; }
   .la-orbita-qa { min-height: 24px; padding-inline: 7px; font-size: 10px; }
