@@ -216,6 +216,57 @@ html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#dc
 html[data-tpv-caja="1"] .la-orbita-header { display: none !important; }
 html[data-tpv-caja="1"] .la-orbita-shell { grid-template-rows: minmax(0, 1fr) auto; }
 html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
+/* Modo caja de Órbita a pantalla completa (25/11/2026, opciones 1 y 2
+   aprobadas: «barra rápida» en venta rápida y «sala y mesas» en sala).
+   Solo composición: mismos botones, mismos handlers. Las marcas
+   data-tpv-* y las clases tpv-* las pone VentaRapida en fuente.js. */
+html[data-la-diseno="orbita"][data-tpv-caja="1"] .la-orbita-shell { grid-template-columns: minmax(0, 1fr); }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] .la-orbita-main { grid-column: 1 / -1; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] :is(.la-orbita-sidebar, .la-orbita-pestanas, .la-orbita-bottom-nav) { display: none !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-cabecera { margin-bottom: 8px !important; min-height: 44px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo { padding: 8px 12px !important; margin-bottom: 10px !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo [class~="text-[10.5px]"] { display: none; }
+@media (min-width: 640px) {
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo { display: flex; align-items: center; gap: 12px; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo > * { margin: 0 !important; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo > [role="group"] { flex: 1; }
+}
+@media (min-width: 1024px) {
+  /* Opción 1 · barra rápida: categorías en columna | productos | ticket. */
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="2"] { grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] .tpv-main {
+    display: grid; grid-template-columns: 168px minmax(0, 1fr); column-gap: 12px; align-items: start;
+  }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] .tpv-main > * { grid-column: 2; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] [data-tpv-categorias] {
+    grid-column: 1; grid-row: 1 / span 4; position: sticky; top: 0;
+    flex-direction: column; align-items: stretch; margin: 0 !important;
+  }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] [data-tpv-categorias] > div { flex-direction: column; overflow: visible; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] [data-tpv-categorias] button {
+    width: 100%; min-height: 48px; justify-content: flex-start; text-align: left; font-size: 14px;
+  }
+  /* Opción 2 · sala y mesas: mesas | cuenta | catálogo. */
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] {
+    grid-template-columns: minmax(260px, 0.8fr) minmax(340px, 1fr) minmax(0, 1.3fr); gap: 14px;
+  }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] > .tpv-sala-col {
+    grid-column: 1; grid-row: 1; position: sticky; top: 0; max-height: calc(100dvh - 24px); overflow-y: auto;
+  }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] > .tpv-side { grid-column: 2; grid-row: 1; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] > .tpv-main { grid-column: 3; grid-row: 1; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] .tpv-rejilla { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  /* Ticket siempre a la vista: total grande y acción principal ancha. */
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-side { top: 0; max-height: calc(100dvh - 24px); }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-side > .la-ui-button {
+    width: 100%; min-height: 56px; justify-content: center; font-size: 16px;
+  }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] [data-tpv-total] { font-size: 30px !important; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-rejilla > button { min-height: 92px; }
+}
+@media (min-width: 1600px) {
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] .tpv-rejilla { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}
 .la-orbita-sidebar {
   grid-column: 1;
   grid-row: 1 / 4;

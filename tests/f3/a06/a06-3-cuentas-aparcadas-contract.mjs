@@ -88,7 +88,13 @@ for (const [nombre, src] of [["bundle", bundle], ["fuente recuperado", recuperad
   assert.ok(src.includes("moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta("), `${nombre}: la aplicación la recibe`);
   assert.ok(src.includes("cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06, unirCuentasA08 }"), `${nombre}: y se la pasa al TPV`);
   assert.ok(src.includes("mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null, unirCuentasA08 = null }"), `${nombre}: el TPV la declara`);
-  assert.ok(src.includes("renderCuentasAparcadasA06(), renderSalaA07(), renderRepartoProductosA08()"), `${nombre}: y la pinta, delante del plano de sala`);
+  // 25/11/2026: en el modo caja de Órbita en sala, el plano de sala pasa a
+  // su propia columna a la izquierda (bloqueSalaCaja) y en la columna del
+  // ticket no se repite. En el resto de casos sigue exactamente detrás de
+  // las cuentas aparcadas. Las aparcadas siguen pintándose siempre, y
+  // primero, en la columna de la cuenta.
+  assert.ok(src.includes("renderCuentasAparcadasA06(), bloqueSalaCaja ? null : renderSalaA07(), renderRepartoProductosA08()"), `${nombre}: y la pinta, delante del plano de sala`);
+  assert.ok(src.includes('const bloqueSalaCaja = modoCajaTpv && modoTPV !== "RAPIDA" && leerDisenoNavegacion() === "orbita" ? renderSalaA07() : null;'), `${nombre}: el plano de sala solo cambia de columna en el modo caja de Órbita en sala`);
 }
 
 // ---- 7. La etiqueta del sitio, ejecutada de verdad. ----
