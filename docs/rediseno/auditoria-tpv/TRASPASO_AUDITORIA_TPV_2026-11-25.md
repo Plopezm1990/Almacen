@@ -19,7 +19,9 @@
 
 - **Ejecutado:** ventas en efectivo y mixta, doble clic en Guardar y en Cobrar, reembolsos,
   cierre de caja (CERRADA_FINAL). Hallazgos nuevos: H-19 a H-28.
-- **Sin ejecutar:** dos terminales (C-04) y recarga tras escritura (C-05).
+- **Sin ejecutar por la auditoría:** recarga tras escritura (C-05). Dos terminales (C-04): el
+  usuario la hizo y dice que está bien; no hay captura ni registro, y el servidor no muestra
+  escrituras posteriores a las 21:11 UTC del 25/11.
 - **QA queda:** sin sesiones de caja abiertas; cuenta `d9e28655…` abierta sin líneas; stock
   del agua 71.
 - **Antes de repetir pruebas en este navegador:** vaciar el modo local y no iniciar sesión

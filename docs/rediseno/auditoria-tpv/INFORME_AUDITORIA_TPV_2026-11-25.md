@@ -43,8 +43,10 @@ desplegado y la discrepancia queda como decisión pendiente (H-07).
   cocina, movimiento de caja ni de stock. El lote L1 **se ejecutó el 25/11** con la
   autorización del usuario, con cambios respecto del plan original (producto, apertura y
   cierre de caja, 3 reembolsos). Detalle y cifras antes y después en
-  `evidencias/lote-L1-ejecucion-2026-11-25.md`. **No se ejecutó** el caso de dos terminales
-  (C-04) ni la recarga tras escritura (C-05).
+  `evidencias/lote-L1-ejecucion-2026-11-25.md`. **La auditoría no ejecutó** el caso de dos
+  terminales (C-04): el usuario dice que lo hizo él con su Chrome y que está bien, sin
+  captura ni registro (se anota como declarado, no como evidencia propia). Tampoco se
+  probó la recarga tras escritura (C-05).
 - **Panel del navegador oculto.** El navegador pausa `requestAnimationFrame` y
   `ResizeObserver` en segundo plano. Para medir se sustituyó `requestAnimationFrame` por un
   temporizador y se reinstaló el mismo `la-orbita-shell.js` publicado. Tras cambiar de
@@ -159,8 +161,8 @@ No se comparan los productos, precios ni nombres de ejemplo de la maqueta.
 ### Resumen de la matriz (77 casos, tras el lote L1)
 
 46 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
-20 FAIL (incluidos los parciales) · 5 NO PROBADO · 4 BLOQUEADO · 1 NO CONCLUYENTE ·
-1 NO APLICA. Antes del lote eran 67 casos con 6 BLOQUEADO.
+20 FAIL (incluidos los parciales) · 6 NO PROBADO (uno, C-04, declarado OK por el usuario) ·
+3 BLOQUEADO · 1 NO CONCLUYENTE · 1 NO APLICA. Antes del lote eran 67 casos con 6 BLOQUEADO.
 
 **Resultado del lote L1, en una frase:** el cobro en efectivo, el pago mixto, los dos dobles
 clics, el reembolso en efectivo y el cierre de caja funcionan y no duplican nada; fallan

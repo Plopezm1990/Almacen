@@ -166,8 +166,8 @@ el contrato de la política de segundo factor lo cubre.
 lectura en QA (`d74a43f4-…` y `932cd704-…`); sin cambios de datos.
 
 **L1 · Escrituras sintéticas en QA — AUTORIZADO Y EJECUTADO el 25/11** (con cambios sobre
-el texto de abajo: producto agua, caja abierta y cerrada, 3 reembolsos; dos terminales **sin
-ejecutar**). Resultado y cifras en `evidencias/lote-L1-ejecucion-2026-11-25.md`. Texto
+el texto de abajo: producto agua, caja abierta y cerrada, 3 reembolsos; dos terminales: lo
+hizo el usuario y dice que está bien, sin registro). Resultado y cifras en `evidencias/lote-L1-ejecucion-2026-11-25.md`. Texto
 original de la propuesta:
 
 - **Actor y lugar:** Propietario `pm07.smoke@qa.invalid` en QA-EMP-A / QA-A1, terminal

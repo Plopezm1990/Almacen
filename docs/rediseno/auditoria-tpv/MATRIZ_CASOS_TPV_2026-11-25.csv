@@ -43,7 +43,7 @@ F-20;Stock;Venta con stock insuficiente;—;—;—;FAIL (decisión pendiente);N
 C-01;Concurrencia;Cobro idempotente ante reintento;tpv-30;—;—;PASS;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;;Doble clic en Cobrar efectivo 0,50 € · un solo pago y una sola entrada de caja
 C-02;Concurrencia;Versión obsoleta de cuenta o línea rechazada;tpv-23;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código + migraciones;p_expected_*_version;;
 C-03;Concurrencia;Doble clic en Guardar no duplica;tpv-16;—;—;PASS;Navegador QA en vivo + consulta de servidor;evidencias/lote-L1-ejecucion-2026-11-25.md;;Doble clic en Guardar pedido · una cuenta un pedido y una línea
-C-04;Concurrencia;Dos terminales sobre la misma cuenta;tpv-23;—;—;BLOQUEADO;Documento previo parcial;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;Necesita dos sesiones y lote autorizado
+C-04;Concurrencia;Dos terminales sobre la misma cuenta;tpv-23;—;—;NO PROBADO (declarado OK por el usuario);Declaración del usuario;Mensaje del usuario del 25/11 · sin captura ni registro;;El usuario la hizo con su Chrome y dice que está bien · la auditoría no la vio y el servidor no muestra escrituras posteriores a las 21:11 UTC · un rechazo por versión obsoleta no deja evento
 C-05;Concurrencia;Recarga o desconexión tras escritura;—;—;—;BLOQUEADO;—;—;;Necesita lote autorizado
 C-06;Contexto;Sin local activo o «Todos los locales» bloquea operaciones;—;—;—;PASS (código);Inspección de código;«Selecciona un local …» en cada operación;;
 C-07;Contexto;Sesión caducada con mensaje accionable;—;—;—;PASS (código) / NO PROBADO en vivo;Inspección de código;«Tu sesión ha caducado. Vuelve a entrar.»;;
