@@ -1,7 +1,11 @@
 # Equivalencias de pestañas por área — Órbita (propuesta 7)
 
-Fecha: 25/11/2026 · Estado: **propuesta, pendiente de aprobación**. No se ha
-cambiado código.
+Fecha: 25/11/2026 · Estado: **aprobada por el usuario (las cinco decisiones,
+tal como se recomiendan) e implementada** en `85aec363`; arreglo de
+Devoluciones en `adaec994`; lateral (una sola área marcada, zonas
+«Operación»/«Gestión») en `138652e2`. Verificado en la vista previa en modo
+local (sin base de datos), en ordenador 1440×900 y móvil 390×844. Sin probar
+todavía con una sesión real de un rol restringido.
 
 ## Para qué sirve
 
