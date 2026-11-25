@@ -269,8 +269,13 @@ dos notebooks de solo lectura en el proyecto QA para consultar el servidor
   deshecha, da: Propietario sin segundo factor sin acceso y con él con acceso; Encargado,
   Cajero/a y Camarero/a con acceso sin segundo factor. El cliente ya consulta
   `mfa_politica_leer`.
-  **Pendiente:** inicio de sesión real de cada cargo en el navegador, y que cada empresa
-  nueva reciba su fila de Propietario al darse de alta (hoy, sin fila, no se exige).
+  Segunda simulación en QA-EMP-A, también en una transacción deshecha, de la función que
+  consulta la aplicación al iniciar sesión (`public.mfa_politica_leer`) y de la guarda, con y
+  sin factor inscrito: solo Propietario recibe `exigida_para_mi = true` y solo tiene acceso con
+  `aal2`; Encargado, Cajero/a y Camarero/a reciben `false` y tienen acceso con `aal1`.
+  **Pendiente:** inicio de sesión real de cada cargo en el navegador (el usuario no tiene las
+  contraseñas de las cuentas de Encargado y Cajero/a), y que cada empresa nueva reciba su fila
+  de Propietario al darse de alta (hoy, sin fila, no se exige).
 - **Recomendación:** alinear QA con el repositorio por el procedimiento de migraciones,
   configurar la política decidida y añadir una comprobación que compare el historial de QA
   con `supabase/migrations`.

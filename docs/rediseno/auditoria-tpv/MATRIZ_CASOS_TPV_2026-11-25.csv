@@ -64,5 +64,6 @@ S-11;Servidor;pagos_encargo sin privilegios de escritura innecesarios;—;—;�
 P-01;Permisos;Camarero/a sin caja ni efectivo ni reembolso;caj-01;—;Camarero/a;PASS (previo);Documento previo;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md;;Ensayo SQL revertido
 P-02;Permisos;Cajero/a sin MFA sin cobro;tpv-17;—;Cajero/a;PASS (previo);Documento previo + consulta de servidor;QA_PUNTO1_TPV_SALA_CAJA_2026-11-15.md · servidor-qa-2026-11-25.md (R2);H-17;La guarda activa en QA exige aal2 a Cajero/a (M03) · la migración de MFA opcional no está aplicada
 P-03;Permisos;Matriz completa por rol en vivo;—;—;todos;BLOQUEADO;—;—;;Necesita sesiones por rol
+P-04;Permisos;Segundo factor solo para Propietario (decisión E6) tras aplicarlo en QA;—;—;Propietario/Encargado/Cajero/a/Camarero/a;PASS;Consulta de servidor;HALLAZGOS H-17 (simulación de mfa_politica_leer y la_usuario_activo por cargo · transacción deshecha);H-17;Inicio de sesión real en el navegador NO PROBADO: sin contraseñas de Encargado o Cajero/a
 A-01;Pruebas;Batería no DB completa;—;—;—;PASS;Prueba automatizada;bateria-no-db-aa809c3a.log;;336/336, árbol limpio
 A-02;Pruebas;Comprobaciones del PR #225 (incluye contratos PostgreSQL);—;—;—;PASS;Prueba automatizada;ci-pr225-aa809c3a.txt;;39 pass, 2 skipping (Netlify)
