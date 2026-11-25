@@ -43,8 +43,8 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v87-20261125/);
-assert.match(index, /fuente\.js\?v=qa-orbita-home-v12-20261125/, 'fuente.js debe invalidar la caché tras alinear la composición de Inicio');
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v88-20261125/);
+assert.match(index, /fuente\.js\?v=qa-orbita-home-v13-20261125/, 'fuente.js debe invalidar la caché tras alinear la composición de Inicio');
 // 25/11/2026: el menú Más del móvil ya no lleva una lista fija de Compras;
 // enseña «En <área>» con las pestañas de AREAS_ORBITA (tabla de
 // equivalencias aprobada). Albaranes sigue expuesto: está en la tabla y el

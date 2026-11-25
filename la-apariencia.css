@@ -216,56 +216,101 @@ html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#dc
 html[data-tpv-caja="1"] .la-orbita-header { display: none !important; }
 html[data-tpv-caja="1"] .la-orbita-shell { grid-template-rows: minmax(0, 1fr) auto; }
 html[data-tpv-caja="1"] .la-orbita-main { grid-row: 1; }
-/* Modo caja de Órbita a pantalla completa (25/11/2026, opciones 1 y 2
-   aprobadas: «barra rápida» en venta rápida y «sala y mesas» en sala).
-   Solo composición: mismos botones, mismos handlers. Las marcas
-   data-tpv-* y las clases tpv-* las pone VentaRapida en fuente.js. */
+/* Modo caja de Órbita, «doble banda» (25/11/2026, propuesta 1 aprobada):
+   pantalla fija con el catálogo arriba y la cuenta y el cobro abajo. La
+   página no se desplaza: los productos van por páginas (VentaRapida calcula
+   las filas con el alto real) y lo que no cabe se abre en una capa
+   (.tpv-capa) con «Volver al pedido». Solo composición: mismos botones y
+   handlers. Las reglas del TPV cuelgan de Órbita + caja + #root, porque una
+   regla existente del TPV de Órbita ya usa #root y ganaría a estas. */
+.tpv-capa { display: contents; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] .la-orbita-shell { grid-template-columns: minmax(0, 1fr); }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] .la-orbita-main { grid-column: 1 / -1; }
-html[data-la-diseno="orbita"][data-tpv-caja="1"] :is(.la-orbita-sidebar, .la-orbita-pestanas, .la-orbita-bottom-nav) { display: none !important; }
-html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-cabecera { margin-bottom: 8px !important; min-height: 44px; }
-html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo { padding: 8px 12px !important; margin-bottom: 10px !important; }
-html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo [class~="text-[10.5px]"] { display: none; }
-@media (min-width: 640px) {
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo { display: flex; align-items: center; gap: 12px; }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo > * { margin: 0 !important; }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-selector-modo > [role="group"] { flex: 1; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] :is(.la-orbita-sidebar, .la-orbita-pestanas, .la-orbita-bottom-nav, .tpv-dock) { display: none !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root { --tpv-caja-banda: clamp(200px, 32dvh, 300px); }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root main.la-orbita-main { height: 100dvh; max-height: 100dvh !important; overflow: hidden !important; padding: 12px !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-raiz { display: flex; flex-direction: column; gap: 10px; height: 100%; min-height: 0; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-raiz > * { margin-bottom: 0 !important; flex: none; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-raiz > .tpv-layout {
+  flex: 1 1 0; min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto; gap: 10px;
 }
-@media (min-width: 1024px) {
-  /* Opción 1 · barra rápida: categorías en columna | productos | ticket. */
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="2"] { grid-template-columns: minmax(0, 1fr) 400px; gap: 14px; }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] .tpv-main {
-    display: grid; grid-template-columns: 168px minmax(0, 1fr); column-gap: 12px; align-items: start;
-  }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] .tpv-main > * { grid-column: 2; }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] [data-tpv-categorias] {
-    grid-column: 1; grid-row: 1 / span 4; position: sticky; top: 0;
-    flex-direction: column; align-items: stretch; margin: 0 !important;
-  }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] [data-tpv-categorias] > div { flex-direction: column; overflow: visible; }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-modo="RAPIDA"] [data-tpv-categorias] button {
-    width: 100%; min-height: 48px; justify-content: flex-start; text-align: left; font-size: 14px;
-  }
-  /* Opción 2 · sala y mesas: mesas | cuenta | catálogo. */
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] {
-    grid-template-columns: minmax(260px, 0.8fr) minmax(340px, 1fr) minmax(0, 1.3fr); gap: 14px;
-  }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] > .tpv-sala-col {
-    grid-column: 1; grid-row: 1; position: sticky; top: 0; max-height: calc(100dvh - 24px); overflow-y: auto;
-  }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] > .tpv-side { grid-column: 2; grid-row: 1; }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] > .tpv-main { grid-column: 3; grid-row: 1; }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] .tpv-rejilla { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  /* Ticket siempre a la vista: total grande y acción principal ancha. */
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-side { top: 0; max-height: calc(100dvh - 24px); }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-side > .la-ui-button {
-    width: 100%; min-height: 56px; justify-content: center; font-size: 16px;
-  }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] [data-tpv-total] { font-size: 30px !important; }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-rejilla > button { min-height: 92px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-height: 48px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > h2 { margin-right: auto; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > :not(h2):not(.tpv-selector-modo):not(.tpv-caja-herramientas) { order: 3; min-height: 44px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera .tpv-selector-modo { order: 1; padding: 0 !important; margin: 0 !important; border: 0 !important; background: transparent !important; box-shadow: none !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera .tpv-selector-modo > :not([role="group"]) { display: none; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera .tpv-selector-modo [role="group"] { display: flex; gap: 6px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera .tpv-selector-modo [role="group"] button { min-height: 44px; padding-inline: 14px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-herramientas { order: 2; display: flex; flex-wrap: wrap; gap: 6px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-boton {
+  min-height: 44px; min-width: 44px; padding: 0 14px; border-radius: 10px; cursor: pointer;
+  border: 1px solid var(--c-line, #343941) !important; background: var(--c-surface, #202328) !important;
+  color: var(--c-ink, #F1F3F6); font: 600 13px/1 var(--la-font);
 }
-@media (min-width: 1600px) {
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] .tpv-layout[data-tpv-columnas="3"] .tpv-rejilla { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-boton[aria-pressed="true"] { border-color: var(--c-accent-fill, #FF4B32) !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main {
+  display: grid; grid-template-columns: minmax(240px, 0.9fr) minmax(0, 2.1fr);
+  grid-template-rows: auto minmax(0, 1fr) auto; gap: 8px 10px; min-height: 0; overflow: hidden;
+}
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > * { grid-column: 1 / -1; margin: 0 !important; min-width: 0; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-buscar] { grid-column: 1; grid-row: 1; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-categorias] { grid-column: 2; grid-row: 1; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > .tpv-rejilla {
+  grid-row: 2; min-height: 0; overflow: hidden; align-content: stretch;
+  grid-template-rows: repeat(var(--tpv-filas, 2), minmax(0, 1fr)); grid-auto-rows: 0;
+}
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-rejilla > button { min-height: 0 !important; overflow: hidden; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-paginas] { grid-row: 3; justify-content: center !important; gap: 16px !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root [data-tpv-paginas] .la-ui-button { min-height: 44px; min-width: 120px; justify-content: center; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side {
+  position: static !important; max-height: none !important; overflow: hidden; height: var(--tpv-caja-banda);
+  display: grid; grid-template-columns: minmax(0, 1fr) 300px; grid-template-rows: auto auto minmax(0, 1fr);
+  grid-template-areas: "cab total" "aviso total" "lineas accion"; gap: 8px 14px; padding: 12px;
+  border: 1px solid var(--c-line, #343941); border-radius: 14px; background: var(--c-surface, #202328);
+}
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > *,
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > .tpv-capa > *:not(.tpv-capa-cabecera) { margin: 0 !important; box-shadow: none !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-cuenta-cabecera { grid-area: cab; display: flex; align-items: center; gap: 8px; background: transparent !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-cuenta-cabecera strong { font-size: 17px; margin-right: auto; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > [data-error-venta] { grid-area: aviso; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > :is(.la-ui-card, .tpv-caja-vacio) { grid-area: lineas; min-height: 0; overflow-y: auto; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > .la-ui-card { padding: 0 !important; border: 0 !important; background: transparent !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > .la-ui-card > [class~="text-[12.5px]"]:first-child { display: none; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > .la-ui-card div:has(> [data-tpv-total]) { display: none; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-vacio { align-self: center; color: var(--c-ink-soft, #929DA7); background: transparent !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-total { grid-area: total; align-self: end; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; background: transparent !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-total strong { font-size: 34px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > :is(.la-ui-button, .tpv-caja-cobrar) {
+  grid-area: accion; align-self: end; width: 100%; min-height: 64px; justify-content: center;
+  border-radius: 12px !important; font-size: 18px; font-weight: 700;
+}
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-cobrar { border: 0 !important; background: var(--c-accent-fill, #FF4B32) !important; color: #fff; cursor: pointer; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa[data-activa="1"] { display: none; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa[data-abierta="1"] {
+  display: flex; flex-direction: column; gap: 12px; position: fixed; inset: 0; z-index: 40;
+  padding: 16px; overflow-y: auto; border-radius: 0 !important; background: var(--c-bg, #17191C) !important;
+}
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa-cabecera { display: flex; align-items: center; gap: 12px; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa-volver {
+  min-height: 44px; padding: 0 16px; border-radius: 10px; cursor: pointer; font-weight: 600;
+  border: 1px solid var(--c-line, #343941); background: var(--c-surface, #202328); color: var(--c-ink, #F1F3F6);
+}
+@media (max-width: 767px) {
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root { --tpv-caja-banda: clamp(220px, 40dvh, 340px); }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > h2 { display: none; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-buscar] { grid-column: 1; grid-row: 1; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-categorias] { grid-column: 1; grid-row: 2; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > .tpv-rejilla { grid-row: 3; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-paginas] { grid-row: 4; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side {
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); grid-template-rows: auto auto minmax(0, 1fr) auto;
+    grid-template-areas: "cab cab" "aviso aviso" "lineas lineas" "total accion";
+  }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-total { flex-direction: column; align-items: flex-start; gap: 0; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-total strong { font-size: 26px; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > :is(.la-ui-button, .tpv-caja-cobrar) { min-height: 56px; }
 }
 .la-orbita-sidebar {
   grid-column: 1;
@@ -2364,7 +2409,8 @@ html[data-la-diseno="orbita"] #root [role="group"][aria-label="Modo de venta"] b
 
 html[data-la-diseno="orbita"] .tpv-main > .relative,
 html[data-la-diseno="orbita"] .tpv-main > .tpv-rejilla,
-html[data-la-diseno="orbita"] .tpv-side > * {
+html[data-la-diseno="orbita"] .tpv-side > *,
+html[data-la-diseno="orbita"] .tpv-side > .tpv-capa > *:not(.tpv-capa-cabecera) {
   border-color: var(--c-divider) !important;
 }
 
@@ -2383,7 +2429,9 @@ html[data-la-diseno="orbita"] .tpv-rejilla > *:hover {
   box-shadow: 0 12px 30px rgba(0, 0, 0, .2);
 }
 
-html[data-la-diseno="orbita"] .tpv-side > * {
+html[data-la-diseno="orbita"] .tpv-side > *,
+
+html[data-la-diseno="orbita"] .tpv-side > .tpv-capa > *:not(.tpv-capa-cabecera) {
   background: color-mix(in srgb, var(--c-surface) 96%, transparent) !important;
   border-radius: var(--la-radio) !important;
   box-shadow: 0 10px 28px rgba(0, 0, 0, .15);
@@ -2512,7 +2560,9 @@ html[data-la-diseno="orbita"] #la-pase:not(.la-ascua) .la-pase-accion {
     padding: 12px;
   }
 
-  html[data-la-diseno="orbita"] .tpv-side > * {
+  html[data-la-diseno="orbita"] .tpv-side > *,
+
+  html[data-la-diseno="orbita"] .tpv-side > .tpv-capa > *:not(.tpv-capa-cabecera) {
     box-shadow: 0 8px 22px rgba(0, 0, 0, .16);
   }
 }
@@ -3242,7 +3292,8 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-mesas > button
   background: var(--c-surface) !important;
   color: var(--c-ink) !important;
 }
-html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side > * {
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side > *,
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side > .tpv-capa > *:not(.tpv-capa-cabecera) {
   border-color: var(--c-divider) !important;
   border-radius: var(--la-radius-lg) !important;
   background: var(--c-surface) !important;

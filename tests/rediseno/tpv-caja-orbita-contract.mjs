@@ -1,22 +1,24 @@
-// Contrato: modo caja del TPV en Órbita, a pantalla completa y organizado
-// como un TPV profesional.
+// Contrato: modo caja del TPV en Órbita, «doble banda», pantalla fija.
 //
 // Contexto
 // --------
-// 25/11/2026: el usuario pidió que el modo caja ocupara toda la pantalla
-// (ordenador, tablet y móvil) y aprobó combinar dos organizaciones: «barra
-// rápida» en venta rápida (categorías en columna | productos | ticket) y
-// «sala y mesas» en sala (mesas | cuenta | catálogo). Antes, el lateral se
-// ocultaba pero su columna se quedaba vacía y seguían la fila de pestañas y
-// la barra inferior.
+// 25/11/2026: el usuario pidió que el modo caja ocupara toda la pantalla y
+// que NO se desplazara nunca; lo que no cupiera debía abrirse con un botón en
+// otra pantalla. Tras varias rondas aprobó la propuesta 1 («doble banda»):
+// catálogo arriba (buscador, categorías, productos por páginas) y cuenta y
+// cobro abajo; funciones secundarias detrás de «···», «Mesas», «Ventas del
+// día» y «Terminal», cada una en una capa con «Volver al pedido».
 //
 // Qué fija este contrato
 // ----------------------
-// Que es solo composición: React añade marcas (data-tpv-*, clases tpv-*) y
-// lleva el plano de sala a su propia columna únicamente en modo caja + sala
-// + Órbita, sin hooks movidos ni handlers nuevos; y que todo el CSS cuelga de
-// html[data-la-diseno="orbita"][data-tpv-caja="1"], para no tocar los demás
-// diseños ni el TPV fuera del modo caja.
+// - Es solo composición: los render* de la cuenta se siguen llamando siempre
+//   y en el mismo orden; las capas son envoltorios display:contents fuera del
+//   modo caja de Órbita, así que el TPV normal no cambia.
+// - El estado nuevo es solo visual (qué capa está abierta y cuántas filas de
+//   productos caben); la paginación normal sigue en FILAS_REJILLA_TPV.
+// - No se rotula F4: el programa no tiene esa tecla (solo F2 y F9).
+// - Las capas quedan por debajo de los diálogos del programa (z-index 40 < 50).
+// - Todo el CSS del modo caja cuelga de Órbita + caja.
 
 import fs from 'node:fs';
 import assert from 'node:assert/strict';
@@ -26,42 +28,63 @@ for (const [nombre, ruta] of [
   ['source-recovery/fuente-recuperado.js', 'source-recovery/fuente-recuperado.js'],
 ]) {
   const t = fs.readFileSync(ruta, 'utf8');
+  const tiene = (x, msg) => assert.ok(t.includes(x), `${nombre}: ${msg}`);
 
-  // 1. El plano de sala solo cambia de columna en modo caja + sala + Órbita,
-  //    y se pinta una sola vez por render (aquí o en la columna del ticket).
-  assert.ok(t.includes('const bloqueSalaCaja = modoCajaTpv && modoTPV !== "RAPIDA" && leerDisenoNavegacion() === "orbita" ? renderSalaA07() : null;'), `${nombre}: condición del bloque de sala`);
-  assert.ok(t.includes(', bloqueSalaCaja ? null : renderSalaA07(), renderRepartoProductosA08()'), `${nombre}: la columna del ticket no repite la sala`);
-  assert.equal((t.match(/renderSalaA07\(\)/g) || []).length, 3, `${nombre}: renderSalaA07 solo se define una vez y se llama en dos sitios excluyentes`);
-  const ini = t.indexOf('  function renderSalaA07() {');
-  const fin = t.indexOf('\n  function ', ini + 10);
-  assert.ok(ini > 0 && fin > ini, `${nombre}: no se encuentra renderSalaA07`);
-  assert.doesNotMatch(t.slice(ini, fin), /use(State|Effect|Ref|Memo|Callback)\(/, `${nombre}: renderSalaA07 no debe usar hooks para poder cambiar de sitio`);
+  // 1. Sala: solo cambia de sitio en modo caja + sala + Órbita, y una sola vez por render.
+  tiene('const bloqueSalaCaja = modoCajaTpv && modoTPV !== "RAPIDA" && leerDisenoNavegacion() === "orbita" ? renderSalaA07() : null;', 'condición del bloque de sala');
+  tiene('bloqueSalaCaja ? capaCaja("mesas", "Sala y mesas", bloqueSalaCaja) : null,', 'la sala va en la capa «Mesas»');
+  assert.equal((t.match(/renderSalaA07\(\)/g) || []).length, 3, `${nombre}: renderSalaA07 se define una vez y se llama en dos sitios excluyentes`);
 
-  // 2. Marcas de composición.
-  assert.ok(t.includes('createElement("div", { className: "tpv-layout", "data-tpv-modo": modoTPV, "data-tpv-columnas": bloqueSalaCaja ? "3" : "2" }, bloqueSalaCaja ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-sala-col" }, bloqueSalaCaja) : null,'), `${nombre}: rejilla del TPV con modo y columnas`);
-  for (const marca of ['"data-tpv-buscar": "1"', '"data-tpv-categorias": "1"', '"data-tpv-paginas": "1"', '"data-tpv-total": "1"', 'className: "mb-4 tpv-selector-modo"', 'className: "flex items-center justify-between mb-3 tpv-cabecera"', 'className: "tpv-raiz"']) {
-    assert.ok(t.includes(marca), `${nombre}: falta la marca ${marca}`);
+  // 2. Los render* de la cuenta siguen en el mismo orden, ahora dentro de capas.
+  tiene('capaCaja("cuenta", "Cuenta", renderCuentasAparcadasA06(), bloqueSalaCaja ? null : renderSalaA07(), renderRepartoProductosA08(), renderUnirCuentasA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09()), capaCaja("cobro", "Cobro", renderCobroF4())', 'paneles de la cuenta y cobro en sus capas, mismo orden');
+  tiene('capaCaja("modalidad", "Modalidad del pedido", lineasCarrito.length > 0 && renderSelectorModalidadA02())', 'modalidad en su capa');
+  tiene('capaCaja("ventas", "Ventas del d\\xEDa", renderHistorialVentas())', 'registro de ventas en su capa');
+  tiene('capaCaja("terminal", "Terminal de este navegador", local?.id && configEmpresa?.id', 'terminal en su capa');
+  for (const f of ['renderCuentasAparcadasA06', 'renderRepartoProductosA08', 'renderUnirCuentasA08', 'renderPedidoOperativoA05', 'renderDescuentoCuentaA09', 'renderCobroF4', 'renderHistorialVentas', 'renderSalaA07', 'renderSelectorModoTPV']) {
+    const ini = t.indexOf(`  function ${f}() {`);
+    const fin = t.indexOf('\n  function ', ini + 10);
+    assert.ok(ini > 0 && fin > ini, `${nombre}: no se encuentra ${f}`);
+    assert.doesNotMatch(t.slice(ini, fin), /use(State|Effect|Ref|Memo|Callback)\(/, `${nombre}: ${f} no debe usar hooks (se envuelve o cambia de sitio)`);
   }
 
-  // 3. El modo caja sigue gobernado por el mismo estado y el mismo botón.
-  assert.ok(t.includes('onClick: () => setModoCajaTpv(!modoCajaTpv) }, modoCajaTpv ? "Salir del modo caja" : "Modo caja")'), `${nombre}: el botón del modo caja no cambia`);
+  // 3. El envoltorio de capa no altera nada fuera del modo caja de Órbita.
+  tiene('const cajaOrbita = modoCajaTpv && leerDisenoNavegacion() === "orbita";', 'condición del modo caja de Órbita');
+  tiene('"data-activa": cajaOrbita ? "1" : void 0, "data-abierta": cajaOrbita && capaCajaOrbita === id ? "1" : void 0', 'la capa solo se activa en caja de Órbita');
+
+  // 4. Estado solo visual; Escape cierra la capa salvo que haya un diálogo abierto.
+  tiene('const [capaCajaOrbita, setCapaCajaOrbita] = (0, import_react4.useState)(null);', 'estado de capa');
+  tiene('if (evento.key !== "Escape" || document.querySelector(".la-ui-modal-backdrop")) return;', 'Escape respeta los diálogos');
+
+  // 5. Productos por página según el alto real, solo en modo caja de Órbita.
+  tiene('var FILAS_REJILLA_TPV = 4;', 'la paginación normal no cambia');
+  tiene('const porPaginaRejilla = Math.max(1, columnasRejilla * (modoCajaTpv && filasRejillaCaja ? filasRejillaCaja : FILAS_REJILLA_TPV));', 'filas según el alto solo en caja');
+  tiene('if (!modoCajaTpv || leerDisenoNavegacion() !== "orbita" || !el || typeof ResizeObserver !== "function") {', 'la medición solo en caja de Órbita');
+  tiene('ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : void 0', 'la rejilla recibe las filas');
+
+  // 6. Cobrar: botón nuevo que solo abre la capa de cobro existente; sin F4.
+  tiene('cajaOrbita && lineasCarrito.length === 0 ? import_react4.default.createElement("button", { type: "button", className: "tpv-caja-cobrar", onClick: () => setCapaCajaOrbita("cobro") }, "Cobrar") : null', 'Cobrar abre la capa de cobro');
+  assert.doesNotMatch(t, /tpv-caja-cobrar[^\n]{0,200}F4/, `${nombre}: no se rotula F4, el programa no tiene esa tecla`);
+
+  // 7. El botón del modo caja no cambia.
+  tiene('onClick: () => setModoCajaTpv(!modoCajaTpv) }, modoCajaTpv ? "Salir del modo caja" : "Modo caja")', 'botón del modo caja');
 }
 
 const css = fs.readFileSync('la-apariencia.css', 'utf8');
-const O = 'html[data-la-diseno="orbita"][data-tpv-caja="1"]';
-// 4. Pantalla completa: sin columna lateral, sin pestañas y sin barra inferior.
-assert.ok(css.includes(`${O} .la-orbita-shell { grid-template-columns: minmax(0, 1fr); }`), 'la rejilla del marco pierde la columna lateral');
-assert.ok(css.includes(`${O} :is(.la-orbita-sidebar, .la-orbita-pestanas, .la-orbita-bottom-nav) { display: none !important; }`), 'en caja no hay lateral, pestañas ni barra inferior');
-// 5. Opción 1 y opción 2.
-assert.ok(css.includes(`${O} .tpv-layout[data-tpv-modo="RAPIDA"] [data-tpv-categorias] {`), 'barra rápida: categorías en columna');
-assert.ok(css.includes(`${O} .tpv-layout[data-tpv-columnas="3"] > .tpv-sala-col {`), 'sala y mesas: mesas en la primera columna');
-assert.ok(css.includes(`${O} .tpv-layout[data-tpv-columnas="3"] > .tpv-main { grid-column: 3; grid-row: 1; }`), 'sala y mesas: catálogo a la derecha');
-// 6. En móvil el selector de modo no se pone en fila (no cabría).
-assert.match(css, /@media \(min-width: 640px\) \{\n  html\[data-la-diseno="orbita"\]\[data-tpv-caja="1"\] \.tpv-selector-modo \{ display: flex;/, 'el selector en fila solo desde 640 px');
-// 7. Todo el CSS nuevo del TPV en caja cuelga de Órbita + caja.
-const bloque = css.slice(css.indexOf('/* Modo caja de Órbita a pantalla completa'), css.indexOf('.la-orbita-sidebar {', css.indexOf('/* Modo caja de Órbita a pantalla completa')));
+const S = 'html[data-la-diseno="orbita"][data-tpv-caja="1"]';
+const O = `${S} #root`;
+const hay = (x, msg) => assert.ok(css.includes(x), msg);
+hay('.tpv-capa { display: contents; }', 'fuera del modo caja la capa no altera el diseño');
+hay(`${S} :is(.la-orbita-sidebar, .la-orbita-pestanas, .la-orbita-bottom-nav, .tpv-dock) { display: none !important; }`, 'pantalla completa');
+hay(`${O} main.la-orbita-main { height: 100dvh; max-height: 100dvh !important; overflow: hidden !important;`, 'la pantalla no se desplaza');
+hay(`grid-template-rows: repeat(var(--tpv-filas, 2), minmax(0, 1fr));`, 'filas de productos según el alto');
+hay(`grid-template-areas: "cab total" "aviso total" "lineas accion";`, 'banda de cuenta y cobro');
+hay(`${O} .tpv-capa[data-activa="1"] { display: none; }`, 'capas cerradas en caja');
+assert.match(css, /\.tpv-capa\[data-abierta="1"\] \{\n  display: flex; flex-direction: column; gap: 12px; position: fixed; inset: 0; z-index: 40;/, 'capa abierta a pantalla completa, por debajo de los diálogos (z-50)');
+hay('.tpv-side > .tpv-capa > *:not(.tpv-capa-cabecera) {', 'las tarjetas dentro de una capa conservan su estilo fuera del modo caja');
+const ini = css.indexOf('/* Modo caja de Órbita, «doble banda»');
+const bloque = css.slice(ini, css.indexOf('.la-orbita-sidebar {', ini));
 for (const linea of bloque.split('\n')) {
-  if (/^\s*html\[/.test(linea)) assert.ok(linea.trim().startsWith(O), `regla fuera de Órbita + caja: ${linea.trim().slice(0, 80)}`);
+  if (/^\s*html\[/.test(linea)) assert.ok(linea.trim().startsWith(S), `regla fuera de Órbita + caja: ${linea.trim().slice(0, 80)}`);
 }
 
 console.log('REDISENO_TPV_CAJA_ORBITA=OK');
