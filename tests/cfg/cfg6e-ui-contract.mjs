@@ -149,7 +149,13 @@ assert.match(g, /if \(resultado\?\.modalidadNoHabilitada\) await cargarModalidad
 assert.match(g, /modalidad: resultado\.modalidad \|\| null\s+\}\);/, "la confirmación guarda la modalidad");
 for (const [nombre, tx] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
   assert.equal(tx.split('"Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || "", confirmacion.modalidad ? " · Modalidad: " + (MODALIDADES_ETIQUETA_A02[confirmacion.modalidad] || confirmacion.modalidad) : ""').length - 1, 1, nombre + ": la confirmación dice la modalidad");
-  const i = tx.indexOf("lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro");
+  // 25/11/2026: el selector va dentro de capaCaja("modalidad", ...). Fuera del
+  // modo caja de Órbita ese envoltorio es display:contents, así que en
+  // pantalla sigue justo encima de «Guardar pedido»; en el modo caja de
+  // Órbita se abre desde el botón de la modalidad, en la banda de la cuenta.
+  // Que el envoltorio no altera el diseño fuera del modo caja lo fija
+  // tests/rediseno/tpv-caja-orbita-contract.mjs.
+  const i = tx.indexOf('capaCaja("modalidad", "Modalidad del pedido", lineasCarrito.length > 0 && renderSelectorModalidadA02()), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro');
   assert.ok(i > 0, nombre + ": el selector va justo encima de «Guardar pedido»");
   const a = tx.lastIndexOf('"data-error-venta": "1"', i);
   assert.ok(a > 0 && i - a < 400, nombre + ": el aviso de error de «Guardar pedido» está en el carrito, justo antes del selector (no solo dentro de la ventana desactivada)");
