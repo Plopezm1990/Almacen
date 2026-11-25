@@ -199,7 +199,7 @@ html[data-la-diseno] #root main[data-la-orbita-module="inventario"] [style*="#dc
    ------------------------------------------------------------------------- */
 .la-orbita-shell {
   --la-shell-width: 264px;
-  --la-shell-header-height: 120px;
+  --la-shell-header-height: 150px;
   position: relative;
   display: grid !important;
   grid-template-columns: var(--la-shell-width) minmax(0, 1fr);
@@ -346,7 +346,7 @@ html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-det
 .la-orbita-header-lower { justify-content: space-between; }
 .la-orbita-header-context, .la-orbita-header-actions { display: flex; align-items: center; gap: 8px; min-width: 0; }
 .la-orbita-brand { display: inline-flex; flex: 0 0 auto; align-items: center; }
-.la-orbita-brand-logo { display: block; width: 76px; height: 64px; object-fit: contain; }
+.la-orbita-brand-logo { display: block; width: 128px; height: 94px; object-fit: contain; }
 .la-orbita-header-search { display: flex; align-items: center; gap: 12px; width: clamp(190px, 30vw, 480px); min-width: 0; margin-inline-start: auto; padding-inline: 16px !important; border-radius: 999px !important; text-align: left; }
 .la-orbita-header-search-icon { font-size: 22px; line-height: 1; }
 .la-orbita-header-search-label { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 14px; font-weight: 500; }

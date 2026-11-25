@@ -659,7 +659,7 @@
     contextoBoton = contexto;
     contexto.addEventListener("click", abrirContexto);
     var marca = h("span", { class: "la-orbita-brand" }, [
-      h("img", { class: "la-orbita-brand-logo", src: "./la-suite-logo.svg", alt: "L&A Suite", width: "76", height: "64" })
+      h("img", { class: "la-orbita-brand-logo", src: "./la-suite-logo.svg", alt: "L&A Suite", width: "128", height: "94" })
     ]);
     var izquierda = h("div", { class: "la-orbita-header-context" }, [contexto]);
     var qa = h("span", { class: "la-orbita-qa", "data-la-orbita-qa": "", texto: "QA" });
