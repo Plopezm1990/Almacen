@@ -43,9 +43,14 @@ assert.match(source, /function entrarSinNube\(\)[\s\S]*__modoPruebasLocal = true
 assert.equal(localAccessBlock(source), localAccessBlock(recovery),
   'el acceso local debe conservar paridad entre fuente y recuperación');
 
-assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v85-20261125/);
-assert.match(index, /fuente\.js\?v=qa-orbita-home-v10-20261123/, 'fuente.js debe invalidar la caché tras alinear la composición de Inicio');
-assert.match(source, /itemPorId\("albaranes", "Albaranes"\)/, 'El menú móvil Órbita debe exponer Albaranes');
+assert.match(index, /la-apariencia\.css\?v=qa-orbita-shell-v86-20261125/);
+assert.match(index, /fuente\.js\?v=qa-orbita-home-v11-20261125/, 'fuente.js debe invalidar la caché tras alinear la composición de Inicio');
+// 25/11/2026: el menú Más del móvil ya no lleva una lista fija de Compras;
+// enseña «En <área>» con las pestañas de AREAS_ORBITA (tabla de
+// equivalencias aprobada). Albaranes sigue expuesto: está en la tabla y el
+// menú móvil construye sus entradas con itemPorId(id, etiqueta).
+assert.match(source, /\["albaranes", "Albaranes"\]/, 'El menú móvil Órbita debe exponer Albaranes');
+assert.match(source, /: itemPorId\(id, etiqueta\)\)\.filter\(Boolean\);/, 'El menú móvil Órbita construye sus entradas desde AREAS_ORBITA');
 assert.match(index, /data-la-diseno="orbita"/, 'el arranque debe fijar Órbita antes del primer render');
 assert.match(appearance, /return aplicar\(empresa \|\| \{ diseno: "orbita" \}, empresa \? "empresa" : "base"\)/,
   'la ausencia de configuración de empresa debe conservar Órbita como fallback visual');

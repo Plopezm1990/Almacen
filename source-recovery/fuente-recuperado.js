@@ -3830,6 +3830,13 @@ function GestionAlmacen() {
     return () => { delete window.__laPuenteRediseno; };
   });
   const [saltoDevolucionProveedor, setSaltoDevolucionProveedor] = (0, import_react4.useState)(0);
+  /* Órbita: Devoluciones aparece en dos áreas (clientes en Caja y
+     fiscalidad, proveedor en Compras). Solo se recuerda por dónde se entró
+     para marcar el área correcta; no cambia la pantalla ni sus datos. */
+  const [origenDevolucionOrbita, setOrigenDevolucionOrbita] = (0, import_react4.useState)("cliente");
+  (0, import_react4.useEffect)(() => {
+    if (tab !== "devoluciones") setOrigenDevolucionOrbita("cliente");
+  }, [tab]);
   const [temaOscuro, setTemaOscuro] = (0, import_react4.useState)(false);
   const [modoEmpleado, setModoEmpleado] = (0, import_react4.useState)(false);
   const [miPerfil, setMiPerfil] = (0, import_react4.useState)(null);
@@ -6237,6 +6244,7 @@ function GestionAlmacen() {
   const irADevolucionProveedor = () => {
     if (!cambiarTabPM15("devoluciones")) return false;
     setSaltoDevolucionProveedor((n) => n + 1);
+    setOrigenDevolucionOrbita("proveedor");
     return true;
   };
   const pestanasFijasMovil = pick(TAB_PRIORITIES_MOVIL[rolNavegacionMovil] || ["dashboard"]);
@@ -6445,9 +6453,10 @@ function GestionAlmacen() {
       miPerfil,
       contextoActivoPM15,
       mostrarEnlaceDevolucionProveedor,
-      irADevolucionProveedor
+      irADevolucionProveedor,
+      origenDevolucion: origenDevolucionOrbita
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 min-w-0 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, disenoNavegacion === "rumbo" && (!window.__nubeActiva || miPerfil) && /* @__PURE__ */ import_react4.default.createElement(BuscadorRumbo, { grupos: gruposBase, tab, ambito: ambitoRumbo, puedeNavegar: puedeNavegarRediseno, navegar: navegarRediseno }), contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("main", { className: "flex-1 min-w-0 p-4 md:p-7 overflow-y-auto", style: { maxHeight: "900px" } }, disenoNavegacion === "orbita" && /* @__PURE__ */ import_react4.default.createElement(PestanasAreaOrbita, { grupos: GRUPOS, tab, setTab: cambiarTabPM15, origenDevolucion: origenDevolucionOrbita, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor }), disenoNavegacion === "rumbo" && (!window.__nubeActiva || miPerfil) && /* @__PURE__ */ import_react4.default.createElement(BuscadorRumbo, { grupos: gruposBase, tab, ambito: ambitoRumbo, puedeNavegar: puedeNavegarRediseno, navegar: navegarRediseno }), contenido), /* @__PURE__ */ import_react4.default.createElement(NavInferior, { tab, setTab: cambiarTabPM15, grupos: GRUPOS, pestanasFijas: pestanasFijasMovil, mostrarEnlaceDevolucionProveedor, irADevolucionProveedor, origenDevolucion: origenDevolucionOrbita })), showBackupView && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowBackupView(false), title: "Tu respaldo" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-2", style: { color: C2.ink } }, 'Copia este texto y gu\xE1rdalo en alg\xFAn lugar seguro (notas, correo, Google Drive). Para restaurarlo m\xE1s adelante, p\xE9galo en "Restaurar respaldo".'), /* @__PURE__ */ import_react4.default.createElement(
     "textarea",
     {
       readOnly: true,
@@ -16475,25 +16484,47 @@ function BotonModoEmpleado({ modoEmpleado, salirModoEmpleado, empleados = [], us
 function leerDisenoNavegacion() {
   return typeof document === "undefined" ? null : document.documentElement.getAttribute("data-la-diseno");
 }
+/* Órbita (propuesta 7) navega en dos niveles: el lateral enseña solo las
+   diez áreas y, sobre el contenido, una fila de pestañas con las pantallas
+   del área activa (en móvil, la sección «En <área>» del menú Más). Esta
+   tabla es la única fuente de esa organización: equivalencias aprobadas el
+   25/11/2026 (docs/rediseno/EQUIVALENCIAS_PESTANAS_ORBITA_2026-11-25.md).
+   Cada pestaña apunta a un destino real del menú (mismo id, mismo permiso,
+   mismo cambio de pantalla); el texto es el de la maqueta y solo se usa en
+   Órbita. "devolucion_proveedor" es la entrada que el programa ya tenía
+   (irADevolucionProveedor), no una pantalla nueva. */
+const AREAS_ORBITA = [
+  { id: "inicio", titulo: "Inicio", destino: "dashboard", pestanas: [["dashboard", "Panel general"], ["direccion", "Panel de direcci\xF3n"], ["buscar", "B\xFAsqueda global"]] },
+  { id: "servicio", titulo: "Servicio", destino: "venta", pestanas: [["venta", "Punto de venta"], ["cocina", "Cocina y comandas"], ["encargos", "Encargos"], ["clientes", "Clientes"]] },
+  { id: "caja_fiscalidad", titulo: "Caja y fiscalidad", destino: "caja", pestanas: [["caja", "Arqueo de caja"], ["devoluciones", "Devoluciones de clientes"], ["libroiva", "Libro de IVA"]] },
+  { id: "compras", titulo: "Compras", destino: "pedidos", pestanas: [["proveedores", "Proveedores"], ["pedidos", "Pedidos a proveedor"], ["recepcion", "Recepci\xF3n de mercanc\xEDa"], ["albaranes", "Albaranes"], ["facturas", "Facturas de compra"], ["devolucion_proveedor", "Devoluciones a proveedor"], ["pagos", "Cuentas por pagar"]] },
+  { id: "inventario", titulo: "Inventario", destino: "resumen_almacen", pestanas: [["resumen_almacen", "Resumen de almac\xE9n"], ["productos", "Productos"], ["historial_producto", "Historial de producto"], ["conteo", "Inventario ciego"], ["saldo", "Saldo de almac\xE9n"], ["mapa", "Mapa de almac\xE9n"], ["traspasos", "Traspasos de stock"], ["diagnostico", "Reconciliaci\xF3n de stock"], ["etiquetas", "Etiquetas de producto"], ["fichas", "Fichas de coste y recetas"], ["produccion", "Producci\xF3n"], ["mermas", "Mermas"]] },
+  { id: "equipo", titulo: "Equipo", destino: "personal", pestanas: [["personal", "Personal"], ["fichaje", "Registro horario"], ["turnos", "Cuadrante de turnos"], ["nominas", "Coste de personal"]] },
+  { id: "calidad", titulo: "Calidad", destino: "appcc", pestanas: [["appcc", "Control sanitario APPCC"], ["aceite", "Freidoras y aceite"]] },
+  { id: "informes", titulo: "Informes", destino: "resultados", pestanas: [["resultados", "Resultados por periodo"], ["reportes", "Reportes y rotaci\xF3n"], ["tesoreria", "Tesorer\xEDa"], ["estacionalidad", "Estacionalidad"]] },
+  { id: "organizacion", titulo: "Organizaci\xF3n", destino: "configuracion", pestanas: [["configuracion", "Configuraci\xF3n del local"], ["locales", "Locales de la empresa"], ["descuentos", "Descuentos y cortes\xEDas"]] },
+  { id: "sistema", titulo: "Sistema", destino: "auditoria", pestanas: [["auditoria", "Auditor\xEDa"], ["respaldos", "Respaldos y puntos guardados"], ["notificaciones", "Notificaciones"], ["errores_sistema", "Errores del sistema"]] }
+];
+function areaOrbitaDeTab(tab, origenDevolucion = "cliente") {
+  if (tab === "devoluciones" && origenDevolucion === "proveedor") return AREAS_ORBITA.find((area) => area.id === "compras");
+  return AREAS_ORBITA.find((area) => area.pestanas.some(([id]) => id === tab)) || null;
+}
+function agruparNavegacionOrbita(grupos) {
+  const todos = grupos.flatMap((grupo) => grupo.items || []);
+  const usados = new Set();
+  const areas = AREAS_ORBITA.map((area) => {
+    const items = area.pestanas.map(([id]) => todos.find((item) => item.id === id)).filter(Boolean);
+    items.forEach((item) => usados.add(item.id));
+    return { titulo: area.id === "inicio" ? null : area.titulo, areaOrbita: area.id, items, devolucionProveedor: area.id === "compras" && grupos.some((grupo) => grupo.devolucionProveedor) };
+  });
+  /* Ningún destino se pierde: si el programa añade una pantalla que aún no
+     está en la tabla, aparece aparte en vez de desaparecer. */
+  const sinArea = todos.filter((item) => !usados.has(item.id));
+  return sinArea.length ? areas.concat([{ titulo: "Otros", items: sinArea }]) : areas;
+}
 function agruparNavegacionRediseno(grupos, diseno) {
+  if (diseno === "orbita") return agruparNavegacionOrbita(grupos);
   const distribucion = {
-    /* Órbita sigue la misma arquitectura de áreas que la maqueta: el primer
-       nivel responde a cómo se trabaja (servicio, caja, compras, inventario
-       y equipo), no a la procedencia histórica de cada componente. Los ids y
-       los handlers siguen siendo los del producto real; solo cambia el
-       agrupador que se presenta en el marco visual. */
-    orbita: [
-      [null, ["inicio"]],
-      ["Servicio", ["ventas"]],
-      ["Caja y fiscalidad", ["caja_fiscalidad"]],
-      ["Compras", ["compras"]],
-      ["Inventario", ["almacen", "produccion"]],
-      ["Equipo", ["personal"]],
-      ["Calidad", ["calidad"]],
-      ["Informes", ["informes"]],
-      ["Organización", ["organizacion"]],
-      ["Sistema", ["sistema"]]
-    ],
     claro: [
       ["Inicio", ["inicio"]],
       ["Servicio", ["ventas"]],
@@ -16508,24 +16539,7 @@ function agruparNavegacionRediseno(grupos, diseno) {
       ["Control", ["finanzas", "calidad", "sistema"]]
     ]
   };
-  /* La maqueta separa fiscalidad/informes y organización/sistema. Los grupos
-     históricos del producto no se mutan: para Órbita se crean vistas de
-     presentación que reutilizan exactamente los mismos items y handlers. */
-  const gruposParaAgrupar = diseno === "orbita" ? grupos.flatMap((grupo) => {
-    if (grupo.id === "finanzas") {
-      return [
-        { ...grupo, id: "caja_fiscalidad", titulo: "Caja y fiscalidad", items: grupo.items.filter((item) => ["pagos", "libroiva", "caja", "tesoreria"].includes(item.id)) },
-        { ...grupo, id: "informes", titulo: "Informes", items: grupo.items.filter((item) => ["resultados", "reportes", "estacionalidad"].includes(item.id)) }
-      ];
-    }
-    if (grupo.id === "sistema") {
-      return [
-        { ...grupo, id: "organizacion", titulo: "Organización", items: grupo.items.filter((item) => ["locales", "configuracion"].includes(item.id)) },
-        { ...grupo, id: "sistema", titulo: "Sistema", items: grupo.items.filter((item) => ["auditoria", "respaldos", "notificaciones", "errores_sistema"].includes(item.id)) }
-      ];
-    }
-    return [grupo];
-  }) : grupos;
+  const gruposParaAgrupar = grupos;
   const definicion = distribucion[diseno] || null;
   if (!definicion) return grupos;
   const usados = new Set(definicion.flatMap(([, ids]) => ids));
@@ -16743,12 +16757,34 @@ function BuscadorRumbo({ grupos, tab, ambito, puedeNavegar, navegar }) {
     )
   );
 }
+function PestanasAreaOrbita({ grupos, tab, setTab, origenDevolucion = "cliente", mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor }) {
+  /* Fila de pestañas de Órbita (solo ordenador; en móvil va en el menú
+     Más). Usa los mismos destinos ya filtrados por permiso (grupos) y el
+     mismo cambio de pantalla protegido (cambiarTabPM15). Si el rol solo
+     puede abrir una pantalla del área, no se pinta fila. */
+  const h = import_react4.default.createElement;
+  const area = areaOrbitaDeTab(tab, origenDevolucion);
+  if (!area) return null;
+  const permitidos = new Set(grupos.flatMap((grupo) => (grupo.items || []).map((item) => item.id)));
+  const pestanas = area.pestanas.filter(([id]) => id === "devolucion_proveedor" ? mostrarEnlaceDevolucionProveedor : permitidos.has(id));
+  if (pestanas.length < 2) return null;
+  const activa = tab === "devoluciones" && origenDevolucion === "proveedor" ? "devolucion_proveedor" : tab;
+  return h("nav", { className: "la-orbita-pestanas hidden md:flex", "aria-label": `Pantallas de ${area.titulo}`, "data-la-orbita-pestanas": area.id },
+    pestanas.map(([id, etiqueta]) => h("button", {
+      key: id,
+      type: "button",
+      className: "la-orbita-pestana",
+      "aria-current": id === activa ? "page" : void 0,
+      onClick: () => id === "devolucion_proveedor" ? irADevolucionProveedor() : setTab(id)
+    }, etiqueta)));
+}
 function SidebarGrupos(props) {
   if (props.diseno === "claro") return import_react4.default.createElement(CabeceraClaro, props);
-  const { grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "", mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor } = props;
+  const { grupos, tab, setTab, temaOscuro, setTemaOscuro, modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil, contextoActivoPM15 = "", mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor, origenDevolucion = "cliente" } = props;
+  const devolucionProveedorActiva = tab === "devoluciones" && (props.diseno !== "orbita" || origenDevolucion === "proveedor");
   return /* @__PURE__ */ import_react4.default.createElement("aside", { style: { background: C2.chrome, color: "#fff" }, className: "hidden md:flex md:w-64 shrink-0 p-4 md:p-5 md:flex-col gap-1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "rounded-xl px-3 py-3.5 mb-2.5", style: { background: "rgba(184,139,69,0.07)", border: "1px solid rgba(184,139,69,0.24)" } }, /* @__PURE__ */ import_react4.default.createElement("img", { src: LOGO_PROYECTO, alt: "", style: { width: "100%", height: "auto", display: "block" } })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] tracking-widest uppercase mb-3", style: { color: "#9CB6A9" } }, LEMA_PROYECTO), contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-3", style: { color: "#E2D3B8" } }, contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-1.5 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }), /* @__PURE__ */ import_react4.default.createElement(BotonSeguridadCuenta, null), /* @__PURE__ */ import_react4.default.createElement(BotonModoEmpleado, { modoEmpleado, salirModoEmpleado, empleados, usuarioActivoId, entrarComoEmpleado, pinPropietario, miPerfil }))), grupos.map((g2, gi) => (g2.items || []).length === 0 ? null : /* @__PURE__ */ import_react4.default.createElement("div", { key: gi, className: "mb-1" }, g2.titulo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] font-semibold uppercase tracking-wide mt-3 mb-1 px-3", style: { color: "#7E9186" } }, g2.titulo), g2.items.map((it2) => {
     const Icon2 = it2.icon;
-    const active = tab === it2.id;
+    const active = tab === it2.id && !(props.diseno === "orbita" && it2.id === "devoluciones" && origenDevolucion === "proveedor");
     return /* @__PURE__ */ import_react4.default.createElement(
       "button",
       {
@@ -16777,8 +16813,8 @@ function SidebarGrupos(props) {
       onClick: irADevolucionProveedor,
       className: "flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left w-full",
       style: {
-        background: tab === "devoluciones" ? "rgba(255,255,255,0.12)" : "transparent",
-        color: tab === "devoluciones" ? "#fff" : "#B9C7C0"
+        background: devolucionProveedorActiva ? "rgba(255,255,255,0.12)" : "transparent",
+        color: devolucionProveedorActiva ? "#fff" : "#B9C7C0"
       }
     },
     /* @__PURE__ */ import_react4.default.createElement(ArrowLeftRight, { size: 17 }),
@@ -16803,9 +16839,8 @@ function BotonItemSheet({ it: it2, tab, onPick }) {
     !!it2.badge && /* @__PURE__ */ import_react4.default.createElement("span", { className: "ml-auto text-[13px] font-semibold px-2 py-1 rounded-full mono", style: { background: it2.badgeColor || C2.accentFill, color: it2.badgeTextColor || C2.onAccent, boxShadow: `0 0 0 1px ${C2.badgeRing}` } }, it2.badge)
   );
 }
-function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor, diseno = (typeof document !== "undefined" && document.querySelector("[data-la-contenedor]")?.getAttribute("data-la-contenedor")) || "" }) {
+function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevolucionProveedor = false, irADevolucionProveedor, origenDevolucion = "cliente", diseno = (typeof document !== "undefined" && document.querySelector("[data-la-contenedor]")?.getAttribute("data-la-contenedor")) || "" }) {
   const [abierto, setAbierto] = (0, import_react4.useState)(false);
-  const [enCompras, setEnCompras] = (0, import_react4.useState)(false);
   const idsFijos = new Set(pestanasFijas.map((it2) => it2.id));
   const ETIQUETA_PESTANA = { dashboard: "Inicio", venta: "Sala", caja: "Caja", fichaje: "Fichaje" };
   const otros = grupos.map((g2) => ({ ...g2, items: g2.items.filter((it2) => !idsFijos.has(it2.id)) })).filter((g2) => g2.items.length > 0 || g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor);
@@ -16815,30 +16850,27 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
     const item = todosLosItems.find((it2) => it2.id === id);
     return item ? { ...item, label: label || item.label } : null;
   };
-  const abrirRutaDemo = (id) => {
-    const enlace = Array.prototype.slice.call(document.querySelectorAll("a")).find((a22) => String(a22.getAttribute("href") || "").includes("#/screen/" + id));
-    if (enlace) { enlace.click(); return; }
-    const propuesta = new URLSearchParams(location.hash).get("propuesta") || new URLSearchParams(location.search).get("propuesta") || "7";
-    location.hash = "#/screen/" + id + "?propuesta=" + encodeURIComponent(propuesta);
-  };
-  const itemInicioEmpleado = { id: "inicio-empleado", label: "Inicio del empleado", icon: UserRound };
-  const itemIndice = { id: "indice", label: "Índice de pantallas", icon: Files };
-  const itemOpcionesDemo = { id: "opciones-demo", label: "Opciones de demo", icon: Cog };
-  const grupoCompras = { titulo: "Compras", items: [itemPorId("proveedores", "Proveedores"), itemPorId("pedidos", "Pedidos"), itemPorId("recepcion", "Recepción"), itemPorId("albaranes", "Albaranes"), itemPorId("facturas", "Facturas")].filter(Boolean), devolucionProveedor: true };
+  /* Órbita móvil: como la maqueta, sin fila de pestañas. El menú Más
+     enseña «En <área>» con las pantallas del área activa y «Módulos»
+     con el destino de cada área (el primero que el rol pueda abrir). */
+  const pestanasDeAreaOrbita = (area) => area.pestanas.map(([id, etiqueta]) => id === "devolucion_proveedor"
+    ? (mostrarEnlaceDevolucionProveedor ? { id: "devolucion-proveedor", label: etiqueta, icon: ArrowLeftRight } : null)
+    : itemPorId(id, etiqueta)).filter(Boolean);
+  const areaActualOrbita = diseno === "orbita" ? (areaOrbitaDeTab(tab, origenDevolucion) || AREAS_ORBITA[0]) : null;
   const orbitaMenu = diseno === "orbita" ? [
-    { titulo: "En Inicio", items: [itemPorId("dashboard", "Panel general"), itemInicioEmpleado, itemPorId("direccion", "Panel de dirección"), itemPorId("buscar", "Búsqueda global")].filter(Boolean) },
-    { titulo: "Módulos", items: [itemPorId("dashboard", "Inicio"), itemPorId("venta", "Servicio"), itemPorId("caja", "Caja y fiscalidad"), grupoCompras.items.length || mostrarEnlaceDevolucionProveedor ? { id: "menu-compras", label: "Compras", icon: ShoppingBag } : null, itemPorId("resumen_almacen", "Inventario"), itemPorId("personal", "Equipo"), itemPorId("appcc", "Calidad"), itemPorId("resultados", "Informes"), itemPorId("locales", "Organización"), itemPorId("configuracion", "Sistema")].filter(Boolean) }
-  ] : otros;
+    { titulo: "En " + areaActualOrbita.titulo, items: pestanasDeAreaOrbita(areaActualOrbita) },
+    { titulo: "M\xF3dulos", items: AREAS_ORBITA.map((area) => {
+      const disponibles = pestanasDeAreaOrbita(area);
+      const destino = disponibles.find((it2) => it2.id === area.destino) || disponibles[0];
+      return destino ? { ...destino, label: area.titulo } : null;
+    }).filter(Boolean) }
+  ].filter((g2) => g2.items.length > 0) : otros;
   const accionesHerramientas = diseno === "orbita" ? [
     typeof window.LAApariencia?.abrirEditor === "function" ? { id: "apariencia", label: "Apariencia", icon: Cog, onPick: () => { setAbierto(false); requestAnimationFrame(() => window.LAApariencia.abrirEditor()); } } : null,
-    { id: "buscar-suite", label: "Buscar en la suite", icon: Search, onPick: () => { setAbierto(false); document.querySelector('[aria-label="Buscar (Ctrl K)"]')?.click(); } },
-    { id: "buscar-registros", label: "Buscar registros", icon: Search, onPick: () => { setAbierto(false); if (setTab("buscar")) return; abrirRutaDemo("buscar"); } },
-    { ...itemIndice, onPick: () => { setAbierto(false); abrirRutaDemo("sis-14"); } },
-    { ...itemOpcionesDemo, onPick: () => { setAbierto(false); abrirRutaDemo("sis-15"); } }
+    { id: "buscar-suite", label: "Buscar en la suite", icon: Search, onPick: () => { setAbierto(false); document.querySelector('[aria-label="Buscar (Ctrl K)"]')?.click(); } }
   ].filter(Boolean) : [];
   const renderOrbitaGrupo = (g2, gi) => import_react4.default.createElement("div", { key: gi, className: "la-orbita-more-group mb-3" }, g2.titulo && import_react4.default.createElement("div", { className: "la-orbita-more-title text-[11px] font-semibold uppercase tracking-wide mb-1", style: { color: C2.inkSoft } }, g2.titulo), import_react4.default.createElement("div", { className: "la-orbita-more-grid" }, g2.items.map((it2) => import_react4.default.createElement(BotonItemSheet, { key: it2.id + "-" + g2.titulo, it: it2, tab, onPick: () => {
-    if (it2.id === "menu-compras") { setEnCompras(true); return; }
-    if (it2.id === "inicio-empleado") { setAbierto(false); abrirRutaDemo("ini-02"); return; }
+    if (it2.id === "devolucion-proveedor") { if (irADevolucionProveedor()) setAbierto(false); return; }
     if (setTab(it2.id)) setAbierto(false);
   } }))), g2.devolucionProveedor && mostrarEnlaceDevolucionProveedor && import_react4.default.createElement("button", { onClick: () => { if (irADevolucionProveedor()) setAbierto(false); }, className: "w-full flex items-center gap-2.5 px-3 py-2.5 rounded-lg text-left mb-1", style: { background: tab === "devoluciones" ? C2.accentSoft : C2.bg, color: C2.ink } }, import_react4.default.createElement(ArrowLeftRight, { size: 17, color: tab === "devoluciones" ? C2.accent : C2.inkSoft }), import_react4.default.createElement("span", { className: "text-[13px] font-medium" }, "Devoluciones a proveedor")));
   const renderHerramientas = () => import_react4.default.createElement("div", { className: "la-orbita-more-group mb-3" }, [
@@ -16858,15 +16890,11 @@ function NavInferior({ tab, setTab, grupos, pestanasFijas, mostrarEnlaceDevoluci
     );
   }), /* @__PURE__ */ import_react4.default.createElement(
     "button",
-    { onClick: () => { setEnCompras(false); setAbierto(true); }, className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
+    { onClick: () => setAbierto(true), className: "flex-1 flex flex-col items-center gap-0.5 py-2 relative", style: { minHeight: 48 } },
     /* @__PURE__ */ import_react4.default.createElement(Ellipsis, { size: 20, color: C2.inkSoft }),
     /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[10.5px] font-medium", style: { color: C2.inkSoft } }, "M\xE1s"),
     hayBadgeEnOtros && /* @__PURE__ */ import_react4.default.createElement("span", { className: "absolute top-1.5 right-[28%] w-2 h-2 rounded-full", style: { background: C2.red } })
-  )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, diseno === "orbita" && enCompras
-    ? import_react4.default.createElement(import_react4.default.Fragment, null,
-      import_react4.default.createElement("button", { type: "button", autoFocus: true, className: "la-volver-modulos", onClick: () => setEnCompras(false) }, "← Volver a módulos"),
-      renderOrbitaGrupo(grupoCompras, "compras"))
-    : orbitaMenu.map(renderOrbitaGrupo), !enCompras && orbitaMenu.length > 0 && renderHerramientas()));
+  )), abierto && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setAbierto(false), title: "M\xE1s" }, orbitaMenu.map(renderOrbitaGrupo), accionesHerramientas.length > 0 && renderHerramientas()));
 }
 function Card({ children, className = "", style = {} }) {
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: `la-ui-card rounded-xl p-4 ${className}`, style: { background: C2.surface, border: `1px solid ${C2.line}`, ...style } }, children);

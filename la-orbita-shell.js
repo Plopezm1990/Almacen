@@ -283,14 +283,14 @@
   /* La maqueta de Órbita muestra una navegación de primer nivel corta y
      legible. El producto histórico, en cambio, expone todas sus pantallas
      hijas en el lateral. No sustituimos esos botones ni sus handlers: los
-     agrupamos visualmente y dejamos el detalle completo detrás de «Más
-     módulos», de modo que ninguna ruta ni permiso desaparece. */
+     agrupamos visualmente y el detalle de cada área se abre desde la fila
+     de pestañas sobre el contenido (PestanasAreaOrbita, fuente.js), de
+     modo que ninguna ruta ni permiso desaparece. */
   function sincronizarSidebarCompacto(sidebar) {
     if (!sidebar || !sidebar.classList.contains("la-orbita-sidebar-compacta")) return;
     var secciones = Array.prototype.filter.call(sidebar.children, function (nodo) {
       return nodo && nodo.nodeType === 1 &&
-        !nodo.hasAttribute("data-la-orbita-zone-label") &&
-        !nodo.hasAttribute("data-la-orbita-more-toggle");
+        !nodo.hasAttribute("data-la-orbita-zone-label");
     });
     Array.prototype.forEach.call(secciones, function (seccion) {
       var botones = Array.prototype.slice.call(seccion.querySelectorAll(":scope > button"));
@@ -321,12 +321,16 @@
     var grupos = [
       { match: /^servicio$/i, label: "Servicio", destino: /tpv/i },
       { match: /caja y fiscalidad/i, label: "Caja y fiscalidad", destino: /arqueo/i },
-      { match: /^compras$/i, label: "Compras", destino: /proveedores/i },
+      /* Destino de cada área = el de la maqueta (LA.menu); si el rol no
+         puede abrirlo, el primer botón del área, que ya sigue el orden de
+         las pestañas (AREAS_ORBITA en fuente.js). Pedidos puede llevar
+         el contador de pendientes pegado al texto («Pedidos2»). */
+      { match: /^compras$/i, label: "Compras", destino: /^pedidos(\d|\s|$)/i },
       { match: /^inventario$/i, label: "Inventario", destino: /resumen de almac[eé]n/i },
       { match: /^equipo$/i, label: "Equipo", destino: /^personal$/i },
       { match: /^calidad$/i, label: "Calidad", destino: /control sanitario/i },
       { match: /^informes$/i, label: "Informes", destino: /^resultados$/i },
-      { match: /^organizaci[oó]n$/i, label: "Organización", destino: /^locales$/i },
+      { match: /^organizaci[oó]n$/i, label: "Organización", destino: /^configuraci[oó]n$/i },
       { match: /^sistema$/i, label: "Sistema", destino: /^auditor[ií]a$/i }
     ];
 
@@ -360,7 +364,9 @@
         titulo.setAttribute("data-la-orbita-sidebar-title", grupo.label);
       }
       var botones = Array.prototype.slice.call(seccion.querySelectorAll(":scope > button"));
-      var resumen = botones.find(function (button) { return grupo.destino.test(textoVisible(button)); }) || botones[0];
+      /* El botón resumen ya se renombró con el área en una pasada anterior:
+         se compara con su texto original para no perder el destino. */
+      var resumen = botones.find(function (button) { return grupo.destino.test(button.dataset.laOrbitaOriginalLabel || textoVisible(button)); }) || botones[0];
       botones.forEach(function (button) {
         button.classList.add("la-orbita-sidebar-detail");
         button.removeAttribute("data-la-orbita-sidebar-summary");
@@ -376,25 +382,9 @@
       resumen.setAttribute("title", grupo.label);
     });
 
-    var toggle = sidebar.querySelector("[data-la-orbita-more-toggle]");
-    if (!toggle) {
-      toggle = h("button", {
-        type: "button",
-        class: "la-orbita-sidebar-more",
-        "data-la-orbita-more-toggle": "",
-        "aria-expanded": "false",
-        "aria-label": "Mostrar todos los módulos",
-        texto: "☷  Más módulos"
-      });
-      toggle.addEventListener("click", function () {
-        var abierto = sidebar.classList.toggle("la-orbita-sidebar-mostrando-detalle");
-        toggle.setAttribute("aria-expanded", String(abierto));
-        toggle.textContent = abierto ? "×  Menos módulos" : "☷  Más módulos";
-        toggle.setAttribute("aria-label", abierto ? "Ocultar módulos secundarios" : "Mostrar todos los módulos");
-      });
-      sidebar.appendChild(toggle);
-    }
-
+    /* 25/11/2026: sin «Más módulos». Las pantallas de cada área se abren
+       desde la fila de pestañas que el programa pinta sobre el contenido
+       (PestanasAreaOrbita, fuente.js), igual que en la maqueta. */
     sincronizarSidebarCompacto(sidebar);
   }
 

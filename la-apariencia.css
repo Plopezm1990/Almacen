@@ -309,12 +309,12 @@ html[data-la-diseno] .la-orbita-sidebar [style*="rgba(184, 139, 69, 0.07)"] {
   font-size: 11px !important; line-height: 1.25 !important;
 }
 .la-orbita-sidebar-compacta .la-orbita-sidebar-title { display: none !important; }
+/* 25/11/2026: el detalle de cada área ya no se despliega en el lateral
+   («Más módulos» retirado). Las pantallas del área están en la fila de
+   pestañas sobre el contenido (.la-orbita-pestanas), como en la maqueta. */
 html[data-la-diseno] .la-orbita-sidebar-compacta .la-orbita-sidebar-detail { display: none !important; }
-html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-detalle .la-orbita-sidebar-title { display: block !important; }
-html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-detalle .la-orbita-sidebar-detail { display: flex !important; }
 .la-orbita-sidebar-compacta .la-orbita-sidebar-section { margin-block: 2px !important; }
-.la-orbita-sidebar-compacta .la-orbita-sidebar-summary,
-.la-orbita-sidebar-compacta .la-orbita-sidebar-more {
+.la-orbita-sidebar-compacta .la-orbita-sidebar-summary {
   display: flex !important; align-items: center; gap: 10px; width: 100%; min-height: 44px;
   padding: 9px 10px; border: 0; border-radius: 9px; text-align: left; cursor: pointer;
 }
@@ -324,15 +324,27 @@ html[data-la-diseno] .la-orbita-sidebar-compacta.la-orbita-sidebar-mostrando-det
   background: color-mix(in srgb, var(--c-on-chrome, #fff) 13%, transparent) !important;
   color: var(--c-on-chrome, #fff) !important;
 }
-.la-orbita-sidebar-compacta .la-orbita-sidebar-more {
-  margin-top: 7px; border: 1px solid color-mix(in srgb, var(--c-on-chrome, #fff) 16%, transparent);
-  background: color-mix(in srgb, var(--c-on-chrome, #fff) 4%, transparent);
-  color: color-mix(in srgb, var(--c-on-chrome, #fff) 82%, transparent);
-  font: 600 12px/1.2 var(--la-font);
+/* Fila de pestañas del área activa (PestanasAreaOrbita en fuente.js).
+   Medidas tomadas de la maqueta (.module-nav, propuesta 7, 1440 px):
+   13 px / 650, alto 44 px, separación 4 px 13 px, subrayado de 2 px en el
+   acento y línea inferior en el color de borde. La visibilidad la decide
+   «hidden md:flex»: aquí no se toca display. */
+html[data-la-diseno="orbita"] .la-orbita-pestanas {
+  flex-wrap: wrap; align-items: center; gap: 4px 13px;
+  margin: 0 0 18px; border-bottom: 1px solid var(--c-line, #343941);
 }
-.la-orbita-sidebar-compacta .la-orbita-sidebar-more { margin-top: auto; }
-.la-orbita-sidebar-compacta .la-orbita-sidebar-more:hover { border-color: var(--c-accent-fill); color: var(--c-on-chrome, #fff); }
-.la-orbita-sidebar-compacta.la-orbita-colapsada .la-orbita-sidebar-more { justify-content: center; padding-inline: 8px; font-size: 0; }
+html[data-la-diseno="orbita"] .la-orbita-pestana {
+  display: inline-flex; align-items: center; min-height: 44px; padding: 3px 2px;
+  border: 0; border-bottom: 2px solid transparent; background: transparent;
+  color: var(--c-ink, #F1F3F6); font: 650 13px/1.2 var(--la-font); cursor: pointer;
+}
+html[data-la-diseno="orbita"] .la-orbita-pestana:hover,
+html[data-la-diseno="orbita"] .la-orbita-pestana[aria-current="page"] {
+  color: #FFD3CB; border-bottom-color: var(--c-accent-fill, #FF4B32);
+}
+html[data-la-diseno="orbita"] .la-orbita-pestana:focus-visible {
+  outline: 2px solid var(--c-accent-fill, #FF4B32); outline-offset: 2px; border-radius: 4px;
+}
 .la-orbita-header {
   grid-column: 2; grid-row: 1;
   display: grid; grid-template-rows: minmax(0, 1fr) 52px;
