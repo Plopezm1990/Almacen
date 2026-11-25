@@ -242,7 +242,7 @@
             item.removeAttribute("aria-current");
           });
           button.setAttribute("aria-current", "page");
-          sincronizarSidebarCompacto(sidebar);
+          sincronizarSidebarCompacto(sidebar, button);
           marcarSuperficie(marco && marco.querySelector(":scope > main"), sidebar);
           sincronizarBarraInferior(marco && marco.querySelector(":scope > [data-la-barra-inferior]"), marco && marco.getAttribute("data-la-orbita-route"));
         });
@@ -274,10 +274,24 @@
     // (agruparNavegacionRediseno), así que la expresión que buscaba el inicio
     // de "Administración" solo en "informes|organización|sistema" encontraba
     // primero "Informes" y dejaba Equipo y Calidad colgando de "Operación".
-    var operacion = secciones.find(function (seccion) { return /servicio/i.test(tituloDe(seccion)); });
-    var administracion = secciones.find(function (seccion) { return /equipo|calidad|informes|organizaci[oó]n|sistema/i.test(tituloDe(seccion)); });
+    //
+    // 25/11/2026, tres correcciones comprobadas contra la maqueta
+    // (orbitaNav en LA-Suite-rediseno/dist/orbita.js):
+    // - La expresión anterior no estaba anclada y «fiscalidad» contiene
+    //   «calidad»: la segunda zona empezaba en «Caja y fiscalidad». Ahora se
+    //   compara el título entero.
+    // - La maqueta llama a la segunda zona «Gestión», no «Administración».
+    // - Inicio pertenece a «Operación»: la etiqueta va encima de Inicio (la
+    //   sección sin título cuyo primer botón es el Panel general) y, si el
+    //   rol no tiene Inicio, encima de Servicio como antes.
+    var esInicio = function (seccion) {
+      return !tituloDe(seccion) && /^(panel general|inicio)\b/i.test(textoVisible(seccion.querySelector(":scope > button")));
+    };
+    var operacion = secciones.find(esInicio) ||
+      secciones.find(function (seccion) { return /^servicio$/i.test(tituloDe(seccion)); });
+    var gestion = secciones.find(function (seccion) { return /^(equipo|calidad|informes|organizaci[oó]n|sistema)$/i.test(tituloDe(seccion)); });
     insertar(operacion, "operacion", "Operación");
-    insertar(administracion, "administracion", "Administración");
+    insertar(gestion, "gestion", "Gestión");
   }
 
   /* La maqueta de Órbita muestra una navegación de primer nivel corta y
@@ -286,7 +300,14 @@
      agrupamos visualmente y el detalle de cada área se abre desde la fila
      de pestañas sobre el contenido (PestanasAreaOrbita, fuente.js), de
      modo que ninguna ruta ni permiso desaparece. */
-  function sincronizarSidebarCompacto(sidebar) {
+  /* 25/11/2026: el área marcada sale solo del botón que el programa pinta
+     como activo (fondo rgba 0.12, el mismo «tab === id» de React). Antes
+     también contaba el aria-current que esta misma función había puesto en
+     la pasada anterior, así que el área previa nunca se desmarcaba (dos
+     áreas marcadas a la vez) y rutaActiva podía leer la ruta equivocada.
+     Justo al pulsar, React aún no ha repintado: ese instante se resuelve con
+     el botón pulsado; el observador vuelve a sincronizar tras el repintado. */
+  function sincronizarSidebarCompacto(sidebar, botonPulsado) {
     if (!sidebar || !sidebar.classList.contains("la-orbita-sidebar-compacta")) return;
     var secciones = Array.prototype.filter.call(sidebar.children, function (nodo) {
       return nodo && nodo.nodeType === 1 &&
@@ -297,8 +318,8 @@
       if (!botones.length) return;
       var resumen = seccion.querySelector(":scope > [data-la-orbita-sidebar-summary]");
       if (!resumen) return;
-      var hayActivo = botones.some(function (button) {
-        return button.getAttribute("aria-current") === "page" || /rgba\(255, 255, 255, 0\.12\)/i.test(String(button.getAttribute("style") || ""));
+      var hayActivo = botonPulsado ? botones.indexOf(botonPulsado) >= 0 : botones.some(function (button) {
+        return /rgba\(255, 255, 255, 0\.12\)/i.test(String(button.getAttribute("style") || ""));
       });
       if (hayActivo) resumen.setAttribute("aria-current", "page");
       else resumen.removeAttribute("aria-current");
