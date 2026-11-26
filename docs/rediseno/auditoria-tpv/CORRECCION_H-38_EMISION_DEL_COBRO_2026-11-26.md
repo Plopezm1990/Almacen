@@ -68,7 +68,28 @@ el definitivo se rechaza hasta emitir el documento.
 - No se emitió el documento de la venta del 25/11: la autorización del usuario cubría solo la venta
   del Cajero/a del 26/11.
 
-## Pendiente de H-38
+## H-38b · botón «Emitir documento pendiente» en el cierre
 
-El botón **«Emitir documento pendiente»** en la pantalla de cierre (cliente) y la presentación
-legible del bloqueo `VENTAS_SIN_DOCUMENTO` (ola 1, H-26). La emisión ya puede hacerla quien cobra.
+Migración `20261126150000_abc_f5_c04_listar_ventas_sin_documento.sql`, aplicada en QA. La función
+`abc_c04_listar_ventas_sin_documento` (solo lectura, para quien opera la caja o inicia cobros) devuelve
+exactamente las ventas que producen el bloqueo: checkout, cuenta, venta fiscal e importe. El contrato PGlite
+comprueba que la lista y el bloqueo coinciden (38 comprobaciones en total).
+
+En la pantalla de cierre (Servicio → Cocina y comandas → gestión avanzada) aparece el panel «Ventas
+cobradas sin documento fiscal (n)», con una fila por venta y el botón **Emitir documento pendiente**. Usa la
+emisión de siempre con el checkout de esa venta: si el documento ya existía no se duplica. Al emitir recarga
+la lista y descarta el ensayo anterior. Los bloqueos del ensayo C12 y del cierre provisional dicen ahora
+«Hay ventas cobradas sin documento fiscal. Emite los documentos pendientes.» en lugar de «Pendiente operativo».
+
+Comprobado en QA con la identidad del Cajero/a: la sesión del 25/11 devuelve la venta de 1,00 € sin documento
+(`a4543959…`) y las del 26/11 devuelven lista vacía. Contrato de pantalla:
+`tests/rediseno/h38b-emitir-documento-pendiente-contract.mjs`. Batería sin base de datos: 339 contratos
+activos, 0 fallos; manifiesto 397 entradas.
+
+## Qué falta de H-38
+
+- Pulsar el botón en el navegador de QA. La sesión del 25/11 está cerrada, así que el botón no aparece sobre
+  ella; hace falta una sesión abierta con una venta sin documento (o emitir esa venta por otra vía).
+- El botón no prepara el QR fiscal del ticket (el cobro normal sí lo hace en QA); el documento queda emitido
+  pero sin QR hasta que se prepare aparte.
+- No se emitió el documento de la venta del 25/11: la autorización cubría solo la del Cajero/a del 26/11.
