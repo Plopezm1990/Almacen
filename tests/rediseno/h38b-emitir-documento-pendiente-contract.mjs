@@ -53,7 +53,8 @@ for (const [nombre, codigo] of fuentes) {
   assert.match(codigo, /"Emitir documento pendiente"/, `${nombre}: el botón se llama «Emitir documento pendiente»`);
   assert.match(codigo, /El cierre definitivo no se puede completar hasta emitir el documento de cada una\./, `${nombre}: el panel explica por qué`);
   assert.match(codigo, /VENTAS_SIN_DOCUMENTO: "Hay ventas cobradas sin documento fiscal\. Emite los documentos pendientes\."/, `${nombre}: el ensayo C12 lo explica`);
-  assert.match(codigo, /bloqueo === "VENTAS_SIN_DOCUMENTO" \? "Hay ventas cobradas sin documento fiscal\. Emite los documentos pendientes\."/, `${nombre}: los bloqueos del cierre provisional lo explican`);
+  assert.match(codigo, /h3\("li", \{ key: String\(bloqueo\) \}, etiquetaBloqueoCierre\(bloqueo\)\)/, `${nombre}: el ensayo C12 usa la traducción común`);
+  assert.match(codigo, /key: String\(bloqueo\?\.tipo \|\| bloqueo\?\.codigo \|\| indice\) \}, etiquetaBloqueoCierre\(bloqueo\)\)/, `${nombre}: los bloqueos del cierre provisional usan la misma traducción`);
 }
 assert.equal(logicas[0], logicas[1], 'la lógica mantiene paridad con la recuperación');
 assert.equal(componentes[0], componentes[1], 'la pantalla mantiene paridad con la recuperación');

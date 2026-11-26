@@ -228,6 +228,24 @@ try {
     await esperar(40);
     ok('A12 al abrir la sesión desde la pantalla, el esperado se pide de nuevo y aparece sin pulsar «Actualizar»', document.querySelector('[data-arqueo-esperado="ok"]')?.textContent === '€0,00', document.querySelector('[data-arqueo-esperado]')?.outerHTML);
   }
+
+  // ================= H-26 · los bloqueos del cierre se explican =================
+  {
+    const env = entorno({ rol: 'Propietario', esperado: 0, bloqueosProvisional: ['EFECTOS_PENDIENTES', 'PAGOS_PENDIENTES', 'VENTAS_SIN_DOCUMENTO'], ensayoBloqueos: ['EFECTOS_PENDIENTES', 'VENTAS_SIN_DOCUMENTO'] });
+    await montarCierre(env);
+    await clic(boton('Mostrar gestión avanzada'));
+    await clic(boton('Iniciar cierre'));
+    const contado = document.querySelector('input[type=number][step="0.01"]');
+    const set = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => { set.call(contado, '0'); contado.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    await clic(boton('Confirmar cierre provisional'));
+    await esperar(40);
+    ok('C1 el cierre provisional explica cada bloqueo con una frase', texto().includes('Hay efectos pendientes del proveedor (por ejemplo, un reembolso de tarjeta sin resolver).') && texto().includes('Hay pagos pendientes de resolver') && texto().includes('Hay ventas cobradas sin documento fiscal. Emite los documentos pendientes.'), texto().slice(-900));
+    ok('C2 y ya no dice «Pendiente operativo»', !texto().includes('Pendiente operativo'), texto().slice(-900));
+    await clic(boton('Ensayar cierre C12'));
+    await esperar(40);
+    ok('C3 el ensayo C12 usa las mismas frases', (texto().match(/Hay efectos pendientes del proveedor/g) || []).length >= 2 && (texto().match(/Hay ventas cobradas sin documento fiscal/g) || []).length >= 2, texto().slice(-1200));
+  }
 } finally {
   if (raiz) { try { await act(async () => { raiz.unmount(); }); } catch {} }
 }

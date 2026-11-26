@@ -29349,6 +29349,23 @@ function infoCierreA10(r2) {
     bloqueos: Array.isArray(r2?.bloqueos) ? r2.bloqueos : []
   };
 }
+// H-26 (auditoría del TPV, 26/11/2026): el servidor devuelve los bloqueos del cierre como una lista de códigos de texto
+// (por ejemplo «EFECTOS_PENDIENTES») y la pantalla buscaba `detalle`, `tipo` o `codigo` en un objeto, así que mostraba
+// «Pendiente operativo». Una sola traducción para el ensayo C12 y para el cierre provisional.
+const ETIQUETAS_BLOQUEO_CIERRE = {
+  CONTEO_FALTANTE: "Falta el conteo de efectivo.",
+  DIFERENCIA_EFECTIVO: "El efectivo contado no coincide con el esperado.",
+  PAGOS_PENDIENTES: "Hay pagos pendientes de resolver (por ejemplo, un cobro con tarjeta sin confirmar).",
+  EFECTOS_PENDIENTES: "Hay efectos pendientes del proveedor (por ejemplo, un reembolso de tarjeta sin resolver).",
+  CONCILIACIONES_DOCUMENTALES_PENDIENTES: "Hay documentos de esta sesión pendientes de conciliación.",
+  SESION_NO_REVISABLE: "La sesión ya no está en un estado revisable.",
+  VENTAS_SIN_DOCUMENTO: "Hay ventas cobradas sin documento fiscal. Emite los documentos pendientes."
+};
+function etiquetaBloqueoCierre(bloqueo) {
+  if (typeof bloqueo === "string") return ETIQUETAS_BLOQUEO_CIERRE[bloqueo] || bloqueo;
+  const clave = String(bloqueo?.codigo || bloqueo?.tipo || "");
+  return String(bloqueo?.detalle || ETIQUETAS_BLOQUEO_CIERRE[clave] || clave || "Pendiente operativo");
+}
 function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil = "", pedidoDestino, limpiarPedidoDestino }) {
   const h3 = import_react4.default.createElement;
   const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
@@ -29867,15 +29884,6 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     const documentos = informe.documentos || {};
     const bloqueos = Array.isArray(informe.bloqueos) ? informe.bloqueos : [];
     const apto = ensayoCierre.resultado === "APTO_CIERRE";
-    const etiquetaBloqueo = {
-      CONTEO_FALTANTE: "Falta el conteo de efectivo.",
-      DIFERENCIA_EFECTIVO: "El efectivo contado no coincide con el esperado.",
-      PAGOS_PENDIENTES: "Hay pagos pendientes.",
-      EFECTOS_PENDIENTES: "Hay efectos pendientes.",
-      CONCILIACIONES_DOCUMENTALES_PENDIENTES: "Hay documentos de esta sesión pendientes de conciliación.",
-      SESION_NO_REVISABLE: "La sesión ya no está en un estado revisable.",
-      VENTAS_SIN_DOCUMENTO: "Hay ventas cobradas sin documento fiscal. Emite los documentos pendientes."
-    };
     return h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: apto ? C2.accentSoft : C2.redSoft || "#FCE8E6" }, "data-c12-ensayo": String(ensayoCierre.resultado || "") },
       h3("div", { className: "text-[12px] font-semibold mb-1", style: { color: apto ? C2.accent : C2.red } }, "Ensayo C12: ", String(ensayoCierre.resultado || "SIN_RESULTADO")),
       h3("div", { className: "text-[11px] mb-1" }, String(informe.explicacion || "El servidor no devolvió una explicación.")),
@@ -29886,7 +29894,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
         " · documentos conciliados ", Number(documentos.documentos_conciliados || 0),
         " · pendientes ", Number(documentos.documentos_pendientes || 0)
       ),
-      bloqueos.length > 0 ? h3("ul", { className: "list-disc pl-4 text-[11px] mt-1" }, bloqueos.map((bloqueo) => h3("li", { key: String(bloqueo) }, etiquetaBloqueo[bloqueo] || String(bloqueo)))) : null
+      bloqueos.length > 0 ? h3("ul", { className: "list-disc pl-4 text-[11px] mt-1" }, bloqueos.map((bloqueo) => h3("li", { key: String(bloqueo) }, etiquetaBloqueoCierre(bloqueo)))) : null
     );
   }
 
@@ -30034,7 +30042,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
         ) : null,
         bloqueosCierre.length > 0 ? h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } },
           h3("div", { className: "text-[11.5px] font-semibold mb-1" }, "Bloqueos que impiden el cierre definitivo"),
-          h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, String(bloqueo === "VENTAS_SIN_DOCUMENTO" ? "Hay ventas cobradas sin documento fiscal. Emite los documentos pendientes." : bloqueo?.detalle || bloqueo?.tipo || bloqueo?.codigo || "Pendiente operativo"))))
+          h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, etiquetaBloqueoCierre(bloqueo))))
         ) : null,
         h3("div", { className: "flex gap-2 flex-wrap" },
           h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: !!procesando || bloqueosDiferencia.length > 0 }, procesando === "finalizar-cierre" ? "Finalizando…" : "Finalizar cierre"),
