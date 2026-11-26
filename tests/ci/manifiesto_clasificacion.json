@@ -1881,6 +1881,11 @@
       "environment": "node"
     },
     {
+      "path": "tests/rediseno/h31-pendiente-cobro-contra-servidor-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/rediseno/fallar-cerrado-sin-mentir-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
