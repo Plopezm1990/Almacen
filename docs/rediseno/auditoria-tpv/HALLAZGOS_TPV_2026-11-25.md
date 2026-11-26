@@ -4,7 +4,7 @@ SHA auditada: `aa809c3a265eda1d797b7afdb8ce92d9c1ff483b` (rama `rediseno/f0-base
 PR #225 en borrador, igual en local, remoto y Deploy Preview).
 Entorno: Deploy Preview #225 apuntando a QA `qjqorixtkilwsndqayyx`. Producción no se
 tocó. H-01 a H-18 salen de la auditoría sin escrituras operativas; **H-19 a H-28 salen del
-lote L1** y **H-29 a H-32 del lote L2**, ambos autorizados y ejecutados el 25/11 con
+lote L1**, **H-29 a H-32 del lote L2** y **H-33 a H-36 de la matriz por rol**, ambos autorizados y ejecutados el 25/11 con
 escrituras sintéticas en QA (detalle en `evidencias/lote-L1-ejecucion-2026-11-25.md` y
 `evidencias/lote-L2-recarga-desconexion-2026-11-25.md`). Con autorización del usuario se crearon dos
 notebooks de solo lectura en el proyecto QA para consultar el servidor
@@ -57,6 +57,10 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
 | H-30 | P3 | Tras recargar hay que volver a abrir las operaciones de cuenta | VIVO |
 | H-31 | P3 | Un pendiente de cobro antiguo sigue en el navegador | VIVO + SERVIDOR |
 | H-32 | P3 | Sin red, el error se muestra crudo y tarda | VIVO |
+| H-33 | P3 | El código lleva fijas direcciones de producción | CÓDIGO |
+| H-34 | P3 | «Anular venta» aparece habilitado para quien no tiene permiso | VIVO + SERVIDOR |
+| H-35 | P3 | El historial no refleja los reembolsos económicos | VIVO |
+| H-36 | P3 | Las cuentas creadas por la aplicación no obligan a cambiar la contraseña inicial | VIVO |
 
 ---
 
@@ -106,9 +110,10 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   el campo de búsqueda F2, que queda **detrás** de la capa. Las capas no tienen
   `role="dialog"` ni `aria-modal`. Al cerrar, el foco vuelve al buscador, no al botón que
   abrió la capa.
-- **DEDUCIDO del código (no reproducido):** un lector de códigos que funcione como teclado
-  escribiría en ese buscador oculto mientras la capa está abierta; con Intro,
-  `manejarEnterEscaneo` podría añadir un producto al ticket sin que el cajero lo vea.
+- **REPRODUCIDO en vivo (26/11):** con la capa «Terminal» abierta y el foco en el buscador
+  oculto, escribir «Agua 50 cl» y pulsar Intro, como haría un lector de códigos, **añadió el
+  producto al ticket** (0 → 1 línea) sin que la capa lo mostrara. Antes se había deducido del
+  código (`manejarEnterEscaneo`).
 - **Impacto:** lectores de pantalla y teclado pierden el contexto; riesgo de altas
   involuntarias en el ticket con lector de códigos.
 - **Recomendación:** convertir la capa en diálogo accesible (rol, `aria-modal`, foco
@@ -464,6 +469,55 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   cambiaron y el reintento con red funcionó.
 - **Recomendación:** un tiempo límite más corto y un mensaje comprensible («Sin conexión. No
   se ha cambiado nada. Reintenta»).
+
+## H-33 · P3 · El código lleva fijas direcciones de producción
+
+- **Evidencia (CÓDIGO):** `fuente.js` llama a funciones Edge de **producción**
+  (`flqercbgpgmmfaakrwkc.supabase.co/functions/v1/…`) en 12 sitios: `ORIGEN_FUNCTIONS`
+  (línea 43519), `enviar-notificacion` (106536, 110269, 115696, 115726 y 131993),
+  `importar-albaran` (121816 y 124450), `entrevista-personal` (122808), `importar-nomina`
+  (131474) y `prefiltro-candidato` (131912 y 131937). Por ejemplo, **«Anular venta»** manda una
+  notificación a producción si el día ya tenía arqueo.
+- **Qué lo contiene:** en una Deploy Preview, la política de seguridad del navegador
+  (`connect-src` solo a QA, `netlify-csp.mjs`) y la barrera de `reset-pruebas-preview.js`
+  (`QA_BLOCKED_PRODUCTION_SUPABASE`, comprobada en CI por `pm02-validar-barrera.mjs`) impiden
+  esas llamadas. **No se probó en vivo** para no tocar producción.
+- **Impacto:** hoy no sale nada de QA hacia producción, pero la protección depende de que
+  esas dos barreras sigan funcionando. Las funciones de producción reciben datos de pruebas si
+  alguna vez falla una.
+- **Recomendación:** leer el origen de las funciones de la misma configuración que la base de
+  datos (como ya hace la creación de cuentas de empleado) y no repetir la dirección de
+  producción en el código.
+
+## H-34 · P3 · «Anular venta» aparece habilitado para quien no tiene permiso
+
+- **Evidencia (VIVO + SERVIDOR):** con la cuenta de Camarero/a, el detalle de una venta del
+  historial muestra «Anular venta» **habilitado**. El servidor lo rechaza
+  (`revertir_venta_stock_carrito_pm09` → `reverso_no_autorizado`), así que no hay riesgo de
+  datos, solo confusión: el usuario ve un botón que no puede usar. Cajero/a y Camarero/a sí
+  ven el aviso de falta de permiso y el botón deshabilitado en el reembolso económico.
+- **Recomendación:** ocultar o deshabilitar el botón según la capacidad, como en el reembolso.
+
+## H-35 · P3 · El historial no refleja los reembolsos económicos
+
+- **Evidencia (VIVO):** la venta `V-20261125-B44A86` (TPV-000045, 1,00 € en efectivo), con un
+  reembolso B08 de 1,00 € **confirmado**, figura como **ACTIVA** y su importe sigue en «Total
+  vigente»; su ticket no menciona el reembolso.
+- **Por qué:** el aviso del B08 dice que no modifica stock ni devoluciones físicas, y es un
+  flujo aparte de «Anular venta».
+- **Impacto:** quien lee el historial ve una venta íntegra aunque el dinero se haya devuelto;
+  la caja y el historial dan cifras distintas.
+- **Recomendación:** marcar en el historial y en el ticket las ventas con reembolso
+  («Reembolsada 1,00 €») y descontarlas del total vigente.
+
+## H-36 · P3 · Las cuentas creadas por la aplicación no obligan a cambiar la contraseña inicial
+
+- **Evidencia (VIVO):** las cuentas de Encargado, Cajero/a y Camarero/a se crearon con una
+  contraseña inicial fijada por quien las crea y entraron sin que la aplicación pidiera
+  cambiarla. La propia pantalla dice que «el empleado podrá cambiarla luego».
+- **Impacto:** quien crea la cuenta conoce la contraseña mientras nadie la cambie.
+- **Recomendación:** obligar al cambio en el primer inicio de sesión (el servidor ya tiene
+  `plataforma_debe_cambiar_password()`).
 
 ## No son defectos (descartados durante la auditoría)
 

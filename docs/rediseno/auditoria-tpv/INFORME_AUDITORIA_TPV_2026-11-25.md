@@ -159,12 +159,17 @@ Capturas `evidencias/05-tpv-normal-1440x900.jpg` y
 
 No se comparan los productos, precios ni nombres de ejemplo de la maqueta.
 
-### Resumen de la matriz (82 casos, tras los lotes L1 y L2)
+### Resumen de la matriz (90 casos, tras los lotes L1 y L2 y la matriz por rol)
 
-51 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
-21 FAIL (incluidos los parciales) · 6 NO PROBADO (uno, C-04, declarado OK por el usuario) ·
-2 BLOQUEADO · 1 NO CONCLUYENTE · 1 NO APLICA. Antes de los lotes eran 67 casos con 6
-BLOQUEADO.
+60 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
+24 FAIL (incluidos los parciales) · 3 NO PROBADO (F-07, F-12 y C-04, este último declarado OK
+por el usuario) · 1 BLOQUEADO (V-19, decisión de producto) · 1 NO CONCLUYENTE (L-08) ·
+1 NO APLICA. Antes de los lotes eran 67 casos con 6 BLOQUEADO.
+
+**Matriz por rol (26/11):** con tres cuentas de prueba creadas en QA (Encargado, Cajero/a y
+Camarero/a) se comprobaron en vivo el inicio de sesión sin segundo factor, el menú de cada
+cargo, el rechazo del servidor con la sesión real, la escritura directa denegada y el
+aislamiento por local y empresa. Detalle en `evidencias/matriz-por-rol-2026-11-26.md`.
 
 **Resultado del lote L1, en una frase:** el cobro en efectivo, el pago mixto, los dos dobles
 clics, el reembolso en efectivo y el cierre de caja funcionan y no duplican nada; fallan
@@ -191,10 +196,16 @@ matriz de casos solo los relaciona.
 | Notebooks de solo lectura en QA (`evidencias/servidor-qa-2026-11-25.md`) | servidor QA | ver § 4 | Usuario de solo lectura; solo se leyó después el código de `abc_qa_confirmar_pago_simulado` |
 | Lote L1 en el navegador y consultas SQL de lectura (`evidencias/lote-L1-ejecucion-2026-11-25.md`) | aa809c3a | 77 casos de la matriz | Una sesión, un terminal; la tarjeta simulada se resolvió desde la consola |
 | Lote L2: recarga y desconexión simuladas desde la página (`evidencias/lote-L2-recarga-desconexion-2026-11-25.md`) | aa809c3a | 82 casos de la matriz | La recarga y el corte de red se simulan con `setTimeout` e intercepción de `fetch`, no son un corte real |
+| Matriz por rol con tres cuentas de prueba (`evidencias/matriz-por-rol-2026-11-26.md`) | aa809c3a | 90 casos de la matriz | Las sondas usan identificadores inventados; el Propietario solo por servidor y menú; descuentos, aparcar y unir cuentas pendientes del lote L3 |
 
 No se cambió ningún test para obtener verde.
 
 ## 7. Datos de QA creados o modificados
+
+**Cuentas de la matriz por rol (autorizadas, 26/11):** 3 empleados y 3 cuentas de acceso en
+QA-A1 (`qa-aud-encargado-20261125@qa.invalid`, `qa-aud-cajero-20261125@qa.invalid` y
+`qa-aud-camarero-20261125@qa.invalid`), con membresía activa. Se pueden desactivar desde Equipo.
+Las contraseñas se generaron al azar en la página y no se guardaron en ningún documento.
 
 **Lote L2 (autorizado, 25/11):** 1 venta de 1,00 € (1 pedido, 1 cuenta, 1 pago, 1 venta fiscal, 1
 documento QA `TPV-000045`), 1 reembolso, 2 movimientos de caja con neto 0,00 € y una sesión de

@@ -33,6 +33,18 @@
   QA desde la consola (H-27). Los reembolsos de tarjeta quedan pendientes y bloquean el
   cierre: se cancelan desde la pantalla.
 
+## Matriz por rol (26/11)
+
+- **Hecho:** tres cuentas de prueba en QA-A1 (Encargado, Cajero/a y Camarero/a); menú, rechazos
+  de servidor, escritura directa denegada y aislamiento comprobados con cada una. Hallazgos
+  H-33 a H-36. V-16 y F-02 cerrados.
+- **Cuentas de prueba:** correos `qa-aud-encargado-20261125@qa.invalid`,
+  `qa-aud-cajero-20261125@qa.invalid` y `qa-aud-camarero-20261125@qa.invalid`. **Las
+  contraseñas no se guardaron en ningún sitio**; si se necesitan más pruebas, hay que
+  crear cuentas nuevas o restablecer estas desde la aplicación.
+- **Pendiente:** F-07 (aparcar, unir y repartir cuentas) y F-12 (descuentos), que escriben en
+  QA y necesitan un lote autorizado (L3); V-19 es decisión de producto.
+
 ## Para retomar
 
 1. **Lo primero, desbloquear la verificación** (plan, paso 0):
