@@ -13260,6 +13260,31 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  // H-38b (auditoría del TPV, 26/11/2026): el cierre bloquea las ventas cobradas sin documento fiscal; estas dos funciones
+  // permiten ver cuáles son y emitir su documento desde la pantalla de cierre. La emisión es la de siempre
+  // (abc_c07d_emitir_checkout, idempotente por cuenta y checkout): si el documento ya existía, no se duplica.
+  async function listarVentasSinDocumentoH38b() {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      const { data, error } = await contexto.supabase.rpc("abc_c04_listar_ventas_sin_documento", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId
+      });
+      if (error) return { ok: false, error: errorRpcA02(error) };
+      return { ok: true, ventas: Array.isArray(data) ? data : [] };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+  async function emitirDocumentoPendienteH38b({ cuentaId, checkoutId } = {}) {
+    if (!cuentaId || !checkoutId) return { ok: false, error: "Faltan datos de la venta para emitir su documento." };
+    const emitido = await emitirCheckoutFiscalC07D(cuentaId, { checkoutId, tipoDocumento: "FACTURA", codigoSerie: "TPV" });
+    if (!emitido?.ok) return { ok: false, error: emitido?.error || "No se ha podido emitir el documento." };
+    const documento = Array.isArray(emitido.documentos) ? emitido.documentos[0] : null;
+    return { ok: true, numero: documento?.numero ?? null, codigoSerie: documento?.codigo_serie || emitido.codigo_serie || null };
+  }
+
   async function registrarDiferenciaCajaA10({ motivo = "" } = {}) {
     try {
       const contexto = await contextoCierreA10({ conDia: false });
@@ -13314,6 +13339,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
     listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
     listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
+    listarEstacionesA10.listarVentasSinDocumentoH38b = listarVentasSinDocumentoH38b;
+    listarEstacionesA10.emitirDocumentoPendienteH38b = emitirDocumentoPendienteH38b;
     listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
     listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
     try {
@@ -14623,6 +14650,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
   listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
+  listarEstacionesA10.listarVentasSinDocumentoH38b = listarVentasSinDocumentoH38b;
+  listarEstacionesA10.emitirDocumentoPendienteH38b = emitirDocumentoPendienteH38b;
   listarEstacionesA10.listarPedidosTurno = listarPedidosTurnoRediseno;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
@@ -29332,6 +29361,8 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const finalizarCierreSesionCajaA10 = typeof listarEstacionesA10?.finalizarCierreSesionCajaA10 === "function" ? listarEstacionesA10.finalizarCierreSesionCajaA10 : null;
   const reabrirCierreProvisionalA10 = typeof listarEstacionesA10?.reabrirCierreProvisionalA10 === "function" ? listarEstacionesA10.reabrirCierreProvisionalA10 : null;
   const consultarCierreCajaA10 = typeof listarEstacionesA10?.consultarCierreCajaA10 === "function" ? listarEstacionesA10.consultarCierreCajaA10 : null;
+  const listarVentasSinDocumento = typeof listarEstacionesA10?.listarVentasSinDocumentoH38b === "function" ? listarEstacionesA10.listarVentasSinDocumentoH38b : null;
+  const emitirDocumentoPendiente = typeof listarEstacionesA10?.emitirDocumentoPendienteH38b === "function" ? listarEstacionesA10.emitirDocumentoPendienteH38b : null;
   const registrarDiferenciaCajaA10 = typeof listarEstacionesA10?.registrarDiferenciaCajaA10 === "function" ? listarEstacionesA10.registrarDiferenciaCajaA10 : null;
   const decidirDiferenciaCajaA10 = typeof listarEstacionesA10?.decidirDiferenciaCajaA10 === "function" ? listarEstacionesA10.decidirDiferenciaCajaA10 : null;
   const [estaciones, setEstaciones] = (0, import_react4.useState)([]);
@@ -29381,6 +29412,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     };
   }, [configEmpresa?.id, local?.id, rolPerfil]);
   const [bloqueosCierre, setBloqueosCierre] = (0, import_react4.useState)([]);
+  const [ventasSinDocumento, setVentasSinDocumento] = (0, import_react4.useState)(null);
   const [cierreInfo, setCierreInfo] = (0, import_react4.useState)(null);
   const [ensayoCierre, setEnsayoCierre] = (0, import_react4.useState)(null);
   const [motivoDiferencia, setMotivoDiferencia] = (0, import_react4.useState)("");
@@ -29423,6 +29455,33 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEnsayoCierre(null);
     return sincronizarCierre();
   }
+
+  // H-38b: ventas cobradas de esta sesión sin documento fiscal (las que bloquean el cierre definitivo).
+  async function cargarVentasSinDocumento() {
+    if (typeof listarVentasSinDocumento !== "function") return;
+    const r2 = await listarVentasSinDocumento();
+    setVentasSinDocumento(r2?.ok ? r2.ventas : null);
+  }
+  async function emitirPendiente(venta) {
+    if (procesando || typeof emitirDocumentoPendiente !== "function") return;
+    setProcesando("emitir-" + String(venta.checkout_id));
+    setError("");
+    setMensaje("");
+    const resultado = await emitirDocumentoPendiente({ cuentaId: venta.cuenta_id, checkoutId: venta.checkout_id });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se ha podido emitir el documento pendiente.");
+      return;
+    }
+    setMensaje(`Documento emitido${resultado.numero != null ? `: ${resultado.codigoSerie ? resultado.codigoSerie + " " : ""}n.º ${resultado.numero}` : ""}.`);
+    setEnsayoCierre(null);
+    await cargarVentasSinDocumento();
+  }
+  (0, import_react4.useEffect)(() => {
+    if (!gestionCocinaVisible || requiereApertura || !local?.id || !configEmpresa?.id) return void 0;
+    cargarVentasSinDocumento();
+    return void 0;
+  }, [gestionCocinaVisible, requiereApertura, estadoCierre, local?.id, configEmpresa?.id]);
 
   async function refrescarSesionCajaC01() {
     if (typeof consultarSesionCajaC01 !== "function") return null;
@@ -29813,7 +29872,8 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
       PAGOS_PENDIENTES: "Hay pagos pendientes.",
       EFECTOS_PENDIENTES: "Hay efectos pendientes.",
       CONCILIACIONES_DOCUMENTALES_PENDIENTES: "Hay documentos de esta sesión pendientes de conciliación.",
-      SESION_NO_REVISABLE: "La sesión ya no está en un estado revisable."
+      SESION_NO_REVISABLE: "La sesión ya no está en un estado revisable.",
+      VENTAS_SIN_DOCUMENTO: "Hay ventas cobradas sin documento fiscal. Emite los documentos pendientes."
     };
     return h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: apto ? C2.accentSoft : C2.redSoft || "#FCE8E6" }, "data-c12-ensayo": String(ensayoCierre.resultado || "") },
       h3("div", { className: "text-[12px] font-semibold mb-1", style: { color: apto ? C2.accent : C2.red } }, "Ensayo C12: ", String(ensayoCierre.resultado || "SIN_RESULTADO")),
@@ -29942,6 +30002,14 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     ),
     gestionCocinaVisible && !requiereApertura && iniciarCierreSesionCajaA10 ? h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
       h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cierre de sesión de caja · ", estadoCierre),
+      ventasSinDocumento && ventasSinDocumento.length > 0 ? h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6" }, "data-h38b-ventas-sin-documento": String(ventasSinDocumento.length) },
+        h3("div", { className: "text-[11.5px] font-semibold mb-1", style: { color: C2.red } }, `Ventas cobradas sin documento fiscal (${ventasSinDocumento.length})`),
+        h3("div", { className: "text-[11px] mb-2" }, "El cierre definitivo no se puede completar hasta emitir el documento de cada una."),
+        h3("div", { className: "space-y-1" }, ventasSinDocumento.map((venta) => h3("div", { key: String(venta.checkout_id), className: "flex items-center justify-between gap-2" },
+          h3("span", { className: "text-[11.5px]" }, `€${Number(venta.importe || 0).toFixed(2)} · cobrada ${String(venta.completed_at || "").slice(11, 16) || "sin hora"}`),
+          h3(Btn, { small: true, onClick: () => emitirPendiente(venta), disabled: !!procesando || !emitirDocumentoPendiente }, procesando === "emitir-" + String(venta.checkout_id) ? "Emitiendo…" : "Emitir documento pendiente")
+        )))
+      ) : null,
       estadoCierre === "ABIERTA" ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Inicia el cierre cuando dejes de operar. El servidor comprobará los pagos y efectos pendientes antes de permitir el cierre provisional.") : null,
       estadoCierre === "EN_CIERRE" ? h3("div", null,
         h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Introduce el efectivo contado para registrar el arqueo provisional. Todavía podrás reabrirlo con un motivo."),
@@ -29965,7 +30033,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
         ) : null,
         bloqueosCierre.length > 0 ? h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } },
           h3("div", { className: "text-[11.5px] font-semibold mb-1" }, "Bloqueos que impiden el cierre definitivo"),
-          h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, String(bloqueo?.detalle || bloqueo?.tipo || bloqueo?.codigo || "Pendiente operativo"))))
+          h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, String(bloqueo === "VENTAS_SIN_DOCUMENTO" ? "Hay ventas cobradas sin documento fiscal. Emite los documentos pendientes." : bloqueo?.detalle || bloqueo?.tipo || bloqueo?.codigo || "Pendiente operativo"))))
         ) : null,
         h3("div", { className: "flex gap-2 flex-wrap" },
           h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: !!procesando || bloqueosDiferencia.length > 0 }, procesando === "finalizar-cierre" ? "Finalizando…" : "Finalizar cierre"),
