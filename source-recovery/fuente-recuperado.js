@@ -4915,7 +4915,7 @@ function GestionAlmacen() {
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
   const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
-  const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { abrirSesionCajaA10, consultarEsperadoCajaA24 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, actorNombre: nombreActivoEmpleado || "Propietario/a" });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -6075,7 +6075,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor: modoSincronizadoPM08() ? consultarEsperadoCajaA24 : null }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -13230,6 +13230,36 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  // H-24 (auditoría del TPV, 26/11/2026): el efectivo esperado del arqueo lo calcula el servidor con las operaciones de caja
+  // de la sesión (el mismo cálculo que guarda abc_registrar_arqueo_caja). La pantalla no lo reconstruye con el historial local.
+  async function consultarEsperadoCajaA24() {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      const { data, error } = await contexto.supabase.rpc("abc_previsualizar_arqueo_caja", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: contexto.terminalId,
+        p_currency_code: "EUR"
+      });
+      if (error) return { ok: false, error: errorRpcA02(error) };
+      const esperado = Number(data?.expected_amount);
+      if (!data || data.ok !== true || !Number.isFinite(esperado)) return { ok: false, error: "El servidor no ha devuelto el efectivo esperado." };
+      return {
+        ok: true,
+        sessionId: contexto.sessionId,
+        sessionEstado: contexto.sessionEstado,
+        fondoInicial: Number(data.fondo_inicial) || 0,
+        entradas: Number(data.entradas_efectivo) || 0,
+        salidas: Number(data.salidas_efectivo) || 0,
+        esperado,
+        movimientos: Number(data.movimientos) || 0
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function registrarDiferenciaCajaA10({ motivo = "" } = {}) {
     try {
       const contexto = await contextoCierreA10({ conDia: false });
@@ -14596,7 +14626,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.listarPedidosTurno = listarPedidosTurnoRediseno;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarEsperadoCajaA24, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -24390,7 +24420,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -24411,6 +24441,24 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const [exitoSesion, setExitoSesion] = (0, import_react4.useState)("");
   const [mostrarMovimientosCaja, setMostrarMovimientosCaja] = (0, import_react4.useState)(false);
   const [mostrarHistorialCaja, setMostrarHistorialCaja] = (0, import_react4.useState)(false);
+  // H-24: con la cuenta sincronizada el esperado es el del servidor; sin él no se enseña ninguna cifra estimada.
+  const esperadoDelServidor = typeof consultarEsperadoServidor === "function";
+  const [esperadoServidor, setEsperadoServidor] = (0, import_react4.useState)({ estado: esperadoDelServidor ? "cargando" : "local" });
+  const [refrescoEsperado, setRefrescoEsperado] = (0, import_react4.useState)(0);
+  (0, import_react4.useEffect)(() => {
+    if (!esperadoDelServidor) return void 0;
+    let vigente = true;
+    setEsperadoServidor({ estado: "cargando" });
+    Promise.resolve().then(() => consultarEsperadoServidor()).then((r2) => {
+      if (!vigente) return;
+      setEsperadoServidor(r2?.ok ? { estado: "ok", ...r2 } : { estado: "error", error: r2?.error || "No se ha podido consultar el efectivo esperado al servidor." });
+    }).catch((e2) => {
+      if (vigente) setEsperadoServidor({ estado: "error", error: String(e2?.message || "No se ha podido consultar el efectivo esperado al servidor.") });
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [esperadoDelServidor, fecha, refrescoEsperado, movimientos.length, movimientosCaja.length, arqueos.length]);
   const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
   const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   encargos.forEach((e2) => {
@@ -24434,13 +24482,14 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   // Los REVERSO se muestran/aplican aparte, igual que hará el servidor PM09.
   const efectivoBase = redondearDineroPM08((resumenVentasCaja.ventas.Efectivo || 0) + efectivoOtros);
   const ajustesVentaEfectivo = redondearDineroPM08(resumenVentasCaja.reversos.Efectivo || 0);
-  const efectivoEsperado = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
+  const efectivoEsperadoLocal = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
+  const efectivoEsperado = esperadoDelServidor ? esperadoServidor.estado === "ok" ? redondearDineroPM08(esperadoServidor.esperado) : null : efectivoEsperadoLocal;
   const denominacionesInvalidas = Object.values(denominaciones).some((cantidad) => cantidad !== "" && (!Number.isInteger(Number(cantidad)) || Number(cantidad) < 0));
   const denominacionesLimpias = Object.fromEntries(Object.entries(denominaciones).filter(([_22, cantidad]) => Number(cantidad) > 0).map(([valor, cantidad]) => [valor, Number(cantidad)]));
   const hayDesglose = Object.keys(denominacionesLimpias).length > 0;
   const totalDenominaciones = redondearDineroPM08(Object.entries(denominacionesLimpias).reduce((total, [valor, cantidad]) => total + Number(valor) * Number(cantidad), 0));
   const contadoNumero = hayDesglose ? totalDenominaciones : contado === "" ? NaN : redondearDineroPM08(contado);
-  const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
+  const diferencia = Number.isFinite(contadoNumero) && efectivoEsperado !== null ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
   async function abrirSesion() {
     if (abriendoSesion || typeof abrirSesionCajaA10 !== "function") return;
@@ -24593,10 +24642,16 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       h3(
         "div",
         { className: "grid grid-cols-2 gap-3 my-3" },
-        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))),
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono", "data-arqueo-esperado": esperadoDelServidor ? esperadoServidor.estado : "local" }, efectivoEsperado === null ? esperadoServidor.estado === "cargando" ? "Calculando\u2026" : "No disponible" : ["\u20AC", fmt(efectivoEsperado)])),
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
       ),
-      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · anulaciones venta €${fmt(ajustesVentaEfectivo)} · ajustes/reembolsos caja €${fmt(netoCaja)}`),
+      esperadoDelServidor ? h3(
+        "div",
+        { className: "text-[10.5px] mb-3", style: { color: esperadoServidor.estado === "error" ? C2.red : C2.inkSoft }, role: esperadoServidor.estado === "error" ? "alert" : void 0 },
+        esperadoServidor.estado === "ok" ? `Calculado por el servidor para la sesión de caja abierta: fondo inicial €${fmt(esperadoServidor.fondoInicial)} · entradas €${fmt(esperadoServidor.entradas)} · salidas €${fmt(esperadoServidor.salidas)}.` : esperadoServidor.estado === "error" ? `No se ha podido obtener el efectivo esperado del servidor: ${esperadoServidor.error} No se muestra ninguna cifra estimada.` : "Consultando al servidor el efectivo esperado\u2026",
+        " ",
+        h3("button", { type: "button", className: "underline", disabled: esperadoServidor.estado === "cargando", onClick: () => setRefrescoEsperado((n2) => n2 + 1) }, "Actualizar")
+      ) : h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · anulaciones venta €${fmt(ajustesVentaEfectivo)} · ajustes/reembolsos caja €${fmt(netoCaja)}`),
       h3(
         "div",
         { className: "mb-3" },
