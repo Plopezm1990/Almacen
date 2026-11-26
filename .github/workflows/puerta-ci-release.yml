@@ -472,8 +472,8 @@ jobs:
           [ "$POSTGRES_ACTIVE_PASS" = "31" ] || { echo "POSTGRES_ACTIVE_PASS != 31" >&2; fallo=1; }
           [ "$POSTGRES_ACTIVE_FAIL" = "0" ] || { echo "POSTGRES_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$HISTORICAL_EXPECTED_FAIL" = "1" ] || { echo "HISTORICAL_EXPECTED_FAIL != 1" >&2; fallo=1; }
-          [ "$PGLITE_ACTIVE_TOTAL" = "5" ] || { echo "PGLITE_ACTIVE_TOTAL != 5" >&2; fallo=1; }
-          [ "$PGLITE_ACTIVE_PASS" = "5" ] || { echo "PGLITE_ACTIVE_PASS != 5" >&2; fallo=1; }
+          [ "$PGLITE_ACTIVE_TOTAL" = "7" ] || { echo "PGLITE_ACTIVE_TOTAL != 7" >&2; fallo=1; }
+          [ "$PGLITE_ACTIVE_PASS" = "7" ] || { echo "PGLITE_ACTIVE_PASS != 7" >&2; fallo=1; }
           [ "$PGLITE_ACTIVE_FAIL" = "0" ] || { echo "PGLITE_ACTIVE_FAIL != 0" >&2; fallo=1; }
           [ "$PGLITE_UTILITY_RUN" = "1" ] || { echo "PGLITE_UTILITY_RUN != 1" >&2; fallo=1; }
           [ "$PGLITE_INFRA_FAIL" = "0" ] || { echo "PGLITE_INFRA_FAIL != 0" >&2; fallo=1; }
