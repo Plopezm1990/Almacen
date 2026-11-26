@@ -115503,6 +115503,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  // H-44 (auditoría del TPV, 26/11/2026): el servidor compara la petición de un descuento con un resumen de su TEXTO, y un
+  // número con otra escala ("10" frente a "10.00000000") es otro texto. La autorización guarda el valor normalizado a 8
+  // decimales; «Reintentar aplicación» lo reenviaba así y el servidor respondía operation_id_conflict. El valor se envía
+  // siempre en su forma más corta, tanto al pedir como al reintentar, para que sea idéntico.
+  function valorDescuentoCanonicoA09(texto) {
+    const s = String(texto ?? "").trim();
+    if (!/^\d+(?:\.\d{1,8})?$/.test(s)) return s;
+    const [entero, decimales = ""] = s.split(".");
+    const e2 = entero.replace(/^0+(?=\d)/, "");
+    const d2 = decimales.replace(/0+$/, "");
+    return d2 ? e2 + "." + d2 : e2;
+  }
   async function aplicarDescuentoCuentaA09({ tipo, valor = null, motivo, solicitud = null } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local antes de aplicar un descuento." };
     const empresaId = empresaDelLocalActivo?.id || null;
@@ -115510,7 +115522,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     const kind = String(solicitud?.tipo || tipo || "").trim().toUpperCase();
     const reason = String(solicitud?.motivo || motivo || "").trim();
     const rawValue = solicitud ? solicitud.valor : valor;
-    const valueText = kind === "COURTESY" ? null : String(rawValue ?? "").trim();
+    const valueText = kind === "COURTESY" ? null : valorDescuentoCanonicoA09(rawValue);
     if (!["PERCENT", "AMOUNT", "COURTESY"].includes(kind) || reason.length < 1 || reason.length > 500) {
       return { ok: false, error: "Selecciona el tipo de descuento y escribe un motivo." };
     }

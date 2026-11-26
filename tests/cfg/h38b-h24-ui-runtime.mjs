@@ -68,6 +68,7 @@ function entorno(opciones = {}) {
     venta_fiscal_id: `00000000-0000-4000-8000-00000000f0${i}0`, importe: v, completed_at: `2026-11-26T1${i}:30:00+00:00`
   }));
   const documentos = [];
+  const descuentos = new Map();
   const base = srv.cliente.rpc.bind(srv.cliente);
   srv.cliente.rpc = async (nombre, params) => {
     if (nombre === 'abc_c04_listar_ventas_sin_documento') {
@@ -86,6 +87,15 @@ function entorno(opciones = {}) {
       if (!v) return { data: null, error: { message: 'cuenta_no_encontrada' } };
       if (!documentos.some((d) => d.venta_fiscal_id === v.venta_fiscal_id)) documentos.push({ venta_fiscal_id: v.venta_fiscal_id, operation_id: params.p_operation_id });
       return { data: { ok: true, documentos: [{ estado: 'EMITIDO', numero: 100 + documentos.length, codigo_serie: 'TPV', venta_fiscal_id: v.venta_fiscal_id }] }, error: null };
+    }
+    if (nombre === 'abc_aplicar_descuento_cuenta') {
+      // Como el servidor real: una misma operación con el valor escrito con otra escala es otra petición.
+      srv.estado.llamadas.push({ nombre, params });
+      const previa = descuentos.get(params.p_operation_id);
+      const huella = JSON.stringify({ ...params });
+      if (previa && previa !== huella) return { data: null, error: { message: 'operation_id_conflict' } };
+      descuentos.set(params.p_operation_id, huella);
+      return { data: { status: 'PENDIENTE_AUTORIZACION', authorization_id: 'a1', snapshot_hash: 'h1', snapshot: { operation: {} } }, error: null };
     }
     return base(nombre, params);
   };
@@ -245,6 +255,32 @@ try {
     await clic(boton('Ensayar cierre C12'));
     await esperar(40);
     ok('C3 el ensayo C12 usa las mismas frases', (texto().match(/Hay efectos pendientes del proveedor/g) || []).length >= 2 && (texto().match(/Hay ventas cobradas sin documento fiscal/g) || []).length >= 2, texto().slice(-1200));
+  }
+
+  // ================= H-44 · «Reintentar aplicación» de un descuento =================
+  {
+    const env = entorno({ rol: 'Encargado' });
+    const u = (n) => `00000000-0000-4000-8000-00000000d0${n}0`;
+    const cuentaGuardada = JSON.stringify({ schemaVersion: 1, empresaId: env.E, localId: env.L, cuentaId: u(1), cuentaVersion: 2, pedidoId: u(2), pedidoVersion: 1, pedidoEstado: 'ENVIADO', terminalId: env.s.ids.T, sessionId: env.s.ids.S, operatingDay: '2026-11-26', currencyCode: 'EUR', lineas: [{ lineaId: u(3), productoId: 'p1', lineaVersion: 1, estado: 'ENVIADA', cantidad: 1, total: 1 }] });
+    localStorage.setItem(`la_suite_a02_1_ultima_cuenta_v1:${env.E}:${env.L}`, cuentaGuardada);
+    const base = { operationId: 'a09.1.7.descuento:' + 'f'.repeat(64), cuentaId: u(1), tipo: 'PERCENT', motivo: 'Prueba', expectedCuentaVersion: '2', terminalId: env.s.ids.T, sessionId: env.s.ids.S, operatingDay: '2026-11-26', requiereEscalado: true, requiereDobleAprobacion: false, approvalHash: '' };
+    // Petición original: el valor tal como se escribió ("10"); reintento: el valor que guarda la autorización ("10.00000000").
+    const r1 = await env.logica.aplicarDescuentoCuentaA09({ tipo: 'PERCENT', motivo: 'Prueba', solicitud: { ...base, valor: '10' } });
+    const r2 = await env.logica.aplicarDescuentoCuentaA09({ tipo: 'PERCENT', motivo: 'Prueba', solicitud: { ...base, valor: '10.00000000' } });
+    const llamadas = env.llamadas('abc_aplicar_descuento_cuenta');
+    ok('D1 el reintento envía el mismo valor que la petición original (antes «10» y «10.00000000»)', llamadas.length === 2 && llamadas[0].params.p_valor === llamadas[1].params.p_valor && llamadas[1].params.p_valor === '10', llamadas.map((c) => c.params.p_valor));
+    ok('D2 el servidor no responde operation_id_conflict al reintentar', !String(r2?.error || '').includes('operation_id_conflict') && !String(r2?.error || '').includes('conflict'), r2);
+    const casos = [['5.50000000', '5.5'], ['10.50', '10.5'], ['007', '7'], ['0.25000000', '0.25'], ['100.00000000', '100'], ['0.00000001', '0.00000001']];
+    for (const [entrada, esperado] of casos) {
+      const e2 = entorno({ rol: 'Encargado' });
+      localStorage.setItem(`la_suite_a02_1_ultima_cuenta_v1:${e2.E}:${e2.L}`, cuentaGuardada);
+      await e2.logica.aplicarDescuentoCuentaA09({ tipo: 'AMOUNT', motivo: 'Prueba', solicitud: { ...base, tipo: 'AMOUNT', valor: entrada, terminalId: e2.s.ids.T, sessionId: e2.s.ids.S } });
+      ok(`D3 el valor «${entrada}» se envía como «${esperado}»`, e2.llamadas('abc_aplicar_descuento_cuenta')[0]?.params.p_valor === esperado, e2.llamadas('abc_aplicar_descuento_cuenta')[0]?.params);
+    }
+    const e3 = entorno({ rol: 'Encargado' });
+    localStorage.setItem(`la_suite_a02_1_ultima_cuenta_v1:${e3.E}:${e3.L}`, cuentaGuardada);
+    const malo = await e3.logica.aplicarDescuentoCuentaA09({ tipo: 'PERCENT', motivo: 'Prueba', solicitud: { ...base, valor: '10.123456789', terminalId: e3.s.ids.T, sessionId: e3.s.ids.S } });
+    ok('D4 un valor con más de 8 decimales sigue rechazándose antes de llegar al servidor', malo?.ok === false && e3.llamadas('abc_aplicar_descuento_cuenta').length === 0, malo);
   }
 } finally {
   if (raiz) { try { await act(async () => { raiz.unmount(); }); } catch {} }
