@@ -144,6 +144,10 @@ el contrato de la política de segundo factor lo cubre.
   simulada completos sin consola y documento fiscal emitido.
 - **F6 · H-25, H-26 y H-28.** Cierre de caja en Caja y fiscalidad, bloqueos con texto claro
   y una acción para las cuentas abiertas de días cerrados.
+- **F11 · H-44 a H-47 (lote L5).** «Reintentar aplicación» con los datos de la autorización, guardar
+  solo las políticas modificadas, ligar la copia local al usuario y un botón «Deshacer reparto».
+  *Aceptación:* el reintento aplica sin tocar el formulario; el historial de políticas solo
+  muestra las que cambian; cambiar de sesión no bloquea el arranque.
 - **F10 · H-42 y H-43 (lote L4).** Permitir retomar o cerrar una cuenta sin pedidos activos y
   mostrar en el descuento las líneas recibidas por unión o reparto. *Aceptación:* una cuenta con el
   pedido cancelado se retoma o se cierra; tras unir o repartir, el descuento ofrece la línea

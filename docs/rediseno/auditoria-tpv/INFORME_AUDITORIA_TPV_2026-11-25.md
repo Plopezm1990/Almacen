@@ -159,11 +159,18 @@ Capturas `evidencias/05-tpv-normal-1440x900.jpg` y
 
 No se comparan los productos, precios ni nombres de ejemplo de la maqueta.
 
-### Resumen de la matriz (107 casos, tras los lotes L1 a L4 y la matriz por rol)
+### Resumen de la matriz (115 casos, tras los lotes L1 a L5 y la matriz por rol)
 
-70 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
-32 FAIL (incluidos los parciales) · 1 NO PROBADO (C-04, declarado OK por el usuario) ·
-1 BLOQUEADO (V-19, decisión de producto) · 2 NO CONCLUYENTE (L-08 y R-24) · 1 NO APLICA. Antes de los lotes eran 67 casos con 6 BLOQUEADO.
+77 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
+34 FAIL (incluidos los parciales) · 1 NO PROBADO (C-04, declarado OK por el usuario) ·
+1 BLOQUEADO (V-19, decisión de producto) · 1 NO CONCLUYENTE (L-08) · 1 NO APLICA. Antes de los lotes eran 67 casos con 6 BLOQUEADO.
+
+**Lote L5 (26/11):** descuento aplicado por el Propietario (PASS), el descuento viaja con la línea
+repartida (PASS), devolver un reparto moviendo de vuelta (PASS) y el **escalado completo
+Encargado → Propietario → Encargado (PASS)**, este último solo con una política temporal
+(máximo 5 %, solicitar, aplicar y escalar) que se **restauró** y se comprobó en el servidor.
+Con la política original el Encargado no puede ni solicitar (H-39). Detalle en
+`evidencias/lote-L5-descuentos-reparto-politica-2026-11-26.md`.
 
 **Lote L4 (26/11):** con la sesión de Propietario (el usuario entró con la cuenta de pruebas y su
 código) se probaron la **unión efectiva de cuentas** y el **reparto de productos**: ambos PASS,
@@ -211,10 +218,18 @@ matriz de casos solo los relaciona.
 | Matriz por rol con tres cuentas de prueba (`evidencias/matriz-por-rol-2026-11-26.md`) | aa809c3a | 90 casos de la matriz | Las sondas usan identificadores inventados; el Propietario solo por servidor y menú |
 | Lote L3: cuentas, descuentos y cobro por cargo (`evidencias/lote-L3-roles-cuentas-descuentos-2026-11-26.md`) | aa809c3a | 101 casos de la matriz | Una sesión, un terminal; el envío del pedido B lo frenó el sistema de permisos |
 | Lote L4: unir cuentas y repartir como Propietario (`evidencias/lote-L4-unir-repartir-propietario-2026-11-26.md`) | aa809c3a | 107 casos de la matriz | Cantidades de una unidad; sin descuento ni reversión del reparto |
+| Lote L5: descuento aplicado, reparto y escalado con política temporal (`evidencias/lote-L5-descuentos-reparto-politica-2026-11-26.md`) | aa809c3a | 115 casos de la matriz | Política cambiada y restaurada en QA; cantidades de una unidad; sin cobro |
 
 No se cambió ningún test para obtener verde.
 
 ## 7. Datos de QA creados o modificados
+
+**Lote L5 (autorizado, 26/11):** 3 pedidos (P, Q cancelado y E), 3 cuentas (abiertas), 2
+descuentos aplicados (uno del Propietario y otro del Encargado con autorización), 4 repartos y
+una sesión de caja abierta y cerrada (`011c2138-7281-4908-ab24-3a31d5bbc473`, CERRADA_FINAL) sin
+movimientos. Stock del agua de QA-A1: 68 → 66. **Configuración:** política de descuentos del
+Encargado cambiada (máximo 5 % y «Puede aplicar») y **restaurada** (máximo 0 %, aplicar no).
+**Cuenta nueva:** empleado y cuenta `qa-aud-encargado2-20261126@qa.invalid` (Encargado, QA-A1).
 
 **Lote L4 (autorizado, 26/11):** 2 pedidos (1 enviado y servido, 1 cancelado), 2 cuentas nuevas
 (X cerrada por la unión; Y queda ABIERTA con un reparto de 1,00 € sin cobrar), 2 repartos, y una

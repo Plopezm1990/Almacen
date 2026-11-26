@@ -4,7 +4,7 @@ SHA auditada: `aa809c3a265eda1d797b7afdb8ce92d9c1ff483b` (rama `rediseno/f0-base
 PR #225 en borrador, igual en local, remoto y Deploy Preview).
 Entorno: Deploy Preview #225 apuntando a QA `qjqorixtkilwsndqayyx`. Producción no se
 tocó. H-01 a H-18 salen de la auditoría sin escrituras operativas; **H-19 a H-28 salen del
-lote L1**, **H-29 a H-32 del lote L2** y **H-33 a H-36 de la matriz por rol** **H-37 a H-41 del lote L3** y **H-42 y H-43 del lote L4**, ambos autorizados y ejecutados el 25/11 con
+lote L1**, **H-29 a H-32 del lote L2** y **H-33 a H-36 de la matriz por rol** **H-37 a H-41 del lote L3** y **H-42 y H-43 del lote L4** y **H-44 a H-47 del lote L5**, ambos autorizados y ejecutados el 25/11 con
 escrituras sintéticas en QA (detalle en `evidencias/lote-L1-ejecucion-2026-11-25.md` y
 `evidencias/lote-L2-recarga-desconexion-2026-11-25.md`). Con autorización del usuario se crearon dos
 notebooks de solo lectura en el proyecto QA para consultar el servidor
@@ -68,6 +68,10 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
 | H-41 | P3 | El Camarero/a no ve las cuentas abiertas y el aviso habla de la caja | VIVO |
 | H-42 | P3 | Las cuentas con el pedido cancelado no se pueden retomar y se acumulan | VIVO |
 | H-43 | P3 | El descuento no encuentra líneas aptas en una cuenta con un producto recibido por reparto (por confirmar) | VIVO |
+| H-44 | P3 | «Reintentar aplicación» falla con `operation_id_conflict` si el formulario está vacío | VIVO + SERVIDOR |
+| H-45 | P3 | Guardar políticas reescribe también las que no cambian | SERVIDOR |
+| H-46 | P3 | Arranque bloqueado tras cambiar de sesión con pendientes locales | VIVO |
+| H-47 | P3 | No hay botón para deshacer un reparto | VIVO + CÓDIGO |
 
 ---
 
@@ -575,8 +579,14 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   existir.
 - **Impacto:** la política parece permitir solicitar descuentos y el servidor lo impide; el
   flujo Encargado → Propietario no se puede ejercitar sin cambiar la configuración.
+- **Ampliado en el lote L5:** con el máximo en 5 % el servidor respondió `descuento_aplicar_no_autorizado`,
+  porque `puede_aplicar` se comprueba **antes** de crear la solicitud de autorización. El escalado
+  solo funcionó con **máximo mayor que 0, «Puede solicitar», «Puede aplicar» y «Permite
+  escalado»** a la vez; con «solicitar» sin «aplicar» el Encargado nunca llega a crear la
+  solicitud, aunque la pantalla de políticas las presenta como opciones independientes.
 - **Recomendación:** decidir si «máximo 0 %» significa «sin descuentos» (y entonces ocultar
-  «escalar» y «solicitar») o «todo requiere autorización» (y entonces crear la solicitud).
+  «escalar» y «solicitar»), o «todo requiere autorización» (y entonces crear la solicitud), y que
+  la pantalla de políticas avise de las combinaciones que no funcionan.
 
 ## H-40 · P3 · El borrador del carrito no pertenece a un usuario
 
@@ -615,8 +625,48 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
 - **Qué no se sabe:** si el servidor lo habría aceptado (la función de servidor bloquea también
   las cuentas que participan por reparto, lo que sugiere que sí se contempla) o si es un límite
   de la pantalla. No se pudo comprobar sin más stock.
-- **Recomendación:** repetir con un pedido enviado en la misma cuenta y con una línea recibida
-  por reparto, y mostrar en el panel de descuento las líneas recibidas.
+- **Ampliado en el lote L5:** el descuento del Propietario sí funcionó sobre una línea propia
+  enviada, y la línea repartida conservó su descuento al pasar a otra cuenta. Sigue sin
+  comprobarse el descuento sobre una línea recibida por reparto.
+- **Recomendación:** repetir con una línea recibida por reparto y mostrar en el panel de descuento
+  las líneas recibidas.
+
+## H-44 · P3 · «Reintentar aplicación» falla con `operation_id_conflict` si el formulario está vacío
+
+- **Evidencia (VIVO + SERVIDOR, lote L5):** tras la aprobación del Propietario, el Encargado ve
+  «APROBADA … Reintentar aplicación». Al pulsarlo con el formulario vacío el servidor responde
+  `operation_id_conflict` y no aplica nada. Funcionó al **repetir exactamente el mismo tipo,
+  valor y motivo** en el formulario y pulsar «Aplicar / solicitar».
+- **Causa probable:** el botón no reutiliza los datos de la solicitud aprobada y reenvía lo que haya
+  en el formulario; el servidor exige que la petición sea idéntica a la original.
+- **Impacto:** el Encargado ve un error técnico y no sabe qué hacer.
+- **Recomendación:** que el botón use los datos guardados de la autorización.
+
+## H-45 · P3 · Guardar políticas reescribe también las que no cambian
+
+- **Evidencia (SERVIDOR, lote L5):** al guardar un cambio solo en la política del Encargado,
+  cambió también la fecha de actualización de la del Propietario (mismo contenido).
+- **Impacto:** el historial de cambios no permite saber qué se modificó de verdad.
+- **Recomendación:** guardar solo las políticas modificadas y registrar el valor anterior.
+
+## H-46 · P3 · Arranque bloqueado tras cambiar de sesión con pendientes locales
+
+- **Evidencia (VIVO, lote L5):** al volver a entrar como Propietario con un pendiente local de
+  `productos` de la sesión anterior, la aplicación mostró «Instalación bloqueada de forma segura.
+  No se abrirá el panel ni se sincronizarán datos hasta resolver el estado del servidor. La copia
+  local cambió mientras se archivaba. Reintenta la comprobación». «Reintentar comprobación» lo
+  resolvió.
+- **Relación:** misma raíz que H-19 y H-40, los datos locales no están ligados al usuario.
+- **Recomendación:** ligar la copia local a empresa y usuario y vaciarla al cerrar sesión.
+
+## H-47 · P3 · No hay botón para deshacer un reparto
+
+- **Evidencia (VIVO + CÓDIGO, lote L5):** existe la capacidad `ABC_REPARTO_REVERTIR` («Deshacer un
+  reparto») pero la pantalla solo ofrece «Mover producto». Deshacerlo es mover de vuelta desde
+  la cuenta destino, y eso no se puede si esa cuenta no se deja retomar (H-42).
+  `abc_revertir_cuota_importe` es para repartos por importe y no tiene pantalla.
+- **Recomendación:** un botón «Deshacer reparto» en la cuenta que recibió el producto, con el
+  permiso `ABC_REPARTO_REVERTIR`.
 
 ## No son defectos (descartados durante la auditoría)
 

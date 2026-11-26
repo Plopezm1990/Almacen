@@ -48,10 +48,14 @@
 - **Lote L4 hecho (26/11):** unir cuentas y repartir productos con el Propietario (PASS). QA
   queda con la sesión `4b1f2fc2…` CERRADA_FINAL, stock del agua en 68 y la cuenta Y abierta con un
   reparto de 1,00 € sin cobrar. **El Propietario sigue con la sesión abierta** en el navegador.
-- **Pendiente:** aplicar un descuento (necesita una línea enviada en la cuenta, 1 unidad más de
-  stock), aprobación de un descuento del Encargado (necesita que su política deje de ser 0 %),
-  revertir un reparto, cuadro de impresión, L-08 (venta mixta con documento fiscal, sin camino
-  de tarjeta en la interfaz) y V-19 (decisión de producto).
+- **Lote L5 hecho (26/11):** descuento aplicado, reparto devuelto y escalado Encargado →
+  Propietario → Encargado, con la política del Encargado cambiada y **restaurada** (máximo 0 %,
+  aplicar no). QA queda con la sesión `011c2138…` CERRADA_FINAL, stock del agua en 66, 3
+  cuentas abiertas más y una cuenta de Encargado nueva
+  (`qa-aud-encargado2-20261126@qa.invalid`, sin contraseña guardada).
+- **Pendiente:** L-08 (venta mixta con documento fiscal, sin camino de tarjeta en la interfaz),
+  un corte de red real y V-19 (decisión de producto). El cuadro de impresión de verdad no se
+  abrió: solo se comprobó que el botón llama a imprimir y que la regla de impresión existe.
 - **Navegador de la auditoría:** sin sesión abierta, con las contraseñas de prueba borradas.
   Quedan en `localStorage` pendientes de `productos` de QA-EMP-A / QA-A1; conviene vaciarlos
   antes de iniciar sesión (H-19).
