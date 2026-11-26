@@ -45,10 +45,13 @@
 - **Lote L3 hecho (26/11):** el Encargado abrió y cerró caja, el Cajero/a vendió y cobró, el
   Camarero/a probó sus límites. Hallazgos H-37 a H-41; **H-38 es P1**. QA queda con la sesión
   `7827ed19…` CERRADA_FINAL, stock del agua en 69 y 2 cuentas vacías abiertas.
-- **Pendiente:** unión efectiva de cuentas y reparto de productos (necesitan un pedido enviado,
-  1 unidad más de stock), aprobación de un descuento por el Propietario (necesita tu código y
-  que la política del Encargado deje de ser 0 %), cuadro de impresión y V-19 (decisión de
-  producto).
+- **Lote L4 hecho (26/11):** unir cuentas y repartir productos con el Propietario (PASS). QA
+  queda con la sesión `4b1f2fc2…` CERRADA_FINAL, stock del agua en 68 y la cuenta Y abierta con un
+  reparto de 1,00 € sin cobrar. **El Propietario sigue con la sesión abierta** en el navegador.
+- **Pendiente:** aplicar un descuento (necesita una línea enviada en la cuenta, 1 unidad más de
+  stock), aprobación de un descuento del Encargado (necesita que su política deje de ser 0 %),
+  revertir un reparto, cuadro de impresión, L-08 (venta mixta con documento fiscal, sin camino
+  de tarjeta en la interfaz) y V-19 (decisión de producto).
 - **Navegador de la auditoría:** sin sesión abierta, con las contraseñas de prueba borradas.
   Quedan en `localStorage` pendientes de `productos` de QA-EMP-A / QA-A1; conviene vaciarlos
   antes de iniciar sesión (H-19).

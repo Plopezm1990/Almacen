@@ -159,12 +159,17 @@ Capturas `evidencias/05-tpv-normal-1440x900.jpg` y
 
 No se comparan los productos, precios ni nombres de ejemplo de la maqueta.
 
-### Resumen de la matriz (101 casos, tras los lotes L1, L2 y L3 y la matriz por rol)
+### Resumen de la matriz (107 casos, tras los lotes L1 a L4 y la matriz por rol)
 
-65 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
-31 FAIL (incluidos los parciales) · 2 NO PROBADO (F-07 parcial y C-04, este último declarado OK
-por el usuario) · 1 BLOQUEADO (V-19, decisión de producto) · 1 NO CONCLUYENTE (L-08) ·
-1 NO APLICA. Antes de los lotes eran 67 casos con 6 BLOQUEADO.
+70 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
+32 FAIL (incluidos los parciales) · 1 NO PROBADO (C-04, declarado OK por el usuario) ·
+1 BLOQUEADO (V-19, decisión de producto) · 2 NO CONCLUYENTE (L-08 y R-24) · 1 NO APLICA. Antes de los lotes eran 67 casos con 6 BLOQUEADO.
+
+**Lote L4 (26/11):** con la sesión de Propietario (el usuario entró con la cuenta de pruebas y su
+código) se probaron la **unión efectiva de cuentas** y el **reparto de productos**: ambos PASS,
+con las reglas del servidor bien aplicadas. El descuento del Propietario **no se pudo probar**
+(H-43) y revertir un reparto tampoco (H-42). Detalle en
+`evidencias/lote-L4-unir-repartir-propietario-2026-11-26.md`.
 
 **Lote L3 (26/11):** con las tres cuentas, el Encargado abrió y cerró caja y probó cuentas y
 descuentos, el Cajero/a vendió y cobró y el Camarero/a probó sus límites. Detalle en
@@ -205,10 +210,17 @@ matriz de casos solo los relaciona.
 | Lote L2: recarga y desconexión simuladas desde la página (`evidencias/lote-L2-recarga-desconexion-2026-11-25.md`) | aa809c3a | 82 casos de la matriz | La recarga y el corte de red se simulan con `setTimeout` e intercepción de `fetch`, no son un corte real |
 | Matriz por rol con tres cuentas de prueba (`evidencias/matriz-por-rol-2026-11-26.md`) | aa809c3a | 90 casos de la matriz | Las sondas usan identificadores inventados; el Propietario solo por servidor y menú |
 | Lote L3: cuentas, descuentos y cobro por cargo (`evidencias/lote-L3-roles-cuentas-descuentos-2026-11-26.md`) | aa809c3a | 101 casos de la matriz | Una sesión, un terminal; el envío del pedido B lo frenó el sistema de permisos |
+| Lote L4: unir cuentas y repartir como Propietario (`evidencias/lote-L4-unir-repartir-propietario-2026-11-26.md`) | aa809c3a | 107 casos de la matriz | Cantidades de una unidad; sin descuento ni reversión del reparto |
 
 No se cambió ningún test para obtener verde.
 
 ## 7. Datos de QA creados o modificados
+
+**Lote L4 (autorizado, 26/11):** 2 pedidos (1 enviado y servido, 1 cancelado), 2 cuentas nuevas
+(X cerrada por la unión; Y queda ABIERTA con un reparto de 1,00 € sin cobrar), 2 repartos, y una
+sesión de caja abierta y cerrada (`4b1f2fc2-83d1-4512-9383-7f4b546e603d`, CERRADA_FINAL) sin
+movimientos. Stock del agua de QA-A1: 69 → 68. Sin pagos, reembolsos ni descuentos. El Propietario
+sigue con la sesión abierta en el navegador de la auditoría.
 
 **Lote L3 (autorizado, 26/11):** 3 pedidos (2 cancelados y 1 venta de 1,00 €), 3 cuentas (2 siguen
 abiertas y vacías), 1 pago, 1 venta fiscal **sin documento**, 1 reembolso, 2 movimientos de caja con

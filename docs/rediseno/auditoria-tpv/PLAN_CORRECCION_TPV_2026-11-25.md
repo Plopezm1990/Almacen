@@ -144,6 +144,10 @@ el contrato de la política de segundo factor lo cubre.
   simulada completos sin consola y documento fiscal emitido.
 - **F6 · H-25, H-26 y H-28.** Cierre de caja en Caja y fiscalidad, bloqueos con texto claro
   y una acción para las cuentas abiertas de días cerrados.
+- **F10 · H-42 y H-43 (lote L4).** Permitir retomar o cerrar una cuenta sin pedidos activos y
+  mostrar en el descuento las líneas recibidas por unión o reparto. *Aceptación:* una cuenta con el
+  pedido cancelado se retoma o se cierra; tras unir o repartir, el descuento ofrece la línea
+  recibida.
 - **F8 · H-38 (P1, lote L3) — urgente.** Emitir el documento fiscal en el servidor con el
   permiso de cobro, no con el de leer la configuración. *Aceptación:* un cobro del Cajero/a
   emite su documento igual que el del Propietario; un cobro sin documento queda como efecto

@@ -4,7 +4,7 @@ SHA auditada: `aa809c3a265eda1d797b7afdb8ce92d9c1ff483b` (rama `rediseno/f0-base
 PR #225 en borrador, igual en local, remoto y Deploy Preview).
 Entorno: Deploy Preview #225 apuntando a QA `qjqorixtkilwsndqayyx`. Producción no se
 tocó. H-01 a H-18 salen de la auditoría sin escrituras operativas; **H-19 a H-28 salen del
-lote L1**, **H-29 a H-32 del lote L2** y **H-33 a H-36 de la matriz por rol** y **H-37 a H-41 del lote L3**, ambos autorizados y ejecutados el 25/11 con
+lote L1**, **H-29 a H-32 del lote L2** y **H-33 a H-36 de la matriz por rol** **H-37 a H-41 del lote L3** y **H-42 y H-43 del lote L4**, ambos autorizados y ejecutados el 25/11 con
 escrituras sintéticas en QA (detalle en `evidencias/lote-L1-ejecucion-2026-11-25.md` y
 `evidencias/lote-L2-recarga-desconexion-2026-11-25.md`). Con autorización del usuario se crearon dos
 notebooks de solo lectura en el proyecto QA para consultar el servidor
@@ -66,6 +66,8 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
 | H-39 | P2 | La política de descuento del Encargado no se puede usar | VIVO + SERVIDOR + CÓDIGO |
 | H-40 | P3 | El borrador del carrito no pertenece a un usuario | VIVO |
 | H-41 | P3 | El Camarero/a no ve las cuentas abiertas y el aviso habla de la caja | VIVO |
+| H-42 | P3 | Las cuentas con el pedido cancelado no se pueden retomar y se acumulan | VIVO |
+| H-43 | P3 | El descuento no encuentra líneas aptas en una cuenta con un producto recibido por reparto (por confirmar) | VIVO |
 
 ---
 
@@ -593,6 +595,28 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   la lista no está disponible para su cargo.
 - **Recomendación:** un mensaje del tipo «Tu cargo no puede ver las cuentas abiertas» y la
   ruta alternativa por mesas.
+
+## H-42 · P3 · Las cuentas con el pedido cancelado no se pueden retomar y se acumulan
+
+- **Evidencia (VIVO, lote L4):** las cuentas A y B del lote L3 (pedido CANCELADO, 0 líneas)
+  aparecen en «Cuentas abiertas» con «Retomar», pero al pulsarlo la cuenta no queda activa y no
+  aparece «Cuenta retomada». Por eso no se pudo revertir desde B el reparto que se le había hecho
+  (la opción vive en la cuenta destino) y tampoco cerrarlas desde la pantalla. Se suma a H-21 y
+  H-28.
+- **Recomendación:** permitir retomar y cerrar una cuenta sin pedidos activos, o cerrarla al
+  cancelar su último pedido.
+
+## H-43 · P3 · El descuento no encuentra líneas aptas en una cuenta que ha recibido un producto servido — causa por confirmar
+
+- **Evidencia (VIVO, lote L4):** la cuenta Y recibió por unión y reparto una línea de agua servida
+  (reparto ACTIVO de 1,00 €) y tenía además una línea propia en borrador. El panel de descuento
+  respondió «La cuenta no tiene líneas aptas para aplicar el descuento» y solo listó la línea en
+  borrador; no se creó ninguna fila.
+- **Qué no se sabe:** si el servidor lo habría aceptado (la función de servidor bloquea también
+  las cuentas que participan por reparto, lo que sugiere que sí se contempla) o si es un límite
+  de la pantalla. No se pudo comprobar sin más stock.
+- **Recomendación:** repetir con un pedido enviado en la misma cuenta y con una línea recibida
+  por reparto, y mostrar en el panel de descuento las líneas recibidas.
 
 ## No son defectos (descartados durante la auditoría)
 
