@@ -4,8 +4,9 @@ SHA auditada: `aa809c3a265eda1d797b7afdb8ce92d9c1ff483b` (rama `rediseno/f0-base
 PR #225 en borrador, igual en local, remoto y Deploy Preview).
 Entorno: Deploy Preview #225 apuntando a QA `qjqorixtkilwsndqayyx`. Producción no se
 tocó. H-01 a H-18 salen de la auditoría sin escrituras operativas; **H-19 a H-28 salen del
-lote L1** autorizado, ejecutado el 25/11 con escrituras sintéticas en QA (detalle en
-`evidencias/lote-L1-ejecucion-2026-11-25.md`). Con autorización del usuario se crearon dos
+lote L1** y **H-29 a H-32 del lote L2**, ambos autorizados y ejecutados el 25/11 con
+escrituras sintéticas en QA (detalle en `evidencias/lote-L1-ejecucion-2026-11-25.md` y
+`evidencias/lote-L2-recarga-desconexion-2026-11-25.md`). Con autorización del usuario se crearon dos
 notebooks de solo lectura en el proyecto QA para consultar el servidor
 (`evidencias/servidor-qa-2026-11-25.md`).
 
@@ -19,7 +20,8 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   `DEDUCIDO` inferencia razonada, no reproducida · `SERVIDOR` consulta de solo lectura al
   servidor QA.
 - Ningún hallazgo es P0. **H-19 y H-24 son P1** con la evidencia disponible. Los dos
-  terminales (C-04) y la recarga tras escritura (C-05) siguen sin probar (ver el informe).
+  terminales (C-04) los hizo el usuario, sin registro; la recarga tras escritura (C-05) se
+  probó en el lote L2 sin duplicados.
 
 | ID | Sev. | Título | Evidencia |
 |---|---|---|---|
@@ -51,6 +53,10 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
 | H-26 | P3 | Los bloqueos del cierre se muestran con texto genérico | VIVO + SERVIDOR |
 | H-27 | P2 | Ni el cobro ni el reembolso con tarjeta simulada se completan desde la aplicación | VIVO + SERVIDOR |
 | H-28 | P3 | 85 cuentas abiertas en el local, 83 de días cerrados | VIVO |
+| H-29 | P3 | Una recarga a mitad de «Guardar pedido» deja una cuenta sin pedido | VIVO + SERVIDOR |
+| H-30 | P3 | Tras recargar hay que volver a abrir las operaciones de cuenta | VIVO |
+| H-31 | P3 | Un pendiente de cobro antiguo sigue en el navegador | VIVO + SERVIDOR |
+| H-32 | P3 | Sin red, el error se muestra crudo y tarda | VIVO |
 
 ---
 
@@ -421,6 +427,43 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   cerrarlas.
 - **Recomendación:** decidir quién las cierra y cuándo (cierre automático del día o botón de
   limpieza con permiso).
+
+## H-29 · P3 · Una recarga a mitad de «Guardar pedido» deja una cuenta sin pedido
+
+- **Evidencia (VIVO + SERVIDOR, lote L2):** al recargar con la primera llamada en vuelo, el
+  servidor tenía la cuenta `f3d877c7…` ABIERTA sin pedido ni línea. El borrador local se
+  recuperó y, al volver a pulsar «Guardar pedido», se **reutilizó esa cuenta**: no hubo
+  duplicados.
+- **Impacto:** bajo; si el usuario no reintenta, la cuenta queda abierta y suma a H-28.
+- **Recomendación:** que la creación de la cuenta y la del pedido sean una sola operación en
+  el servidor, o que se cierren las cuentas sin pedido tras un tiempo.
+
+## H-30 · P3 · Tras recargar hay que volver a abrir las operaciones de cuenta
+
+- **Evidencia (VIVO, lote L2):** al recargar, la aplicación vuelve a Inicio y el interruptor
+  «Mostrar operaciones de cuenta» se reinicia; para llegar al cobro de una cuenta enviada
+  hay que ir a Servicio, mostrar las operaciones, buscar las cuentas abiertas y pulsar
+  «Retomar». Se suma a H-22.
+- **Recomendación:** recordar la pantalla y la cuenta en curso, o llevar directamente a ella.
+
+## H-31 · P3 · Un pendiente de cobro antiguo sigue en el navegador
+
+- **Evidencia (VIVO + SERVIDOR, lote L2):** `localStorage` conserva
+  `la_suite_f4_b02_b03_pago_v1:QA-EMP-A:QA-A1:27ac5cb7…`, creado el 13/11 (tarjeta, 0,60 €),
+  con identificadores de operación fijos. En el servidor esa cuenta sigue ABIERTA, con un pago
+  en efectivo CONFIRMADO y el de tarjeta CANCELADO. El pendiente de la venta del lote L2 sí
+  se limpió al completarse.
+- **Impacto potencial:** al retomar esa cuenta, el pendiente podría intentar repetirse.
+  No se probó y no se tocó.
+- **Recomendación:** caducar el pendiente cuando el servidor resuelve o cancela el intento.
+
+## H-32 · P3 · Sin red, el error se muestra crudo y tarda
+
+- **Evidencia (VIVO, lote L2):** con las peticiones a Supabase rechazadas, «Cerrar cuenta
+  pagada» mostró «Cerrando…» unos 15 s y después «TypeError: Failed to fetch». Los datos no
+  cambiaron y el reintento con red funcionó.
+- **Recomendación:** un tiempo límite más corto y un mensaje comprensible («Sin conexión. No
+  se ha cambiado nada. Reintenta»).
 
 ## No son defectos (descartados durante la auditoría)
 
