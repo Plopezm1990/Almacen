@@ -20,7 +20,9 @@ Documentos asociados: [hallazgos](HALLAZGOS_TPV_2026-11-25.md) ·
 **Aviso sobre la referencia del modo caja.** El encargo pide no dar por elegida ninguna de
 las tres propuestas nuevas. Pero en la sesión del 25/11 el usuario aprobó la propuesta 1
 («doble banda») y está implantada y desplegada (`2d49edef` … `aa809c3a`). Se audita lo
-desplegado y la discrepancia queda como decisión pendiente (H-07).
+desplegado. **Decidido el 26/11 (E1, H-07):** la propuesta 1 «doble banda» queda confirmada como
+referencia oficial del modo caja (`../REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md`); solo falta
+actualizar la maqueta Órbita.
 
 ## 2. Método y límites
 
@@ -161,9 +163,10 @@ No se comparan los productos, precios ni nombres de ejemplo de la maqueta.
 
 ### Resumen de la matriz (115 casos, tras los lotes L1 a L5 y la matriz por rol)
 
-77 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
+78 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
 34 FAIL (incluidos los parciales) · 1 NO PROBADO (C-04, declarado OK por el usuario) ·
-1 BLOQUEADO (V-19, decisión de producto) · 1 NO CONCLUYENTE (L-08) · 1 NO APLICA. Antes de los lotes eran 67 casos con 6 BLOQUEADO.
+0 BLOQUEADO (V-19 se resolvió con la decisión del 26/11) · 1 NO CONCLUYENTE (L-08) · 1 NO APLICA.
+Antes de los lotes eran 67 casos con 6 BLOQUEADO.
 
 **Lote L5 (26/11):** descuento aplicado por el Propietario (PASS), el descuento viaja con la línea
 repartida (PASS), devolver un reparto moviendo de vuelta (PASS) y el **escalado completo

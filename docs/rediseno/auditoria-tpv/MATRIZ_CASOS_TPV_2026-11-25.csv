@@ -17,7 +17,7 @@ V-15;Modo caja;Capas accesibles (rol diálogo, foco dentro, retorno al origen);�
 V-16;Modo caja;Escanear con una capa abierta no altera el ticket;tpv-02;—;—;FAIL;Navegador QA en vivo;evidencias/matriz-por-rol-2026-11-26.md;H-03;Con la capa Terminal abierta escribir Agua 50 cl e Intro añadió el producto al ticket · reproducido
 V-17;Modo caja;Sala: aparece «Mesas» y la composición no se desplaza;tpv-03;1440x900;modo local;PASS;Navegador QA en vivo;caja_sala;;Sin mesas reales: necesita servidor
 V-18;Modo caja;Salida del modo caja restaura lateral, cabecera y pestañas;tpv-01;1440x900;modo local;PASS;Navegador QA en vivo;sesión 25/11 misma serie (2d49edef y posteriores);;
-V-19;Modo caja;Coincidencia con la referencia Órbita aprobada;tpv-01;1440x900;—;BLOQUEADO;Decisión de producto;H-07;H-07;Propuesta 1 aprobada en sesión, maqueta sin actualizar
+V-19;Modo caja;Coincidencia con la referencia Órbita aprobada;tpv-01;1440x900;—;PASS (referencia decidida);Decisión de producto;REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md;H-07;El usuario pidió la opción recomendada el 26/11 y la doble banda queda como referencia oficial · estructura sin comparar pixel a pixel · falta actualizar la maqueta Órbita
 V-20;Modo caja;Móvil: acceso visible a Terminal y Salir;tpv-01;390/320;modo local;FAIL;Navegador QA en vivo;capturas 03 y 04;H-10;
 V-21;TPV normal;Fuera del modo caja se conserva el diseño de dos columnas;tpv-01;1440x900;modo local;PASS;Navegador QA en vivo;sesión 25/11;;Tarjetas de cuenta conservan fondo, radio y sombra
 F-01;Venta rápida;Añadir producto al ticket;tpv-02;—;—;PASS;Navegador QA en vivo;evidencias/lote-L1-ejecucion-2026-11-25.md;;Refresco y agua añadidos al ticket desde la rejilla

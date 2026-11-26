@@ -91,8 +91,8 @@
 
 ## Pendiente de decisión del usuario
 
-- **H-07:** referencia del modo caja (propuesta 1 aprobada en sesión frente a la maqueta
-  Órbita).
+- **H-07 — decidido el 26/11:** referencia oficial del modo caja = «doble banda»
+  (`../REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md`). Queda actualizar la maqueta Órbita.
 - **H-15:** qué hacer con el stock insuficiente.
 - **H-05:** flujo de devolución de anticipos.
 - **H-12:** acción principal con el ticket vacío.

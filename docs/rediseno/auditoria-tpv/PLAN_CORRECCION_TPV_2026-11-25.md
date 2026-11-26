@@ -169,9 +169,10 @@ el contrato de la política de segundo factor lo cubre.
 
 ## e) Decisiones de producto pendientes
 
-- **E1 · Referencia del modo caja (H-07).** Confirmar la propuesta 1 «doble banda» como
-  referencia (y reflejarla en la maqueta y en las equivalencias) o volver a la composición
-  de la maqueta Órbita.
+- **E1 · Referencia del modo caja (H-07) — DECIDIDO el 26/11:** la propuesta 1 «doble banda» es la
+  referencia oficial (`../REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md`). Pendiente: reflejarla en
+  la maqueta Órbita. Las correcciones A1 a A7 del plan son las que acercan lo implantado a esa
+  referencia.
 - **E2 · Stock insuficiente (H-15).** Permitir con aviso, exigir autorización o bloquear.
 - **E3 · Devolución de anticipos (H-05).** Flujo y permisos.
 - **E4 · Acción principal con el ticket vacío (H-12).** Ninguna destacada o la del estado

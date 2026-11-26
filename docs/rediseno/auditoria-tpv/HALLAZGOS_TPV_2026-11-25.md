@@ -31,7 +31,7 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
 | H-04 | P2 | Encargos editables por tabla, sin pasar por funciones de servidor | CÓDIGO + SERVIDOR |
 | H-05 | P2 | Revertir anticipo sin interfaz; la función de servidor existe y no se usa | CÓDIGO + matriz |
 | H-06 | P2 | 14 funciones de QA sin migración, incluidos simuladores de cobro | CÓDIGO + SERVIDOR |
-| H-07 | P2 | El modo caja implantado no coincide con la maqueta Órbita aprobada | VIVO + decisión |
+| H-07 | P2 | El modo caja implantado no coincide con la maqueta Órbita aprobada — **decidido el 26/11: referencia oficial «doble banda»; falta actualizar la maqueta** | VIVO + decisión |
 | H-08 | P3 | Contraste insuficiente en la categoría activa | VIVO |
 | H-09 | P3 | Categorías con desplazamiento horizontal en lugar de paginación | VIVO |
 | H-10 | P3 | En móvil, «Terminal» y «Salir del modo caja» quedan fuera de la vista | VIVO |
@@ -201,8 +201,13 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   desplegado y se deja constancia de la discrepancia.
 - **Impacto:** no hay una referencia única para comparar el modo caja; la maqueta y la
   documentación no reflejan lo implantado.
-- **Recomendación (decisión de producto):** confirmar o revocar la propuesta 1 como
-  referencia del modo caja y, en su caso, añadirla a la maqueta o al documento de
+- **Decisión (26/11):** el usuario pidió la opción recomendada y se **confirma la propuesta 1
+  «doble banda» como referencia oficial del modo caja** (E1). Documento y capturas de
+  referencia: `../REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md`. Queda pendiente solo
+  **actualizar la maqueta Órbita** (paquete compilado fuera de este repositorio, no tocado):
+  añadir una pantalla de modo caja con la doble banda o marcar `tpv-01` como «TPV normal».
+- **Recomendación original (decisión de producto, ya tomada):** confirmar o revocar la propuesta 1
+  como referencia del modo caja y, en su caso, añadirla a la maqueta o al documento de
   equivalencias.
 
 ## H-08 · P3 · Contraste insuficiente en la categoría activa

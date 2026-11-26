@@ -202,3 +202,11 @@ lista de esta tabla.
 5. **Devoluciones** aparece en dos áreas (clientes en Caja, proveedor en
    Compras). El área marcada sería Caja, salvo que se haya entrado por
    «Devoluciones a proveedor».
+
+## Modo caja del TPV (decidido el 26/11/2026)
+
+El modo caja **no** sigue la composición de la pantalla `tpv-01` de la maqueta (catálogo a la
+izquierda y ticket a la derecha). Su referencia oficial es la propuesta **«doble banda»**:
+catálogo arriba, ticket abajo y cobro anclado al ticket, sin desplazar la página. Reglas, mapa
+de funciones, imágenes y correcciones pendientes en
+[REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md](REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md).
