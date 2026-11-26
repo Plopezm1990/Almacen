@@ -215,6 +215,19 @@ try {
     await montar(React.createElement(mod.ArqueoCaja, propsArqueo(env, {})));
     ok('A10 sin servidor (modo local) se conserva el cálculo local y nunca se llama al servidor', document.querySelector('[data-arqueo-esperado="local"]') !== null && env.llamadas('abc_previsualizar_arqueo_caja').length === 0, document.querySelector('[data-arqueo-esperado]')?.outerHTML);
   }
+  {
+    // Al abrir la sesión de caja desde esta pantalla, el esperado se vuelve a pedir solo (visto en QA: quedaba «No disponible» hasta pulsar «Actualizar»).
+    const env = entorno({ rol: 'Cajero/a', esperado: 0 });
+    env.s.fallos.abc_previsualizar_arqueo_caja = 'terminal_no_vinculado_sesion';
+    await montar(React.createElement(mod.ArqueoCaja, propsArqueo(env, {
+      consultarEsperadoServidor: env.logica.consultarEsperadoCajaA24,
+      abrirSesionCajaA10: async () => { delete env.s.fallos.abc_previsualizar_arqueo_caja; return { ok: true, caja_nombre: 'Caja A1' }; }
+    })));
+    ok('A11 sin sesión abierta el esperado está «No disponible»', document.querySelector('[data-arqueo-esperado="error"]') !== null, document.querySelector('[data-arqueo-esperado]')?.outerHTML);
+    await clic(boton('Abrir sesión de caja'));
+    await esperar(40);
+    ok('A12 al abrir la sesión desde la pantalla, el esperado se pide de nuevo y aparece sin pulsar «Actualizar»', document.querySelector('[data-arqueo-esperado="ok"]')?.textContent === '€0,00', document.querySelector('[data-arqueo-esperado]')?.outerHTML);
+  }
 } finally {
   if (raiz) { try { await act(async () => { raiz.unmount(); }); } catch {} }
 }

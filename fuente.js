@@ -125699,6 +125699,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         return;
       }
       setExitoSesion(`Sesión de caja abierta${r2.caja_nombre ? ` en ${r2.caja_nombre}` : ""}. Ya puedes operar en el TPV.`);
+      setRefrescoEsperado((n2) => n2 + 1);
     } catch (e2) {
       setErrorSesion(String(e2?.message || "No se pudo abrir la sesión de caja."));
     } finally {
