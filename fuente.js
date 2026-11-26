@@ -113110,6 +113110,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_cuenta_id: contextoCuenta.cuentaId
       });
       if (Array.isArray(incidenciasData)) incidencias = incidenciasData;
+      const resumenServidor = detalleB05 || resumen;
+      if (Array.isArray(detalleB05?.pagos)) pagos = detalleB05.pagos;
+      if (Array.isArray(detalleB05?.intentos)) intentos = detalleB05.intentos;
+      // H-31: el pendiente local se comprueba contra la lista de pagos COMPLETA del servidor (abc_estado_pago_mixto_cuenta,
+      // todos los checkouts de la cuenta). Antes se comprobaba contra la lectura directa de la tabla (solo los 10 últimos
+      // checkouts y sujeta a permisos), y un pendiente cuyo pago ya estaba resuelto en el servidor se quedaba para siempre.
       let pendienteLocal = leerPendienteCobroF4(empresaId, localActivoId, contextoCuenta.cuentaId);
       if (pendienteLocal?.pagoId) {
         const pago = pagos.find((x3) => String(x3.id) === String(pendienteLocal.pagoId));
@@ -113118,9 +113124,6 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           pendienteLocal = null;
         }
       }
-      const resumenServidor = detalleB05 || resumen;
-      if (Array.isArray(detalleB05?.pagos)) pagos = detalleB05.pagos;
-      if (Array.isArray(detalleB05?.intentos)) intentos = detalleB05.intentos;
       return {
         ok: true, disponible: true, cuentaId: contextoCuenta.cuentaId,
         currencyCode: String(contextoCuenta.currencyCode || "EUR"),
