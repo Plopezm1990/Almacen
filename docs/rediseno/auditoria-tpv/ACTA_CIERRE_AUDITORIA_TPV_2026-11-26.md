@@ -213,10 +213,13 @@ Se documentan porque afectan a cómo leer la evidencia:
 - **E1 (26/11):** referencia oficial del modo caja = «doble banda»
   (`../REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md`). Falta actualizar la maqueta Órbita.
 
-**Pendientes, con mi recomendación en `ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md`:**
-E2 stock insuficiente (permitir con aviso), E3 devolución de anticipos (pantalla solo para
-Encargado y Propietario), E4 acción principal con el ticket vacío (ninguna) y E5 categorías
-(paginación con flechas).
+- **E2, E3, E4 y E5 (26/11), aprobadas tal como se recomendaron** en
+  `ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md`: stock insuficiente, permitir la venta con
+  aviso y registrar el déficit del piso (H-15); devolución de anticipos con una pantalla solo para
+  Encargado y Propietario (H-05); ninguna acción naranja con el ticket vacío (H-12); categorías
+  con paginación y flechas (H-09).
+
+**Pendientes de decisión:** ninguna.
 
 ## 10. Estado del repositorio
 
@@ -255,8 +258,8 @@ La auditoría se da por cerrada porque se cumple lo siguiente:
 - [x] La configuración temporal se restauró y se comprobó en el servidor.
 - [x] No hay contraseñas, códigos ni claves en los documentos (comprobado con una búsqueda).
 - [x] Producción y `sis-13` no se tocaron.
-- [x] Las correcciones están ordenadas, con la recomendación del auditor para las cuatro
-      decisiones de producto.
+- [x] Las correcciones están ordenadas y las cuatro decisiones de producto (E2 a E5) están
+      aprobadas por el usuario.
 
 ## 13. Índice de documentos
 

@@ -4,8 +4,8 @@ Sustituye al orden de la tabla inicial de `PLAN_CORRECCION_TPV_2026-11-25.md`, q
 de los lotes L1 a L5. El detalle de cada corrección (criterio de aceptación, tipo) sigue en el
 plan, con los códigos A1…A8, B1…B3, C1…C5, D1…D3 y F1…F11.
 
-**Nada de esto está implementado.** Las recomendaciones de la segunda parte están **pendientes de
-aprobación**: ninguna cuenta como decisión tomada hasta que el usuario la confirme.
+**Nada de esto está implementado.** Las cuatro decisiones de la segunda parte **las aprobó el usuario
+el 26/11/2026** («Apruebo») tal como se recomendaron.
 
 ## 1. Orden de implementación por olas
 
@@ -37,15 +37,16 @@ avisar a nadie, ni siquiera al cierre de caja, y afecta al cargo que más cobra.
 
 **Dependencias:** la ola 1 necesita antes la ola 0 (si no, las pruebas de cobro vuelven a
 ensuciar el navegador y el arqueo). La ola 3 puede ir en paralelo con la 1 y la 2 porque solo
-toca la presentación. La ola 4 espera a las decisiones de abajo.
+toca la presentación. Las decisiones de abajo ya están aprobadas, así que la ola 4 puede empezar cuando toque.
 
-## 2. Recomendación del auditor para las cuatro decisiones pendientes
+## 2. Decisiones de producto aprobadas el 26/11/2026
 
-Estas cuatro condicionan qué se implementa en las olas 3 y 4. Cada una se puede cambiar.
+El usuario aprobó las cuatro recomendaciones tal como se escribieron. Condicionan qué se implementa
+en las olas 3 y 4. Si más adelante cambia alguna, se anota aquí con la fecha.
 
-### E2 · Stock insuficiente (H-15) — recomiendo **permitir la venta con aviso**
+### E2 · Stock insuficiente (H-15) — **APROBADO:** permitir la venta con aviso
 
-- **Qué pasa hoy (VIVO, 26/11):** la tarjeta del agua marca «sin stock» (piso de venta 0), el
+- **Qué pasa hoy (VIVO, 25/11):** la tarjeta del agua marca «sin stock» (piso de venta 0), el
   ticket **no avisa** y el servidor deja guardar, enviar y cobrar; descuenta del almacén y no
   toca el piso.
 - **Recomendación:** no bloquear. Mostrar el aviso **en la tarjeta y en el ticket** antes de
@@ -59,7 +60,7 @@ Estas cuatro condicionan qué se implementa en las olas 3 y 4. Cada una se puede
 - **Aceptación:** vender 1 unidad de un producto con piso 0 muestra el aviso, se confirma, queda
   el déficit anotado y el Encargado lo ve en pendientes.
 
-### E3 · Devolución de anticipos (H-05) — recomiendo **una pantalla en Encargos, solo Encargado y Propietario**
+### E3 · Devolución de anticipos (H-05) — **APROBADO:** una pantalla en Encargos, solo Encargado y Propietario
 
 - **Qué pasa hoy:** la función `abc_registrar_movimiento_anticipo` existe en el servidor y
   **no tiene pantalla**.
@@ -72,7 +73,7 @@ Estas cuatro condicionan qué se implementa en las olas 3 y 4. Cada una se puede
 - **Aceptación:** devolver un anticipo genera un único movimiento y dos reintentos no lo
   duplican; un Cajero/a recibe el rechazo del servidor.
 
-### E4 · Acción principal con el ticket vacío (H-12) — recomiendo **ninguna acción naranja**
+### E4 · Acción principal con el ticket vacío (H-12) — **APROBADO:** ninguna acción naranja
 
 - **Qué pasa hoy:** con el ticket vacío el modo caja muestra «Cobrar» como acción principal.
 - **Recomendación:** con el ticket vacío y sin cuenta pendiente, **ninguna acción destacada**.
@@ -82,7 +83,7 @@ Estas cuatro condicionan qué se implementa en las olas 3 y 4. Cada una se puede
 - **Aceptación:** a 1440, 1024, 390 y 320 px, el estilo calculado del botón activo coincide
   con el estado real de la cuenta.
 
-### E5 · Categorías (H-09) — recomiendo **paginación con flechas**
+### E5 · Categorías (H-09) — **APROBADO:** paginación con flechas
 
 - **Qué pasa hoy:** la fila de categorías se desliza en horizontal.
 - **Recomendación:** paginar por grupos con flechas, sin desplazar, con controles de 44 × 44 px.

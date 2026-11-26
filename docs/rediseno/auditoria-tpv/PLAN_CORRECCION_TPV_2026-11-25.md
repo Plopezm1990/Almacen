@@ -170,17 +170,20 @@ el contrato de la política de segundo factor lo cubre.
   recargar a mitad de «Guardar» no deja cuenta sin pedido; sin red aparece un mensaje claro en
   menos de 8 s; ningún pendiente de cobro sobrevive a su cancelación en el servidor.
 
-## e) Decisiones de producto pendientes
+## e) Decisiones de producto (todas decididas a 26/11/2026)
 
 - **E1 · Referencia del modo caja (H-07) — DECIDIDO el 26/11:** la propuesta 1 «doble banda» es la
   referencia oficial (`../REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md`). Pendiente: reflejarla en
   la maqueta Órbita. Las correcciones A1 a A7 del plan son las que acercan lo implantado a esa
   referencia.
-- **E2 · Stock insuficiente (H-15).** Permitir con aviso, exigir autorización o bloquear.
-- **E3 · Devolución de anticipos (H-05).** Flujo y permisos.
-- **E4 · Acción principal con el ticket vacío (H-12).** Ninguna destacada o la del estado
-  real de la cuenta.
-- **E5 · Categorías (H-09).** Paginación frente a desplazamiento en la fila.
+- **E2 · Stock insuficiente (H-15) — DECIDIDO el 26/11:** permitir la venta con aviso en la tarjeta y
+  en el ticket y registrar el déficit del piso.
+- **E3 · Devolución de anticipos (H-05) — DECIDIDO el 26/11:** pantalla «Devolver anticipo» en
+  Encargos, solo Encargado y Propietario, con motivo, importe máximo y un único movimiento.
+- **E4 · Acción principal con el ticket vacío (H-12) — DECIDIDO el 26/11:** ninguna acción
+  naranja; «Guardar pedido» con líneas y «Cobrar» con una cuenta abierta con saldo.
+- **E5 · Categorías (H-09) — DECIDIDO el 26/11:** paginación con flechas, controles de 44 × 44 px.
+  Detalle y criterios de aceptación en `ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md`.
 - **E6 · Segundo factor (H-17) — DECIDIDO por el usuario el 25/11:** obligatorio **solo para
   Propietario**. Encargado, Cajero/a y Camarero/a sin segundo factor (el personal entra con
   su PIN de empleado). Riesgo aceptado: el Encargado puede aprobar reembolsos y descuentos

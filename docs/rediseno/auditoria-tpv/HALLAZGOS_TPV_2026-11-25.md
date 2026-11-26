@@ -39,7 +39,7 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
 | H-12 | P3 | «Cobrar» aparece como acción principal con el ticket vacío | VIVO + CÓDIGO |
 | H-13 | P3 | Botón de tema con emoji dentro del modo caja | VIVO |
 | H-14 | Descartado | `movimientos_registro`: RLS activado (comprobado en servidor) | SERVIDOR |
-| H-15 | Decisión | Venta con stock insuficiente: el cliente solo avisa | CÓDIGO |
+| H-15 | Decisión | Venta con stock insuficiente: el cliente solo avisa — **decidido el 26/11 (E2): permitir con aviso** | CÓDIGO + VIVO |
 | H-16 | P2 | TPV normal: los nombres de producto se salen de su tarjeta | VIVO + CÓDIGO |
 | H-17 | P2 | QA no tiene las mismas migraciones que el repositorio (segundo factor) — segundo factor **corregido en QA** el 25/11 | SERVIDOR |
 | H-18 | P3 | `pagos_encargo` con privilegios de escritura innecesarios | SERVIDOR |
@@ -160,6 +160,8 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   riesgo de resolverlo con movimientos manuales de caja (doble contabilización).
 - **Recomendación:** decidir el flujo (decisión de producto) y, si procede, construir la
   interfaz sobre la función existente, con prueba de no doble contabilización.
+- **Decisión (26/11, E3):** pantalla «Devolver anticipo» en Encargos, solo Encargado y Propietario,
+  con motivo, importe máximo y un único movimiento. Ver `ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md`.
 
 ## H-06 · P2 · 14 funciones de QA sin migración, incluidos simuladores de cobro
 
@@ -223,6 +225,8 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   horizontal, con barra de desplazamiento visible a 1024. El requisito del modo caja pide
   categorías paginadas, sin desplazamiento. A 1440 caben todas las categorías de prueba.
 - **Recomendación:** flechas o «más categorías» cuando no quepan.
+- **Decisión (26/11, E5):** paginación con flechas, controles de 44 × 44 px (coincide con la
+  referencia «doble banda»).
 
 ## H-10 · P3 · En móvil, «Terminal» y «Salir del modo caja» quedan fuera de la vista
 
@@ -244,6 +248,8 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   cobro con un estado informativo («Venta rápida en curso…»).
 - **Recomendación:** con el ticket vacío y sin cuenta pendiente, no destacar ninguna
   acción, o mostrar la acción que corresponda al estado real de la cuenta.
+- **Decisión (26/11, E4):** ninguna acción naranja con el ticket vacío; «Guardar pedido» con
+  líneas y «Cobrar» con una cuenta abierta con saldo.
 
 ## H-13 · P3 · Botón de tema con emoji dentro del modo caja
 
@@ -268,6 +274,8 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   ventas y descontó las unidades del **almacén** (73 → 71) sin tocar el piso.
 - **Decisión pendiente:** permitir el stock negativo con aviso, exigir autorización o
   bloquear.
+- **Decisión (26/11, E2):** permitir la venta con aviso en la tarjeta y en el ticket y registrar el
+  déficit del piso. Ver `ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md`.
 
 ## H-16 · P2 · TPV normal: los nombres de producto se salen de su tarjeta
 

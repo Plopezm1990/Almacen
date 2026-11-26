@@ -95,14 +95,14 @@ Lo que sigue es el traspaso detallado, anterior al cierre.
 - **Medir el estilo calculado, no el texto del CSS.** H-01 pasó una verificación anterior
   justo porque se miraron medidas y desplazamiento y no el estilo calculado del botón.
 
-## Pendiente de decisión del usuario
+## Decisiones del usuario (ya todas tomadas)
 
 - **H-07 — decidido el 26/11:** referencia oficial del modo caja = «doble banda»
   (`../REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md`). Queda actualizar la maqueta Órbita.
-- **H-15:** qué hacer con el stock insuficiente.
-- **H-05:** flujo de devolución de anticipos.
-- **H-12:** acción principal con el ticket vacío.
-- **H-09:** categorías paginadas o con desplazamiento.
+- **H-15, H-05, H-12 y H-09 — decididos el 26/11 (E2 a E5):** permitir la venta con aviso y
+  registrar el déficit; devolver anticipos solo Encargado y Propietario; ninguna acción naranja
+  con el ticket vacío; categorías con paginación. Detalle en
+  `ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md`. **No queda ninguna decisión pendiente.**
 ## Decisiones ya tomadas
 
 - **E6 · Segundo factor (25/11):** obligatorio solo para Propietario. **Aplicado en QA el
