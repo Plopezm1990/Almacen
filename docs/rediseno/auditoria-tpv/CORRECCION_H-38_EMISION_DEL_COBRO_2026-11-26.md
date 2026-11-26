@@ -48,7 +48,27 @@ fallando, y comprueba primitivos cerrados, marca falseada, marca que no sobreviv
     EMITIDO**, cola PENDIENTE, transporte AEAT desactivado (QA). Es el documento que faltaba a la venta
     del Cajero/a de la auditoría; la operación tiene un único documento.
 
+## H-38b · el cierre de caja detecta las ventas sin documento
+
+Migración `20261126140000_abc_f5_c04_bloqueo_ventas_sin_documento.sql`, aplicada en QA.
+`private.abc_c04_bloqueos_cierre` es el punto único de bloqueos del cierre (ensayo C12, cierre
+provisional, cierre definitivo y el disparador de `CERRADA_FINAL`). Ahora añade el bloqueo
+`VENTAS_SIN_DOCUMENTO`: hay un cobro completado con importe, del mismo local, dentro de la ventana
+de la sesión (apertura a cierre) y sin documento **EMITIDO** (uno solo reservado sigue contando).
+El ensayo C12 lo clasifica como BLOQUEADO. El cierre provisional lo anota en su foto sin impedirse;
+el definitivo se rechaza hasta emitir el documento.
+
+- Contrato `tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs`: 25 comprobaciones
+  (reproduce el defecto, qué no bloquea, conviven pagos y efectos, idempotencia, fallo en voz alta).
+- Manifiesto de CI: 394 entradas, 377 activas.
+- QA, con datos reales: la sesión del 25/11 (`14d01b2f…`) queda marcada por la venta de 1,00 € del
+  Camarero/a/Cajero/a sin documento (`a4543959…`); las sesiones del 26/11 salen limpias. También
+  salen marcadas tres sesiones antiguas (octubre y noviembre) por ventas anteriores a esta
+  corrección: es historia ya cerrada, el bloqueo solo actúa al pasar a cierre definitivo.
+- No se emitió el documento de la venta del 25/11: la autorización del usuario cubría solo la venta
+  del Cajero/a del 26/11.
+
 ## Pendiente de H-38
 
-**H-38b**: el cierre de caja (`abc_c04_bloqueos_cierre`, C12) no detecta ventas cobradas sin documento y
-no hay botón «Emitir documento pendiente». Es una pieza aparte, aún no empezada.
+El botón **«Emitir documento pendiente»** en la pantalla de cierre (cliente) y la presentación
+legible del bloqueo `VENTAS_SIN_DOCUMENTO` (ola 1, H-26). La emisión ya puede hacerla quien cobra.
