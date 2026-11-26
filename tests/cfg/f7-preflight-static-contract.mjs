@@ -185,6 +185,14 @@ const EXCLUIDAS = new Set([
   // exclusion lo prueba, contra un Postgres de verdad y partiendo de cero:
   //   tests/rediseno/org33-tarifas-pglite-contract.mjs
   '20261120120000_rediseno_org33_tarifas_horario.sql',
+  // Emision del documento fiscal por capacidad de cobro (26/11/2026, hallazgo H-38 de la
+  // auditoria del TPV): quien puede iniciar un cobro puede emitir el documento de ese cobro y
+  // leer el estado de la emision. Antes lo exigian ABC_EMISOR_CAMBIAR (Propietario y
+  // Encargado) y un cobro del Cajero/a se cerraba sin documento. Es posterior a la foto F7 del
+  // 3/10 y cambia quien puede emitir, asi que se promueve aparte. Lo que promete esta
+  // exclusion lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/c07d-emision-cobro-pglite-contract.mjs
+  '20261126120000_abc_f7_c07d_emision_por_capacidad_de_cobro.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -247,6 +255,9 @@ const JUSTIFICACION = {
   ],
   '20261120120000_rediseno_org33_tarifas_horario.sql': [
     'tests/rediseno/org33-tarifas-pglite-contract.mjs',
+  ],
+  '20261126120000_abc_f7_c07d_emision_por_capacidad_de_cobro.sql': [
+    'tests/rediseno/c07d-emision-cobro-pglite-contract.mjs',
   ],
 };
 

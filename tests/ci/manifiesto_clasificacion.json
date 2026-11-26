@@ -1,8 +1,8 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 392,
+  "total_inventory": 393,
   "expected_counts": {
-    "active_contract": 375,
+    "active_contract": 376,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "pglite": {
-      "active_contract": 5,
+      "active_contract": 6,
       "historical_expected_fail": 0,
       "utility": 1,
       "diagnostic": 0
@@ -1962,6 +1962,11 @@
     },
     {
       "path": "tests/rediseno/p04-mfa-politica-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/c07d-emision-cobro-pglite-contract.mjs",
       "classification": "active_contract",
       "environment": "pglite"
     },
