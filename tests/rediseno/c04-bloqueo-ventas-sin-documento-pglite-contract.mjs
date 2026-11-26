@@ -10,6 +10,11 @@
  * provisional y el cierre definitivo) solo miraba pagos y efectos pendientes. Una
  * sesión con ventas cobradas y SIN documento emitido se podía cerrar «apta».
  *
+ * Segunda parte (misma migración de cierre, lectura para el botón «Emitir documento pendiente»):
+ *   supabase/migrations/20261126150000_abc_f5_c04_listar_ventas_sin_documento.sql
+ *   La función de lectura devuelve exactamente las ventas que producen el bloqueo, solo a quien puede
+ *   operar la caja o iniciar cobros, y no escribe nada.
+ *
  * Lo que se fija:
  *   1. Una venta cobrada (checkout COMPLETADO con importe) dentro de la ventana de la
  *      sesión (de su apertura a su cierre) y sin documento EMITIDO produce el
@@ -36,6 +41,7 @@ const { PGlite } = await import(
   new URL('file://' + path.join(raiz, 'tests/f3/a09/node_modules/@electric-sql/pglite/dist/index.js').replace(/\\/g, '/'))
 );
 const MIG = await readFile(path.join(raiz, 'supabase/migrations/20261126140000_abc_f5_c04_bloqueo_ventas_sin_documento.sql'), 'utf8');
+const MIG_LISTA = await readFile(path.join(raiz, 'supabase/migrations/20261126150000_abc_f5_c04_listar_ventas_sin_documento.sql'), 'utf8');
 
 let fallos = 0;
 function check(nombre, ok, detalle = '') {
@@ -48,7 +54,14 @@ async function intenta(db, sql) {
 }
 
 const ANDAMIO = `
+  create role anon; create role authenticated; create role service_role;
   create schema if not exists private;
+  create schema if not exists auth;
+  create function auth.uid() returns uuid language sql stable as
+    $$ select nullif(current_setting('test.uid', true), '')::uuid $$;
+  create function private.abc_tiene_capacidad(p_empresa_id text, p_local_id text, p_capacidad text)
+  returns boolean language sql stable as
+    $$ select upper(p_capacidad) = any (string_to_array(coalesce(current_setting('test.caps', true), ''), ',')) $$;
   create table public.caja_sesiones (id uuid primary key, empresa_id text, local_id text, estado text, abierta_at timestamptz, cerrada_at timestamptz);
   create table public.checkouts (id uuid primary key, empresa_id text, local_id text, cuenta_id uuid, estado text, completed_at timestamptz);
   create table public.checkout_ventas (id serial primary key, empresa_id text, local_id text, checkout_id uuid, venta_fiscal_id uuid, importe_objetivo numeric(24,8));
@@ -253,6 +266,57 @@ const bloqueos = async (db, sesion = S) =>
   check('si el ensayo no tiene la clasificación esperada, falla en voz alta', msg.includes('ESTRUCTURA_NO_ENCONTRADA'), msg.slice(0, 120));
   const d = (await db.query(`select pg_get_functiondef('private.abc_c04_bloqueos_cierre(text,text,uuid)'::regprocedure) d`)).rows[0].d;
   check('y no deja la función de bloqueos a medias (transacción deshecha)', !/VENTAS_SIN_DOCUMENTO/.test(d));
+  await db.close();
+}
+
+// ---------------------------------------------------------------------------
+// G. La lectura para el botón «Emitir documento pendiente».
+// ---------------------------------------------------------------------------
+{
+  const db = await base();
+  await db.exec(MIG);
+  await db.exec(MIG_LISTA);
+  const como = async (caps, autenticado = true) =>
+    db.exec(`set test.caps = '${caps}'; set test.uid = '${autenticado ? '11111111-1111-4111-8111-111111111111' : ''}'`);
+  const lista = async (sesion = S) => (await db.query(`select public.abc_c04_listar_ventas_sin_documento('${E}','${L}','${sesion}'::uuid) l`)).rows[0].l;
+
+  await como('ABC_CAJA_OPERAR');
+  check('G1. sin ventas, la lista está vacía', (await lista()).length === 0);
+  const sin1 = await venta(db, { at: '2026-11-26 09:00+00', importe: 5 });
+  const sin2 = await venta(db, { at: '2026-11-26 11:00+00', importe: 7.5 });
+  await venta(db, { doc: 'EMITIDO' });
+  await venta(db, { at: '2026-11-25 10:00+00' });
+  await venta(db, { local: 'L2' });
+  await venta(db, { estado: 'EN_COBRO' });
+  await venta(db, { importe: 0 });
+  const l = await lista();
+  check('G2. devuelve solo las dos ventas sin documento, por orden de cobro', l.length === 2 && l[0].venta_fiscal_id === sin1 && l[1].venta_fiscal_id === sin2, JSON.stringify(l));
+  check('G3. cada fila trae lo que hace falta para emitir: checkout, cuenta, venta fiscal e importe',
+    l.every((f) => f.checkout_id && f.cuenta_id && f.venta_fiscal_id && Number(f.importe) > 0 && f.completed_at));
+  check('G4. la lista coincide con el bloqueo: no vacía si y solo si hay VENTAS_SIN_DOCUMENTO', (await bloqueos(db)).includes('VENTAS_SIN_DOCUMENTO') === (l.length > 0));
+  await db.exec(`insert into public.abc_c05_documentos_emitidos(empresa_id,local_id,documento_origen_id,estado) values ('${E}','${L}','${sin1}','EMITIDO')`);
+  const l2 = await lista();
+  check('G5. al emitir el documento de una venta, sale de la lista', l2.length === 1 && l2[0].venta_fiscal_id === sin2);
+  await db.exec(`insert into public.abc_c05_documentos_emitidos(empresa_id,local_id,documento_origen_id,estado) values ('${E}','${L}','${sin2}','EMITIDO')`);
+  check('G6. y con todas emitidas la lista queda vacía y el bloqueo desaparece', (await lista()).length === 0 && !(await bloqueos(db)).includes('VENTAS_SIN_DOCUMENTO'));
+
+  await como('ABC_COBRO_INICIAR');
+  check('G7. quien puede iniciar cobros también puede leerla (es quien emite)', (await intenta(db, `select public.abc_c04_listar_ventas_sin_documento('${E}','${L}','${S}'::uuid)`)).ok);
+  await como('ABC_ALGO_AJENO');
+  const sinPermiso = await intenta(db, `select public.abc_c04_listar_ventas_sin_documento('${E}','${L}','${S}'::uuid)`);
+  check('G8. sin ninguna de las dos capacidades, se rechaza', !sinPermiso.ok && /ventas_sin_documento_no_autorizado/.test(sinPermiso.error), sinPermiso.error || 'no lanzó error');
+  await como('ABC_CAJA_OPERAR', false);
+  const sinSesion = await intenta(db, `select public.abc_c04_listar_ventas_sin_documento('${E}','${L}','${S}'::uuid)`);
+  check('G9. sin sesión de usuario, se rechaza', !sinSesion.ok && /ventas_sin_documento_no_autorizado/.test(sinSesion.error), sinSesion.error || 'no lanzó error');
+
+  const d = (await db.query(`select pg_get_functiondef('public.abc_c04_listar_ventas_sin_documento(text,text,uuid)'::regprocedure) d`)).rows[0].d;
+  check('G10. es de solo lectura (STABLE), SECURITY DEFINER y con search_path vacío', /STABLE/.test(d) && /SECURITY DEFINER/.test(d) && /SET search_path TO ''/.test(d));
+  const priv = (await db.query(`select has_function_privilege('public', 'public.abc_c04_listar_ventas_sin_documento(text,text,uuid)', 'execute') p`)).rows[0].p;
+  check('G11. PUBLIC no puede ejecutarla', priv === false);
+  await db.exec(MIG_LISTA);
+  check('G12. aplicar la migración dos veces no falla', true);
+  const sl = MIG_LISTA.replace(/--.*$/gm, '');
+  check('G13. la migración no toca tablas ni datos', !/(insert\s+into|update\s+\w|delete\s+from|drop\s+table|alter\s+table|truncate)/i.test(sl));
   await db.close();
 }
 

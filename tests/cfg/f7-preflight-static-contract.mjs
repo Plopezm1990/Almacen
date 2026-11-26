@@ -202,6 +202,9 @@ const EXCLUIDAS = new Set([
   // BLOQUEADO en el ensayo C12. Lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs
   '20261126140000_abc_f5_c04_bloqueo_ventas_sin_documento.sql',
+  // H-38b: lectura de las ventas que producen ese bloqueo, para el boton «Emitir documento
+  // pendiente» del cierre. Solo lectura. Mismo contrato que la anterior.
+  '20261126150000_abc_f5_c04_listar_ventas_sin_documento.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -271,6 +274,8 @@ const JUSTIFICACION = {
     'tests/rediseno/c07d-emision-cobro-pglite-contract.mjs',
   ],
   '20261126140000_abc_f5_c04_bloqueo_ventas_sin_documento.sql': [
+    'tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs',
+  ],  '20261126150000_abc_f5_c04_listar_ventas_sin_documento.sql': [
     'tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs',
   ],
 };
