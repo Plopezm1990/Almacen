@@ -1,0 +1,289 @@
+# Informe de auditoría del TPV · L&A Suite · 25/11/2026
+
+**Estado: auditoría cerrada el 26/11/2026.** Resumen final y condiciones de cierre en
+[`ACTA_CIERRE_AUDITORIA_TPV_2026-11-26.md`](ACTA_CIERRE_AUDITORIA_TPV_2026-11-26.md); orden de las
+correcciones en [`ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md`](ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md).
+
+Documentos asociados: [hallazgos](HALLAZGOS_TPV_2026-11-25.md) ·
+[matriz de casos](MATRIZ_CASOS_TPV_2026-11-25.csv) ·
+[plan de corrección](PLAN_CORRECCION_TPV_2026-11-25.md) ·
+[traspaso](TRASPASO_AUDITORIA_TPV_2026-11-25.md) · [evidencias](evidencias/).
+
+## 1. Estado de partida
+
+| Comprobación | Resultado |
+|---|---|
+| Rama | `rediseno/f0-base-qa`, árbol limpio |
+| SHA local = remoto = PR #225 | `aa809c3a265eda1d797b7afdb8ce92d9c1ff483b` |
+| PR #225 | Abierto, **borrador**, sin fusionar |
+| Deploy Preview | Sirve `fuente.js?v=qa-orbita-home-v15-20261125`, `la-apariencia.css?v=qa-orbita-shell-v90-20261125`, `la-orbita-shell.js?v=qa-orbita-shell-v35-20261125` (las de `aa809c3a`) |
+| Backend del preview | `NUBE_URL = https://qjqorixtkilwsndqayyx.supabase.co`, `__modoPruebasQA = true`; no apunta a producción |
+| AGENTS.md | No hay en el repositorio; aplica el de la carpeta del proyecto (`sources/` solo lectura) |
+| Referencias | Maqueta Órbita propuesta 7 (`LA-Suite-rediseno/dist`, `tpv-01`); propuestas de modo caja en `output/tpv-tres-propuestas-20261125` (A, B y C) |
+
+**Aviso sobre la referencia del modo caja.** El encargo pide no dar por elegida ninguna de
+las tres propuestas nuevas. Pero en la sesión del 25/11 el usuario aprobó la propuesta 1
+(«doble banda») y está implantada y desplegada (`2d49edef` … `aa809c3a`). Se audita lo
+desplegado. **Decidido el 26/11 (E1, H-07):** la propuesta 1 «doble banda» queda confirmada como
+referencia oficial del modo caja (`../REFERENCIA_MODO_CAJA_DOBLE_BANDA_2026-11-26.md`); solo falta
+actualizar la maqueta Órbita.
+
+## 2. Método y límites
+
+**Tipos de evidencia.** En vivo (navegador QA), consulta (git, gh, CI), automatizada
+(batería y CI), código (fuente y migraciones), previo (actas anteriores, sin repetir).
+
+**Lo que no se pudo hacer, y por qué:**
+
+- **Sin sesión de QA al principio.** El sistema de permisos bloquea leer la contraseña de
+  prueba, y el usuario pidió probar sin su intervención. Las primeras pruebas en vivo se
+  hicieron con «Trabajar solo en este equipo, sin sincronizar»: sin base de datos, sin rol
+  de servidor y sin poder añadir productos. **Después** el usuario inició sesión como
+  Propietario (con segundo factor) y se ejecutó el lote L1 (ver más abajo).
+- **Lectura del servidor.** Primero se revisaron las 214 migraciones del repositorio. Con
+  autorización del usuario («Crea el notebook») se crearon dos notebooks de solo lectura en
+  el proyecto QA y se consultaron RLS, políticas, privilegios efectivos, funciones,
+  triggers, la guarda de segundo factor y el historial de migraciones
+  (`evidencias/servidor-qa-2026-11-25.md`).
+- **Escrituras solo con autorización.** Hasta el lote L1 no hubo ningún cobro, envío a
+  cocina, movimiento de caja ni de stock. El lote L1 **se ejecutó el 25/11** con la
+  autorización del usuario, con cambios respecto del plan original (producto, apertura y
+  cierre de caja, 3 reembolsos). Detalle y cifras antes y después en
+  `evidencias/lote-L1-ejecucion-2026-11-25.md`. **La auditoría no ejecutó** el caso de dos
+  terminales (C-04): el usuario dice que lo hizo él con su Chrome y que está bien, sin
+  captura ni registro (se anota como declarado, no como evidencia propia). La recarga y la
+  desconexión tras escribir (C-05) se probaron después en el **lote L2** (autorizado,
+  ejecutado el 25/11): `evidencias/lote-L2-recarga-desconexion-2026-11-25.md`.
+- **Panel del navegador oculto.** El navegador pausa `requestAnimationFrame` y
+  `ResizeObserver` en segundo plano. Para medir se sustituyó `requestAnimationFrame` por un
+  temporizador y se reinstaló el mismo `la-orbita-shell.js` publicado. Tras cambiar de
+  tamaño, el cálculo de filas puede quedar desfasado; en esos casos se usa la medición
+  anterior con el panel visible (misma SHA) y se indica.
+
+## 3. Inventario del alcance
+
+Clasificación: **V** existe y verificada (hoy, en vivo) · **E** existe sin verificar hoy
+(código o documento previo) · **P** parcial · **A** ausente · **F** fuera de alcance.
+
+| Capacidad | Estado | Dónde |
+|---|---|---|
+| Venta rápida y Sala / restaurante (selector) | V | VentaRapida, `renderSelectorModoTPV` |
+| Modo caja y salida | V | `modoCajaTpv`, `data-tpv-caja` |
+| Catálogo, categorías, búsqueda, F2 | V (visual) / E (alta de productos) | `tpv-main`, `inputEscaneoRef` |
+| Variantes, modificadores, al peso, sin stock | E | `renderConfiguradorA04`, `abc_*_configurada` |
+| Carrito, cantidades, precios, impuestos, redondeo | E | Carrito en `tpv-side`; redondeo a céntimos en cobro (C-01) |
+| Guardar F9 y envío a cocina | E | `confirmarCobro`, `abc_crear_pedido`, `abc_enviar_pedido` |
+| Mesas, zonas, comensales, responsables, notas | E | `renderSalaA07`, `abc_listar_mapa_sala`, `abc_cambiar_responsable_cuenta` |
+| Cuentas abiertas, aparcadas, recuperación | E | `renderCuentasAparcadasA06`, `abc_recuperar_cuenta` |
+| Unir cuentas y repartir productos | E | `abc_unir_cuentas`, `abc_consultar_reparto_cuenta`, `abc_mover_cantidad_linea_cuenta` |
+| Pase → TPV | E | `la-pase-panel.js`, `mesaDestinoTpv` |
+| Cocina y estados de comanda | E | CocinaA10, `abc_listar_comandas_estacion` |
+| Cobro F4 y medios (efectivo, tarjeta, mixto, transferencia, otro) | E | `renderCobroF4`, `abc_iniciar_cobro`, `abc_confirmar_efectivo` |
+| Bizum | A | matriz `tpv-28` |
+| Descuentos y cortesías | E | `abc_aplicar_descuento_cuenta`, `abc_aprobar_descuento_cuenta` |
+| Tickets, documentos fiscales, impresión, reimpresión | E | `imprimirTicketVenta`, `abc_c07d_*`, `abc_preparar_ticket_fiscal_qa` (no versionada) |
+| Historial de ventas y anulaciones | V (capa) / E (anulación) | `renderHistorialVentas` |
+| Reembolsos | E | `abc_solicitar_reembolso`, `abc_aprobar_reembolso`, `abc_confirmar_reembolso_efectivo` |
+| Terminales, sesión de caja, fondo, arqueo, cierre | E | `abc_abrir_sesion_caja`, `abc_registrar_arqueo_caja`, `abc_iniciar/finalizar_cierre_sesion_caja` |
+| Encargos y anticipos en caja | P | anticipo sí; revertir anticipo sin interfaz (`enc-05`, H-05) |
+| Stock y movimientos derivados | E | consumo en venta (previo 21/11); stock negativo solo con aviso (H-15) |
+| Clientes y datos fiscales en el cobro | E | `tpv-31`, Clientes |
+| Roles, permisos, MFA | E | matriz por rol en documentos previos; en vivo, BLOQUEADO |
+| Funciones rápidas del TPV, justificante por correo, pantalla de cliente | A | matriz `tpv-24`, `tpv-32`, `tpv-33` |
+| Propina y vale regalo | P | matriz `tpv-29`; `abc_registrar_propina_efectivo` existe y el cliente no la usa |
+
+Del servidor (migraciones): **98 funciones del TPV**, 76 referenciadas por el cliente. Las
+22 sin referencia incluyen funciones internas de `service_role` y algunas capacidades sin
+interfaz (anticipo, propina en efectivo, liberar o cambiar estado de mesa, cerrar sesión de
+caja directa). Ver `evidencias/inventario-rpc-migraciones.txt`.
+
+## 4. Resultados
+
+### Lo que funciona, con evidencia de hoy
+
+- **Modo caja de pantalla fija (en vivo):** sin desplazamiento de página a 1440×900,
+  1024×768, 390×844 y 320×640. A 1440, 390 y 320: todos los controles de al menos 44 px,
+  todos con nombre accesible, ninguno fuera de la pantalla y nada recortado. En sala aparece
+  «Mesas» y tampoco hay desplazamiento.
+- **Capas (en vivo):** Ventas del día, ···, Cobro y Terminal se abren a pantalla completa y
+  vuelven con «Volver al pedido» y con Esc.
+- **Fuera del modo caja** el TPV mantiene su composición de dos columnas y el estilo de las
+  tarjetas.
+- **Seguridad del despliegue (en vivo):** CSP `script-src 'self'` bloquea `eval`.
+- **Pruebas:** batería no DB 336/336 con el árbol limpio; 39 comprobaciones del PR en verde,
+  incluidos los contratos PostgreSQL (a06…c12, configuración, cfg-sql).
+- **Diseño del servidor (comprobado en QA):** las 29 tablas del TPV tienen RLS activado;
+  las del núcleo solo admiten `SELECT` por local y, además, `authenticated` no tiene
+  privilegios de escritura sobre ellas; todas las funciones `abc_*` son `SECURITY DEFINER`
+  con `search_path` vacío (salvo `abc_preparar_bizum_qa`), y `anon` y `public` no ejecutan
+  ninguna; las funciones internas no las ejecuta `authenticated`. La guarda activa en QA
+  exige segundo factor a Propietario, Encargado y Cajero/a.
+- **Protecciones en el servidor (migraciones):** las 21 funciones críticas revisadas
+  (cobro, efectivo, checkout, pedidos, líneas, unir, repartir, descuentos, reembolsos,
+  caja, cierre de cuenta, emisión fiscal, anticipo y propina) comprueban permiso, local o
+  empresa, `auth.uid()` e idempotencia, y casi todas bloquean filas con `FOR UPDATE` y
+  versión esperada (`evidencias/validaciones-servidor-funciones-criticas.txt`). El MFA no
+  se comprueba en cada función, sino en la guarda común `private.la_usuario_activo()`.
+- **Foco de teclado (en vivo):** visible en todos los controles del modo caja.
+- **Cobro robusto (código):** cobro pendiente guardado con identificadores estables antes de
+  llamar al servidor, idempotencia por `p_intento_id` y versiones esperadas en el servidor,
+  redondeo a céntimos del efectivo, botón Guardar desactivado durante el envío.
+- **Previo, sin repetir hoy:** venta → cobro → ticket QA (TPV-42, TPV-43), sala completa
+  hasta cuenta cerrada, anulación auditable, reembolso B08 con un único movimiento,
+  apertura duplicada de caja rechazada, recuperación de cuenta entre A1 y A2, y denegaciones
+  de Camarero/a y de Cajero/a sin MFA.
+
+### Lo que falla, por gravedad
+
+Ningún P0. **P1: H-19 los pendientes del modo local se subieron a la empresa de quien
+inició sesión después (incidente de esta auditoría, mitigado por casualidad) y H-24 la
+pantalla «Arqueo de caja» mostró un esperado distinto del que calcula el servidor.** P2: H-01 «Cobrar» sin estilo principal,
+H-02 el aviso de sincronización lo tapa, H-03 capas sin diálogo y con el foco en el
+buscador oculto, **H-04 encargos modificables directamente por cualquier miembro del local
+(confirmado en servidor)**, H-05 revertir anticipo sin interfaz, **H-06 14 funciones de QA
+sin migración, incluidos simuladores de cobro ejecutables por `authenticated`**, H-07
+referencia del modo caja sin decidir y diferencias con la maqueta, H-16 nombres de producto
+fuera de su tarjeta en el TPV normal, **H-17 QA no tiene las mismas migraciones que el
+repositorio (segundo factor)**, y del lote L1: H-20 productos sin ruta a cocina dejan la
+venta rápida a medias, H-21 cancelar un pedido deja la cuenta abierta, H-22 tras enviar no
+aparece el cobro, H-23 la venta mixta sin documento fiscal (causa por confirmar), H-27 la
+tarjeta simulada y su reembolso no se completan desde la aplicación. P3: H-08 a H-13, H-18,
+H-25, H-26 y H-28. Decisión pendiente: H-15.
+Descartado tras consultar el servidor: H-14. Detalle en
+[hallazgos](HALLAZGOS_TPV_2026-11-25.md).
+
+### Comparación con la maqueta Órbita `tpv-01` (1440×900)
+
+Capturas `evidencias/05-tpv-normal-1440x900.jpg` y
+`evidencias/06-maqueta-orbita-tpv01-1440x900.jpg`. Diferencias de estructura (no de datos):
+
+- el programa no tiene la ruta «L&A Suite / Punto de venta» ni el título grande con icono y
+  el subtítulo de terminal y sesión;
+- la maqueta pone el catálogo en una tarjeta con multiplicadores de cantidad (x1, x2, x3,
+  x5) y fotos de producto, y el ticket «Mesa 8» con sus acciones agrupadas;
+- el programa añade la tarjeta «Modo de venta» y el aviso del terminal encima del catálogo.
+
+No se comparan los productos, precios ni nombres de ejemplo de la maqueta.
+
+### Resumen de la matriz (115 casos, tras los lotes L1 a L5 y la matriz por rol)
+
+78 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
+34 FAIL (incluidos los parciales) · 1 NO PROBADO (C-04, declarado OK por el usuario) ·
+0 BLOQUEADO (V-19 se resolvió con la decisión del 26/11) · 1 NO CONCLUYENTE (L-08) · 1 NO APLICA.
+Antes de los lotes eran 67 casos con 6 BLOQUEADO.
+
+**Lote L5 (26/11):** descuento aplicado por el Propietario (PASS), el descuento viaja con la línea
+repartida (PASS), devolver un reparto moviendo de vuelta (PASS) y el **escalado completo
+Encargado → Propietario → Encargado (PASS)**, este último solo con una política temporal
+(máximo 5 %, solicitar, aplicar y escalar) que se **restauró** y se comprobó en el servidor.
+Con la política original el Encargado no puede ni solicitar (H-39). Detalle en
+`evidencias/lote-L5-descuentos-reparto-politica-2026-11-26.md`.
+
+**Lote L4 (26/11):** con la sesión de Propietario (el usuario entró con la cuenta de pruebas y su
+código) se probaron la **unión efectiva de cuentas** y el **reparto de productos**: ambos PASS,
+con las reglas del servidor bien aplicadas. El descuento del Propietario **no se pudo probar**
+(H-43) y revertir un reparto tampoco (H-42). Detalle en
+`evidencias/lote-L4-unir-repartir-propietario-2026-11-26.md`.
+
+**Lote L3 (26/11):** con las tres cuentas, el Encargado abrió y cerró caja y probó cuentas y
+descuentos, el Cajero/a vendió y cobró y el Camarero/a probó sus límites. Detalle en
+`evidencias/lote-L3-roles-cuentas-descuentos-2026-11-26.md`. **Resultado: un P1 nuevo (H-38,
+cobro del Cajero/a cerrado sin documento fiscal y sin aviso en el cierre)**, y fallos de
+visibilidad y de permisos (H-37, H-39, H-40 y H-41). No se probó la unión efectiva de cuentas
+ni el reparto, ni la aprobación de un descuento por el Propietario.
+
+**Matriz por rol (26/11):** con tres cuentas de prueba creadas en QA (Encargado, Cajero/a y
+Camarero/a) se comprobaron en vivo el inicio de sesión sin segundo factor, el menú de cada
+cargo, el rechazo del servidor con la sesión real, la escritura directa denegada y el
+aislamiento por local y empresa. Detalle en `evidencias/matriz-por-rol-2026-11-26.md`.
+
+**Resultado del lote L1, en una frase:** el cobro en efectivo, el pago mixto, los dos dobles
+clics, el reembolso en efectivo y el cierre de caja funcionan y no duplican nada; fallan
+los caminos laterales (productos sin ruta, tarjeta simulada, arqueo diario, mensajes del
+cierre). **Resultado del lote L2:** una recarga a mitad de «Guardar» o de «Cobrar» y un
+fallo de red al cerrar la cuenta no duplican nada y se recuperan; quedan solo defectos
+menores de mensaje y de limpieza (H-29 a H-32).
+
+## 5. Relación con la matriz de pantallas existente
+
+Los IDs `tpv-*`, `caj-*`, `coc-*` y `enc-*` de `ORDEN-PANTALLAS-ORBITA.csv` figuran como
+«Pasa» en QA y «Pendiente» en lo visual. Esta auditoría **no** modifica esa matriz ni
+convierte sus cierres históricos en evidencia nueva: la columna «ID matriz pantallas» de la
+matriz de casos solo los relaciona.
+
+## 6. Comandos ejecutados
+
+| Comando | SHA | Resultado | Límites |
+|---|---|---|---|
+| `bash tests/ci/ejecutar_bateria_no_db.sh` (con `CFG6_UI_DEPS`, `CFG6E_UI_DEPS`, `CFG_SCOPE_DEPS`) | aa809c3a | 336/336, `BATERIA_NO_DB_COMPLETA` | Sin base de datos; ejecutada tras el último commit |
+| `gh pr checks 225` | aa809c3a | 39 pass, 2 skipping | Los contratos PostgreSQL se ejecutan en CI, no en local |
+| Medidor visual en el navegador (`evidencias/mediciones-visuales-aa809c3a.json`) | aa809c3a | ver § 4 | Modo local; panel oculto |
+| Inventario de migraciones (`evidencias/inventario-rpc-migraciones.txt`) | aa809c3a | ver § 3 | Lo que dicen las migraciones, no el servidor |
+| Notebooks de solo lectura en QA (`evidencias/servidor-qa-2026-11-25.md`) | servidor QA | ver § 4 | Usuario de solo lectura; solo se leyó después el código de `abc_qa_confirmar_pago_simulado` |
+| Lote L1 en el navegador y consultas SQL de lectura (`evidencias/lote-L1-ejecucion-2026-11-25.md`) | aa809c3a | 77 casos de la matriz | Una sesión, un terminal; la tarjeta simulada se resolvió desde la consola |
+| Lote L2: recarga y desconexión simuladas desde la página (`evidencias/lote-L2-recarga-desconexion-2026-11-25.md`) | aa809c3a | 82 casos de la matriz | La recarga y el corte de red se simulan con `setTimeout` e intercepción de `fetch`, no son un corte real |
+| Matriz por rol con tres cuentas de prueba (`evidencias/matriz-por-rol-2026-11-26.md`) | aa809c3a | 90 casos de la matriz | Las sondas usan identificadores inventados; el Propietario solo por servidor y menú |
+| Lote L3: cuentas, descuentos y cobro por cargo (`evidencias/lote-L3-roles-cuentas-descuentos-2026-11-26.md`) | aa809c3a | 101 casos de la matriz | Una sesión, un terminal; el envío del pedido B lo frenó el sistema de permisos |
+| Lote L4: unir cuentas y repartir como Propietario (`evidencias/lote-L4-unir-repartir-propietario-2026-11-26.md`) | aa809c3a | 107 casos de la matriz | Cantidades de una unidad; sin descuento ni reversión del reparto |
+| Lote L5: descuento aplicado, reparto y escalado con política temporal (`evidencias/lote-L5-descuentos-reparto-politica-2026-11-26.md`) | aa809c3a | 115 casos de la matriz | Política cambiada y restaurada en QA; cantidades de una unidad; sin cobro |
+
+No se cambió ningún test para obtener verde.
+
+## 7. Datos de QA creados o modificados
+
+**Lote L5 (autorizado, 26/11):** 3 pedidos (P, Q cancelado y E), 3 cuentas (abiertas), 2
+descuentos aplicados (uno del Propietario y otro del Encargado con autorización), 4 repartos y
+una sesión de caja abierta y cerrada (`011c2138-7281-4908-ab24-3a31d5bbc473`, CERRADA_FINAL) sin
+movimientos. Stock del agua de QA-A1: 68 → 66. **Configuración:** política de descuentos del
+Encargado cambiada (máximo 5 % y «Puede aplicar») y **restaurada** (máximo 0 %, aplicar no).
+**Cuenta nueva:** empleado y cuenta `qa-aud-encargado2-20261126@qa.invalid` (Encargado, QA-A1).
+
+**Lote L4 (autorizado, 26/11):** 2 pedidos (1 enviado y servido, 1 cancelado), 2 cuentas nuevas
+(X cerrada por la unión; Y queda ABIERTA con un reparto de 1,00 € sin cobrar), 2 repartos, y una
+sesión de caja abierta y cerrada (`4b1f2fc2-83d1-4512-9383-7f4b546e603d`, CERRADA_FINAL) sin
+movimientos. Stock del agua de QA-A1: 69 → 68. Sin pagos, reembolsos ni descuentos. El Propietario
+sigue con la sesión abierta en el navegador de la auditoría.
+
+**Lote L3 (autorizado, 26/11):** 3 pedidos (2 cancelados y 1 venta de 1,00 €), 3 cuentas (2 siguen
+abiertas y vacías), 1 pago, 1 venta fiscal **sin documento**, 1 reembolso, 2 movimientos de caja con
+neto 0,00 € y una sesión de caja abierta y cerrada (`7827ed19-0c1c-4283-8af5-3ab86fa01ba3`,
+CERRADA_FINAL). Stock del agua de QA-A1: 70 → 69. Sin descuentos nuevos.
+
+**Cuentas de la matriz por rol (autorizadas, 26/11):** 3 empleados y 3 cuentas de acceso en
+QA-A1 (`qa-aud-encargado-20261125@qa.invalid`, `qa-aud-cajero-20261125@qa.invalid` y
+`qa-aud-camarero-20261125@qa.invalid`), con membresía activa. Se pueden desactivar desde Equipo.
+Las contraseñas se generaron al azar en la página y no se guardaron en ningún documento.
+
+**Lote L2 (autorizado, 25/11):** 1 venta de 1,00 € (1 pedido, 1 cuenta, 1 pago, 1 venta fiscal, 1
+documento QA `TPV-000045`), 1 reembolso, 2 movimientos de caja con neto 0,00 € y una sesión de
+caja abierta y cerrada (`c6e09980-28b5-4c09-88e1-aa391241c914`, CERRADA_FINAL). Stock del agua
+de QA-A1: almacén 71 → 70. No queda ninguna cuenta abierta de este lote. Cifras en
+`evidencias/lote-L2-recarga-desconexion-2026-11-25.md`.
+
+**Datos operativos creados por el lote L1 (autorizado, 25/11):** 3 pedidos, 3 cuentas
+comerciales, 2 ventas fiscales y 1 documento fiscal QA, 3 pagos, 3 reembolsos (uno
+cancelado), 4 movimientos de caja con neto 0,00 € y una sesión de caja abierta y cerrada
+(`14d01b2f-0276-42ac-82cf-0d41bf5828a3`, CERRADA_FINAL). Stock: Agua 50 cl de QA-A1,
+almacén 73 → 71; el refresco no cambió. **Quedan:** la cuenta `d9e28655…` abierta sin
+líneas activas (H-21) y 2 unidades de agua sin reponer. Cifras antes y después en
+`evidencias/lote-L1-ejecucion-2026-11-25.md`.
+
+**Incidente del modo local (H-19):** `historialRespaldos` de QA-EMP-A se reescribió dos veces
+con el mismo contenido; `productos` no cambió. Se vaciaron las dos claves locales con
+autorización del usuario.
+
+**Cambio de configuración de seguridad en QA (autorizado por el usuario el 25/11):**
+
+- creada `private.mfa_politica` con 12 filas (Propietario obligatorio en cada empresa);
+- aplicada la migración `mfa_politica_opcional` del repositorio, registrada como
+  `20261125201328`;
+- efecto: Encargado y Cajero/a ya no necesitan segundo factor y los Propietarios siguen
+  igual.
+
+**Para deshacerlo:** volver a la guarda de `20261110230000_m03_server_aal2_gate` y
+eliminar las filas de la política.
+
+**Elementos del proyecto QA creados (autorizados):** dos notebooks de solo lectura,
+«Auditoría TPV 25/11 (solo lectura)» (`d74a43f4-c389-45c1-b365-e6a0620d107e`) y
+«Auditoría TPV 25/11 · parte 2 (solo lectura)» (`932cd704-cf01-4ee8-9230-20dab2162975`).
+Solo contienen SQL de lectura y se pueden borrar cuando ya no hagan falta.

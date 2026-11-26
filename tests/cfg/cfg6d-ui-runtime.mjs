@@ -247,6 +247,12 @@ try {
   }
   const contado = () => document.querySelector('input[type=number][step="0.01"]');
   async function cerrarHastaProvisional(env, valor) {
+    // 18/11/2026: la sesión, las estaciones y el cierre se plegaron tras «Mostrar
+    // gestión avanzada»; lo primero de la pantalla son las comandas. Hay que abrir
+    // ese desplegable antes de buscar el cierre. Se hace solo si existe, para que
+    // la prueba siga valiendo si algún día vuelve a estar desplegado.
+    const avanzada = boton('Mostrar gestión avanzada');
+    if (avanzada) await clic(avanzada);
     await clic(boton('Iniciar cierre'));
     await escribir(contado(), String(valor));
     await clic(boton('Confirmar cierre provisional'));
@@ -256,7 +262,14 @@ try {
     // B1: cierre sin diferencia, sin cuenta abierta en el navegador
     const env = entorno({ esperado: 0, rol: 'Cajero/a' });
     await montar(env);
+    // Lo que se comprueba es el estado de la caja, no dónde vive el botón: desde
+    // el 18/11/2026 el cierre está tras «Mostrar gestión avanzada», así que se
+    // abre primero y luego se mira.
+    const avanzadaB1 = boton('Mostrar gestión avanzada');
+    if (avanzadaB1) await clic(avanzadaB1);
     ok('B1.1 con la caja abierta se ve «Iniciar cierre» y no «Abrir sesión de caja»', !!boton('Iniciar cierre') && !texto().includes('Abrir sesión de caja'), texto().slice(0, 400));
+    const avanzada1 = boton('Mostrar gestión avanzada');
+    if (avanzada1) await clic(avanzada1);
     await clic(boton('Iniciar cierre'));
     ok('B1.2 iniciar el cierre ya no da el aviso del pedido real', !texto().includes('Abre o recupera primero un pedido real') && texto().includes('EN_CIERRE') && !!contado(), texto().slice(0, 500));
     await escribir(contado(), '0');
@@ -350,6 +363,8 @@ try {
     // B6: si la pantalla no sabía de la diferencia, el rechazo del servidor la enseña
     const env = entorno({ esperado: 10, rol: 'Cajero/a' });
     await montar(env);
+    const avanzada2 = boton('Mostrar gestión avanzada');
+    if (avanzada2) await clic(avanzada2);
     await clic(boton('Iniciar cierre'));
     env.s.fallos.abc_obtener_diferencia_caja = 'abc_caja_no_autorizado';
     await escribir(contado(), '8');

@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="es" data-tema="claro">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Banco - pantalla de acceso</title>
+<link rel="stylesheet" href="./la-apariencia.css" />
+<style>
+  :root, [data-tema="claro"] {
+    --c-bg:#F7F2E8; --c-surface:#FFFDF8; --c-ink:#1B2420; --c-ink-soft:#4F5B55;
+    --c-line:#8F8470; --c-border-control:#8F8470; --c-divider:#E3DACA;
+    --c-accent:#7A5718; --c-accent-fill:#123B2D; --c-on-accent:#F7F2E8; --c-accent-soft:#E6EEE9;
+    --c-red:#A3302A; --c-red-soft:#F9E3E0; --c-focus-ring:#123B2D;
+  }
+  html,body{margin:0}
+</style>
+</head>
+<body>
+<div id="raiz"></div>
+<script src="./la-apariencia.js"></script>
+<script>
+/* Misma hoja de estilos y misma estructura que el bloque de AppConSesion,
+   para comprobar disposicion, contraste y tamanos sin tocar la sesion de QA. */
+const estiloAcceso = `
+  .la-acceso { min-height: 100vh; display: grid; grid-template-columns: minmax(0, 46%) minmax(0, 1fr); font-family: 'IBM Plex Sans', ui-sans-serif, system-ui; }
+  .la-acceso-arte { position: relative; display: flex; flex-direction: column; justify-content: space-between; gap: 24px; padding: 40px 38px; color: #F0EADC;
+    background: radial-gradient(circle at 30% 20%, #1C5C46 0%, #123B2D 46%, #081A14 100%); }
+  .la-acceso-arte img { width: min(68%, 250px); height: auto; display: block; filter: drop-shadow(0 8px 18px rgba(0,0,0,.28)); }
+  .la-acceso-entorno { display: inline-flex; align-items: center; gap: 8px; margin-top: 14px; padding: 5px 12px; border-radius: 999px;
+    font-size: 12px; font-weight: 700; letter-spacing: .04em; background: rgba(214,176,106,.16); border: 1px solid rgba(214,176,106,.5); color: #E8C782; }
+  .la-acceso-lema { font-size: clamp(30px, 4vw, 52px); line-height: 1.04; font-weight: 300; letter-spacing: -.02em; margin: 0; }
+  .la-acceso-lema strong { display: block; font-weight: 700; }
+  .la-acceso-monograma { display: block; font-size: 13px; letter-spacing: .34em; text-transform: uppercase; color: #C69A52; margin-bottom: 14px; }
+  .la-acceso-pie { font-size: 12.5px; color: #9FB0A5; }
+  .la-acceso-cuerpo { display: flex; align-items: center; justify-content: center; padding: 40px 28px; background: var(--c-bg, #F7F3E9); color: var(--c-ink, #1B2420); }
+  .la-acceso-cuerpo form { width: 100%; max-width: 400px; }
+  .la-acceso-cuerpo h1 { font-size: 27px; line-height: 1.12; margin: 0 0 6px; letter-spacing: -.02em; }
+  .la-acceso-intro { margin: 0 0 22px; font-size: 13.5px; color: var(--c-ink-soft, #4F5B55); }
+  .la-acceso-campo { display: block; margin-bottom: 14px; }
+  .la-acceso-campo span { display: block; margin-bottom: 6px; font-size: 12.5px; font-weight: 600; color: var(--c-ink-soft, #4F5B55); }
+  .la-acceso-campo input { width: 100%; min-height: 48px; padding: 0 14px; box-sizing: border-box; font: inherit; font-size: 14px;
+    border: 1px solid var(--c-border-control, #8F8470); border-radius: 12px; background: var(--c-surface, #FFFDF8); color: var(--c-ink, #1B2420); }
+  .la-acceso-error { margin-bottom: 14px; padding: 10px 12px; border-radius: 10px; font-size: 12.5px; line-height: 1.45;
+    background: var(--c-red-soft, #F9E3E0); border: 1px solid var(--c-red, #A3302A); color: var(--c-red, #A3302A); }
+  .la-acceso-entrar { width: 100%; min-height: 48px; border: 0; border-radius: 12px; cursor: pointer; font: inherit; font-size: 15px; font-weight: 700;
+    background: var(--c-accent-fill, #123B2D); color: var(--c-on-accent, #F7F2E8); }
+  .la-acceso-alt { margin-top: 16px; display: grid; gap: 10px; }
+  .la-acceso-alt a, .la-acceso-alt button { display: inline-flex; align-items: center; min-height: 44px; font: inherit; font-size: 12.5px; text-align: left; color: var(--c-accent, #7A5718);
+    background: transparent; border: 0; padding: 0; cursor: pointer; text-decoration: underline; text-underline-offset: 3px; }
+  .la-acceso-nota { margin: 18px 0 0; font-size: 12px; line-height: 1.5; color: var(--c-ink-soft, #4F5B55); }
+  .la-acceso :focus-visible { outline: 3px solid var(--c-focus-ring, #C69A52); outline-offset: 2px; }
+  @media (max-width: 860px) {
+    .la-acceso { grid-template-columns: minmax(0, 1fr); }
+    .la-acceso-arte { padding: 26px 22px; gap: 14px; }
+    .la-acceso-lema { font-size: 28px; }
+    .la-acceso-cuerpo { padding: 28px 22px 44px; }
+  }
+`;
+document.getElementById('raiz').innerHTML =
+ '<div class="la-acceso"><style>'+estiloAcceso+'</style>'
+ +'<section class="la-acceso-arte">'
+ +'<div><img src="https://deploy-preview-225--chic-entremet-9107cf.netlify.app/la-suite-logo.svg" alt="L&amp;A Suite" />'
+ +'<span class="la-acceso-entorno">QA · entorno de pruebas</span></div>'
+ +'<div><span class="la-acceso-monograma">L&amp;A Suite</span>'
+ +'<p class="la-acceso-lema">Gestión de<strong>hostelería.</strong></p></div>'
+ +'<p class="la-acceso-pie">Gestión integral para tu negocio</p></section>'
+ +'<main class="la-acceso-cuerpo" id="contenido"><form>'
+ +'<h1>Iniciar sesión</h1>'
+ +'<p class="la-acceso-intro">Acceso al espacio de trabajo de tu local.</p>'
+ +'<div class="la-acceso-error" role="alert">Credenciales incorrectas. Te quedan 4 intentos.</div>'
+ +'<label class="la-acceso-campo"><span>Correo electrónico</span><input type="email" autocomplete="username" /></label>'
+ +'<label class="la-acceso-campo"><span>Contraseña</span><input type="password" autocomplete="current-password" /></label>'
+ +'<button type="button" class="la-acceso-entrar">Entrar</button>'
+ +'<div class="la-acceso-alt"><a href="#">¿Olvidaste tu contraseña?</a>'
+ +'<button type="button">Trabajar solo en este equipo, sin sincronizar</button></div>'
+ +'<p class="la-acceso-nota">El acceso de empleados con PIN se abre dentro de la aplicación, en Modo empleado: '
+ +'el servidor exige una sesión iniciada para comprobarlo.</p>'
+ +'</form></main></div>';
+
+window.__medir = function(){
+  const r = {};
+  const peq = [...document.querySelectorAll('.la-acceso input,.la-acceso button,.la-acceso a')]
+    .filter(e=>{const b=e.getBoundingClientRect(); return b.width>0 && b.height<44;})
+    .map(e=>(e.textContent||e.type).trim().slice(0,22)+' '+Math.round(e.getBoundingClientRect().height));
+  r.controlesBajos = peq;
+  r.desbordaH = document.documentElement.scrollWidth > window.innerWidth + 1;
+  r.columnas = getComputedStyle(document.querySelector('.la-acceso')).gridTemplateColumns;
+  r.hayH1 = !!document.querySelector('.la-acceso h1');
+  r.etiquetas = document.querySelectorAll('.la-acceso label span').length;
+  r.errorConRol = !!document.querySelector('.la-acceso-error[role=alert]');
+  return r;
+};
+</script>
+</body>
+</html>

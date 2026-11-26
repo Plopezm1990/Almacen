@@ -14,6 +14,7 @@
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { crearServidorFalso } from './lib/servidor-caja-falso.mjs';
 import { SIN_ACCESO_QA } from './lib/tablas-sin-acceso-qa.mjs';
 
@@ -36,7 +37,7 @@ const React = require('react');
 const { createRoot } = require('react-dom/client');
 const act = React.act;
 
-const REPO = resolve(new URL('../../', import.meta.url).pathname);
+const REPO = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const origen = process.env.CFG_A09PN_FUENTE || join(REPO, 'source-recovery/fuente-recuperado.js');
 
 // ---------- carga del módulo real ----------
@@ -137,6 +138,29 @@ async function montar(env, props = {}) {
       leerContextoCuentaA02: l.leerContextoCuentaA02, respuestaErrorA06: l.respuestaErrorA06, ...props
     }));
   });
+  await esperar(250);
+  await abrirOperacionesDeCuenta();
+}
+// 20/11/2026. En algún momento de esta rama el TPV plegó cinco paneles de cuenta
+// —descuentos A09, unir cuentas A08 y tres más— detrás de un botón «Mostrar
+// operaciones de cuenta» que arranca cerrado (`operacionesCuentaAbiertas` en
+// false). Esa variable no existe en la base de la rama (ba471956), así que es un
+// cambio de aquí, no algo heredado.
+//
+// Esta prueba se quedó en rojo desde entonces, y el síntoma engañaba: fallaba en
+// A1 diciendo que no encontraba la tarjeta «Descuento / cortesía», como si el
+// panel hubiera desaparecido. No había desaparecido: estaba plegado. Es el mismo
+// caso que «Mostrar gestión avanzada» antes de «Iniciar cierre» en
+// tests/cfg/cfg6-ui-runtime.mjs y cfg6d-ui-runtime.mjs.
+//
+// Se abre al montar, y se comprueba que el botón existe: si alguien quita el
+// plegado, esto se pone rojo y se viene aquí a borrarlo, en vez de dejar una
+// pulsación muda que ya no hace nada.
+async function abrirOperacionesDeCuenta() {
+  const boton = [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === 'Mostrar operaciones de cuenta');
+  ok('A0b el TPV pliega las operaciones de cuenta tras un botón, y se puede abrir', !!boton, texto().slice(-400));
+  if (!boton) return;
+  await clic(boton);
   await esperar(250);
 }
 function tarjetaDescuento() {

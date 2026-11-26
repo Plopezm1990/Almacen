@@ -1,2 +1,5 @@
 node_modules/
 .netlify-dist/
+
+# Credenciales de ensayo de QA: viven solo en el ordenador, nunca en git.
+*.local.md

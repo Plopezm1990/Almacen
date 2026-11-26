@@ -1,0 +1,9 @@
+{
+ "asunto": "Verificacion del arreglo de cabeceras vacias, y una sospecha mia que resulto falsa",
+ "comprobado_de_verdad": "Netlify sirve fuente.js con cache-control no-cache, must-revalidate y ETag, e index.html con no-cache, no-store, must-revalidate. O sea que NO hay riesgo de cache para cargas nuevas, y la marca ?v= estatica del paquete es inofensiva. Estuve a punto de proponer un contrato para un problema que no existe.",
+ "fecha": "2026-11-15",
+ "leccion": "Comprobar la cabecera antes de acusar a la cache. Dos minutos de fetch frente a un contrato inutil.",
+ "lo_que_era": "Una pestana ya abierta sigue ejecutando el codigo que cargo; no vuelve a pedir sus guiones porque el servidor despliegue otra version. Solo tras recargar aparecio el arreglo.",
+ "lo_que_me_confundio": "Justo despues del despliegue segui viendo las cuatro cabeceras vacias y pense que mi arreglo no valia, o que era la trampa de la cache que documente el 13/11. Ninguna de las dos.",
+ "verificado": "En modo empleado la navegacion ya solo muestra VENTAS, FINANZAS Y ANALISIS y PERSONAL. Cero cabeceras vacias."
+}

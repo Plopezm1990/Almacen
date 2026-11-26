@@ -1,0 +1,21 @@
+{
+  "_contexto": "Mediciones del 25/11/2026 sobre el Deploy Preview #225 en aa809c3a, modo local «Trabajar solo en este equipo» (sin base de datos, sin sesión). Panel del navegador oculto: requestAnimationFrame se sustituyó por un temporizador y se reinstaló el mismo la-orbita-shell.js publicado para que el marco se aplicara. ResizeObserver no se dispara con la página en segundo plano, por eso las mediciones de 1024 y 320 tras cambiar de tamaño pueden arrastrar filas de la medida anterior (ver campo _limite). Medidor: controles visibles <44 px, sin nombre accesible, fuera del viewport, contenido recortado con overflow hidden y contraste WCAG AA (4,5:1 normal, 3:1 grande).",
+  "_limite": "1024 y 320: 'recortados' y 'ejemplos44' corresponden a tarjetas de la página anterior sin recalcular por el ResizeObserver en pausa; con el panel visible, a la misma SHA y 1024x768 se midieron 8 productos y 0 tarjetas cortadas (sesión del 25/11 a las ~18:45).",
+  "1440": {
+    "normal": {"estado": "TPV normal · venta rápida", "viewport": "1440x900", "desbordaAncho": false, "mainDesplazable": true, "controles": 57, "menoresDe44": 0, "sinNombreAccesible": [], "fueraDePantalla": ["8 tarjetas de producto por debajo del pliegue (esperado fuera del modo caja)"], "recortados": [], "contrasteBajo": ["Todos 3.33 12px"]},
+    "caja": {"estado": "Modo caja · venta rápida", "viewport": "1440x900", "desplazaPagina": false, "desbordaAncho": false, "controles": 38, "menoresDe44": 0, "sinNombreAccesible": [], "fueraDePantalla": [], "recortados": [], "contrasteBajo": ["Todos 3.33 12px"]},
+    "caja_sala": {"estado": "Modo caja · sala", "desplazaPagina": false, "desbordaAncho": false, "controles": 23, "menoresDe44": 0, "recortados": [], "contrasteBajo": ["Todos 3.33 12px"], "botonMesas": true}
+  },
+  "1024": {"caja": {"estado": "Modo caja · venta rápida", "viewport": "1024x768", "desplazaPagina": false, "desbordaAncho": false, "controles": 38, "menoresDe44": 4, "recortados": 7, "contrasteBajo": ["Todos 3.33 12px"], "nota": "ver _limite"}},
+  "390": {"caja": {"estado": "Modo caja · venta rápida", "viewport": "390x844", "desplazaPagina": false, "desbordaAncho": false, "controles": 24, "menoresDe44": 0, "sinNombreAccesible": [], "fueraDePantalla": [], "recortados": [], "contrasteBajo": ["Todos 3.33 12px"]}},
+  "320": {"caja": {"estado": "Modo caja · venta rápida", "viewport": "320x640", "desplazaPagina": false, "desbordaAncho": false, "controles": 26, "menoresDe44": 0, "productosPorPagina": 2, "paginas": 10, "alturas": {"rejilla": 171, "banda": 192}, "contrasteBajo": ["Todos 3.33 12px"], "nota": "recortados del nombre del producto: ver _limite"}},
+  "boton_cobrar_1440": {"fondo": "rgb(32, 35, 40)", "alto": 44, "ancho": 300, "esperado": "fondo #FF4B32, alto 64 px", "causa": "html[data-la-diseno] #root main[data-la-orbita-module=\"tpv\"] .tpv-side > * { background: var(--c-surface) !important } gana en especificidad a la regla del modo caja"},
+  "aviso_sincronizacion_1440": {"rect": [1226, 866, 206, 27], "zIndex": 9998, "solapaCobrar": true},
+  "capas_1440": {
+    "Ventas del día": {"tam": "1440x900", "cierre": "Volver al pedido", "cerrada": true, "focoAlAbrir": "INPUT (buscador F2, detrás de la capa)", "role": null, "ariaModal": null},
+    "···": {"tam": "1440x900", "cierre": "Escape", "cerrada": true, "focoAlAbrir": "INPUT", "role": null, "ariaModal": null},
+    "Cobrar": {"tam": "1440x900", "cierre": "Volver al pedido", "cerrada": true, "focoAlAbrir": "INPUT", "role": null, "ariaModal": null},
+    "Terminal": {"tam": "1440x900", "cierre": "Escape", "cerrada": true, "focoAlAbrir": "INPUT", "role": null, "ariaModal": null}
+  },
+  "entorno": {"host": "deploy-preview-225--chic-entremet-9107cf.netlify.app", "NUBE_URL": "https://qjqorixtkilwsndqayyx.supabase.co", "__modoPruebasQA": true, "apuntaAProduccion": false, "sesionGuardada": 0, "consola": ["2 × 401 (peticiones a QA sin sesión en modo local)"], "csp": "script-src 'self' (eval bloqueado)"}
+}

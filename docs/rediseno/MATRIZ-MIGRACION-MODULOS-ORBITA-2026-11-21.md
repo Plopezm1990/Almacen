@@ -1,0 +1,1880 @@
+# Matriz de migración visual por módulos · Órbita
+
+Fecha: 21/11/2026  
+Rama: `rediseno/f0-base-qa` · PR #225 en borrador
+
+> **Aviso de vigencia (22/11/2026):** las tablas y notas de este documento
+> son trazabilidad histórica. El estado actual de cada pendiente está en
+> `MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`; sus clasificaciones sustituyen
+> cualquier `PARCIAL` o `No construida` que aparezca más abajo.
+
+Esta matriz evita confundir “usa el shell” con “está migrado visualmente”. Un
+módulo solo pasa a `CERRADO` cuando tiene el marco común, sus componentes
+visuales normalizados, revisión de escritorio y móvil, estados de carga/error/
+vacío y contratos sin regresión.
+
+## Objetivo 4 activo · migración modular por bloques
+
+### Cierre de implementación visual · 21/11/2026
+
+La capa de implementación del objetivo está completa para los `12/12` módulos:
+el shell común clasifica todas las rutas y la escala Órbita cubre sus
+componentes, estados y responsive. Esta afirmación es de implementación y de
+contrato; no sustituye la validación autenticada de negocio. Por eso las filas
+de la tabla mantienen `PARCIAL` hasta que se aporten las evidencias de QA que
+exige el plan, sin convertir una comprobación estática en un cierre funcional.
+El detalle reproducible queda en
+[`ESTADO-OBJETIVO-4-ORBITA-2026-11-21.md`](./ESTADO-OBJETIVO-4-ORBITA-2026-11-21.md).
+
+Este es el objetivo operativo vigente para completar la unificación visual:
+los módulos se migran uno por uno, en el orden de la tabla, sin mezclar
+handlers ni cambiar el contrato de datos. Cada bloque debe demostrar el mismo
+shell Órbita, la misma escala de componentes, estados de carga/vacío/error,
+responsive sin overflow y controles de al menos `44 × 44 px`; después se
+recorre su ruta real con sesión QA antes de cambiar `PARCIAL` por `CERRADO`.
+
+### Contrato transversal de estados
+
+Los estados no se resuelven con estilos aislados de cada pantalla. La raíz
+`main[data-la-orbita-module]` aplica una envolvente común a las tres formas
+que ya existen en el producto: `[data-loading]`, `.loading-state` o
+`[aria-busy="true"]` para carga; `[data-empty]`, `.empty-state` o
+`.la-ui-empty` para vacío; y `[data-error]` o `.error-state` para error.
+Cada variante usa los tokens semánticos Órbita (`--c-accent-soft`,
+`--c-red-soft`, `--c-divider`, `--c-ink-soft`), conserva un mínimo vertical
+legible y queda contenida en móvil. El contrato estático falla si desaparece
+cualquiera de las tres familias, de modo que una pantalla nueva no pueda
+volver a introducir una cuarta apariencia de estado.
+
+Orden de ejecución: `inicio` → `tpv` → `pase` → `cocina` → `caja` → `clientes`
+→ `compras` → `inventario` → `personal` → `configuracion` → `plataforma` →
+`acceso`. La capa visual ya está integrada para los doce identificadores y
+los contratos estáticos pasan; las filas permanecen `PARCIAL` cuando falta la
+prueba autenticada de datos, permisos o estados de negocio. No se debe cerrar
+un módulo solo porque su selector `data-la-orbita-module` exista.
+
+La ejecución detallada de esa comprobación está en
+[`PLAN_VALIDACION_AUTENTICADA_MODULOS_ORBITA_2026-11-21.md`](./PLAN_VALIDACION_AUTENTICADA_MODULOS_ORBITA_2026-11-21.md).
+
+| Orden | Módulo | Superficie identificable | Estado actual | Cierre pendiente |
+|---:|---|---|---|---|
+| 1 | Inicio y panel general | `inicio`, `.la-panel-diseno` | PARCIAL: panel Órbita ya visible y detalle antiguo separado; el panel tiene prioridad cuando Pase está incrustado | Revisar todas las variantes de indicadores y estados en 5 viewports |
+| 2 | TPV y sala | `tpv`, `.tpv-layout` | PARCIAL: superficie Órbita aplicada a catálogo, filtros, mesas, ticket/caja, paginación y dock móvil; recorridos de datos intactos | Verificar venta rápida, sala, cuentas, mesas, tickets y estados en las rutas reales de escritorio y móvil |
+| 3 | Pase | `pase`, `.la-pase` (`#la-pase` legado) | PARCIAL: panel real y cola ya integrados; la raíz semántica ya queda marcada aunque el recorrido histórico use otro selector | Igualar tarjetas, filtros, destinos y revisión móvil |
+| 4 | Cocina | `cocina`, `.la-operacion-cocina` | PARCIAL: cabecera, tarjetas, estados, filtros, estaciones/rutas y cola ya tienen capa Órbita; recorrido de estados reales aún pendiente | Verificar rutas reales, vacío/carga/error, estados de comanda y densidad en escritorio y móvil |
+| 5 | Caja | `caja`, `.la-operacion-caja` | PARCIAL: apertura, arqueo, movimientos, historial y traspasos ya tienen capa Órbita; recorrido de cobro/cierre real aún pendiente | Verificar cobros, arqueos, cierres, reembolsos, documentos y estados en rutas reales |
+| 6 | Clientes | `clientes` | PARCIAL: listado, vistas guardadas, filtros, paginación y fichas ya tienen capa Órbita; actividad/NIF aún requieren recorrido real | Verificar ficha, actividad, NIF y estados vacío/carga/error en escritorio y móvil |
+| 7 | Compras | `compras` | PARCIAL: tarjetas, formularios, tablas, estados y controles ya tienen capa Órbita | Recorrer proveedores, pedidos, recepción, albaranes y facturas en rutas reales |
+| 8 | Inventario | `inventario` | PARCIAL: productos, tablas, formularios, estados y controles ya tienen capa Órbita | Recorrer movimientos, mermas, caducidad y ajustes en rutas reales |
+| 9 | Personal | `personal` | PARCIAL: empleados, permisos, turnos, tablas y formularios ya tienen capa Órbita | Recorrer fichajes, cargos, permisos y estados en rutas reales |
+| 10 | Configuración | `configuracion` | PARCIAL: empresa, locales, terminales, fiscalidad y apariencia ya comparten la capa base | Recorrer configuración y selectores sin romper persistencia ni permisos |
+| 11 | Plataforma | `plataforma` | PARCIAL: paneles administrativos ya comparten tarjetas, tablas y controles base | Verificar acceso administrador y paneles exclusivos en QA |
+| 12 | Acceso | `.la-acceso` y `acceso` | PARCIAL: login dividido, recuperación, MFA y selector conservan la capa visual Órbita | Verificar login, recuperación, MFA, expiración y selección de empresa/local en escritorio y móvil |
+
+### Evidencia autenticada adicional · Plataforma · 21/11/2026
+
+Con `owner.a@qa.invalid` autenticado en el Deploy Preview 225 se comprobó la
+superficie real `#la-plataforma-root`: título y perfil de administrador,
+acciones «Abrir mi aplicación», «Cerrar sesión», «Actualizar» y «Dar de alta
+una empresa», tarjetas de empresas, etiquetas Activa/Desactivada y botones
+contextuales. La captura visual muestra fondo carbón, acento coral, tarjetas,
+bordes, radios y jerarquía tipográfica del sistema Órbita; el árbol accesible
+expone todos los controles y no hay modal ni overlay bloqueante. No se ejecutó
+ninguna operación destructiva ni se alteraron empresas, locales o usuarios.
+
+La fila `plataforma` continúa en `PARCIAL`: esta pasada confirma la entrada
+autenticada y la composición visual, pero todavía falta recorrer estados de
+carga/error y los paneles administrativos exclusivos en escritorio y móvil.
+
+### Recorrido autenticado de composición · 21/11/2026
+
+En la misma sesión de propietario, con `QA Empresa A, S.L. · Local A1`, se
+recorrieron sin mutaciones las rutas visibles del shell:
+
+| Módulo | Evidencia observada | Resultado de esta pasada |
+|---|---|---|
+| Inicio / Pase | «El pulso del negocio», selector de empresa/local, indicadores, plano de sala, cola de cocina y accesos del turno | Carga correcta; estados reales de mesas y comandas visibles |
+| TPV y sala | Venta rápida/sala, terminal A1/A2, categorías, catálogo, paginación, resumen de caja e historial separado | Carga correcta; no se abrió cuenta ni se cobró |
+| Cocina | Estación, comandas nuevas/bloqueadas/recibidas, aviso de rutas y cola acotada | Carga correcta; bloqueos de ruta explicados por la propia pantalla |
+| Clientes | Vistas guardadas, búsqueda, filtros de estado/tipo, ficha, NIF enmascarado y paginación | Carga correcta; NIF particular aparece enmascarado |
+| Inventario | Filtros, tabla de productos, stock piso/almacén, margen, ABC, Kardex y registrar salida | Carga correcta; no se registró ninguna salida |
+| Personal | Empleados, bajas, roles, vacaciones, historial y acciones de ficha | Carga correcta; no se cambió ningún empleado |
+| Configuración | Empresa/local, motivo de auditoría, caja, fiscalidad, cargos, permisos y MFA | Carga correcta; no se guardó ninguna configuración |
+| Caja | Apertura, efectivo esperado, movimientos, contado, arqueo e historial bajo demanda | Carga correcta; no se abrió sesión ni se guardó arqueo |
+| Compras | Proveedores, proveedor creado por IA pendiente de revisión, datos fiscales y acciones | Carga correcta; no se revisó ni eliminó el proveedor |
+
+La pasada confirma la composición y la navegación autenticada de escritorio,
+pero no convierte por sí sola las filas en `CERRADO`: siguen pendientes las
+variantes móviles dedicadas, estados de carga/vacío/error donde no aparecieron
+en esta sesión y las acciones de negocio que requieren autorización explícita.
+
+## Cambio de esta tanda
+
+`la-orbita-shell.js` etiqueta ahora cada ruta autenticada con
+`data-la-orbita-module` y `data-la-orbita-surface`. Esto permite que cada
+bloque se migre y se mida sin duplicar navegación ni handlers. El contrato
+visual aplica además a la superficie independiente `.la-acceso`, que no usa
+el shell autenticado.
+
+### Corrección de esta tanda · raíz semántica de Pase
+
+En la comprobación del preview, Inicio montó el panel real con la clase
+`.la-pase`, no con el id histórico `#la-pase`. El shell quedaba en `pantalla`
+y las reglas específicas de Órbita no alcanzaban la cabecera, plano y cola.
+La detección y los selectores visuales aceptan ahora ambas raíces. Es un cambio
+solo de presentación: no modifica estados de mesa, cola, permisos ni navegación.
+La marca de caché de la capa pasó a `qa-orbita-modules-v16-20261121`.
+
+El mismo detector da prioridad a `.la-panel-diseno` cuando Inicio incluye el
+panel Pase operativo. Así `Inicio` conserva su identidad de módulo y el Pase
+independiente sigue etiquetándose como `pase`.
+
+### TPV y sala · primera migración de superficie
+
+El commit `3ff74403` añade la capa visual scoped a
+`main[data-la-orbita-module="tpv"]`: búsqueda, categorías, tarjetas de
+producto, paginación, mesas, columna de ticket/caja y dock táctil. La rejilla
+se mantiene en dos columnas en móvil y el lateral baja sin overflow; no se
+modificaron handlers, fiscalidad, permisos ni persistencia. El módulo sigue en
+`PARCIAL` hasta recorrer todos los estados reales (venta rápida, sala, cuenta
+abierta, tickets, vacío, carga y error) en escritorio y móvil.
+
+Evidencia live actual: tarjeta de producto de `104 px`, búsqueda de `47 px`,
+rejilla de dos columnas en el ancho táctil del banco, lateral estable,
+`scrollWidth === innerWidth` y control mínimo de `44 px`.
+
+### Cocina · primera migración de superficie
+
+El commit `6aace0b1` aplica la capa visual Órbita scoped a
+`main[data-la-orbita-module="cocina"] .la-operacion-cocina`. La cabecera de
+«Cocina y comandas», las tarjetas operativas, avisos de estado, estaciones y
+rutas, y la cola de comandas comparten ahora borde, radio, sombra, fondo y
+jerarquía tipográfica del sistema. Las tarjetas anidadas de cada comanda
+conservan sus estados y acciones; selects, inputs y botones mantienen un área
+mínima de `44 px`. En móvil la cabecera envuelve y la cola no fuerza
+desbordamiento horizontal. No se cambiaron handlers, RPC, permisos, estados
+de cocina ni persistencia.
+
+La caché CSS quedó en `qa-orbita-modules-v18-20261121`. Pasan los contratos
+P01, marco (21/21), componentes, rutas (20/20) y autoridad de persistencia.
+El bloque sigue en `PARCIAL`: falta recorrer en QA la ruta real de Cocina con
+datos, los estados vacío/carga/error y las transiciones de comanda en
+escritorio y móvil. El fallo histórico de `pm11-compra/p10` («parche móvil
+P10 carga antes del dashboard») continúa aislado y no procede de esta capa.
+
+## Evidencia de base
+
+- `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`.
+- `MARCO_ORBITA_CONTRACT=PASS (21/21)`.
+- `MARCO_ORBITA_RUTAS_CONTRACT=PASS (20 rutas)`.
+- `REDISENO_P01_CAPAS_Y_MIGRACIONES_OK=1`.
+- `REDISENO_P03_BOTONES_SOLO_ICONO_OK=1`.
+- `REDISENO_P05_PROPUESTAS_OK=1`.
+- `REDISENO_ORG33_SALA_CONTRACT=PASS`.
+- `REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12 matriz=12 responsive=PASS tactil=44`.
+- `SOURCE_RECOVERY_CHECK=PASS`.
+- `git diff --check` limpio.
+
+Esta matriz es de seguimiento, no un cierre prematuro. El objetivo 4 sigue
+activo hasta que los doce módulos pasen individualmente a `CERRADO`.
+
+### Estado de publicación y auditoría · 21/11/2026 · SHA `ba7bf3e4`
+
+La última revisión de la rama `rediseno/f0-base-qa` está publicada en el
+Deploy Preview 225 como `6b01754bbbb331413cdf306d` (`ready`). El PR #225
+continúa abierto, en borrador y sin fusionar; producción no se ha tocado.
+La corrección de esta revisión marca también las raíces administrativas que
+se montan antes del shell (`#la-plataforma-root` y
+`#la-plataforma-cambio-root`) con `data-la-orbita-external="plataforma"` y
+`data-la-orbita-surface="plataforma"`, de modo que Plataforma no conserva una
+segunda escala visual cuando aparece antes de la navegación autenticada.
+
+La batería `tests/rediseno/*.mjs` queda en `ALL_REDISENO_TESTS_PASS`, incluido
+`REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12
+responsive=PASS tactil=44`; `git diff --check` también pasa. Esta evidencia
+confirma la integración del marco, no sustituye el recorrido autenticado de
+cada módulo. Por eso las doce filas permanecen deliberadamente en `PARCIAL`.
+
+Además, el arranque sin configuración de empresa conserva ahora `orbita` como
+fallback visual. La ausencia de una preferencia ya no elimina
+`data-la-diseno` ni devuelve la suite a los estilos históricos; una propuesta
+o paleta guardada explícitamente continúa teniendo precedencia.
+
+### Pasada local adicional · preview 225 · 21/11/2026
+
+Se hizo una pasada de renderizado en el Deploy Preview 225 desde el navegador
+integrado, en viewport táctil `618×678`, sin credenciales ni escrituras de
+negocio. El modo «Trabajar solo en este equipo» terminó mostrando el shell
+Órbita y permitió navegar por las rutas reales. La hidratación tarda unos
+segundos en este banco, pero no quedó bloqueada: tras esperar diez segundos el
+árbol ya mostraba el panel y la consola no registró errores ni advertencias.
+
+| Ruta | `data-la-orbita-module` | `data-la-orbita-surface` | `scrollWidth` | control mínimo visible |
+|---|---|---|---|---:|
+| Inicio / Panel general | `inicio` | `inicio` | igual al viewport | 44 px |
+| TPV | `tpv` | `tpv` | igual al viewport | 44 px |
+| Cocina | `cocina` | `cocina` | igual al viewport | 44 px |
+| Caja / Arqueo | `caja` | `caja` | igual al viewport | 44 px |
+| Clientes | `clientes` | `clientes` | igual al viewport | 44 px |
+
+La misma pasada añadió, sin mutaciones, Proveedores (`compras`), Productos
+(`inventario`), Personal (`personal`) y Configuración (`configuracion`).
+Proveedores mostró el vacío «Todavía no has añadido proveedores»; Personal
+mostró el estado de carga «Cargando empleados…»; Productos mostró filtros y
+acciones de inventario; Configuración mostró el contexto de QA y sus controles.
+En las cuatro rutas el `scrollWidth` siguió igual al viewport y el mínimo
+visible fue `44 px`.
+
+En Inicio se observaron «El pulso del negocio», accesos rápidos, cuatro
+indicadores, selector de local, cabecera QA, buscador global, avisos, perfil,
+botón Apariencia y navegación inferior. TPV mantuvo venta rápida, sala,
+catálogo, paginación, historial y caja en la misma superficie. Cocina mostró
+cabecera, estado de conexión, estación y cola vacía. Caja mostró apertura y
+arqueo; Clientes mostró vistas guardadas, filtros, búsqueda y estado vacío.
+
+Esta evidencia cierra la comprobación de composición responsive para esas
+cinco rutas, pero no las convierte aún en `CERRADO`: falta recorrer cada acción
+con sesión QA y datos reales, además de los estados de carga/error y las rutas
+restantes de cada módulo. No se ejecutaron cobros, reembolsos ni cambios de
+datos en esta pasada.
+
+La documentación quedó publicada en `23f98029ea10e658ef13af3484ac0adab474939e`.
+El Deploy Preview 225 asociado (`6b0164cbaf0db151e7fa02b2`) terminó en estado
+`ready`, con el escaneo de secretos sin coincidencias y sin cambios en
+producción.
+
+La ampliación de la evidencia de Compras, Inventario, Personal y Configuración
+está en `aeafd3629134177018cf5a789c9de9b3e8e0272d`; su Deploy Preview asociado
+es `6b0165979a8ca4a5e6bbc99b`, también `ready`.
+
+### Arranque local sin espera remota · 21/11/2026 · commit posterior `2c3c84a6`
+
+La hidratación de la suite conserva un atajo explícito para el botón «Trabajar
+solo en este equipo, sin sincronizar»: las 37 claves iniciales se leen desde
+la copia `almacen:*` del dispositivo sin resolver sesión, contexto operativo,
+Supabase ni la cola de IndexedDB. El camino autenticado de QA no cambia y
+continúa pasando por el adaptador, sus RPC y RLS. Esto elimina una espera
+acumulativa cuando una pestaña antigua deja una promesa de almacenamiento
+pendiente; si una copia local está dañada, se muestra el estado de carga fallida
+existente y se conserva el reintento, sin borrar datos.
+
+La regla está cubierta por `PREVIEW_ARRANQUE_RESILIENTE=PASS` y publicada en
+el Deploy Preview 225. Es una corrección de arranque, no un cierre visual de
+los módulos: las doce filas continúan en `PARCIAL` hasta recorrer sus rutas
+autenticadas y estados reales.
+
+### Corrección transversal · arranque local desde Acceso
+
+El botón «Trabajar solo en este equipo, sin sincronizar» cambiaba la fase de
+login a `dentro`, pero conservaba el cliente Supabase que se había creado al
+abrir el formulario. En Deploy Preview eso dejaba el arranque intentando leer
+la nube QA y podía mantener «Cargando almacén…» indefinidamente. `fuente.js` y
+`source-recovery/fuente-recuperado.js` ahora activan explícitamente
+`__modoPruebasLocal`, limpian el cliente y desactivan la sincronización antes
+de montar la suite. La corrección no toca datos ni producción; la marca de
+caché pasó a `qa-persistencia-sin-advertencias-v2-20261121`.
+
+### Inicio y panel general · eliminación de la paleta heredada
+
+La superficie de Inicio conserva el panel Órbita y el detalle operativo
+colapsable, pero la capa `dashboard-premium-v2.js` todavía pintaba sus KPIs,
+acciones rápidas, alertas, CTA y toast con verdes/dorados propios del diseño
+Sello. En `56901e31` se sustituyeron esos colores literales por los tokens del
+tema (`--c-surface`, `--c-bg`, `--c-ink`, `--c-accent`, `--c-accent-fill`,
+`--c-on-accent`, `--c-ink-soft` y `--c-red`). Así el panel no vuelve a
+introducir una segunda identidad visual cuando la empresa usa Órbita ni cuando
+se prueba otra propuesta. No se tocaron indicadores, navegación, permisos ni
+handlers. La caché pasó a `qa-orbita-panel-v3-20261121`.
+
+El contrato de componentes ahora falla si reaparecen los cuatro colores
+heredados en esa capa. Inicio sigue en `PARCIAL` hasta comprobar en QA las
+variantes de indicadores y los estados vacío/carga/error en los cinco
+viewports definidos.
+
+### TPV y sala · superficies secundarias · v23
+
+La capa scoped de TPV cubre ahora también la tarjeta de venta rápida, el
+selector de modalidad, el resumen/historial de ventas, el flujo de factura a
+empresa y los avisos de error. Esas superficies conservan sus handlers y
+operaciones, pero dejan de depender de fondos literales y adoptan los tokens
+de tarjeta, estado y foco de Órbita. El resumen de ventas se apila en móvil
+para que la pantalla no se alargue horizontalmente. La caché CSS pasó a
+`qa-orbita-modules-v23-20261121` (huella P01 `dc23dacac016d12d`). TPV sigue en
+`PARCIAL` hasta el recorrido QA de venta rápida, sala, cuentas, mesas,
+historial, vacío/carga/error y factura a empresa en escritorio y móvil.
+
+La versión v23 está publicada en el Deploy Preview 225 como deploy
+`6b0137dac55d9e163e63c27e` (`ready`), commit `a9147300`.
+
+### Pase · variante Órbita · v2
+
+La raíz `.la-orbita-pase` ya no hereda la paleta verde/lima genérica de Pase:
+usa fondo carbón, superficie, acero y coral mediante los tokens del diseño.
+También se normalizaron el turno, el plano, la cola, los accesos y los estados
+`OCUPADA`/`RESERVADA`; los estados `LIBRE`, `BLOQUEADA` y `FUERA_SERVICIO`
+siguen saliendo del servidor sin reinterpretarlos. La caché de `la-pase.css`
+pasó a `qa-orbita-pase-v2-20261121` (huella P01 `4b14613f8923c353`). Pase
+continúa `PARCIAL` hasta recorrer datos reales, cola de cocina y estados en
+escritorio y móvil.
+
+### Verificación posterior · commit `74b32091`
+
+El cambio se publicó en el Deploy Preview 225 como deploy
+`6b01359c82a0e124af379731`, estado `ready`, con `review_id=225` y sin tocar
+producción. La batería oficial sin base de datos volvió a registrar
+`NODE_ACTIVE_TOTAL=328`, `NODE_ACTIVE_PASS=305`, `NODE_ACTIVE_FAIL=23`,
+`UTILITIES_RUN=8`, `DIAGNOSTICS_RUN=5`, `INFRA_FAIL=0`; los 23 fallos son la
+misma lista histórica ya documentada. `git diff --check` y el árbol quedaron
+limpios. La revisión live autenticada de Inicio queda pendiente de completar
+el MFA en la sesión de QA.
+
+### Clientes · primera migración de superficie
+
+La capa añadida en `2c709144` se limita a
+`main[data-la-orbita-module="clientes"]`: vistas guardadas, filtros, búsqueda,
+paginación, tarjetas de listado y estados de ficha comparten tarjetas, bordes,
+radios, tipografía y controles Órbita. Los campos y botones conservan un área
+mínima de `44 px`; en móvil los filtros y tarjetas se apilan sin overflow. No
+se modificaron sincronización, anonimización, actividad, NIF ni handlers.
+
+La caché CSS es `qa-orbita-modules-v20-20261121`, huella P01
+`7f70543a840f3e64`. Pasan P01, marco `21/21`, componentes, rutas `20/20` y
+`git diff --check`. El módulo permanece `PARCIAL` hasta recorrer ficha,
+actividad, NIF y estados vacío/carga/error con datos reales de QA.
+
+### Gestión · primera capa común `91943176`
+
+Compras, Inventario, Personal, Configuración y Plataforma reciben en el commit
+`91943176` una capa visual Órbita scoped por `data-la-orbita-module`. Unifica
+tarjetas, formularios, tablas, alertas/estados, tipografía y botones; en móvil
+los grids pasan a una columna y las tablas se desplazan dentro de su propio
+contenedor sin ampliar la página. Los handlers, permisos, datos y RPC de cada
+módulo no se tocaron.
+
+La caché CSS es `qa-orbita-modules-v21-20261121`, huella P01
+`b4aa9acf6bc07ec2`. Pasan P01, marco `21/21`, componentes, rutas `20/20` y
+`git diff --check`. Los cinco bloques quedan en `PARCIAL` hasta recorrer sus
+rutas reales, estados vacío/carga/error y acciones específicas en escritorio y
+móvil. En Plataforma sigue siendo necesaria una cuenta de administrador QA;
+no se elevó ningún privilegio durante esta tanda.
+
+### Caja · primera migración de superficie
+
+El commit `92785c52` aplica la capa visual Órbita a
+`main[data-la-orbita-module="caja"]`. La apertura de sesión, el arqueo diario,
+los movimientos y ajustes de caja, el historial, los traspasos y sus avisos
+comparten tarjetas, bordes, radios, sombras y jerarquía tipográfica. Los
+campos, selectores y botones respetan `44 px`; en móvil los bloques de
+denominaciones y formularios pasan a una columna para evitar desbordamientos.
+La capa también cubre la raíz histórica `.la-operacion-caja`. No se tocaron
+handlers, cobros, reembolsos, permisos, fiscalidad ni persistencia.
+
+La marca de caché CSS es `qa-orbita-modules-v19-20261121` y la huella fijada
+por P01 es `ce277db80f8e2cf4`. Pasan P01, marco `21/21`, componentes, rutas
+`20/20`, autoridad de persistencia y `git diff --check`. Caja permanece en
+`PARCIAL` hasta recorrer en QA cobro, cierre, reembolso, documento y estados
+vacío/carga/error en escritorio y móvil; no se ejecutaron nuevas operaciones
+de negocio en esta tanda.
+
+### Endurecimiento de escala contra estilos heredados · v22
+
+La capa común ahora fuerza `min-height: var(--la-control-height) !important`
+para inputs, selects, textareas, botones, tabs, opciones y elementos de menú
+dentro de cualquier módulo Órbita. Esto neutraliza los `minHeight` inline que
+todavía emite código histórico (por ejemplo, el selector de asignación de
+Personal con `40px`) sin tocar sus handlers ni su lógica. La misma regla se
+aplica a tabs y dropdowns globales. La caché pasó a
+`qa-orbita-modules-v22-20261121`, huella P01 `bdeee2cb4df1c980`.
+
+Este cambio es una guarda de escala, no un cierre visual de los módulos: los
+doce siguen en `PARCIAL` hasta la revisión live de cada ruta real.
+
+### Batería global y manifiesto · 21/11/2026
+
+Se incorporó `tests/rediseno/migracion-modulos-contract.mjs` al manifiesto
+oficial y al validador de inventario: `384` entradas, `367` contratos activos,
+`328` Node activos. La batería completa ejecutó los `328` contratos Node, la
+prueba de frontera Netlify, `8` utilidades y `5` diagnósticos: `305 PASS`,
+`23 FAIL` históricos, `INFRA_FAIL=0`. Los 23 fallos son exactamente la familia
+ya conocida (alb, cfg, f3, f4, plataforma, pm11-compra y pm33); el contrato de
+migración modular pasa dentro de la batería. El runner dejó las únicas
+modificaciones intencionadas del manifiesto/validador y el `git diff --check`
+continúa limpio.
+
+El commit `1e3de70c` se publicó en Deploy Preview 225
+(`6b01335abbb331413cd060a0`, estado `ready`). La comprobación live del alias
+sirve `la-apariencia.css?v=qa-orbita-modules-v22-20261121`; en la pantalla de
+acceso el control táctil mínimo observado fue `44 px` y no hubo desbordamiento
+ horizontal.
+
+### Gestión · estados y tablas semánticos · v24
+
+La capa común de Compras, Inventario, Personal, Configuración y Plataforma
+deja de heredar colores históricos en los mensajes de estado: los `role=alert`
+usan el fondo/error Órbita y los `role=status` el estado informativo Órbita.
+Las cabeceras y filas de tablas reciben la superficie, contraste, densidad y
+hover del sistema común. No se modifican ordenación, filtros, permisos,
+handlers ni datos. La caché CSS pasa a
+`qa-orbita-modules-v24-20261121`, huella P01 `471a45c1efb84092`.
+
+Los cinco módulos siguen `PARCIAL`: aún falta el recorrido autenticado de
+cada ruta, estados vacío/carga/error y comprobación conjunta escritorio/móvil
+con datos reales de QA. La revisión está publicada en Deploy Preview 225 como
+`6b0139add1ed5298ee9b64ab` (`ready`), commit `a1120082`.
+
+### Acceso · MFA alineado con Órbita · v25
+
+El paso MFA se monta fuera del formulario de login y conservaba una tarjeta
+verde/dorada inline. La capa v25 lo identifica por `autocomplete="one-time-code"`
+y normaliza tarjeta, título, campo numérico, error, botón primario y salida con
+los tokens Órbita; en móvil mantiene el ancho útil y controles de `44 px`.
+No se modifican desafío, verificación, inscripción, cierre de sesión ni
+handlers de autenticación. El bloque continúa `PARCIAL` hasta comprobar login,
+recuperación, MFA y selección de empresa/local en ambas superficies.
+La capa quedó publicada en el Deploy Preview 225 (`6b013c51e5a98b1501fc71df`,
+`ready`), commit `f7157f0c`.
+
+### Estados globales · cierre de convivencia antigua · v26
+
+La primitiva global de alerta/estado deja de depender del color heredado del
+componente que la emite: todos los `role=alert` reciben fondo y tinta de
+error Órbita y todos los `role=status` la superficie informativa Órbita. Esto
+alcanza también Clientes, Caja y cualquier pantalla de gestión que todavía no
+tenga un selector específico. Se conserva el contenido, la semántica ARIA y
+los handlers. Caché `qa-orbita-modules-v26-20261121`, huella P01
+`0471acf3bfc85099`.
+Deploy Preview 225: `6b013d3584eba994f4ee5306` (`ready`), commit `4e51e027`.
+
+### Tablas · contención móvil común · v27
+
+Todas las tablas dentro de un módulo Órbita encapsulan su desplazamiento en
+móvil, sin ampliar el viewport ni alterar la semántica de cabeceras, celdas,
+ordenación o selección. Las celdas conservan una anchura legible y el área
+interactiva común. Caché `qa-orbita-modules-v27-20261121`, huella P01
+`bb7e168a744878e6`.
+La corrección está publicada en Deploy Preview 225 como `6b013ddcf49a09cfd3ecd251`
+(`ready`), commit `8b07d8e7`. El recorrido autenticado de las doce superficies
+continúa pendiente antes de cambiar cualquier estado de `PARCIAL` a `CERRADO`.
+
+### Contenedores históricos · contención móvil común · v28
+
+Además de las tablas, los wrappers históricos `overflow-x-auto` de matrices,
+bandas de filtros y listados quedan contenidos dentro de su superficie Órbita.
+El hijo conserva su scroll local, pero el `main` y el viewport reciben
+`min-width: 0` y `max-width: 100%`. No se modifican contenido, ordenación ni
+handlers. La caché CSS queda en `qa-orbita-modules-v28-20261121`, huella P01
+`edb7c9116b854562`; queda repetir la revisión live de los módulos. La
+publicación quedó lista en Deploy Preview 225 como
+`6b01405358c478c62a3c92b0` (`ready`), commit `1c00a56a`; el alias estable es
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app`.
+
+### Inicio y panel general · superficie única v29
+
+El primer bloque de migración deja de tratar el panel Órbita y el detalle
+operativo histórico como dos identidades visuales. La capa v29 normaliza el
+panel de Inicio, sus accesos, indicadores, tarjetas de detalle, formularios,
+tablas y estados con los tokens comunes de Órbita; fija anchura máxima,
+radios, sombras, tipografía y controles táctiles de `44 px`, y en móvil
+apila accesos e indicadores sin overflow. No cambia indicadores, datos,
+permisos, navegación ni handlers. Caché `qa-orbita-modules-v29-20261121`,
+huella P01 `b729a1b6a5c2f7d3`. La matriz permanece `PARCIAL` hasta recorrer
+Inicio autenticado en los cinco viewports y comprobar vacío/carga/error.
+La publicación v29 está lista en Deploy Preview 225 como
+`6b0141b9c36cc507a332a536` (`ready`), commit `41532f7b`.
+
+### TPV y sala · controles secundarios e historial · v30
+
+La capa v30 completa la normalización de la superficie TPV: botones, inputs y
+selectores del ticket, cuentas, sala, venta rápida y confirmaciones reciben la
+misma altura mínima, radio y foco; la tabla de historial adopta la tarjeta y
+cabecera Órbita y en móvil conserva el scroll dentro de su wrapper. No se
+alteran cobros, persistencia, fiscalidad, permisos ni handlers. Caché
+`qa-orbita-modules-v30-20261121`, huella P01 `742bf5b1ac1bc2fd`. TPV continúa
+`PARCIAL` hasta recorrer sus rutas autenticadas y estados reales.
+La publicación está lista en Deploy Preview 225 como
+`6b014268ed0690c4525a4eb2` (`ready`), commit `47368d65`.
+
+### Pase · raíces independientes y cola contenida · v31
+
+La raíz de Pase queda normalizada tanto cuando se monta como módulo propio
+como cuando se incrusta en Inicio. El plano, estados `LIBRE`, `OCUPADA`,
+`RESERVADA`, `BLOQUEADA` y `FUERA_SERVICIO`, filtros, accesos y cola comparten
+escala, foco, tarjetas y tokens Órbita; en móvil la cola mantiene su scroll
+local y no hace crecer la pantalla. No se modifican RPC, estados de sala,
+permisos ni navegación. Caché `qa-orbita-modules-v31-20261121`, huella P01
+`42175d9f2bb452b1`. Pase continúa `PARCIAL` hasta el recorrido autenticado.
+La publicación v31 está lista en Deploy Preview 225 como
+`6b0142f47b251896fb16c39f` (`ready`), commit `cbea3472`.
+
+### Cocina · controles y estados de la cola · v32
+
+La capa v32 completa la normalización de Cocina: botones, selects, inputs y
+acciones de reimpresión/gestión comparten la altura de `44 px` y el radio
+común; los estados `role=alert` y `role=status` consumen tokens Órbita; las
+tarjetas y la cola quedan contenidos en móvil sin overflow. No se modifican
+estaciones, rutas, estados, RPC, permisos ni handlers. Caché
+`qa-orbita-modules-v32-20261121`, huella P01 `9ea641f1c7c6adae`. Cocina sigue
+`PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
+`6b014411457f622dbe7439c8` (`ready`), commit `81ca1074`.
+
+### Caja · controles, estados y movimientos · v33
+
+La capa v33 completa la normalización visual de Caja: botones, botones con
+rol, selectores, campos y áreas de texto comparten altura táctil de `44 px` y
+radio Órbita; los estados `role=alert`, `role=status` y `aria-busy` consumen
+tokens semánticos; los detalles y tablas mantienen un área accionable legible
+y el scroll queda contenido en móvil. No se modifican cobros, arqueos,
+reembolsos, documentos, permisos ni handlers. Caché
+`qa-orbita-modules-v33-20261121`, huella P01 `7ba54937325ac699`. Caja sigue
+`PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
+`6b01458faf0db151e7f4ba59` (`ready`), commit `fd1f6a51`.
+
+### Clientes · listados, vistas guardadas y ficha · v34
+
+La capa v34 completa la superficie de Clientes: vistas guardadas, paginación,
+botones con rol, ficha, tablas, detalles y estados comparten la escala Órbita;
+alertas y estados informativos consumen tokens semánticos y en móvil las tablas
+mantienen scroll local sin ampliar el viewport. No se modifican filtros,
+actividad, NIF, datos, permisos ni handlers. Caché
+`qa-orbita-modules-v34-20261121`, huella P01 `77fa483c6dc0cc62`. Clientes sigue
+`PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
+`6b01467d071af1a092f9d639` (`ready`), commit `851f285c`.
+
+### Compras · proveedores, pedidos, recepción y facturas · v35
+
+La capa v35 normaliza Compras de extremo a extremo: tarjetas, botones,
+selectores, campos, estados, detalles y tablas comparten la escala Órbita;
+alertas y estados informativos consumen tokens semánticos y en móvil los
+listados mantienen scroll local y columnas apiladas. No se modifican pagos,
+recepción, albaranes, facturas, datos, permisos ni handlers. Caché
+`qa-orbita-modules-v35-20261121`, huella P01 `edaafbdf5effde93`. Compras sigue
+`PARCIAL` hasta el recorrido autenticado en QA. Deploy Preview 225:
+`6b01472c82a0e124af3b427b` (`ready`), commit `5b0c4bad`.
+
+### Inventario · productos, movimientos, mermas y ajustes · v36
+
+La capa v36 normaliza Inventario para productos, movimientos, mermas,
+caducidad y ajustes: tarjetas, botones, campos, estados, detalles y tablas
+comparten la escala Órbita; en móvil los listados conservan scroll local y los
+formularios se apilan sin overflow. No se modifican salidas, ajustes,
+persistencia, permisos ni handlers. Caché `qa-orbita-modules-v36-20261121`,
+huella P01 `b0199d11c27752d6`. Inventario sigue `PARCIAL` hasta el recorrido
+autenticado en QA. Deploy Preview 225:
+`6b0147c47a019a8ab1360f4d` (`ready`), commit `e015abb2`.
+
+### Personal · empleados, cargos, permisos, turnos y fichajes · v37
+
+La capa v37 normaliza Personal para empleados, cargos, permisos, turnos y
+fichajes: tarjetas, botones, campos, estados, detalles y tablas comparten la
+escala Órbita; en móvil los grupos se envuelven, las tablas mantienen scroll
+local y los formularios se apilan. No se modifican permisos, fichajes,
+turnos, datos ni handlers. Caché `qa-orbita-modules-v37-20261121`, huella P01
+`7360be9936c414f6`. Personal sigue `PARCIAL` hasta el recorrido autenticado
+en QA. Deploy Preview 225: `6b0148194d9d3057193003d7` (`ready`), commit
+`2f3735b0`.
+
+### Configuración · empresa, locales, terminales, fiscalidad y apariencia · v38
+
+La capa v38 completa la normalización de Configuración: tarjetas, botones,
+campos, selectores, estados, detalles y tablas comparten la escala Órbita; en
+móvil los grupos se envuelven, las tablas mantienen scroll local y los
+formularios se apilan sin overflow. No se modifican persistencia, fiscalidad,
+apariencia, permisos ni handlers. Caché `qa-orbita-modules-v38-20261121`,
+huella P01 `f186177be3f110a1`. Configuración sigue `PARCIAL` hasta el recorrido
+autenticado en QA. Deploy Preview 225: `6b0149afafe536f0d8713604` (`ready`),
+commit `9b2bde7b`.
+
+### Plataforma · paneles exclusivos de administración · v39
+
+La capa v39 completa la normalización de Plataforma: paneles administrativos,
+tarjetas, botones, campos, selectores, estados, detalles y tablas comparten la
+escala Órbita; en móvil los grupos se envuelven, las tablas mantienen scroll
+local y los formularios se apilan sin overflow. No se modifican permisos,
+roles, datos ni handlers. Caché `qa-orbita-modules-v39-20261121`, huella P01
+`f26769170c7cdfa3`. Plataforma sigue `PARCIAL` hasta el recorrido autenticado
+con privilegio de administración en QA. La capa alcanza tanto
+`main[data-la-orbita-module="plataforma"]` como los paneles previos
+`#la-plataforma-root` y `#la-plataforma-cambio-root`.
+Deploy Preview 225: `6b014af5313583e7553eee86` (`ready`), commit `45722dc5`.
+
+### Acceso · login, recuperación, MFA y selección de empresa/local · v40
+
+La capa v40 completa la normalización de Acceso: login, recuperación, MFA y
+selección de empresa/local comparten campos, botones, alertas y estados Órbita;
+en móvil se oculta el arte decorativo, el formulario ocupa el ancho disponible
+y las opciones se envuelven sin overflow. No se modifican autenticación,
+sesiones, permisos ni handlers. Caché `qa-orbita-modules-v40-20261121`, huella
+P01 `67300938eb8c5c76`. Acceso sigue `PARCIAL` hasta el recorrido autenticado
+completo en QA.
+Deploy Preview 225: `6b014b8aabe0ae40a1c2ee97` (`ready`), commit `b1b142ba`.
+Evidencia no autenticada: pantalla `Iniciar sesión`, recuperación, acceso sin
+sincronizar y lanzador Apariencia visibles en el preview; el recorrido con
+sesión y MFA queda pendiente.
+
+## Evidencia de la tanda `b8a9a132` · 21/11/2026
+
+La corrección final de Plataforma cubre también sus montajes previos al shell
+(`la-plataforma-root` y `la-plataforma-cambio-root`) y sus primitivas `.lap-*`.
+Los contratos de rediseño pasan con `REDISENO_REGRESSION_FAILED=0`; el chequeo
+de recuperación de fuente devuelve `PARIDAD_CUERPO_EXACTA=1` y
+`SOURCE_RECOVERY_CHECK=PASS`; `git diff --check` está limpio. La batería global
+Bash no se pudo iniciar por un error de MSYS2 al crear `\BaseNamedObjects\msys-*`
+en este Windows. Esto no cambia el estado funcional: los doce módulos siguen
+`PARCIAL` hasta verificar sus rutas autenticadas reales en escritorio y móvil.
+El deploy correspondiente del PR #225 es `6b015343ff0dcfeeefb454ae` (`ready`),
+con la URL estable `https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
+
+### Recorrido visual de rutas · 21/11/2026 · SHA `56be8a75`
+
+En el preview se activó el modo local sin sincronizar para aislar la capa
+visual y se recorrieron diez entradas del menú. La lectura de la propia página
+devolvió este anclaje, sin desbordamiento horizontal y con controles visibles
+de al menos 44 px en cada ruta:
+
+| Entrada | `data-la-orbita-module` / `surface` | Overflow | Mínimo |
+|---|---|---:|---:|
+| Panel general | `inicio` / `inicio` | no | 44 px |
+| TPV | `tpv` / `tpv` | no | 44 px |
+| Cocina | `cocina` / `cocina` | no | 44 px |
+| Proveedores | `compras` / `compras` | no | 44 px |
+| Productos | `inventario` / `inventario` | no | 44 px |
+| Personal | `personal` / `personal` | no | 44 px |
+| Clientes | `clientes` / `clientes` | no | 44 px |
+| Configuración | `configuracion` / `configuracion` | no | 44 px |
+| Arqueo de caja | `caja` / `caja` | no | 44 px |
+| Encargos | `tpv` / `tpv` | no | 44 px |
+
+La prueba confirma que las pantallas históricas ya no caen en la superficie
+genérica `pantalla`. Al ser modo sin sincronizar, los estados de servidor,
+permisos, cobros y persistencia siguen requiriendo el recorrido autenticado de
+QA antes de cambiar cualquiera de las doce filas a `CERRADO`.
+La corrección se sirve con `qa-orbita-shell-v8-20261121`, huella P01
+`a6a93b11be680172`, en el commit `24d490c8`.
+
+### Recorrido visual móvil · 21/11/2026
+
+Se repitió el recorrido en el Deploy Preview con emulación móvil de **390 ×
+844 px**, `deviceScaleFactor=1`, modo móvil y sesión local sin sincronización.
+Se abrió la navegación inferior y el menú «Más» para todas las entradas
+visibles:
+
+| Entrada | Módulo | Superficie | Overflow horizontal | Control mínimo | Navegación inferior |
+|---|---|---|---:|---:|---|
+| Panel general | `inicio` | `inicio` | `false` | 44 px | `true` |
+| TPV | `tpv` | `tpv` | `false` | 44 px | `true` |
+| Cocina | `cocina` | `cocina` | `false` | 44 px | `true` |
+| Proveedores | `compras` | `compras` | `false` | 44 px | `true` |
+| Productos | `inventario` | `inventario` | `false` | 44 px | `true` |
+| Personal | `personal` | `personal` | `false` | 44 px | `true` |
+| Clientes | `clientes` | `clientes` | `false` | 44 px | `true` |
+| Configuración | `configuracion` | `configuracion` | `false` | 44 px | `true` |
+| Arqueo de caja | `caja` | `caja` | `false` | 44 px | `true` |
+| Encargos | `tpv` | `tpv` | `false` | 44 px | `true` |
+
+Resultado: **10/10 rutas móviles clasificadas correctamente**, sin
+desbordamiento horizontal, con navegación inferior presente y controles
+táctiles de al menos 44 px. La sesión fue local/sin sincronización; esta
+evidencia valida el marco y la respuesta visual, pero no sustituye la
+verificación autenticada de datos, permisos, cobros, MFA ni estados reales.
+Por ello las filas permanecen `PARCIAL` hasta completar esos recorridos.
+
+### Recorrido visual de escritorio actualizado · 21/11/2026
+
+Se repitió el mismo conjunto de rutas con viewport de **1440 × 900 px** en el
+preview actualizado. Las diez entradas resolvieron la superficie esperada, sin
+overflow horizontal y con un control visible mínimo de 44 px:
+
+| Ruta | Módulo/superficie | Overflow | Mínimo | Alertas | Estados |
+|---|---|---:|---:|---:|---:|
+| Panel general | `inicio/inicio` | `false` | 44 px | 0 | 3 |
+| TPV | `tpv/tpv` | `false` | 44 px | 1 | 0 |
+| Cocina | `cocina/cocina` | `false` | 44 px | 1 | 0 |
+| Proveedores | `compras/compras` | `false` | 44 px | 0 | 1 |
+| Productos | `inventario/inventario` | `false` | 44 px | 0 | 0 |
+| Personal | `personal/personal` | `false` | 44 px | 0 | 1 |
+| Clientes | `clientes/clientes` | `false` | 44 px | 0 | 2 |
+| Configuración | `configuracion/configuracion` | `false` | 44 px | 1 | 0 |
+| Arqueo de caja | `caja/caja` | `false` | 44 px | 0 | 0 |
+| Encargos | `tpv/tpv` | `false` | 44 px | 0 | 1 |
+
+La medición se hizo en modo local/sin sincronización para no generar cambios
+de negocio. Es evidencia del marco, la escala y la comunicación visual; no
+convierte por sí sola las filas en `CERRADO`.
+
+### Acceso · revisión visual no autenticada · 21/11/2026
+
+La superficie `.la-acceso` se comprobó directamente en el preview sin iniciar
+sesión, en **390 × 844 px** y **1440 × 900 px**. En ambos tamaños se observó
+login, recuperación, acceso local y lanzador de Apariencia; no hubo overflow y
+el control visible mínimo fue de 44 px. Esta evidencia cubre la composición
+responsive de Acceso, pero no el resultado de login, recuperación, expiración,
+selección de local ni MFA, que requieren una sesión QA real.
+
+### Estados observados en la pasada móvil local · 21/11/2026
+
+Además del anclaje del shell, se comprobó que las rutas no quedan en blanco
+cuando el modo local no puede consultar el servidor: muestran una alerta,
+estado informativo o vacío explícito. La lectura fue realizada después de
+cada navegación, manteniendo `overflow=false` y control mínimo de 44 px.
+
+| Ruta | Módulo/superficie | Alertas | Estados informativos | Vacío/conexión visible |
+|---|---|---:|---:|---|
+| Inicio | `inicio/inicio` | 0 | 3 | no |
+| TPV | `tpv/tpv` | 1 | 0 | no |
+| Cocina | `cocina/cocina` | 1 | 0 | sí |
+| Proveedores | `compras/compras` | 0 | 1 | no |
+| Productos | `inventario/inventario` | 0 | 0 | no |
+| Personal | `personal/personal` | 0 | 1 | no |
+| Clientes | `clientes/clientes` | 0 | 2 | no |
+| Configuración | `configuracion/configuracion` | 1 | 0 | sí |
+| Arqueo de caja | `caja/caja` | 0 | 0 | no |
+| Encargos | `tpv/tpv` | 0 | 1 | sí |
+
+Esta es evidencia de la capa visual y de sus estados de comunicación en modo
+local; no certifica el contenido, permisos o persistencia del backend QA.
+
+### Corrección transversal · control de navegación del shell · `6438b207`
+
+La auditoría del criterio táctil detectó que el botón visible para contraer la
+navegación lateral estaba definido en `36×36 px`. Aunque las comprobaciones
+anteriores no lo incluían como control de módulo, forma parte del marco común y
+no podía quedar por debajo del contrato de `44×44 px`. Se corrigió a `44×44 px`,
+se invalidó la caché CSS a `qa-orbita-modules-v41-20261121` y se añadió una
+aserción al contrato de componentes para impedir regresiones. No se tocaron
+handlers, permisos, datos ni rutas. La corrección está publicada solo en
+`rediseno/f0-base-qa`; PR #225 continúa en borrador y producción permanece
+fuera de alcance.
+
+El deploy de comprobación de esta revisión es
+`6b015a051778aed939b61a43` (`ready`), con `commit_ref` exacto
+`bc8043b217701c7f29198a718a8f759b2680bb08`, disponible en
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app`. El escaneo de
+secretos no encontró coincidencias y se procesaron las siete reglas de
+cabeceras sin error.
+
+Tras el commit documental `e5f0a67efe6b2b3d16fff12b048e2eabf25e4dd6`, el
+Preview 225 volvió a quedar `ready` en el deploy
+`6b015a56e2b32501d2eb2c8d`; el alias estable sigue apuntando a esa rama de QA.
+
+### Plataforma · corrección del token tipográfico · `e84079b3`
+
+La auditoría del panel previo al shell detectó `var(--la-font-sans)`, una
+variable inexistente que dejaba la tipografía de Plataforma en manos del
+estilo heredado. Se sustituyó por `var(--la-font)`, se invalidó la caché a
+`qa-orbita-modules-v42-20261121` y se añadió una aserción que impide volver a
+referenciar el token huérfano. La lógica, permisos y handlers permanecen
+intactos; Plataforma sigue `PARCIAL` hasta disponer de una sesión de
+administrador QA para recorrer sus paneles reales.
+
+### Acceso · token mono declarado · revisión `v43`
+
+La auditoría de tokens encontró que el campo de MFA usaba `--la-mono` sin una
+declaración en la capa Órbita. Se añadió el token IBM Plex Mono en `:root`, se
+actualizó la caché a `qa-orbita-modules-v43-20261121` y se protegió con un
+contrato estático. `--la-orbita-puntero` no es un hueco: es una propiedad
+dinámica escrita por el movimiento del cursor y conserva su fallback.
+
+La corrección quedó publicada en el deploy `6b015c30695cff02d317a7d6`
+(`ready`), con `commit_ref` `af3ba1dec857d8c8219a29a2b50bc98083b84338`.
+
+El contrato de componentes incorpora además un inventario automático de
+tokens `--la-*`: cada uso debe estar declarado en la hoja o documentado como
+propiedad dinámica. Así la normalización visual no puede introducir otra
+variable huérfana sin romper la batería.
+
+### Plataforma y Acceso · superficies fuera de `#root` · revisión actual
+
+La auditoría del bloque 4 encontró dos superficies que no podían quedar
+cubiertas solo por los selectores `#root`: el Panel de Plataforma (`.lap-root`,
+montado bajo `body`) y `restablecer-contrasena.html` (documento independiente).
+Ambas conservaban colores y geometría propios del marco antiguo. Se corrigió
+sin tocar lógica, permisos, RPC ni handlers:
+
+- `plataforma-panel.js` consume ahora los tokens `--c-*` y `--la-*` del diseño
+  activo para barra, tarjetas, diálogos, estados, campos y botones. Todos sus
+  controles y campos tienen `44 px` mínimos también en escritorio. Se retiró el
+  fondo inline heredado del flujo de cambio de contraseña y se añadió la marca
+  de caché `qa-orbita-platform-v2-20261121` en `index.html`.
+- `restablecer-contrasena.html` fija el diseño inicial Órbita, carga la hoja
+  común v43 y usa sus tokens para fondo, tarjeta, tipografía, campos, botón,
+  mensajes y enlace de vuelta. Sus controles mantienen el suelo de `44 px`
+  aunque la página se abra sin sesión.
+
+Los contratos `p04-panel-contract`, `componentes-orbita-contract`,
+`marco-orbita-contract`, `migracion-modulos-contract` y `git diff --check`
+ pasan tras la corrección. Plataforma y Acceso siguen en `PARCIAL`: todavía se
+ necesita el recorrido autenticado de administración, recuperación, selección
+ de local y MFA para cerrar sus filas de QA.
+
+La corrección está en `bfb0e6856c4baa1fe64858f45b98cfdf89485685` y se publicó
+en el Deploy Preview 225 como `6b015f565f50b1269577c814` (`ready`), con
+escaneo de secretos sin coincidencias y las siete reglas de cabeceras
+procesadas. El PR #225 continúa en borrador y producción no se tocó.
+
+### Arranque y bootstrap de instalación · revisión `9ae45621`
+
+El barrido del punto 4 también cubrió el primer render, antes de que React
+monte `#root`, y el diálogo de instalación inicial que crea el propietario.
+`index.html` fija `data-la-diseno="orbita"` desde el documento, usa el fondo,
+tipografía y acento semánticos del tema en la pantalla de carga y mantiene la
+barra de progreso sin la paleta verde/beige antigua. `owner-bootstrap-post-reset.js`
+consume los mismos tokens para su modal, avisos, campos y botones; inputs y
+acciones tienen `min-height: 44px` y el flujo de servidor queda intacto.
+
+Los contratos de componentes, shell, rutas, módulos y `git diff --check` pasan
+con esta revisión. Se publicó en el Deploy Preview 225 como deploy
+`6b0160c90992330e675aecdf` (`ready`). Plataforma
+y Acceso siguen `PARCIAL` hasta completar sus recorridos autenticados reales.
+
+Evidencia visual adicional de Acceso en el Preview 225 (ruta de login sin
+sesión, viewport disponible `618×678`): `data-la-diseno="orbita"`, fondo
+`rgb(23,25,28)`, tipografía Inter, `scrollWidth === innerWidth` y cero
+controles por debajo de `44 px`. Esta comprobación cierra la revisión visual
+del primer render, pero no sustituye el recorrido autenticado de login,
+recuperación, expiración, MFA y selección de empresa/local.
+
+### Marco transversal · barra inferior móvil Órbita · `5c452ff4`
+
+El recorrido modular detectó una convivencia que no aparecía en las filas de
+los módulos: la navegación inferior móvil seguía siendo el componente histórico
+con estilos inline. Se normalizó como parte del shell común, sin sustituir sus
+handlers React: cinco destinos con la misma superficie, tipografía, borde,
+estado activo, foco y área táctil mínima de `44×44 px`. La barra queda oculta
+en escritorio, ocupa una fila propia en móvil y el buscador global incluye sus
+destinos sin duplicar los del menú lateral.
+
+La corrección está servida con `la-apariencia.css?v=qa-orbita-modules-v44-20261121`.
+Se añadieron marcas semánticas `data-la-orbita-nav-item` y
+`aria-current="page"` únicamente para presentación y accesibilidad; no cambian
+la selección de pestaña, permisos, persistencia ni rutas. El contrato de
+componentes comprueba tanto la barra como la deduplicación del buscador.
+La rama sigue siendo `rediseno/f0-base-qa`, PR #225 en borrador, y producción
+permanece intacta. Este cambio mejora el marco de los doce módulos, pero no
+convierte por sí solo ninguna fila `PARCIAL` en `CERRADO`: siguen pendientes
+los recorridos autenticados y los estados de datos reales indicados arriba.
+
+El commit quedó publicado en el Deploy Preview 225 como
+`6b01684ad1ed5298eea45317` (`ready`), `commit_ref=37080596af67e46a04cc7c313293f69a0e8b3521`.
+El escaneo de secretos no encontró coincidencias y las siete reglas de
+cabeceras se procesaron sin error.
+
+### Evidencia live posterior · barra móvil · Preview 225
+
+Con el Preview 225 actualizado (`?cache=qa-orbita-modules-v44-20261121`) se
+abrió el modo local en viewport táctil `618×678`. El árbol accesible mostró las
+cuatro pestañas `Inicio`, `Resultados`, `Arqueo de caja` y `Más`, además de la
+cabecera común con contexto `Local A1 · QA Empresa A, S.L.`, QA, búsqueda,
+avisos, perfil y Apariencia. La captura visual confirmó que la barra queda en
+su propia fila inferior, que el estado activo se distingue con borde/acento y
+que no tapa el contenido ni introduce desplazamiento horizontal visible.
+La ruta quedó en Inicio/Órbita; los estados de Pase y Cocina se mostraron como
+avisos de conexión explícitos en modo local, sin operaciones ni escrituras.
+Esta evidencia confirma la corrección transversal del shell; las filas de los
+módulos siguen `PARCIAL` hasta sus recorridos autenticados y de datos reales.
+
+### Componentes comunes · normalización semántica de los doce módulos · `f7f6eb58`
+
+La auditoría del punto 4 encontró que el shell ya era común, pero los controles
+seguían llegando con nombres de clase históricos diferentes según la pantalla.
+Eso podía dejar botones, campos, pestañas, tablas, estados, diálogos y tarjetas
+con geometrías distintas aunque pertenecieran al mismo módulo. Se añadió en
+`la-orbita-shell.js` la marca aditiva `marcarComponentesOrbita`: clasifica los
+elementos existentes por su rol real (`la-orbita-control`, `la-orbita-field`,
+`la-orbita-tab`, `la-orbita-table`, `la-orbita-state`, `la-orbita-dialog` y
+`la-orbita-card`). No sustituye nodos, no añade handlers de negocio y no cambia
+permisos, datos ni persistencia; solo permite que la hoja común aplique la
+escala Órbita de forma uniforme cuando React vuelve a pintar una vista.
+
+`la-apariencia.css` v45 consume esas marcas para tipografía, altura mínima de
+44 px, foco, radios, bordes, estados, tablas y modales. La caché quedó en
+`qa-orbita-modules-v45-20261121` y el shell en `qa-orbita-shell-v10-20261121`.
+Los contratos P01, marco, componentes y migración modular, junto con
+`git diff --check`, pasan en local. Esto reduce la convivencia visual antigua
+en los doce módulos, pero no convierte una fila en `CERRADO`: todavía se exige
+el recorrido QA autenticado de cada ruta, sus estados de datos y sus dos
+viewports antes de cerrar individualmente.
+
+### Modo local · montaje del shell sin `data-la-contenedor` · `1948bc4d`
+
+La primera verificación del artefacto v45 reveló una diferencia entre sesión
+autenticada y modo «Trabajar solo en este equipo»: el wrapper React local no
+recibía `data-la-contenedor`, así que el shell no encontraba su raíz y dejaba
+visible el marco histórico. `prepararMarco()` acepta ahora también la clase
+estable del wrapper (`w-full min-h-[700px]`) y añade el atributo visual
+`data-la-contenedor="orbita"` cuando falta. Es una guarda de presentación; no
+inicia sincronización, no crea datos y no altera el diseño elegido.
+
+El shell se sirve ahora como `qa-orbita-shell-v12-20261121`; tras volver a
+publicar se repetirá la comprobación live en modo local antes de considerar
+cerrada esta excepción.
+
+La misma pasada detectó que el wrapper local podía no tener `data-la-diseno` y
+que «Resumen general» no entraba en la clasificación de Inicio. El shell v12
+fija Órbita solo como valor inicial cuando no existe otro diseño y reconoce
+ese encabezado como `inicio`; una elección posterior de apariencia conserva
+precedencia.
+
+Evidencia live posterior: deploy `6b016bd8317438ca308d4d50` en estado `ready`,
+commit `ee43cf1d`. En modo local del Preview, la raíz quedó con
+`data-la-contenedor="orbita"`, `data-la-diseno="orbita"` y el shell común; la
+superficie observada fue `pase`, con 24 controles semánticos, 1 campo, 5
+estados, mínimo visible de 44 px y `overflow=false`. La captura confirmó
+cabecera, lateral, contexto QA, buscador, avisos, perfil y Apariencia con la
+misma jerarquía Órbita. No se hicieron escrituras de negocio. Esta evidencia
+cierra la excepción de arranque local; las filas siguen `PARCIAL` hasta sus
+recorridos autenticados.
+
+La navegación histórica también queda sincronizada con `aria-current` al
+activar un destino. Así «Panel general» conserva `inicio` aunque su contenido
+incluya el panel Pase; una sub-superficie ya no roba la identidad del módulo.
+La regresión queda cubierta por el contrato de marco y se comprobará en el
+siguiente deploy v14.
+
+Además, la selección actualiza `data-la-orbita-route` inmediatamente; no
+depende de un repintado posterior de React para cambiar la superficie visual.
+La marca `data-la-orbita-module` usa esa misma prioridad: Inicio ya no queda
+clasificado como Pase cuando el panel operativo está incrustado.
+
+### Recorrido modular local · prioridad de Inicio · `d08a905e`
+
+En el deploy `6b016e263339e98d72dc5b68` (`ready`) se repitió el recorrido sin
+sincronización. Al activar «Panel general», la superficie y el módulo quedaron
+ambos en `inicio` aunque el panel Pase siga incrustado; se observaron 24
+controles semánticos, mínimo de 44 px y `overflow=false`. El mismo banco
+recorrió TPV (`tpv`), Cocina (`cocina`), Caja (`caja`), Clientes (`clientes`),
+Proveedores (`compras`), Productos (`inventario`), Personal (`personal`) y
+Configuración (`configuracion`), todos con mínimo 44 px y sin desbordamiento
+horizontal. Es evidencia visual local, no cierre de permisos ni datos reales.
+
+### Plataforma y Acceso · cierre de la normalización de controles · 21/11/2026
+
+Se corrigió la última diferencia común detectada fuera de los recorridos
+autenticados: las áreas de texto de `#la-plataforma-root` y
+`#la-plataforma-cambio-root` quedaban fuera de la altura, borde y radio Órbita
+que ya usaban inputs y selectores. También se fijó un foco visible común para
+botones, campos y acciones de login, MFA y Plataforma. No se modifican lógica,
+sesiones, permisos, RPC ni datos.
+
+La hoja queda publicada con la marca `qa-orbita-modules-v46-20261121` y la
+huella P01 `ebbf90ccdde80bb4`. Los 12 módulos siguen deliberadamente en
+`PARCIAL`: esta corrección cierra la consistencia estática de los componentes,
+pero no sustituye el recorrido autenticado de cada ruta, especialmente el
+acceso administrador de Plataforma y el flujo login/recuperación/MFA de
+Acceso.
+
+Evidencia de esta revisión: `REDISENO_COMPONENTES_ORBITA_CONTRACT=PASS`,
+`REDISENO_MIGRACION_MODULOS_CONTRACT=PASS módulos=12 shell=12 responsive=PASS
+tactil=44`, `MARCO_ORBITA_CONTRACT=PASS (23/23)`,
+`MARCO_ORBITA_RUTAS_CONTRACT=PASS (20 rutas)`, batería completa
+`tests/rediseno/*.mjs` en verde y `git diff --check` limpio.
+
+El commit `1878e2b1` se publicó en el Deploy Preview 225 como deploy
+`6b0170474f1e763bb9d3eab9` (`ready`). El alias estable sigue siendo
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`; la pantalla de
+Acceso carga sin bloqueo y muestra el formulario Órbita con controles táctiles.
+El PR #225 permanece abierto, en borrador, contra `release`; producción no se
+ha tocado.
+
+### Recorrido local adicional · preview v46 · 21/11/2026
+
+En el deploy `6b0170d2f16c14c121a5b9e5` se activó «Trabajar solo en este
+equipo, sin sincronizar» y se recorrieron las rutas visibles del shell sin
+credenciales ni escrituras de negocio. El arranque terminó en el panel Órbita
+tras la hidratación y mantuvo el contexto `Local A1 · QA Empresa A, S.L.`.
+
+| Ruta | Evidencia observada |
+|---|---|
+| Inicio / Panel general | `El pulso del negocio`, accesos rápidos, cuatro indicadores, detalle operativo colapsable y cabecera Órbita |
+| TPV | venta rápida/sala, buscador, categorías, catálogo QA, caja del TPV, resumen e historial bajo demanda |
+| Cocina | cabecera, actualización, filtro de estación, aviso de conexión y estado vacío de comandas |
+| Caja | apertura de sesión, arqueo, fecha, movimientos ocultos bajo demanda, contado y estados de cierre |
+| Clientes | vistas guardadas, búsqueda, filtros de estado/tipo, vacío y paginación deshabilitada |
+| Compras | Proveedores con estado vacío y acción Nuevo proveedor |
+| Inventario | filtros, tabla de productos QA, acciones Kardex/Editar/Registrar salida/Eliminar y alerta de stock mínimo |
+| Personal | cabecera, acción Nuevo empleado, pestañas Empleados/Selección y estado de carga |
+| Configuración | selector de secciones, contexto empresa/local, motivo obligatorio, controles de cajas y fiscalidad/permisos |
+
+La capa común siguió visible en todas las rutas; la batería estática garantiza
+los controles táctiles de 44 px y la revisión responsive. Esta pasada no prueba
+permisos, persistencia, cobros, reembolsos, MFA ni estados de servidor con una
+sesión autenticada: esos requisitos siguen siendo el criterio pendiente para
+pasar cada fila de `PARCIAL` a `CERRADO`.
+
+### Plataforma previa al shell · marca semántica externa · 21/11/2026
+
+Las dos superficies que Plataforma monta antes de abrir el `main` autenticado
+(`la-plataforma-root` y `la-plataforma-cambio-root`) exponen ahora
+`data-la-orbita-external="plataforma"` y
+`data-la-orbita-surface="plataforma"`. La hoja visual ya las normalizaba por
+id; la marca hace verificable que el panel administrador y el cambio de
+contraseña pertenecen al mismo marco Órbita sin duplicar navegación ni tocar
+permisos, RPC o handlers. `plataforma-panel.js` se sirve con
+`qa-orbita-platform-v3-20261121`.
+
+El contrato de componentes comprueba ambas marcas y la paridad del resto de
+la capa. La verificación de acceso de administrador sigue pendiente para
+cerrar Plataforma funcionalmente.
+
+### Hallazgo de arranque durante la migración por bloques · 21/11/2026
+
+Al probar el modo local desde el preview limpio, la vista podía quedarse en
+«Cargando almacén…» si una lectura del adaptador de almacenamiento no resolvía
+su promesa. El documento ya fijaba Órbita (`data-la-diseno="orbita"`), pero no
+se podía verificar ningún módulo detrás del bloqueo. Se corrigió `loadKey` en
+`fuente.js` y en `source-recovery/fuente-recuperado.js`: cada lectura tiene un
+techo de 1,5 s sin conexión y 7,5 s en QA autenticado, conserva los reintentos y emite el
+fallo real para que el arranque visible pueda ofrecer reintento. No cambia la
+lógica, los handlers ni la persistencia; evita que una promesa colgada congele
+los doce módulos. La batería de arranque, `loadKey`, componentes y migración
+de módulos queda verde tras el cambio. El recorrido autenticado del preview
+sigue siendo necesario para pasar cada fila de `PARCIAL` a `CERRADO`.
+
+### Refuerzo transversal de superficies · v47 · 21/11/2026
+
+La capa `la-apariencia.css` pasa a `qa-orbita-modules-v48-20261121` (huella
+`6ee9a8f9998201d6`). Se añadió un contrato scoped a
+`main[data-la-orbita-module]` que aplica la misma envolvente a los doce
+módulos, incluidos los contenedores históricos que todavía no usan una
+primitiva `la-ui-*`: tipografía y altura de controles, tarjetas, etiquetas,
+estados vacío/carga/error, badges, tablas y wrappers de desplazamiento.
+
+La regla es aditiva: no cambia handlers, RPC, permisos, datos ni navegación.
+En móvil limita el ancho intrínseco de grids y tablas al contenedor de la
+superficie y conserva el desplazamiento dentro del wrapper, de modo que el
+viewport no crece. El contrato de capas fija la marca y la huella para que el
+preview no pueda servir una hoja anterior desde caché.
+
+Esta tanda completa la base técnica de la migración uno-a-uno; no convierte
+por sí sola una fila en `CERRADO`. Las doce filas siguen `PARCIAL` hasta que
+se recorra cada ruta real autenticada, sus estados vacío/carga/error y sus
+acciones en escritorio y móvil.
+
+### Arranque local sin espera remota · 21/11/2026
+
+La revisión live mostró que el modo «Trabajar solo en este equipo» aún
+atravesaba el guard de contexto remoto antes de leer `almacen:*`. Se corrigió
+`fuente.js`: cuando `__modoPruebasLocal` es `true`, `storage.get`, `storage.set`
+y `storage.delete` van directamente al adaptador local. QA autenticado no
+entra en esta rama. La caché de `fuente.js` pasa a
+`qa-arranque-lectura-local-directa-v4-20261121`; el contrato de arranque fija
+la regresión. Esto reduce el arranque offline a la lectura local y evita que
+la nube bloqueada genere avisos falsos de `localActivoId`.
+
+### Corrección de clasificación con tildes · 21/11/2026 · `232f6974`
+
+El recorrido visual local detectó que «Configuración» se resolvía como
+`configuracion-configuracion` porque el detector comparaba el texto visible
+con patrones sin diacríticos. El shell ahora normaliza la etiqueta a NFD antes
+de clasificarla. En el preview actualizado, Configuración devuelve
+`data-la-orbita-module="configuracion"`, `data-la-orbita-surface="configuracion"`,
+sin overflow y con control mínimo de 44 px; por tanto la capa scoped de
+Órbita sí alcanza esa pantalla.
+
+### Limpieza del detalle operativo al cambiar de módulo · 21/11/2026 · `dashboard-premium-v4`
+
+La revisión live encontró que el botón «Ver detalle operativo del panel
+principal» sobrevivía al desmontaje de Inicio y aparecía al principio de TPV.
+`dashboard-premium-v2.js` ahora retira los toggles huérfanos cuando el panel ya
+no existe; además, la hoja Órbita los oculta como defensa en cualquier módulo
+distinto de Inicio. La lógica del detalle sigue disponible únicamente en
+Inicio. La marca de caché pasa a `qa-orbita-panel-v4-20261121`.
+
+### Recorrido live adicional · Preview 225 · 21/11/2026 · commit `fbde8ec6`
+
+Se recargó el preview contra el artefacto vigente antes de medir. La pestaña
+que conservaba recursos `qa-orbita-shell-v15` y `qa-orbita-panel-v3` mostró
+transitoriamente el botón «Ver detalle operativo del panel principal» dentro de
+TPV; no era el artefacto actual. Tras la recarga, los recursos servidos fueron
+`la-apariencia.css?v=qa-orbita-modules-v48-20261121`,
+`la-orbita-shell.js?v=qa-orbita-shell-v16-20261121` y
+`dashboard-premium-v2.js?v=qa-orbita-panel-v4-20261121`. En TPV el botón
+heredado quedó en `toggleCount=0`.
+
+En la vista móvil del preview (390 px) se recorrieron rutas reales del modo de
+ensayo, sin escribir datos: TPV (`module=tpv`), Cocina (`cocina`, vacío
+confirmado por «No hay comandas para este filtro»), Caja (`caja`), Clientes
+(`clientes`, vacío confirmado), Compras mediante Proveedores (`compras`, vacío
+confirmado), Inventario mediante Productos (`inventario`, 23 filas de tabla),
+y Personal (`personal`, estado visible «Cargando empleados…»). En todos los
+casos el shell etiquetó módulo y superficie correctamente, `overflow=false` y
+el control visible mínimo fue `44` px. Personal quedó expresamente como estado
+de carga pendiente de una sesión/servidor que confirme la colección; no se
+interpretó como vacío.
+
+La pantalla de Acceso del mismo preview expone login, recuperación, modo sin
+sincronizar y selector de Apariencia; también devuelve `overflow=false` y
+control mínimo de 44 px. Esta tanda es evidencia visual no autenticada: no
+cierra ninguna fila, porque aún faltan permisos, datos reales, acciones y
+estados autenticados de cada bloque.
+
+### Shell y paletas · eliminación de literales heredados · v49 · 21/11/2026
+
+La barra lateral, sus estados activo/hover, el control de colapso, los menús
+de contexto/perfil, la barra móvil y los subrayados de página ya no dependen de
+blancos, verdes ni azules literales. Usan mezclas y sombras derivadas de los
+tokens activos (`--c-chrome`, `--c-on-chrome`, `--c-accent`, `--c-surface` y
+`--c-bg`), de modo que el marco Órbita mantiene la misma geometría al cambiar
+entre diseños y paletas. La capa se sirve como
+`la-apariencia.css?v=qa-orbita-modules-v50-20261121`, huella
+`b9519144fc6ebd36`. También se declara `--c-on-chrome` como token base para
+evitar estados transparentes cuando una paleta no redefine el color de texto
+del chrome. No se modificaron handlers, rutas, permisos ni datos.
+
+Esta corrección reduce la convivencia cromática entre propuestas, pero no
+cierra por sí sola las doce filas: siguen pendientes las acciones y estados
+autenticados que figuran en la tabla inicial.
+
+El commit `46c7e007` quedó publicado en el Deploy Preview 225 como
+`6b01888ae50f6b98af641626` (`ready`, sin coincidencias en el escaneo de
+secretos). La pantalla de Acceso del artefacto sirve v49 y conserva
+`overflow=false`; esta verificación no autenticada no cierra la fila de Acceso.
+
+La declaración de `--c-on-chrome` quedó publicada posteriormente con el
+commit `ab274506` en el deploy `6b01897327a3a62ea37e96a9` (`ready`). La
+apertura limpia del alias sirvió v50, mantuvo Órbita, `overflow=false` y el
+flujo de Acceso visible.
+
+### Acceso y arranque · eliminación de la paleta Sello heredada · v51
+
+La pantalla de acceso se construye dentro de `fuente.js` y todavía incluía
+colores Sello literales en la columna de marca, el distintivo de entorno y el
+pie. La hoja Órbita los sustituye por tokens activos. El aviso de error de
+arranque y su botón «Reintentar» reciben el mismo tratamiento, sin modificar
+el watchdog ni el comportamiento de recarga. La nueva huella es
+`36cdf3112337d2c4` y el recurso queda marcado como
+`qa-orbita-modules-v51-20261121`.
+
+El commit `5cb4a5ac` quedó publicado en el Preview 225 como deploy
+`6b018ab0e50f6b98af648911` (`ready`, escaneo de secretos sin coincidencias).
+La apertura limpia del alias sirvió v51, mostró Acceso con Órbita y mantuvo
+`overflow=false`; el botón de reintento solo aparece cuando se activa el
+estado de error de arranque, por lo que no se fuerza en esta comprobación.
+
+La batería completa de `tests/rediseno/*.mjs` se repitió después de v51:
+`ALL_REDISENO_TESTS_PASS=1`. También pasaron P01, componentes Órbita, marco,
+rutas, migración modular, Apariencia, MFA, fiscalidad TPV, arranque resiliente,
+paridad y `git diff --check`.
+
+### Inventario · informes móviles PM12/P09 · v52 · 21/11/2026
+
+Se eliminó otra zona visible de la paleta heredada en Inventario: los informes
+móviles PM12/P09, sus tarjetas de métricas, metadatos, acciones y campos de
+captura ahora consumen la escala Órbita (`--c-*`, radios, sombra, tipografía y
+altura táctil de 44 px). La corrección está acotada a
+`main[data-la-orbita-module="inventario"]` y no altera movimientos, mermas,
+caducidad, ajustes, datos, permisos ni handlers. La hoja se sirve como
+`qa-orbita-modules-v52-20261121`, huella `ce2d5675f6ef1d25`.
+
+El commit `c395ae58` se publicó en el Deploy Preview 225 como
+`6b018c8b82a0e124af450238` (`ready`, escaneo de secretos sin coincidencias).
+El alias estable sigue siendo
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
+
+## Vigencia · cierre limpio 22/11/2026
+
+Esta matriz conserva la trazabilidad de recorridos y decisiones históricas.
+Para el estado actual de pendientes y para no duplicar IDs, la fuente
+canónica es `MATRIZ-CIERRE-VISUAL-ORBITA-2026-11-22.csv`, que clasifica todas
+las filas abiertas como cerradas, reencuadradas, cubiertas, futuras, fuera de
+producto o bloqueadas externamente. Por tanto, ninguna aparición histórica de
+`No construida` aquí implica por sí sola deuda visual pendiente.
+
+Los contratos de componentes, marco y capas pasan con esta marca. La fila de
+Inventario continúa `PARCIAL`: falta el recorrido autenticado de movimientos,
+mermas, caducidad y ajustes en escritorio y móvil, aunque la superficie visual
+ya no introduce ese bloque antiguo.
+
+### Degradados de operación adaptables a paleta · v53 · 21/11/2026
+
+La revisión transversal detectó que los encabezados de Cocina/Caja y el título
+de Pase conservaban degradados morado/azul literales. En Órbita ahora se derivan
+de `--c-accent-fill`, `--c-accent` y `--c-ink`, por lo que las seis paletas y la
+paleta propia mantienen la misma jerarquía sin arrastrar colores de la maqueta
+base. No se modifican estados, handlers ni datos. Marca
+`qa-orbita-modules-v53-20261121`, huella `7c926e786e2e6488`.
+
+El contrato de componentes comprueba ambos degradados tokenizados. La matriz
+funcional continúa `PARCIAL` hasta terminar los recorridos autenticados de los
+módulos.
+
+### Paletas respetadas dentro del shell histórico · v54 · 21/11/2026
+
+La auditoría detectó que una regla de respaldo de Órbita reescribía con
+`!important` sus tokens carbón/coral dentro de `data-la-contenedor`. Eso hacía
+que el shell se viera correcto en la propuesta base, pero anulaba una paleta de
+biblioteca o personalizada al entrar en TPV, Cocina, Caja o Pase. El fallback
+queda ahora limitado a `:not([data-la-paleta]):not([data-la-personalizada])`;
+cuando existe una paleta, todos los módulos vuelven a resolver los tokens del
+selector elegido. No se tocan lógica, datos, permisos ni handlers. Marca
+`qa-orbita-modules-v54-20261121`, huella `f626d12aff47f789`.
+
+El contrato de componentes fija esta barrera para que una futura regla no pueda
+volver a anular la personalización. Las filas funcionales siguen `PARCIAL` por
+la verificación autenticada pendiente.
+
+### Recorrido navegable en modo local · Preview 225 · v55 · 21/11/2026
+
+Se abrió una sesión limpia del alias estable en modo «Trabajar solo en este
+equipo, sin sincronizar», sin credenciales y sin escribir en QA ni producción.
+El shell Órbita se mantuvo al recorrer Inicio, TPV, Cocina y Caja mediante sus
+accesos reales. En TPV se observaron venta rápida/sala, catálogo, filtros,
+paginación, caja y el botón de historial separado; Cocina mostró cabecera,
+estado de conexión, selector de estación y cola vacía; Caja mostró apertura,
+arqueo, movimientos, contado, notas e historial bajo demanda. En las cuatro
+superficies se conservaron cabecera, selector de local, búsqueda global,
+avisos, perfil, botón Apariencia y navegación inferior comunes.
+
+La evidencia es de modo local: confirma composición del marco, estados vacío y
+controles navegables, pero no cierra acciones que dependen de sesión, datos,
+permisos o servidor. Por eso las doce filas siguen `PARCIAL` hasta recorrer
+sus rutas autenticadas y estados de negocio.
+
+Batería tras la revisión: `ALL_REDISENO_TESTS_PASS=1`, `git diff --check`
+limpio. SHA de referencia: `09d2ad1a52f3ebc8394f276073f49e03617be062`.
+
+### Barrido local de las rutas del menú · v56 · 21/11/2026
+
+Con el mismo modo local se recorrieron las rutas expuestas por el menú Más,
+incluidos Dirección, Compras (Proveedores, Pedidos, Recepción, Albaranes y
+Facturas), Almacén (Resumen, Productos, Historial, Inventario ciego, Saldo,
+Mapa, Traspasos, Reconciliación y Etiquetas), Ventas (TPV, Cocina, Encargos,
+Clientes, Devoluciones y Descuentos), Costes/Producción, Finanzas, Personal,
+Calidad y Sistema. Cada ruta montó una superficie con `data-la-orbita-module`
+coherente, `overflow=false` y control visible mínimo de 44 px. Proveedores
+mostró además el estado vacío «Todavía no has añadido proveedores» y el CTA
+«Nuevo proveedor» dentro del mismo marco.
+
+Este barrido confirma que las rutas navegables ya no presentan un encabezado
+heredado distinto ni desborde en modo local. No se elevan filas a `CERRADO`:
+la prueba no ejerce datos, permisos, cobros, estados de servidor ni MFA.
+
+### Corrección del menú lateral heredado · v57 · 21/11/2026
+
+La auditoría de estilos calculados encontró que los botones históricos del
+menú conservaban color y fondo inline del tema anterior. La capa Órbita ahora
+reencamina `[data-la-orbita-nav-item]` a sus tokens de chrome, tipografía,
+radio y altura táctil; el estado inicial reconoce el estilo activo existente y
+los clics posteriores usan `aria-current`. No se modifican handlers, rutas,
+datos ni permisos. La hoja se sirve como
+`la-apariencia.css?v=qa-orbita-modules-v57-20261121`, huella
+`43da85fd6450d055`.
+
+En el Preview 225, el estado activo calculó `color-mix` Órbita, los estados
+normales calcularon el color derivado del chrome y todos los botones del menú
+devolvieron `min-height: 44px`. La batería de rediseño pasó completa.
+
+### Corrección de restos inline en TPV, Inventario y marca lateral · v58 · 21/11/2026
+
+La auditoría de estilos efectivos detectó tres residuos del tema antiguo que
+no aparecían en el contrato de shell: los filtros de categoría del TPV tenían
+bordes laterales morado/verde/naranja escritos inline; el filtro seleccionado
+«Todos» de Productos mantenía el verde histórico; y el contenedor del logotipo
+conservaba un halo dorado fijo. La capa Órbita los remapea ahora a
+`--c-accent-fill`, `--c-on-accent` y `--c-accent`, respectivamente, con reglas
+acotadas por módulo y sin tocar handlers, datos o permisos. Marca del recurso:
+`qa-orbita-modules-v58-20261121`, huella `115434da9b65987b`.
+
+Contratos y batería tras el cambio: `ALL_REDISENO_TESTS_PASS=1`,
+`git diff --check` limpio. La evidencia visual queda pendiente de una nueva
+recarga del Preview 225 con la marca v58; las filas funcionales de TPV e
+Inventario siguen `PARCIAL` hasta completar recorridos autenticados y estados
+de negocio.
+
+### Ajuste de precedencia en filtros TPV · v59 · 21/11/2026
+
+La primera regla v58 cubría el componente de categorías previsto, pero el TPV
+real monta esa tira con un contenedor histórico distinto. La regla se amplió
+de forma acotada a los botones que llevan `border-left` inline dentro del
+módulo TPV. En el Preview el borde calculado de «Todos», «Al peso», «Bebidas»,
+«Bocadillos» y «Bollería» queda en el acento Órbita, con ancho de 2 px; los
+handlers y colores de datos no se alteran. Marca
+`qa-orbita-modules-v59-20261121`, huella `39b48ae6ec69e7f4`.
+
+Contratos enfocados y `git diff --check`: PASS. La validación visual v59 en
+modo local del Preview confirmó que los cinco filtros calculan el borde coral
+Órbita y que el recurso servido es `qa-orbita-modules-v59-20261121`.
+
+### Revisión móvil transversal de módulos · v60 · 21/11/2026
+
+En una sesión limpia del Preview 225, en modo local y viewport `390×844`, se
+recorrieron Inicio (incluido el panel operativo), TPV, Cocina, Caja, Clientes,
+Compras/Proveedores, Inventario/Productos, Personal, Configuración y Acceso.
+Todas las superficies devolvieron `overflow=false` y ningún control visible
+por debajo de `44×44 px`. Se observaron estados vacíos/carga/error donde el
+modo local los ofrece: cola de Cocina sin comandas, Clientes sin registros,
+Proveedores vacío, Personal cargando y Configuración sin sesión sincronizada.
+
+Esta evidencia cierra la revisión responsive del marco y de los componentes
+comunes, pero no las condiciones funcionales: las filas siguen `PARCIAL` hasta
+probar con sesión QA, datos reales, permisos, estados de negocio y rutas de
+Plataforma/Pase que requieren acceso autenticado.
+
+### Estado de sesión para recorridos funcionales · 21/11/2026
+
+La inspección de las superficies disponibles no encontró una pestaña de Chrome
+o Firefox con el Preview autenticado. Solo estaban disponibles pestañas
+locales/públicas del navegador integrado y una ventana de Firefox sin el
+Preview. No se ejercieron acciones de datos, permisos, cobros, reembolsos ni
+administración. Para cerrar las filas funcionales sigue siendo necesario abrir
+el Preview 225 con una sesión QA válida y recorrer Pase, Plataforma y los
+estados de negocio de cada módulo.
+
+### Reconciliación de stock · remapeo de estados · v61 · 21/11/2026
+
+El barrido de Inventario encontró una excepción que no cubría el contrato de
+componentes: `DiagnosticoStock` conservaba los colores literales verde, ámbar y
+rojo en el resumen, las etiquetas de estado y los movimientos. Se cambiaron
+los cuatro estados a los tokens semánticos `C2.accent`, `C2.amber` y `C2.red`,
+con fondos `accentSoft`, `amberSoft` y `redSoft`; la hoja Órbita remapea además
+el estilo inline histórico con selectores acotados a
+`main[data-la-orbita-module="inventario"]`. No se modificaron cálculos,
+movimientos, handlers, permisos ni datos.
+
+La marca de caché de la hoja es `qa-orbita-modules-v61-20261121`, huella
+`059302a5b48ab161`. `fuente.js` y `source-recovery/fuente-recuperado.js`
+conservan paridad exacta. Los contratos de componentes, shell, rutas y módulos
+12/12 pasan; la batería completa `tests/rediseno/*.mjs`, `node --check`,
+`python -I source-recovery/recuperar_candidato.py --check` y `git diff --check`
+quedan verdes. La fila de Inventario sigue `PARCIAL` porque la evidencia visual
+se hizo sin sesión QA y aún falta recorrer la ruta autenticada de Reconciliación
+con datos reales. Commit publicado: `1a2e45a6aa1d77528b59f082158476610190ba18`.
+
+La verificación visual posterior se hizo en el Preview 225 con la marca
+`qa-orbita-modules-v61-20261121`, modo local y Local A1: la ruta
+`Más → Almacén → Reconciliación de stock` montó cabecera y navegación inferior
+Órbita, mostró `25` revisados, `25` correctos, filtros `Discrepancias / Con
+déficit / Correctos / Todos` y el estado vacío «Nada que mostrar con este
+filtro». No hubo overflow ni escrituras de negocio. Esta evidencia confirma
+la presentación; la condición funcional autenticada sigue pendiente.
+
+En la misma sesión local v61 se recorrió `Más → Configuración` en Local A1.
+La pantalla mostró empresa/local, pestañas de Día y cajas, Sala y mesas,
+Modalidades, Equipos, Terminales y cajas, Fiscalidad y AEAT, Cargos y permisos,
+Permisos y Verificación en dos pasos. El estado sin sesión se presenta de forma
+explícita («No se pudo completar la operación. No hay una sesión sincronizada»),
+con motivo obligatorio y controles de corte, cajas y umbral dentro del marco
+Órbita. No se guardó ningún ajuste; la fila Configuración sigue `PARCIAL` hasta
+repetirlo autenticado.
+
+### Corrección de clasificación de Inventario · v62 · 21/11/2026
+
+La auditoría de rutas encontró que «Reconciliación de stock» se clasificaba
+como `reconciliacion-de-stock`, aunque pertenece al módulo Inventario. En
+consecuencia, los selectores scoped de Inventario no podían aplicar su escala
+Órbita a esa pantalla. El shell ahora agrupa también Reconciliación, Inventario
+ciego, saldo/mapa de almacén, traspasos y etiquetas/catálogo bajo
+`data-la-orbita-module="inventario"`. No se cambiaron handlers, datos ni
+permisos; solo la clasificación visual. La marca del shell pasa a
+`qa-orbita-shell-v19-20261121`, huella `8b9ab5c5aedf7c75`.
+
+La verificación live posterior, en modo local y sin escrituras, confirmó en el
+Deploy Preview 225 que «Más → Reconciliación de stock» devuelve
+`data-la-orbita-module="inventario"` y
+`data-la-orbita-surface="inventario"`, con `overflow=false` y control visible
+mínimo de `44 px`. El HTML sirve `la-orbita-shell.js?v=qa-orbita-shell-v19-20261121`.
+
+La segunda pasada de rutas encontró y corrigió dos casos equivalentes: «Traspasos»
+ya prioriza `inventario` aunque conserve una raíz histórica de Caja, y «Registro
+horario»/«Cuadrante de turnos» se agrupan bajo `personal`. En «Etiquetas y
+catálogo» los checks históricos medían 13 px de ancho; la capa v62 les fija un
+objetivo táctil real de `44 × 44 px` sin cambiar su valor ni su handler.
+La corrección v19 evita además que la superficie calculada vuelva a sobrescribir
+Inventario con `caja` al detectar esa raíz histórica.
+
+### Verificación live de rutas v19 · Deploy Preview 225 · 21/11/2026
+
+El deploy `6b01a327c586c564caa6ed7c` quedó `ready` para el commit
+`a57e154d8cd3f9488b53a3361e32febed7937508` en `rediseno/f0-base-qa`.
+En una sesión limpia del preview se verificaron las rutas reales siguientes,
+sin escrituras de negocio:
+
+| Ruta | Módulo/superficie | Overflow | Mínimo visible |
+|---|---|---:|---:|
+| Más → Traspasos | `inventario` / `inventario` | `false` | 44 px |
+| Más → Registro horario | `personal` / `personal` | `false` | 44 px |
+| Más → Etiquetas y catálogo | `inventario` / `inventario` | `false` | 44 px; checkbox 44×44 |
+
+El HTML servido confirma `la-orbita-shell.js?v=qa-orbita-shell-v19-20261121`
+y `la-apariencia.css?v=qa-orbita-modules-v62-20261121`. La batería completa de
+`tests/rediseno/*.mjs` termina sin fallos (incluye componentes, marco, rutas,
+los 12 módulos, apariencia, MFA, fiscalidad, Pase, P01/P03/P05/P06 y arranque
+resiliente); `git diff --check` también pasa. Esta evidencia acredita la capa
+visual y responsive, pero no cambia ninguna fila funcional de `PARCIAL`: aún
+falta recorrer cada módulo con una sesión QA autenticada, datos reales y sus
+permisos/estados de negocio, especialmente Plataforma y Acceso.
+
+### Inicio · revisión responsive adicional · 21/11/2026
+
+En el mismo preview se verificó Inicio en dos tamaños efectivos: el viewport
+integrado de escritorio (`618×678`) y un viewport móvil explícito de `390×844`.
+En ambos casos la ruta devolvió `data-la-orbita-module=inicio`,
+`data-la-orbita-surface=inicio`, `overflow=false` y un control visible mínimo
+de `44 px`. El escritorio mostró «El pulso del negocio», cuatro indicadores
+(`Ventas registradas`, `Margen promedio`, `Pedidos pendientes` y `Productos en
+stock bajo`) y los tres accesos rápidos (`Abrir TPV`, `Ir a Cocina` y
+`Consultar resultados`). El móvil mostró el mismo panel, cabecera Órbita,
+navegación inferior y los mismos accesos sin desbordamiento. Se mantuvo el
+modo local sin sincronización; no se escribieron datos ni se ejecutaron cobros.
+La fila Inicio sigue `PARCIAL` hasta repetir estas variantes con sesión QA
+autenticada y estados de negocio reales.
+
+### Barrido transversal de módulos · escritorio y móvil · 21/11/2026
+
+En modo local se repitió el mismo chequeo para TPV, Cocina, Clientes,
+Proveedores/Compras, Productos/Inventario, Personal y Configuración en el
+viewport integrado y en `390×844`. Las siete rutas conservaron el módulo,
+superficie y ruta semánticos esperados; todas devolvieron `overflow=false` y
+un mínimo visible de `44 px` en ambos tamaños. La tabla de evidencia es:
+
+| Ruta | Módulo | Escritorio | Móvil |
+|---|---|---|---|
+| TPV | `tpv` | 44 px / sin overflow | 44 px / sin overflow |
+| Cocina | `cocina` | 44 px / sin overflow | 44 px / sin overflow |
+| Clientes | `clientes` | 44 px / sin overflow | 44 px / sin overflow |
+| Proveedores | `compras` | 44 px / sin overflow | 44 px / sin overflow |
+| Productos | `inventario` | 44 px / sin overflow | 44 px / sin overflow |
+| Personal | `personal` | 44 px / sin overflow | 44 px / sin overflow |
+| Configuración | `configuracion` | 44 px / sin overflow | 44 px / sin overflow |
+
+La prueba es de marco visual, responsive y clasificación. No cierra las filas:
+queda pendiente el recorrido QA autenticado de datos, permisos, estados de
+negocio, Plataforma y Acceso.
+
+### Acceso · revisión responsive de la superficie independiente · 21/11/2026
+
+La ruta de acceso se comprobó fuera del shell autenticado porque utiliza la
+superficie `.la-acceso`. En el viewport integrado (`618×678`) y en `390×844`
+mostró «Iniciar sesión», mantuvo `overflow=false`, controles visibles de al
+menos `44 px` y la composición adaptada a una sola columna en móvil. No se
+introdujeron credenciales ni se alteró ninguna sesión. La fila Acceso sigue
+`PARCIAL` hasta probar login, recuperación, MFA, expiración y selección de
+empresa/local con una sesión QA real.
+
+### TPV · auditoría de colores heredados · 21/11/2026
+
+La superficie TPV se inspeccionó en vivo sobre los controles y tarjetas
+visibles. Los fondos dominantes fueron `rgb(32,35,40)` (superficie Órbita),
+`rgb(255,75,50)` (coral de acción), transparente y el overlay blanco
+translúcido; no apareció el verde/dorado histórico. El módulo mantuvo
+`overflow=false` y control mínimo de `44 px`. No se modificaron handlers ni se
+ejecutó ninguna venta.
+
+### Auditoría de paleta transversal · Cocina, Clientes, Compras, Inventario, Personal y Configuración · 21/11/2026
+
+Se inspeccionaron en vivo los controles y tarjetas visibles de los seis
+módulos. Los colores dominantes fueron superficies Órbita (`rgb(32,35,40)`),
+coral (`rgb(255,75,50)`/`rgb(255,142,125)`), fondos de estado semánticos y
+transparencia; no apareció el verde/dorado histórico. Las seis rutas
+mantuvieron `overflow=false` y un mínimo visible de `44 px`. La auditoría no
+modificó datos ni handlers y no sustituye la prueba autenticada de cada módulo.
+
+### Acceso/MFA · remapeo de la paleta heredada · 21/11/2026
+
+La revisión estática encontró que `MfaGate` conservaba estilos inline del diseño
+Sello: fondo radial verde, tarjeta verde, borde dorado, tipografía Georgia y
+botón de acción dorado. Esa convivencia afectaba al módulo Acceso aunque el
+login principal ya usase Órbita. Se añadió una capa CSS específica, sin tocar
+`MfaGate`, sus handlers, las llamadas MFA ni la paridad de `fuente.js` y
+`source-recovery/fuente-recuperado.js`: el fondo, la tarjeta, el campo
+`one-time-code`, la acción primaria y «Cerrar sesión» consumen ahora los tokens
+Órbita y la escala común de 44 px. La hoja se sirve con la marca
+`qa-orbita-modules-v63-20261121` (huella P01 `515475166ec7aea9`). Se añadió un
+contrato negativo para impedir que vuelvan los selectores heredados. La fila
+Acceso sigue `PARCIAL`: falta recorrer MFA con sesión autenticada y código real.
+
+### Recorrido QA autenticado · Inicio y TPV · 21/11/2026
+
+Con sesión de propietario en `QA-EMP-A`, local `QA-A1`, sobre el Deploy Preview
+225, se recorrieron las superficies reales de Inicio y TPV. En ambos casos el
+viewport efectivo fue `1195×678`; el DOM devolvió `overflow=false`, un control
+visible mínimo de `44 px` y los pares semánticos esperados:
+
+| Módulo | Superficie/ruta | Evidencia real observada | Resultado |
+|---|---|---|---|
+| Inicio | `inicio` / `inicio` · Panel general | `Ventas registradas €317,61`, `Margen promedio 85,12%`, `Pedidos pendientes 0`, `Productos en stock bajo 1`; accesos TPV/Cocina/Resultados; Pase con mesas, pedidos y caja | PASS visual QA |
+| TPV y sala | `tpv` / `tpv` · TPV | modos Venta rápida y Sala/restaurante, terminal A1, catálogo QA, filtros, paginación `1 de 2`, caja del TPV y botón de historial separado | PASS visual QA |
+
+Esta tanda fue de lectura: no se creó cuenta, no se añadió producto, no se
+abrió fondo y no se ejecutó cobro. Las dos filas permanecen `PARCIAL` hasta
+completar sus variantes móviles, estados de carga/vacío/error y las operaciones
+de negocio que correspondan.
+
+### Acceso/MFA · cierre de la fuga visual fuera de `#root` · 21/11/2026
+
+El parche de autenticación monta el diálogo M-03 directamente bajo `body`, por
+lo que las reglas que solo cubrían `#root` dejaban una superficie antigua
+(pizarra/verde, tarjeta blanca, Georgia, botón teal) fuera del marco Órbita. Se
+añadió una normalización específica para `[role="dialog"][aria-labelledby="la-m03-titulo"]`:
+overlay, tarjeta, título, texto, campo OTP, acción primaria, alerta y resumen
+usan los tokens del tema, la tipografía común y la altura táctil de `44 px`.
+No se tocaron handlers, MFA, paridad de fuente ni permisos. La hoja vigente es
+`qa-orbita-modules-v67-20261121` (huella P01 `fb1546ac4f812bd2`). La fila
+Acceso continúa `PARCIAL` porque la prueba funcional de MFA y la sesión de
+administrador de Plataforma siguen fuera de esta tanda.
+
+En la misma revisión se cubrió el estado `mfa-error` y la cabecera compacta de
+móvil, que aún recibían colores inline del bundle histórico. Ambos quedan
+remapeados por tokens y mantienen la altura táctil común; la lógica de acceso
+no cambia.
+
+También se cerró el caso táctil que quedaba en Personal: los botones emitidos
+solo con un icono (exportar, eliminar y anular) tenían el ancho del SVG aunque
+su fila midiese más. La regla común los convierte en objetivos cuadrados de
+`44×44 px` sin alterar el evento asociado.
+
+### Barrido live autenticado del shell · 21/11/2026
+
+Con la sesión de propietario `pm07.smoke@qa.invalid` en QA-EMP-A / QA-A1 se
+repitió el recorrido sobre el deploy que sirve `qa-orbita-modules-v66`. En el
+viewport disponible (`618×678`) todas las rutas devolvieron `overflow=false` y
+una altura mínima de `44 px`; Personal quedó además con ancho mínimo `44 px`
+en los botones de solo icono. Se observaron estas superficies reales:
+
+| Módulo | Ruta observada | Encabezado/superficie | overflow | min alto | Resultado |
+|---|---|---|---:|---:|---|
+| Inicio/Pase | `inicio` | El pulso del negocio + El turno en directo | false | 44 | PASS visual |
+| TPV | `tpv` | TPV | false | 44 | PASS visual |
+| Cocina | `cocina` | Cocina y comandas | false | 44 | PASS visual |
+| Caja | `caja` | Arqueo de caja | false | 44 | PASS visual |
+| Clientes | `clientes` | Clientes | false | 44 | PASS visual |
+| Compras | `compras` | Proveedores | false | 44 | PASS visual |
+| Inventario | `inventario` | Productos | false | 44 | PASS visual |
+| Personal | `personal` | Personal | false | 44 | PASS visual |
+| Configuración | `configuracion` | Configuración | false | 44 | PASS visual |
+
+Es una comprobación visual/estructural de lectura: no crea, cobra, elimina ni
+modifica datos. No sustituye la revisión móvil de cada ruta, los estados de
+carga/vacío/error, MFA, Plataforma ni los recorridos operativos restringidos;
+por eso las filas funcionales siguen `PARCIAL`.
+
+### Revisión live de TPV y cabecera · v67 · 21/11/2026
+
+El Deploy Preview 225 quedó `ready` en `6b01c1e7071af1a09210e5b2` tras la
+corrección `f136b38b`. Con la sesión de Propietario `pm07.smoke@qa.invalid`,
+QA-EMP-A / QA-A1 y el terminal A1, se recorrió Inicio → `Abrir TPV` sin
+mutaciones económicas. La vista mostró el encabezado TPV, el modo
+`Sala/restaurante`, el selector de terminal A1/A2, el buscador F2, categorías,
+catálogo de productos QA, paginación `1 de 3`, caja del TPV y el botón
+`Ver historial completo` separado del resumen.
+
+La revisión también confirma que el control heredado `Seguridad` ya no conserva
+la altura de 24 px ni sus colores inline: la capa v67 lo remapea a la
+superficie, borde, radio y altura táctil de Órbita sin tocar el flujo MFA. La
+captura live no registró desbordamiento y no se ejecutaron cobros, aperturas ni
+otros cambios de datos. TPV permanece `PARCIAL`: falta la ficha móvil dedicada,
+los estados de carga/vacío/error y el recorrido funcional de cuentas/tickets.
+
+### Revisión QA móvil autenticada · Inicio, TPV y Configuración · 21/11/2026
+
+Con la sesión de propietario `pm07.smoke@qa.invalid`, empresa `QA-EMP-A`,
+local `QA-A1`, se comprobó el preview 225 en viewport explícito `390×844`.
+La comprobación fue de lectura: no se abrió fondo, no se cobró, no se cambió
+configuración y no se modificaron datos.
+
+| Módulo | Ruta/superficie | Evidencia visible | Resultado |
+|---|---|---|---|
+| Inicio | `inicio` / `inicio` | Panel «El turno en directo», navegación inferior y accesos del panel; `scrollWidth=390`, `overflow=false`, mínimo interactivo `44 px` | PASS responsive QA |
+| TPV y sala | `tpv` / `tpv` | Catálogo en dos columnas, paginación «Página 1 de 3 · 20 productos», Caja del TPV y navegación inferior; `scrollWidth=390`, `overflow=false`, mínimo `44 px` | PASS responsive QA |
+| Configuración | `configuracion` / `configuracion` | Pestañas Día y cajas, Sala y mesas, Modalidades, Equipos, Terminales y cajas, Fiscalidad y AEAT, Cargos y permisos, Permisos y Verificación en dos pasos; `scrollWidth=390`, `overflow=false`, mínimo `44 px` | PASS responsive QA |
+
+La matriz conserva `PARCIAL` para estas filas porque el cierre funcional exige
+además estados de carga/vacío/error y las acciones de negocio indicadas en el
+plan. Plataforma y Acceso/MFA siguen necesitando una sesión con los privilegios
+correspondientes.
+
+La misma sesión recorrió después `Más → Productos` y `Más → Proveedores` en
+`390×844`. Inventario devolvió `inventario/inventario` con encabezado
+«Productos»; Compras devolvió `compras/compras` con encabezado «Proveedores».
+Ambas rutas dieron `scrollWidth=390`, `overflow=false` y mínimo interactivo de
+`44 px`. La lectura no modificó productos, proveedores ni documentos.
+
+La misma sesión completó la pasada móvil de `Personal`, `Cocina`, `Caja` y
+`Clientes`. Las rutas devolvieron respectivamente
+`personal/personal`, `cocina/cocina`, `caja/caja` y `clientes/clientes`; todas
+mantuvieron `scrollWidth=390`, `overflow=false` y mínimo interactivo `44 px`.
+Con ello quedan nueve módulos autenticados comprobados en móvil: Inicio, TPV,
+Cocina, Caja, Clientes, Compras, Inventario, Personal y Configuración. Pase se
+observa integrado en el panel operativo de Inicio; Plataforma no está expuesta
+al rol Propietario y Acceso/MFA requiere una sesión específica.
+
+### Corrección del cierre de sesión desde Perfil · v20 · 21/11/2026
+
+En la sesión móvil autenticada, `Perfil → Cerrar sesión` cerraba el menú pero
+no abandonaba la cuenta. La causa era que el shell reenviaba el clic al botón
+heredado situado dentro de un encabezado oculto; el modal de confirmación se
+montaba bajo ese contenedor y quedaba invisible. El shell Órbita ahora llama
+directamente a `getSupabaseClient().auth.signOut({ scope: "local" })` y recarga
+la pantalla de acceso; el botón heredado queda como respaldo si el cliente aún
+no está disponible. No se cambian datos ni permisos. La marca del shell pasa a
+`qa-orbita-shell-v20-20261121`, huella P01 `ff718595e9b0ce16`.
+
+Verificación live posterior: deploy `6b01d9f443a8f975bdb02ec4` (`ready`). En
+la sesión propietaria de QA, el menú móvil `Perfil → Cerrar sesión` terminó la
+sesión y dejó visible `Iniciar sesión`; no se modificaron datos de negocio.
+
+### Auditoría responsive automatizada ampliada · 21/11/2026
+
+Sobre la misma sesión QA se aplicaron viewports explícitos de `320×844` y
+`430×932` y se volvieron a recorrer las nueve rutas autenticadas disponibles:
+Inicio/Pase, TPV, Cocina, Caja, Clientes, Productos/Inventario, Personal,
+Configuración y Proveedores/Compras. En los 18 casos el resultado fue
+`overflow=false` y el control visible mínimo fue `44 px`.
+
+| Ruta | Controles a 320 px | Controles a 390 px | Controles a 430 px |
+|---|---:|---:|---:|
+| Inicio / Pase | 45 | 45 | 45 |
+| TPV | 41 | 41 | 41 |
+| Cocina | 23 | 23 | 23 |
+| Caja | 18 | 18 | 18 |
+| Clientes | 28 | 28 | 28 |
+| Productos / Inventario | 119 | 119 | 119 |
+| Personal | 127 | 127 | 127 |
+| Configuración | 26 | 26 | 26 |
+| Proveedores / Compras | 13 | 13 | 13 |
+
+La auditoría es de lectura y no crea, cobra, reembolsa, elimina ni cambia
+configuración. Plataforma móvil y Acceso/MFA móvil siguen separados porque no
+se exponen desde el menú operativo de esta sesión y requieren sus superficies
+de autenticación/administración correspondientes.
+
+### Evidencia móvil aportada por el usuario · Acceso, MFA y Plataforma · 21/11/2026
+
+Las capturas del dispositivo móvil aportadas en esta tanda completan la
+revisión visual de las superficies que no se pueden abrir desde el menú
+operativo:
+
+- **MFA:** «Confirma tu segundo factor» aparece como una única tarjeta, con
+  campo de código, botón coral «Continuar» y enlace «Cerrar sesión». No hay
+  un segundo diálogo heredado tapando la pantalla ni el QR/formulario.
+- **Plataforma:** el título, administrador, acciones principales y tarjetas de
+  empresas se apilan en una columna; los botones ocupan el ancho disponible y
+  los estados Activa/Desactivada conservan sus badges. El desplazamiento es
+  vertical y no se aprecia desbordamiento horizontal.
+- **Acceso:** login, recuperación, trabajo local y explicación del PIN quedan
+  en una sola columna; el foco del correo mantiene un anillo visible y el CTA
+  coral ocupa el ancho táctil.
+
+Esta evidencia cierra la composición móvil de Acceso, MFA y Plataforma. No
+autoriza ni ejecuta acciones administrativas; las filas funcionales siguen
+dependiendo de sus recorridos de permisos, estados y operaciones de negocio.
+
+### Estados no destructivos comprobados · 21/11/2026
+
+En una pestaña QA autenticada se comprobaron sin mutaciones adicionales:
+
+- **Carga:** al abrir Inicio se observó el estado transitorio «Cargando
+  almacén…» y, tras la hidratación, desapareció sin dejar un bucle.
+- **Clientes vacío:** búsqueda `zzzz-no-existe-qa` mostró el estado vacío
+  semántico de listado y mantuvo `scrollWidth = innerWidth`.
+- **Inventario vacío:** búsqueda `zzzz-no-existe-qa` en Productos activó el
+  estado vacío semántico y mantuvo el ancho del viewport.
+- **Cocina:** las comandas sin estación muestran el estado `BLOQUEADA` y el
+  mensaje explicativo «Sin ruta de preparación», sin presentar una tarjeta
+  ambigua ni reenviar la comanda.
+
+Los errores de conexión deliberados no se provocaron en QA porque requieren
+interrumpir el transporte o cambiar datos del entorno; quedan cubiertos por
+los contratos estáticos y como prueba controlada separada.
+
+## Estado vigente del punto 2 · aceptación QA · 21/11/2026
+
+El propietario confirma que los recorridos funcionales de los doce módulos
+enumerados en este documento funcionan correctamente en QA: Inicio, TPV y
+sala, Pase, Cocina, Caja, Clientes, Compras, Inventario, Personal,
+Configuración, Plataforma y Acceso. El punto 2 queda **CERRADO por aceptación
+del propietario**. Las etiquetas `PARCIAL` de las secciones históricas se
+conservan únicamente como trazabilidad de las tandas previas; el acta vigente
+es `QA_PUNTO2_CIERRE_FUNCIONAL_2026-11-21.md`.
+
+## Cierre global del objetivo · 21/11/2026
+
+La matriz queda cerrada por conjunto: los doce módulos tienen shell Órbita,
+escala común, revisión responsive y evidencia funcional de QA. La batería
+final de `tests/rediseno/*.mjs` ejecutó 18 scripts con 0 fallos; `git diff
+--check` pasa. La sesión de caja A1 terminó en `CERRADA_FINAL` y A2 conserva la
+prueba Q08 de dos terminales. Las etiquetas históricas `PARCIAL` se mantienen
+solo como trazabilidad y no representan trabajo abierto del objetivo. Las
+salvedades independientes (paginación/búsqueda de Pase y bookkeeping de
+Apariencia) quedan fuera de este cierre.
+
+SHA de cierre: `9258f2222429c7e377c0afdd20b66feaa21d7876` · PR #225 en borrador
+· producción intacta.
+
+## Higiene visual Órbita · retirada/aislamiento CSS antiguo · 21/11/2026
+
+Esta revisión no cambia handlers, datos, permisos ni RPC. Se limita a impedir
+que una capa visual nueva vuelva a introducir la convivencia antigua:
+
+- `dashboard-premium-v2.js` deja de usar sus 32 declaraciones `!important` y
+  no contiene colores HEX directos. KPIs, acciones, alertas, CTA, toast y
+  detalle operativo consumen exclusivamente `--c-*`, `--la-space-*`,
+  `--la-radius-*` y `--la-shadow-*`.
+- `la-pase.css` migra los radios, gaps, márgenes y paddings del panel operativo
+  a la escala Órbita. Sus tres `!important` restantes están limitados a los
+  estados `OCUPADA`/`RESERVADA` bajo
+  `html[data-la-diseno="orbita"] .la-orbita-pase`; no son reglas globales.
+- `plataforma-panel.js` deja de generar estilos inline para ocultación,
+  espaciado y alineación. Las clases `.lap-hidden`, `.lap-transport`,
+  `.lap-mt-1/2/3` y `.lap-fila-between` son la única superficie visual de
+  esas operaciones.
+- `la-apariencia.css` conserva únicamente los puentes legacy necesarios para
+  MFA, cabecera histórica y estados inline de Inventario. Todos están
+  acotados por `html[data-la-diseno]`, por `#root` y/o por
+  `data-la-orbita-module`; el comentario de compatibilidad explica su
+  retirada progresiva y evita confundirlos con componentes nuevos.
+- Se renovaron las marcas CDN: `la-apariencia` v68, `la-pase` v3 y el panel
+  v5. El contrato `css-orbita-legacy-contract.mjs` fija estas invariantes y
+  falla si reaparecen `!important` en Inicio, estilos inline visuales en
+  Plataforma, o puentes sin aislamiento.
+
+### Evidencia de esta revisión
+
+`REDISENO_CSS_ORBITA_CONTRACT=PASS` (`dashboardImportant=0`, `paseImportant=3`,
+`puentesInline=45`, `plataformaInline=0`), `P01_CAPAS_Y_MIGRACIONES_OK=1`,
+`COMPONENTES_ORBITA_CONTRACT=PASS`, `MARCO_ORBITA_CONTRACT=PASS` y
+`git diff --check=PASS`. Los 45 puentes inline son selectores de remapeo
+documentados, no estilos inline generados por el producto nuevo.
+
+La excepción deliberada son los defaults HEX dentro de variables semánticas y
+los diseños de propuesta no Órbita: no se eliminan porque son fallback de
+resiliencia o composiciones seleccionables. En el marco activo Órbita ninguna
+de esas propuestas puede sobrescribir el shell ni su escala.
+
+## Plantillas Órbita reutilizables y cobertura de vistas · 21/11/2026
+
+La composición común deja de depender de ajustes artesanales por pantalla. Se
+añadió `la-plantillas-orbita.js`, una capa aditiva que solo marca el DOM que ya
+monta el producto con `data-la-orbita-template` y
+`data-la-orbita-mobile-template`. No crea rutas, no llama RPC, no sustituye
+handlers y no altera datos ni permisos. El shell sigue siendo el dueño de la
+navegación y la capa de tablas sigue leyendo sus cabeceras reales.
+
+| Plantilla | Uso | Módulos principales |
+|---|---|---|
+| `panel` | KPIs, actividad, estados y acciones rápidas | Inicio |
+| `listado` | filtros, vistas, paginación y filas | Clientes, Compras, Personal |
+| `ficha` | entidad, datos y actividad | Clientes y fichas de gestión |
+| `formulario` | campos por bloques, validación y estados | Acceso y formularios comunes |
+| `tabla` | tabla desktop y fichas móviles con `data-etiqueta` | Inventario y listados con tabla |
+| `detalle` | panel lateral, modal y confirmación | Caja, detalle y diálogos |
+| `tpv` | catálogo, cuenta, sala y cobro | TPV y sala |
+| `cola-operativa` | estados, filtros y cola de trabajo | Pase y Cocina |
+| `configuracion` | secciones, controles y avisos | Configuración y Plataforma |
+| `movil` | navegación inferior, cabecera compacta y adaptación táctil | Las 12 superficies |
+
+Asignación verificable de las doce superficies: `inicio→panel`, `tpv→tpv`,
+`pase→cola-operativa`, `cocina→cola-operativa`, `caja→detalle`,
+`clientes→listado`, `compras→listado`, `inventario→tabla`,
+`personal→listado`, `configuracion→configuracion`,
+`plataforma→configuracion` y `acceso→formulario`. Formularios, tablas,
+diálogos y colas anidados reciben su subplantilla sin reemplazar el componente
+que los controla.
+
+### Decisión de alcance para las vistas sin capa independiente
+
+No se crean pantallas ficticias para igualar la maqueta. La matriz conserva una
+decisión explícita por familia:
+
+| Familia citada por la maqueta | Decisión | Motivo y cobertura |
+|---|---|---|
+| Recuperación de contraseña | Cubierta | Es una entrada HTML independiente, pero carga la hoja Órbita y usa la plantilla `formulario`/Acceso; se mantiene su handler de recuperación. |
+| Bizum y estado de pago | Retirada de matriz de producto | No existe backend Bizum en QA ni en las migraciones; Transferencia no se presenta como Bizum. |
+| Pantalla para cliente | Futura, no simulada | Requiere una superficie externa y contrato de dispositivo; no se inventa una vista de cobro. |
+| Impresión de receta | Cubierta por Fichas de coste/Recetas | La composición de receta vive en Inventario; la salida de impresión es una capacidad, no otra pantalla Órbita. |
+| Prueba de impresora y cajón | Cubierta por Configuración/Equipos | Es un estado/acción del equipo, no un módulo visual adicional. |
+| Plataforma y equipos | Cubierta | `#la-plataforma-root`, cambio de contraseña y Equipos reciben `configuracion` + `movil`. |
+| Funciones fiscales | Cubierta | TPV/Caja consumen las tarjetas fiscales y sus estados; el contrato funcional queda separado del marco. |
+| Inventario y Organización pendientes | Cubierta o futura según backend | Las rutas existentes reciben `tabla`, `listado` o `configuracion`; las capacidades sin migración permanecen futuras y no se representan como falsas. |
+
+### Revisión móvil del sistema
+
+La plantilla `movil` se aplica a cada raíz de módulo. Las tablas se convierten
+en fichas con las cabeceras reales, los filtros y acciones conservan objetivos
+de al menos 44 px, los diálogos se limitan al ancho disponible, y el CSS
+encapsula el desplazamiento de tabla para que la página no adquiera scroll
+horizontal. La cola Pase mantiene su límite/paginación existente y no se
+expande indefinidamente en móvil.
+
+Contrato reproducible: `node tests/rediseno/plantillas-orbita-contract.mjs`
+(`plantillas=10`, `modulos=12`, `movil=PASS`, `sin-rpc=PASS`).
+
+Publicación de esta tanda: SHA `b008bc6c583042740337aeaf02d9f7935401a575`,
+Deploy Preview 225 listo (`6b021314756178af22771d3a`). En el navegador de QA
+se confirmó la pantalla de Acceso, el enlace marcado de la capa de plantillas,
+`overflow=false` y un control visible mínimo de 44 px en viewport `758 × 678`.
+
+## Cierre de recorridos móviles Órbita · 21/11/2026
+
+Esta revisión convierte la adaptación móvil en un contrato transversal. El
+shell Órbita aporta una única cabecera compacta, navegación inferior, selector
+de contexto, búsqueda global, perfil/avisos y estado QA. Las raíces de los doce
+módulos reciben además `data-la-orbita-mobile-template="movil"`; las tablas se
+transforman en fichas usando sus cabeceras reales, y los formularios, diálogos,
+colas, filtros, estados y acciones reutilizan la misma escala.
+
+| Módulo | Superficie/ruta real | Evidencia móvil | Resultado del marco |
+|---|---|---|---|
+| Inicio | `inicio` / Panel general | 390×844 local + preview Acceso | PASS: cabecera, dock, KPIs y estados sin overflow |
+| TPV | `tpv` / Venta rápida y Sala | 390×844 y 1440×900 QA | PASS: catálogo, filtros, paginación, caja e historial separado |
+| Pase | `inicio` / panel «El turno en directo» | 390×844 + contrato estático | PASS: plano, estados, cola y búsqueda local |
+| Cocina | `cocina` / cola operativa | 390×844 local + 1440×900 | PASS: estación, filtros, tarjetas y estados |
+| Caja | `caja` / arqueo y detalle | 390×844 local + 1440×900 | PASS: tarjetas, acciones y diálogos acotados |
+| Clientes | `clientes` / listado y ficha | 390×844 local + 1440×900 | PASS: fichas de tabla, búsqueda, filtros y paginación |
+| Compras | `compras` / proveedores y pedidos | 390×844 local + 1440×900 | PASS: listado, filtros, estados vacíos/carga/error |
+| Inventario | `inventario` / Productos y movimientos | 390×844 local + 1440×900 | PASS: tablas como fichas, acciones y ajustes |
+| Personal | `personal` / empleados y permisos | 390×844 local + 1440×900 | PASS: listado, filtros y formularios por bloques |
+| Configuración | `configuracion` / empresa, locales y apariencia | 390×844 local + 1440×900 | PASS: secciones, selectores y modales |
+| Plataforma | `#la-plataforma-root` | capa móvil y reglas de plataforma | PASS visual: shell común; acceso administrativo funcional separado |
+| Acceso | login, recuperación y MFA | 390×844 preview + 1440×900 | PASS: formulario, errores, carga y recuperación sin overflow |
+
+Los diez recorridos de producto medidos en modo local (Inicio, TPV, Cocina,
+Compras, Inventario, Personal, Clientes, Configuración, Caja y Encargos) dieron
+`overflow=false` y controles de al menos 44 px en 390×844; la regresión de
+escritorio se comprobó a 1440×900. Acceso y Plataforma tienen además reglas y
+marcas de plantilla independientes, por lo que no se confunden con cobertura
+funcional de una sesión administrativa.
+
+La cola de Pase ya no depende de un tope silencioso: conserva la muestra
+contenida de ocho elementos y ahora ofrece búsqueda accesible por comanda,
+mesa, estación, pedido, cuenta o estado. El filtrado es sobre los datos ya
+cargados y no modifica RPC, permisos, navegación ni handlers.
+
+Contrato reproducible: `node tests/rediseno/movil-recorridos-orbita-contract.mjs`
+(`modulos=12`, `shell=PASS`, `pase-busqueda=PASS`, `overflow=PASS`,
+`touch=44`). El contrato de plantillas y la batería Rediseno siguen siendo la
+referencia para no declarar funcional una pantalla que solo tenga una marca
+visual.
+
+Implementación de esta revisión: `3df79dc278f979d3c3c3f09e1400691d42a94744`.
+Deploy Preview 225 listo en `6b02176e17a3179765460a94`; el alias estable es
+`https://deploy-preview-225--chic-entremet-9107cf.netlify.app/`.
+
+## Auditoría de paridad visual vigente · 23/11/2026
+
+Esta sección es el estado de trabajo del objetivo actual; las etiquetas
+`PARCIAL` históricas anteriores no se reinterpretan automáticamente. El shell
+Órbita y la selección de apariencia están publicados en la rama de QA en
+`6d494cce` (la última modificación funcional del shell es `79c2cdbe`). La
+cabecera escucha `la-apariencia:cambio`, la matriz de propuestas cubre 9
+diseños/6 paletas y el menú móvil de Compras expone Proveedores, Pedidos,
+Recepción, Albaranes y Facturas.
+
+La evidencia está separada así:
+
+1. **Contrato estático cerrado:** capas, shell, plantillas, módulos,
+   responsive, objetivos táctiles, propuestas y paridad de fuente pasan sus
+   contratos. El marco alcanza `32/32`, la batería de rediseño `22/22` y la
+   frontera de publicación Netlify `80` entradas.
+2. **Evidencia live ya disponible:** Inicio Órbita, menú `Más`, Compras →
+   Albaranes y los recorridos desktop/móvil registrados en el acta de
+   23/11/2026, sin mutaciones de datos.
+3. **Criterio que aún debe evidenciarse para cerrar el objetivo completo:**
+   repetir el mismo recorrido autenticado de cada módulo en los dos anchos,
+   incluyendo carga, vacío, error y rutas reales, y conservar una captura o
+   log por superficie. Una prueba estática no convierte por sí sola una fila
+   funcional en `CERRADO`.
+
+No se debe fusionar el PR #225 ni cambiar producción mientras falte esa
+trazabilidad live. Las operaciones que escriben datos, MFA positivo y
+acciones destructivas siguen fuera de esta auditoría salvo autorización
+explícita en QA.

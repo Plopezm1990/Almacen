@@ -9,10 +9,10 @@ Decisiones que cita: D12, D26, D28, D29, D31 (`F1_HOJA_DECISIONES_PEDRO_2026-10-
 
 ## 1. Resumen para Pedro
 
-Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de otras migraciones anteriores**: hay **69 migraciones candidatas** desde la A09 (24/9). La foto de producción del 3/10 encontró 10 aplicadas; las migraciones añadidas después de esa foto también requieren comprobación previa. Lo que pesa, por orden:
+Promocionar no es subir «la capa de configuración» sola. Esa capa (piezas 1 a 6, devoluciones, arreglos de cobro y descuentos) está construida **encima de otras migraciones anteriores**: hay **70 migraciones candidatas** desde la A09 (24/9). La foto de producción del 3/10 encontró 10 aplicadas; las migraciones añadidas después de esa foto también requieren comprobación previa. Lo que pesa, por orden:
 
 1. **Ya sé en qué estado está producción** (foto del 3/10, solo lectura): tiene todo hasta B02-B03 (29/9) y nada posterior, ninguna migración a medias, y su registro coincide con sus objetos. **Una deriva pequeña:** las dos funciones de PM07 de producción son un borrador anterior (a una expresión regular le falta una barra invertida): hay que corregirlas con una migración aparte. Lleva sin actividad desde el 28/9.
-2. **12 de las 69 migraciones candidatas nunca se han aplicado en QA** (B06, B07, B09 y B10: proveedor de pagos, anticipos, liquidaciones, tarjeta). Solo se han probado en una base desechable de CI. Mi propuesta: **dejarlas fuera** del primer paquete.
+2. **12 de las 70 migraciones candidatas nunca se han aplicado en QA** (B06, B07, B09 y B10: proveedor de pagos, anticipos, liquidaciones, tarjeta). Solo se han probado en una base desechable de CI. Mi propuesta: **dejarlas fuera** del primer paquete.
 3. **Datos:** el volumen en producción es muy pequeño (0 pagos, 0 reembolsos, 30 eventos, 1 producto en el catálogo). PM07 y PM10 ya hicieron sus bootstraps y D13 no tiene reembolsos que marcar. Lo que sí pesa es que P3 pasa a leer el precio de carta **con IVA incluido** (D31, **sin confirmar con la asesoría**, que aún no tienes): cambia lo que se cobra. Mi propuesta: P3 y P3b **no** entran hasta que lo confirmes.
 4. **La pieza 5 retira tres roles** (Churrero/a, Básico, Estándar): **nadie los tiene en producción** (las 3 membresías son Propietario activo), así que no quita permisos a nadie; sí impide dar de alta a alguien con ellos.
 5. **PM09 está bloqueada** por la deriva de producción (faltan dos funciones y la RPC base de reverso). Es otro trabajo, previo, y no está hecho.
@@ -168,7 +168,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 
 ---
 
-## Apéndice A · Las 69 migraciones candidatas, en orden
+## Apéndice A · Las 70 migraciones candidatas, en orden
 
 «Registro en QA» es la marca con la que la herramienta las registró en QA y «Producción» la marca con la que figura en el registro de producción (ambos leídos el 3/10/2026, solo lectura). Las filas 47–69 se añadieron después de esa foto y quedan pendientes de una nueva lectura de ambos registros.
 
@@ -244,6 +244,7 @@ Solo con la autorización única del primer paquete (§8.1) y en este orden. **P
 | 67 | `20261019220000` | `pm13_p04_restaurar_rpc_ausencias` | PM13 P04: restauración correctora de las RPC de ausencias | Corrector PM13 | aplicada | aplicada |
 | 68 | `20261019223000` | `pm13_p05_guardas_rpc_ausencias_corrector` | PM13 P05: guardas correctoras para las RPC de ausencias | Corrector PM13 | aplicada | aplicada |
 | 69 | `20261020170000` | `pm13_p05_roles_fijos_pantallas_rpc_operacion` | PM13 P05: inicia la operación antes de auditar la configuración de pantallas de roles fijos | Punto 5.8 | pendiente de verificar | pendiente de verificar |
+| 70 | `20261116171854` | `salida_stock_manual` | Salidas de Productos, Mermas y Caducidades en el libro mayor de stock | QA | aplicada y verificada en QA | pendiente de autorización y verificación |
 
 Paquetes: F3/F4/F5 = «A · Base»; B06-B10 = «D · Proveedor de pagos»; P3 = «B · Catálogo con IVA»; Configuración = «C»; PM13 = «Punto 5.8».
 

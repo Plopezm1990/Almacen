@@ -79,7 +79,7 @@ assert.match(mobileP10, /deleteButton\.textContent = '× Eliminar'/);
 const indexHtml = fs.readFileSync('index.html', 'utf8');
 const mobileP10Tag = '<script defer src="./pm11-compra-mobile-p10-v1.js"></script>';
 const mobileP10Pos = indexHtml.indexOf(mobileP10Tag);
-const dashboardPos = indexHtml.indexOf('<script defer src="./dashboard-premium-v2.js"></script>');
+const dashboardPos = indexHtml.search(/<script defer src="\.\/dashboard-premium-v2\.js(?:\?[^\"]*)?"><\/script>/);
 assert.ok(mobileP10Pos >= 0, 'parche móvil P10 enlazado en index.html');
 assert.ok(dashboardPos > mobileP10Pos, 'parche móvil P10 carga antes del dashboard');
 assert.equal(indexHtml.split(mobileP10Tag).length - 1, 1, 'parche móvil P10 se carga una sola vez');

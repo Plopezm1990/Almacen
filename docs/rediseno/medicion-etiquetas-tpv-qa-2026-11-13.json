@@ -1,0 +1,65 @@
+{
+  "fecha": "2026-11-13",
+  "medidas": [
+    {
+      "ancho": 390,
+      "botones_bajo_44x44": 0,
+      "botones_visibles": 142,
+      "campos_bajo_44px": 0,
+      "campos_sin_nombre_accesible": 0,
+      "campos_visibles": 6,
+      "desbordamiento_horizontal": false,
+      "nombres": [
+        {
+          "campo": "input text",
+          "nombre": "F2 · Escanea un código de barras o busca por nombre…",
+          "origen": "capa generica, del marcador"
+        },
+        {
+          "campo": "input text",
+          "nombre": "Buscar venta, producto, pago o empleado…",
+          "origen": "capa generica, del marcador"
+        },
+        {
+          "campo": "select",
+          "nombre": "Forma de pago",
+          "origen": "fuente, aria-label"
+        },
+        {
+          "campo": "input date",
+          "nombre": "Desde la fecha",
+          "origen": "fuente, aria-label"
+        },
+        {
+          "campo": "input date",
+          "nombre": "Hasta la fecha",
+          "origen": "fuente, aria-label"
+        },
+        {
+          "campo": "select",
+          "nombre": "Estado de la venta",
+          "origen": "fuente, aria-label"
+        }
+      ]
+    },
+    {
+      "ancho": 1440,
+      "botones_bajo_24x24": 0,
+      "botones_bajo_44x44": 68,
+      "botones_visibles": 193,
+      "campos_bajo_44px": 0,
+      "campos_sin_nombre_accesible": 0,
+      "campos_visibles": 6,
+      "desbordamiento_horizontal": false,
+      "nota": "El suelo de 44 px esta acotado a (max-width: 760px). En raton los 68 controles cortos son de 24 px de alto (distintivos de cabecera) y 40 px (menu de navegacion, 40x216). WCAG 2.2 AA 2.5.8 pide 24x24 y se cumple; 44x44 es 2.5.5, nivel AAA, y es el objetivo del plan."
+    }
+  ],
+  "paquete_servido": {
+    "bytes": 6311354,
+    "etiquetas_presentes": 4
+  },
+  "sesion": "Propietario real, QA-EMP-A / QA-A1",
+  "sha": "cb8ab07b",
+  "url": "https://deploy-preview-225--chic-entremet-9107cf.netlify.app",
+  "vista": "TPV, con el historial de ventas visible (renderHistorialVentas)"
+}

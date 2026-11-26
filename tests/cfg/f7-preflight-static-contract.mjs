@@ -57,6 +57,10 @@ const EXCLUIDAS = new Set([
   '20261022130000_abc_f5_tpv_line_notes.sql',
   '20261022140000_abc_f3_a10_route_recovery.sql',
   '20261022150000_abc_f3_a10_route_recovery_merge.sql',
+  // T6, propina en efectivo (24/10/2026): posterior a la foto F7 del 3/10 y parte del
+  // rediseño, que todavía no se ha promovido. Su `abc_registrar_propina_efectivo` no está
+  // ni debe estar en el preflight histórico; cuando esa ventana se promueva llevará el suyo.
+  '20261024070000_t6_propina_efectivo.sql',
   // C07-A: borradores por emisor, con preflight propio. No forma parte de la ventana F7 del 3/10.
   '20261026175245_abc_fiscal_multiempresa_borradores.sql',
   // C07-B: panel configurable multiempresa, validación y promoción separadas del paquete F7 histórico.
@@ -155,7 +159,126 @@ const EXCLUIDAS = new Set([
   // A-04: sesión de empleado server-side para atribución en terminal compartido;
   // es posterior a la foto F7 histórica y se valida con contrato propio.
   '20261111220000_a04_server_employee_session.sql',
+  // Apariencia por empresa y su delegacion pertenecen al rediseño posterior y no forman
+  // parte de la foto F7 cerrada del 3/10. Hasta el 14/11/2026 este comentario decia que
+  // se validaban «con su propio contrato» y ese contrato no existia: la nota hacia que una
+  // ausencia pareciera cobertura. Ahora existe y se nombra, que es la unica forma de que
+  // una exclusion se pueda comprobar:
+  //   tests/rediseno/p01-capas-y-migraciones-contract.mjs
+  // Ese contrato fija las seis funciones publicas de las dos migraciones, con su retirada
+  // de public y anon y su concesion a authenticated, y ademas comprueba que esta exclusion
+  // sigue nombrandolo. Si alguien quita el nombre, se pone rojo.
+  '20261113090000_rediseno_apariencia_empresa.sql',
+  '20261113140000_rediseno_apariencia_delegaciones.sql',
+  // Politica opcional de verificacion en dos pasos (15/11/2026): reescribe la
+  // puerta maestra private.la_usuario_activo() que M-03 habia dejado exigiendo
+  // el segundo factor a tres cargos fijos. Ventana de promocion propia, porque
+  // cambia quien puede entrar y eso no se promueve dentro de la foto F7 del
+  // 3/10 sin decidirlo aparte. Lo que promete esta exclusion lo prueban:
+  //   tests/rediseno/p04-mfa-politica-pglite-contract.mjs  (Postgres de verdad)
+  //   tests/m03/m03-mfa-enforcement-contract.mjs            (los cinco puntos)
+  '20261115120000_mfa_politica_opcional.sql',
+  // Tarifas por horario de org-33 (20/11/2026): reconstruye en el repositorio dos
+  // tablas y dos funciones que el 18/11 se habian creado a mano directamente en QA.
+  // Es del rediseño, posterior a la foto F7 del 3/10, y ademas es de reconciliacion
+  // (idempotente), asi que no se promueve dentro de esa foto. Lo que promete esta
+  // exclusion lo prueba, contra un Postgres de verdad y partiendo de cero:
+  //   tests/rediseno/org33-tarifas-pglite-contract.mjs
+  '20261120120000_rediseno_org33_tarifas_horario.sql',
 ]);
+
+// ---- La justificación de cada exclusión, comprobable ----
+//
+// Varias exclusiones de arriba se apoyan en que la migración «tiene contrato
+// propio». Hasta el 15/11/2026 eso era prosa: no se podía comprobar, y una de
+// las notas era directamente falsa —la del rediseño afirmaba un contrato que no
+// existía—. Se barrieron las demás y resultaron ciertas, pero ninguna era
+// verificable: si mañana alguien renombra o borra uno de esos contratos, la
+// exclusión sigue funcionando y la migración se queda sin red sin que nada lo
+// diga. Es el mismo patrón que el `return` mudo de asignar mesa y que el
+// `if [ -f "$f" ]` de las regresiones heredadas: lo que falta pasa por aprobado.
+//
+// Aquí se nombra el contrato de cada una y se exige que exista Y que el
+// manifiesto de CI lo tenga como contrato activo. Existir no basta: un contrato
+// que no está en el manifiesto tampoco se ejecuta.
+//
+// Las exclusiones que NO aparecen en esta tabla son las que no prometen
+// contrato: dicen solo que no forman parte de la foto F7, y eso no hay que
+// respaldarlo con nada.
+const JUSTIFICACION = {
+  '20261108100000_a01_baja_empleado_revoca_acceso.sql': [
+    'tests/pm11/db/a01-baja-revoca-acceso-contract.mjs',
+  ],
+  '20261108170000_a02_cerrar_y_sellar_venta_fiscal.sql': [
+    'tests/f5/c07/db/a02-venta-fiscal-sellada-contract.mjs',
+  ],
+  '20261108120000_m01_server_pin_authentication.sql': [
+    'tests/m01/m01-server-pin-contract.mjs',
+    'tests/m01/db/m01-server-pin-postgres-contract.mjs',
+  ],
+  '20261110190000_m01_enable_pin_rls.sql': [
+    'tests/m01/m01-pin-rls-contract.mjs',
+  ],
+  '20261109150000_a03_a04_appcc_y_atribucion.sql': [
+    'tests/f3/a03-a04/a03-a04-appcc-atribucion-contract.mjs',
+  ],
+  '20261109170000_a03_appcc_cancelacion_append_only.sql': [
+    'tests/f3/a03-a04/a03-a04-appcc-cancelacion-contract.mjs',
+  ],
+  '20261109180000_a03_appcc_puntos_server_side.sql': [
+    'tests/f3/a03-a04/a03-a04-appcc-puntos-contract.mjs',
+  ],
+  '20261110230000_m03_server_aal2_gate.sql': [
+    'tests/m03/m03-mfa-role-gate-contract.mjs',
+    'tests/m03/m03-mfa-enforcement-contract.mjs',
+  ],
+  '20261111220000_a04_server_employee_session.sql': [
+    'tests/f3/a03-a04/a04-server-attribution-contract.mjs',
+  ],
+  '20261113090000_rediseno_apariencia_empresa.sql': [
+    'tests/rediseno/p01-capas-y-migraciones-contract.mjs',
+  ],
+  '20261113140000_rediseno_apariencia_delegaciones.sql': [
+    'tests/rediseno/p01-capas-y-migraciones-contract.mjs',
+  ],
+  '20261115120000_mfa_politica_opcional.sql': [
+    'tests/rediseno/p04-mfa-politica-pglite-contract.mjs',
+    'tests/m03/m03-mfa-enforcement-contract.mjs',
+  ],
+  '20261120120000_rediseno_org33_tarifas_horario.sql': [
+    'tests/rediseno/org33-tarifas-pglite-contract.mjs',
+  ],
+};
+
+const manifiesto = JSON.parse(
+  readFileSync(join(REPO, 'tests/ci/manifiesto_clasificacion.json'), 'utf8'),
+);
+const clasificacion = new Map(manifiesto.entries.map((e) => [e.path, e.classification]));
+
+for (const [migracion, contratos] of Object.entries(JUSTIFICACION)) {
+  assert.ok(
+    EXCLUIDAS.has(migracion),
+    `la tabla de justificación nombra ${migracion}, que ya no está excluida: ` +
+      'o vuelve a la foto F7 y entonces sobra aquí, o se renombró',
+  );
+  for (const contrato of contratos) {
+    assert.doesNotThrow(
+      () => readFileSync(join(REPO, contrato)),
+      `${migracion} se excluye de la foto F7 apoyándose en ${contrato}, y ese archivo no existe. ` +
+        'O se restituye el contrato, o la migración vuelve a la foto, o se cambia la justificación ' +
+        'por la verdadera. Lo que no vale es dejar la exclusión apoyada en nada.',
+    );
+    assert.equal(
+      clasificacion.get(contrato),
+      'active_contract',
+      `${migracion} se apoya en ${contrato}, que en el manifiesto de CI es ` +
+        `«${clasificacion.get(contrato) ?? 'no está'}» y no «active_contract». ` +
+        'Un contrato que el manifiesto no declara activo no lo ejecuta ningún entorno, ' +
+        'así que la exclusión se apoyaría en algo que no corre.',
+    );
+  }
+}
+
 const archivos = readdirSync(join(REPO, 'supabase/migrations'))
   .filter((f) => f.endsWith('.sql') && f.slice(0, 14) >= PRIMERA && !EXCLUIDAS.has(f))
   .sort();

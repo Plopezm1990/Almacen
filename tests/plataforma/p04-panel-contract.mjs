@@ -23,6 +23,12 @@ const index = leer('index.html');
 const headers = leer('_headers');
 const migracion = leer(process.env.PLATAFORMA_MIGRACION || 'supabase/migrations/20261009120000_plataforma_f1_administrador_y_empresas.sql');
 
+assert.match(index, /plataforma-panel\.js\?v=qa-orbita-platform-v4-20261122/, 'el panel de Plataforma no invalida la caché de su capa Órbita');
+assert.match(panelSrc, /var\(--c-bg,#17191C\)/, 'Plataforma no consume el fondo semántico');
+assert.match(panelSrc, /var\(--la-font/, 'Plataforma no consume la tipografía semántica');
+assert.match(panelSrc, /min-height:var\(--la-control-height,44px\)/, 'Plataforma no fija el suelo táctil común');
+assert.doesNotMatch(panelSrc, /#F7F3E9|#0C2714|#E7D1A5|#B8AC91|#7F5823|#d9d2c0|#b7b0a0|#8d2e1f/, 'Plataforma conserva la paleta literal anterior');
+
 function cargar() {
   const ventana = { crypto: webcrypto };
   const ctx = { window: ventana, document: {}, console, setTimeout, Uint8Array, Date, Promise };
@@ -167,8 +173,13 @@ const J = (x) => JSON.parse(JSON.stringify(x));
 {
   const bloque = prelock.match(/var RPC_PERMITIDOS = \{([\s\S]*?)\n  \};/)[1];
   const permitidos = [...bloque.matchAll(/^\s*([a-z_0-9]+):\s*true/gm)].map((m) => m[1]).sort();
+  // 17/11/2026: entra `mfa_politica_leer`. El arranque ya la llamaba desde que existe la MFA
+  // opcional, pero no estaba aquí, así que la llamada moría en el navegador y cualquier cuenta sin
+  // segundo factor inscrito se quedaba en «Instalación bloqueada de forma segura». Como
+  // `plataforma_mi_estado_password`, responde siempre sobre quien llama y nunca sobre otra cuenta.
+  // Esta lista se fija a propósito: añadir una RPC al canal previo a la barrera se mira a mano.
   assert.deepEqual(permitidos, [
-    'bootstrap_owner_instalacion', 'obtener_contexto_instalacion_ui', 'obtener_estado_instalacion',
+    'bootstrap_owner_instalacion', 'mfa_politica_leer', 'obtener_contexto_instalacion_ui', 'obtener_estado_instalacion',
     'plataforma_crear_empresa', 'plataforma_desactivar_empresa', 'plataforma_eliminar_empresa', 'plataforma_estado',
     'plataforma_exportar_empresa', 'plataforma_listar_empresas', 'plataforma_mi_estado_password', 'plataforma_preparar_eliminacion',
     'plataforma_reactivar_empresa', 'plataforma_resumen_eliminacion'

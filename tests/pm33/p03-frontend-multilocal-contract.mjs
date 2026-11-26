@@ -131,6 +131,32 @@ function nuevoSandbox() {
   return sandbox;
 }
 
+// Una lectura cuyo cargo no se ha podido verificar ahora RECHAZA en vez de
+// devolver un valor vacío. El cambio es del 20/11/2026, en la puerta de
+// autoridad —y en la copia que el paquete lleva inlineada, que es la que
+// manda—: un vacío era indistinguible de «no hay datos» y hacía que el cliente
+// concluyera que la cuenta no tenía locales y se inventara uno («Local
+// principal», con identificador nuevo en cada arranque). Medido en el Deploy
+// Preview #225 con una cuenta Camarero/a cuya membresía era correcta.
+//
+// En los escenarios de este contrato eso aparece en las lecturas ANULADAS: la
+// de una sesión que ya cambió, o la que queda viva tras un cierre de sesión.
+// Antes volvían vacías; ahora rechazan. Las dos formas significan lo mismo
+// —esa lectura no vale—, así que aquí se normalizan y se sigue exigiendo
+// exactamente lo que este contrato defiende: que a esa lectura no le llegue
+// NUNCA el resultado de otra sesión. Lo que no se hace es volver al vacío: el
+// rechazo es la forma honesta, y además `loadKey` lo reintenta.
+async function lecturaAnulable(promesa) {
+  try {
+    return await promesa;
+  } catch (e) {
+    if (e && e.code === 'CARGO_SIN_VERIFICAR') {
+      return { key: null, value: '', shared: false, anulada: true };
+    }
+    throw e;
+  }
+}
+
 async function main() {
   const llamadasContexto = () => rpcCalls.filter(({ nombre }) => nombre === 'obtener_contexto_operativo');
 
@@ -326,7 +352,7 @@ async function main() {
     const promesaB = sb.window.storage.get('empleados'); // B: lectura normal mientras A sigue pendiente
 
     resolverA({ data: { rol: 'Cajero/a', localId: 'loc-A', empresaId: 'emp-A', empleado: null, empleadosFichaje: [{ id: 'emp-A-1' }], proveedores: [], fichasProduccion: [], cobrosEncargos: [] }, error: null });
-    const [resultadoA, resultadoB] = await Promise.all([promesaA, promesaB]);
+    const [resultadoA, resultadoB] = await Promise.all([lecturaAnulable(promesaA), promesaB]);
 
     assert.equal(llamadasContexto().length, 2, 'B disparó su PROPIA llamada RPC -- nunca reutilizó la petición en curso de A');
     const idsB = resultadoB.value ? JSON.parse(resultadoB.value).map((e) => e.id) : [];

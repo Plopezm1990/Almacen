@@ -59,12 +59,35 @@ assert.equal(typeof mensajeConfirmacionPagoPM15, 'function');
   console.log('P03_MEJ02_MERCANCIA_PROVEEDOR_ELIMINADO_NO_FINGE_NOMBRE=PASS');
 }
 
-// ---- Prueba de conexión real: el prompt de confirmación usa esta función, no un texto
+// ---- Prueba de conexión real: la confirmación de pago usa esta función, no un texto
 // genérico sin destino. ----
+//
+// El 16/11/2026 esa confirmación dejó de ser un window.prompt del navegador. El destino
+// -que es lo que este contrato defiende- se sigue mostrando, con la misma función; lo que
+// cambia es que ahora cabe dentro de una pantalla del programa. El motivo del cambio es
+// otro hueco del prompt, que este contrato no podía cubrir: el aviso de importe inválido
+// salía DESPUÉS de cerrarse el diálogo, cuando ya no se podía corregir y había que empezar
+// de nuevo; y donde el navegador no permite prompt, devuelve null y el pago no se
+// registraba sin decir por qué. Así que aquí se fija también que el error vive dentro.
 {
-  assert.match(src, /window\.prompt\(mensajeConfirmacionPagoPM15\(f22, pendiente\), pendiente\.toFixed\(2\)\)/, 'el prompt real debe usar el mensaje con destino, no el texto genérico anterior');
-  assert.doesNotMatch(src, /window\.prompt\(`Importe a pagar \(m\\xE1ximo/, 'no debe quedar el prompt genérico sin destino');
-  console.log('P03_MEJ02_PROMPT_REAL_USA_MENSAJE_CON_DESTINO=PASS');
+  assert.doesNotMatch(src, /window\.prompt\(/, 'la confirmación de pago no puede volver a ser un prompt del navegador');
+
+  const ini2 = src.indexOf('pagoPM15 ? h(Modal, { title: "Registrar pago"');
+  assert.ok(ini2 >= 0, 'no se encontró el diálogo de registrar pago');
+  const dialogo = src.slice(ini2, src.indexOf(') : null,', ini2));
+
+  assert.match(dialogo, /mensajeConfirmacionPagoPM15\(pagoPM15\.factura, pagoPM15\.pendiente\)/,
+    'el diálogo debe decir a quién se paga, con la misma función de siempre');
+  assert.match(dialogo, /errorPagoPM15 \? h\("div", \{ className: "text-\[12px\] mb-2", role: "alert"/,
+    'el aviso de importe inválido tiene que salir DENTRO del diálogo, no después de cerrarlo');
+  assert.match(dialogo, /value: pagoPM15\.importe/, 'el importe se edita dentro del diálogo');
+
+  // Y el saldo pendiente sigue siendo el valor de partida y el techo.
+  assert.match(src, /setPagoPM15\(\{ factura: f22, pendiente: redondearDineroPM06\(f22\.pendiente \?\? f22\.total\), importe: redondearDineroPM06\(f22\.pendiente \?\? f22\.total\)\.toFixed\(2\) \}\)/,
+    'el diálogo abre con el saldo pendiente puesto');
+  assert.match(src, /if \(!\(importe > 0\) \|\| importe > pagoPM15\.pendiente \+ 1e-3\)/,
+    'no se puede pagar cero, ni mas que el saldo pendiente');
+  console.log('P03_MEJ02_CONFIRMACION_REAL_USA_MENSAJE_CON_DESTINO=PASS');
 }
 
 console.log('PM15 P03 (MEJ-02) — confirmación de pago con importe y destino: contrato OK');

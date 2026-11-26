@@ -1,0 +1,56 @@
+{
+ "bloque": "5 - Sistema, Calidad, Encargos y clientes",
+ "cosas_bien_hechas_del_producto": [
+  "Restaurar un respaldo ensena el diff completo, avisa de lo que desapareceria y guarda un punto de recuperacion antes.",
+  "El diagnostico de datos historicos repite que no borra, migra, reasigna ni corrige nada automaticamente.",
+  "APPCC dice que es obligatorio, que los registros deben conservarse y que rellenar una semana de golpe al final no vale.",
+  "Cancelar un encargo no borra: lo marca y lo deja en el historial, y pide motivo.",
+  "El analisis de clientes se niega a concluir con pocos datos y dice a partir de cuantos empieza a ser fiable.",
+  "Las freidoras reparten el consumo de aceite en el tiempo en vez de descontarlo todo el dia del cambio."
+ ],
+ "defectos": [
+  {
+   "arreglo": "Guardas para null, undefined y NaN en textoDias y en colorDias. Comprobado extrayendo la funcion corregida del propio archivo: undefined, null y NaN devuelven «Sin fecha» y el resto no cambia.",
+   "causa": "textoDias protege null pero no undefined, asi que todas las comparaciones fallan y llega a la plantilla final.",
+   "donde": "Encargos, lista",
+   "que": "Se leia «En undefined dias» en los tres encargos."
+  },
+  {
+   "arreglo": "aria-label «Texto del respaldo, para copiar y guardar fuera del programa».",
+   "donde": "Respaldos, ver / copiar respaldo",
+   "que": "El cuadro de texto del respaldo no tenia nombre accesible."
+  },
+  {
+   "arreglo": "Pasa a fallar cerrada: sin confirmacion disponible, no se anonimiza. Es la cuarta vez en este trabajo que aparece la misma forma -lo que falta pasando por aprobado-, y la primera sobre datos personales.",
+   "donde": "Clientes, anonimizar",
+   "que": "La guarda `window.confirm && !window.confirm(...)` falla ABIERTA: si window.confirm no existe, el && corta y se anonimiza sin preguntar, borrando nombre, telefono, email y notas de forma irreversible."
+  }
+ ],
+ "estado_dejado_en_qa": "Nada creado y nada modificado. Ni copia de seguridad, ni PIN, ni punto de control, ni registro APPCC, ni freidora, ni encargo, ni cliente. Todos los paneles de confirmacion se cancelaron, incluido el de restaurar respaldo.",
+ "fecha": "2026-11-15",
+ "otra_cosa_menor": "En textoDias, el caso de retraso dice «Se paso hace 3 d» mientras el resto dice «En 3 dias». Esa «d» suelta parece un recorte. No se ha tocado: cambiar texto visible por una suposicion no me corresponde.",
+ "recuento": {
+  "abiertas": 15,
+  "control_medido_accion_no_ejercitada": 3,
+  "defectos_encontrados": 3,
+  "escrituras_realizadas": 0,
+  "filas_tocadas": 29,
+  "no_ejercitadas_a_proposito": 1,
+  "parcialmente_construidas": 1,
+  "pendientes_con_motivo": 9
+ },
+ "salvedad_de_los_dialogos_nativos": {
+  "como_falla_cada_uno": {
+   "anonimizar cliente": "fallaba ABIERTO. Corregido en esta pasada.",
+   "formulario sin guardar": "falla abierto: si no hay confirm, se pierde el formulario. Discutible, consecuencia menor.",
+   "reembolso al cancelar": "falla cerrado, igual. Y el texto sobrecarga el dialogo: «Aceptar = reembolsar, Cancelar = quedarte con el importe», asi que Cancelar no significa «no hacer nada».",
+   "reembolso al entregar": "falla cerrado: sin dialogo no se reembolsa y el dinero se queda en la casa.",
+   "revision humana de nomina IA": "falla cerrado y avisa: «La propuesta de IA no se ha guardado porque falta confirmar la revision humana». Correcto."
+  },
+  "decision": "Sustituir los dialogos nativos por paneles propios es un cambio de producto con criterio de negocio detras, sobre todo en los dos de dinero. Queda medido y descrito; la decision es del propietario.",
+  "que": "El paquete usa window.confirm cinco veces, y tres deciden cosas graves: dos reembolsos de dinero al cliente y la anonimizacion. No se pueden estilar, no pueden mostrar el diff estructurado que si muestra el resto del producto -comparese con el panel de restaurar respaldo- y el registro de errores de QA tiene una entrada «prompt() is not supported», senal de que los dialogos nativos no siempre estan disponibles."
+ },
+ "salvedad_de_metodo": "Parte de los campos que cuento como «con nombre accesible» los nombra una de mis propias capas: la-tablas-fichas.js copia el placeholder a aria-label cuando el campo no tiene otro nombre, y lo documenta. Es comportamiento que se publica, asi que cuenta; pero conviene saber que la cifra de campos sin nombre seria peor sin esa capa, y que los dos cuadros de texto que encontre mudos lo estaban precisamente porque tampoco tenian placeholder.",
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-EMP-A / QA-A1; medida a 1440x900",
+ "sha": "76fcbde6; https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}
