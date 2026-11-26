@@ -94,7 +94,8 @@ const clavesDe = (texto, rpc) => {
 for (const rpc of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja", "abc_obtener_diferencia_caja", "abc_obtener_dia_operativo_local", "abc_previsualizar_arqueo_caja"])
   assert.deepEqual(clavesDe(R.logica, rpc), firmas.get(rpc), `${rpc}: la llamada envía exactamente los parámetros de la función del servidor, en su orden`);
 assert.deepEqual(clavesDe(R.cierre4, "abc_ensayar_cierre_sesion_caja"), firmas.get("abc_ensayar_cierre_sesion_caja"), "C12 envía exactamente los parámetros de la función del servidor, en su orden");
-assert.equal((R.logica.match(/\.rpc\(/g) || []).length, 3, "tres lecturas directas (día, vista previa y diferencia); el resto va por rpcA02ConRecuperacion");
+assert.equal((R.logica.match(/\.rpc\(/g) || []).length, 4, "cuatro lecturas directas (día, vista previa del cierre, diferencia y el esperado del arqueo, H-24); el resto va por rpcA02ConRecuperacion");
+assert.equal((R.logica.match(/\.rpc\("abc_previsualizar_arqueo_caja"/g) || []).length, 2, "la vista previa se lee en dos sitios: el cierre y el esperado del arqueo; ambos de solo lectura");
 for (const rpc of ["abc_registrar_diferencia_caja", "abc_decidir_diferencia_caja"])
   assert.match(R.logica, new RegExp(`rpcA02ConRecuperacion\\(contexto\\.supabase, "${rpc}", \\{`), `${rpc} se envía con idempotencia y recuperación`);
 assert.match(R.cierre4, /rpcA02ConRecuperacion\(contexto\.supabase, "abc_ensayar_cierre_sesion_caja", \{/, "C12 se envía con idempotencia y recuperación");
@@ -120,7 +121,7 @@ for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]
 assert.match(ctx, /if \(!Array\.isArray\(vinculos\) \|\| vinculos\.length !== 1\) throw/, "exactamente una sesión vinculada");
 assert.match(R.logica, /return \{ \.\.\.base, \.\.\.\(data \|\| \{\}\), ok: true, sessionEstado: contexto\.sessionEstado \};/, "la consulta devuelve la diferencia del servidor");
 assert.equal((R.logica.match(/p_motivo: motivoLimpio/g) || []).length, 2, "el motivo se envía recortado en el registro y en la decisión");
-assert.equal((R.logica.match(/contextoCierreA10\(\{ conDia: false \}\)/g) || []).length, 3, "consultar, registrar y decidir no piden el día operativo");
+assert.equal((R.logica.match(/contextoCierreA10\(\{ conDia: false \}\)/g) || []).length, 4, "consultar, registrar, decidir y el esperado del arqueo (H-24) no piden el día operativo");
 assert.match(R.modulo, /umbral: r2\?\.umbral \?\? 0,/);
 assert.match(R.modulo, /requiereAprobacion: r2\?\.requiere_aprobacion === true,/);
 assert.match(R.modulo, /registro: r2\?\.registro \|\| null,/);
@@ -216,7 +217,7 @@ assert.match(arqueoR, /abrirSesionCajaA10/, "ArqueoCaja recibe la apertura de se
 assert.match(arqueoR, /data-c01-apertura-sesion/, "ArqueoCaja pinta la tarjeta de apertura");
 assert.match(arqueoR, /Abrir sesión de caja/, "ArqueoCaja muestra el botón de apertura");
 assert.match(arqueoR, /La sesión es la caja operativa del turno/, "ArqueoCaja explica la diferencia entre sesión y arqueo");
-assert.match(bundle, /ArqueoCaja, \{ key: localActivoId \|\| "todos"[\s\S]*?abrirSesionCajaA10 \}/, "la aplicación pasa la apertura a ArqueoCaja");
+assert.match(bundle, /ArqueoCaja, \{ key: localActivoId \|\| "todos"[\s\S]*?abrirSesionCajaA10[, }]/, "la aplicación pasa la apertura a ArqueoCaja");
 
 // 8. El contrato vivo y la prueba de ejecución existen y cubren los casos exigidos.
 const vivo = await read("tests/cfg/cfg6d-ui-runtime.mjs");
