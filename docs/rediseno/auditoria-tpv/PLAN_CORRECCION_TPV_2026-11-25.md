@@ -144,6 +144,15 @@ el contrato de la política de segundo factor lo cubre.
   simulada completos sin consola y documento fiscal emitido.
 - **F6 · H-25, H-26 y H-28.** Cierre de caja en Caja y fiscalidad, bloqueos con texto claro
   y una acción para las cuentas abiertas de días cerrados.
+- **F8 · H-38 (P1, lote L3) — urgente.** Emitir el documento fiscal en el servidor con el
+  permiso de cobro, no con el de leer la configuración. *Aceptación:* un cobro del Cajero/a
+  emite su documento igual que el del Propietario; un cobro sin documento queda como efecto
+  pendiente que bloquea el cierre y el ensayo C12 cuenta las ventas sin documento.
+- **F9 · H-37, H-39, H-40 y H-41 (lote L3).** La venta rápida no encadena pasos de preparación
+  para quien no los tiene; decidir qué significa «máximo 0 %» en la política de descuentos;
+  ligar el borrador del carrito al usuario; mensaje claro para el Camarero/a. *Aceptación:*
+  «Cobrar ahora» funciona con la cuenta de Cajero/a de principio a fin; el Encargado puede
+  solicitar un descuento que escala; un usuario no ve el carrito de otro.
 - **F7 · H-29 a H-32 (lote L2).** Crear cuenta y pedido en una sola operación del servidor,
   recordar la pantalla y la cuenta tras recargar, caducar los pendientes de cobro resueltos y
   mostrar «Sin conexión, no se ha cambiado nada» en lugar del error técnico. *Aceptación:*

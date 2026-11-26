@@ -42,8 +42,16 @@
   `qa-aud-cajero-20261125@qa.invalid` y `qa-aud-camarero-20261125@qa.invalid`. **Las
   contraseñas no se guardaron en ningún sitio**; si se necesitan más pruebas, hay que
   crear cuentas nuevas o restablecer estas desde la aplicación.
-- **Pendiente:** F-07 (aparcar, unir y repartir cuentas) y F-12 (descuentos), que escriben en
-  QA y necesitan un lote autorizado (L3); V-19 es decisión de producto.
+- **Lote L3 hecho (26/11):** el Encargado abrió y cerró caja, el Cajero/a vendió y cobró, el
+  Camarero/a probó sus límites. Hallazgos H-37 a H-41; **H-38 es P1**. QA queda con la sesión
+  `7827ed19…` CERRADA_FINAL, stock del agua en 69 y 2 cuentas vacías abiertas.
+- **Pendiente:** unión efectiva de cuentas y reparto de productos (necesitan un pedido enviado,
+  1 unidad más de stock), aprobación de un descuento por el Propietario (necesita tu código y
+  que la política del Encargado deje de ser 0 %), cuadro de impresión y V-19 (decisión de
+  producto).
+- **Navegador de la auditoría:** sin sesión abierta, con las contraseñas de prueba borradas.
+  Quedan en `localStorage` pendientes de `productos` de QA-EMP-A / QA-A1; conviene vaciarlos
+  antes de iniciar sesión (H-19).
 
 ## Para retomar
 

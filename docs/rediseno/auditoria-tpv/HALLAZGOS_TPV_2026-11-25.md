@@ -4,7 +4,7 @@ SHA auditada: `aa809c3a265eda1d797b7afdb8ce92d9c1ff483b` (rama `rediseno/f0-base
 PR #225 en borrador, igual en local, remoto y Deploy Preview).
 Entorno: Deploy Preview #225 apuntando a QA `qjqorixtkilwsndqayyx`. Producción no se
 tocó. H-01 a H-18 salen de la auditoría sin escrituras operativas; **H-19 a H-28 salen del
-lote L1**, **H-29 a H-32 del lote L2** y **H-33 a H-36 de la matriz por rol**, ambos autorizados y ejecutados el 25/11 con
+lote L1**, **H-29 a H-32 del lote L2** y **H-33 a H-36 de la matriz por rol** y **H-37 a H-41 del lote L3**, ambos autorizados y ejecutados el 25/11 con
 escrituras sintéticas en QA (detalle en `evidencias/lote-L1-ejecucion-2026-11-25.md` y
 `evidencias/lote-L2-recarga-desconexion-2026-11-25.md`). Con autorización del usuario se crearon dos
 notebooks de solo lectura en el proyecto QA para consultar el servidor
@@ -19,7 +19,7 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
   migraciones · `AUTO` prueba automatizada · `PREVIO` documento anterior sin repetir ·
   `DEDUCIDO` inferencia razonada, no reproducida · `SERVIDOR` consulta de solo lectura al
   servidor QA.
-- Ningún hallazgo es P0. **H-19 y H-24 son P1** con la evidencia disponible. Los dos
+- Ningún hallazgo es P0. **H-19, H-24 y H-38 son P1** con la evidencia disponible. Los dos
   terminales (C-04) los hizo el usuario, sin registro; la recarga tras escritura (C-05) se
   probó en el lote L2 sin duplicados.
 
@@ -61,6 +61,11 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
 | H-34 | P3 | «Anular venta» aparece habilitado para quien no tiene permiso | VIVO + SERVIDOR |
 | H-35 | P3 | El historial no refleja los reembolsos económicos | VIVO |
 | H-36 | P3 | Las cuentas creadas por la aplicación no obligan a cambiar la contraseña inicial | VIVO |
+| H-37 | P2 | «Cobrar ahora» falla a medias con la cuenta de Cajero/a | VIVO + SERVIDOR |
+| H-38 | P1 | Un cobro del Cajero/a se cierra sin documento fiscal y el cierre no lo detecta | VIVO + SERVIDOR |
+| H-39 | P2 | La política de descuento del Encargado no se puede usar | VIVO + SERVIDOR + CÓDIGO |
+| H-40 | P3 | El borrador del carrito no pertenece a un usuario | VIVO |
+| H-41 | P3 | El Camarero/a no ve las cuentas abiertas y el aviso habla de la caja | VIVO |
 
 ---
 
@@ -518,6 +523,76 @@ notebooks de solo lectura en el proyecto QA para consultar el servidor
 - **Impacto:** quien crea la cuenta conoce la contraseña mientras nadie la cambie.
 - **Recomendación:** obligar al cambio en el primer inicio de sesión (el servidor ya tiene
   `plataforma_debe_cambiar_password()`).
+
+## H-37 · P2 · «Cobrar ahora» falla a medias con la cuenta de Cajero/a
+
+- **Evidencia (VIVO + SERVIDOR, lote L3):** con la cuenta de Cajero/a, «Cobrar ahora» guarda y
+  **envía** el pedido (stock del agua 70 → 69) y se corta en el primer paso de preparación con
+  «Tu perfil no tiene permiso para realizar esta transición del pedido». La cuenta queda ENVIADA
+  y sin cobrar. La matriz de capacidades lo explica: Cajero/a no tiene
+  `ABC_PREPARACION_INICIAR` ni `ABC_PREPARACION_COMPLETAR`, y la venta rápida encadena
+  iniciar, preparar y servir.
+- **Variante:** la pantalla de cobro del Cajero/a muestra el botón «Iniciar preparación», que no
+  puede usar.
+- **Alternativa que funciona:** retomar la cuenta y cobrarla (el Cajero/a sí puede cobrar un
+  pedido enviado); servirla y cerrarla exige otro cargo.
+- **Impacto:** con los permisos por defecto, el cargo que más vende en caja no puede completar
+  la venta rápida; quedan cuentas enviadas y sin cobrar, y el stock ya consumido.
+- **Recomendación:** que la venta rápida use una operación de servidor única con el permiso de
+  cobro, o que no encadene pasos de preparación para quien no los tiene, y ocultar los botones
+  sin permiso.
+
+## H-38 · P1 · Un cobro del Cajero/a se cierra sin documento fiscal y el cierre no lo detecta
+
+- **Evidencia (VIVO + SERVIDOR, lote L3):** el Cajero/a cobró 1,00 € en efectivo. El pago quedó
+  CONFIRMADO y la caja registró la entrada, pero la pantalla mostró «Emisión fiscal bloqueada
+  C07D_CONFIG_NO_AUTORIZADO» y **no se emitió ningún documento** (`abc_c05_documentos_emitidos`
+  sin filas nuevas). El Encargado sirvió y cerró la cuenta: quedó CERRADA con su venta fiscal y
+  **sin documento**, y no hay ninguna acción visible para emitirlo después.
+- **El cierre tampoco lo ve:** el «Ensayo C12» devolvió «APTO_CIERRE … documentos conciliados 0 ·
+  pendientes 0» y la sesión se cerró en CERRADA_FINAL.
+- **Contraste:** las ventas cobradas por el Propietario (TPV-44 y TPV-45) sí emitieron documento.
+- **Causa probable:** la lectura de la configuración de emisión exige un permiso que el
+  Cajero/a no tiene (`abc_c07d_leer_emision_config`); se concluye del mensaje, no se leyó el
+  código de esa comprobación.
+- **Impacto:** ventas cobradas y cerradas sin ticket fiscal, sin cola de emisión y sin aviso en
+  el cierre.
+- **Recomendación:** que la emisión se haga en el servidor con el permiso de cobro (no con el de
+  quien lee la configuración), que un cobro sin documento quede como efecto pendiente que
+  bloquee el cierre, y que el ensayo C12 cuente las ventas sin documento.
+
+## H-39 · P2 · La política de descuento del Encargado no se puede usar
+
+- **Evidencia (VIVO + SERVIDOR, lote L3):** la política de QA-A1 para Encargado es «puede
+  solicitar: sí, puede escalar: sí, puede aplicar: no, máximo 0 %». Al pedir un 10 % la
+  respuesta fue `descuento_no_autorizado` y la pantalla dijo «Tu perfil no tiene permiso para
+  solicitar o aplicar este descuento»; no se creó ninguna solicitud ni autorización.
+- **Causa (CÓDIGO del servidor):** `abc_aplicar_descuento_cuenta` hace
+  `if not v_has_authorization and v_max<=0 then raise exception 'descuento_no_autorizado'`
+  antes de crear la solicitud de escalado, así que con máximo 0 % «escalar» nunca llega a
+  existir.
+- **Impacto:** la política parece permitir solicitar descuentos y el servidor lo impide; el
+  flujo Encargado → Propietario no se puede ejercitar sin cambiar la configuración.
+- **Recomendación:** decidir si «máximo 0 %» significa «sin descuentos» (y entonces ocultar
+  «escalar» y «solicitar») o «todo requiere autorización» (y entonces crear la solicitud).
+
+## H-40 · P3 · El borrador del carrito no pertenece a un usuario
+
+- **Evidencia (VIVO):** el Cajero/a dejó un agua sin guardar y, al entrar el Camarero/a en el
+  mismo navegador, su carrito ya la traía. La clave del borrador es
+  `la_suite_abc_tpv_borrador_v1:<empresa>:<local>`, sin usuario.
+- **Impacto:** otro empleado puede guardar o vender lo que dejó otra persona en un equipo
+  compartido.
+- **Recomendación:** ligar el borrador al usuario o vaciarlo al cerrar sesión.
+
+## H-41 · P3 · El Camarero/a no ve las cuentas abiertas y el aviso habla de la caja
+
+- **Evidencia (VIVO):** con la cuenta de Camarero/a, «Buscar cuentas abiertas» no devuelve
+  ninguna y el panel muestra «Tu usuario no tiene permiso para abrir la sesión de caja en este
+  local». Probablemente es intencionado (no puede operar caja), pero el mensaje no explica que
+  la lista no está disponible para su cargo.
+- **Recomendación:** un mensaje del tipo «Tu cargo no puede ver las cuentas abiertas» y la
+  ruta alternativa por mesas.
 
 ## No son defectos (descartados durante la auditoría)
 
