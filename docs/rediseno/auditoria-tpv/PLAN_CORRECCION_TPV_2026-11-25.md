@@ -144,6 +144,11 @@ el contrato de la política de segundo factor lo cubre.
   simulada completos sin consola y documento fiscal emitido.
 - **F6 · H-25, H-26 y H-28.** Cierre de caja en Caja y fiscalidad, bloqueos con texto claro
   y una acción para las cuentas abiertas de días cerrados.
+- **F7 · H-29 a H-32 (lote L2).** Crear cuenta y pedido en una sola operación del servidor,
+  recordar la pantalla y la cuenta tras recargar, caducar los pendientes de cobro resueltos y
+  mostrar «Sin conexión, no se ha cambiado nada» en lugar del error técnico. *Aceptación:*
+  recargar a mitad de «Guardar» no deja cuenta sin pedido; sin red aparece un mensaje claro en
+  menos de 8 s; ningún pendiente de cobro sobrevive a su cancelación en el servidor.
 
 ## e) Decisiones de producto pendientes
 

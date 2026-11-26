@@ -19,7 +19,10 @@
 
 - **Ejecutado:** ventas en efectivo y mixta, doble clic en Guardar y en Cobrar, reembolsos,
   cierre de caja (CERRADA_FINAL). Hallazgos nuevos: H-19 a H-28.
-- **Sin ejecutar por la auditoría:** recarga tras escritura (C-05). Dos terminales (C-04): el
+- **Lote L2 (recarga y desconexión, C-05): hecho y PASS.** Hallazgos H-29 a H-32. QA queda con
+  la sesión `c6e09980…` CERRADA_FINAL, stock del agua en 70 y sin cuentas abiertas nuevas.
+- **Sin ejecutar por la auditoría:** corte de red real y recarga con tarjeta o pago mixto.
+  Dos terminales (C-04): el
   usuario la hizo y dice que está bien; no hay captura ni registro, y el servidor no muestra
   escrituras posteriores a las 21:11 UTC del 25/11.
 - **QA queda:** sin sesiones de caja abiertas; cuenta `d9e28655…` abierta sin líneas; stock

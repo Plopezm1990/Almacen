@@ -45,8 +45,9 @@ desplegado y la discrepancia queda como decisión pendiente (H-07).
   cierre de caja, 3 reembolsos). Detalle y cifras antes y después en
   `evidencias/lote-L1-ejecucion-2026-11-25.md`. **La auditoría no ejecutó** el caso de dos
   terminales (C-04): el usuario dice que lo hizo él con su Chrome y que está bien, sin
-  captura ni registro (se anota como declarado, no como evidencia propia). Tampoco se
-  probó la recarga tras escritura (C-05).
+  captura ni registro (se anota como declarado, no como evidencia propia). La recarga y la
+  desconexión tras escribir (C-05) se probaron después en el **lote L2** (autorizado,
+  ejecutado el 25/11): `evidencias/lote-L2-recarga-desconexion-2026-11-25.md`.
 - **Panel del navegador oculto.** El navegador pausa `requestAnimationFrame` y
   `ResizeObserver` en segundo plano. Para medir se sustituyó `requestAnimationFrame` por un
   temporizador y se reinstaló el mismo `la-orbita-shell.js` publicado. Tras cambiar de
@@ -158,16 +159,19 @@ Capturas `evidencias/05-tpv-normal-1440x900.jpg` y
 
 No se comparan los productos, precios ni nombres de ejemplo de la maqueta.
 
-### Resumen de la matriz (77 casos, tras el lote L1)
+### Resumen de la matriz (82 casos, tras los lotes L1 y L2)
 
-46 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
-20 FAIL (incluidos los parciales) · 6 NO PROBADO (uno, C-04, declarado OK por el usuario) ·
-3 BLOQUEADO · 1 NO CONCLUYENTE · 1 NO APLICA. Antes del lote eran 67 casos con 6 BLOQUEADO.
+51 PASS (incluidos los de documento previo y los deducidos del código, con sus reservas) ·
+21 FAIL (incluidos los parciales) · 6 NO PROBADO (uno, C-04, declarado OK por el usuario) ·
+2 BLOQUEADO · 1 NO CONCLUYENTE · 1 NO APLICA. Antes de los lotes eran 67 casos con 6
+BLOQUEADO.
 
 **Resultado del lote L1, en una frase:** el cobro en efectivo, el pago mixto, los dos dobles
 clics, el reembolso en efectivo y el cierre de caja funcionan y no duplican nada; fallan
 los caminos laterales (productos sin ruta, tarjeta simulada, arqueo diario, mensajes del
-cierre).
+cierre). **Resultado del lote L2:** una recarga a mitad de «Guardar» o de «Cobrar» y un
+fallo de red al cerrar la cuenta no duplican nada y se recuperan; quedan solo defectos
+menores de mensaje y de limpieza (H-29 a H-32).
 
 ## 5. Relación con la matriz de pantallas existente
 
@@ -186,10 +190,17 @@ matriz de casos solo los relaciona.
 | Inventario de migraciones (`evidencias/inventario-rpc-migraciones.txt`) | aa809c3a | ver § 3 | Lo que dicen las migraciones, no el servidor |
 | Notebooks de solo lectura en QA (`evidencias/servidor-qa-2026-11-25.md`) | servidor QA | ver § 4 | Usuario de solo lectura; solo se leyó después el código de `abc_qa_confirmar_pago_simulado` |
 | Lote L1 en el navegador y consultas SQL de lectura (`evidencias/lote-L1-ejecucion-2026-11-25.md`) | aa809c3a | 77 casos de la matriz | Una sesión, un terminal; la tarjeta simulada se resolvió desde la consola |
+| Lote L2: recarga y desconexión simuladas desde la página (`evidencias/lote-L2-recarga-desconexion-2026-11-25.md`) | aa809c3a | 82 casos de la matriz | La recarga y el corte de red se simulan con `setTimeout` e intercepción de `fetch`, no son un corte real |
 
 No se cambió ningún test para obtener verde.
 
 ## 7. Datos de QA creados o modificados
+
+**Lote L2 (autorizado, 25/11):** 1 venta de 1,00 € (1 pedido, 1 cuenta, 1 pago, 1 venta fiscal, 1
+documento QA `TPV-000045`), 1 reembolso, 2 movimientos de caja con neto 0,00 € y una sesión de
+caja abierta y cerrada (`c6e09980-28b5-4c09-88e1-aa391241c914`, CERRADA_FINAL). Stock del agua
+de QA-A1: almacén 71 → 70. No queda ninguna cuenta abierta de este lote. Cifras en
+`evidencias/lote-L2-recarga-desconexion-2026-11-25.md`.
 
 **Datos operativos creados por el lote L1 (autorizado, 25/11):** 3 pedidos, 3 cuentas
 comerciales, 2 ventas fiscales y 1 documento fiscal QA, 3 pagos, 3 reembolsos (uno
