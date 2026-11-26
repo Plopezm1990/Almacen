@@ -193,6 +193,10 @@ const EXCLUIDAS = new Set([
   // exclusion lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/c07d-emision-cobro-pglite-contract.mjs
   '20261126120000_abc_f7_c07d_emision_por_capacidad_de_cobro.sql',
+  // Segunda parte de H-38: la entrada de emision llama a tres primitivos de numeracion que
+  // volvian a exigir ABC_EMISOR_CAMBIAR. La entrada marca la transaccion y solo esa marca
+  // abre los primitivos; llamados directamente siguen cerrados al Cajero/a. Mismo contrato.
+  '20261126130000_abc_f7_c07d_emision_cobro_acceso_interno.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -257,6 +261,8 @@ const JUSTIFICACION = {
     'tests/rediseno/org33-tarifas-pglite-contract.mjs',
   ],
   '20261126120000_abc_f7_c07d_emision_por_capacidad_de_cobro.sql': [
+    'tests/rediseno/c07d-emision-cobro-pglite-contract.mjs',
+  ],  '20261126130000_abc_f7_c07d_emision_cobro_acceso_interno.sql': [
     'tests/rediseno/c07d-emision-cobro-pglite-contract.mjs',
   ],
 };
