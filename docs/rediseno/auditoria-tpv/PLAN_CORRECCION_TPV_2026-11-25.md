@@ -1,6 +1,9 @@
 # Plan de corrección · TPV · 25/11/2026
 
 Base: `HALLAZGOS_TPV_2026-11-25.md` y `MATRIZ_CASOS_TPV_2026-11-25.csv`, SHA `aa809c3a`.
+**El orden de implementación vigente es el de `ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md`**,
+que sustituye a la tabla «Orden recomendado» de abajo (hecha antes de los lotes L1 a L5). Aquí
+quedan el detalle y el criterio de aceptación de cada corrección.
 Este plan **no** está implementado. Ningún punto cambia permisos ni migraciones sin una
 decisión explícita.
 

@@ -1,5 +1,11 @@
 # Traspaso · Auditoría del TPV · 25/11/2026
 
+## Estado: auditoría cerrada el 26/11/2026
+
+Leer primero `ACTA_CIERRE_AUDITORIA_TPV_2026-11-26.md` (resumen, cifras, limpieza de QA e índice)
+y `ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md` (por dónde empezar a corregir y qué decidir).
+Lo que sigue es el traspaso detallado, anterior al cierre.
+
 ## Dónde está
 
 - **Rama:** `rediseno/f0-base-qa`.

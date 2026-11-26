@@ -1,5 +1,9 @@
 # Informe de auditoría del TPV · L&A Suite · 25/11/2026
 
+**Estado: auditoría cerrada el 26/11/2026.** Resumen final y condiciones de cierre en
+[`ACTA_CIERRE_AUDITORIA_TPV_2026-11-26.md`](ACTA_CIERRE_AUDITORIA_TPV_2026-11-26.md); orden de las
+correcciones en [`ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md`](ORDEN_DE_CORRECCIONES_Y_DECISIONES_2026-11-26.md).
+
 Documentos asociados: [hallazgos](HALLAZGOS_TPV_2026-11-25.md) ·
 [matriz de casos](MATRIZ_CASOS_TPV_2026-11-25.csv) ·
 [plan de corrección](PLAN_CORRECCION_TPV_2026-11-25.md) ·
