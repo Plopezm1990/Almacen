@@ -86,9 +86,17 @@ Comprobado en QA con la identidad del Cajero/a: la sesión del 25/11 devuelve la
 `tests/rediseno/h38b-emitir-documento-pendiente-contract.mjs`. Batería sin base de datos: 339 contratos
 activos, 0 fallos; manifiesto 397 entradas.
 
+## Prueba de ejecución del panel
+
+`tests/cfg/h38b-h24-ui-runtime.mjs` monta la pantalla de cierre real con un servidor falso: con dos ventas sin
+documento aparece «Ventas cobradas sin documento fiscal (2)» con un botón por venta; pulsar uno emite el documento
+de ESA venta (cuenta y operación `f7.c07d.checkout.emit:<cuenta>:<checkout>`), confirma el número («TPV n.º 101») y la
+saca del panel; al emitir la última el panel desaparece. Si el servidor rechaza la emisión la venta sigue pendiente
+y se muestra el error; si no se puede leer la lista no se pinta ningún panel. Contra el código anterior falla.
+
 ## Qué falta de H-38
 
-- Pulsar el botón en el navegador de QA. La sesión del 25/11 está cerrada, así que el botón no aparece sobre
+- Pulsar el botón en el navegador de QA (en un navegador simulado con servidor falso ya funciona). La sesión del 25/11 está cerrada, así que el botón no aparece sobre
   ella; hace falta una sesión abierta con una venta sin documento (o emitir esa venta por otra vía).
 - El botón no prepara el QR fiscal del ticket (el cobro normal sí lo hace en QA); el documento queda emitido
   pero sin QR hasta que se prepare aparte.

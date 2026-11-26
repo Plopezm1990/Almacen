@@ -1,8 +1,9 @@
 # Corrección H-24 · «Arqueo de caja» con el esperado del servidor · 26/11/2026
 
-Estado: **implementada y probada con contratos**, sin cambios en el servidor. Rama
-`correccion/ola0-tpv-2026-11-26`, sin enviar al remoto. **No verificada en pantalla ni contra el
-servidor de QA** (no había ninguna sesión de caja abierta en QA; ver «Qué falta»).
+Estado: **implementada y probada con contratos y con una prueba de ejecución** (la pantalla real montada con
+React en un navegador simulado y un servidor falso), sin cambios en el servidor. Rama
+`correccion/ola0-tpv-2026-11-26`, sin enviar al remoto. **No verificada en el navegador de QA ni contra el
+servidor real** (no había ninguna sesión de caja abierta en QA; ver «Qué falta»).
 
 ## Qué fallaba
 
@@ -32,9 +33,18 @@ un descuadre falso al cerrar el día.
   llamadas a `contextoCierreA10`, argumentos de `ArqueoCaja`) se actualizaron.
 - Batería sin base de datos: 338 contratos activos, 0 fallos; manifiesto 396 entradas.
 
+## Prueba de ejecución
+
+`tests/cfg/h38b-h24-ui-runtime.mjs` (23 comprobaciones junto con H-38b) monta `ArqueoCaja` real con el servidor
+falso de caja: con el servidor esperando 0,00 € y movimientos locales que sumarían 2,65 €, la pantalla muestra
+**0,00 €**, explica de dónde sale (fondo, entradas, salidas), pide la vista previa con la sesión y el terminal
+reales y calcula la diferencia contra esa cifra (contado 10 con esperado 12,50 → «Faltan 2,50 €»). Si el servidor
+falla muestra «No disponible», no calcula diferencia y no enseña ninguna cifra estimada. Sin servidor (modo local)
+conserva el cálculo local y no llama al servidor. Contra el código anterior la prueba falla.
+
 ## Qué falta
 
-- Verlo en pantalla con una sesión abierta y un reembolso en efectivo, y comparar con lo que guarda
+- Verlo en el navegador de QA con una sesión abierta y un reembolso en efectivo, y comparar con lo que guarda
   «Guardar arqueo». En QA no hay sesión abierta; abrirla y mover caja cambia datos de QA y no lo he hecho.
 - **«Otras ventas»** (tarjeta, transferencia, otros) sigue calculándose con el historial local. No afecta al
   efectivo esperado, pero puede discrepar igual que el efectivo.
