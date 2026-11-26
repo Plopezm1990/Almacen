@@ -198,8 +198,11 @@ assert.match(c, /reábrelo para corregir la sesión\."\),\s+renderDiferencia\(\)
 assert.match(c, /onClick: finalizarCierre, disabled: !!procesando \|\| bloqueosDiferencia\.length > 0 \}/, "«Finalizar cierre» no se ofrece con bloqueos de diferencia");
 assert.equal(c.split("renderDiferencia(),").length - 1, 1, "la caja de diferencia se pinta en un único sitio");
 const ensayoUi = funcion(c, "  function renderEnsayoC12() {", "renderEnsayoC12");
-for (const txt of ["data-c12-ensayo", "Ensayo C12: ", "Efectivo esperado €", "documentos conciliados ", "documentos de esta sesión pendientes de conciliación"])
+for (const txt of ["data-c12-ensayo", "Ensayo C12: ", "Efectivo esperado €", "documentos conciliados "])
   assert.ok(ensayoUi.includes(txt), "el informe C12 muestra: " + txt);
+// H-26: la traducción de los bloqueos es única (ensayo C12 y cierre provisional) y vive a nivel de módulo.
+assert.ok(ensayoUi.includes("etiquetaBloqueoCierre(bloqueo)"), "el informe C12 traduce los bloqueos con la traducción común");
+assert.ok(bundle.includes("documentos de esta sesión pendientes de conciliación"), "la traducción común incluye: documentos de esta sesión pendientes de conciliación");
 const ensayarUi = funcion(c, "  async function ensayarCierre() {", "ensayarCierre");
 assert.match(ensayarUi, /await ensayarCierreSesionCajaC12\(\);/);
 assert.match(ensayarUi, /setEnsayoCierre\(resultado\);/);
