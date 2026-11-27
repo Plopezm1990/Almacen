@@ -224,6 +224,10 @@ const EXCLUIDAS = new Set([
   // contra un Postgres de verdad:
   //   tests/rediseno/h49-cancelar-pedido-cancela-cobro-sin-dinero-pglite-contract.mjs
   '20261128130000_abc_f6_cancelar_pedido_cancela_cobro_sin_dinero.sql',
+  // H-28 / H-29: cerrar las cuentas abiertas sin actividad (dia operativo cerrado, o sin pedido ni cobro desde hace mas de una hora) sin tocar las que tienen un
+  // pedido vivo, dinero en juego o un reparto. Lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h28-h29-cerrar-cuentas-sin-actividad-pglite-contract.mjs
+  '20261128140000_abc_f6_cerrar_cuentas_sin_actividad.sql',
   // H-04 / H-18 (Ola 2): encargos y pagos de encargo solo por funciones de servidor; quita TRUNCATE/REFERENCES/TRIGGER
   // sobrantes. Lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs
@@ -328,6 +332,9 @@ const JUSTIFICACION = {
   ],
   '20261128130000_abc_f6_cancelar_pedido_cancela_cobro_sin_dinero.sql': [
     'tests/rediseno/h49-cancelar-pedido-cancela-cobro-sin-dinero-pglite-contract.mjs',
+  ],
+  '20261128140000_abc_f6_cerrar_cuentas_sin_actividad.sql': [
+    'tests/rediseno/h28-h29-cerrar-cuentas-sin-actividad-pglite-contract.mjs',
   ],
 };
 
