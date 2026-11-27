@@ -112959,7 +112959,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function errorRpcA02(error) {
     const msg = String(error?.message || error || "");
-    if (esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;
+    if (typeof esErrorDeRedTpv === "function" && esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;
     if (msg.includes("terminal_no_configurado")) return "No hay ningún terminal TPV activo configurado para este local.";
     if (msg.includes("terminal_contexto_ambiguo")) return "Este dispositivo todavía no tiene un terminal TPV asignado de forma inequívoca.";
     if (msg.includes("persistencia_terminal_no_disponible")) return "Este navegador no puede guardar de forma segura el terminal asignado. Activa el almacenamiento local antes de operar.";
@@ -113250,7 +113250,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function mensajeErrorCobroF4(error) {
     const msg = String(error?.message || error || "");
-    if (esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;
+    if (typeof esErrorDeRedTpv === "function" && esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;
     if (msg.includes("pago_pedido_no_listo")) return "Envía el pedido antes de iniciar el cobro.";
     if (msg.includes("pago_estado_incierto_existente") || msg.includes("cuenta_con_cobro_incierto")) return "Hay un cobro pendiente o incierto. Resuélvelo antes de iniciar otro.";
     if (msg.includes("checkout_cuenta_modificada")) return "La cuenta cambió después de preparar el cobro. Recarga antes de continuar.";

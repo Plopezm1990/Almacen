@@ -44,7 +44,8 @@ for (const [nombre, codigo] of fuentes) {
   // 2. La pantalla.
   const arqueo = bloque(codigo, 'function ArqueoCaja({', '\nvar PLANTILLAS_TURNO', nombre);
   arqueos.push(arqueo);
-  assert.match(arqueo, /abrirSesionCajaA10, consultarEsperadoServidor \}\) \{/, `${nombre}: ArqueoCaja recibe la consulta`);
+  // H-25 (Ola 5): ArqueoCaja recibe además el acceso directo al cierre de caja.
+  assert.match(arqueo, /abrirSesionCajaA10, consultarEsperadoServidor, irACierreCaja = null \}\) \{/, `${nombre}: ArqueoCaja recibe la consulta`);
   assert.match(arqueo,
     /const efectivoEsperado = esperadoDelServidor \? esperadoServidor\.estado === "ok" \? redondearDineroPM08\(esperadoServidor\.esperado\) : null : efectivoEsperadoLocal;/,
     `${nombre}: con el servidor, el esperado es el suyo y, si no lo da, NO hay cifra (no cae al cálculo local)`);

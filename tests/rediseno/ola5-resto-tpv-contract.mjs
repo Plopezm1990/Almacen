@@ -65,8 +65,9 @@ for (const [nombre, t] of [['fuente.js', src], ['source-recovery/fuente-recupera
   tiene('C2 si el contexto llega después, también se recupera', 'if (leerOperacionesCuentaTpv(configEmpresa?.id, local?.id)) setOperacionesCuentaAbiertas(true);');
   tiene('C3 solo se guarda cuando el usuario pulsa el botón (sin carreras con la carga)', 'guardarOperacionesCuentaTpv(configEmpresa?.id, local?.id, nuevo);');
   // H-32
-  tiene('C4 el traductor de errores de cuenta reconoce la falta de red', '  function errorRpcA02(error) {\n    const msg = String(error?.message || error || "");\n    if (esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;');
-  tiene('C5 el traductor de errores de cobro (donde salió «Cerrar cuenta pagada») también', '  function mensajeErrorCobroF4(error) {\n    const msg = String(error?.message || error || "");\n    if (esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;');
+  // Los arneses de otras pruebas extraen estas funciones sueltas: la ayuda se invoca con «typeof» para no depender de un identificador externo.
+  tiene('C4 el traductor de errores de cuenta reconoce la falta de red', '  function errorRpcA02(error) {\n    const msg = String(error?.message || error || "");\n    if (typeof esErrorDeRedTpv === "function" && esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;');
+  tiene('C5 el traductor de errores de cobro (donde salió «Cerrar cuenta pagada») también', '  function mensajeErrorCobroF4(error) {\n    const msg = String(error?.message || error || "");\n    if (typeof esErrorDeRedTpv === "function" && esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;');
   // H-41
   tiene('C6 al Camarero/a se le dice que su cargo no puede ver la lista y por dónde ir', 'if (String(error?.message || error || "").includes("abc_caja_no_autorizado")) return { ok: false, error: "Tu cargo no puede ver la lista de cuentas abiertas de este local. Las mesas con cuenta se abren desde \\u00abSala y mesas\\u00bb." };');
   // H-34
