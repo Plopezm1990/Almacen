@@ -112451,6 +112451,23 @@ function esErrorDeRedTpv(valor) {
   return /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(String(valor?.message || valor || ""));
 }
 var MENSAJE_SIN_RED_TPV = "Sin conexi\u00f3n con el servidor. No se pudo confirmar la operaci\u00f3n: cuando vuelva la red, actualiza la pantalla y comprueba antes de repetirla.";
+// H-47 (auditoria del TPV): no habia forma de deshacer un reparto. «Deshacer» es devolver a la cuenta que tenia el pedido la parte que se movio; el servidor ya lo permite con la misma funcion de mover cantidad. Estas son las lineas de la cuenta actual que vienen de otra cuenta, con lo que se puede devolver (la parte ya fiscalizada no se mueve) y si la cuenta de origen admite recibirla.
+function lineasRecibidasRepartoTpv(estado) {
+  const lineas = Array.isArray(estado?.origen?.reparto?.lineas) ? estado.origen.reparto.lineas : [];
+  const destinos = Array.isArray(estado?.destinos) ? estado.destinos : [];
+  const actual = String(estado?.origen?.cuenta_id || "");
+  if (!actual) return [];
+  return lineas.filter((linea) => {
+    const origen = String(linea?.cuenta_origen_pedido || "");
+    return origen && origen !== actual && String(linea?.cuenta_reparto_id || "") === actual && !["BORRADOR", "CANCELADA"].includes(String(linea?.estado_linea || ""));
+  }).map((linea) => {
+    const cantidad = Number(linea.cantidad) || 0;
+    const fiscalizada = Number(linea.cantidad_fiscalizada) || 0;
+    const devolvible = Math.max(0, cantidad - fiscalizada);
+    const destino = destinos.find((cuenta) => String(cuenta?.cuenta_id || "") === String(linea.cuenta_origen_pedido)) || null;
+    return { linea, cantidad, fiscalizada, devolvible, destino };
+  }).filter((item) => item.devolvible > 0);
+}
 var FILAS_REJILLA_TPV = 4;
 // Cuantas columnas esta pintando .tpv-rejilla ahora mismo. Se pregunta al
 // navegador en vez de medir el nodo: los cortes son los mismos que en el CSS de
@@ -127981,6 +127998,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [cuentaDestinoA08, setCuentaDestinoA08] = (0, import_react4.useState)("");
   const [comensalRepartoA08, setComensalRepartoA08] = (0, import_react4.useState)("");
   const [moviendoLineaA08, setMoviendoLineaA08] = (0, import_react4.useState)(false);
+  const puedeDeshacerRepartoA08 = puedeLimpiarCuentasA06 === true; // H-47: mismo criterio que el cierre de cuentas (Propietario o Encargado con la nube activa); es la capacidad ABC_REPARTO_REVERTIR por defecto
   const [errorRepartoA08, setErrorRepartoA08] = (0, import_react4.useState)("");
   const [mensajeRepartoA08, setMensajeRepartoA08] = (0, import_react4.useState)("");
   const [cuentasAparcadasA06, setCuentasAparcadasA06] = (0, import_react4.useState)(null);
@@ -128490,6 +128508,33 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const modalidad = String(cuenta?.modalidad || "TPV");
     const total = Number(cuenta?.total_comercial) || 0;
     return sitio + " · " + modalidad + " · €" + fmt(total);
+  }
+
+  async function deshacerRepartoLineaA08(item) {
+    if (typeof moverCantidadLineaCuentaA08 !== "function" || moviendoLineaA08 || !puedeDeshacerRepartoA08) return;
+    const linea = item?.linea;
+    const destino = item?.destino;
+    const origenVersion = estadoRepartoA08?.origen?.version;
+    if (!linea || !destino || !(item.devolvible > 0)) {
+      setErrorRepartoA08("La cuenta de origen ya no admite recibir el producto (cerrada o de otro día), así que no se puede devolver desde aquí.");
+      return;
+    }
+    setMoviendoLineaA08(true);
+    setErrorRepartoA08("");
+    setMensajeRepartoA08("");
+    const resultado = await moverCantidadLineaCuentaA08(linea.source_line_id, item.devolvible, destino.cuenta_id, origenVersion, destino.version, linea.linea_version, "");
+    setMoviendoLineaA08(false);
+    if (!resultado?.ok) {
+      if (resultado?.conflict && typeof listarCuentasRepartoA08 === "function") {
+        const fresco = await listarCuentasRepartoA08();
+        if (fresco?.ok) aplicarEstadoRepartoA08(fresco);
+      }
+      setErrorRepartoA08(resultado?.error || "No se pudo deshacer el reparto.");
+      return;
+    }
+    if (resultado.cuenta?.pedidoId) setPedidoOperativoA05(resultado.cuenta);
+    if (resultado.estado?.ok) aplicarEstadoRepartoA08(resultado.estado);
+    setMensajeRepartoA08("Reparto deshecho: el producto ha vuelto a su cuenta de origen. Ambas cuentas se han recargado desde el servidor.");
   }
 
   async function listarDescuentosAplicadosA09() {
@@ -130565,6 +130610,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const seleccion = lineas.find((item) => String(item.source_line_id || "") === String(lineaSeleccionadaA08 || "")) || null;
     const disponible = cantidadMovibleA08(seleccion);
     const fiscalizada = Number(seleccion?.cantidad_fiscalizada) || 0;
+    const recibidasA08 = typeof lineasRecibidasRepartoTpv === "function" ? lineasRecibidasRepartoTpv(estadoRepartoA08) : [];
 
     if (!repartoAbiertoA08) {
       return /* @__PURE__ */ import_react4.default.createElement(
@@ -130592,6 +130638,16 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         )
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Las cantidades disponibles, versiones de cuenta y parte fiscalizada se leen del servidor justo antes del reparto."),
+      recibidasA08.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-3 p-2 rounded-lg", "data-deshacer-reparto": "1", style: { border: "1px solid " + C2.line } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Productos recibidos de otra cuenta"),
+        recibidasA08.map((item) => {
+          const producto = productos.find((p22) => String(p22.id) === String(item.linea.producto_id));
+          return /* @__PURE__ */ import_react4.default.createElement("div", { key: item.linea.source_line_id, className: "flex items-center justify-between gap-2 text-[11.5px] py-1", style: { color: C2.ink } },
+            /* @__PURE__ */ import_react4.default.createElement("span", null, producto?.nombre || "Producto", " · ", fmt(item.devolvible), item.fiscalizada > 0 ? " (la parte ya fiscalizada se queda)" : "", item.destino ? " · viene de " + etiquetaCuentaDestinoA08(item.destino) : " · su cuenta de origen ya no admite recibirlo"),
+            puedeDeshacerRepartoA08 && item.destino ? /* @__PURE__ */ import_react4.default.createElement("span", { "data-deshacer-reparto-linea": String(item.linea.source_line_id) }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", ariaLabel: "Deshacer reparto de " + (producto?.nombre || "producto"), onClick: () => deshacerRepartoLineaA08(item), disabled: moviendoLineaA08 }, moviendoLineaA08 ? "Moviendo…" : "Deshacer reparto")) : null
+          );
+        })
+      ) : null,
       lineas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "No hay productos repartibles en esta cuenta.") : /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Producto / línea" },
         /* @__PURE__ */ import_react4.default.createElement("select", { value: lineaSeleccionadaA08, onChange: (e2) => seleccionarLineaRepartoA08(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } },
           /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona…"),
