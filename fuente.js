@@ -112344,6 +112344,12 @@ function cuentaConSaldoParaCobrarTpv(pedidoOperativo, estadoCobro) {
   const saldo = tieneCheckout ? Number(estadoCobro?.saldo) || 0 : Math.max(0, totalPedido - (Number(estadoCobro?.confirmado) || 0));
   return saldo > 0;
 }
+// H-43 (auditoria del TPV): abc_aplicar_descuento_cuenta recorre TODAS las lineas de la cuenta, tambien las recibidas por reparto, y si alguna
+// esta en BORRADOR rechaza todo el descuento con descuento_linea_no_apta. La pantalla lo traducia como «sin lineas aptas», que parecia culpar
+// a la linea recibida. Cuenta las lineas en borrador del pedido de la cuenta para avisar antes de intentarlo.
+function lineasEnBorradorParaDescuentoA09(pedido) {
+  return (Array.isArray(pedido?.lineas) ? pedido.lineas : []).filter((linea) => String(linea?.estado || "") === "BORRADOR").length;
+}
 async function leerTodasLasFilasConPaginacionA09(construirConsulta, tamanoPagina = 200) {
   const filas = [];
   for (let desde = 0; ; desde += tamanoPagina) {
@@ -112895,7 +112901,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("descuento_linea_fiscalizada")) return "Hay líneas ya fiscalizadas; el descuento no puede modificarlas.";
     if (msg.includes("descuento_operating_day_incompatible")) return "La cuenta pertenece a otro día operativo.";
     if (msg.includes("descuento_cuenta_no_encontrada") || msg.includes("descuento_cuenta_no_abierta")) return "La cuenta ya no está abierta o no está disponible.";
-    if (msg.includes("descuento_cuenta_sin_lineas") || msg.includes("descuento_linea_no_apta")) return "La cuenta no tiene líneas aptas para aplicar el descuento.";
+    if (msg.includes("descuento_cuenta_sin_lineas")) return "La cuenta no tiene productos a los que aplicar el descuento.";
+    if (msg.includes("descuento_linea_no_apta")) return "Alguna línea de la cuenta todavía está en borrador (sin enviar) o sin importe calculado, y el servidor no aplica descuentos mientras tanto. Envía o cancela ese pedido y vuelve a intentarlo. Los productos recibidos por reparto sí admiten descuento.";
     if (msg.includes("descuento_autorizacion_version_obsoleta") || msg.includes("descuento_autorizacion_contexto_cambiado") || msg.includes("descuento_autorizacion_configuracion_cambiada")) return "La autorización quedó obsoleta porque cambió la cuenta, la política o el contexto. Solicita una nueva.";
     if (msg.includes("descuento_autoaprobacion_rechazada")) return "La misma persona que solicitó el descuento no puede aprobarlo.";
     if (msg.includes("descuento_aprobador_sin_permiso")) return "Tu perfil no tiene capacidad suficiente para autorizar este descuento.";
@@ -130023,6 +130030,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDescuentoAbiertoA09(false), disabled: procesandoDescuentoA09 }, "Cerrar")
         )
       ),
+      lineasEnBorradorParaDescuentoA09(pedido) > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", "data-descuento-borrador": "1", className: "text-[11px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Esta cuenta tiene " + lineasEnBorradorParaDescuentoA09(pedido) + (lineasEnBorradorParaDescuentoA09(pedido) === 1 ? " producto" : " productos") + " en borrador (sin enviar). El servidor no aplica descuentos mientras haya productos en borrador: envía o cancela el pedido antes.") : null,
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" },
         /* @__PURE__ */ import_react4.default.createElement("select", { value: tipoDescuentoA09, onChange: (e2) => setTipoDescuentoA09(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } },
           /* @__PURE__ */ import_react4.default.createElement("option", { value: "PERCENT" }, "Porcentaje"),
