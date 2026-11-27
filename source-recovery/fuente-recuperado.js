@@ -1330,6 +1330,8 @@ var CONFIG_ERRORES = {
   cargo_id_requerido: "Falta el identificador del cargo.",
   cargo_no_encontrado: "No se encontró el cargo solicitado.",
   cargo_no_disponible: "El cargo no está activo o ya no está disponible.",
+  cargo_eliminado: "El cargo está eliminado y ya no se puede modificar.",
+  cargo_eliminado_no_reactivable: "El cargo está eliminado y no se puede reactivar desde aquí.",
   cargo_operation_id_requerido: "No se pudo identificar la operación. Recarga e inténtalo de nuevo.",
   cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
   cargo_nombre_reservado: "Los nombres de los cargos son libres; recarga la aplicación y vuelve a intentarlo.",
@@ -2244,6 +2246,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
   const [motivoExcepcion, setMotivoExcepcion] = (0, import_react4.useState)("");
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [confirmacionCargo, setConfirmacionCargo] = (0, import_react4.useState)(null);
+  const [mostrarEliminados, setMostrarEliminados] = (0, import_react4.useState)(false);
   const cargarCargos = async () => {
     if (!esPropietario || !localId) return;
     setCargando(true);
@@ -2266,6 +2270,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     setEditorExcepciones(null);
     setMotivoExcepcion("");
     setConfirmacion("");
+    setConfirmacionCargo(null);
     cargarCargos();
   }, [empresa?.id, localId, esPropietario]);
   const guardarCargo = async () => {
@@ -2336,13 +2341,39 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
       setGuardando(false);
     }
   };
-  const cambiarEstadoCargo = async (cargo) => {
+  const pedirCambioEstadoCargo = (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setConfirmacionCargo({ id: cargo.id, accion: cargo.activo ? "desactivar" : "reactivar" });
+  };
+  const confirmarCambioEstadoCargo = async (cargo) => {
     setError("");
     setConfirmacion("");
     setGuardando(true);
     try {
       await configRpc(cargo.activo ? "abc_desactivar_cargo" : "abc_reactivar_cargo", { p_operation_id: configOperacion(cargo.activo ? "cargo-desactivar" : "cargo-reactivar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
-      setConfirmacion(cargo.activo ? "Cargo desactivado." : "Cargo reactivado.");
+      setConfirmacionCargo(null);
+      setConfirmacion(cargo.activo ? Number(cargo.asignados_count || 0) > 0 ? "Cargo desactivado. Las personas asignadas dejan de tener acceso efectivo por este cargo; el historial se conserva." : "Cargo desactivado. El historial y la configuración se han conservado." : "Cargo reactivado. Revisa sus pantallas y permisos antes de volver a asignarlo.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const pedirEliminacionCargo = (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setConfirmacionCargo({ id: cargo.id, accion: "eliminar" });
+  };
+  const eliminarCargo = async (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc("abc_eliminar_cargo", { p_operation_id: configOperacion("cargo-eliminar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
+      setConfirmacionCargo(null);
+      setConfirmacion(Number(cargo.asignados_count || 0) > 0 ? "Cargo eliminado. Se ha revocado el acceso de las personas asignadas y se ha conservado todo el historial." : "Cargo eliminado. Se han conservado el historial y la auditoría.");
       await cargarCargos();
     } catch (e2) {
       setError(configMensajeError(e2));
@@ -2527,6 +2558,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     return grupos;
   }, {});
   const ocupado = cargando || guardando;
+  const cargosVisibles = cargos.filter((cargo) => mostrarEliminados || !cargo.eliminado);
   return h(
     "div",
     null,
@@ -2565,7 +2597,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         h("div", { className: "font-semibold" }, "Cargos personalizados"),
         h(Btn, { small: true, onClick: () => setFormulario({ id: "", nombre: "", descripcion: "" }), disabled: ocupado }, "Nuevo cargo")
       ),
-      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Cada cargo tiene un ID propio. Puedes crear todos los cargos que necesites; al duplicar uno se crea otro independiente y debes revisar sus permisos antes de asignarlo."),
+      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Puedes crear tantos cargos como necesites. Desactivar es reversible: deja de conceder acceso y conserva permisos e historial. Eliminar retira el cargo de la lista normal, cierra sus asignaciones activas y conserva la auditoría."),
+      h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: mostrarEliminados, onChange: (e2) => setMostrarEliminados(e2.target.checked), disabled: ocupado }), "Mostrar cargos eliminados"),
       formulario ? h(
         "div",
         { className: "rounded-lg p-3 mb-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
@@ -2576,16 +2609,16 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
           h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario(null), disabled: ocupado }, "Cancelar")
         )
       ) : null,
-      cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando cargos…") : cargos.length === 0 && !cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Todavía no hay cargos personalizados registrados.") : null,
-      h("div", { className: "space-y-2" }, cargos.map((cargo) => h(
+      cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando cargos…") : cargosVisibles.length === 0 && !cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, mostrarEliminados ? "Todavía no hay cargos personalizados registrados." : "No hay cargos activos o desactivados visibles. Puedes crear uno nuevo.") : null,
+      h("div", { className: "space-y-2" }, cargosVisibles.map((cargo) => h(
         "div",
-        { key: cargo.id, className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        { key: cargo.id, className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface, opacity: cargo.eliminado ? 0.65 : 1 } },
         h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
           h("div", { className: "font-medium" }, cargo.nombre),
-          h("span", { className: "text-[11px]", style: { color: cargo.activo ? C2.inkSoft : C2.amber } }, cargo.activo ? "Activo" : "Inactivo")
+          h("span", { className: "text-[11px]", style: { color: cargo.eliminado || !cargo.activo ? C2.amber : C2.inkSoft } }, cargo.eliminado ? "Eliminado · solo histórico" : cargo.activo ? "Activo · disponible para asignaciones" : "Inactivo · no asignable")
         ),
         cargo.descripcion ? h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, cargo.descripcion) : null,
-        h("div", { className: "text-[11.5px] mt-2" }, cargo.asignados_count ? `${cargo.asignados_count} persona(s) asignada(s)` : "Sin personas asignadas"),
+        h("div", { className: "text-[11.5px] mt-2" }, cargo.eliminado ? "Las asignaciones activas se cerraron; el historial se conserva." : cargo.asignados_count ? `${cargo.asignados_count} persona(s) asignada(s)` : "Sin personas asignadas"),
         cargo.personas_asignadas?.length ? h("div", { className: "space-y-1 mt-2" }, cargo.personas_asignadas.map((persona) => h(
           "div",
           { key: persona.id },
@@ -2623,8 +2656,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
           ) : null
         ))) : null,
         h("div", { className: "flex flex-wrap items-end gap-2 mt-2" },
-          h(Field, { label: "Asignar a este local" }, h("select", { value: empleadoPorCargo[cargo.id] || "", disabled: ocupado || !cargo.activo || empleadosDelLocal.length === 0, onChange: (e2) => setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: e2.target.value })), className: "rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, h("option", { value: "" }, empleadosDelLocal.length ? "Selecciona una persona" : "No hay empleados activos"), empleadosDelLocal.map((empleado) => h("option", { key: empleado.id, value: empleado.id }, empleado.nombre || empleado.nombreCompleto || "Sin nombre")))),
-          h(Btn, { small: true, onClick: () => asignarCargo(cargo), disabled: ocupado || !empleadoPorCargo[cargo.id] || !cargo.activo }, "Asignar")
+          h(Field, { label: "Asignar a este local" }, h("select", { value: empleadoPorCargo[cargo.id] || "", disabled: ocupado || cargo.eliminado || !cargo.activo || empleadosDelLocal.length === 0, onChange: (e2) => setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: e2.target.value })), className: "rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, h("option", { value: "" }, cargo.eliminado ? "Cargo eliminado" : empleadosDelLocal.length ? "Selecciona una persona" : "No hay empleados activos"), empleadosDelLocal.map((empleado) => h("option", { key: empleado.id, value: empleado.id }, empleado.nombre || empleado.nombreCompleto || "Sin nombre")))),
+          h(Btn, { small: true, onClick: () => asignarCargo(cargo), disabled: ocupado || cargo.eliminado || !empleadoPorCargo[cargo.id] || !cargo.activo }, "Asignar")
         ),
         editorPermisos?.cargoId === cargo.id ? h(
           "div",
@@ -2684,13 +2717,23 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
             }))
           ))
         ) : null,
-        h("div", { className: "flex gap-2 flex-wrap mt-2" },
+        confirmacionCargo?.id === cargo.id ? h(
+          "div",
+          { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.amberSoft } },
+          h("div", { className: "text-[12px] mb-2" }, confirmacionCargo.accion === "eliminar" ? `¿Eliminar el cargo «${cargo.nombre}»? Dejará de aparecer en la lista normal, se cerrarán sus asignaciones activas y se conservarán el historial y la auditoría. Esta acción no se puede deshacer desde aquí.` : confirmacionCargo.accion === "desactivar" ? Number(cargo.asignados_count || 0) > 0 ? `El cargo «${cargo.nombre}» está asignado a ${cargo.asignados_count} persona(s). Al desactivarlo dejarán de tener acceso efectivo por este cargo, pero se conservarán las asignaciones y el historial. ¿Quieres continuar?` : `¿Desactivar el cargo «${cargo.nombre}»? Dejará de estar disponible para nuevas asignaciones, pero podrás reactivarlo más adelante.` : `¿Reactivar el cargo «${cargo.nombre}»? Volverá a estar disponible para nuevas asignaciones con sus permisos guardados.`),
+          h("div", { className: "flex gap-2 flex-wrap" },
+            h(Btn, { small: true, variant: confirmacionCargo.accion === "eliminar" || confirmacionCargo.accion === "desactivar" ? "danger" : "primary", onClick: () => confirmacionCargo.accion === "eliminar" ? eliminarCargo(cargo) : confirmarCambioEstadoCargo(cargo), disabled: ocupado }, confirmacionCargo.accion === "eliminar" ? "Eliminar cargo" : confirmacionCargo.accion === "desactivar" ? "Sí, desactivar" : "Sí, reactivar"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => setConfirmacionCargo(null), disabled: ocupado }, "Cancelar")
+          )
+        ) : null,
+        !cargo.eliminado ? h("div", { className: "flex gap-2 flex-wrap mt-2" },
           h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario({ id: cargo.id, nombre: cargo.nombre, descripcion: cargo.descripcion || "" }), disabled: ocupado }, "Editar"),
           h(Btn, { small: true, variant: "ghost", onClick: () => editorCargoId === cargo.id ? cerrarEditorPantallas() : abrirEditorPantallas(cargo), disabled: ocupado }, editorCargoId === cargo.id ? "Cerrar pantallas" : "Editar pantallas"),
           h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditorPermisos(cargo), disabled: ocupado }, editorPermisos?.cargoId === cargo.id ? "Cerrar permisos" : "Editar permisos"),
           h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar"),
-          h(Btn, { small: true, variant: "ghost", onClick: () => cambiarEstadoCargo(cargo), disabled: ocupado || (cargo.activo && Number(cargo.asignados_count || 0) > 0) }, cargo.activo ? "Desactivar" : "Reactivar")
-        )
+          h(Btn, { small: true, variant: "ghost", onClick: () => pedirCambioEstadoCargo(cargo), disabled: ocupado }, cargo.activo ? "Desactivar" : "Reactivar"),
+          h(Btn, { small: true, variant: "danger", onClick: () => pedirEliminacionCargo(cargo), disabled: ocupado }, "Eliminar cargo")
+        ) : null
       )))
     )
   );

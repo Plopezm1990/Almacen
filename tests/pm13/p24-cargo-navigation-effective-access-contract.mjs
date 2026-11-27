@@ -4,6 +4,7 @@ import path from "node:path";
 
 const root = process.cwd();
 const migration = fs.readFileSync(path.join(root, "supabase/migrations/20261128150000_abc_f6_cargos_nombres_navegacion_excepciones.sql"), "utf8");
+const lifecycle = fs.readFileSync(path.join(root, "supabase/migrations/20261128160000_abc_f6_cargos_estado_eliminacion.sql"), "utf8");
 const source = fs.readFileSync(path.join(root, "fuente.js"), "utf8");
 const recovered = fs.readFileSync(path.join(root, "source-recovery/fuente-recuperado.js"), "utf8");
 
@@ -14,6 +15,8 @@ assert.match(migration, /cargo_no_asignado/);
 assert.match(migration, /rol_tecnico_compatibilidad/);
 assert.match(migration, /grant execute on function public\.pm13_listar_pantallas_efectivas\([^\n]+\) to authenticated/);
 assert.match(migration, /drop trigger if exists pm13_cargo_guard_nombre/);
+assert.match(lifecycle, /c\.eliminado = false/);
+assert.match(lifecycle, /Si una cuenta tuvo una asignación personalizada/);
 
 // La excepción solo se evalúa después de validar la asignación y la pantalla.
 assert.ok(migration.indexOf("cargo_no_asignado") < migration.indexOf("excepcion_denegada"), "la excepción no puede crear un cargo activo inexistente");

@@ -1,19 +1,24 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
 
-const sql = fs.readFileSync("supabase/migrations/20261017140000_pm13_p08_cargos_estado.sql", "utf8");
+const sql = fs.readFileSync("supabase/migrations/20261128160000_abc_f6_cargos_estado_eliminacion.sql", "utf8");
 const ui = fs.readFileSync("fuente.js", "utf8");
 
 assert.match(sql, /create or replace function public\.abc_desactivar_cargo\(/);
 assert.match(sql, /create or replace function public\.abc_reactivar_cargo\(/);
-assert.match(sql, /abc_config_puede_configurar_empresa/);
-assert.match(sql, /select count\(\*\) into v_asignados/);
-assert.match(sql, /cargo_tiene_asignaciones/);
+assert.match(sql, /pm13_cargo_validar_contexto/);
+assert.match(sql, /select count\(distinct a\.empleado_id\) into v_asignados/);
+assert.match(sql, /personas_afectadas/);
 assert.match(sql, /CARGO_DESACTIVADO/);
 assert.match(sql, /CARGO_REACTIVADO/);
+assert.match(sql, /create or replace function public\.abc_eliminar_cargo\(/);
+assert.match(sql, /eliminado boolean not null default false/);
+assert.match(sql, /CARGO_ELIMINADO/);
 assert.doesNotMatch(sql, /delete from public\.abc_cargos/);
 assert.match(ui, /abc_desactivar_cargo/);
 assert.match(ui, /abc_reactivar_cargo/);
-assert.match(ui, /cargo\.activo && Number\(cargo\.asignados_count/);
+assert.match(ui, /abc_eliminar_cargo/);
+assert.match(ui, /confirmacionCargo/);
+assert.doesNotMatch(ui, /cargo\.activo && Number\(cargo\.asignados_count\(\|\| 0\) > 0/);
 
-console.log("PM13 P11 Estado de cargos: contrato de bloqueo e historial OK");
+console.log("PM13 P11 Estado de cargos: desactivación reversible, eliminación lógica e historial OK");
