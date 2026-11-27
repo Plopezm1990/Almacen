@@ -58,14 +58,16 @@ if (ini > 0 && fin > ini) {
 // ---------- B: cableado (fuente.js y su espejo) ----------
 for (const [nombre, t] of [['fuente.js', src], ['source-recovery/fuente-recuperado.js', espejo]]) {
   const tiene = (id, x) => check(`${id} [${nombre}]`, t.includes(x));
-  tiene('B1 la lógica de venta la expone', 'listarCuentasAparcadasA06, cerrarCuentasSinActividadA06, unirCuentasA08, ensayarCierreSesionCajaC12 };');
-  tiene('B2 el padre la pasa a la pantalla solo con la nube activa y para Propietario o Encargado', 'puedeLimpiarCuentasA06: typeof window !== "undefined" && window.__nubeActiva === true && ["Propietario", "Encargado"].includes(String(miPerfil?.rol || "")),');
+  // El inicio y el final de las listas de la lógica de venta y de la llamada a VentaRapida los fijan contratos de A06.3, A08.1 y C12: la función nueva va en medio.
+  tiene('B1a la lógica de venta la expone (justo después de anularVenta)', '  return { venderCarrito, venderLocal, anularVenta, cerrarCuentasSinActividadA06, venderLineas,');
+  tiene('B1b el padre la recibe (justo después de anularVenta)', '  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, cerrarCuentasSinActividadA06, venderLineas,');
+  tiene('B2 el padre la pasa a la pantalla solo con la nube activa y para Propietario o Encargado', 'cerrarCuentasSinActividadA06, puedeLimpiarCuentasA06: typeof window !== "undefined" && window.__nubeActiva === true && ["Propietario", "Encargado"].includes(String(miPerfil?.rol || "")), cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06, unirCuentasA08 })');
   tiene('B3 el botón solo sale con permiso, con la lista cargada y con cuentas', 'cargado && cuentas.length > 0 && puedeLimpiarCuentasA06 && typeof cerrarCuentasSinActividadA06 === "function"');
   tiene('B4 pide confirmación antes de cerrar (diálogo de alerta con lo que se cierra y lo que no)', 'role: "alertdialog", "aria-label": "Cerrar cuentas sin actividad", "data-cerrar-cuentas-confirmacion": "1"');
   tiene('B5 la confirmación avisa de que las demás no se tocan', 'Las dem\\u00e1s no se tocan.');
   tiene('B6 mientras cierra no deja pulsar dos veces', 'if (limpiandoA06 || typeof cerrarCuentasSinActividadA06 !== "function") return;');
   tiene('B7 tras cerrar se recarga la lista y se cuenta lo que quedó abierto y por qué', 'siguen abiertas porque tienen un pedido sin cobrar, dinero pendiente o un reparto: hay que resolverlas una a una.');
-  tiene('B8 el aviso de las cuentas de días cerrados ya no dice que las cierra «el servidor» sin más', 'se pueden cerrar con \\u00abCerrar cuentas sin actividad\\u00bb (Propietario y Encargado)');
+  tiene('B8 el aviso de las cuentas de días cerrados conserva su frase (la fija A06.3) y explica quién puede cerrarlas y cuáles hay que resolver una a una', 'tampoco se cierran solas: esa resoluci\\xF3n la hace el servidor. Las que no tienen pedido sin cobrar ni dinero pendiente las puede cerrar el Propietario o el Encargado con \\u00abCerrar cuentas sin actividad\\u00bb; las que tienen un pedido sin cobrar hay que resolverlas una a una.');
   check(`B9 la pantalla no cierra cuentas por su cuenta (solo llama a la función de servidor) [${nombre}]`, !/update\(\{[^}]*estado: ?"CERRADA"/.test(t));
 }
 
