@@ -1,6 +1,6 @@
 # Corrección de H-35 · el historial no refleja los reembolsos económicos · 27/11/2026
 
-Estado: **migración (función de lectura) aplicada en QA, pantalla y contratos hechos; sin probar desde la pantalla con sesión de QA.**
+Estado: **migración (función de lectura) aplicada en QA, pantalla y contratos hechos; probado desde la pantalla con sesión real de QA el 27/11/2026 (vista previa del PR #227).**
 Rama `correccion/ola0-tpv-2026-11-26`. Producción no se ha tocado.
 
 - **H-35 (P3):** una venta con un reembolso B08 confirmado figuraba ACTIVA, su ticket no lo mencionaba y su importe seguía en «Total vigente»; la caja y el historial daban cifras distintas.
@@ -34,7 +34,13 @@ y fija el cableado (consulta a las dos tablas con empresa y local, solo con nube
 
 ## Qué NO está hecho
 
-- **Sin probar desde la pantalla con sesión de QA** (hace falta iniciar sesión; la venta de ejemplo del hallazgo es del 25/11).
+## Prueba en QA con sesión (27/11/2026)
+
+- Cinco de las seis ventas con reembolso confirmado salen marcadas en el historial: cuatro «Reembolsada 1,00 €» y una «Reembolso parcial 0,50 €».
+- **La venta del hallazgo** (`V-20261125-B44A86`, TPV-000045, 1,00 € en efectivo): ahora «Reembolsada 1,00 €», con «Reembolsado (dinero devuelto) 1,00 €» y **neto de gestión 0,00 €**; en la lista figura con 0,00 €; su **ticket** lleva «Reembolsada 1,00 €». Filtrada sola, el resumen da 0 ventas vigentes y total 0,00 €.
+- **Reembolso parcial** (`V-20261125-380644`): «Reembolso parcial 0,50 €», neto 0,50 €; filtrada sola, 1 venta vigente y total 0,50 €.
+- La sexta venta con reembolso (`B8428C`, 3,85 €) **no aparece en el historial**: no tiene movimientos de stock de venta, que es de donde sale el historial, así que no se puede ver desde ahí (limitación anterior a H-35).
+- Sesión cerrada y filas de QA apagadas al terminar.
 - Una consulta por el local entero (sin filtrar por fechas): con miles de reembolsos habría que paginar o filtrar por el periodo del historial (el servidor limita a 1000 filas por consulta).
 - No hay desglose de cada reembolso (fecha, motivo, medio) en el ticket; solo el importe total devuelto de esa venta.
 - La caja (arqueo) y su esperado no se tocan: hoy sus reembolsos ya salen del servidor (H-24).
