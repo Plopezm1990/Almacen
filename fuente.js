@@ -43512,13 +43512,6 @@ var init_index_es = __esm({
   }
 });
 
-// H-33 (auditoría del TPV): las funciones Edge se llaman en el mismo proyecto que la base de datos (window.NUBE_URL: producción
-// por defecto, QA en una Deploy Preview, vacío en modo local), no a una dirección de producción escrita en el código. Si no hay
-// nube configurada devuelve una dirección que no resuelve (.invalid), nunca otra del mismo origen ni de producción.
-function urlFuncionNubeA(nombre) {
-  var base = typeof window !== "undefined" && typeof window.NUBE_URL === "string" ? window.NUBE_URL.replace(/\/+$/, "") : "";
-  return (base || "https://sin-nube.invalid") + "/functions/v1/" + nombre;
-}
 // ../edge-auth-patch.js
 (function() {
   "use strict";
@@ -123106,6 +123099,13 @@ function etiquetaContextoPM15(local, empresa) {
   const nombreEmpresa = empresa && (empresa.razonSocial || empresa.marca) ? empresa.razonSocial || empresa.marca : "";
   if (nombreLocal && nombreEmpresa) return `${nombreLocal} \xB7 ${nombreEmpresa}`;
   return nombreLocal || nombreEmpresa || "";
+}
+// H-33 (auditoría del TPV): las funciones Edge se llaman en el mismo proyecto que la base de datos (window.NUBE_URL: producción
+// por defecto, QA en una Deploy Preview, vacío en modo local), no a una dirección de producción escrita en el código. Si no hay
+// nube configurada devuelve una dirección que no resuelve (.invalid), nunca otra del mismo origen ni de producción.
+function urlFuncionNubeA(nombre) {
+  var base = typeof window !== "undefined" && typeof window.NUBE_URL === "string" ? window.NUBE_URL.replace(/\/+$/, "") : "";
+  return (base || "https://sin-nube.invalid") + "/functions/v1/" + nombre;
 }
 function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null, localId = "" }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
