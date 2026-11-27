@@ -43512,11 +43512,22 @@ var init_index_es = __esm({
   }
 });
 
+// H-33 (auditoría del TPV): las funciones Edge se llaman en el mismo proyecto que la base de datos (window.NUBE_URL: producción
+// por defecto, QA en una Deploy Preview, vacío en modo local), no a una dirección de producción escrita en el código. Si no hay
+// nube configurada devuelve una dirección que no resuelve (.invalid), nunca otra del mismo origen ni de producción.
+function urlFuncionNubeA(nombre) {
+  var base = typeof window !== "undefined" && typeof window.NUBE_URL === "string" ? window.NUBE_URL.replace(/\/+$/, "") : "";
+  return (base || "https://sin-nube.invalid") + "/functions/v1/" + nombre;
+}
 // ../edge-auth-patch.js
 (function() {
   "use strict";
   var fetchOriginal = window.fetch.bind(window);
-  var ORIGEN_FUNCTIONS = "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/";
+  // H-33: mismo proyecto que la base de datos, leído en cada llamada (window.NUBE_URL lo fija el arranque).
+  function origenFunctions() {
+    var base = typeof window.NUBE_URL === "string" ? window.NUBE_URL.replace(/\/+$/, "") : "";
+    return base ? base + "/functions/v1/" : "";
+  }
   var PROTEGIDAS = {
     "importar-albaran": true,
     "importar-nomina": true,
@@ -43531,7 +43542,8 @@ var init_index_es = __esm({
   }
   window.fetch = async function(input, init) {
     var url = typeof input === "string" ? input : input && input.url || "";
-    if (url.indexOf(ORIGEN_FUNCTIONS) !== 0) return fetchOriginal(input, init);
+    var ORIGEN_FUNCTIONS = origenFunctions();
+    if (!ORIGEN_FUNCTIONS || url.indexOf(ORIGEN_FUNCTIONS) !== 0) return fetchOriginal(input, init);
     var nombreFuncion = url.slice(ORIGEN_FUNCTIONS.length).split(/[?#]/)[0];
     if (!PROTEGIDAS[nombreFuncion]) return fetchOriginal(input, init);
     try {
@@ -106561,7 +106573,7 @@ function GestionAlmacen() {
     const nuevos = urgentes.filter((l22) => !yaAvisados.includes(l22.id));
     if (nuevos.length === 0) return;
     nuevos.forEach((l22) => {
-      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+      fetch(urlFuncionNubeA("enviar-notificacion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -110294,7 +110306,7 @@ avisosStockBajo.push({ producto: productoBase, teoricoDespues });
     }
     if (typeof window !== "undefined" && window.__nubeActiva) {
       for (const aviso of avisosStockBajo) {
-        try { fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        try { fetch(urlFuncionNubeA("enviar-notificacion"), {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({ titulo: "Stock bajo", cuerpo: `${aviso.producto.nombre} bajó del mínimo (quedan ${fmt(Math.max(0, aviso.teoricoDespues))}).`, localId: aviso.producto.localId || null, url: "/" })
@@ -115862,7 +115874,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     const fechaVenta = lineas[0]?.fecha;
     const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
     if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
-      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+      fetch(urlFuncionNubeA("enviar-notificacion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -115892,7 +115904,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const fechaVenta = lineasOriginales[0]?.fecha;
       const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
       if (arqueoDelDia) {
-        fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        fetch(urlFuncionNubeA("enviar-notificacion"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ titulo: "Caja cerrada, ahora desactualizada", cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`, localId: r2.data?.localId || lineasOriginales[0]?.localId || null, url: "/" })
@@ -121984,7 +121996,7 @@ function Albaranes({
     setAvisosIA([]);
     try {
       const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-albaran",
+        urlFuncionNubeA("importar-albaran"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -122976,7 +122988,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
     setError("");
     try {
       const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/entrevista-personal",
+        urlFuncionNubeA("entrevista-personal"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -124618,7 +124630,7 @@ function FacturasLegacy({ albaranes, facturasDirectas, pagosFacturas = [], prove
     if (archivosIA.length === 0) { setError("Añade al menos una imagen o un PDF con páginas legibles."); return; }
     setLeyendoIA(true); setError(""); setMensaje("");
     try {
-      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-albaran", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagenes: archivosIA.map((f22) => ({ base64: f22.base64, mediaType: f22.mediaType })) }) });
+      const resp = await fetch(urlFuncionNubeA("importar-albaran"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagenes: archivosIA.map((f22) => ({ base64: f22.base64, mediaType: f22.mediaType })) }) });
       const r2 = await resp.json();
       if (!r2.ok) throw new Error(r2.error || "No se ha podido leer la factura.");
       const d2 = r2.datos || {};
@@ -131750,7 +131762,7 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
     setAvisosIA([]);
     try {
       const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-nomina",
+        urlFuncionNubeA("importar-nomina"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -132188,7 +132200,7 @@ function PrefiltroPublico({ token }) {
     (async () => {
       try {
         const resp = await fetch(
-          "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/prefiltro-candidato",
+          urlFuncionNubeA("prefiltro-candidato"),
           { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "comprobar", token }) }
         );
         const r2 = await resp.json();
@@ -132213,7 +132225,7 @@ function PrefiltroPublico({ token }) {
     setEstado("enviando");
     try {
       const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/prefiltro-candidato",
+        urlFuncionNubeA("prefiltro-candidato"),
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "enviar", token, respuestas: form }) }
       );
       const r2 = await resp.json();
@@ -132269,7 +132281,7 @@ async function registrarErrorSistema(mensaje, pantalla, pila) {
     const ultimoAviso = ultimosErroresAvisados.get(clave);
     if (!ultimoAviso || ahora - ultimoAviso > 10 * 60 * 1e3) {
       ultimosErroresAvisados.set(clave, ahora);
-      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+      fetch(urlFuncionNubeA("enviar-notificacion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
