@@ -104741,6 +104741,20 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
     if (p3.puede_autorizar && max === 0) return `${rol}: una autorizaci\xF3n necesita un l\xEDmite mayor que 0%.`;
     return "";
   };
+  // H-39 (auditoría del TPV, 26/11/2026; decisión del usuario el 27/11): «máximo 0 %» significa SIN descuentos. El servidor
+  // comprueba el límite y «puede aplicar» ANTES de crear la solicitud de escalado, así que las casillas no son independientes:
+  // el escalado de un Encargado solo funciona con límite mayor que 0, «solicitar», «aplicar» y «escalado» a la vez. La pantalla
+  // avisa de las combinaciones que no funcionan en vez de presentarlas como opciones libres.
+  const avisosPolitica = (p3) => {
+    const max = Number(p3.max_percent);
+    const avisos = [];
+    if (Number.isFinite(max) && max === 0 && (p3.puede_solicitar || p3.puede_aplicar || p3.permite_escalado)) {
+      avisos.push("Con un máximo de 0 % este cargo no puede dar descuentos: «Puede solicitar», «Puede aplicar» y «Permite escalado» no tienen efecto. Sube el máximo para usarlos.");
+    } else if (Number.isFinite(max) && max > 0 && (p3.puede_solicitar || p3.permite_escalado) && !p3.puede_aplicar) {
+      avisos.push("«Puede solicitar» o «Permite escalado» sin «Puede aplicar»: el servidor rechaza el descuento antes de crear la solicitud de autorización. Marca también «Puede aplicar».");
+    }
+    return avisos;
+  };
   const anadirRol = () => {
     setError("");
     setConfirmacion("");
@@ -104842,7 +104856,8 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
         campo(rol, "puede_autorizar", "Puede autorizar"),
         campo(rol, "permite_escalado", "Permite escalado"),
         campo(rol, "requiere_doble_aprobacion", "Requiere doble aprobaci\xF3n")
-      )
+      ),
+      avisosPolitica(p3).map((aviso2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: aviso2, role: "note", "data-h39-aviso": "1", className: "text-[11.5px] mt-2", style: { color: C2.amber } }, aviso2))
     );
   };
   const rolesConfigurados = Object.keys(form);
@@ -112836,6 +112851,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("producto_preparacion_clasificacion_pendiente")) return "Hay productos sin clasificar como preparación o entrega directa. Completa su clasificación antes de enviarlos.";
     if (msg.includes("producto_preparacion_sin_ruta")) return "Hay un producto que requiere preparación pero no tiene una ruta activa a cocina. Configura la ruta y vuelve a intentarlo.";
     if (msg.includes("transicion_linea_no_autorizada")) return "Tu perfil no tiene permiso para realizar esta transición del pedido.";
+    if (msg.includes("venta_rapida_no_autorizada")) return "Tu perfil no tiene permiso para cobrar ventas rápidas.";
+    if (msg.includes("venta_rapida_modalidad_no_permitida")) return "Esta cuenta no es de venta rápida (barra): se sirve desde Sala.";
     if (msg.includes("linea_cancelar_no_autorizada")) return "Tu perfil no tiene permiso para cancelar esta línea.";
     if (msg.includes("cancelacion_sensible_no_autorizada")) return "Esta cancelación requiere autorización sensible de Encargado o Propietario.";
     if (msg.includes("pedido_cancelar_no_autorizado")) return "Tu perfil no tiene permiso para cancelar el pedido completo.";
@@ -114251,6 +114268,33 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           estado: "CANCELADA",
           lineaVersion: versionServidorA02(Number(linea.lineaVersion) + 1, "a05.cancel.result.linea_version")
         });
+        contexto.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+        const guardado = guardarContextoCuentaA02(empresaId, localActivoId, contexto);
+        return { ok: true, ...guardado };
+      }
+
+      // H-37 (auditoría del TPV, 26/11/2026): «Cobrar ahora» ya no encadena iniciar, preparar y servir línea a línea con los
+      // permisos de cocina de quien cobra (el Cajero/a no los tiene y la venta se quedaba a medias). El servidor hace los tres
+      // pasos de todas las líneas en UNA operación con el permiso de cobro, solo para cuentas de barra.
+      if (accion === "COMPLETAR_VENTA_RAPIDA") {
+        const operationId = "a05.3.venta_rapida." + contexto.pedidoId + "." + contexto.pedidoVersion;
+        const resultado = await rpcA02ConRecuperacion(supabase, "abc_completar_venta_rapida", {
+          p_operation_id: operationId,
+          p_empresa_id: empresaId,
+          p_local_id: localActivoId,
+          p_pedido_id: contexto.pedidoId,
+          p_expected_pedido_version: versionServidorA02(contexto.pedidoVersion, "a05.venta_rapida.pedido_version"),
+          p_terminal_id: contexto.terminalId,
+          p_session_id: contexto.sessionId,
+          p_operating_day: contexto.operatingDay
+        }, empresaId, localActivoId, operationId);
+        const porId = new Map((Array.isArray(resultado?.lineas) ? resultado.lineas : []).map((l22) => [String(l22.linea_id), l22]));
+        contexto.lineas = contexto.lineas.map((linea) => {
+          const nueva = porId.get(String(linea.lineaId));
+          return nueva ? { ...linea, estado: String(nueva.estado), lineaVersion: versionServidorA02(nueva.linea_version, "a05.venta_rapida.linea_version") } : linea;
+        });
+        contexto.pedidoVersion = versionServidorA02(resultado?.pedido_version, "a05.venta_rapida.result.pedido_version");
+        contexto.pedidoEstado = String(resultado?.pedido_estado || contexto.pedidoEstado);
         contexto.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
         const guardado = guardarContextoCuentaA02(empresaId, localActivoId, contexto);
         return { ok: true, ...guardado };
@@ -130200,30 +130244,30 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
       const enviada = await enviarPedidoA05();
       if (!enviada || enviada.ok === false) {
-        setErrorVenta(enviada?.error || "No se pudo confirmar la venta rápida.");
+        // H-20 (auditoría del TPV, 26/11/2026): si el envío falla (por ejemplo un producto sin ruta a cocina) la cuenta quedaba
+        // abierta y el terminal no dejaba iniciar otra venta rápida. Nada se ha enviado ni cobrado: se cancela el pedido (el
+        // servidor cierra la cuenta vacía) y el carrito se conserva para reintentar.
+        let liberada = false;
+        try {
+          const cancelada = await accionPedidoA05("CANCELAR_PEDIDO", null, "Venta rápida no enviada: " + String(enviada?.error || "error").slice(0, 200));
+          if (cancelada && cancelada.ok !== false) {
+            setPedidoOperativoA05(cancelada);
+            liberada = true;
+          }
+        } catch (e2) {
+        }
+        setErrorVenta((enviada?.error || "No se pudo confirmar la venta rápida.") + (liberada ? " La venta no se ha enviado ni cobrado y su cuenta se ha cancelado: puedes volver a intentarlo." : ""));
         return;
       }
       setPedidoOperativoA05(enviada);
 
-      let estadoServidor = enviada;
-      for (const linea of Array.isArray(enviada.lineas) ? enviada.lineas : []) {
-        if (["SERVIDA", "CANCELADA"].includes(String(linea.estado || ""))) continue;
-        for (const accion of ["INICIAR_PREPARACION", "MARCAR_PREPARADA", "SERVIR"]) {
-          const actual = leerPedidoOperativoA05 ? await Promise.resolve(leerPedidoOperativoA05()) : estadoServidor;
-          const lineaActual = (actual?.lineas || []).find((l22) => String(l22.lineaId || "") === String(linea.lineaId || ""));
-          if (!lineaActual || ["SERVIDA", "CANCELADA"].includes(String(lineaActual.estado || ""))) break;
-          if ((accion === "INICIAR_PREPARACION" && lineaActual.estado !== "ENVIADA")
-              || (accion === "MARCAR_PREPARADA" && lineaActual.estado !== "EN_PREPARACION")
-              || (accion === "SERVIR" && lineaActual.estado !== "PREPARADA")) continue;
-          const paso = await accionPedidoA05(accion, linea.lineaId, "");
-          if (!paso || paso.ok === false) {
-            setErrorVenta(paso?.error || "No se pudo dejar la línea lista para cobrar.");
-            return;
-          }
-          estadoServidor = paso;
-          setPedidoOperativoA05(paso);
-        }
+      // H-37: una sola operación de servidor (con el permiso de cobro) deja servidas todas las líneas.
+      const servida = await accionPedidoA05("COMPLETAR_VENTA_RAPIDA", null, "");
+      if (!servida || servida.ok === false) {
+        setErrorVenta(servida?.error || "No se pudo dejar la venta lista para cobrar.");
+        return;
       }
+      setPedidoOperativoA05(servida);
 
       const importe = Number(guardada.totalServidor ?? totalEsperado);
       const cobro = await iniciarCobroCuentaF4(pagoRapida, {

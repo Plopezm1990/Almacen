@@ -88,6 +88,15 @@ function entorno(opciones = {}) {
       if (!documentos.some((d) => d.venta_fiscal_id === v.venta_fiscal_id)) documentos.push({ venta_fiscal_id: v.venta_fiscal_id, operation_id: params.p_operation_id });
       return { data: { ok: true, documentos: [{ estado: 'EMITIDO', numero: 100 + documentos.length, codigo_serie: 'TPV', venta_fiscal_id: v.venta_fiscal_id }] }, error: null };
     }
+    if (nombre === 'abc_cancelar_pedido') {
+      srv.estado.llamadas.push({ nombre, params });
+      return { data: { ok: true, pedido_id: params.p_pedido_id, estado: 'CANCELADO', pedido_version: 5, lineas_canceladas: 1, cuenta_cerrada: true }, error: null };
+    }
+    if (nombre === 'abc_completar_venta_rapida') {
+      srv.estado.llamadas.push({ nombre, params });
+      if (opciones.ventaRapidaFalla) return { data: null, error: { message: 'venta_rapida_no_autorizada' } };
+      return { data: { ok: true, pedido_id: params.p_pedido_id, pedido_estado: 'SERVIDO', pedido_version: 9, lineas: (opciones.lineasVentaRapida || []).map((id, i) => ({ linea_id: id, estado: 'SERVIDA', linea_version: 20 + i })) }, error: null };
+    }
     if (nombre === 'abc_aplicar_descuento_cuenta') {
       // Como el servidor real: una misma operación con el valor escrito con otra escala es otra petición.
       srv.estado.llamadas.push({ nombre, params });
@@ -281,6 +290,54 @@ try {
     localStorage.setItem(`la_suite_a02_1_ultima_cuenta_v1:${e3.E}:${e3.L}`, cuentaGuardada);
     const malo = await e3.logica.aplicarDescuentoCuentaA09({ tipo: 'PERCENT', motivo: 'Prueba', solicitud: { ...base, valor: '10.123456789', terminalId: e3.s.ids.T, sessionId: e3.s.ids.S } });
     ok('D4 un valor con más de 8 decimales sigue rechazándose antes de llegar al servidor', malo?.ok === false && e3.llamadas('abc_aplicar_descuento_cuenta').length === 0, malo);
+  }
+
+  // ================= H-37 · venta rápida del Cajero/a =================
+  {
+    const u = (n) => `00000000-0000-4000-8000-00000000e0${n}0`;
+    const env = entorno({ rol: 'Cajero/a', lineasVentaRapida: [u(3), u(4)] });
+    localStorage.setItem(`la_suite_a02_1_ultima_cuenta_v1:${env.E}:${env.L}`, JSON.stringify({ schemaVersion: 1, empresaId: env.E, localId: env.L, cuentaId: u(1), cuentaVersion: 2, pedidoId: u(2), pedidoVersion: 4, pedidoEstado: 'ENVIADO', terminalId: env.s.ids.T, sessionId: env.s.ids.S, operatingDay: '2026-11-27', currencyCode: 'EUR', lineas: [{ lineaId: u(3), productoId: 'p1', lineaVersion: 3, estado: 'ENVIADA', cantidad: 1, total: 1 }, { lineaId: u(4), productoId: 'p2', lineaVersion: 3, estado: 'ENVIADA', cantidad: 1, total: 1 }] }));
+    const r = await env.logica.accionPedidoA05('COMPLETAR_VENTA_RAPIDA');
+    const llamadas = env.llamadas('abc_completar_venta_rapida');
+    ok('E1 completar la venta rápida es UNA sola llamada al servidor', llamadas.length === 1, llamadas.length);
+    const q = llamadas[0]?.params || {};
+    ok('E2 envía el pedido, su versión, el terminal, la sesión y el día del contexto', q.p_pedido_id === u(2) && q.p_expected_pedido_version === 4 && q.p_terminal_id === env.s.ids.T && q.p_session_id === env.s.ids.S && q.p_operating_day === '2026-11-27' && q.p_empresa_id === env.E && q.p_local_id === env.L, q);
+    ok('E3 la operación tiene un identificador recuperable y propio de ese pedido y versión', /^a05\.3\.venta_rapida\./.test(q.p_operation_id || '') && q.p_operation_id.includes(u(2)) && /^[A-Za-z0-9][A-Za-z0-9._:-]{7,199}$/.test(q.p_operation_id), q.p_operation_id);
+    ok('E4 NO encadena los pasos de cocina uno a uno (ninguna transición de línea desde el cliente)', ['abc_iniciar_preparacion_linea', 'abc_marcar_linea_preparada', 'abc_servir_linea'].every((n) => env.llamadas(n).length === 0));
+    ok('E5 el contexto guardado deja las líneas SERVIDAS con las versiones del servidor y el pedido SERVIDO', r.ok === true && r.pedidoEstado === 'SERVIDO' && r.pedidoVersion === 9 && r.lineas.every((l) => l.estado === 'SERVIDA') && r.lineas.map((l) => l.lineaVersion).join() === '20,21', JSON.stringify(r));
+    const e2 = entorno({ rol: 'Cajero/a', ventaRapidaFalla: true });
+    localStorage.setItem(`la_suite_a02_1_ultima_cuenta_v1:${e2.E}:${e2.L}`, JSON.stringify({ schemaVersion: 1, empresaId: e2.E, localId: e2.L, cuentaId: u(1), cuentaVersion: 2, pedidoId: u(2), pedidoVersion: 4, pedidoEstado: 'ENVIADO', terminalId: e2.s.ids.T, sessionId: e2.s.ids.S, operatingDay: '2026-11-27', currencyCode: 'EUR', lineas: [{ lineaId: u(3), productoId: 'p1', lineaVersion: 3, estado: 'ENVIADA', cantidad: 1, total: 1 }] }));
+    const r2 = await e2.logica.accionPedidoA05('COMPLETAR_VENTA_RAPIDA');
+    ok('E6 si el servidor rechaza, se dice con una frase comprensible y el contexto no cambia', r2.ok === false && /permiso para cobrar ventas rápidas/.test(r2.error || ''), r2);
+    // H-20: si el envío falla, la venta rápida cancela el pedido y libera el terminal.
+    const e3 = entorno({ rol: 'Cajero/a' });
+    localStorage.setItem(`la_suite_a02_1_ultima_cuenta_v1:${e3.E}:${e3.L}`, JSON.stringify({ schemaVersion: 1, empresaId: e3.E, localId: e3.L, cuentaId: u(1), cuentaVersion: 2, pedidoId: u(2), pedidoVersion: 2, pedidoEstado: 'ABIERTO', terminalId: e3.s.ids.T, sessionId: e3.s.ids.S, operatingDay: '2026-11-27', currencyCode: 'EUR', lineas: [{ lineaId: u(3), productoId: 'p1', lineaVersion: 1, estado: 'BORRADOR', cantidad: 1, total: 1 }] }));
+    const c = await e3.logica.accionPedidoA05('CANCELAR_PEDIDO', null, 'Venta rápida no enviada: sin ruta');
+    ok('E8 cancelar el pedido de una venta rápida que no se pudo enviar deja el pedido CANCELADO y el contexto liberado', c.ok === true && c.pedidoEstado === 'CANCELADO' && e3.llamadas('abc_cancelar_pedido').length === 1 && e3.llamadas('abc_cancelar_pedido')[0].params.p_motivo.startsWith('Venta rápida no enviada'), JSON.stringify(c));
+    // La pantalla ya no recorre las líneas con las tres acciones de cocina.
+    const fuenteTexto = readFileSync(origen, 'utf8');
+    const iniVR = fuenteTexto.indexOf('function VentaRapida(');
+    const cuerpoVR = fuenteTexto.slice(iniVR);
+    ok('E9 si falla el envío, la pantalla cancela el pedido (H-20) y conserva el carrito para reintentar', cuerpoVR.includes('accionPedidoA05("CANCELAR_PEDIDO", null, "Venta rápida no enviada: "') && cuerpoVR.includes('su cuenta se ha cancelado: puedes volver a intentarlo.'));
+    ok('E7 la venta rápida de la pantalla usa la operación única y ya no recorre INICIAR_PREPARACION / MARCAR_PREPARADA / SERVIR', cuerpoVR.includes('accionPedidoA05("COMPLETAR_VENTA_RAPIDA"') && !cuerpoVR.includes('["INICIAR_PREPARACION", "MARCAR_PREPARADA", "SERVIR"]'));
+  }
+
+  // ================= H-39 · la pantalla de políticas de descuento avisa de las combinaciones que no funcionan =================
+  {
+    const fuenteTexto = readFileSync(origen, 'utf8');
+    const ini = fuenteTexto.indexOf('const avisosPolitica = (p3) => {');
+    const cuerpo = ini > 0 ? fuenteTexto.slice(ini, fuenteTexto.indexOf('const anadirRol', ini)) : '';
+    // Se evalúa la función REAL de avisos con las combinaciones de la auditoría.
+    const avisos = new Function('C2', cuerpo.replace('const avisosPolitica =', 'return') + '')(null);
+    const sinDescuentos = avisos({ max_percent: '0', puede_solicitar: true, puede_aplicar: false, permite_escalado: true });
+    const sinAplicar = avisos({ max_percent: '5', puede_solicitar: true, puede_aplicar: false, permite_escalado: true });
+    const completa = avisos({ max_percent: '5', puede_solicitar: true, puede_aplicar: true, permite_escalado: true });
+    const apagada = avisos({ max_percent: '0', puede_solicitar: false, puede_aplicar: false, permite_escalado: false });
+    ok('F1 el caso del Encargado de QA (máximo 0 %, solicitar y escalar) avisa de que no puede dar descuentos', sinDescuentos.length === 1 && /máximo de 0 %.*no puede dar descuentos/.test(sinDescuentos[0]), sinDescuentos);
+    ok('F2 con máximo mayor que 0 pero sin «Puede aplicar» avisa de que el servidor rechaza antes de crear la solicitud', sinAplicar.length === 1 && /sin «Puede aplicar»/.test(sinAplicar[0]), sinAplicar);
+    ok('F3 la combinación que sí funciona (máximo, solicitar, aplicar y escalado) no avisa', completa.length === 0, completa);
+    ok('F4 un cargo sin descuentos y con todo apagado tampoco avisa', apagada.length === 0, apagada);
+    ok('F5 los avisos se pintan bajo las casillas de cada cargo', fuenteTexto.includes('"data-h39-aviso": "1"') && fuenteTexto.includes('avisosPolitica(p3).map('));
   }
 } finally {
   if (raiz) { try { await act(async () => { raiz.unmount(); }); } catch {} }
