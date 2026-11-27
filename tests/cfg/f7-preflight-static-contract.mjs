@@ -213,6 +213,11 @@ const EXCLUIDAS = new Set([
   // permiso de cobro (solo cuentas de BARRA); las transiciones directas siguen cerradas. Contrato:
   //   tests/rediseno/h37-venta-rapida-por-cobro-pglite-contract.mjs
   '20261127110000_abc_f5_venta_rapida_completar_por_cobro.sql',
+  // H-48 (verificacion en el navegador de QA, 27/11): «Cerrar cuenta pagada» no cerraba una cuenta cobrada
+  // si el checkout conservaba un pago RECHAZADO o CANCELADO (tarjeta rechazada y repetida). Parchea
+  // abc_cerrar_cuenta_pagada; lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs
+  '20261127120000_abc_f4_cerrar_cuenta_ignora_pagos_rechazados.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -291,6 +296,9 @@ const JUSTIFICACION = {
   ],
   '20261127110000_abc_f5_venta_rapida_completar_por_cobro.sql': [
     'tests/rediseno/h37-venta-rapida-por-cobro-pglite-contract.mjs',
+  ],
+  '20261127120000_abc_f4_cerrar_cuenta_ignora_pagos_rechazados.sql': [
+    'tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs',
   ],
 };
 

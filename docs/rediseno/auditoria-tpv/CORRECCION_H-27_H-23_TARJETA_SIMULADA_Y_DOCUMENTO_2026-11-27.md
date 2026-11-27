@@ -1,6 +1,6 @@
 # Corrección H-27 y H-23 · tarjeta simulada y documento de la venta mixta · 27/11/2026
 
-Estado: **implementadas y probadas con pruebas de ejecución y de código; sin verificar en el navegador de QA.**
+Estado: **implementadas, probadas con pruebas de ejecución y de código, y verificadas en el navegador de QA el 27/11/2026.**
 Rama `correccion/ola0-tpv-2026-11-26`. Dependían de H-06 (funciones de QA versionadas), ya hecha.
 
 ## H-27 · aprobar o rechazar la tarjeta simulada desde la pantalla
@@ -42,9 +42,13 @@ emisión, solo si el cierre salió bien, resultado con el documento y el QR, y q
 mixta de punta a punta pediría un servidor falso mucho más grande. Todas fallan con el código anterior.
 Batería sin base de datos: 341 contratos activos, 0 fallos; manifiesto 401 entradas.
 
+## Verificación en el navegador (actualizado el 27/11/2026)
+
+H-27 y H-23 **se verificaron en la vista previa de QA** como Propietario (PM07): rechazar y aprobar la tarjeta simulada desde la
+pantalla, y «Cerrar cuenta pagada» emite el documento en un solo clic (FACTURA TPV n.º 53). Detalle, y el hallazgo nuevo H-48 que
+apareció al repetir una tarjeta rechazada, en `VERIFICACION_NAVEGADOR_OLA1_Y_H-48_2026-11-27.md`.
+
 ## Qué NO está verificado
 
-- Nada de esto se ha visto en el navegador de QA. Hace falta una sesión de caja abierta, un cobro mixto (efectivo + tarjeta) y la
-  cuenta del Propietario con su segundo factor.
-- H-23 solo está comprobada sobre el código; la emisión real tras cerrar la cuenta no se ha ejercitado de punta a punta.
+- El **reembolso con tarjeta** simulado (sin función de servidor).
 - La venta mixta de la auditoría (venta 2, sin documento) sigue sin él: no se ha tocado esa venta.

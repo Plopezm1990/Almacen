@@ -1,8 +1,8 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 401,
+  "total_inventory": 402,
   "expected_counts": {
-    "active_contract": 384,
+    "active_contract": 385,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "pglite": {
-      "active_contract": 9,
+      "active_contract": 10,
       "historical_expected_fail": 0,
       "utility": 1,
       "diagnostic": 0
@@ -1997,6 +1997,11 @@
     },
     {
       "path": "tests/rediseno/h21-cancelar-pedido-cierra-cuenta-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs",
       "classification": "active_contract",
       "environment": "pglite"
     },
