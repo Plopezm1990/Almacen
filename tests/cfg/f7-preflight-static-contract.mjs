@@ -218,6 +218,12 @@ const EXCLUIDAS = new Set([
   // abc_cerrar_cuenta_pagada; lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs
   '20261127120000_abc_f4_cerrar_cuenta_ignora_pagos_rechazados.sql',
+  // H-49 (verificacion en el navegador de QA, 27/11): cancelar el pedido tras iniciar el cobro dejaba la cuenta ABIERTA para siempre
+  // (H-21 exigia que no hubiera ningun checkout y no existe funcion para cancelarlo). Parchea abc_cancelar_pedido: un checkout sin
+  // dinero (sin pagos o solo RECHAZADO/CANCELADO, sin incidencia abierta) deja de bloquear y se cancela con la cuenta. Lo prueba,
+  // contra un Postgres de verdad:
+  //   tests/rediseno/h49-cancelar-pedido-cancela-cobro-sin-dinero-pglite-contract.mjs
+  '20261128130000_abc_f6_cancelar_pedido_cancela_cobro_sin_dinero.sql',
   // H-04 / H-18 (Ola 2): encargos y pagos de encargo solo por funciones de servidor; quita TRUNCATE/REFERENCES/TRIGGER
   // sobrantes. Lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs
@@ -319,6 +325,9 @@ const JUSTIFICACION = {
   ],
   '20261128120000_abc_f6_empresa_nueva_con_politica_mfa_propietario.sql': [
     'tests/rediseno/h17-empresa-nueva-politica-mfa-pglite-contract.mjs',
+  ],
+  '20261128130000_abc_f6_cancelar_pedido_cancela_cobro_sin_dinero.sql': [
+    'tests/rediseno/h49-cancelar-pedido-cancela-cobro-sin-dinero-pglite-contract.mjs',
   ],
 };
 
