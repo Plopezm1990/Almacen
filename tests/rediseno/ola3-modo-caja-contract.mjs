@@ -136,7 +136,7 @@ hay('C6 la pantalla reserva su franja mientras el aviso está visible', `${S}:ha
 hay('C7 las capas abiertas también la reservan', `${S}:has(#estado-guardado:not([style*="display: none"])) #root .tpv-capa[data-abierta="1"] { padding-bottom: 48px; }`);
 hay('C8 la fila de categorías no tiene barra de desplazamiento', `${S} #root .tpv-cat-lista { overflow: hidden; scrollbar-width: none; }`);
 check('C9 las flechas de categorías son de 44 × 44 px', /\.tpv-cat-flecha \{[^}]*width: 44px; min-width: 44px; height: 44px; min-height: 44px;/.test(css));
-check('C10 en móvil «Salir del modo caja» queda fijo al borde derecho de la barra', /\.tpv-cabecera > \.tpv-caja-salir \{\s*position: sticky; right: 0;/.test(css));
+check('C10 en móvil «Salir del modo caja» va el primero de la barra y la barra avisa con sombras de que se desliza', css.includes(`${S} #root .tpv-cabecera > button.tpv-caja-salir.la-ui-button { order: 0; }`) && /\.tpv-cabecera \{\s*background:\s*linear-gradient\(to right[^;]*no-repeat local,[^;]*local,[^;]*radial-gradient[^;]*scroll,[^;]*radial-gradient[^;]*scroll;/.test(css));
 check('C11 por debajo de 360 px la banda y las tarjetas son compactas', /@media \(max-width: 359px\) \{[\s\S]*--tpv-caja-banda: clamp\(168px, 26dvh, 240px\);[\s\S]*padding: 6px 8px !important;/.test(css));
 // todo el CSS del modo caja sigue colgando de Órbita + caja (misma regla que tpv-caja-orbita-contract)
 const ini = css.indexOf('/* Modo caja de Órbita, «doble banda»');

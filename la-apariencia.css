@@ -329,11 +329,16 @@ html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa-volver {
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > * { flex: none; white-space: nowrap; }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-herramientas { flex-wrap: nowrap; }
-  /* H-10: «Salir del modo caja» queda siempre a la vista, fija al borde derecho de la barra; lo que se desliza pasa por debajo con una sombra
-     que avisa de que hay más (Terminal). */
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > .tpv-caja-salir {
-    position: sticky; right: 0; z-index: 1; background: var(--c-bg, #17191C) !important;
-    box-shadow: -14px 0 10px -6px color-mix(in srgb, var(--c-ink, #F1F3F6) 28%, transparent);
+  /* H-10: «Salir del modo caja» va el primero de la barra (siempre a la vista, sin tapar nada) y, cuando la barra se desliza, una sombra en el
+     borde indica que hay más a ese lado (Terminal). Sombras de desplazamiento solo con CSS: las de «local» tapan la sombra cuando la barra ya
+     está en ese extremo. */
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > button.tpv-caja-salir.la-ui-button { order: 0; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera {
+    background:
+      linear-gradient(to right, var(--c-bg, #17191C), transparent) left center / 28px 100% no-repeat local,
+      linear-gradient(to left, var(--c-bg, #17191C), transparent) right center / 28px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--c-ink, #F1F3F6) 45%, transparent), transparent) left center / 14px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--c-ink, #F1F3F6) 45%, transparent), transparent) right center / 14px 100% no-repeat scroll;
   }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-paginas] {
     display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto; text-align: center; gap: 8px !important; font-size: 11px;
