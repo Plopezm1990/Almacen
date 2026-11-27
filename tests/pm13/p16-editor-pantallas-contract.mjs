@@ -20,13 +20,13 @@ for (const [file, text] of [["fuente.js", source], ["source-recovery/fuente-recu
   assert.match(text, /Permitida para este cargo/, `${file}: falta estado permitido`);
   assert.match(text, /Denegada por este cargo/, `${file}: falta estado denegado`);
   assert.match(text, /Módulo no contratado o inactivo/, `${file}: falta estado de módulo inactivo`);
-  assert.match(text, /Todavía no guarda la selección en el servidor/, `${file}: falta límite de persistencia`);
+  assert.match(text, /La selección se guarda en el servidor mediante una operación autorizada y auditada/, `${file}: falta confirmar persistencia autorizada`);
   assert.match(text, /consultar.*no concede crear, editar, exportar, anular ni configurar/s, `${file}: falta separar consulta de acciones`);
 }
 
 assert.match(documentation, /45 pantallas/);
 assert.match(documentation, /Módulo no contratado o inactivo/);
-assert.match(documentation, /no se guarda todavía en el servidor/);
+assert.match(documentation, /se guarda en el servidor mediante un RPC autorizado/);
 assert.match(documentation, /punto 5/);
 
 console.log("PM13 P16 Editor de pantallas: agrupación, estados y límites de acciones OK");

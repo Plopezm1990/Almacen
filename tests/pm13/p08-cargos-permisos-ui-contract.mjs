@@ -10,6 +10,10 @@ for (const file of files) {
   assert.match(source, /ConfiguracionLocal, \{ empresa: empresaDelLocalActivo[\s\S]*\bempleados(?:,|\s*\})/, `${file}: falta pasar empleados al panel de cargos`);
   assert.match(source, /Cargos personalizados/, `${file}: falta el estado de cargos personalizados`);
   assert.match(source, /Roles y cargos actuales/, `${file}: falta el listado de roles y cargos`);
+  assert.match(source, /const roles = \["Propietario"\]/, `${file}: el catálogo inicial debe mostrar solo Propietario`);
+  assert.match(source, /Por defecto solo existe el cargo protegido Propietario/, `${file}: falta la explicación del cargo inicial`);
+  assert.match(source, /crear tantos cargos funcionales como necesite/, `${file}: falta indicar que no hay una cuota funcional en la UI`);
+  assert.doesNotMatch(source, /\["permisos", "Permisos"\]/, `${file}: no debe exponerse la matriz antigua de permisos como sección independiente`);
 }
 
 console.log("PM13 P08 Cargos y permisos: contrato de UI OK");

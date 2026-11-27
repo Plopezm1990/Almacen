@@ -5,6 +5,7 @@ import path from "node:path";
 const root = process.cwd();
 const migration = fs.readFileSync(path.join(root, "supabase/migrations/20261017193000_pm13_p05_cargo_action_resolver.sql"), "utf8");
 const doc = fs.readFileSync(path.join(root, "docs/plan-empresas/PM13_P05_05_PERSISTENCIA_PERMISOS_2026-10-17.md"), "utf8");
+const f6 = fs.readFileSync(path.join(root, "supabase/migrations/20261128140000_abc_f6_cargos_propietario_permisos_libres.sql"), "utf8");
 
 assert.match(migration, /create table if not exists public\.abc_cargo_permisos/);
 assert.match(migration, /private\.pm13_p05_acciones_catalogo/);
@@ -27,6 +28,14 @@ assert.doesNotMatch(migration, /migration repair/i);
 assert.match(doc, /denegar por defecto/i);
 assert.match(doc, /operation_id/);
 assert.match(doc, /revocar/i);
+
+assert.match(f6, /create or replace function private\.pm13_p05_rol_alcanza\(p_rol text, p_rol_minimo text\)/);
+assert.match(f6, /'Churrero\/a', 'Básico', 'Estándar'/);
+assert.match(f6, /and coalesce\(nullif\(btrim\(p_rol_minimo\)/);
+assert.match(f6, /pm13_cargo_validar_contexto/);
+assert.match(f6, /denegaci[oó]n por defecto|deny por defecto/i);
+assert.doesNotMatch(f6, /drop table/i);
+assert.doesNotMatch(f6, /grant execute/i);
 
 console.log("PM13 P18 Resolver de acciones de cargo: catálogo, techo, alcance, dependencia y revocación OK");
 

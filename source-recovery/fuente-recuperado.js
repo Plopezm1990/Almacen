@@ -2216,15 +2216,13 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
 }
 function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombre = "", esPropietario = false, onIrPermisos = () => {} }) {
   const h = import_react4.default.createElement;
-  const roles = ["Propietario", ...NOMBRES_ROLES];
+  // Los roles técnicos históricos siguen existiendo para compatibilidad con
+  // empleados ya creados, pero no se ofrecen como cargos nuevos. El catálogo
+  // visible empieza siempre en Propietario y crece solo con cargos creados por
+  // el propietario de la empresa.
+  const roles = ["Propietario"];
   const descripciones = {
-    Propietario: "Acceso total protegido de la empresa; no es un cargo editable.",
-    Encargado: "Operación amplia del local y coordinación del equipo.",
-    "Cajero/a": "Cobros y operaciones de caja según los permisos configurados.",
-    "Camarero/a": "Venta y operación de sala según los permisos configurados.",
-    "Churrero/a": "Rol histórico conservado solo para cuentas existentes.",
-    Básico: "Rol histórico conservado solo para cuentas existentes.",
-    Estándar: "Rol histórico conservado solo para cuentas existentes."
+    Propietario: "Acceso total protegido de la empresa; no es un cargo editable."
   };
   const perteneceAlLocal = (empleado) => {
     if (!localId || !empleado) return false;
@@ -2536,8 +2534,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
       Card,
       { className: "mb-3" },
       h("div", { className: "font-semibold mb-1" }, "Cargos y permisos"),
-      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Aquí se preparan los cargos de la empresa y las personas asignadas en este local" + (localNombre ? " (" + localNombre + ")" : "") + ". Los cargos personalizados aún no se crean desde esta vista; se mantienen separados de los roles técnicos y de los permisos protegidos."),
-      !esPropietario ? h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, "Solo el Propietario podrá administrar cargos cuando se active esa función.") : null
+      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Aquí se preparan los cargos de la empresa y las personas asignadas en este local" + (localNombre ? " (" + localNombre + ")" : "") + ". Por defecto solo existe el cargo protegido Propietario. El Propietario puede crear tantos cargos funcionales como necesite y decidir sus pantallas y permisos."),
+      !esPropietario ? h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, "Solo el Propietario puede crear cargos o cambiar sus permisos.") : null
     ),
     h(
       Card,
@@ -2567,7 +2565,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         h("div", { className: "font-semibold" }, "Cargos personalizados"),
         h(Btn, { small: true, onClick: () => setFormulario({ id: "", nombre: "", descripcion: "" }), disabled: ocupado }, "Nuevo cargo")
       ),
-      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Cada cargo tiene un ID propio. Al duplicarlo se crea otro cargo independiente y debes revisar sus permisos antes de asignarlo."),
+      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Cada cargo tiene un ID propio. Puedes crear todos los cargos que necesites; al duplicar uno se crea otro independiente y debes revisar sus permisos antes de asignarlo."),
       formulario ? h(
         "div",
         { className: "rounded-lg p-3 mb-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
@@ -2658,7 +2656,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
           { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
           h("div", { className: "font-medium mb-1" }, "Pantallas que puede consultar este cargo"),
           h("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Selecciona solo pantallas. Consultar una pantalla no concede crear, editar, exportar, anular ni configurar; esas acciones se definirán en el punto 5."),
-          h("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Este editor es un borrador local del diseño del cargo. Todavía no guarda la selección en el servidor; la persistencia autorizada corresponde al subpunto 4.4."),
+          h("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "La selección se guarda en el servidor mediante una operación autorizada y auditada. Consultar una pantalla no concede por sí solo acciones de crear, editar, exportar, anular ni configurar."),
           h("div", { className: "flex gap-2 flex-wrap mb-3" },
             h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(true), disabled: ocupado }, "Marcar todas activas"),
             h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(false), disabled: ocupado }, "Desmarcar todas"),
@@ -3441,7 +3439,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["sala", "Sala y mesas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"], ["mfa", "Verificación en dos pasos"]];
+  const secciones = [["dia", "Día y cajas"], ["sala", "Sala y mesas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["mfa", "Verificación en dos pasos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -3455,8 +3453,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
     seccion === "terminales" ? h(ConfigTerminalesCajas, { empresaId, localId }) : null,
     seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre, procesarColaFiscalQaC07D }) : null,
-    seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
-    seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null,
+    seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario }) : null,
     seccion === "mfa" ? h(ConfigMfa, { esPropietario }) : null
   );
   return h(
