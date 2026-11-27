@@ -11302,16 +11302,13 @@ function lineasRecibidasRepartoTpv(estado) {
   }).filter((item) => item.devolvible > 0);
 }
 // H-35 (auditoria del TPV): el historial no reflejaba los reembolsos economicos (B08): una venta con 1,00 EUR devueltos figuraba ACTIVA, su ticket no lo decia y el importe seguia en «Total vigente».
-// Los reembolsos CONFIRMADOS y sus aplicaciones por venta fiscal salen del servidor; esto suma, por venta fiscal, lo realmente devuelto.
-function reembolsoPorVentaDeFilasTpv(reembolsos, aplicaciones) {
-  const confirmados = new Set((Array.isArray(reembolsos) ? reembolsos : []).filter((r2) => String(r2?.estado || "") === "CONFIRMADO").map((r2) => String(r2.id)));
+// Lo realmente devuelto por venta fiscal lo suma el servidor (abc_reembolsos_por_venta: solo reembolsos CONFIRMADOS); la pantalla no puede leer esas tablas directamente.
+function reembolsoPorVentaDeRespuestaTpv(respuesta) {
+  const ventas = respuesta && respuesta.ok === true && respuesta.ventas && typeof respuesta.ventas === "object" ? respuesta.ventas : {};
   const porVenta = {};
-  (Array.isArray(aplicaciones) ? aplicaciones : []).forEach((a2) => {
-    if (!a2 || !confirmados.has(String(a2.reembolso_id)) || !a2.venta_fiscal_id) return;
-    const importe = Number(a2.importe_venta) || 0;
-    if (importe <= 0) return;
-    const clave = String(a2.venta_fiscal_id);
-    porVenta[clave] = Math.round(((porVenta[clave] || 0) + importe) * 100) / 100;
+  Object.keys(ventas).forEach((clave) => {
+    const importe = Number(ventas[clave]) || 0;
+    if (clave && importe > 0) porVenta[clave] = Math.round(importe * 100) / 100;
   });
   return porVenta;
 }
@@ -26109,12 +26106,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     (async () => {
       try {
         const supabase = await window.getSupabaseClient();
-        const [reembolsos, aplicaciones] = await Promise.all([
-          supabase.from("reembolsos").select("id,estado").eq("empresa_id", empresaId).eq("local_id", localId).eq("estado", "CONFIRMADO"),
-          supabase.from("reembolso_aplicaciones").select("reembolso_id,venta_fiscal_id,importe_venta").eq("empresa_id", empresaId).eq("local_id", localId)
-        ]);
-        if (reembolsos.error || aplicaciones.error) throw reembolsos.error || aplicaciones.error;
-        const mapa = reembolsoPorVentaDeFilasTpv(reembolsos.data, aplicaciones.data);
+        const { data, error } = await supabase.rpc("abc_reembolsos_por_venta", { p_empresa_id: empresaId, p_local_id: localId });
+        if (error) throw error;
+        const mapa = reembolsoPorVentaDeRespuestaTpv(data);
         const firma = JSON.stringify(mapa);
         if (vigente && firma !== reembolsosFirmaRef.current) {
           reembolsosFirmaRef.current = firma;

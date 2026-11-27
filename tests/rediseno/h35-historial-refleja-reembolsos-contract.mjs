@@ -4,8 +4,8 @@
  *   node tests/rediseno/h35-historial-refleja-reembolsos-contract.mjs
  *   H35_FUENTE=/ruta/otra/fuente.js node tests/rediseno/h35-...   (para comprobar que el código anterior falla)
  *
- * Los reembolsos CONFIRMADOS y sus aplicaciones por venta fiscal los lee la pantalla del servidor (`reembolsos` y `reembolso_aplicaciones`, con la política de
- * lectura del local). Se ejecuta el código REAL de los dos ayudantes (suma por venta y etiqueta) y se fija el cableado en el historial, el ticket y el total vigente.
+ * Lo reembolsado por venta fiscal lo suma el servidor (`abc_reembolsos_por_venta`, con su propio contrato PGlite) porque el navegador no puede leer
+ * `reembolso_aplicaciones`. Se ejecuta el código REAL de los dos ayudantes (lectura de la respuesta y etiqueta) y se fija el cableado en el historial, el ticket y el total vigente.
  */
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -22,35 +22,25 @@ function check(nombre, ok, detalle = '') {
 }
 
 // ---------- A: los ayudantes ----------
-const ini = src.indexOf('function reembolsoPorVentaDeFilasTpv(reembolsos, aplicaciones) {');
+const ini = src.indexOf('function reembolsoPorVentaDeRespuestaTpv(respuesta) {');
 const fin = ini >= 0 ? src.indexOf('\nvar FILAS_REJILLA_TPV = 4;', ini) : -1;
 check('A0 existen los ayudantes de reembolsos por venta', ini > 0 && fin > ini);
 if (ini > 0 && fin > ini) {
   const fmt = (n) => (Number(n) || 0).toFixed(2).replace('.', ',');
-  const { suma, etiqueta } = new Function('fmt', `${src.slice(ini, fin)}\nreturn { suma: reembolsoPorVentaDeFilasTpv, etiqueta: etiquetaReembolsoVentaTpv };`)(fmt);
-  const rs = [{ id: 'r1', estado: 'CONFIRMADO' }, { id: 'r2', estado: 'CANCELADO' }, { id: 'r3', estado: 'CONFIRMADO' }, { id: 'r4', estado: 'SOLICITADO' }];
-  const as = [
-    { reembolso_id: 'r1', venta_fiscal_id: 'V1', importe_venta: '1.00000000' },
-    { reembolso_id: 'r2', venta_fiscal_id: 'V1', importe_venta: '5.00' },
-    { reembolso_id: 'r3', venta_fiscal_id: 'V1', importe_venta: 0.5 },
-    { reembolso_id: 'r3', venta_fiscal_id: 'V2', importe_venta: 2 },
-    { reembolso_id: 'r4', venta_fiscal_id: 'V3', importe_venta: 9 },
-    { reembolso_id: 'r1', venta_fiscal_id: null, importe_venta: 3 },
-    { reembolso_id: 'r1', venta_fiscal_id: 'V4', importe_venta: 0 },
-  ];
-  const m = suma(rs, as);
-  check('A1 suma por venta fiscal solo lo de reembolsos CONFIRMADOS (V1 = 1,00 + 0,50)', m.V1 === 1.5 && m.V2 === 2, JSON.stringify(m));
-  check('A2 no cuenta cancelados ni solicitados, ni aplicaciones sin venta o con importe 0', !('V3' in m) && !('V4' in m) && Object.keys(m).length === 2);
-  check('A3 entradas vacías o inválidas no fallan', JSON.stringify(suma(null, undefined)) === '{}' && JSON.stringify(suma([], [{}])) === '{}');
-  check('A4 la etiqueta dice «Reembolsada» si es total y «Reembolso parcial» si no, con el importe', etiqueta({ reembolsadoEconomico: 1, reembolsadaTotal: true }) === 'Reembolsada 1,00 €' && etiqueta({ reembolsadoEconomico: 0.5, reembolsadaTotal: false }) === 'Reembolso parcial 0,50 €');
+  const { mapa, etiqueta } = new Function('fmt', `${src.slice(ini, fin)}\nreturn { mapa: reembolsoPorVentaDeRespuestaTpv, etiqueta: etiquetaReembolsoVentaTpv };`)(fmt);
+  const m = mapa({ ok: true, ventas: { V1: 1.5, V2: '2.25', V3: 0, V4: -1, V5: 'x', '': 4 } });
+  check('A1 toma de la respuesta del servidor lo devuelto por venta fiscal (acepta números y texto numérico)', m.V1 === 1.5 && m.V2 === 2.25, JSON.stringify(m));
+  check('A2 descarta importes 0, negativos o no numéricos y claves vacías', !('V3' in m) && !('V4' in m) && !('V5' in m) && !('' in m) && Object.keys(m).length === 2);
+  check('A3 una respuesta no válida (sin ok, con ok falso, nula o sin mapa) da un mapa vacío sin fallar', JSON.stringify(mapa(null)) === '{}' && JSON.stringify(mapa({ ok: false, ventas: { V1: 1 } })) === '{}' && JSON.stringify(mapa({ ok: true })) === '{}' && JSON.stringify(mapa(undefined)) === '{}');
+  check('A4 la etiqueta dice «Reembolsada» si es total y «Reembolso parcial» si no, con el importe', etiqueta({ reembolsadoEconomico: 1, reembolsadaTotal: true }) === 'Reembolsada 1,00 \u20AC' && etiqueta({ reembolsadoEconomico: 0.5, reembolsadaTotal: false }) === 'Reembolso parcial 0,50 \u20AC');
   check('A5 sin reembolso no hay etiqueta', etiqueta({ reembolsadoEconomico: 0 }) === '' && etiqueta(null) === '' && etiqueta({}) === '');
 }
 
 // ---------- B: cableado (fuente.js y su espejo) ----------
 for (const [nombre, t] of [['fuente.js', src], ['source-recovery/fuente-recuperado.js', espejo]]) {
   const tiene = (id, x) => check(`${id} [${nombre}]`, t.includes(x));
-  tiene('B1 lee los reembolsos CONFIRMADOS del servidor, de su empresa y su local', 'supabase.from("reembolsos").select("id,estado").eq("empresa_id", empresaId).eq("local_id", localId).eq("estado", "CONFIRMADO")');
-  tiene('B2 y sus aplicaciones por venta fiscal', 'supabase.from("reembolso_aplicaciones").select("reembolso_id,venta_fiscal_id,importe_venta").eq("empresa_id", empresaId).eq("local_id", localId)');
+  tiene('B1 lee lo reembolsado por venta de la función de servidor, con su empresa y su local', 'supabase.rpc("abc_reembolsos_por_venta", { p_empresa_id: empresaId, p_local_id: localId })');
+  check(`B2 no lee directamente reembolso_aplicaciones (el navegador no tiene permiso sobre esa tabla) [${nombre}]`, !/\.from\("reembolso_aplicaciones"\)/.test(t));
   tiene('B3 solo con la nube activa; no hace nada en modo local', 'if (!empresaId || !localId || typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return;');
   tiene('B4 no actualiza el estado si nada cambió (evita bucles de render, como en H-15)', 'if (vigente && firma !== reembolsosFirmaRef.current) {');
   tiene('B5 el historial toma lo reembolsado de la venta fiscal (o de la venta si es la misma)', 'const ventaFiscalRefReembolso = lineas.find((l22) => l22.ventaFiscalId)?.ventaFiscalId || ventaId;');

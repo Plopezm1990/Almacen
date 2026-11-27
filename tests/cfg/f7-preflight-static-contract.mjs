@@ -232,6 +232,9 @@ const EXCLUIDAS = new Set([
   // actividad. Lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h50-repartos-de-lineas-canceladas-pglite-contract.mjs
   '20261128150000_abc_f6_repartos_de_lineas_canceladas_no_retienen_cuenta.sql',
+  // H-35: funcion de solo lectura con lo reembolsado por venta fiscal (el navegador no puede leer reembolso_aplicaciones). Lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h35-reembolsos-por-venta-pglite-contract.mjs
+  '20261128160000_abc_f6_reembolsos_por_venta.sql',
   // H-04 / H-18 (Ola 2): encargos y pagos de encargo solo por funciones de servidor; quita TRUNCATE/REFERENCES/TRIGGER
   // sobrantes. Lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs
@@ -342,6 +345,9 @@ const JUSTIFICACION = {
   ],
   '20261128150000_abc_f6_repartos_de_lineas_canceladas_no_retienen_cuenta.sql': [
     'tests/rediseno/h50-repartos-de-lineas-canceladas-pglite-contract.mjs',
+  ],
+  '20261128160000_abc_f6_reembolsos_por_venta.sql': [
+    'tests/rediseno/h35-reembolsos-por-venta-pglite-contract.mjs',
   ],
 };
 
