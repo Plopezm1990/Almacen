@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 403,
+  "total_inventory": 406,
   "expected_counts": {
-    "active_contract": 386,
+    "active_contract": 389,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 342,
+      "active_contract": 343,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "pglite": {
-      "active_contract": 10,
+      "active_contract": 12,
       "historical_expected_fail": 0,
       "utility": 1,
       "diagnostic": 0
@@ -2004,6 +2004,21 @@
       "path": "tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs",
       "classification": "active_contract",
       "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h36-cuenta-empleado-password-inicial-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h45-guardar-solo-politicas-cambiadas-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
     },
     {
       "path": "tests/rediseno/h22-enviar-pedido-conserva-la-cuenta-contract.mjs",

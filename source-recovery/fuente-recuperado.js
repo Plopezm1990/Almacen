@@ -3486,6 +3486,14 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
     requiere_doble_aprobacion: false,
     activa: true
   });
+  // H-45 (auditoría del TPV, lote L5): guardar enviaba TODAS las políticas del formulario y el servidor reescribía también las
+  // que no habían cambiado (cambiaba su fecha de actualización y llenaba el historial de «cambios» sin cambio). Una política
+  // solo se envía si no existe en el servidor o si algún valor es distinto del que el servidor devolvió al cargar.
+  const politicaCambiadaA09 = (actual, servidor) => {
+    if (!servidor) return true;
+    if (Number(actual.max_percent) !== Number(servidor.max_percent)) return true;
+    return ["permite_cortesia", "puede_solicitar", "puede_aplicar", "puede_autorizar", "permite_escalado", "requiere_doble_aprobacion", "activa"].some((k22) => !!actual[k22] !== !!servidor[k22]);
+  };
   const politicaInicial = {
     Propietario: {
       rol: "Propietario",
@@ -3634,11 +3642,16 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
         return;
       }
     }
+    const rolesAGuardar = Object.keys(form).filter((rol) => politicaCambiadaA09(form[rol], politicas.find((s22) => s22?.rol === rol && !s22?.user_id)));
+    if (rolesAGuardar.length === 0) {
+      setConfirmacion("No hay cambios que guardar: las pol\xEDticas son iguales a las del servidor.");
+      return;
+    }
     setGuardando(true);
     try {
       const supabase = await obtenerCliente();
       if (!supabase) throw new Error("No hay una sesi\xF3n sincronizada.");
-      for (const rol of Object.keys(form)) {
+      for (const rol of rolesAGuardar) {
         const p3 = form[rol];
         const { error: rpcError } = await supabase.rpc("abc_configurar_descuento_politica", {
           p_operation_id: `a09.configurar.politica.${empresaId}.${localId}.${rol}.${Date.now()}`,
@@ -3659,7 +3672,7 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
         });
         if (rpcError) throw rpcError;
       }
-      setConfirmacion("Pol\xEDticas guardadas correctamente en el servidor.");
+      setConfirmacion(rolesAGuardar.length === 1 ? "Pol\xEDtica guardada correctamente en el servidor (solo la que cambi\xF3: " + rolesAGuardar[0] + ")." : "Pol\xEDticas guardadas correctamente en el servidor (" + rolesAGuardar.length + " modificadas).");
       await cargar();
     } catch (e2) {
       setError(e2?.message || "No se pudieron guardar las pol\xEDticas.");

@@ -218,6 +218,14 @@ const EXCLUIDAS = new Set([
   // abc_cerrar_cuenta_pagada; lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs
   '20261127120000_abc_f4_cerrar_cuenta_ignora_pagos_rechazados.sql',
+  // H-04 / H-18 (Ola 2): encargos y pagos de encargo solo por funciones de servidor; quita TRUNCATE/REFERENCES/TRIGGER
+  // sobrantes. Lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs
+  '20261128100000_abc_f6_encargos_solo_funciones_y_privilegios.sql',
+  // H-36 (Ola 2): la cuenta de empleado nueva queda con la contraseña inicial pendiente. Parchea
+  // pm11_finalizar_creacion_cuenta_empleado; lo prueba:
+  //   tests/rediseno/h36-cuenta-empleado-password-inicial-pglite-contract.mjs
+  '20261128110000_abc_f6_cuenta_empleado_password_inicial_pendiente.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -299,6 +307,12 @@ const JUSTIFICACION = {
   ],
   '20261127120000_abc_f4_cerrar_cuenta_ignora_pagos_rechazados.sql': [
     'tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs',
+  ],
+  '20261128100000_abc_f6_encargos_solo_funciones_y_privilegios.sql': [
+    'tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs',
+  ],
+  '20261128110000_abc_f6_cuenta_empleado_password_inicial_pendiente.sql': [
+    'tests/rediseno/h36-cuenta-empleado-password-inicial-pglite-contract.mjs',
   ],
 };
 
