@@ -5144,12 +5144,18 @@ function GestionAlmacen() {
   );
   // H-15 (E2): lo vendido hoy desde el almacen por falta de piso, para que el Encargado y el Propietario lo vean en pendientes.
   const [pisoPorReponerTpv, setPisoPorReponerTpv] = (0, import_react4.useState)([]);
+  // Se lleva la lista actual en una referencia para NO llamar a setState cuando no cambia nada: con un setState al montar (aunque devolviera el mismo valor) la carga
+  // inicial se quedaba en «Cargando almacén…» en el modo local (comprobado en el navegador el 27/11/2026).
+  const pisoPorReponerRef = (0, import_react4.useRef)([]);
   const firmaPisoTpv = (0, import_react4.useMemo)(() => productosDelLocalActivo.map((p22) => String(p22.id) + ":" + (Number(p22.stockPisoVenta) || 0) + ":" + (Number(p22.stock) || 0)).join("|"), [productosDelLocalActivo]);
   (0, import_react4.useEffect)(() => {
     const rolServidor = typeof window !== "undefined" && window.__nubeActiva ? miPerfil?.rol : null;
     const empresaId = empresaDelLocalActivo?.id || null;
     if (!empresaId || !localActivoId || !["Propietario", "Encargado"].includes(String(rolServidor || "")) || typeof window.getSupabaseClient !== "function") {
-      setPisoPorReponerTpv((previo) => previo.length ? [] : previo);
+      if (pisoPorReponerRef.current.length) {
+        pisoPorReponerRef.current = [];
+        setPisoPorReponerTpv([]);
+      }
       return;
     }
     let vigente = true;
@@ -5160,9 +5166,18 @@ function GestionAlmacen() {
         inicio.setHours(0, 0, 0, 0);
         const { data, error } = await supabase.from("movimientos_stock").select("id,producto_id,tipo,delta_almacen,movimiento_original_id").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("tipo", ["VENTA", "REVERSO"]).gte("created_at", inicio.toISOString()).limit(2e3);
         if (error) throw error;
-        if (vigente) setPisoPorReponerTpv(pisoPorReponerDeMovimientosTpv(data, productos));
+        if (vigente) {
+          const lista = pisoPorReponerDeMovimientosTpv(data, productos);
+          if (lista.length || pisoPorReponerRef.current.length) {
+            pisoPorReponerRef.current = lista;
+            setPisoPorReponerTpv(lista);
+          }
+        }
       } catch (error) {
-        if (vigente) setPisoPorReponerTpv((previo) => previo.length ? [] : previo);
+        if (vigente && pisoPorReponerRef.current.length) {
+          pisoPorReponerRef.current = [];
+          setPisoPorReponerTpv([]);
+        }
       }
     })();
     return () => {

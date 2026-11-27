@@ -94,6 +94,15 @@ for (const [nombre, t] of [['fuente.js', src], ['source-recovery/fuente-recupera
   tiene('D7 el pendiente llega al panel de inicio', 'pisoPorReponer: pisoPorReponerTpv,');
   tiene('D8 el pendiente «Piso por reponer» va el primero y lleva al traspaso', 'titulo: "Piso por reponer",');
   tiene('D9 el panel lo recibe en Dashboard y en PanelDiseno', 'stockBajo, pisoPorReponer,');
+  // Regresión encontrada en el navegador (27/11/2026): llamar a setState al montar (aunque devolviera el mismo valor) dejaba la carga inicial del modo
+  // local en «Cargando almacén…». El pendiente solo actualiza el estado cuando cambia algo, comparando con una referencia.
+  tiene('D12 la lista actual se lleva en una referencia', 'const pisoPorReponerRef = (0, import_react4.useRef)([]);');
+  check(`D13 nunca se llama a setState sin cambio al montar (sin actualizaciones funcionales que devuelven el mismo valor) [${nombre}]`, !/setPisoPorReponerTpv\(\(previo\)/.test(t));
+  tiene('D14 solo se actualiza el estado si hay algo que vaciar', 'if (pisoPorReponerRef.current.length) {
+        pisoPorReponerRef.current = [];
+        setPisoPorReponerTpv([]);
+      }
+      return;');
   check(`D10 no se escribe nada en el servidor desde este cambio [${nombre}]`, !/pisoPorReponerTpv[\s\S]{0,600}\.(insert|update|upsert|delete)\(/.test(t));
 }
 check('D11 el espejo lleva las mismas funciones', ['repartoStockDeVentaTpv', 'textoAvisoStockVentaTpv', 'pisoPorReponerDeMovimientosTpv'].every((f) => extrae(f) && espejo.includes(extrae(f))));
