@@ -65,7 +65,10 @@ const checks = {
   // paréntesis (`?` inmediatamente tras _pm07Servidor sin `(` delante).
   alertas_sin_precedencia_ambigua: !/tipo !== "elaborado" && \w+\._pm07Servidor \?/.test(s),
   alertas_pm07_parentesis: (s.match(/tipo !== "elaborado" && \(\w+\._pm07Servidor \?/g) || []).length >= 2,
-  tpv_precheck_autoritativo: /(\w+)\.producto\._pm07Servidor \? Number\(\1\.producto\.stock\) \|\| 0 : Number\(\1\.producto\.stockPisoVenta\) \|\| 0/.test(s),
+  // El aviso previo de stock de un producto del servidor se calcula con el stock AUTORITATIVO del servidor (el total), no con el local. Desde H-15
+  // (Ola 4) lo hace repartoStockDeVentaTpv, que ademas lo reparte entre piso y almacen; el servidor sigue siendo quien rechaza si no alcanza.
+  tpv_precheck_autoritativo: /(\w+)\.producto\._pm07Servidor \? Number\(\1\.producto\.stock\) \|\| 0 : Number\(\1\.producto\.stockPisoVenta\) \|\| 0/.test(s)
+    || s.includes('const total = Math.max(0, Number(servidor ? producto.stock : producto.stockPisoVenta) || 0);'),
   tpv_vendibles_autoritativo: /(\w+)\._pm07Servidor \? Number\(\1\.stock\) \|\| 0 : Number\(\1\.stockPisoVenta\) \|\| 0/.test(s),
   submit_traspaso_async: s.includes('async function submit() {\n    const res = await traspasarStock('),
   submit_interlocal_async: s.includes('async function submitEntreLocales() {\n    const res = await traspasarEntreLocales('),
