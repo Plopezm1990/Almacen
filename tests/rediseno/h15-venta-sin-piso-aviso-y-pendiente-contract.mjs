@@ -98,11 +98,7 @@ for (const [nombre, t] of [['fuente.js', src], ['source-recovery/fuente-recupera
   // local en «Cargando almacén…». El pendiente solo actualiza el estado cuando cambia algo, comparando con una referencia.
   tiene('D12 la lista actual se lleva en una referencia', 'const pisoPorReponerRef = (0, import_react4.useRef)([]);');
   check(`D13 nunca se llama a setState sin cambio al montar (sin actualizaciones funcionales que devuelven el mismo valor) [${nombre}]`, !/setPisoPorReponerTpv\(\(previo\)/.test(t));
-  tiene('D14 solo se actualiza el estado si hay algo que vaciar', 'if (pisoPorReponerRef.current.length) {
-        pisoPorReponerRef.current = [];
-        setPisoPorReponerTpv([]);
-      }
-      return;');
+  tiene('D14 solo se actualiza el estado si hay algo que vaciar', 'if (pisoPorReponerRef.current.length) {\n        pisoPorReponerRef.current = [];\n        setPisoPorReponerTpv([]);\n      }\n      return;');
   check(`D10 no se escribe nada en el servidor desde este cambio [${nombre}]`, !/pisoPorReponerTpv[\s\S]{0,600}\.(insert|update|upsert|delete)\(/.test(t));
 }
 check('D11 el espejo lleva las mismas funciones', ['repartoStockDeVentaTpv', 'textoAvisoStockVentaTpv', 'pisoPorReponerDeMovimientosTpv'].every((f) => extrae(f) && espejo.includes(extrae(f))));
