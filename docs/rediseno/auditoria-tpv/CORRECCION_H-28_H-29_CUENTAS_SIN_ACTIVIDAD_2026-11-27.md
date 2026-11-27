@@ -1,6 +1,6 @@
 # Corrección de H-28 y H-29 · cuentas abiertas sin actividad · 27/11/2026
 
-Estado: **migración aplicada en QA y probada con datos reales (transacción deshecha); pantalla y contratos hechos; sin probar desde la pantalla con sesión.**
+Estado: **migración aplicada en QA, pantalla y contratos hechos, y probado desde la pantalla con sesión real de QA (27/11/2026, vista previa del PR #227): se cerraron 7 cuentas.**
 Rama `correccion/ola0-tpv-2026-11-26`. Producción no se ha tocado.
 
 - **H-28:** «85 cuentas abiertas en el local, 83 de días ya cerrados. Desde aquí no se retoman y tampoco se cierran solas.»
@@ -42,6 +42,6 @@ tocan), no deja pulsar dos veces, recarga la lista y cuenta lo que quedó abiert
 ## Qué NO está hecho
 
 - **Las 81 cuentas con un pedido sin cobrar no se cierran solas.** Resolverlas (cobrarlas o anular el pedido, que con H-21 y H-49 ya cierra la cuenta) es de una persona. Falta, si se quiere, una pantalla que las enseñe una a una con esas dos acciones; hoy es la limpieza de QA (acta §11).
-- **Sin probar desde la pantalla con sesión de QA** (hace falta otra sesión de PM07). El cierre solo se ha visto con datos reales dentro de una transacción deshecha: **en QA no se ha cerrado ninguna cuenta de verdad**.
+- **Probado desde la pantalla con sesión de QA (27/11/2026):** el botón salió solo para Propietario con la lista cargada, pidió confirmación y cerró **7 cuentas** (todas por `DIA_OPERATIVO_CERRADO`, cada una con su evento `CUENTA_CERRADA_SIN_ACTIVIDAD`). Quedaron **83 abiertas** (CERRADA 52→59, ABIERTA 90→83), justo lo que había previsto la transacción deshecha. Una segunda pulsación no cerró nada («No había ninguna cuenta que cerrar de forma segura»). Pendiente: comprobar el botón ausente para un Cajero/a (sus contraseñas están pendientes de cambio, H-36).
 - No se programa un cierre **automático** (por horario): se deja la acción manual con permiso y confirmación. Si se quiere automático, es una decisión aparte.
 - H-29 no elimina la causa (crear cuenta y pedido en una sola operación del servidor); recoge sus restos.
