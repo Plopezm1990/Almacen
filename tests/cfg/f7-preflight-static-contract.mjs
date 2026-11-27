@@ -205,6 +205,14 @@ const EXCLUIDAS = new Set([
   // H-38b: lectura de las ventas que producen ese bloqueo, para el boton «Emitir documento
   // pendiente» del cierre. Solo lectura. Mismo contrato que la anterior.
   '20261126150000_abc_f5_c04_listar_ventas_sin_documento.sql',
+  // H-21 / H-42 (decision del 27/11): cancelar el ultimo pedido vivo de una cuenta sin nada mas
+  // la cierra. Parchea abc_cancelar_pedido; lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h21-cancelar-pedido-cierra-cuenta-pglite-contract.mjs
+  '20261127100000_abc_f5_cancelar_pedido_cierra_cuenta_vacia.sql',
+  // H-37 (decision del 27/11): la venta rapida del Cajero/a se completa por una entrada unica con el
+  // permiso de cobro (solo cuentas de BARRA); las transiciones directas siguen cerradas. Contrato:
+  //   tests/rediseno/h37-venta-rapida-por-cobro-pglite-contract.mjs
+  '20261127110000_abc_f5_venta_rapida_completar_por_cobro.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -277,6 +285,12 @@ const JUSTIFICACION = {
     'tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs',
   ],  '20261126150000_abc_f5_c04_listar_ventas_sin_documento.sql': [
     'tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs',
+  ],
+  '20261127100000_abc_f5_cancelar_pedido_cierra_cuenta_vacia.sql': [
+    'tests/rediseno/h21-cancelar-pedido-cierra-cuenta-pglite-contract.mjs',
+  ],
+  '20261127110000_abc_f5_venta_rapida_completar_por_cobro.sql': [
+    'tests/rediseno/h37-venta-rapida-por-cobro-pglite-contract.mjs',
   ],
 };
 
