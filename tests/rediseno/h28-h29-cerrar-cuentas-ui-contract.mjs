@@ -59,7 +59,7 @@ if (ini > 0 && fin > ini) {
 for (const [nombre, t] of [['fuente.js', src], ['source-recovery/fuente-recuperado.js', espejo]]) {
   const tiene = (id, x) => check(`${id} [${nombre}]`, t.includes(x));
   // El inicio y el final de las listas de la lógica de venta y de la llamada a VentaRapida los fijan contratos de A06.3, A08.1 y C12: la función nueva va en medio.
-  tiene('B1a la lógica de venta la expone (justo después de anularVenta)', '  return { venderCarrito, venderLocal, anularVenta, cerrarCuentasSinActividadA06, venderLineas,');
+  tiene('B1a la lógica de venta la expone (en medio de la lista: el principio y el final los fijan contratos de A06.1, A08.1 y C12)', 'cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, cerrarCuentasSinActividadA06, leerConfiguracionEmisionC07D,');
   tiene('B1b el padre la recibe (justo después de anularVenta)', '  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, cerrarCuentasSinActividadA06, venderLineas,');
   tiene('B2 el padre la pasa a la pantalla solo con la nube activa y para Propietario o Encargado', 'cerrarCuentasSinActividadA06, puedeLimpiarCuentasA06: typeof window !== "undefined" && window.__nubeActiva === true && ["Propietario", "Encargado"].includes(String(miPerfil?.rol || "")), cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06, unirCuentasA08 })');
   tiene('B3 el botón solo sale con permiso, con la lista cargada y con cuentas', 'cargado && cuentas.length > 0 && puedeLimpiarCuentasA06 && typeof cerrarCuentasSinActividadA06 === "function"');
