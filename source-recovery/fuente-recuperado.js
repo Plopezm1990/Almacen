@@ -3488,9 +3488,10 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
   });
   // H-45 (auditoría del TPV, lote L5): guardar enviaba TODAS las políticas del formulario y el servidor reescribía también las
   // que no habían cambiado (cambiaba su fecha de actualización y llenaba el historial de «cambios» sin cambio). Una política
-  // solo se envía si no existe en el servidor o si algún valor es distinto del que el servidor devolvió al cargar.
+  // solo se envía si algún valor es distinto del que el servidor devolvió al cargar. Un cargo que aún no tiene fila en el servidor
+  // se compara con la política vacía (sin descuentos ni permisos): si sigue vacío no hay nada que guardar y no se crea una fila de ceros.
   const politicaCambiadaA09 = (actual, servidor) => {
-    if (!servidor) return true;
+    if (!servidor) servidor = { max_percent: "0", permite_cortesia: false, puede_solicitar: false, puede_aplicar: false, puede_autorizar: false, permite_escalado: false, requiere_doble_aprobacion: false, activa: true };
     if (Number(actual.max_percent) !== Number(servidor.max_percent)) return true;
     return ["permite_cortesia", "puede_solicitar", "puede_aplicar", "puede_autorizar", "permite_escalado", "requiere_doble_aprobacion", "activa"].some((k22) => !!actual[k22] !== !!servidor[k22]);
   };

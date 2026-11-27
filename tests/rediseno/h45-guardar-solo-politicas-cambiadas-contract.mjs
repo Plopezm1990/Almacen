@@ -39,7 +39,10 @@ if (m) {
   check('A2 cambia el máximo: hay cambio', politicaCambiadaA09({ ...formIgual, max_percent: '90' }, servidor) === true);
   check('A3 cambia una casilla: hay cambio', politicaCambiadaA09({ ...formIgual, puede_autorizar: false }, servidor) === true);
   check('A4 cambia «Activa»: hay cambio', politicaCambiadaA09({ ...formIgual, activa: false }, servidor) === true);
-  check('A5 sin fila en el servidor (rol nuevo o primera configuración): se envía', politicaCambiadaA09(formIgual, undefined) === true);
+  check('A5 sin fila en el servidor y con valores configurados (primera configuración): se envía', politicaCambiadaA09(formIgual, undefined) === true);
+  const vacia = { rol: 'Cajero/a', max_percent: '0', permite_cortesia: false, puede_solicitar: false, puede_aplicar: false, puede_autorizar: false, permite_escalado: false, requiere_doble_aprobacion: false, activa: true };
+  check('A5b sin fila en el servidor y todavía vacío (sin descuentos ni permisos): no se crea una fila de ceros', politicaCambiadaA09(vacia, undefined) === false);
+  check('A5c sin fila en el servidor y con algo cambiado respecto al vacío: se envía', politicaCambiadaA09({ ...vacia, max_percent: '5', puede_aplicar: true }, undefined) === true);
   check('A6 valores nulos del servidor cuentan como falso', politicaCambiadaA09({ ...formIgual, permite_cortesia: false }, { ...servidor, permite_cortesia: null }) === false);
 }
 
