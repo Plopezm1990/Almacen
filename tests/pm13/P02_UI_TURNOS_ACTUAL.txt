@@ -245,10 +245,10 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Auditor\xEDa"), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Registro de las acciones sensibles: borrados, pagos marcados, ajustes de inventario, anulaciones y variaciones de precio al confirmar un albar\xE1n. No registra cada clic \u2014 solo lo que de verdad importa revisar si algo sale mal.")), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid grid-cols-2 gap-x-3" }, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Desde" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: desde, onChange: (e2) => setDesde(e2.target.value) })), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Hasta" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "date", value: hasta, onChange: (e2) => setHasta(e2.target.value) }))), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: copiar }, copiado ? "\xA1Copiado!" : "Copiar como texto")), filtrada.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Sin acciones registradas en este periodo." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, filtrada.map((a22) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: a22.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-start justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium" }, a22.accion), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px]", style: { color: C2.inkSoft } }, a22.detalle)), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-right shrink-0 ml-2" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mono", style: { color: C2.inkSoft } }, a22.fecha, " ", a22.hora), /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: (a22.usuario || a22.modo) !== "Propietario/a" ? C2.amber : C2.inkSoft }, a22.usuario || a22.modo)))))));
 }
 var ESTADO_RECONCILIACION = {
-  OK: { texto: "OK", color: "#16a34a" },
-  DEFICIT: { texto: "D\xE9ficit", color: "#d97706" },
-  DISCREPANCIA: { texto: "Discrepancia", color: "#dc2626" },
-  DEFICIT_Y_DISCREPANCIA: { texto: "D\xE9ficit + discrepancia", color: "#dc2626" }
+  OK: { texto: "OK", color: C2.accent, fondo: C2.accentSoft },
+  DEFICIT: { texto: "D\xE9ficit", color: C2.amber, fondo: C2.amberSoft },
+  DISCREPANCIA: { texto: "Discrepancia", color: C2.red, fondo: C2.redSoft },
+  DEFICIT_Y_DISCREPANCIA: { texto: "D\xE9ficit + discrepancia", color: C2.red, fondo: C2.redSoft }
 };
 function DiagnosticoStock({ diagnostico, corregirProducto, movimientosParaReconciliar }) {
   const [filtro, setFiltro] = (0, import_react4.useState)("discrepancias");
@@ -802,7 +802,7 @@ function TerminalNavegadorTpv({ empresaId, localId }) {
     error ? h("p", { role: "alert" }, error) : null
   );
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null, unirCuentasA08 = null }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null, unirCuentasA08 = null }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
       const host = window.location.hostname;
@@ -1661,6 +1661,4 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [mensajeRepartoA08, setMensajeRepartoA08] = (0, import_react4.useState)("");
   const [cuentasAparcadasA06, setCuentasAparcadasA06] = (0, import_react4.useState)(null);
   const [cargandoAparcadasA06, setCargandoAparcadasA06] = (0, import_react4.useState)(false);
-  const [errorAparcadasA06, setErrorAparcadasA06] = (0, import_react4.useState)("");
-  const [mensajeAparcadasA06, setMensajeAparcadasA06] = (0, import_react4.useState)("");
-  const
+  const [errorAparcadasA06, setErrorAparcadasA06] = (0, import_react4.useState)(

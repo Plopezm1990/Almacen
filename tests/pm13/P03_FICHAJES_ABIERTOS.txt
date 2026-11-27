@@ -1,4 +1,4 @@
-### REF 1 @ 4329750
+### REF 1 @ 4338333
 Number(m22.ingresoUnitario) || 0), 0);
       const fechas = susVentas.map((m22) => m22.fecha).sort();
       const ultima = fechas[fechas.length - 1] || null;
@@ -61,7 +61,7 @@ Number(m22.ingresoUnitario) || 0), 0);
         origen: "albaran",
        
 
-### REF 2 @ 4330145
+### REF 2 @ 4338728
 tima, diasSinComprar, nEncargos };
     }).sort((a22, b2) => b2.facturado - a22.facturado);
   }, [clientes, movimientos, encargos]);
@@ -130,7 +130,7 @@ tima, diasSinComprar, nEncargos };
         pendiente: saldo.pendiente,
         pagada: saldo.
 
-### REF 3 @ 4330211
+### REF 3 @ 4338794
 turado - a22.facturado);
   }, [clientes, movimientos, encargos]);
   const clientesDormidos = (0, import_react4.useMemo)(
@@ -201,7 +201,7 @@ turado - a22.facturado);
     });
     const deDirectas = facturasDirectas.fi
 
-### REF 4 @ 4330294
+### REF 4 @ 4338877
 ormidos = (0, import_react4.useMemo)(
     () => analisisClientes.filter((c22) => c22.nEncargos > 0 && c22.diasSinComprar !== null && c22.diasSinComprar > 60),
     [analisisClientes]
@@ -271,7 +271,7 @@ ormidos = (0, import_react4.useMemo)(
     const deDirectas = facturasDirectas.filter((f22) => f22.estado === "ACTIVA").map((f22) => {
       const prov = f22.provee
 
-### REF 5 @ 4341232
+### REF 5 @ 4349815
 2) => l22.id));
   const localEsDeEmpresaInforme = (id) => !!id && idsLocalesEmpresaInforme.has(id);
   const inferirLocalLineasInforme = (lineas) => {
@@ -298,7 +298,7 @@ ormidos = (0, import_react4.useMemo)(
   const stockBajoInforme = productosInforme.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0)));
   const productosConPrecioInforme = productosI
 
-### REF 6 @ 4341258
+### REF 6 @ 4349841
 calEsDeEmpresaInforme = (id) => !!id && idsLocalesEmpresaInforme.has(id);
   const inferirLocalLineasInforme = (lineas) => {
     const ids = [...new Set((lineas || []).map((ln2) => localPorProductoInforme.get(ln2 && ln2.productoId)).filter(Boolean))];
@@ -324,14 +324,16 @@ calEsDeEmpresaInforme = (id) => !!id && idsLocalesEmpresaInforme.has(id);
   const stockBajoInforme = productosInforme.filter((p22) => p22.tipo !== "elaborado" && (p22._pm07Servidor ? p22._pm07BajoMinimo === true : Number(p22.stock) < Number(p22.stockMinimo || 0)));
   const productosConPrecioInforme = productosInforme.filter((p22) => Num
 
-### REF 7 @ 4347660
-(import_react4.default.Fragment, null, modoEmpleado && /* @__PURE__ */ import_react4.default.createElement(InicioEmpleado, { nombre: nombreActivoEmpleado, rol: rolEfectivoEmpleadoNav, contextoLocal: contextoActivoPM15, empleadoIdResuelto: empleadoActivoResuelto ? empleadoActivoResuelto.id : null, turnoHoy: empleadoActivoResuelto ? turnosDelLocalActivo.find((t22) => t22.empleadoId === empleadoActivoResuelto.id && t22.fecha === todayISO()) : void 0, fichajesHoyEmpleado: empleadoActivoResuelto ? fichajesDelLocalActivo.filter((f22) => f22.empleadoId === empleadoActivoResuelto.id && f22.fecha === todayISO() && f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true") : [], fichar, itemsPermitidos: itemsPermitidosEmpleado, setTab: cambiarTabPM15 }), /* @__PURE__ */ import_react4.default.createElement(
+### REF 7 @ 4356533
+ombreActivoEmpleado, rol: rolEfectivoEmpleadoNav, contextoLocal: contextoActivoPM15, empleadoIdResuelto: empleadoActivoResuelto ? empleadoActivoResuelto.id : null, turnoHoy: empleadoActivoResuelto ? turnosDelLocalActivo.find((t22) => t22.empleadoId === empleadoActivoResuelto.id && t22.fecha === todayISO()) : void 0, fichajesHoyEmpleado: empleadoActivoResuelto ? fichajesDelLocalActivo.filter((f22) => f22.empleadoId === empleadoActivoResuelto.id && f22.fecha === todayISO() && f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true") : [], fichar, itemsPermitidos: itemsPermitidosEmpleado, setTab: cambiarTabPM15 }), /* @__PURE__ */ import_react4.default.createElement(
     Dashboard,
     {
       empresa: empresaDelLocalActivo,
       diseno: disenoNavegacion,
       contexto: contextoActivoPM15,
       puedeVerPanelRediseno,
+      cargarMapaSala: () => cargarMapaSalaA07({ paraPanel: true }),
+      listarPedidosTurno: listarEstacionesA10.listarPedidosTurno,
       itemsPermitidos: typeof window !== "undefined" && window.__nubeActiva ? miPerfil?.rol === "Propietario" ? null : itemsPermitidosEmpleado : modoEmpleado ? itemsPermitidosEmpleado : null,
       valorInventario: valorInventarioInforme,
       valorUtillaje: valorUtillajeInforme,
@@ -359,7 +361,7 @@ calEsDeEmpresaInforme = (id) => !!id && idsLocalesEmpresaInforme.has(id);
       registrarSalida,
       almacenCongelado
     }
-  )), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
+  )), inicioOrbita && selectorInformes, tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
     PanelDireccion,
     {
       movimientos,
@@ -393,16 +395,18 @@ calEsDeEmpresaInforme = (id) => !!id && idsLocalesEmpresaInforme.has(id);
     HistorialProducto,
     {
       productos: productosDelLocalActivo,
-      movimientos: movimientosDelLocalAc
 
-### REF 8 @ 4347678
-ault.Fragment, null, modoEmpleado && /* @__PURE__ */ import_react4.default.createElement(InicioEmpleado, { nombre: nombreActivoEmpleado, rol: rolEfectivoEmpleadoNav, contextoLocal: contextoActivoPM15, empleadoIdResuelto: empleadoActivoResuelto ? empleadoActivoResuelto.id : null, turnoHoy: empleadoActivoResuelto ? turnosDelLocalActivo.find((t22) => t22.empleadoId === empleadoActivoResuelto.id && t22.fecha === todayISO()) : void 0, fichajesHoyEmpleado: empleadoActivoResuelto ? fichajesDelLocalActivo.filter((f22) => f22.empleadoId === empleadoActivoResuelto.id && f22.fecha === todayISO() && f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true") : [], fichar, itemsPermitidos: itemsPermitidosEmpleado, setTab: cambiarTabPM15 }), /* @__PURE__ */ import_react4.default.createElement(
+
+### REF 8 @ 4356551
+o, rol: rolEfectivoEmpleadoNav, contextoLocal: contextoActivoPM15, empleadoIdResuelto: empleadoActivoResuelto ? empleadoActivoResuelto.id : null, turnoHoy: empleadoActivoResuelto ? turnosDelLocalActivo.find((t22) => t22.empleadoId === empleadoActivoResuelto.id && t22.fecha === todayISO()) : void 0, fichajesHoyEmpleado: empleadoActivoResuelto ? fichajesDelLocalActivo.filter((f22) => f22.empleadoId === empleadoActivoResuelto.id && f22.fecha === todayISO() && f22?.anulado !== true && String(f22?.anulado || "").toLowerCase() !== "true") : [], fichar, itemsPermitidos: itemsPermitidosEmpleado, setTab: cambiarTabPM15 }), /* @__PURE__ */ import_react4.default.createElement(
     Dashboard,
     {
       empresa: empresaDelLocalActivo,
       diseno: disenoNavegacion,
       contexto: contextoActivoPM15,
       puedeVerPanelRediseno,
+      cargarMapaSala: () => cargarMapaSalaA07({ paraPanel: true }),
+      listarPedidosTurno: listarEstacionesA10.listarPedidosTurno,
       itemsPermitidos: typeof window !== "undefined" && window.__nubeActiva ? miPerfil?.rol === "Propietario" ? null : itemsPermitidosEmpleado : modoEmpleado ? itemsPermitidosEmpleado : null,
       valorInventario: valorInventarioInforme,
       valorUtillaje: valorUtillajeInforme,
@@ -430,7 +434,7 @@ ault.Fragment, null, modoEmpleado && /* @__PURE__ */ import_react4.default.creat
       registrarSalida,
       almacenCongelado
     }
-  )), tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
+  )), inicioOrbita && selectorInformes, tab === "direccion" && /* @__PURE__ */ import_react4.default.createElement(
     PanelDireccion,
     {
       movimientos,
@@ -464,10 +468,9 @@ ault.Fragment, null, modoEmpleado && /* @__PURE__ */ import_react4.default.creat
     HistorialProducto,
     {
       productos: productosDelLocalActivo,
-      movimientos: movimientosDelLocalActivo,
-      pedido
+      movimientos: movim
 
-### REF 9 @ 4356333
+### REF 9 @ 4365240
 ab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
     CuentasPorPagar,
     {
@@ -542,9 +545,9 @@ ab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, set
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCat
 
-### REF 10 @ 4356351
+### REF 10 @ 4365258
 /* @__PURE__ */ import_react4.default.createElement(
     CuentasPorPagar,
     {
@@ -619,9 +622,9 @@ ab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local:
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOs
 
-### REF 11 @ 4372055
+### REF 11 @ 4381074
  "Productos", icon: Package },
     { id: "buscar", label: "Buscar", icon: Search },
     { id: "historial_producto", label: "Historial de producto", icon: RotateCcwClock },
@@ -664,36 +667,36 @@ ab === "pagos" && /* @__PURE__ */ import_react4.default.createElement(
     { id: "configuracion", label: "Configuraci\xF3n", icon: Cog },
     { id: "errores_sistema", lab
 
-### REF 12 @ 5007647
-");
-  }
-  return h("section", { ref: panelRef, className: "la-panel-diseno", "data-la-panel": diseno, "aria-label": panel.titulo },
-    h("header", {
-      className: "la-panel-diseno-cab",
-      onPointerMove: esOrbita ? moverLinea : undefined,
-      onPointerLeave: esOrbita ? (e2) => e2.currentTarget.style.removeProperty("--la-orbita-puntero") : undefined
-    },
-    contexto && h("p", { className: "la-panel-contexto" }, esOrbita ? "Panel de operaci\xF3n \u00B7 " + contexto : contexto),
-    h("h2", null, esOrbita && h("span", { "aria-hidden": true }, "\u2728 "),
-      panel.titulo, panel.destacado && h("em", null, " " + panel.destacado)),
-    accesos.length > 0 && h("div", { className: "la-panel-accesos", "aria-label": "Accesos r\xE1pidos" },
-      accesos.map((id) => {
-        const [texto, Icono] = ACCESOS_PANEL_REDISENO[id];
-        return h("button", { key: id, type: "button", onClick: () => { if (puedeConsultar(id)) navegar(id); } },
-          h(Icono, { size: 17, "aria-hidden": true }), texto);
-      }))
-    ),
-    indicadores.length > 0 && h("div", { className: "la-panel-indicadores" },
-      indicadores.map((item) => h("button", {
-        key: item.id, type: "button", onClick: () => { if (puedeConsultar(item.tab)) abrirIndicador(item); }
-      },
-      h(ACCESOS_PANEL_REDISENO[item.tab]?.[1] || ClipboardList, { size: 18, "aria-hidden": true }),
-      h("span", null, item.titulo),
-      h("strong", null, item.valor)))
+### REF 12 @ 5045763
+("div", { className: "la-panel-orbita-chart", role: "img", "aria-label": "Ventas recientes" },
+          ventasRecientes.map((importe, indice) => h("span", {
+            key: `${indice}-${importe}`,
+            className: "la-panel-orbita-bar",
+            style: { "--la-orbita-bar-nivel": String(Math.max(8, Math.round(importe / maxVentaReciente * 100))) },
+            title: `€${fmt(importe)}`
+          }))
+        ) : h(Empty, { text: "Aún no hay ventas registradas." })
+      ),
+      h("article", { className: "la-panel-orbita-card" },
+        h("div", { className: "la-panel-orbita-card-head" },
+          h("div", null,
+            h("h3", null, "Pendientes del día"),
+            h("p", null, pendientesOrbita.length > 0 ? "Acciones que requieren atención" : "No hay pendientes abiertos")),
+          h("span", { className: "la-panel-orbita-badge" }, String(pendientesOrbita.length))),
+        pendientesOrbita.length > 0 ? h("div", { className: "la-panel-orbita-pendientes" },
+          pendientesOrbita.map((pendiente) => h("button", {
+            key: pendiente.clave,
+            type: "button",
+            onClick: () => puedeConsultar(pendiente.tab) && navegar(pendiente.tab)
+          },
+          h("span", { className: "la-panel-orbita-pendiente-titulo" }, pendiente.titulo),
+          h("span", { className: "la-panel-orbita-pendiente-detalle" }, pendiente.detalle)))
+        ) : h(Empty, { text: "Todo está al día." })
+      )
     )
   );
 }
-function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, almacenCongelado = false, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null, diseno, contexto, puedeVerPanelRediseno }) {
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, almacenCongelado = false, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null, diseno, contexto, puedeVerPanelRediseno, cargarMapaSala, listarPedidosTurno }) {
   const entradas30 = movimientos.filter((m22) => esEntrada(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const salidas30 = movimientos.filter((m22) => esSalida(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const [abierta, setAbierta] = (0, import_react4.useState)(null);
@@ -702,18 +705,15 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
   // El resultado de la merma se queda en el dialogo en vez de cerrarlo sin decir
   // nada: antes se cerraba igual hubiera descontado o no.
   const [resultadoMermaLote, setResultadoMermaLote] = (0, import_react4.useState)(null);
-  const diasTexto = (d2) => d2 < 0 ? `vencido hace ${Math.abs(d2)} d` : d2 === 0 ? "hoy" : `en ${d2} d`;
-  const diasColor = (d2) => d2 < 0 ? C2.red : d2 <= 7 ? C2.amber : C2.inkSoft;
-  const descuadresStock = diagnosticoStock.filter((d2) => !d2.coincide).sort((a22, b2) => Math.abs(b2.diferencia) - Math.abs(a22.diferencia));
-  const permitido = (id) => !Array.isArray(itemsPermitidos) || itemsPermitidos.includes(id);
-  const tarjetas = [
-    {
-      id: "saldo",
-      titulo: "Saldo de almac\xE9n",
-      valor: `\u20AC${fmt(valorInventario)}`,
-      nota: valorUtillaje > 0 ? `+ \u2
+  // Inicio de Órbita (23/11/2026): "Mesas ocupadas" y "Comandas activas" en la
+  // maqueta se leen con las MISMAS funciones reales que ya usaba el panel de
+  // servicio retirado (abc_listar_mapa_sala y abc_listar_comandas_estacion vía
+  // listarPedidosTurno), con las mismas políticas RLS. No se inventa ningún
+  // dato: mientras no hay respuesta del servidor se muestra "…", y si falla se
+  // muestra el motivo en vez de un cero. Solo se pide cuando el diseño activo
+  // es Órbita, y una sola vez por cambio de diseño: no hay temporizador prop
 
-### REF 13 @ 5018898
+### REF 13 @ 5059934
 ndiente",
         derechaColor: C2.amber
       }))
@@ -786,14 +786,13 @@ ndiente",
   const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t22) => itemsPermitidos.includes(t22.tab)) : tarjetas;
   const tarjetaAbierta = tarjetasVisibles.find((t22) => t22.id === abierta);
   const panelDiseno = diseno && puedeVerPanelRediseno ? /* @__PURE__ */ import_react4.default.createElement(PanelDiseno, {
-    diseno, contexto, tarjetas: tarjetasVisibles, puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
+    diseno, contexto, tarjetas: tarjetasVisibles, movimientos, pedidosPendientes, stockBajo,
+    puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
     abrirIndicador: (item) => {
       setAbierta(item.id);
-      requestAnimationFrame(() => document.querySelector('[data-la-panel-detalle]')?.focus());
-    }
-  
+      requestAnimationFrame(() => document.querySelector
 
-### REF 14 @ 5018931
+### REF 14 @ 5059967
 2.amber
       }))
     },
@@ -865,15 +864,13 @@ ndiente",
   const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t22) => itemsPermitidos.includes(t22.tab)) : tarjetas;
   const tarjetaAbierta = tarjetasVisibles.find((t22) => t22.id === abierta);
   const panelDiseno = diseno && puedeVerPanelRediseno ? /* @__PURE__ */ import_react4.default.createElement(PanelDiseno, {
-    diseno, contexto, tarjetas: tarjetasVisibles, puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
+    diseno, contexto, tarjetas: tarjetasVisibles, movimientos, pedidosPendientes, stockBajo,
+    puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
     abrirIndicador: (item) => {
       setAbierta(item.id);
-      requestAnimationFrame(() => document.querySelector('[data-la-panel-detalle]')?.focus());
-    }
-  }) : null;
-  return /* @__PURE__ 
+      requestAnimationFrame(() => document.querySelector('[data-la-panel-detalle]')?.focu
 
-### REF 15 @ 5019004
+### REF 15 @ 5060040
 ya",
       valor: sugerenciasPedido.length,
       color: sugerenciasPedido.length ? C2.red : C2.ink,
@@ -940,15 +937,16 @@ ya",
   const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t22) => itemsPermitidos.includes(t22.tab)) : tarjetas;
   const tarjetaAbierta = tarjetasVisibles.find((t22) => t22.id === abierta);
   const panelDiseno = diseno && puedeVerPanelRediseno ? /* @__PURE__ */ import_react4.default.createElement(PanelDiseno, {
-    diseno, contexto, tarjetas: tarjetasVisibles, puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
+    diseno, contexto, tarjetas: tarjetasVisibles, movimientos, pedidosPendientes, stockBajo,
+    puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
     abrirIndicador: (item) => {
       setAbierta(item.id);
       requestAnimationFrame(() => document.querySelector('[data-la-panel-detalle]')?.focus());
     }
   }) : null;
-  return /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, nu
+  return /* @__PURE__ */ import_react4.default.c
 
-### REF 16 @ 5558037
+### REF 16 @ 5599791
  ficha, ausencias, documentos, fichajes ni n\xF3minas. La fecha y el motivo quedan registrados y el historial se conserva."), nominas.some((n2) => n2.empleadoId === confirmDeleteId) && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-3", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]" }, "Este empleado tiene n\xF3minas registradas. La baja conservar\xE1 esas n\xF3minas y el resto del historial. La anonimizaci\xF3n queda como una acci\xF3n de privacidad separada. ", /* @__PURE__ */ import_react4.default.createElement("b", null, '"Anonimizar"'), " \u2014 quita su nombre y datos personales, pero conserva fichajes y n\xF3minas con a qui\xE9n pertenecen, sin decir qui\xE9n era.")), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 flex-wrap" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: async () => {
     const r2 = await deleteEmpleado(confirmDeleteId);
     if (!r2 || r2.ok === false) {
@@ -989,7 +987,7 @@ function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, update
     }
     if (resultado === true || resultado?
 
-### REF 17 @ 5565260
+### REF 17 @ 5607014
  function submitManual() {
     if (!manual.empleadoId) {
       setManualError("Selecciona un empleado.");
@@ -1013,7 +1011,7 @@ function RegistroHorario({ empleados, fichajes, fichar, addFichajeManual, update
   }
   return /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(SectionTitle, null, "Registro horario"), /* @__PURE__ */ import_react4.default.createElement(EstadoCargaDatosPM12, { estado: estadoCargaEmpleados, etiqueta: "Empleados", pendiente: pendienteEmpleados }), /* @__PURE__ */ import_react4.default.createElement(EstadoCargaDatosPM12, { estado: estadoCargaDatos, etiqueta: "Fichajes", pendiente: pendienteSincronizacion }), /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, "Desde 2019, todas las empresas en Espa\xF1a est\xE1n obligadas a llevar un registro diario de la jornada de cada persona trabajadora, sea cual sea su tama\xF1o. Este registro se debe conservar 4 a\xF1os y estar disponible para la Inspecci\xF3n de Trabajo si lo pide.")), fichajesAbiertos.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold mb-1" }, "Fichajes sin cerrar"), fichajesAbiertos.map((f22, i33) => /* @__PURE__ */ import_react4.default.createElement("div", { key: i33, className: "flex items-center justify-between gap-2 text-[12px] py-0.5" }, /* @__PURE__ */ import_react4.default.createElement("span", null, f22.nombre, " \u2014 entr\xF3 el ", f22.fecha, " y no consta salida"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => { setManual({ empleadoId: f22.empleadoId, fecha: f22.fecha, tipo: "salida", hora: "" }); setShowManual(true); } }, "Corregir")))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] font-medium mb-2", style: { color: C2.inkSoft } }, "Hoy"), estadoCargaEmpleados === "cargando" || estadoCargaEmpleados === "error" ? null : activos.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "A\xF1ade empleados activos en Personal para poder ficharles." }) : /* @__PURE__ */ import_react4.default.createElement("div", { className: "grid md:grid-cols-2 gap-3 mb-4" }, estadoHoy.map(({ empleado, ultimaEntrada, abierto }) => /* @__PURE__ */ import_react4.default.createElement(Card, { key: empleado.id }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between" }, /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement("div", {
 
-### REF 18 @ 5565559
+### REF 18 @ 5607313
 ,
       hora: manual.hora,
       timestamp: (/* @__PURE__ */ new Date(`${manual.fecha}T${manual.hora}:00`)).toISOString(),

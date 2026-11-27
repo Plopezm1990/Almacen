@@ -1332,7 +1332,7 @@ var CONFIG_ERRORES = {
   cargo_no_disponible: "El cargo no está activo o ya no está disponible.",
   cargo_operation_id_requerido: "No se pudo identificar la operación. Recarga e inténtalo de nuevo.",
   cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
-  cargo_nombre_reservado: "Ese nombre está reservado para un rol protegido del sistema.",
+  cargo_nombre_reservado: "Los nombres de los cargos son libres; recarga la aplicación y vuelve a intentarlo.",
   cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado.",
   FISCAL_CONFIG_NO_AUTORIZADO: "Necesitas acceso de Propietario a toda la empresa para configurar su emisor fiscal.",
   FISCAL_CONFIG_VERSION_OBSOLETA: "Otra sesión cambió este borrador. Se han recargado los datos más recientes; revisa antes de volver a guardar.",
@@ -2534,13 +2534,13 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
       Card,
       { className: "mb-3" },
       h("div", { className: "font-semibold mb-1" }, "Cargos y permisos"),
-      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Aquí se preparan los cargos de la empresa y las personas asignadas en este local" + (localNombre ? " (" + localNombre + ")" : "") + ". Por defecto solo existe el cargo protegido Propietario. El Propietario puede crear tantos cargos funcionales como necesite y decidir sus pantallas y permisos."),
+      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Aquí se preparan los cargos de la empresa y las personas asignadas en este local" + (localNombre ? " (" + localNombre + ")" : "") + ". Por defecto solo aparece el Propietario protegido. El Propietario puede crear tantos cargos como necesite, con cualquier nombre, y decidir sus pantallas y permisos. El cargo personalizado controla el acceso efectivo; el rol técnico solo se conserva para compatibilidad con cuentas antiguas."),
       !esPropietario ? h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, "Solo el Propietario puede crear cargos o cambiar sus permisos.") : null
     ),
     h(
       Card,
       { className: "mb-3" },
-      h("div", { className: "font-semibold mb-2" }, "Roles y cargos actuales"),
+      h("div", { className: "font-semibold mb-2" }, "Propietario y cargos personalizados"),
       h("div", { className: "space-y-2" }, roles.map((rol) => {
         const asignados = empleadosDelLocal.filter((empleado) => empleado.rol === rol).map((empleado) => empleado.nombre || empleado.nombreCompleto || "Sin nombre");
         const retirado = ROLES_RETIRADOS.includes(rol);
@@ -2654,7 +2654,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         editorCargoId === cargo.id ? h(
           "div",
           { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
-          h("div", { className: "font-medium mb-1" }, "Pantallas que puede consultar este cargo"),
+          h("div", { className: "font-medium mb-1" }, "Pantallas visibles para las personas con este cargo"),
+          h("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Puedes consultar una pantalla; consultar no concede crear, editar, exportar, anular ni configurar. Esas acciones se gestionan en Permisos."),
           h("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Selecciona solo pantallas. Consultar una pantalla no concede crear, editar, exportar, anular ni configurar; esas acciones se definirán en el punto 5."),
           h("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "La selección se guarda en el servidor mediante una operación autorizada y auditada. Consultar una pantalla no concede por sí solo acciones de crear, editar, exportar, anular ni configurar."),
           h("div", { className: "flex gap-2 flex-wrap mb-3" },
@@ -3880,7 +3881,7 @@ function GestionAlmacen() {
     window.__laUsuarioAparienciaId = miPerfilUsuarioId;
     return () => { delete window.__laUsuarioAparienciaId; };
   }, [miPerfilUsuarioId]);
-  const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({ personal: null, fichaje: null, ausencias: null });
+  const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({});
   const [pantallasRolEmpleado, setPantallasRolEmpleado] = (0, import_react4.useState)(null);
   const [corteDiaMinPM13, setCorteDiaMinPM13] = (0, import_react4.useState)(0);
   (0, import_react4.useEffect)(() => {
@@ -3906,13 +3907,11 @@ function GestionAlmacen() {
   }, [ready]);
   function puedeConsultarPantallaPM13(id) {
     if (typeof window === "undefined" || !window.__nubeActiva || miPerfil?.rol === "Propietario") return true;
-    if (id === "personal") return permisosConsultaPM13.personal === true;
-    if (id === "fichaje") return permisosConsultaPM13.fichaje === true;
-    return true;
+    return permisosConsultaPM13[id] === true;
   }
   (0, import_react4.useEffect)(() => {
     if (tab !== "dashboard" && !puedeConsultarPantallaPM13(tab)) setTab("dashboard");
-  }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol]);
+  }, [tab, permisosConsultaPM13, miPerfil?.rol]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
   const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
   const [auditoriaDesdeServidor, setAuditoriaDesdeServidor] = (0, import_react4.useState)(false);
@@ -4089,39 +4088,27 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     let activo = true;
     if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil) {
-      setPermisosConsultaPM13({ personal: null, fichaje: null, ausencias: null });
+      setPermisosConsultaPM13({});
       return () => { activo = false; };
     }
     if (miPerfil.rol === "Propietario") {
-      setPermisosConsultaPM13({ personal: true, fichaje: true, ausencias: true });
+      setPermisosConsultaPM13(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, true])));
       return () => { activo = false; };
     }
     const empresaId = empresaDelLocalActivo?.id || "";
     const localId = localActivoId || "";
     if (!empresaId || !localId) {
-      setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      setPermisosConsultaPM13(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, false])));
       return () => { activo = false; };
     }
     (async () => {
       try {
-        const supabase = await window.getSupabaseClient();
-        const claves = [
-          ["personal", "PM13_PERSONAL_CONSULTAR"],
-          ["fichaje", "PM13_FICHAJE_CONSULTAR"],
-          ["ausencias", "PM13_AUSENCIA_CONSULTAR"]
-        ];
-        const respuestas = await Promise.all(claves.map(([, clave]) => supabase.rpc("pm13_resolver_cargo_permiso", {
-          p_empresa_id: empresaId,
-          p_local_id: localId,
-          p_clave: clave,
-          p_accion: "CONSULTAR",
-          p_alcance: "LOCAL"
-        })));
+        const resultado = await configRpc("pm13_listar_pantallas_efectivas", { p_empresa_id: empresaId, p_local_id: localId });
         if (!activo) return;
-        const permitido = (respuesta) => !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
-        setPermisosConsultaPM13(Object.fromEntries(claves.map(([nombre], indice) => [nombre, permitido(respuestas[indice])])))
+        const porCapacidad = new Map((resultado?.pantallas || []).map((pantalla) => [pantalla.capacidad_consulta, pantalla.permitida === true]));
+        setPermisosConsultaPM13(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, porCapacidad.get(pantalla.capacidadConsulta) === true])));
       } catch (e2) {
-        if (activo) setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+        if (activo) setPermisosConsultaPM13(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, false])));
       }
     })();
     return () => { activo = false; };
@@ -4819,6 +4806,9 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("nominas", nominas);
   }, [nominas, ready]);
   const itemsPermitidosEmpleado = (0, import_react4.useMemo)(() => {
+    if (typeof window !== "undefined" && window.__nubeActiva && miPerfil?.rol !== "Propietario") {
+      return Object.entries(permisosConsultaPM13).filter(([, permitido]) => permitido === true).map(([id]) => id);
+    }
     const activo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
     const rol = miPerfil?.rol && ROLES_EMPLEADO[miPerfil.rol] ? miPerfil.rol : activo?.rol && ROLES_EMPLEADO[activo.rol] ? activo.rol : "Est\xE1ndar";
     const base = [...(ROLES_EMPLEADO[rol] || ROLES_EMPLEADO["Est\xE1ndar"] || [])];
@@ -4828,7 +4818,7 @@ function GestionAlmacen() {
     const permitidas = new Set(base);
     porRol.forEach(({ fila, info }) => { if (info.efectivo === true) permitidas.add(fila.id); else permitidas.delete(fila.id); });
     return Array.from(permitidas);
-  }, [usuarioActivoId, empleados, miPerfil, pantallasRolEmpleado]);
+  }, [usuarioActivoId, empleados, miPerfil, pantallasRolEmpleado, permisosConsultaPM13]);
   (0, import_react4.useEffect)(() => {
     if (modoEmpleado && !itemsPermitidosEmpleado.includes(tab)) setTab("dashboard");
   }, [modoEmpleado, itemsPermitidosEmpleado]);
@@ -5496,7 +5486,7 @@ function GestionAlmacen() {
   }, [empleados]);
   const documentosPersonalPronto = (0, import_react4.useMemo)(() => documentosPersonalCaducan.filter((d2) => d2.dias <= 30), [documentosPersonalCaducan]);
   const empleadosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? empleados : empleados.filter((e2) => e2.localId === localActivoId), [empleados, localActivoId]);
-  const empleadosVisiblesDelLocalActivo = (0, import_react4.useMemo)(() => empleadosDelLocalActivo.map((empleado) => permisosConsultaPM13.ausencias === true ? empleado : { ...empleado, ausencias: [] }), [empleadosDelLocalActivo, permisosConsultaPM13.ausencias]);
+  const empleadosVisiblesDelLocalActivo = (0, import_react4.useMemo)(() => empleadosDelLocalActivo.map((empleado) => permisosConsultaPM13.personal === true ? empleado : { ...empleado, ausencias: [] }), [empleadosDelLocalActivo, permisosConsultaPM13.personal]);
   const idsEmpleadosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(empleadosDelLocalActivo.map((e2) => e2.id)), [empleadosDelLocalActivo]);
   const fichajesDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichajes : fichajes.filter((f22) => f22.localId === localActivoId), [fichajes, localActivoId]);
   const turnosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? turnos : turnos.filter((t22) => t22.localId === localActivoId), [turnos, localActivoId]);
