@@ -62,7 +62,8 @@ for (const [nombre, ruta] of [
   tiene('ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : void 0', 'la rejilla recibe las filas');
 
   // 6. Cobrar: botón nuevo que solo abre la capa de cobro existente; sin F4.
-  tiene('cajaOrbita && lineasCarrito.length === 0 ? import_react4.default.createElement("button", { type: "button", className: "tpv-caja-cobrar", onClick: () => setCapaCajaOrbita("cobro") }, "Cobrar") : null', 'Cobrar abre la capa de cobro');
+  // H-12 (E4): la clase de acción principal solo se añade con una cuenta abierta con saldo (ola 3).
+  tiene('cajaOrbita && lineasCarrito.length === 0 ? import_react4.default.createElement("button", { type: "button", className: cobroPrincipalCaja ? "tpv-caja-cobrar tpv-caja-principal" : "tpv-caja-cobrar", onClick: () => setCapaCajaOrbita("cobro") }, "Cobrar") : null', 'Cobrar abre la capa de cobro');
   assert.doesNotMatch(t, /tpv-caja-cobrar[^\n]{0,200}F4/, `${nombre}: no se rotula F4, el programa no tiene esa tecla`);
 
   // 7. El botón del modo caja no cambia.

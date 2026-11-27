@@ -112281,6 +112281,35 @@ function claveColorDerivadaTpv(nombre) {
   for (let i = 0; i < texto.length; i += 1) suma = (suma * 31 + texto.charCodeAt(i)) % 1e5;
   return CLAVES_COLOR_CATEGORIA_TPV[suma % CLAVES_COLOR_CATEGORIA_TPV.length];
 }
+// H-08 (auditoria del TPV): el texto de la categoria activa era siempre blanco; sobre el naranja de «Todos» da 3,33:1 y no llega a 4,5:1.
+// Se elige, entre blanco y oscuro, el que mejor contraste da con el fondo (los colores de categoria son hexadecimales fijos; «Todos»
+// usa la variable del tema, cuyo color de texto ya esta definido por el tema).
+function textoLegibleSobreFondoTpv(fondo) {
+  const hex = /^#([0-9a-f]{6})$/i.exec(String(fondo || "").trim());
+  if (!hex) return "var(--c-on-accent, #17191C)";
+  const canal = (desde) => {
+    const c22 = parseInt(hex[1].slice(desde, desde + 2), 16) / 255;
+    return c22 <= 0.03928 ? c22 / 12.92 : Math.pow((c22 + 0.055) / 1.055, 2.4);
+  };
+  const luz = 0.2126 * canal(0) + 0.7152 * canal(2) + 0.0722 * canal(4);
+  return 1.05 / (luz + 0.05) >= (luz + 0.05) / 0.0596 ? "#FFFFFF" : "#17191C";
+}
+// H-09 (auditoria del TPV, E5): reparte las categorias en paginas segun el ancho que ocupa cada una (con su hueco). «disponible» es el
+// ancho de la fila. Cada pagina empieza donde acaba la anterior; una categoria mas ancha que la fila ocupa una pagina para ella sola.
+// Devuelve el indice de la primera categoria de cada pagina.
+function paginasCategoriasTpv(anchos, disponible) {
+  const inicios = [];
+  let usado = 0;
+  for (let i22 = 0; i22 < anchos.length; i22 += 1) {
+    const ancho = Math.max(0, Number(anchos[i22]) || 0);
+    if (inicios.length === 0 || usado > 0 && usado + ancho > disponible) {
+      inicios.push(i22);
+      usado = 0;
+    }
+    usado += ancho;
+  }
+  return inicios;
+}
 var FILAS_REJILLA_TPV = 4;
 // Cuantas columnas esta pintando .tpv-rejilla ahora mismo. Se pregunta al
 // navegador en vez de medir el nodo: los cortes son los mismos que en el CSS de
@@ -112303,6 +112332,18 @@ var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza
 // pantalla no vuelva a prometer ni a negar algo distinto de lo que hace el
 // servidor.
 var ESTADOS_PEDIDO_COBRABLE_F4 = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO", "CERRADO"];
+// H-12 (auditoria del TPV, E4): ¿hay ahora una cuenta abierta, con el pedido en un estado cobrable y saldo por cobrar? Es lo que decide
+// si «Cobrar» es la accion principal del modo caja. Usa el mismo saldo que la capa de cobro (el del servidor si ya hay cobro iniciado).
+function cuentaConSaldoParaCobrarTpv(pedidoOperativo, estadoCobro) {
+  if (!pedidoOperativo?.cuentaId) return false;
+  if (String(estadoCobro?.cuentaEstado || "").toUpperCase() === "CERRADA") return false;
+  if (["CERRADA", "CANCELADO"].includes(String(pedidoOperativo.pedidoEstado || ""))) return false;
+  if (!ESTADOS_PEDIDO_COBRABLE_F4.includes(String(pedidoOperativo.pedidoEstado || pedidoOperativo.estado || ""))) return false;
+  const tieneCheckout = Array.isArray(estadoCobro?.checkouts) && estadoCobro.checkouts.length > 0;
+  const totalPedido = (pedidoOperativo.lineas || []).reduce((acc, linea) => acc + (Number(linea.total) || 0), 0);
+  const saldo = tieneCheckout ? Number(estadoCobro?.saldo) || 0 : Math.max(0, totalPedido - (Number(estadoCobro?.confirmado) || 0));
+  return saldo > 0;
+}
 async function leerTodasLasFilasConPaginacionA09(construirConsulta, tamanoPagina = 200) {
   const filas = [];
   for (let desde = 0; ; desde += tamanoPagina) {
@@ -118250,7 +118291,7 @@ function Card({ children, className = "", style = {} }) {
 function SectionTitle({ children, action }) {
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-ui-section-title flex items-center justify-between mb-4" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "la-ui-section-title-heading text-[18px] font-semibold" }, children), action);
 }
-function Btn({ children, onClick, variant = "primary", type = "button", small, disabled = false, ariaLabel }) {
+function Btn({ children, onClick, variant = "primary", type = "button", small, disabled = false, ariaLabel, claseExtra }) {
   const styles = {
     primary: { background: C2.accentFill, color: C2.onAccent },
     ghost: { background: "transparent", color: C2.ink, border: `1px solid ${C2.line}` },
@@ -118263,7 +118304,7 @@ function Btn({ children, onClick, variant = "primary", type = "button", small, d
       onClick,
       disabled,
       "aria-label": ariaLabel,
-      className: `la-ui-button la-ui-button-${variant} inline-flex items-center gap-1.5 rounded-lg font-medium ${small ? "la-ui-button-small px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
+      className: `la-ui-button la-ui-button-${variant} inline-flex items-center gap-1.5 rounded-lg font-medium ${small ? "la-ui-button-small px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}${claseExtra ? " " + claseExtra : ""}`,
       "data-ui-variant": variant,
       style: { ...styles[variant], minHeight: small ? void 0 : 44, opacity: disabled ? 0.45 : 1, cursor: disabled ? "not-allowed" : "pointer" }
     },
@@ -127781,6 +127822,40 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     window.addEventListener("keydown", alPulsar);
     return () => window.removeEventListener("keydown", alPulsar);
   }, [capaCajaOrbita]);
+  // H-03 (auditoria del TPV): la capa abierta se comporta como un dialogo. El foco entra en «Volver al pedido», Tab no sale de la
+  // capa y, al cerrarla, el foco vuelve al boton que la abrio (o al buscador si ese boton ya no existe).
+  (0, import_react4.useEffect)(() => {
+    if (!capaCajaOrbita || typeof document === "undefined") return;
+    const origen = document.activeElement;
+    const capaAbierta = () => document.querySelector('.tpv-capa[data-abierta="1"]');
+    capaAbierta()?.querySelector(".tpv-capa-volver")?.focus();
+    function alTabular(evento) {
+      if (evento.key !== "Tab" || document.querySelector(".la-ui-modal-backdrop")) return;
+      const capa = capaAbierta();
+      if (!capa) return;
+      const enfocables = Array.from(capa.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).filter((el) => !el.disabled && el.getAttribute("tabindex") !== "-1" && el.type !== "hidden" && el.getClientRects().length > 0);
+      if (enfocables.length === 0) return;
+      const primero = enfocables[0];
+      const ultimo = enfocables[enfocables.length - 1];
+      const actual = document.activeElement;
+      if (!capa.contains(actual)) {
+        evento.preventDefault();
+        primero.focus();
+      } else if (evento.shiftKey && actual === primero) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && actual === ultimo) {
+        evento.preventDefault();
+        primero.focus();
+      }
+    }
+    document.addEventListener("keydown", alTabular, true);
+    return () => {
+      document.removeEventListener("keydown", alTabular, true);
+      const destino = origen && origen !== document.body && document.contains(origen) ? origen : document.querySelector("[data-tpv-buscar] input");
+      destino?.focus?.();
+    };
+  }, [capaCajaOrbita]);
   (0, import_react4.useEffect)(() => {
     if (typeof document === "undefined") return;
     const raiz = document.documentElement;
@@ -128621,7 +128696,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const hueco = parseFloat(getComputedStyle(el).rowGap) || 8;
       /* Alto mínimo de una fila: lo que necesita la tarjeta más alta (nombre en
          dos líneas, precio y «sin stock»), medido en vivo el 25/11/2026. */
-      const minimo = 96;
+      /* H-11 (auditoria del TPV): por debajo de 360 px de ancho (320 × 640) la tarjeta compacta mide 68 px y caben mas filas. */
+      const minimo = typeof window !== "undefined" && window.innerWidth < 360 ? 68 : 96;
       const filas = Math.max(1, Math.floor((alto + hueco) / (minimo + hueco)));
       setFilasRejillaCaja((previas) => previas === filas ? previas : filas);
     };
@@ -128685,6 +128761,46 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const resto = disponibles.filter((c22) => !puestas.includes(c22));
     return ["Todos", ...puestas, ...resto];
   }, [categorias, presentacionCategorias]);
+  // H-09 (auditoria del TPV, E5): en el modo caja de Órbita las categorias no se desplazan: se reparten en paginas segun el ancho de cada
+  // una y se avanza con flechas de 44 × 44 px. Fuera de ese modo la fila es la de siempre.
+  const refCategoriasTpv = (0, import_react4.useRef)(null);
+  const [paginasCategoriasCaja, setPaginasCategoriasCaja] = (0, import_react4.useState)([0]);
+  const [paginaCategoriasCaja, setPaginaCategoriasCaja] = (0, import_react4.useState)(0);
+  const paginaCategoriasSegura = Math.min(paginaCategoriasCaja, paginasCategoriasCaja.length - 1);
+  (0, import_react4.useEffect)(() => {
+    const lista = refCategoriasTpv.current;
+    if (!modoCajaTpv || leerDisenoNavegacion() !== "orbita" || !lista) {
+      setPaginasCategoriasCaja((previas) => previas.length === 1 && previas[0] === 0 ? previas : [0]);
+      return;
+    }
+    const medir = () => {
+      const hueco = parseFloat(getComputedStyle(lista).columnGap) || 8;
+      const inicios = paginasCategoriasTpv(Array.from(lista.children).map((boton) => boton.offsetWidth + hueco), lista.clientWidth + hueco);
+      const nuevas = inicios.length > 0 ? inicios : [0];
+      setPaginasCategoriasCaja((previas) => previas.length === nuevas.length && previas.every((valor, i22) => valor === nuevas[i22]) ? previas : nuevas);
+    };
+    medir();
+    if (typeof ResizeObserver !== "function") return;
+    const observador = new ResizeObserver(medir);
+    observador.observe(lista);
+    Array.from(lista.children).forEach((boton) => observador.observe(boton));
+    return () => observador.disconnect();
+  }, [modoCajaTpv, categoriasTpvOrdenadas, vendibles.length > 0]);
+  (0, import_react4.useEffect)(() => {
+    const posicion = categoriasTpvOrdenadas.indexOf(categoria);
+    if (posicion < 0) return;
+    let pagina = 0;
+    paginasCategoriasCaja.forEach((inicio, p22) => {
+      if (posicion >= inicio) pagina = p22;
+    });
+    setPaginaCategoriasCaja(pagina);
+  }, [categoria, categoriasTpvOrdenadas, paginasCategoriasCaja]);
+  (0, import_react4.useEffect)(() => {
+    const lista = refCategoriasTpv.current;
+    if (!lista || !modoCajaTpv || leerDisenoNavegacion() !== "orbita") return;
+    const primera = lista.children[paginasCategoriasCaja[paginaCategoriasSegura]];
+    lista.scrollLeft = primera ? primera.offsetLeft : 0;
+  }, [modoCajaTpv, paginasCategoriasCaja, paginaCategoriasSegura, categoriasTpvOrdenadas]);
   function abrirEditorCategorias() {
     const guardadas = presentacionCategorias.categorias.map((f2) => String(f2?.categoria || "")).filter(Boolean);
     const disponibles = categorias.filter((c22) => c22 !== "Todos");
@@ -128746,6 +128862,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
   function manejarEnterEscaneo(e2) {
     if (e2.key !== "Enter") return;
+    if (capaCajaOrbita) return;
     const q2 = busqueda.trim().toLowerCase();
     if (!q2) return;
     const exacto = vendibles.find((p22) => (p22.codigoBarras || "").toLowerCase() === q2);
@@ -129002,6 +129119,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     function alPulsar(evento) {
       if (evento.key === "F2") {
         evento.preventDefault();
+        if (capaCajaOrbita) return;
         inputEscaneoRef.current?.focus();
         inputEscaneoRef.current?.select?.();
         return;
@@ -129011,12 +129129,13 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (escribiendo) return;
       if (evento.key === "F9") {
         evento.preventDefault();
+        if (capaCajaOrbita) return;
         if (lineasCarrito.length > 0 && !enviandoVenta && !cargandoA04) confirmarCobro();
       }
     }
     window.addEventListener("keydown", alPulsar);
     return () => window.removeEventListener("keydown", alPulsar);
-  }, [lineasCarrito.length, enviandoVenta, cargandoA04, confirmarCobro]);
+  }, [lineasCarrito.length, enviandoVenta, cargandoA04, confirmarCobro, capaCajaOrbita]);
   const cantidadesProductoA04 = lineasCarrito.reduce((mapa, l22) => {
     mapa.set(l22.productoId, (mapa.get(l22.productoId) || 0) + l22.cantidadNum);
     return mapa;
@@ -130529,12 +130648,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
      del ticket, así que moverla no cambia su estado ni su lógica. */
   const bloqueSalaCaja = modoCajaTpv && modoTPV !== "RAPIDA" && leerDisenoNavegacion() === "orbita" ? renderSalaA07() : null;
   const cajaOrbita = modoCajaTpv && leerDisenoNavegacion() === "orbita";
+  // H-12 (E4): la accion principal (naranja) es la que corresponde al estado real de la cuenta: «Guardar pedido» con lineas y «Cobrar» solo
+  // con una cuenta abierta con saldo por cobrar. Con el ticket vacio y nada que cobrar no se destaca ninguna.
+  const cobroPrincipalCaja = !!(cajaOrbita && lineasCarrito.length === 0 && cuentaConSaldoParaCobrarTpv(pedidoOperativoA05, estadoCobroF4));
+  // H-09: pagina visible de categorias (indices de la primera categoria de esta pagina y de la siguiente) y flechas.
+  const inicioPaginaCategorias = paginasCategoriasCaja[paginaCategoriasSegura] ?? 0;
+  const finPaginaCategorias = paginasCategoriasCaja[paginaCategoriasSegura + 1] ?? Infinity;
+  const flechaCategoriasCaja = (sentido) => cajaOrbita && paginasCategoriasCaja.length > 1 ? import_react4.default.createElement("button", { type: "button", className: "tpv-cat-flecha", "aria-label": sentido < 0 ? "Categor\u00edas anteriores" : "Categor\u00edas siguientes", disabled: sentido < 0 ? paginaCategoriasSegura <= 0 : paginaCategoriasSegura >= paginasCategoriasCaja.length - 1, onClick: () => setPaginaCategoriasCaja(Math.min(paginasCategoriasCaja.length - 1, Math.max(0, paginaCategoriasSegura + sentido))) }, sentido < 0 ? "\u2039" : "\u203A") : null;
   /* Envoltorio de capa: fuera del modo caja de Órbita es display:contents
      (no cambia nada); dentro, se oculta y se abre a pantalla completa. Los
      render* que envuelve se siguen llamando siempre y en el mismo orden. */
-  const capaCaja = (id, titulo, ...contenidos) => import_react4.default.createElement("div", { className: "tpv-capa", "data-capa": id, "data-activa": cajaOrbita ? "1" : void 0, "data-abierta": cajaOrbita && capaCajaOrbita === id ? "1" : void 0 }, cajaOrbita ? import_react4.default.createElement("div", { className: "tpv-capa-cabecera" }, import_react4.default.createElement("button", { type: "button", className: "tpv-capa-volver", onClick: () => setCapaCajaOrbita(null) }, "\u2039 Volver al pedido"), import_react4.default.createElement("strong", null, titulo)) : null, ...contenidos);
+  const capaCaja = (id, titulo, ...contenidos) => import_react4.default.createElement("div", { className: "tpv-capa", "data-capa": id, "data-activa": cajaOrbita ? "1" : void 0, "data-abierta": cajaOrbita && capaCajaOrbita === id ? "1" : void 0, role: cajaOrbita && capaCajaOrbita === id ? "dialog" : void 0, "aria-modal": cajaOrbita && capaCajaOrbita === id ? "true" : void 0, "aria-labelledby": cajaOrbita && capaCajaOrbita === id ? "tpv-capa-titulo-" + id : void 0 }, cajaOrbita ? import_react4.default.createElement("div", { className: "tpv-capa-cabecera" }, import_react4.default.createElement("button", { type: "button", className: "tpv-capa-volver", onClick: () => setCapaCajaOrbita(null) }, "\u2039 Volver al pedido"), import_react4.default.createElement("strong", { id: "tpv-capa-titulo-" + id }, titulo)) : null, ...contenidos);
   const botonCaja = (id, texto, extra = {}) => import_react4.default.createElement("button", { type: "button", className: "tpv-caja-boton", "aria-pressed": capaCajaOrbita === id, onClick: () => setCapaCajaOrbita(capaCajaOrbita === id ? null : id), ...extra }, texto);
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-raiz" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3 tpv-cabecera" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setModoCajaTpv(!modoCajaTpv) }, modoCajaTpv ? "Salir del modo caja" : "Modo caja"), typeof setTemaOscuro === "function" ? /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }) : null, cajaOrbita ? renderSelectorModoTPV() : null, cajaOrbita ? import_react4.default.createElement("div", { className: "tpv-caja-herramientas" }, bloqueSalaCaja ? botonCaja("mesas", "Mesas") : null, botonCaja("ventas", "Ventas del d\xEDa"), local?.id && configEmpresa?.id && typeof window.getSupabaseClient === "function" ? botonCaja("terminal", "Terminal") : null) : null), cajaOrbita ? null : renderSelectorModoTPV(),
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-raiz" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3 tpv-cabecera" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", claseExtra: modoCajaTpv ? "tpv-caja-salir" : void 0, onClick: () => setModoCajaTpv(!modoCajaTpv) }, modoCajaTpv ? "Salir del modo caja" : "Modo caja"), typeof setTemaOscuro === "function" && !cajaOrbita ? /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }) : null, cajaOrbita ? renderSelectorModoTPV() : null, cajaOrbita ? import_react4.default.createElement("div", { className: "tpv-caja-herramientas" }, bloqueSalaCaja ? botonCaja("mesas", "Mesas") : null, botonCaja("ventas", "Ventas del d\xEDa"), local?.id && configEmpresa?.id && typeof window.getSupabaseClient === "function" ? botonCaja("terminal", "Terminal") : null) : null), cajaOrbita ? null : renderSelectorModoTPV(),
   capaCaja("terminal", "Terminal de este navegador", local?.id && configEmpresa?.id && typeof window.getSupabaseClient === "function" ? import_react4.default.createElement(TerminalNavegadorTpv, { key: `${configEmpresa.id}:${local.id}`, empresaId: configEmpresa.id, localId: local.id }) : null),
   estadoMesaDestino && (mesaDestinoId || cuentaDestinoId) ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
     /* @__PURE__ */ import_react4.default.createElement("div", { role: "status" },
@@ -130588,7 +130714,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "absolute right-3 top-1/2 -translate-y-1/2"
     },
     /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft })
-  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 mb-3", "data-tpv-categorias": "1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 overflow-x-auto flex-1 min-w-0" }, categoriasTpvOrdenadas.map((c22) => /* @__PURE__ */ import_react4.default.createElement(
+  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 mb-3", "data-tpv-categorias": "1" }, flechaCategoriasCaja(-1), /* @__PURE__ */ import_react4.default.createElement("div", { ref: refCategoriasTpv, className: cajaOrbita ? "tpv-cat-lista flex gap-2 flex-1 min-w-0" : "flex gap-2 overflow-x-auto flex-1 min-w-0", style: cajaOrbita ? { position: "relative", overflow: "hidden" } : void 0 }, categoriasTpvOrdenadas.map((c22, i22) => /* @__PURE__ */ import_react4.default.createElement(
     "button",
     {
       key: c22,
@@ -130596,13 +130722,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "text-[12px] font-medium px-3 py-1.5 rounded-full whitespace-nowrap shrink-0",
       style: {
         background: categoria === c22 ? colorCategoriaTpv(c22, colorPorCategoriaTpv) : C2.surface,
-        color: categoria === c22 ? "#fff" : C2.inkSoft,
+        color: categoria === c22 ? textoLegibleSobreFondoTpv(colorCategoriaTpv(c22, colorPorCategoriaTpv)) : C2.inkSoft,
+        visibility: cajaOrbita && (i22 < inicioPaginaCategorias || i22 >= finPaginaCategorias) ? "hidden" : void 0,
         border: `1px solid ${categoria === c22 ? colorCategoriaTpv(c22, colorPorCategoriaTpv) : C2.line}`,
         borderLeft: `4px solid ${colorCategoriaTpv(c22, colorPorCategoriaTpv)}`
       }
     },
     c22
-  ))), presentacionCategorias.puedeConfigurar ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrirEditorCategorias }, "Categor\u00edas") : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla mb-3", ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : void 0 }, visiblesPagina.map((p22) => {
+  ))), flechaCategoriasCaja(1), presentacionCategorias.puedeConfigurar ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrirEditorCategorias }, "Categor\u00edas") : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla mb-3", ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : void 0 }, visiblesPagina.map((p22) => {
     const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
     const cantidadEnCarrito = carrito.filter((l22) => l22.productoId === p22.id).reduce((acc, l22) => acc + (Number(l22.cantidad) || 0), 0);
     const sinStock = (Number(p22.stockPisoVenta) || 0) <= 0;
@@ -130642,7 +130769,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "mono text-center rounded-md py-1",
       style: { width: 54, border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, fontSize: 13, minHeight: 44 }
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), "aria-label": "Añadir una unidad", className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", "data-tpv-total": "1", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), capaCaja("modalidad", "Modalidad del pedido", lineasCarrito.length > 0 && renderSelectorModalidadA02()), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `F9 · Guardar pedido \u20AC${fmt(total)}`), capaCaja("cuenta", "Cuenta", renderCuentasAparcadasA06(), bloqueSalaCaja ? null : renderSalaA07(), renderRepartoProductosA08(), renderUnirCuentasA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09()), capaCaja("cobro", "Cobro", renderCobroF4()), cajaOrbita && lineasCarrito.length > 0 ? import_react4.default.createElement("div", { className: "tpv-caja-total" }, import_react4.default.createElement("span", null, "Total"), import_react4.default.createElement("strong", { className: "mono" }, "\u20AC", fmt(total))) : null, cajaOrbita && lineasCarrito.length === 0 ? import_react4.default.createElement("button", { type: "button", className: "tpv-caja-cobrar", onClick: () => setCapaCajaOrbita("cobro") }, "Cobrar") : null)), renderEditorCategoriasTpv(), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), "aria-label": "Añadir una unidad", className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", "data-tpv-total": "1", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), capaCaja("modalidad", "Modalidad del pedido", lineasCarrito.length > 0 && renderSelectorModalidadA02()), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04, claseExtra: cajaOrbita ? "tpv-caja-principal" : void 0 }, enviandoVenta ? "Guardando pedido\u2026" : `F9 · Guardar pedido \u20AC${fmt(total)}`), capaCaja("cuenta", "Cuenta", renderCuentasAparcadasA06(), bloqueSalaCaja ? null : renderSalaA07(), renderRepartoProductosA08(), renderUnirCuentasA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09()), capaCaja("cobro", "Cobro", renderCobroF4()), cajaOrbita && lineasCarrito.length > 0 ? import_react4.default.createElement("div", { className: "tpv-caja-total" }, import_react4.default.createElement("span", null, "Total"), import_react4.default.createElement("strong", { className: "mono" }, "\u20AC", fmt(total))) : null, cajaOrbita && lineasCarrito.length === 0 ? import_react4.default.createElement("button", { type: "button", className: cobroPrincipalCaja ? "tpv-caja-cobrar tpv-caja-principal" : "tpv-caja-cobrar", onClick: () => setCapaCajaOrbita("cobro") }, "Cobrar") : null)), renderEditorCategoriasTpv(), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       onClick: confirmarCobro,
