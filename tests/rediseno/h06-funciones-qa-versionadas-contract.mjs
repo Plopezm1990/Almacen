@@ -19,7 +19,7 @@ const ruta = (f) => new URL(f, raiz);
 const leer = (f) => fs.readFileSync(ruta(f), 'utf8').replace(/\r\n/g, '\n');
 const registro = JSON.parse(leer('supabase/qa-only/REGISTRO.json'));
 
-assert.equal(registro.funciones.length, 15, 'el registro lista las 15 funciones (14 públicas y 1 privada de apoyo)');
+assert.equal(registro.funciones.length, 16, 'el registro lista las 16 funciones (15 públicas y 1 privada de apoyo)');
 const nombres = registro.funciones.map((f) => f.nombre);
 assert.equal(new Set(nombres).size, nombres.length, 'sin nombres repetidos');
 
@@ -72,11 +72,29 @@ for (const f of registro.funciones.filter((x) => x.clase === 'solo_qa_sin_escrit
 // 3c. El cliente: ninguna función abc_qa_* se llama desde la aplicación, y las de ticket fiscal y Bizum de QA solo bajo el
 //     interruptor de QA.
 const fuente = leer('fuente.js');
+// Salvo las dos del simulador de tarjeta (H-27, 27/11/2026), que solo se llaman desde resolverTarjetaSimuladaQa, y esa
+// función empieza por la barrera del interruptor de QA.
+const SIMULADOR_TARJETA = ['abc_qa_confirmar_pago_simulado', 'abc_qa_rechazar_pago_simulado'];
+// Los comentarios que explican por qué existen no cuentan como llamadas.
+const codigo = (s) => s.split(String.fromCharCode(10)).filter((l) => !/^\s*\/\//.test(l)).join(String.fromCharCode(10));
+const fuenteCodigo = codigo(fuente);
+const iniSim = fuente.indexOf('async function resolverTarjetaSimuladaQa(');
+const finSim = fuente.indexOf('async function cerrarCuentaPagadaF4(', iniSim);
+assert.ok(iniSim > 0 && finSim > iniSim, 'existe resolverTarjetaSimuladaQa');
+const cuerpoSim = codigo(fuente.slice(iniSim, finSim));
+assert.match(cuerpoSim.slice(0, 400), /if \(!c07dActivoEnEntornoQa\(\)\) return \{ ok: false/, 'resolverTarjetaSimuladaQa empieza por la barrera del interruptor de QA');
 for (const f of registro.funciones.filter((x) => /^public\.abc_qa_/.test(x.nombre))) {
-  assert.equal(fuente.includes(f.nombre.split('.')[1]), false, `${f.nombre}: la aplicación no la llama (solo se usa a mano en QA)`);
+  const corto = f.nombre.split('.')[1];
+  const veces = fuenteCodigo.split(corto).length - 1;
+  if (SIMULADOR_TARJETA.includes(corto)) {
+    assert.equal(veces, cuerpoSim.split(corto).length - 1, `${f.nombre}: la aplicación solo la llama desde resolverTarjetaSimuladaQa (bajo el interruptor de QA)`);
+    assert.ok(veces >= 1, `${f.nombre}: el simulador de tarjeta la usa`);
+  } else {
+    assert.equal(veces, 0, `${f.nombre}: la aplicación no la llama (solo se usa a mano en QA)`);
+  }
 }
 const ini = fuente.indexOf('async function prepararTicketFiscalQa(');
 assert.ok(ini > 0, 'existe prepararTicketFiscalQa');
 assert.match(fuente.slice(ini, ini + 300), /if \(!c07dActivoEnEntornoQa\(\)\) return \{ ok: false/, 'abc_preparar_ticket_fiscal_qa solo se prepara bajo el interruptor de QA');
 
-console.log('H-06 contrato de las funciones de QA versionadas OK (15 funciones)');
+console.log('H-06 contrato de las funciones de QA versionadas OK (16 funciones)');

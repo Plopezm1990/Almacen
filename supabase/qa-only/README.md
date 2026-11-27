@@ -18,9 +18,10 @@ Contrato: `tests/rediseno/h06-funciones-qa-versionadas-contract.mjs`.
 
 ## Dos clases de funciones
 
-**1. Solo QA por diseño (6).** Llevan una barrera propia que las limita a `QA-EMP-A` / `QA-A1` y, las
+**1. Solo QA por diseño (7).** Llevan una barrera propia que las limita a `QA-EMP-A` / `QA-A1` y, las
 `abc_qa_*`, a Propietario. Aunque llegaran a otro entorno, rechazarían cualquier otra empresa o local:
-`abc_qa_confirmar_pago_simulado`, `abc_qa_cancelar_pago_cierre`, `abc_qa_compensar_efecto_cierre`,
+`abc_qa_confirmar_pago_simulado`, `abc_qa_rechazar_pago_simulado` (nueva, 27/11, H-27: se creó en QA solo con SQL, sin
+migración, con `authenticated` sí y `anon` no), `abc_qa_cancelar_pago_cierre`, `abc_qa_compensar_efecto_cierre`,
 `abc_qa_listar_pendientes_cierre` (con la privada `private.abc_qa_c04_propietario`) y `abc_preparar_ticket_fiscal_qa`.
 `abc_preparar_bizum_qa` no escribe nada: devuelve constantes marcadas `PREPARADO_QA`.
 

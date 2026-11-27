@@ -88,6 +88,11 @@ function entorno(opciones = {}) {
       if (!documentos.some((d) => d.venta_fiscal_id === v.venta_fiscal_id)) documentos.push({ venta_fiscal_id: v.venta_fiscal_id, operation_id: params.p_operation_id });
       return { data: { ok: true, documentos: [{ estado: 'EMITIDO', numero: 100 + documentos.length, codigo_serie: 'TPV', venta_fiscal_id: v.venta_fiscal_id }] }, error: null };
     }
+    if (nombre === 'abc_qa_confirmar_pago_simulado' || nombre === 'abc_qa_rechazar_pago_simulado') {
+      srv.estado.llamadas.push({ nombre, params });
+      if (opciones.tarjetaSimuladaFalla) return { data: null, error: { message: opciones.tarjetaSimuladaFalla } };
+      return { data: { ok: true, qa_simulado: true, checkout_estado: 'COMPLETADO' }, error: null };
+    }
     if (nombre === 'abc_cancelar_pedido') {
       srv.estado.llamadas.push({ nombre, params });
       return { data: { ok: true, pedido_id: params.p_pedido_id, estado: 'CANCELADO', pedido_version: 5, lineas_canceladas: 1, cuenta_cerrada: true }, error: null };
@@ -338,6 +343,52 @@ try {
     ok('F3 la combinación que sí funciona (máximo, solicitar, aplicar y escalado) no avisa', completa.length === 0, completa);
     ok('F4 un cargo sin descuentos y con todo apagado tampoco avisa', apagada.length === 0, apagada);
     ok('F5 los avisos se pintan bajo las casillas de cada cargo', fuenteTexto.includes('"data-h39-aviso": "1"') && fuenteTexto.includes('avisosPolitica(p3).map('));
+  }
+
+  // ================= H-27 · tarjeta simulada: aprobar o rechazar desde la pantalla (solo QA) =================
+  {
+    const intento = '00000000-0000-4000-8000-00000000f100';
+    const env = entorno({ rol: 'Propietario' });
+    const ok1 = await env.logica.resolverTarjetaSimuladaQa({ intentoId: intento, importe: 2.5, resultado: 'APROBAR' });
+    const c1 = env.llamadas('abc_qa_confirmar_pago_simulado')[0];
+    ok('G1 aprobar llama a abc_qa_confirmar_pago_simulado con empresa, local, intento e importe', ok1.ok === true && ok1.resultado === 'APROBADO' && c1 && c1.params.p_empresa_id === env.E && c1.params.p_local_id === env.L && c1.params.p_intento_id === intento && c1.params.p_importe === 2.5, JSON.stringify({ ok1, c1 }));
+    const ok2 = await env.logica.resolverTarjetaSimuladaQa({ intentoId: intento, resultado: 'RECHAZAR', motivo: 'Cliente sin saldo' });
+    const c2 = env.llamadas('abc_qa_rechazar_pago_simulado')[0];
+    ok('G2 rechazar llama a abc_qa_rechazar_pago_simulado con el motivo', ok2.ok === true && ok2.resultado === 'RECHAZADO' && c2 && c2.params.p_motivo === 'Cliente sin saldo' && c2.params.p_intento_id === intento, JSON.stringify({ ok2, c2 }));
+    const ok3 = await env.logica.resolverTarjetaSimuladaQa({ intentoId: intento, resultado: 'RECHAZAR' });
+    ok('G3 el rechazo sin motivo usa uno por defecto (el servidor lo exige)', ok3.ok === true && env.llamadas('abc_qa_rechazar_pago_simulado')[1].params.p_motivo === 'Rechazo desde la interfaz de QA');
+    const sinImporte = await env.logica.resolverTarjetaSimuladaQa({ intentoId: intento, resultado: 'APROBAR' });
+    ok('G4 aprobar sin importe conocido no llama al servidor', sinImporte.ok === false && env.llamadas('abc_qa_confirmar_pago_simulado').length === 1, sinImporte);
+    const sinIntento = await env.logica.resolverTarjetaSimuladaQa({ resultado: 'RECHAZAR' });
+    ok('G5 sin intento no hace nada', sinIntento.ok === false && env.llamadas('abc_qa_rechazar_pago_simulado').length === 2, sinIntento);
+
+    const noProp = entorno({ rol: 'Cajero/a', tarjetaSimuladaFalla: 'abc_qa_simulador_propietario_requerido' });
+    const r1 = await noProp.logica.resolverTarjetaSimuladaQa({ intentoId: intento, importe: 1, resultado: 'APROBAR' });
+    ok('G6 si el servidor dice que no es Propietario, se explica con una frase', r1.ok === false && /Solo el Propietario/.test(r1.error), r1);
+    const yaResuelto = entorno({ rol: 'Propietario', tarjetaSimuladaFalla: 'abc_qa_simulador_pago_no_pendiente' });
+    const r2 = await yaResuelto.logica.resolverTarjetaSimuladaQa({ intentoId: intento, resultado: 'RECHAZAR' });
+    ok('G7 un pago que ya no está pendiente se explica', r2.ok === false && /ya no está pendiente/.test(r2.error), r2);
+
+    // Fuera de QA no se ofrece ni se llama: se simula otra dirección.
+    const hostOriginal = dom.window.location.hostname;
+    const fuera = entorno({ rol: 'Propietario' });
+    dom.window.__modoPruebasQA = false;
+    const r3 = await fuera.logica.resolverTarjetaSimuladaQa({ intentoId: intento, importe: 1, resultado: 'APROBAR' });
+    dom.window.__modoPruebasQA = true;
+    ok('G8 fuera de la vista previa de QA no se llama al simulador', r3.ok === false && /solo está disponible en la vista previa de QA/.test(r3.error) && fuera.llamadas('abc_qa_confirmar_pago_simulado').length === 0, r3);
+
+    // Pantalla: el bloque y el filtro de intentos pendientes (la función real, extraída del código).
+    const fuenteTexto = readFileSync(origen, 'utf8');
+    const i0 = fuenteTexto.indexOf('const intentosSimuladosPendientes = ');
+    const expr = fuenteTexto.slice(i0 + 'const intentosSimuladosPendientes = '.length, fuenteTexto.indexOf(';' + String.fromCharCode(10), i0));
+    const filtrar = (estado, disponible) => new Function('estado', 'tarjetaSimuladaQaDisponible', 'return ' + expr)(estado, disponible);
+    const estadoCobro = { pagos: [{ id: 'p1', medio: 'TARJETA' }, { id: 'p2', medio: 'EFECTIVO' }, { id: 'p3', medio: 'BIZUM' }, { id: 'p4', medio: 'TARJETA' }], intentos: [
+      { id: 'i1', pago_id: 'p1', estado: 'PENDIENTE', requested_amount: 3 }, { id: 'i2', pago_id: 'p2', estado: 'PENDIENTE', requested_amount: 1 },
+      { id: 'i3', pago_id: 'p3', estado: 'PENDIENTE', requested_amount: 2 }, { id: 'i4', pago_id: 'p4', estado: 'CONFIRMADO', requested_amount: 5 }] };
+    ok('G9 solo se ofrecen los intentos PENDIENTES de tarjeta o Bizum (no efectivo ni los ya resueltos)', filtrar(estadoCobro, true).map((i) => i.id).join() === 'i1,i3', JSON.stringify(filtrar(estadoCobro, true)));
+    ok('G10 fuera de QA la lista queda vacía', filtrar(estadoCobro, false).length === 0);
+    ok('G11 el bloque de la pantalla y su texto existen y piden al Propietario', fuenteTexto.includes('"data-h27-tarjeta-simulada"') && fuenteTexto.includes('"Aprobar tarjeta simulada"') && fuenteTexto.includes('"Rechazar tarjeta simulada"') && fuenteTexto.includes('Tarjeta simulada pendiente (solo QA)'));
+    ok('G12 tras aprobar se vuelve a leer el estado del cobro y se indica cerrar la cuenta pagada', fuenteTexto.includes('Cierra la cuenta pagada para emitir el documento.') && /resolverTarjetaQaUI[\s\S]{0,900}leerEstadoCobroF4\(\)/.test(fuenteTexto));
   }
 } finally {
   if (raiz) { try { await act(async () => { raiz.unmount(); }); } catch {} }

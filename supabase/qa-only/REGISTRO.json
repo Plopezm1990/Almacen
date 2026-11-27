@@ -100,6 +100,13 @@
       "nota": "Solo lectura; solo Propietario de QA-EMP-A / QA-A1 con la sesion en CIERRE_PROVISIONAL."
     },
     {
+      "nombre": "public.abc_qa_rechazar_pago_simulado",
+      "archivo": "funciones/public.abc_qa_rechazar_pago_simulado.sql",
+      "md5": "a54496dcf04c10419dedb3948184c7e8",
+      "clase": "solo_qa_barrera",
+      "nota": "H-27 (27/11): contraparte de confirmar. Solo Propietario de QA-EMP-A / QA-A1 (por abc_qa_c04_propietario); tarjeta o Bizum con el pago PENDIENTE; lo resuelve como RECHAZADO con motivo. Creada en QA solo con SQL (sin migracion); privilegios: authenticated si, anon no."
+    },
+    {
       "nombre": "public.abc_registrar_ticket_correo_enviado",
       "archivo": "funciones/public.abc_registrar_ticket_correo_enviado.sql",
       "md5": "77b3935bd14aabd90e2a2c67572b0a2a",
