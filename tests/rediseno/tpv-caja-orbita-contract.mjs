@@ -57,9 +57,11 @@ for (const [nombre, ruta] of [
 
   // 5. Productos por página según el alto real, solo en modo caja de Órbita.
   tiene('var FILAS_REJILLA_TPV = 4;', 'la paginación normal no cambia');
-  tiene('const porPaginaRejilla = Math.max(1, columnasRejilla * (modoCajaTpv && filasRejillaCaja ? filasRejillaCaja : FILAS_REJILLA_TPV));', 'filas según el alto solo en caja');
+  // H-16 (Ola 5): fuera del modo caja las columnas salen del ancho real del contenedor; en caja se mantiene el cálculo de siempre.
+  tiene('const porPaginaRejilla = Math.max(1, columnasPorPaginaTpv * (modoCajaTpv && filasRejillaCaja ? filasRejillaCaja : FILAS_REJILLA_TPV));', 'filas según el alto solo en caja');
+  tiene('const columnasPorPaginaTpv = !modoCajaTpv && columnasContenedorTpv ? columnasContenedorTpv : columnasRejilla;', 'en caja las columnas no cambian');
   tiene('if (!modoCajaTpv || leerDisenoNavegacion() !== "orbita" || !el || typeof ResizeObserver !== "function") {', 'la medición solo en caja de Órbita');
-  tiene('ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : void 0', 'la rejilla recibe las filas');
+  tiene('ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : !modoCajaTpv && columnasContenedorTpv', 'la rejilla recibe las filas');
 
   // 6. Cobrar: botón nuevo que solo abre la capa de cobro existente; sin F4.
   // H-12 (E4): la clase de acción principal solo se añade con una cuenta abierta con saldo (ola 3).

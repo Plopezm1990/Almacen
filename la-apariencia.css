@@ -3437,6 +3437,15 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout textare
 html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout .tpv-rejilla > button {
   min-height: 104px !important;
 }
+/* H-16 (auditoría del TPV): en el TPV normal el nombre del producto se salía de su tarjeta (tarjetas de ~135 px, nombres de hasta 247 px, overflow visible).
+   La tarjeta se puede encoger (min-width: 0) y el nombre se corta en dos líneas con puntos suspensivos. El botón NO oculta su desbordamiento: la insignia de
+   cantidad del carrito sale a propósito por su esquina. */
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button { min-width: 0; }
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button > :first-child {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; min-width: 0;
+  /* La tarjeta hereda `white-space: nowrap` (comprobado en el navegador): sin esto el nombre se cortaba en una sola línea en vez de pasar a dos. */
+  white-space: normal;
+}
 html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side .la-ui-card,
 html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] .la-ui-card {
   min-width: 0;

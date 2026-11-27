@@ -107248,7 +107248,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino: mesaDestinoTpv, cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06, unirCuentasA08 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "", pedidoDestino: pedidoDestinoCocina, limpiarPedidoDestino: () => setPedidoDestinoCocina(null) }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, puedeAnularVenta: !(typeof window !== "undefined" && window.__nubeActiva === true) || ["Propietario", "Encargado"].includes(String(miPerfil?.rol || "")), movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino: mesaDestinoTpv, cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06, unirCuentasA08 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "", pedidoDestino: pedidoDestinoCocina, limpiarPedidoDestino: () => setPedidoDestinoCocina(null) }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -107316,7 +107316,13 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor: modoSincronizadoPM08() ? consultarEsperadoCajaA24 : null }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor: modoSincronizadoPM08() ? consultarEsperadoCajaA24 : null, irACierreCaja: () => {
+      try {
+        window.sessionStorage.setItem("la_suite_abrir_gestion_cocina_v1", "1");
+      } catch (error) {
+      }
+      setTab("cocina");
+    } }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -112417,6 +112423,34 @@ function pisoPorReponerDeMovimientosTpv(movimientos, productos) {
   });
   return resultado.sort((a22, b2) => b2.cantidad - a22.cantidad);
 }
+// H-30 (auditoria del TPV): «Mostrar operaciones de cuenta» se reiniciaba al recargar y obligaba a volver a abrirlo para llegar al cobro de una cuenta enviada.
+// Se recuerda por empresa y local en este navegador (es una preferencia de pantalla, no un dato de la cuenta).
+function claveOperacionesCuentaTpv(empresaId, localId) {
+  return empresaId && localId ? "la_suite_tpv_operaciones_cuenta_v1:" + empresaId + ":" + localId : null;
+}
+function leerOperacionesCuentaTpv(empresaId, localId) {
+  try {
+    const clave = claveOperacionesCuentaTpv(empresaId, localId);
+    return !!clave && typeof window !== "undefined" && window.localStorage.getItem(clave) === "1";
+  } catch (error) {
+    return false;
+  }
+}
+function guardarOperacionesCuentaTpv(empresaId, localId, abiertas) {
+  try {
+    const clave = claveOperacionesCuentaTpv(empresaId, localId);
+    if (!clave || typeof window === "undefined") return;
+    if (abiertas) window.localStorage.setItem(clave, "1");
+    else window.localStorage.removeItem(clave);
+  } catch (error) {
+  }
+}
+// H-32 (auditoria del TPV): sin red, el navegador lanza «TypeError: Failed to fetch» y la pantalla lo mostraba tal cual, tras unos 15 s. Se reconoce y se explica;
+// no se afirma que no haya cambiado nada porque la peticion pudo llegar antes de caerse la conexion.
+function esErrorDeRedTpv(valor) {
+  return /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(String(valor?.message || valor || ""));
+}
+var MENSAJE_SIN_RED_TPV = "Sin conexi\u00f3n con el servidor. No se pudo confirmar la operaci\u00f3n: cuando vuelva la red, actualiza la pantalla y comprueba antes de repetirla.";
 var FILAS_REJILLA_TPV = 4;
 // Cuantas columnas esta pintando .tpv-rejilla ahora mismo. Se pregunta al
 // navegador en vez de medir el nodo: los cortes son los mismos que en el CSS de
@@ -112925,6 +112959,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function errorRpcA02(error) {
     const msg = String(error?.message || error || "");
+    if (esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;
     if (msg.includes("terminal_no_configurado")) return "No hay ningún terminal TPV activo configurado para este local.";
     if (msg.includes("terminal_contexto_ambiguo")) return "Este dispositivo todavía no tiene un terminal TPV asignado de forma inequívoca.";
     if (msg.includes("persistencia_terminal_no_disponible")) return "Este navegador no puede guardar de forma segura el terminal asignado. Activa el almacenamiento local antes de operar.";
@@ -113215,6 +113250,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function mensajeErrorCobroF4(error) {
     const msg = String(error?.message || error || "");
+    if (esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;
     if (msg.includes("pago_pedido_no_listo")) return "Envía el pedido antes de iniciar el cobro.";
     if (msg.includes("pago_estado_incierto_existente") || msg.includes("cuenta_con_cobro_incierto")) return "Hay un cobro pendiente o incierto. Resuélvelo antes de iniciar otro.";
     if (msg.includes("checkout_cuenta_modificada")) return "La cuenta cambió después de preparar el cobro. Recarga antes de continuar.";
@@ -115592,6 +115628,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       })).sort((a22, b2) => String(b2.last_activity_at || "").localeCompare(String(a22.last_activity_at || "")));
       return { ok: true, cuentas, operatingDay };
     } catch (error) {
+      // H-41 (auditoria del TPV): al Camarero/a el servidor le niega la lista y el aviso hablaba de abrir la caja. La lista no esta disponible para su cargo.
+      if (String(error?.message || error || "").includes("abc_caja_no_autorizado")) return { ok: false, error: "Tu cargo no puede ver la lista de cuentas abiertas de este local. Las mesas con cuenta se abren desde \u00abSala y mesas\u00bb." };
       return respuestaErrorA06(error);
     }
   }
@@ -125920,7 +125958,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor, irACierreCaja = null }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -126134,6 +126172,12 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       h3(Btn, { small: true, onClick: abrirSesion, disabled: abriendoSesion || !String(fondoInicialSesion).trim() }, abriendoSesion ? "Abriendo…" : "Abrir sesión de caja"),
       errorSesion ? h3("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesion) : null,
       exitoSesion ? h3("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesion) : null
+    ) : null,
+    // H-25 (auditoria del TPV): el cierre de la sesion de caja estaba solo en Cocina y comandas > gestion avanzada. Una entrada «Cerrar caja» desde aqui.
+    typeof irACierreCaja === "function" ? h3(Card, { className: "mb-4", "data-cierre-caja-entrada": "1" },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cerrar caja"),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El cierre de la sesi\u00f3n de caja del turno (contar, justificar diferencias y cerrar) se hace en Cocina y comandas, en la gesti\u00f3n avanzada. Este bot\u00f3n te lleva directo."),
+      h3(Btn, { small: true, variant: "ghost", onClick: irACierreCaja }, "Ir al cierre de la sesi\u00f3n de caja")
     ) : null,
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
@@ -127048,7 +127092,7 @@ function TerminalNavegadorTpv({ empresaId, localId }) {
     error ? h("p", { role: "alert" }, error) : null
   );
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null, unirCuentasA08 = null }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, puedeAnularVenta = true, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null, unirCuentasA08 = null }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
       const host = window.location.hostname;
@@ -127159,7 +127203,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
   const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
   const [historialVentasAbierto, setHistorialVentasAbierto] = (0, import_react4.useState)(false);
-  const [operacionesCuentaAbiertas, setOperacionesCuentaAbiertas] = (0, import_react4.useState)(false);
+  const [operacionesCuentaAbiertas, setOperacionesCuentaAbiertas] = (0, import_react4.useState)(() => leerOperacionesCuentaTpv(configEmpresa?.id, local?.id));
+  (0, import_react4.useEffect)(() => {
+    if (leerOperacionesCuentaTpv(configEmpresa?.id, local?.id)) setOperacionesCuentaAbiertas(true);
+  }, [configEmpresa?.id, local?.id]);
   function datoCorreccionHistorialPM09(m22, clave) {
     if (!m22) return void 0;
     if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
@@ -127593,10 +127640,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       v22.medioPago === "Mixto" && (v22.detallePago.efectivo > 0 || v22.detallePago.tarjeta > 0) ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta \u20AC${fmt(v22.detallePago.tarjeta)} + Efectivo \u20AC${fmt(v22.detallePago.efectivo)}`) : null,
       h3("div", { className: "text-[10px] mb-3 break-all", style: { color: C2.inkSoft } }, `ID interno: ${v22.ventaId}`),
       h3("div", { className: "flex gap-2 flex-wrap mb-3" }, h3(Btn, { onClick: () => abrirTicketHistorial(v22) }, "Ver ticket / reimprimir")),
-      v22.estado === "ACTIVA" && anularVenta ? h3(Btn, { variant: "danger", onClick: () => {
+      v22.estado === "ACTIVA" && anularVenta && puedeAnularVenta ? h3(Btn, { variant: "danger", onClick: () => {
         setVentaDetalle(null);
         setConfirmAnular(v22);
-      } }, "Anular venta") : null
+      } }, "Anular venta") : v22.estado === "ACTIVA" && anularVenta ? h3("div", { role: "status", "data-anular-sin-permiso": "1", className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Solo el Propietario y el Encargado pueden anular una venta.") : null
     );
     return h3(import_react4.default.Fragment, null, controles, detalle, renderTicketVenta());
   }
@@ -127645,7 +127692,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ),
       h3("div", { className: "flex gap-2 flex-wrap" },
         h3(Btn, { small: true, onClick: () => setHistorialVentasAbierto(true), "aria-label": "Abrir historial completo de ventas" }, "Ver historial completo"),
-        h3(Btn, { small: true, variant: "ghost", onClick: () => setOperacionesCuentaAbiertas((actual) => !actual), "aria-expanded": operacionesCuentaAbiertas }, operacionesCuentaAbiertas ? "Ocultar operaciones de cuenta" : "Mostrar operaciones de cuenta")
+        h3(Btn, { small: true, variant: "ghost", onClick: () => {
+          const nuevo = !operacionesCuentaAbiertas;
+          setOperacionesCuentaAbiertas(nuevo);
+          guardarOperacionesCuentaTpv(configEmpresa?.id, local?.id, nuevo);
+        }, "aria-expanded": operacionesCuentaAbiertas }, operacionesCuentaAbiertas ? "Ocultar operaciones de cuenta" : "Mostrar operaciones de cuenta")
       )
     );
   }
@@ -128852,7 +128903,28 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     observador.observe(el);
     return () => observador.disconnect();
   }, [modoCajaTpv, vendibles.length > 0]);
-  const porPaginaRejilla = Math.max(1, columnasRejilla * (modoCajaTpv && filasRejillaCaja ? filasRejillaCaja : FILAS_REJILLA_TPV));
+  /* H-16 (auditoria del TPV): fuera del modo caja el numero de columnas salia del ancho de la VENTANA (5 desde 1280 px), pero en Orbita la zona de productos
+     es mucho mas estrecha (comparte espacio con el lateral y con el ticket): las tarjetas quedaban de ~135 px y los nombres se salian. Se calcula con el ancho
+     real de la rejilla (tarjetas de 140 px como minimo) y la paginacion usa el mismo numero. En modo caja la rejilla sigue como estaba. */
+  const [columnasContenedorTpv, setColumnasContenedorTpv] = (0, import_react4.useState)(null);
+  (0, import_react4.useEffect)(() => {
+    const el = refRejillaTpv.current;
+    if (modoCajaTpv || !el || typeof ResizeObserver !== "function") {
+      setColumnasContenedorTpv(null);
+      return;
+    }
+    const medir = () => {
+      const hueco = parseFloat(getComputedStyle(el).columnGap) || 8;
+      const columnas = Math.max(2, Math.min(6, Math.floor((el.clientWidth + hueco) / (140 + hueco))));
+      setColumnasContenedorTpv((previas) => previas === columnas ? previas : columnas);
+    };
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [modoCajaTpv, vendibles.length > 0]);
+  const columnasPorPaginaTpv = !modoCajaTpv && columnasContenedorTpv ? columnasContenedorTpv : columnasRejilla;
+  const porPaginaRejilla = Math.max(1, columnasPorPaginaTpv * (modoCajaTpv && filasRejillaCaja ? filasRejillaCaja : FILAS_REJILLA_TPV));
   const [paginaRejilla, setPaginaRejilla] = (0, import_react4.useState)(0);
   const paginasRejilla = Math.max(1, Math.ceil(visibles.length / porPaginaRejilla));
   // Si cambia el filtro, la categoria o el ancho, la pagina actual puede dejar
@@ -130881,7 +130953,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       }
     },
     c22
-  ))), flechaCategoriasCaja(1), presentacionCategorias.puedeConfigurar ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrirEditorCategorias }, "Categor\u00edas") : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla mb-3", ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : void 0 }, visiblesPagina.map((p22) => {
+  ))), flechaCategoriasCaja(1), presentacionCategorias.puedeConfigurar ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrirEditorCategorias }, "Categor\u00edas") : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla mb-3", ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : !modoCajaTpv && columnasContenedorTpv ? { gridTemplateColumns: `repeat(${columnasContenedorTpv}, minmax(0, 1fr))` } : void 0 }, visiblesPagina.map((p22) => {
     const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
     const cantidadEnCarrito = carrito.filter((l22) => l22.productoId === p22.id).reduce((acc, l22) => acc + (Number(l22.cantidad) || 0), 0);
     const sinStock = (Number(p22.stockPisoVenta) || 0) <= 0;
@@ -131033,7 +131105,19 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const [ensayoCierre, setEnsayoCierre] = (0, import_react4.useState)(null);
   const [motivoDiferencia, setMotivoDiferencia] = (0, import_react4.useState)("");
   const [motivoDecision, setMotivoDecision] = (0, import_react4.useState)("");
-  const [mostrarGestionCocina, setMostrarGestionCocina] = (0, import_react4.useState)(false);
+  const [mostrarGestionCocina, setMostrarGestionCocina] = (0, import_react4.useState)(() => {
+    try {
+      return window.sessionStorage.getItem("la_suite_abrir_gestion_cocina_v1") === "1";
+    } catch (error) {
+      return false;
+    }
+  });
+  (0, import_react4.useEffect)(() => {
+    try {
+      window.sessionStorage.removeItem("la_suite_abrir_gestion_cocina_v1");
+    } catch (error) {
+    }
+  }, []);
   const [mostrarTodasComandas, setMostrarTodasComandas] = (0, import_react4.useState)(false);
   const bloqueosDiferencia = Array.isArray(cierreInfo?.bloqueos) ? cierreInfo.bloqueos : [];
   const gestionCocinaVisible = mostrarGestionCocina || requiereApertura || estadoCierre !== "ABIERTA";
