@@ -1,6 +1,6 @@
 # Corrección H-22 · tras «Enviar pedido» no aparecía el cobro · 27/11/2026
 
-Estado: **corregida y probada con una prueba de ejecución; sin verificar todavía en el navegador de QA tras la corrección.**
+Estado: **corregida, probada con una prueba de ejecución y verificada en el navegador de QA (27/11/2026).**
 Rama `correccion/ola0-tpv-2026-11-26`. Cliente solamente: no hay migración ni cambios en el servidor.
 
 ## Qué pasaba
@@ -37,9 +37,20 @@ Las demás acciones sobre el pedido (`accionPedidoA05`) y la recuperación de cu
 resultado (envío normal y atajo), venta rápida pasa a Sala, Sala no cambia y un envío fallido no cambia nada. **Con el código
 anterior fallan 6 comprobaciones**; con el nuevo pasan las 12.
 
+## Verificación en el navegador de QA (27/11/2026, tras la corrección)
+
+Vista previa de la PR #227 (comprobado que su `fuente.js` ya contiene el cambio), como PM07 en `QA-EMP-A` / `QA-A1`:
+
+| Caso | Resultado |
+|---|---|
+| Sala: croissant → «Guardar» → «Enviar pedido» → «Aceptar» | **Verificado.** Aparece «Cobro · F4» (total 1,32 €, «Exacto», «Cobrar efectivo», «Iniciar tarjeta simulada») y «Sala y mesas» sigue visible; no aparece «Caja del TPV». El «Pedido operativo» queda «Enviado a cocina» con su línea. |
+| Venta rápida: croissant → «Guardar» → «Enviar pedido» | **Verificado.** La pantalla pasa a Sala (modo persistido `SALA`) y muestra el cobro; ya no queda «Venta rápida en curso» sin cobro. |
+
+Las dos cuentas de prueba se cancelaron desde la pantalla («Cancelar pedido» con motivo): pedido CANCELADO y cuenta CERRADA (H-21).
+No se cobró nada ni se emitió ningún documento. Al terminar: sesión cerrada, y `QA-EMP-A`, `QA-A1` y la membresía de PM07
+vuelven a `activo=false`. La sesión de caja `42a7063b…` sigue ABIERTA. No se guardó ninguna contraseña ni código.
+
 ## Qué NO está verificado
 
-- No se ha repetido el caso en el navegador con la corrección desplegada (hace falta que la vista previa se reconstruya y
-  reactivar de nuevo la cuenta de QA del Propietario, como en la verificación anterior).
 - El cambio automático a Sala en venta rápida es una decisión de diseño (la auditoría pedía «mostrar el cobro o llevar a él»);
   si se prefiere mostrar el cobro dentro de la propia venta rápida, es otro cambio.
