@@ -11301,6 +11301,25 @@ function lineasRecibidasRepartoTpv(estado) {
     return { linea, cantidad, fiscalizada, devolvible, destino };
   }).filter((item) => item.devolvible > 0);
 }
+// H-35 (auditoria del TPV): el historial no reflejaba los reembolsos economicos (B08): una venta con 1,00 EUR devueltos figuraba ACTIVA, su ticket no lo decia y el importe seguia en «Total vigente».
+// Los reembolsos CONFIRMADOS y sus aplicaciones por venta fiscal salen del servidor; esto suma, por venta fiscal, lo realmente devuelto.
+function reembolsoPorVentaDeFilasTpv(reembolsos, aplicaciones) {
+  const confirmados = new Set((Array.isArray(reembolsos) ? reembolsos : []).filter((r2) => String(r2?.estado || "") === "CONFIRMADO").map((r2) => String(r2.id)));
+  const porVenta = {};
+  (Array.isArray(aplicaciones) ? aplicaciones : []).forEach((a2) => {
+    if (!a2 || !confirmados.has(String(a2.reembolso_id)) || !a2.venta_fiscal_id) return;
+    const importe = Number(a2.importe_venta) || 0;
+    if (importe <= 0) return;
+    const clave = String(a2.venta_fiscal_id);
+    porVenta[clave] = Math.round(((porVenta[clave] || 0) + importe) * 100) / 100;
+  });
+  return porVenta;
+}
+function etiquetaReembolsoVentaTpv(venta) {
+  const importe = Number(venta?.reembolsadoEconomico) || 0;
+  if (importe <= 0) return "";
+  return (venta?.reembolsadaTotal ? "Reembolsada " : "Reembolso parcial ") + fmt(importe) + " \u20AC";
+}
 var FILAS_REJILLA_TPV = 4;
 // Cuantas columnas esta pintando .tpv-rejilla ahora mismo. Se pregunta al
 // navegador en vez de medir el nodo: los cortes son los mismos que en el CSS de
@@ -26080,6 +26099,34 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
   const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
   const [historialVentasAbierto, setHistorialVentasAbierto] = (0, import_react4.useState)(false);
+  const [reembolsosPorVentaTpv, setReembolsosPorVentaTpv] = (0, import_react4.useState)({});
+  const reembolsosFirmaRef = (0, import_react4.useRef)("");
+  (0, import_react4.useEffect)(() => {
+    const empresaId = configEmpresa?.id || null;
+    const localId = local?.id || null;
+    if (!empresaId || !localId || typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return;
+    let vigente = true;
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const [reembolsos, aplicaciones] = await Promise.all([
+          supabase.from("reembolsos").select("id,estado").eq("empresa_id", empresaId).eq("local_id", localId).eq("estado", "CONFIRMADO"),
+          supabase.from("reembolso_aplicaciones").select("reembolso_id,venta_fiscal_id,importe_venta").eq("empresa_id", empresaId).eq("local_id", localId)
+        ]);
+        if (reembolsos.error || aplicaciones.error) throw reembolsos.error || aplicaciones.error;
+        const mapa = reembolsoPorVentaDeFilasTpv(reembolsos.data, aplicaciones.data);
+        const firma = JSON.stringify(mapa);
+        if (vigente && firma !== reembolsosFirmaRef.current) {
+          reembolsosFirmaRef.current = firma;
+          setReembolsosPorVentaTpv(mapa);
+        }
+      } catch (error) {
+      }
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [configEmpresa?.id, local?.id, historialVentasAbierto, (movimientos || []).length]);
   const [operacionesCuentaAbiertas, setOperacionesCuentaAbiertas] = (0, import_react4.useState)(() => leerOperacionesCuentaTpv(configEmpresa?.id, local?.id));
   (0, import_react4.useEffect)(() => {
     if (leerOperacionesCuentaTpv(configEmpresa?.id, local?.id)) setOperacionesCuentaAbiertas(true);
@@ -26151,7 +26198,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         const iva = Number(datoCorreccionHistorialPM09(m22, "ivaVentaAplicado")) || 0;
         return a22 + cantidad * ingreso * (1 + iva / 100);
       }, 0);
-      const importeNetoGestion = anulada ? 0 : Math.max(0, importeOriginal - importeAsociadoDevuelto);
+      const ventaFiscalRefReembolso = lineas.find((l22) => l22.ventaFiscalId)?.ventaFiscalId || ventaId;
+      const reembolsadoEconomico = typeof reembolsosPorVentaTpv !== "undefined" && reembolsosPorVentaTpv ? Math.max(0, Number(reembolsosPorVentaTpv[ventaFiscalRefReembolso]) || 0) : 0;
+      const importeNetoGestion = anulada ? 0 : Math.max(0, importeOriginal - Math.max(importeAsociadoDevuelto, reembolsadoEconomico));
       const reembolsoAcumulado = devolucionesCliente.reduce((a22, m22) => a22 + Math.max(0, Number(datoCorreccionHistorialPM09(m22, "reembolso")) || 0), 0);
       const estado = anulada ? "ANULADA" : unidadesDevueltas <= 1e-9 ? "ACTIVA" : unidadesOriginales > 0 && unidadesDevueltas >= unidadesOriginales - 1e-9 ? "DEVUELTA_TOTAL" : "DEVUELTA_PARCIAL";
       const trazabilidad = correcciones.map((m22) => {
@@ -26173,9 +26222,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
       const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
       const lineaConTicket = lineas.find((l22) => l22.numeroFiscal || l22.numeroFactura || l22.qrFiscal || l22.cuentaId || l22.ventaFiscalId) || lineas[0];
-      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineaConTicket?.mesa || lineaConTicket?.mesaNumero || "", zona: lineaConTicket?.zona || lineaConTicket?.sala || lineaConTicket?.ubicacion || "", cuentaId: lineaConTicket?.cuentaId || null, checkoutId: lineaConTicket?.checkoutId || null, ventaFiscalId: lineaConTicket?.ventaFiscalId || null, numeroFiscal: lineaConTicket?.numeroFiscal || lineaConTicket?.numeroFactura || "", qrFiscal: lineaConTicket?.qrFiscal || null, entregado: lineaConTicket?.importeEntregado ?? lineaConTicket?.entregado ?? null, cambio: lineaConTicket?.cambioEntregado ?? lineaConTicket?.cambio ?? null };
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, reembolsadoEconomico, reembolsadaTotal: !anulada && reembolsadoEconomico > 0 && reembolsadoEconomico >= importeOriginal - 0.005, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineaConTicket?.mesa || lineaConTicket?.mesaNumero || "", zona: lineaConTicket?.zona || lineaConTicket?.sala || lineaConTicket?.ubicacion || "", cuentaId: lineaConTicket?.cuentaId || null, checkoutId: lineaConTicket?.checkoutId || null, ventaFiscalId: lineaConTicket?.ventaFiscalId || null, numeroFiscal: lineaConTicket?.numeroFiscal || lineaConTicket?.numeroFactura || "", qrFiscal: lineaConTicket?.qrFiscal || null, entregado: lineaConTicket?.importeEntregado ?? lineaConTicket?.entregado ?? null, cambio: lineaConTicket?.cambioEntregado ?? lineaConTicket?.cambio ?? null };
     }).sort((a22, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a22.fecha} ${a22.marcaTiempo}`));
-  }, [movimientos, productos]);
+  }, [movimientos, productos, reembolsosPorVentaTpv]);
   const ventasFiltradas = (0, import_react4.useMemo)(() => {
     const q2 = filtroVentasTexto.trim().toLowerCase();
     return historialVentas.filter((v22) => {
@@ -26193,7 +26242,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     });
   }, [historialVentas, filtroVentasTexto, filtroVentasDesde, filtroVentasHasta, filtroVentasPago, filtroVentasEstado, productos]);
   const resumenHistorialVentas = (0, import_react4.useMemo)(() => {
-    const vigentes = ventasFiltradas.filter((v22) => v22.estado === "ACTIVA" || v22.estado === "DEVUELTA_PARCIAL");
+    const vigentes = ventasFiltradas.filter((v22) => (v22.estado === "ACTIVA" || v22.estado === "DEVUELTA_PARCIAL") && !v22.reembolsadaTotal);
     const total2 = ventasFiltradas.reduce((a22, v22) => a22 + (Number(v22.importeNetoGestion) || 0), 0);
     return { n: ventasFiltradas.length, activas: vigentes.length, total: total2, ticketMedio: vigentes.length ? total2 / vigentes.length : 0 };
   }, [ventasFiltradas]);
@@ -26325,6 +26374,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           h3("div", { className: "mt-1 font-semibold" }, `LOCAL: ${nombreLocal}`)
         ),
         h3("div", { className: "text-center text-[12px] font-bold my-3" }, tieneNumeroFiscal && estadoNifEmpresa === "sin_verificar" ? "FACTURA SIMPLIFICADA" : "TICKET / RECIBO INTERNO"),
+        v22.reembolsadoEconomico > 0 ? h3("div", { className: "text-center text-[11px] font-bold rounded-lg py-2 mb-3", "data-ticket-reembolsada": "1", style: { background: C2.amberSoft || C2.surface2, color: C2.amber || C2.ink } }, etiquetaReembolsoVentaTpv(v22)) : null,
         v22.estado !== "ACTIVA" ? h3("div", { className: "text-center text-[11px] font-bold rounded-lg py-2 mb-3", style: { background: v22.estado === "ANULADA" ? C2.redSoft || "#FCE8E6" : C2.amberSoft || C2.surface2, color: colorEstadoVentaHistorialPM09(v22.estado) } }, etiquetaEstadoVentaHistorialPM09(v22.estado)) : null,
         h3(
           "div",
@@ -26448,7 +26498,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h3(
           "div",
           { className: "flex items-center justify-between gap-2" },
-          h3("div", null, h3("div", { className: "text-[12.5px] font-semibold" }, v23.referencia, h3(Pill2, { color: colorEstadoVentaHistorialPM09(v23.estado) }, etiquetaEstadoVentaHistorialPM09(v23.estado))), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${v23.fecha || "Sin fecha"} \xB7 ${v23.medioPago}${v23.usuario ? " \xB7 " + v23.usuario : ""}`)),
+          h3("div", null, h3("div", { className: "text-[12.5px] font-semibold" }, v23.referencia, h3(Pill2, { color: colorEstadoVentaHistorialPM09(v23.estado) }, etiquetaEstadoVentaHistorialPM09(v23.estado)), etiquetaReembolsoVentaTpv(v23) ? h3(Pill2, { color: C2.amber || C2.inkSoft }, etiquetaReembolsoVentaTpv(v23)) : null), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${v23.fecha || "Sin fecha"} \xB7 ${v23.medioPago}${v23.usuario ? " \xB7 " + v23.usuario : ""}`)),
           h3("div", { className: "text-right" }, h3("div", { className: "mono font-bold text-[13px]" }, "\u20AC", fmt(v23.importeNetoGestion)), v23.estado !== "ACTIVA" ? h3("div", { className: "text-[9.5px]", style: { color: C2.inkSoft } }, `Original \u20AC${fmt(v23.importeOriginal)}`) : null)
         ),
         h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, v23.resumen)
@@ -26494,7 +26544,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const detalle = h3(
       Modal,
       { onClose: () => setVentaDetalle(null), title: `Venta ${v22.referencia}` },
-      h3("div", { className: "flex items-center justify-between mb-3" }, h3("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, `${v22.fecha || "Sin fecha"} \xB7 ${v22.medioPago}`), h3(Pill2, { color: colorEstadoVentaHistorialPM09(v22.estado) }, etiquetaEstadoVentaHistorialPM09(v22.estado))),
+      h3("div", { className: "flex items-center justify-between mb-3" }, h3("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, `${v22.fecha || "Sin fecha"} \xB7 ${v22.medioPago}`), h3("div", { className: "flex gap-1.5 flex-wrap justify-end" }, h3(Pill2, { color: colorEstadoVentaHistorialPM09(v22.estado) }, etiquetaEstadoVentaHistorialPM09(v22.estado)), etiquetaReembolsoVentaTpv(v22) ? h3(Pill2, { color: C2.amber || C2.inkSoft }, etiquetaReembolsoVentaTpv(v22)) : null)),
       h3("div", { className: "space-y-2 mb-3" }, v22.lineas.map((l22) => {
         const p22 = productos.find((x3) => x3.id === l22.productoId);
         const cant = Math.abs(cantidadConSigno(l22));
@@ -26503,7 +26553,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       })),
       h3("div", { className: "py-2 mb-2", style: { borderTop: `1px solid ${C2.line}` } },
         h3("div", { className: "flex justify-between font-bold" }, h3("span", null, "Total original"), h3("span", { className: "mono" }, "\u20AC", fmt(v22.importeOriginal))),
-        v22.estado !== "ACTIVA" ? h3("div", { className: "flex justify-between mt-1 text-[12px]" }, h3("span", null, "Neto de gestión"), h3("span", { className: "mono font-semibold" }, "\u20AC", fmt(v22.importeNetoGestion))) : null,
+        v22.reembolsadoEconomico > 0 ? h3("div", { className: "flex justify-between mt-1 text-[12px]", "data-venta-reembolso-economico": "1" }, h3("span", null, "Reembolsado (dinero devuelto)"), h3("span", { className: "mono font-semibold" }, "\u20AC", fmt(v22.reembolsadoEconomico))) : null,
+        (v22.estado !== "ACTIVA" || v22.reembolsadoEconomico > 0) ? h3("div", { className: "flex justify-between mt-1 text-[12px]" }, h3("span", null, "Neto de gestión"), h3("span", { className: "mono font-semibold" }, "\u20AC", fmt(v22.importeNetoGestion))) : null,
         v22.unidadesDevueltas > 0 ? h3("div", { className: "flex justify-between mt-1 text-[11px]", style: { color: C2.inkSoft } }, h3("span", null, `Unidades: ${fmt(v22.unidadesNetas)} netas de ${fmt(v22.unidadesOriginales)}`), h3("span", null, `Reembolso: \u20AC${fmt(v22.reembolsoAcumulado)}`)) : null
       ),
       v22.trazabilidad && v22.trazabilidad.length ? h3("div", { className: "rounded-lg p-2.5 mb-3", style: { background: C2.surface2 || C2.surface, border: `1px solid ${C2.line}` } },
