@@ -228,6 +228,10 @@ const EXCLUIDAS = new Set([
   // pedido vivo, dinero en juego o un reparto. Lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h28-h29-cerrar-cuentas-sin-actividad-pglite-contract.mjs
   '20261128140000_abc_f6_cerrar_cuentas_sin_actividad.sql',
+  // H-50 (hallado al probar H-47): un reparto sobre una linea cancelada ya no retiene la cuenta abierta ni al cancelar el pedido ni en la limpieza de cuentas sin
+  // actividad. Lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h50-repartos-de-lineas-canceladas-pglite-contract.mjs
+  '20261128150000_abc_f6_repartos_de_lineas_canceladas_no_retienen_cuenta.sql',
   // H-04 / H-18 (Ola 2): encargos y pagos de encargo solo por funciones de servidor; quita TRUNCATE/REFERENCES/TRIGGER
   // sobrantes. Lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs
@@ -335,6 +339,9 @@ const JUSTIFICACION = {
   ],
   '20261128140000_abc_f6_cerrar_cuentas_sin_actividad.sql': [
     'tests/rediseno/h28-h29-cerrar-cuentas-sin-actividad-pglite-contract.mjs',
+  ],
+  '20261128150000_abc_f6_repartos_de_lineas_canceladas_no_retienen_cuenta.sql': [
+    'tests/rediseno/h50-repartos-de-lineas-canceladas-pglite-contract.mjs',
   ],
 };
 

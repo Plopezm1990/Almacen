@@ -1,8 +1,8 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 417,
+  "total_inventory": 418,
   "expected_counts": {
-    "active_contract": 400,
+    "active_contract": 401,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "pglite": {
-      "active_contract": 15,
+      "active_contract": 16,
       "historical_expected_fail": 0,
       "utility": 1,
       "diagnostic": 0
@@ -2059,6 +2059,11 @@
       "path": "tests/rediseno/h28-h29-cerrar-cuentas-ui-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h50-repartos-de-lineas-canceladas-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
     },
     {
       "path": "tests/rediseno/h28-h29-cerrar-cuentas-sin-actividad-pglite-contract.mjs",
