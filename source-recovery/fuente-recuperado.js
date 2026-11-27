@@ -12863,13 +12863,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const contexto = leerContextoCuentaA02(empresaId, localActivoId);
       if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
       if (contexto.pedidoEstado === "ENVIADO") {
-        return {
-          ok: true,
-          pedidoId: contexto.pedidoId,
-          pedidoVersion: contexto.pedidoVersion,
-          pedidoEstado: contexto.pedidoEstado,
-          lineas: contexto.lineas
-        };
+        // H-22: el resultado sustituye al pedido operativo de la pantalla, así que lleva el contexto completo (con la cuenta).
+        return { ok: true, ...contexto };
       }
       if (contexto.pedidoEstado !== "ABIERTO" && contexto.pedidoEstado !== "BORRADOR") {
         throw new Error("pedido_no_enviable");
@@ -12954,12 +12949,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       contexto.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
       const guardado = guardarContextoCuentaA02(empresaId, localActivoId, contexto);
 
+      // H-22: antes devolvía solo pedido y líneas, sin cuentaId. «Enviar pedido» lo guarda como pedido operativo de la pantalla
+      // y, sin cuenta, el panel de cobro se sustituía por «Caja del TPV» hasta recargar. Ahora lleva el contexto completo,
+      // igual que accionPedidoA05 y recuperarCuentaA06.
       return {
         ok: true,
-        pedidoId: guardado.pedidoId,
-        pedidoVersion: guardado.pedidoVersion,
-        pedidoEstado: guardado.pedidoEstado,
-        lineas: guardado.lineas,
+        ...guardado,
         lineasEnviadas: Number(enviado?.lineas_enviadas) || guardado.lineas.filter((l22) => l22.estado === "ENVIADA").length
       };
     } catch (error) {
@@ -28512,6 +28507,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         lineas: Array.isArray(resultado.lineas) ? resultado.lineas : actual.lineas
       } : actual);
       setPedidoOperativoA05(resultado);
+      // H-22: en venta rápida el cobro de una cuenta enviada vive en la vista de Sala. Se lleva allí en vez de dejar
+      // «Venta rápida en curso» sin cobro y obligar a retomar la cuenta desde «Buscar cuentas abiertas».
+      if (modoTPV === "RAPIDA") setModoTPV("SALA");
     } finally {
       setProcesandoA05(false);
     }

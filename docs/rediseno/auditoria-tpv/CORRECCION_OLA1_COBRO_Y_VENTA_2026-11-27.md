@@ -38,6 +38,6 @@ Batería sin base de datos: 340 contratos activos, 0 fallos; manifiesto 400 entr
 
 | Hallazgo | Situación |
 |---|---|
-| **H-22** (tras enviar no aparece el cobro) | No se ha tocado: hay que verla en el navegador antes de decidir si se muestra el cobro o se lleva a él. |
+| **H-22** (tras enviar no aparece el cobro) | **Corregida el 27/11** tras verla en el navegador: `enviarPedidoA05` no devolvía la cuenta y el panel de cobro se sustituía por «Caja del TPV». Ver `CORRECCION_H-22_ENVIAR_PEDIDO_Y_COBRO_2026-11-27.md`. |
 | **H-27** (tarjeta simulada y su reembolso) y **H-23** (documento de la venta mixta) | Dependen de **H-06 (ola 2)**: `abc_qa_confirmar_pago_simulado` y las demás funciones de QA no tienen código en el repositorio y solo aceptan QA-EMP-A/QA-A1. Un botón en la interfaz sobre una función sin versionar sería construir sobre algo no gobernado. Primero H-06, después un botón «Aprobar/Rechazar tarjeta simulada» solo en QA. |
 | **H-43** (descuento sobre línea recibida por reparto) | Causa por confirmar; no se puede comprobar sin stock y sin una cuenta con permisos de descuento. |
