@@ -390,6 +390,20 @@ try {
     ok('G11 el bloque de la pantalla y su texto existen y piden al Propietario', fuenteTexto.includes('"data-h27-tarjeta-simulada"') && fuenteTexto.includes('"Aprobar tarjeta simulada"') && fuenteTexto.includes('"Rechazar tarjeta simulada"') && fuenteTexto.includes('Tarjeta simulada pendiente (solo QA)'));
     ok('G12 tras aprobar se vuelve a leer el estado del cobro y se indica cerrar la cuenta pagada', fuenteTexto.includes('Cierra la cuenta pagada para emitir el documento.') && /resolverTarjetaQaUI[\s\S]{0,900}leerEstadoCobroF4\(\)/.test(fuenteTexto));
   }
+
+  // ================= H-23 · cerrar una cuenta ya pagada también emite el documento fiscal =================
+  {
+    const fuenteTexto = readFileSync(origen, 'utf8');
+    const ini = fuenteTexto.indexOf('Number(estadoPrevio.saldo) <= 0 && !estadoPrevio.cobroIncierto');
+    const fin = fuenteTexto.indexOf('let pendiente = leerPendienteCobroF4(', ini);
+    const rama = ini > 0 && fin > ini ? fuenteTexto.slice(ini, fin) : '';
+    const iCierre = rama.indexOf('await cerrarCuentaPagadaF4(');
+    const iEmite = rama.indexOf('await emitirCheckoutFiscalC07D(recuperada.cuentaId, {');
+    ok('H1 la rama «saldo ya pagado» cierra la cuenta y DESPUÉS emite el documento fiscal con el checkout completado', iCierre > 0 && iEmite > iCierre && /checkoutId: checkoutCompletado\.id/.test(rama), rama.slice(0, 200));
+    ok('H2 la emisión solo se intenta si el cierre de la cuenta salió bien (no se emite sobre una cuenta que no se pudo cerrar)', /if \(cierreCuenta\?\.ok\) \{[\s\S]*emitirCheckoutFiscalC07D[\s\S]*\} else \{/.test(rama));
+    ok('H3 el resultado lleva el documento (y el QR de QA) para que la pantalla lo muestre', /estadoCerrado\.fiscal = fiscalCierre;/.test(rama) && /prepararTicketFiscalQa\(recuperada\.cuentaId, fiscalCierre, checkoutCompletado\.id\)/.test(rama));
+    ok('H4 una cuenta ya CERRADA sigue devolviéndose sin tocar nada (no se emite dos veces desde este camino)', /=== "CERRADA"\) return estadoPrevio;/.test(rama));
+  }
 } finally {
   if (raiz) { try { await act(async () => { raiz.unmount(); }); } catch {} }
 }

@@ -113443,6 +113443,21 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           estadoCerrado.cuentaEstado = "CERRADA";
           estadoCerrado.cuentaVersion = Number(cierreCuenta.cuenta_version);
           estadoCerrado.mensaje = "Cuenta pagada cerrada formalmente por el servidor.";
+          // H-23 (auditoría del TPV, 26/11/2026): este camino (cerrar una cuenta cuyo saldo ya está pagado, por ejemplo una venta
+          // mixta cuya última parte, la tarjeta, se resolvió después) cerraba la cuenta pero NO emitía el documento fiscal: solo el
+          // camino de cobro normal lo hacía. La emisión es idempotente por cuenta y checkout, así que repetirla no duplica.
+          const fiscalCierre = await emitirCheckoutFiscalC07D(recuperada.cuentaId, {
+            checkoutId: checkoutCompletado.id,
+            tipoDocumento: opciones?.tipoDocumento || "FACTURA",
+            codigoSerie: opciones?.codigoSerie || "TPV"
+          });
+          estadoCerrado.fiscal = fiscalCierre;
+          if (fiscalCierre?.ok) {
+            estadoCerrado.fiscal = {
+              ...fiscalCierre,
+              qr: await prepararTicketFiscalQa(recuperada.cuentaId, fiscalCierre, checkoutCompletado.id)
+            };
+          }
         } else {
           estadoCerrado.mensaje = `Efectivo confirmado, pero la cuenta sigue abierta: ${cierreCuenta?.error || "el cierre requiere revisión"}`;
         }
