@@ -226,6 +226,9 @@ const EXCLUIDAS = new Set([
   // pm11_finalizar_creacion_cuenta_empleado; lo prueba:
   //   tests/rediseno/h36-cuenta-empleado-password-inicial-pglite-contract.mjs
   '20261128110000_abc_f6_cuenta_empleado_password_inicial_pendiente.sql',
+  // H-17 (Ola 2): un disparador siembra la politica de segundo factor del Propietario en cada empresa nueva. Lo prueba:
+  //   tests/rediseno/h17-empresa-nueva-politica-mfa-pglite-contract.mjs
+  '20261128120000_abc_f6_empresa_nueva_con_politica_mfa_propietario.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -313,6 +316,9 @@ const JUSTIFICACION = {
   ],
   '20261128110000_abc_f6_cuenta_empleado_password_inicial_pendiente.sql': [
     'tests/rediseno/h36-cuenta-empleado-password-inicial-pglite-contract.mjs',
+  ],
+  '20261128120000_abc_f6_empresa_nueva_con_politica_mfa_propietario.sql': [
+    'tests/rediseno/h17-empresa-nueva-politica-mfa-pglite-contract.mjs',
   ],
 };
 
