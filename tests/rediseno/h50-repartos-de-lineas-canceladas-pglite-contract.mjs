@@ -43,10 +43,9 @@ const ANDAMIO = `
   create role anon; create role authenticated;
   create schema if not exists private; create schema if not exists auth;
   create table public.ajustes (clave text primary key, valor text);
-  insert into public.ajustes values ('puede_gestionar','true'), ('dia','2026-11-27');
+  insert into public.ajustes values ('dia','2026-11-27');
   create function auth.uid() returns uuid language sql stable as $$ select '11111111-1111-4111-8111-111111111111'::uuid $$;
   create function private.la_tiene_local(e text, l text) returns boolean language sql stable as $$ select e = 'E1' and l = 'L1' $$;
-  create function private.pm06_puede_gestionar_finanzas() returns boolean language sql stable as $$ select valor = 'true' from public.ajustes where clave = 'puede_gestionar' $$;
   create function private.abc_config_dia_evento(e text, l text) returns date language sql stable as $$ select valor::date from public.ajustes where clave = 'dia' $$;
   create function private.abc_tiene_capacidad(a text, b text, c text) returns boolean language sql stable as $$ select true $$;
   create function private.abc_terminal_sesion_operativa(a text, b text, c uuid, d uuid) returns boolean language sql stable as $$ select true $$;

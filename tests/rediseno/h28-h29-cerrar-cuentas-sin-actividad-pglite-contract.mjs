@@ -41,10 +41,15 @@ const ANDAMIO = `
   create role anon; create role authenticated;
   create schema if not exists private; create schema if not exists auth;
   create table public.ajustes (clave text primary key, valor text);
-  insert into public.ajustes values ('puede_gestionar','true'), ('dia','2026-11-27');
+  insert into public.ajustes values ('dia','2026-11-27');
+  -- Membresias de la persona que llama: Encargado en L1 y Cajero/a en L2 (la misma empresa), y nada en L3.
+  create table public.membresias_test (empresa_id text, local_id text, rol text);
+  insert into public.membresias_test values ('E1','L1','Encargado'), ('E1','L2','Cajero/a');
   create function auth.uid() returns uuid language sql stable as $$ select '11111111-1111-4111-8111-111111111111'::uuid $$;
-  create function private.la_tiene_local(e text, l text) returns boolean language sql stable as $$ select e = 'E1' and l = 'L1' $$;
-  create function private.pm06_puede_gestionar_finanzas() returns boolean language sql stable as $$ select valor = 'true' from public.ajustes where clave = 'puede_gestionar' $$;
+  create function private.la_tiene_local(e text, l text) returns boolean language sql stable as $$ select exists(select 1 from public.membresias_test where empresa_id = e and local_id = l) $$;
+  -- Sustituto fiel de private.abc_tiene_capacidad: el cargo es el de la membresia de ESE local.
+  create function private.abc_tiene_capacidad(e text, l text, c text) returns boolean language sql stable as $$
+    select c = 'ABC_PEDIDO_CANCELAR' and exists(select 1 from public.membresias_test where empresa_id = e and local_id = l and rol in ('Propietario','Encargado')) $$;
   create function private.abc_config_dia_evento(e text, l text) returns date language sql stable as $$ select valor::date from public.ajustes where clave = 'dia' $$;
   create table public.abc_operaciones (operation_id text primary key, empresa_id text, local_id text, command_type text, request jsonb, resultado jsonb);
   create function private.abc_operacion_iniciar(op text, e text, l text, tipo text, req jsonb, term uuid) returns jsonb language plpgsql as $$
@@ -182,12 +187,14 @@ const eventos = async (db, c) => (await db.query(`select payload->>'motivo' moti
 {
   const db = await base();
   const a = await cuenta(db);
-  await db.exec(`update public.ajustes set valor='false' where clave='puede_gestionar'`);
+  await db.exec(`update public.membresias_test set rol='Cajero/a' where local_id='L1'`);
   const r1 = await limpiar(db);
   check('C1 sin ser Propietario ni Encargado se rechaza y no se cierra nada', !r1.ok && r1.error.includes('cuentas_limpieza_no_autorizada') && (await estado(db, a.c)).estado === 'ABIERTA', r1.error);
-  await db.exec(`update public.ajustes set valor='true' where clave='puede_gestionar'`);
-  const r2 = await limpiar(db, { local: 'L2' });
+  await db.exec(`update public.membresias_test set rol='Encargado' where local_id='L1'`);
+  const r2 = await limpiar(db, { local: 'L3' });
   check('C2 un local que no es suyo se rechaza', !r2.ok && r2.error.includes('cuentas_limpieza_no_autorizada'));
+  const r2b = await limpiar(db, { local: 'L2' });
+  check('C2b un local donde tiene membresia pero solo como Cajero/a se rechaza (el cargo es el de ESE local, no un rol global)', !r2b.ok && r2b.error.includes('cuentas_limpieza_no_autorizada'), r2b.error);
   const r3 = await intenta(db, `select public.abc_cerrar_cuentas_sin_actividad('  ','${E}','${L}') r`);
   check('C3 sin identificador de operación se rechaza', !r3.ok && r3.error.includes('cuentas_limpieza_parametros_invalidos'));
 

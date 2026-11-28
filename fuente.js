@@ -106331,8 +106331,16 @@ function GestionAlmacen() {
         const supabase = await window.getSupabaseClient();
         const inicio = /* @__PURE__ */ new Date();
         inicio.setHours(0, 0, 0, 0);
-        const { data, error } = await supabase.from("movimientos_stock").select("id,producto_id,tipo,delta_almacen,movimiento_original_id").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("tipo", ["VENTA", "REVERSO"]).gte("created_at", inicio.toISOString()).limit(2e3);
-        if (error) throw error;
+        // Revision de codigo de #226: antes .limit(2e3) sin orden; con mas de 2000 movimientos al dia caia un subconjunto arbitrario. Ahora se pagina por id hasta agotar.
+        const data = [];
+        const tamanoPagina = 1e3;
+        for (let desde = 0; desde < 5e4; desde += tamanoPagina) {
+          const pagina = await supabase.from("movimientos_stock").select("id,producto_id,tipo,delta_almacen,movimiento_original_id").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("tipo", ["VENTA", "REVERSO"]).gte("created_at", inicio.toISOString()).order("id", { ascending: true }).range(desde, desde + tamanoPagina - 1);
+          if (pagina.error) throw pagina.error;
+          const filas = Array.isArray(pagina.data) ? pagina.data : [];
+          data.push(...filas);
+          if (filas.length < tamanoPagina) break;
+        }
         if (vigente) {
           const lista = pisoPorReponerDeMovimientosTpv(data, productos);
           if (lista.length || pisoPorReponerRef.current.length) {
@@ -130475,7 +130483,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       return;
     }
     await cargarCuentasAparcadasA06();
-    setMensajeAparcadasA06(resultado.cerradas > 0 ? `Se ${resultado.cerradas === 1 ? "cerr\u00f3 1 cuenta" : "cerraron " + resultado.cerradas + " cuentas"} sin actividad. ${resultado.omitidas > 0 ? resultado.omitidas + " siguen abiertas porque tienen un pedido sin cobrar, dinero pendiente o un reparto: hay que resolverlas una a una." : ""}` : `No hab\u00eda ninguna cuenta que cerrar de forma segura. ${resultado.omitidas > 0 ? resultado.omitidas + " siguen abiertas porque tienen un pedido sin cobrar, dinero pendiente o un reparto: hay que resolverlas una a una." : ""}`);
+    setMensajeAparcadasA06(resultado.cerradas > 0 ? `Se ${resultado.cerradas === 1 ? "cerr\u00f3 1 cuenta" : "cerraron " + resultado.cerradas + " cuentas"} sin actividad. ${resultado.omitidas > 0 ? resultado.omitidas + " siguen abiertas: las que tienen un pedido sin cobrar, dinero pendiente o un reparto hay que resolverlas una a una, y las de hoy se pueden cerrar cuando acabe el d\u00eda operativo." : ""}` : `No hab\u00eda ninguna cuenta que cerrar de forma segura. ${resultado.omitidas > 0 ? resultado.omitidas + " siguen abiertas: las que tienen un pedido sin cobrar, dinero pendiente o un reparto hay que resolverlas una a una, y las de hoy se pueden cerrar cuando acabe el d\u00eda operativo." : ""}`);
   }
   async function cargarCuentasAparcadasA06() {
     if (typeof listarCuentasAparcadasA06 !== "function") return;

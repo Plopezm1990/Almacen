@@ -63,8 +63,9 @@ begin
       v_encontradas := v_encontradas + 1;
       v_def := pg_get_functiondef(v_oid);
 
-      -- Ya aplicada: no se vuelve a tocar.
-      if position('ABC_COBRO_INICIAR' in v_def) > 0 then
+      -- Ya aplicada: no se vuelve a tocar. La marca es el texto EXACTO que esta migracion inserta (revision de codigo de #226): basta con que la funcion
+      -- nombre ABC_COBRO_INICIAR en otro sitio para que una marca mas laxa diera por hecho un parche que no esta.
+      if position(v_reemplazo in v_def) > 0 then
         continue;
       end if;
 

@@ -6,8 +6,8 @@
 -- Sin esto las cuentas se acumulan (en QA hay 90 abiertas) y estorban en «Cuentas abiertas». Las de H-21 y H-49 ya se cierran solas AL CANCELAR su
 -- último pedido; esta función cubre las que quedaron huérfanas y las anteriores a esas correcciones.
 --
--- Función: public.abc_cerrar_cuentas_sin_actividad(p_operation_id, p_empresa_id, p_local_id, p_sin_pedido_minutos = 60). Solo Propietario y Encargado
--- (private.pm06_puede_gestionar_finanzas) de ese local. Cierra (CERRADA, closed_at, versión +1, evento CUENTA_CERRADA_SIN_ACTIVIDAD) una cuenta ABIERTA
+-- Función: public.abc_cerrar_cuentas_sin_actividad(p_operation_id, p_empresa_id, p_local_id, p_sin_pedido_minutos = 60). Solo quien tiene la capacidad
+-- ABC_PEDIDO_CANCELAR en ESE local (por defecto Propietario y Encargado; private.abc_tiene_capacidad resuelve el cargo de la membresia de ese local, no un rol global). Cierra (CERRADA, closed_at, versión +1, evento CUENTA_CERRADA_SIN_ACTIVIDAD) una cuenta ABIERTA
 -- únicamente si se cumplen TODAS estas condiciones; si no, la deja como estaba y la cuenta como «omitida»:
 --   * no tiene ningún pedido vivo (distinto de CANCELADO): un pedido enviado y sin cobrar es dinero pendiente y lo resuelve una persona, no esta función;
 --   * no tiene dinero en juego: ningún checkout COMPLETADO, ningún pago que no sea RECHAZADO o CANCELADO, ninguna incidencia de cobro ABIERTA;
@@ -52,8 +52,8 @@ begin
      or nullif(btrim(coalesce(p_local_id, '')), '') is null then
     raise exception 'cuentas_limpieza_parametros_invalidos';
   end if;
-  if not private.la_tiene_local(p_empresa_id, p_local_id)
-     or not private.pm06_puede_gestionar_finanzas() then
+  -- Revision de codigo de #226: la comprobacion anterior (rol global + pertenecer al local) no estaba ligada al local pedido.
+  if not private.abc_tiene_capacidad(p_empresa_id, p_local_id, 'ABC_PEDIDO_CANCELAR') then
     raise exception 'cuentas_limpieza_no_autorizada';
   end if;
 

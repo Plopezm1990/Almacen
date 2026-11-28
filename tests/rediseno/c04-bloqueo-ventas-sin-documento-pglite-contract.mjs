@@ -68,6 +68,7 @@ const ANDAMIO = `
   create table public.abc_c05_documentos_emitidos (id serial primary key, empresa_id text, local_id text, documento_origen_id text, estado text);
   create table public.pagos (id serial primary key, empresa_id text, local_id text, estado text);
   create table public.efectos_pendientes (id serial primary key, empresa_id text, local_id text, estado text);
+  create table private.abc_c07d_emision_config (empresa_id text, local_id text, tipo_documento text, estado text);
 
   -- Texto original de 20261001140000.
   create or replace function private.abc_c04_bloqueos_cierre(p_empresa_id text, p_local_id text, p_session_id uuid)
@@ -130,9 +131,11 @@ const S_OTRA = '00000000-0000-4000-8000-0000000000a2';
 let n = 0;
 const uuid = () => `10000000-0000-4000-8000-${String(++n).padStart(12, '0')}`;
 
-async function base() {
+async function base({ config = 'VALIDADA' } = {}) {
   const db = new PGlite();
   await db.exec(ANDAMIO);
+  // Por defecto el local tiene la emision fiscal configurada y usable (como en QA).
+  if (config) await db.exec(`insert into private.abc_c07d_emision_config values ('${E}','${L}','FACTURA','${config}')`);
   await db.exec(`insert into public.caja_sesiones values
     ('${S}','${E}','${L}','EN_CIERRE','2026-11-26 08:00+00', null),
     ('${S_OTRA}','${E}','${L}','CERRADA_FINAL','2026-11-25 08:00+00','2026-11-25 20:00+00')`);
@@ -318,6 +321,79 @@ const bloqueos = async (db, sesion = S) =>
   const sl = MIG_LISTA.replace(/--.*$/gm, '');
   check('G13. la migración no toca tablas ni datos', !/(insert\s+into|update\s+\w|delete\s+from|drop\s+table|alter\s+table|truncate)/i.test(sl));
   await db.close();
+}
+
+// ---------------------------------------------------------------------------
+// H. Revision de codigo de #226: el bloqueo solo rige donde la emision fiscal esta configurada y usable.
+// ---------------------------------------------------------------------------
+{
+  for (const [config, bloquea] of [[null, false], ['BORRADOR', false], ['BLOQUEADA', false], ['VALIDADA', true], ['ACTIVA', true]]) {
+    const db = await base({ config });
+    await db.exec(MIG);
+    await venta(db, {});
+    const b = await bloqueos(db);
+    check(`H1 con la emision ${config === null ? 'SIN configurar' : 'en estado ' + config}, una venta cobrada sin documento ${bloquea ? 'BLOQUEA' : 'NO bloquea'} el cierre`, b.includes('VENTAS_SIN_DOCUMENTO') === bloquea, JSON.stringify(b));
+    await db.close();
+  }
+  {
+    // Otro local con emision configurada no activa el bloqueo de este.
+    const db = await base({ config: null });
+    await db.exec(`insert into private.abc_c07d_emision_config values ('${E}','OTRO','FACTURA','VALIDADA')`);
+    await db.exec(MIG);
+    await venta(db, {});
+    check('H2 la configuracion de OTRO local no activa el bloqueo de este', !(await bloqueos(db)).includes('VENTAS_SIN_DOCUMENTO'));
+    await db.close();
+  }
+  {
+    // Ruta de actualizacion: la version anterior (ya aplicada en QA) bloqueaba sin mirar la configuracion.
+    const db = await base({ config: null });
+    // Estado anterior (la version antigua de la migracion, aplicada en QA): el bloqueo existia pero sin mirar la configuracion.
+    await db.exec(`
+      create or replace function private.abc_c04_bloqueos_cierre(p_empresa_id text, p_local_id text, p_session_id uuid)
+      returns jsonb language sql stable security definer set search_path = '' as $function$
+        select coalesce(jsonb_agg(x.motivo order by x.motivo),'[]'::jsonb)
+          from (
+            select 'PAGOS_PENDIENTES'::text motivo
+              where exists (select 1 from public.pagos p where p.empresa_id=p_empresa_id and p.local_id=p_local_id and p.estado in ('PENDIENTE','AUTORIZADO','DESCONOCIDO'))
+            union all
+            select 'EFECTOS_PENDIENTES'::text
+              where exists (select 1 from public.efectos_pendientes e where e.empresa_id=p_empresa_id and e.local_id=p_local_id and e.estado in ('PENDIENTE','EN_PROCESO','ERROR'))
+            union all
+            select 'VENTAS_SIN_DOCUMENTO'::text
+              where exists (
+                select 1
+                  from public.caja_sesiones s
+                  join public.checkouts c on c.empresa_id=s.empresa_id and c.local_id=s.local_id
+                  join public.checkout_ventas cv on cv.checkout_id=c.id
+                 where s.empresa_id=p_empresa_id and s.local_id=p_local_id and s.id=p_session_id
+                   and c.estado='COMPLETADO' and cv.importe_objetivo>0
+                   and c.completed_at>=s.abierta_at and (s.cerrada_at is null or c.completed_at<=s.cerrada_at)
+                   and not exists (
+                     select 1 from public.abc_c05_documentos_emitidos d
+                      where d.empresa_id=c.empresa_id and d.local_id=c.local_id
+                        and d.documento_origen_id=cv.venta_fiscal_id::text and d.estado='EMITIDO')
+              )
+          ) x;
+      $function$;`);
+    check('H3 (preparacion) la funcion queda en el estado anterior, con el bloqueo y sin la condicion', !/abc_c07d_emision_config/.test((await db.query(`select pg_get_functiondef('private.abc_c04_bloqueos_cierre(text,text,uuid)'::regprocedure) d`)).rows[0].d));
+    await venta(db, {});
+    check('H3 la version anterior bloqueaba aunque no hubiera emision configurada (el defecto)', (await bloqueos(db)).includes('VENTAS_SIN_DOCUMENTO'));
+    await db.exec(MIG);
+    check('H3 al aplicar la version nueva sobre ella, deja de bloquear sin emision configurada', !(await bloqueos(db)).includes('VENTAS_SIN_DOCUMENTO'));
+    await db.exec(`insert into private.abc_c07d_emision_config values ('${E}','${L}','FACTURA','VALIDADA')`);
+    check('H3 y bloquea en cuanto el local la configura', (await bloqueos(db)).includes('VENTAS_SIN_DOCUMENTO'));
+    const dos = await intenta(db, MIG);
+    const cuenta = ((await db.query(`select pg_get_functiondef('private.abc_c04_bloqueos_cierre(text,text,uuid)'::regprocedure) d`)).rows[0].d.match(/abc_c07d_emision_config/g) || []).length;
+    check('H3 reaplicarla no duplica la condicion (idempotente)', dos.ok && cuenta === 1, String(cuenta));
+    await db.close();
+  }
+  {
+    const db = await base({ config: null });
+    await db.exec('drop table private.abc_c07d_emision_config');
+    const r = await intenta(db, MIG);
+    check('H4 sin la tabla de configuracion de emision, falla en voz alta', !r.ok && /DEPENDENCIA_OBLIGATORIA_NO_ENCONTRADA/.test(r.error), r.error);
+    await db.close();
+  }
 }
 
 // Higiene de la migración.

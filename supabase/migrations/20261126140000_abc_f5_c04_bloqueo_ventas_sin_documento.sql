@@ -15,6 +15,10 @@
 --      documento EMITIDO. Un documento solo reservado sigue contando como falta.
 --   2. El ensayo C12 clasifica ese bloqueo como BLOQUEADO (no como PENDIENTE).
 --
+-- Solo se aplica donde la emisión fiscal está CONFIGURADA y usable para el local (private.abc_c07d_emision_config
+-- en estado VALIDADA o ACTIVA). Revisión de código de #226: sin emisor configurado (p. ej. la variante de producción
+-- sin la semilla de QA) ningún cobro puede tener documento, y el bloqueo impediría cerrar la caja para siempre.
+--
 -- El cierre provisional no se bloquea (lo recoge en su foto y se puede reabrir); el
 -- definitivo sí, hasta que se emita el documento pendiente. La emisión la puede
 -- hacer quien inicia cobros (migraciones 20261126120000 y 20261126130000).
@@ -28,11 +32,25 @@ declare
   v_nuevo text;
   v_aplicadas integer := 0;
 
+  -- Solo hay bloqueo si el local tiene la emisión fiscal configurada y usable.
+  v_condicion_emision constant text :=
+    'exists (select 1 from private.abc_c07d_emision_config cfg' || chr(10)
+    || '                 where cfg.empresa_id=p_empresa_id and cfg.local_id=p_local_id' || chr(10)
+    || '                   and cfg.estado in (''VALIDADA'',''ACTIVA''))';
+
+  -- Ruta de actualización: la versión anterior de esta migración (ya aplicada en QA) no llevaba la condición.
+  v_patron_sin_condicion constant text := 'select\s+''VENTAS_SIN_DOCUMENTO''::text\s+where\s+exists\s*\(';
+  v_reemplazo_sin_condicion constant text :=
+    'select ''VENTAS_SIN_DOCUMENTO''::text' || chr(10)
+    || '        where ' || v_condicion_emision || chr(10)
+    || '          and exists (';
+
   v_patron_bloqueos constant text := '\)\s*x\s*;';
   v_reemplazo_bloqueos constant text :=
     'union all' || chr(10)
     || '      select ''VENTAS_SIN_DOCUMENTO''::text' || chr(10)
-    || '        where exists (' || chr(10)
+    || '        where ' || v_condicion_emision || chr(10)
+    || '          and exists (' || chr(10)
     || '          select 1' || chr(10)
     || '            from public.caja_sesiones s' || chr(10)
     || '            join public.checkouts c' || chr(10)
@@ -60,6 +78,10 @@ declare
     'or v_blockers ? ''SESION_NO_REVISABLE''' || chr(10)
     || '      or v_blockers ? ''VENTAS_SIN_DOCUMENTO''';
 begin
+  if to_regclass('private.abc_c07d_emision_config') is null then
+    raise exception 'DEPENDENCIA_OBLIGATORIA_NO_ENCONTRADA: private.abc_c07d_emision_config (configuración de emisión fiscal)';
+  end if;
+
   -- 1. Función de bloqueos (obligatoria, una sola).
   select p.oid into v_oid
     from pg_proc p join pg_namespace n on n.oid = p.pronamespace
@@ -74,6 +96,14 @@ begin
       raise exception 'ESTRUCTURA_NO_ENCONTRADA: % no tiene la forma esperada (una sola subconsulta x con los bloqueos de pagos y efectos)', v_oid::regprocedure;
     end if;
     v_nuevo := regexp_replace(v_def, v_patron_bloqueos, v_reemplazo_bloqueos, 'g');
+    execute v_nuevo;
+    v_aplicadas := v_aplicadas + 1;
+  elsif position('abc_c07d_emision_config' in v_def) = 0 then
+    -- Ya tenía el bloqueo de la versión anterior (sin la condición de emisión configurada): se le añade.
+    if (select count(*) from regexp_matches(v_def, v_patron_sin_condicion, 'g')) <> 1 then
+      raise exception 'ESTRUCTURA_NO_ENCONTRADA: % tiene VENTAS_SIN_DOCUMENTO pero no con la forma esperada para añadirle la condición de emisión', v_oid::regprocedure;
+    end if;
+    v_nuevo := regexp_replace(v_def, v_patron_sin_condicion, v_reemplazo_sin_condicion, 'g');
     execute v_nuevo;
     v_aplicadas := v_aplicadas + 1;
   end if;

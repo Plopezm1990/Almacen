@@ -91,6 +91,9 @@ for (const [nombre, t] of [['fuente.js', src], ['source-recovery/fuente-recupera
   tiene('D4 la tarjeta dice «sin piso · sale del almacén» si hay en el almacén y «sin stock» si no', 'p22._pm07Servidor && (Number(p22.stock) || 0) > 0 ? "sin piso · sale del almac\\u00e9n" : "sin stock"');
   tiene('D5 el padre carga lo vendido hoy desde el almacén solo para Propietario y Encargado, con la sesión del servidor', '!["Propietario", "Encargado"].includes(String(rolServidor || ""))');
   tiene('D6 se lee de movimientos_stock (VENTA y REVERSO de hoy)', '.from("movimientos_stock").select("id,producto_id,tipo,delta_almacen,movimiento_original_id")');
+  tiene('D6b la consulta se pagina ordenada por id hasta agotar los movimientos (revisión de código de #226)', '.order("id", { ascending: true }).range(desde, desde + tamanoPagina - 1);');
+  tiene('D6c y para solo cuando una página viene incompleta', 'if (filas.length < tamanoPagina) break;');
+  check(`D6d ya no hay un límite fijo de 2000 filas sin orden [${nombre}]`, !t.includes('.gte("created_at", inicio.toISOString()).limit(2e3)'));
   tiene('D7 el pendiente llega al panel de inicio', 'pisoPorReponer: pisoPorReponerTpv,');
   tiene('D8 el pendiente «Piso por reponer» va el primero y lleva al traspaso', 'titulo: "Piso por reponer",');
   tiene('D9 el panel lo recibe en Dashboard y en PanelDiseno', 'stockBajo, pisoPorReponer,');

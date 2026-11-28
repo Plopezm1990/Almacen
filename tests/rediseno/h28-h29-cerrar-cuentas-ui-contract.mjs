@@ -66,7 +66,8 @@ for (const [nombre, t] of [['fuente.js', src], ['source-recovery/fuente-recupera
   tiene('B4 pide confirmación antes de cerrar (diálogo de alerta con lo que se cierra y lo que no)', 'role: "alertdialog", "aria-label": "Cerrar cuentas sin actividad", "data-cerrar-cuentas-confirmacion": "1"');
   tiene('B5 la confirmación avisa de que las demás no se tocan', 'Las dem\\u00e1s no se tocan.');
   tiene('B6 mientras cierra no deja pulsar dos veces', 'if (limpiandoA06 || typeof cerrarCuentasSinActividadA06 !== "function") return;');
-  tiene('B7 tras cerrar se recarga la lista y se cuenta lo que quedó abierto y por qué', 'siguen abiertas porque tienen un pedido sin cobrar, dinero pendiente o un reparto: hay que resolverlas una a una.');
+  tiene('B7 tras cerrar se recarga la lista y se cuenta lo que quedó abierto, sin atribuir a todas la misma causa (revisión de código de #226)', 'siguen abiertas: las que tienen un pedido sin cobrar, dinero pendiente o un reparto hay que resolverlas una a una, y las de hoy se pueden cerrar cuando acabe el d\\u00eda operativo.');
+  check(`B7b el aviso ya no dice que todas las omitidas tienen un pedido sin cobrar [${nombre}]`, !t.includes('siguen abiertas porque tienen un pedido sin cobrar'));
   tiene('B8 el aviso de las cuentas de días cerrados conserva su frase (la fija A06.3) y explica quién puede cerrarlas y cuáles hay que resolver una a una', 'tampoco se cierran solas: esa resoluci\\xF3n la hace el servidor. Las que no tienen pedido sin cobrar ni dinero pendiente las puede cerrar el Propietario o el Encargado con \\u00abCerrar cuentas sin actividad\\u00bb; las que tienen un pedido sin cobrar hay que resolverlas una a una.');
   check(`B9 la pantalla no cierra cuentas por su cuenta (solo llama a la función de servidor) [${nombre}]`, !/update\(\{[^}]*estado: ?"CERRADA"/.test(t));
 }

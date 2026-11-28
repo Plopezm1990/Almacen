@@ -15,7 +15,7 @@ lo que no tiene actividad y dejar el resto a una persona.
 ## Qué se hizo
 
 **Servidor.** `public.abc_cerrar_cuentas_sin_actividad(p_operation_id, p_empresa_id, p_local_id, p_sin_pedido_minutos = 60)` (migración `20261128140000`). Solo Propietario y Encargado del local
-(`pm06_puede_gestionar_finanzas`). Cierra una cuenta ABIERTA **solo si** se cumplen todas:
+(capacidad `ABC_PEDIDO_CANCELAR` en ese local, por `abc_tiene_capacidad`; la primera versión usaba un rol global y se corrigió tras la revisión de código de #226). Cierra una cuenta ABIERTA **solo si** se cumplen todas:
 
 - no tiene ningún **pedido vivo** (distinto de CANCELADO);
 - no tiene **dinero en juego**: ningún checkout COMPLETADO, ningún pago que no sea RECHAZADO o CANCELADO, ninguna incidencia de cobro ABIERTA (mismo criterio que H-49);

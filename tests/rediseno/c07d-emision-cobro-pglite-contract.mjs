@@ -350,6 +350,32 @@ const FIRMAS = {
 }
 
 // ---------------------------------------------------------------------------
+// D2. Revision de codigo de #226: la marca de idempotencia es el texto EXACTO insertado. Una funcion que ya NOMBRA ABC_COBRO_INICIAR en otro
+//     sitio (aqui, un comentario) pero conserva la guarda original SE PARCHEA igualmente; antes la migracion la daba por aplicada en silencio.
+// ---------------------------------------------------------------------------
+{
+  const db = await nuevaBase();
+  await db.exec(`
+    create or replace function public.abc_c07d_estado_configuracion_emision(
+      p_empresa_id text, p_local_id text, p_tipo_documento text default 'FACTURA'
+    ) returns jsonb language plpgsql stable security definer set search_path='' as $function$
+    begin
+      -- nota historica: antes tambien se hablaba de ABC_COBRO_INICIAR en otro contexto
+      if auth.uid() is null
+         or not private.abc_tiene_capacidad(p_empresa_id, p_local_id, 'ABC_EMISOR_CAMBIAR') then
+        raise exception 'C07D_CONFIG_NO_AUTORIZADO' using errcode = '42501';
+      end if;
+      return jsonb_build_object('ok', true, 'configurada', true);
+    end $function$;`);
+  const antes = await como(db, 'Cajero/a', 'estado');
+  check('D2 antes: el Cajero/a no lee el estado fiscal aunque la funcion nombre ABC_COBRO_INICIAR en un comentario', !antes.ok && antes.error.includes('C07D_CONFIG_NO_AUTORIZADO'), antes.error || '');
+  await db.exec(M1);
+  const despues = await como(db, 'Cajero/a', 'estado');
+  check('D2 despues de la migracion el Cajero/a SI lo lee (el parche se aplico, no se dio por hecho)', despues.ok, despues.error || '');
+  await db.close();
+}
+
+// ---------------------------------------------------------------------------
 // E. Si la guarda esperada no está, las migraciones fallan en voz alta.
 // ---------------------------------------------------------------------------
 {
