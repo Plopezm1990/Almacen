@@ -13,7 +13,7 @@ Un cargo personalizado puede recibir capacidades funcionales, pero nunca puede c
 | Facultad | Regla no delegable | Evidencia actual |
 |---|---|---|
 | Identidad de Propietario | Una cuenta/membresía Propietario no puede recibir un cargo personalizado ni perder su protección por una asignación ordinaria. | `pm13_cargo_guard_propietario` rechaza asignaciones a una cuenta propietaria y no modifica perfiles ni membresías. |
-| Nombre de rol protegido | Un cargo libre no puede llamarse `Propietario`, `Encargado`, `Cajero/a`, `Camarero/a`, `Churrero/a`, `Básico` o `Estándar`. | `pm13_cargo_guard_nombre` rechaza nombres normalizados reservados. |
+| Nombre del cargo | El Propietario puede usar cualquier nombre válido, incluso nombres iguales a roles históricos. El texto nunca convierte el cargo en Propietario real. | La corrección de QA retira el bloqueo de nombres; `pm13_cargo_guard_propietario` sigue protegiendo la identidad por membresía y no permite asignar un cargo personalizado a una cuenta propietaria. |
 | Último propietario válido | Ninguna operación de cargos puede dejar la empresa sin un propietario activo y autorizado. | El contrato de protección separa cargos de perfiles/membresías; cualquier operación futura debe comprobar el último propietario en servidor. |
 | Configuración de empresa | Cambiar permisos para toda la empresa requiere una membresía Propietario activa con todos los locales. | `abc_config_puede_configurar_empresa` exige `todos_locales = true`, `local_id is null` y rol Propietario. |
 | Techo de capacidades | El editor no puede dar a un rol una capacidad por encima de su techo técnico, aunque el propietario la solicite. | `abc_cap_techo_permite` y `abc_tiene_capacidad` aplican el techo; la UI muestra el bloqueo. |
@@ -55,7 +55,7 @@ No son facultades exclusivas del propietario en todos los casos, pero sí están
 
 ## Hueco que queda para la implementación
 
-La protección de nombres, asignaciones y techos ya está preparada en el modelo ABC/PM13. Todavía falta conectar estas barreras al futuro resolver de acciones de cargos personalizados y cubrir con pruebas las transiciones de último propietario, revocación y concurrencia. Este subpunto no autoriza a aplicar una migración ni a modificar el catálogo actual.
+La protección de identidad, asignaciones y permisos efectivos queda separada del texto del cargo. En QA, la migración correctora conecta la navegación a la asignación activa y conserva las barreras de cargo activo, pantalla, alcance, excepciones auditadas y denegación por defecto.
 
 ## Estado del subpunto
 

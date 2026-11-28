@@ -16,17 +16,20 @@ for (const [file, text] of [["fuente.js", source], ["source-recovery/fuente-recu
   assert.match(text, /var PM13_PANTALLAS_EDITOR = Object\.freeze\(\[/, `${file}: falta el catálogo del editor`);
   assert.match(text, /\.map\(\(\[grupo, id, label, capacidadConsulta\]\) => Object\.freeze\(\{ grupo, id, label, capacidadConsulta, descripcion: `Consulta de \$\{label\}`, moduloActivo: true \}\)\)/, `${file}: catálogo no normalizado`);
   assert.match(text, /function ConfigCargos\(\{ empresa = null/, `${file}: ConfigCargos no recibe la empresa`);
-  assert.match(text, /Editar pantallas/, `${file}: falta abrir el editor`);
+  assert.match(text, /Permisos por pantalla/, `${file}: falta abrir el editor unificado por pantalla`);
+  assert.match(text, /Acciones dentro de esta pantalla/, `${file}: las acciones deben aparecer dentro de su pantalla`);
+  assert.match(text, /Puede consultar/, `${file}: falta el estado de acceso de consulta`);
+  assert.match(text, /abc_guardar_cargo_pantallas/, `${file}: el editor unificado debe guardar el acceso de pantalla`);
   assert.match(text, /Permitida para este cargo/, `${file}: falta estado permitido`);
   assert.match(text, /Denegada por este cargo/, `${file}: falta estado denegado`);
   assert.match(text, /Módulo no contratado o inactivo/, `${file}: falta estado de módulo inactivo`);
-  assert.match(text, /Todavía no guarda la selección en el servidor/, `${file}: falta límite de persistencia`);
+  assert.match(text, /La selección se guarda en el servidor mediante una operación autorizada y auditada/, `${file}: falta confirmar persistencia autorizada`);
   assert.match(text, /consultar.*no concede crear, editar, exportar, anular ni configurar/s, `${file}: falta separar consulta de acciones`);
 }
 
 assert.match(documentation, /45 pantallas/);
 assert.match(documentation, /Módulo no contratado o inactivo/);
-assert.match(documentation, /no se guarda todavía en el servidor/);
+assert.match(documentation, /se guardan en el servidor mediante RPC autorizadas/);
 assert.match(documentation, /punto 5/);
 
 console.log("PM13 P16 Editor de pantallas: agrupación, estados y límites de acciones OK");

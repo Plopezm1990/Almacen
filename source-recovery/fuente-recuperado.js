@@ -208,6 +208,11 @@ var PM13_CARGO_PERMISOS_LABELS = Object.freeze({
   PM13_PERSONAL_CREAR: "Crear empleados",
   PM13_PERSONAL_EDITAR: "Editar empleados"
 });
+var PM13_PANTALLA_POR_MODULO = Object.freeze({
+  PM13_PERSONAL: "ABC_PANTALLA_PERSONAL_CONSULTAR",
+  PM13_FICHAJE: "ABC_PANTALLA_FICHAJE_CONSULTAR",
+  PM13_AUSENCIAS: "ABC_PANTALLA_PERSONAL_CONSULTAR"
+});
 var CONFIG_PANTALLAS_ROL = [
   ["ABC_PANTALLA_DASHBOARD_CONSULTAR", "Panel general"], ["ABC_PANTALLA_DIRECCION_CONSULTAR", "Panel de dirección"], ["ABC_PANTALLA_BUSCAR_CONSULTAR", "Buscar"],
   ["ABC_PANTALLA_PROVEEDORES_CONSULTAR", "Proveedores"], ["ABC_PANTALLA_PEDIDOS_CONSULTAR", "Pedidos"], ["ABC_PANTALLA_RECEPCION_CONSULTAR", "Recepción"], ["ABC_PANTALLA_ALBARANES_CONSULTAR", "Albaranes"], ["ABC_PANTALLA_FACTURAS_CONSULTAR", "Facturas"],
@@ -1330,9 +1335,11 @@ var CONFIG_ERRORES = {
   cargo_id_requerido: "Falta el identificador del cargo.",
   cargo_no_encontrado: "No se encontró el cargo solicitado.",
   cargo_no_disponible: "El cargo no está activo o ya no está disponible.",
+  cargo_eliminado: "El cargo está eliminado y ya no se puede modificar.",
+  cargo_eliminado_no_reactivable: "El cargo está eliminado y no se puede reactivar desde aquí.",
   cargo_operation_id_requerido: "No se pudo identificar la operación. Recarga e inténtalo de nuevo.",
   cargo_empresa_no_autorizada: "Necesitas acceso de propietario a todos los locales de la empresa.",
-  cargo_nombre_reservado: "Ese nombre está reservado para un rol protegido del sistema.",
+  cargo_nombre_reservado: "Los nombres de los cargos son libres; recarga la aplicación y vuelve a intentarlo.",
   cargo_propietario_no_asignable: "Una cuenta propietaria no puede recibir un cargo personalizado.",
   FISCAL_CONFIG_NO_AUTORIZADO: "Necesitas acceso de Propietario a toda la empresa para configurar su emisor fiscal.",
   FISCAL_CONFIG_VERSION_OBSOLETA: "Otra sesión cambió este borrador. Se han recargado los datos más recientes; revisa antes de volver a guardar.",
@@ -2216,15 +2223,13 @@ function ConfigPermisos({ empresaId, localId, localNombre = "" }) {
 }
 function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombre = "", esPropietario = false, onIrPermisos = () => {} }) {
   const h = import_react4.default.createElement;
-  const roles = ["Propietario", ...NOMBRES_ROLES];
+  // Los roles técnicos históricos siguen existiendo para compatibilidad con
+  // empleados ya creados, pero no se ofrecen como cargos nuevos. El catálogo
+  // visible empieza siempre en Propietario y crece solo con cargos creados por
+  // el propietario de la empresa.
+  const roles = ["Propietario"];
   const descripciones = {
-    Propietario: "Acceso total protegido de la empresa; no es un cargo editable.",
-    Encargado: "Operación amplia del local y coordinación del equipo.",
-    "Cajero/a": "Cobros y operaciones de caja según los permisos configurados.",
-    "Camarero/a": "Venta y operación de sala según los permisos configurados.",
-    "Churrero/a": "Rol histórico conservado solo para cuentas existentes.",
-    Básico: "Rol histórico conservado solo para cuentas existentes.",
-    Estándar: "Rol histórico conservado solo para cuentas existentes."
+    Propietario: "Acceso total protegido de la empresa; no es un cargo editable."
   };
   const perteneceAlLocal = (empleado) => {
     if (!localId || !empleado) return false;
@@ -2246,6 +2251,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
   const [motivoExcepcion, setMotivoExcepcion] = (0, import_react4.useState)("");
   const [error, setError] = (0, import_react4.useState)("");
   const [confirmacion, setConfirmacion] = (0, import_react4.useState)("");
+  const [confirmacionCargo, setConfirmacionCargo] = (0, import_react4.useState)(null);
+  const [mostrarEliminados, setMostrarEliminados] = (0, import_react4.useState)(false);
   const cargarCargos = async () => {
     if (!esPropietario || !localId) return;
     setCargando(true);
@@ -2268,6 +2275,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     setEditorExcepciones(null);
     setMotivoExcepcion("");
     setConfirmacion("");
+    setConfirmacionCargo(null);
     cargarCargos();
   }, [empresa?.id, localId, esPropietario]);
   const guardarCargo = async () => {
@@ -2338,13 +2346,39 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
       setGuardando(false);
     }
   };
-  const cambiarEstadoCargo = async (cargo) => {
+  const pedirCambioEstadoCargo = (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setConfirmacionCargo({ id: cargo.id, accion: cargo.activo ? "desactivar" : "reactivar" });
+  };
+  const confirmarCambioEstadoCargo = async (cargo) => {
     setError("");
     setConfirmacion("");
     setGuardando(true);
     try {
       await configRpc(cargo.activo ? "abc_desactivar_cargo" : "abc_reactivar_cargo", { p_operation_id: configOperacion(cargo.activo ? "cargo-desactivar" : "cargo-reactivar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
-      setConfirmacion(cargo.activo ? "Cargo desactivado." : "Cargo reactivado.");
+      setConfirmacionCargo(null);
+      setConfirmacion(cargo.activo ? Number(cargo.asignados_count || 0) > 0 ? "Cargo desactivado. Las personas asignadas dejan de tener acceso efectivo por este cargo; el historial se conserva." : "Cargo desactivado. El historial y la configuración se han conservado." : "Cargo reactivado. Revisa sus pantallas y permisos antes de volver a asignarlo.");
+      await cargarCargos();
+    } catch (e2) {
+      setError(configMensajeError(e2));
+    } finally {
+      setGuardando(false);
+    }
+  };
+  const pedirEliminacionCargo = (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setConfirmacionCargo({ id: cargo.id, accion: "eliminar" });
+  };
+  const eliminarCargo = async (cargo) => {
+    setError("");
+    setConfirmacion("");
+    setGuardando(true);
+    try {
+      await configRpc("abc_eliminar_cargo", { p_operation_id: configOperacion("cargo-eliminar"), p_empresa_id: empresa?.id || "", p_local_id: localId, p_cargo_id: cargo.id });
+      setConfirmacionCargo(null);
+      setConfirmacion(Number(cargo.asignados_count || 0) > 0 ? "Cargo eliminado. Se ha revocado el acceso de las personas asignadas y se ha conservado todo el historial." : "Cargo eliminado. Se han conservado el historial y la auditoría.");
       await cargarCargos();
     } catch (e2) {
       setError(configMensajeError(e2));
@@ -2398,7 +2432,9 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         ...permiso,
         valor: permiso.activo ? permiso.permitido ? "permitido" : "denegado" : "sin_configurar"
       })) : [];
-      setEditorPermisos({ cargoId: cargo.id, permisos, originales: Object.fromEntries(permisos.map((permiso) => [clavePermisoEditor(permiso), permiso.valor])) });
+      const actuales = Array.isArray(cargo?.pantallas_consulta) ? cargo.pantallas_consulta : Array.isArray(cargo?.pantallasConsulta) ? cargo.pantallasConsulta : [];
+      const pantallas = Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, actuales.includes(pantalla.capacidadConsulta)]));
+      setEditorPermisos({ cargoId: cargo.id, permisos, pantallas, pantallasOriginales: { ...pantallas }, originales: Object.fromEntries(permisos.map((permiso) => [clavePermisoEditor(permiso), permiso.valor])) });
       setMotivoPermiso("");
     } catch (e2) {
       setError(configMensajeError(e2));
@@ -2407,13 +2443,30 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     }
   };
   const cambiarPermisoEditor = (permiso, valor) => {
-    setEditorPermisos((actual) => actual ? { ...actual, permisos: actual.permisos.map((item) => clavePermisoEditor(item) === clavePermisoEditor(permiso) ? { ...item, valor } : item) } : actual);
+    setEditorPermisos((actual) => {
+      if (!actual) return actual;
+      const capacidad = permiso.consulta_clave || PM13_PANTALLA_POR_MODULO[permiso.modulo] || "";
+      const pantalla = PM13_PANTALLAS_EDITOR.find((item) => item.capacidadConsulta === capacidad);
+      return {
+        ...actual,
+        permisos: actual.permisos.map((item) => clavePermisoEditor(item) === clavePermisoEditor(permiso) ? { ...item, valor } : item),
+        pantallas: valor === "permitido" && pantalla ? { ...actual.pantallas, [pantalla.id]: true } : actual.pantallas
+      };
+    });
   };
+  const cambiarPantallaEditor = (pantalla, valor) => {
+    setEditorPermisos((actual) => actual ? { ...actual, pantallas: { ...actual.pantallas, [pantalla.id]: valor } } : actual);
+  };
+  const marcarPantallasEditor = (valor) => {
+    setEditorPermisos((actual) => actual ? { ...actual, pantallas: Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, pantalla.moduloActivo !== false ? valor : false])) } : actual);
+  };
+  const pantallaDePermiso = (permiso) => permiso.consulta_clave || PM13_PANTALLA_POR_MODULO[permiso.modulo] || "";
   const guardarPermisos = async (cargo) => {
     if (!editorPermisos || editorPermisos.cargoId !== cargo.id) return;
     const cambios = editorPermisos.permisos.filter((permiso) => permiso.valor !== editorPermisos.originales[clavePermisoEditor(permiso)] && permiso.valor !== "sin_configurar");
-    if (!cambios.length) {
-      setError("Selecciona al menos un permiso permitido o denegado.");
+    const cambiosPantallas = PM13_PANTALLAS_EDITOR.filter((pantalla) => editorPermisos.pantallas[pantalla.id] !== editorPermisos.pantallasOriginales[pantalla.id]);
+    if (!cambios.length && !cambiosPantallas.length) {
+      setError("No hay cambios pendientes en las pantallas o en sus permisos.");
       return;
     }
     if (!motivoPermiso.trim()) {
@@ -2424,6 +2477,15 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     setConfirmacion("");
     setGuardando(true);
     try {
+      if (cambiosPantallas.length) {
+        await configRpc("abc_guardar_cargo_pantallas", {
+          p_operation_id: configOperacion("cargo-pantallas-permisos"),
+          p_empresa_id: empresa?.id || "",
+          p_local_id: localId,
+          p_cargo_id: cargo.id,
+          p_capacidades: PM13_PANTALLAS_EDITOR.filter((pantalla) => pantalla.moduloActivo !== false && editorPermisos.pantallas[pantalla.id] === true).map((pantalla) => pantalla.capacidadConsulta)
+        });
+      }
       for (const permiso of cambios) {
         await configRpc("pm13_configurar_cargo_permiso_v2", {
           p_operation_id: configOperacion("cargo-permiso"),
@@ -2440,7 +2502,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
       }
       setEditorPermisos(null);
       setMotivoPermiso("");
-      setConfirmacion("Permisos del cargo guardados y auditados.");
+      setConfirmacion("Cambios guardados y auditados. El editor se ha cerrado.");
+      await cargarCargos();
     } catch (e2) {
       setError(configMensajeError(e2));
     } finally {
@@ -2529,6 +2592,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     return grupos;
   }, {});
   const ocupado = cargando || guardando;
+  const cargosVisibles = cargos.filter((cargo) => mostrarEliminados || !cargo.eliminado);
+  const cambiosPendientesEditor = editorPermisos ? PM13_PANTALLAS_EDITOR.filter((pantalla) => editorPermisos.pantallas[pantalla.id] !== editorPermisos.pantallasOriginales[pantalla.id]).length + editorPermisos.permisos.filter((permiso) => permiso.valor !== editorPermisos.originales[clavePermisoEditor(permiso)] && permiso.valor !== "sin_configurar").length : 0;
   return h(
     "div",
     null,
@@ -2536,13 +2601,13 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
       Card,
       { className: "mb-3" },
       h("div", { className: "font-semibold mb-1" }, "Cargos y permisos"),
-      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Aquí se preparan los cargos de la empresa y las personas asignadas en este local" + (localNombre ? " (" + localNombre + ")" : "") + ". Los cargos personalizados aún no se crean desde esta vista; se mantienen separados de los roles técnicos y de los permisos protegidos."),
-      !esPropietario ? h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, "Solo el Propietario podrá administrar cargos cuando se active esa función.") : null
+      h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Aquí se preparan los cargos de la empresa y las personas asignadas en este local" + (localNombre ? " (" + localNombre + ")" : "") + ". Por defecto solo aparece el Propietario protegido. El Propietario puede crear tantos cargos como necesite, con cualquier nombre, y decidir sus pantallas y permisos. El cargo personalizado controla el acceso efectivo; el rol técnico solo se conserva para compatibilidad con cuentas antiguas."),
+      !esPropietario ? h("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, "Solo el Propietario puede crear cargos o cambiar sus permisos.") : null
     ),
     h(
       Card,
       { className: "mb-3" },
-      h("div", { className: "font-semibold mb-2" }, "Roles y cargos actuales"),
+      h("div", { className: "font-semibold mb-2" }, "Propietario y cargos personalizados"),
       h("div", { className: "space-y-2" }, roles.map((rol) => {
         const asignados = empleadosDelLocal.filter((empleado) => empleado.rol === rol).map((empleado) => empleado.nombre || empleado.nombreCompleto || "Sin nombre");
         const retirado = ROLES_RETIRADOS.includes(rol);
@@ -2559,7 +2624,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         );
       }))
     ),
-    h(ConfigAviso, { error, confirmacion }),
+    h(ConfigAviso, { error: editorPermisos ? "" : error, confirmacion }),
     h(
       Card,
       { className: "mb-3", style: { background: C2.accentSoft, border: "none" } },
@@ -2567,7 +2632,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         h("div", { className: "font-semibold" }, "Cargos personalizados"),
         h(Btn, { small: true, onClick: () => setFormulario({ id: "", nombre: "", descripcion: "" }), disabled: ocupado }, "Nuevo cargo")
       ),
-      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Cada cargo tiene un ID propio. Al duplicarlo se crea otro cargo independiente y debes revisar sus permisos antes de asignarlo."),
+      h("div", { className: "text-[12px] mb-2", style: { color: C2.inkSoft } }, "Puedes crear tantos cargos como necesites. Desactivar es reversible: deja de conceder acceso y conserva permisos e historial. Eliminar retira el cargo de la lista normal, cierra sus asignaciones activas y conserva la auditoría."),
+      h("label", { className: "flex items-center gap-2 text-[12px] mb-3" }, h("input", { type: "checkbox", checked: mostrarEliminados, onChange: (e2) => setMostrarEliminados(e2.target.checked), disabled: ocupado }), "Mostrar cargos eliminados"),
       formulario ? h(
         "div",
         { className: "rounded-lg p-3 mb-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
@@ -2578,16 +2644,16 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
           h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario(null), disabled: ocupado }, "Cancelar")
         )
       ) : null,
-      cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando cargos…") : cargos.length === 0 && !cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Todavía no hay cargos personalizados registrados.") : null,
-      h("div", { className: "space-y-2" }, cargos.map((cargo) => h(
+      cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Cargando cargos…") : cargosVisibles.length === 0 && !cargando ? h("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, mostrarEliminados ? "Todavía no hay cargos personalizados registrados." : "No hay cargos activos o desactivados visibles. Puedes crear uno nuevo.") : null,
+      h("div", { className: "space-y-2" }, cargosVisibles.map((cargo) => h(
         "div",
-        { key: cargo.id, className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+        { key: cargo.id, className: "rounded-lg p-3", style: { border: `1px solid ${C2.line}`, background: C2.surface, opacity: cargo.eliminado ? 0.65 : 1 } },
         h("div", { className: "flex flex-wrap items-center justify-between gap-2" },
           h("div", { className: "font-medium" }, cargo.nombre),
-          h("span", { className: "text-[11px]", style: { color: cargo.activo ? C2.inkSoft : C2.amber } }, cargo.activo ? "Activo" : "Inactivo")
+          h("span", { className: "text-[11px]", style: { color: cargo.eliminado || !cargo.activo ? C2.amber : C2.inkSoft } }, cargo.eliminado ? "Eliminado · solo histórico" : cargo.activo ? "Activo · disponible para asignaciones" : "Inactivo · no asignable")
         ),
         cargo.descripcion ? h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, cargo.descripcion) : null,
-        h("div", { className: "text-[11.5px] mt-2" }, cargo.asignados_count ? `${cargo.asignados_count} persona(s) asignada(s)` : "Sin personas asignadas"),
+        h("div", { className: "text-[11.5px] mt-2" }, cargo.eliminado ? "Las asignaciones activas se cerraron; el historial se conserva." : cargo.asignados_count ? `${cargo.asignados_count} persona(s) asignada(s)` : "Sin personas asignadas"),
         cargo.personas_asignadas?.length ? h("div", { className: "space-y-1 mt-2" }, cargo.personas_asignadas.map((persona) => h(
           "div",
           { key: persona.id },
@@ -2625,10 +2691,67 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
           ) : null
         ))) : null,
         h("div", { className: "flex flex-wrap items-end gap-2 mt-2" },
-          h(Field, { label: "Asignar a este local" }, h("select", { value: empleadoPorCargo[cargo.id] || "", disabled: ocupado || !cargo.activo || empleadosDelLocal.length === 0, onChange: (e2) => setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: e2.target.value })), className: "rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, h("option", { value: "" }, empleadosDelLocal.length ? "Selecciona una persona" : "No hay empleados activos"), empleadosDelLocal.map((empleado) => h("option", { key: empleado.id, value: empleado.id }, empleado.nombre || empleado.nombreCompleto || "Sin nombre")))),
-          h(Btn, { small: true, onClick: () => asignarCargo(cargo), disabled: ocupado || !empleadoPorCargo[cargo.id] || !cargo.activo }, "Asignar")
+          h(Field, { label: "Asignar a este local" }, h("select", { value: empleadoPorCargo[cargo.id] || "", disabled: ocupado || cargo.eliminado || !cargo.activo || empleadosDelLocal.length === 0, onChange: (e2) => setEmpleadoPorCargo((actual) => ({ ...actual, [cargo.id]: e2.target.value })), className: "rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, minHeight: 40 } }, h("option", { value: "" }, cargo.eliminado ? "Cargo eliminado" : empleadosDelLocal.length ? "Selecciona una persona" : "No hay empleados activos"), empleadosDelLocal.map((empleado) => h("option", { key: empleado.id, value: empleado.id }, empleado.nombre || empleado.nombreCompleto || "Sin nombre")))),
+          h(Btn, { small: true, onClick: () => asignarCargo(cargo), disabled: ocupado || cargo.eliminado || !empleadoPorCargo[cargo.id] || !cargo.activo }, "Asignar")
         ),
         editorPermisos?.cargoId === cargo.id ? h(
+          "div",
+          { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+          h("div", { className: "flex flex-wrap items-start justify-between gap-2 mb-1" },
+            h("div", null,
+              h("div", { className: "font-medium" }, "Permisos por pantalla"),
+              h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, "Configura el acceso a cada pantalla y, dentro de ella, las acciones que puede realizar este cargo.")
+            ),
+            h("span", { className: "text-[11px] rounded-full px-2 py-1", style: { background: cambiosPendientesEditor ? C2.amberSoft : C2.accentSoft, color: cambiosPendientesEditor ? C2.amber : C2.accent } }, `${PM13_PANTALLAS_EDITOR.filter((pantalla) => editorPermisos.pantallas[pantalla.id]).length} pantallas · ${editorPermisos.permisos.filter((permiso) => permiso.valor === "permitido").length} acciones${cambiosPendientesEditor ? ` · ${cambiosPendientesEditor} cambios pendientes` : ""}`)
+          ),
+          h("div", { className: "text-[11px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Permitir una pantalla solo concede acceso de consulta. Las acciones se configuran dentro de cada pantalla y no pueden saltarse las barreras de seguridad."),
+          h(ConfigMotivo, { valor: motivoPermiso, onCambio: setMotivoPermiso, deshabilitado: ocupado }),
+          error ? h("div", { role: "alert", className: "mt-2 mb-3 p-2 rounded-lg text-[12px]", style: { background: C2.redSoft, color: C2.red } }, error) : null,
+          h("div", { className: "flex gap-2 flex-wrap mb-3" },
+            h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasEditor(true), disabled: ocupado }, "Permitir todas"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasEditor(false), disabled: ocupado }, "Denegar todas"),
+            h(Btn, { small: true, onClick: () => guardarPermisos(cargo), disabled: ocupado || cambiosPendientesEditor === 0 }, guardando ? "Guardando…" : "Guardar cambios"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => { setEditorPermisos(null); setMotivoPermiso(""); }, disabled: ocupado }, "Cancelar")
+          ),
+          h("div", { className: "space-y-2 mt-3" }, Object.entries(gruposPantallas).map(([grupo, pantallas]) => h(
+            "details",
+            { key: grupo, open: grupo === "Inicio" || grupo === "Ventas", className: "rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+            h("summary", { className: "cursor-pointer px-3 py-2 text-[12px] font-semibold" }, grupo),
+            h("div", { className: "space-y-2 px-2 pb-2" }, pantallas.map((pantalla) => {
+              const acciones = editorPermisos.permisos.filter((permiso) => pantallaDePermiso(permiso) === pantalla.capacidadConsulta);
+              const activa = editorPermisos.pantallas[pantalla.id] === true;
+              return h(
+                "div",
+                { key: pantalla.id, className: "rounded-lg p-2", style: { border: `1px solid ${C2.line}`, background: C2.bg, opacity: pantalla.moduloActivo === false ? 0.65 : 1 } },
+                h("div", { className: "flex flex-wrap items-start justify-between gap-2" },
+                  h("label", { className: "flex items-start gap-2 min-w-0" },
+                    h("input", { type: "checkbox", checked: activa, disabled: ocupado || pantalla.moduloActivo === false, onChange: (e2) => cambiarPantallaEditor(pantalla, e2.target.checked), className: "mt-1" }),
+                    h("span", { className: "min-w-0" },
+                      h("span", { className: "block text-[12px] font-medium" }, pantalla.label),
+                      h("span", { className: "block text-[10.5px]", style: { color: C2.inkSoft } }, pantalla.descripcion)
+                    )
+                  ),
+                  h("span", { className: "text-[10.5px]", style: { color: pantalla.moduloActivo === false ? C2.amber : activa ? C2.accent : C2.inkSoft } }, pantalla.moduloActivo === false ? "No disponible" : activa ? "Puede consultar" : "No puede entrar")
+                ),
+                acciones.length ? h("div", { className: "space-y-1 mt-2 pl-6" },
+                  h("div", { className: "text-[10.5px] font-semibold", style: { color: C2.inkSoft } }, "Acciones dentro de esta pantalla"),
+                  acciones.map((permiso) => h("div", { key: clavePermisoEditor(permiso), className: "flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+                    h("div", { className: "min-w-0" },
+                      h("div", { className: "text-[11.5px] font-medium" }, PM13_CARGO_PERMISOS_LABELS[permiso.clave] || permiso.clave),
+                      h("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, permiso.accion === "ANULAR_ELIMINAR" ? "Acción sensible" : permiso.accion === "CREAR" ? "Crear" : permiso.accion === "EDITAR" ? "Editar" : "Consultar")
+                    ),
+                    h("select", { value: permiso.valor, disabled: ocupado || !activa, "aria-label": `${PM13_CARGO_PERMISOS_LABELS[permiso.clave] || permiso.clave} en ${pantalla.label}`, onChange: (e2) => cambiarPermisoEditor(permiso, e2.target.value), className: "rounded-lg px-2 py-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } },
+                      h("option", { value: "sin_configurar", disabled: permiso.activo }, "Usar regla por defecto"),
+                      h("option", { value: "permitido" }, "Permitido"),
+                      h("option", { value: "denegado" }, "Denegado")
+                    )
+                  ))
+                ) : h("div", { className: "text-[10.5px] mt-2 pl-6", style: { color: C2.inkSoft } }, "Esta pantalla solo controla el acceso de consulta; todavía no tiene acciones operativas configurables.")
+              );
+            }))
+          )))
+        ) : null,
+        false ? h(
           "div",
           { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
           h("div", { className: "font-medium mb-1" }, "Permisos protegidos del cargo"),
@@ -2653,12 +2776,13 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
             h(Btn, { small: true, variant: "ghost", onClick: () => { setEditorPermisos(null); setMotivoPermiso(""); }, disabled: ocupado }, "Cerrar permisos")
           )
         ) : null,
-        editorCargoId === cargo.id ? h(
+        false ? h(
           "div",
           { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
-          h("div", { className: "font-medium mb-1" }, "Pantallas que puede consultar este cargo"),
+          h("div", { className: "font-medium mb-1" }, "Pantallas visibles para las personas con este cargo"),
+          h("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Puedes consultar una pantalla; consultar no concede crear, editar, exportar, anular ni configurar. Esas acciones se gestionan en Permisos."),
           h("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Selecciona solo pantallas. Consultar una pantalla no concede crear, editar, exportar, anular ni configurar; esas acciones se definirán en el punto 5."),
-          h("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Este editor es un borrador local del diseño del cargo. Todavía no guarda la selección en el servidor; la persistencia autorizada corresponde al subpunto 4.4."),
+          h("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "La selección se guarda en el servidor mediante una operación autorizada y auditada. Consultar una pantalla no concede por sí solo acciones de crear, editar, exportar, anular ni configurar."),
           h("div", { className: "flex gap-2 flex-wrap mb-3" },
             h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(true), disabled: ocupado }, "Marcar todas activas"),
             h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasActivas(false), disabled: ocupado }, "Desmarcar todas"),
@@ -2685,13 +2809,22 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
             }))
           ))
         ) : null,
-        h("div", { className: "flex gap-2 flex-wrap mt-2" },
+        confirmacionCargo?.id === cargo.id ? h(
+          "div",
+          { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.amberSoft } },
+          h("div", { className: "text-[12px] mb-2" }, confirmacionCargo.accion === "eliminar" ? `¿Eliminar el cargo «${cargo.nombre}»? Dejará de aparecer en la lista normal, se cerrarán sus asignaciones activas y se conservarán el historial y la auditoría. Esta acción no se puede deshacer desde aquí.` : confirmacionCargo.accion === "desactivar" ? Number(cargo.asignados_count || 0) > 0 ? `El cargo «${cargo.nombre}» está asignado a ${cargo.asignados_count} persona(s). Al desactivarlo dejarán de tener acceso efectivo por este cargo, pero se conservarán las asignaciones y el historial. ¿Quieres continuar?` : `¿Desactivar el cargo «${cargo.nombre}»? Dejará de estar disponible para nuevas asignaciones, pero podrás reactivarlo más adelante.` : `¿Reactivar el cargo «${cargo.nombre}»? Volverá a estar disponible para nuevas asignaciones con sus permisos guardados.`),
+          h("div", { className: "flex gap-2 flex-wrap" },
+            h(Btn, { small: true, variant: confirmacionCargo.accion === "eliminar" || confirmacionCargo.accion === "desactivar" ? "danger" : "primary", onClick: () => confirmacionCargo.accion === "eliminar" ? eliminarCargo(cargo) : confirmarCambioEstadoCargo(cargo), disabled: ocupado }, confirmacionCargo.accion === "eliminar" ? "Eliminar cargo" : confirmacionCargo.accion === "desactivar" ? "Sí, desactivar" : "Sí, reactivar"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => setConfirmacionCargo(null), disabled: ocupado }, "Cancelar")
+          )
+        ) : null,
+        !cargo.eliminado ? h("div", { className: "flex gap-2 flex-wrap mt-2" },
           h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario({ id: cargo.id, nombre: cargo.nombre, descripcion: cargo.descripcion || "" }), disabled: ocupado }, "Editar"),
-          h(Btn, { small: true, variant: "ghost", onClick: () => editorCargoId === cargo.id ? cerrarEditorPantallas() : abrirEditorPantallas(cargo), disabled: ocupado }, editorCargoId === cargo.id ? "Cerrar pantallas" : "Editar pantallas"),
           h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditorPermisos(cargo), disabled: ocupado }, editorPermisos?.cargoId === cargo.id ? "Cerrar permisos" : "Editar permisos"),
           h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar"),
-          h(Btn, { small: true, variant: "ghost", onClick: () => cambiarEstadoCargo(cargo), disabled: ocupado || (cargo.activo && Number(cargo.asignados_count || 0) > 0) }, cargo.activo ? "Desactivar" : "Reactivar")
-        )
+          h(Btn, { small: true, variant: "ghost", onClick: () => pedirCambioEstadoCargo(cargo), disabled: ocupado }, cargo.activo ? "Desactivar" : "Reactivar"),
+          h(Btn, { small: true, variant: "danger", onClick: () => pedirEliminacionCargo(cargo), disabled: ocupado }, "Eliminar cargo")
+        ) : null
       )))
     )
   );
@@ -3441,7 +3574,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
-  const secciones = [["dia", "Día y cajas"], ["sala", "Sala y mesas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["permisos", "Permisos"], ["mfa", "Verificación en dos pasos"]];
+  const secciones = [["dia", "Día y cajas"], ["sala", "Sala y mesas"], ["modalidades", "Modalidades"], ["equipos", "Equipos"], ["terminales", "Terminales y cajas"], ["fiscalidad", "Fiscalidad y AEAT"], ["cargos", "Cargos y permisos"], ["mfa", "Verificación en dos pasos"]];
   let contenido = null;
   if (!esPropietario) contenido = h(Card, { className: "mb-4" }, "Solo un usuario con rol Propietario puede ver y cambiar la configuración.");
   else if (!empresaId || !localId) contenido = h(Card, { className: "mb-4" }, "Selecciona un local concreto para configurarlo.");
@@ -3455,8 +3588,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
     seccion === "terminales" ? h(ConfigTerminalesCajas, { empresaId, localId }) : null,
     seccion === "fiscalidad" ? h(ConfigFiscalidad, { empresaId, localId, localNombre, procesarColaFiscalQaC07D }) : null,
-    seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario, onIrPermisos: () => setSeccion("permisos") }) : null,
-    seccion === "permisos" ? h(ConfigPermisos, { empresaId, localId, localNombre }) : null,
+    seccion === "cargos" ? h(ConfigCargos, { empresa, empleados, localId, localNombre, esPropietario }) : null,
     seccion === "mfa" ? h(ConfigMfa, { esPropietario }) : null
   );
   return h(
@@ -3883,7 +4015,7 @@ function GestionAlmacen() {
     window.__laUsuarioAparienciaId = miPerfilUsuarioId;
     return () => { delete window.__laUsuarioAparienciaId; };
   }, [miPerfilUsuarioId]);
-  const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({ personal: null, fichaje: null, ausencias: null });
+  const [permisosConsultaPM13, setPermisosConsultaPM13] = (0, import_react4.useState)({});
   const [pantallasRolEmpleado, setPantallasRolEmpleado] = (0, import_react4.useState)(null);
   const [corteDiaMinPM13, setCorteDiaMinPM13] = (0, import_react4.useState)(0);
   (0, import_react4.useEffect)(() => {
@@ -3909,13 +4041,11 @@ function GestionAlmacen() {
   }, [ready]);
   function puedeConsultarPantallaPM13(id) {
     if (typeof window === "undefined" || !window.__nubeActiva || miPerfil?.rol === "Propietario") return true;
-    if (id === "personal") return permisosConsultaPM13.personal === true;
-    if (id === "fichaje") return permisosConsultaPM13.fichaje === true;
-    return true;
+    return permisosConsultaPM13[id] === true;
   }
   (0, import_react4.useEffect)(() => {
     if (tab !== "dashboard" && !puedeConsultarPantallaPM13(tab)) setTab("dashboard");
-  }, [tab, permisosConsultaPM13.personal, permisosConsultaPM13.fichaje, miPerfil?.rol]);
+  }, [tab, permisosConsultaPM13, miPerfil?.rol]);
   const [pinPropietario, setPinPropietario] = (0, import_react4.useState)("");
   const [auditoria, setAuditoria] = (0, import_react4.useState)([]);
   const [auditoriaDesdeServidor, setAuditoriaDesdeServidor] = (0, import_react4.useState)(false);
@@ -4092,39 +4222,27 @@ function GestionAlmacen() {
   (0, import_react4.useEffect)(() => {
     let activo = true;
     if (!ready || typeof window === "undefined" || !window.__nubeActiva || !miPerfil) {
-      setPermisosConsultaPM13({ personal: null, fichaje: null, ausencias: null });
+      setPermisosConsultaPM13({});
       return () => { activo = false; };
     }
     if (miPerfil.rol === "Propietario") {
-      setPermisosConsultaPM13({ personal: true, fichaje: true, ausencias: true });
+      setPermisosConsultaPM13(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, true])));
       return () => { activo = false; };
     }
     const empresaId = empresaDelLocalActivo?.id || "";
     const localId = localActivoId || "";
     if (!empresaId || !localId) {
-      setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+      setPermisosConsultaPM13(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, false])));
       return () => { activo = false; };
     }
     (async () => {
       try {
-        const supabase = await window.getSupabaseClient();
-        const claves = [
-          ["personal", "PM13_PERSONAL_CONSULTAR"],
-          ["fichaje", "PM13_FICHAJE_CONSULTAR"],
-          ["ausencias", "PM13_AUSENCIA_CONSULTAR"]
-        ];
-        const respuestas = await Promise.all(claves.map(([, clave]) => supabase.rpc("pm13_resolver_cargo_permiso", {
-          p_empresa_id: empresaId,
-          p_local_id: localId,
-          p_clave: clave,
-          p_accion: "CONSULTAR",
-          p_alcance: "LOCAL"
-        })));
+        const resultado = await configRpc("pm13_listar_pantallas_efectivas", { p_empresa_id: empresaId, p_local_id: localId });
         if (!activo) return;
-        const permitido = (respuesta) => !!(respuesta && !respuesta.error && respuesta.data && respuesta.data.ok === true && respuesta.data.permitido === true);
-        setPermisosConsultaPM13(Object.fromEntries(claves.map(([nombre], indice) => [nombre, permitido(respuestas[indice])])))
+        const porCapacidad = new Map((resultado?.pantallas || []).map((pantalla) => [pantalla.capacidad_consulta, pantalla.permitida === true]));
+        setPermisosConsultaPM13(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, porCapacidad.get(pantalla.capacidadConsulta) === true])));
       } catch (e2) {
-        if (activo) setPermisosConsultaPM13({ personal: false, fichaje: false, ausencias: false });
+        if (activo) setPermisosConsultaPM13(Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, false])));
       }
     })();
     return () => { activo = false; };
@@ -4822,6 +4940,9 @@ function GestionAlmacen() {
     if (ready && !skipSaveRef.current) saveKey("nominas", nominas);
   }, [nominas, ready]);
   const itemsPermitidosEmpleado = (0, import_react4.useMemo)(() => {
+    if (typeof window !== "undefined" && window.__nubeActiva && miPerfil?.rol !== "Propietario") {
+      return Object.entries(permisosConsultaPM13).filter(([, permitido]) => permitido === true).map(([id]) => id);
+    }
     const activo = usuarioActivoId ? empleados.find((e2) => e2.id === usuarioActivoId) : null;
     const rol = miPerfil?.rol && ROLES_EMPLEADO[miPerfil.rol] ? miPerfil.rol : activo?.rol && ROLES_EMPLEADO[activo.rol] ? activo.rol : "Est\xE1ndar";
     const base = [...(ROLES_EMPLEADO[rol] || ROLES_EMPLEADO["Est\xE1ndar"] || [])];
@@ -4831,7 +4952,7 @@ function GestionAlmacen() {
     const permitidas = new Set(base);
     porRol.forEach(({ fila, info }) => { if (info.efectivo === true) permitidas.add(fila.id); else permitidas.delete(fila.id); });
     return Array.from(permitidas);
-  }, [usuarioActivoId, empleados, miPerfil, pantallasRolEmpleado]);
+  }, [usuarioActivoId, empleados, miPerfil, pantallasRolEmpleado, permisosConsultaPM13]);
   (0, import_react4.useEffect)(() => {
     if (modoEmpleado && !itemsPermitidosEmpleado.includes(tab)) setTab("dashboard");
   }, [modoEmpleado, itemsPermitidosEmpleado]);
@@ -5549,7 +5670,7 @@ function GestionAlmacen() {
   }, [empleados]);
   const documentosPersonalPronto = (0, import_react4.useMemo)(() => documentosPersonalCaducan.filter((d2) => d2.dias <= 30), [documentosPersonalCaducan]);
   const empleadosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? empleados : empleados.filter((e2) => e2.localId === localActivoId), [empleados, localActivoId]);
-  const empleadosVisiblesDelLocalActivo = (0, import_react4.useMemo)(() => empleadosDelLocalActivo.map((empleado) => permisosConsultaPM13.ausencias === true ? empleado : { ...empleado, ausencias: [] }), [empleadosDelLocalActivo, permisosConsultaPM13.ausencias]);
+  const empleadosVisiblesDelLocalActivo = (0, import_react4.useMemo)(() => empleadosDelLocalActivo.map((empleado) => permisosConsultaPM13.personal === true ? empleado : { ...empleado, ausencias: [] }), [empleadosDelLocalActivo, permisosConsultaPM13.personal]);
   const idsEmpleadosDelLocalActivo = (0, import_react4.useMemo)(() => new Set(empleadosDelLocalActivo.map((e2) => e2.id)), [empleadosDelLocalActivo]);
   const fichajesDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? fichajes : fichajes.filter((f22) => f22.localId === localActivoId), [fichajes, localActivoId]);
   const turnosDelLocalActivo = (0, import_react4.useMemo)(() => !localActivoId ? turnos : turnos.filter((t22) => t22.localId === localActivoId), [turnos, localActivoId]);

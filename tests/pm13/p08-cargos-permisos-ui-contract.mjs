@@ -9,7 +9,11 @@ for (const file of files) {
   assert.match(source, /seccion === \"cargos\" .*ConfigCargos/, `${file}: falta el render de la sección de cargos`);
   assert.match(source, /ConfiguracionLocal, \{ empresa: empresaDelLocalActivo[\s\S]*\bempleados(?:,|\s*\})/, `${file}: falta pasar empleados al panel de cargos`);
   assert.match(source, /Cargos personalizados/, `${file}: falta el estado de cargos personalizados`);
-  assert.match(source, /Roles y cargos actuales/, `${file}: falta el listado de roles y cargos`);
+  assert.match(source, /Propietario y cargos personalizados/, `${file}: falta el listado de roles y cargos`);
+  assert.match(source, /const roles = \["Propietario"\]/, `${file}: el catálogo inicial debe mostrar solo Propietario`);
+  assert.match(source, /Por defecto solo aparece el Propietario protegido/, `${file}: falta la explicación del cargo inicial`);
+  assert.match(source, /crear tantos cargos como necesite, con cualquier nombre/, `${file}: falta indicar que los cargos no tienen una cuota ni reserva de nombre en la UI`);
+  assert.doesNotMatch(source, /\["permisos", "Permisos"\]/, `${file}: no debe exponerse la matriz antigua de permisos como sección independiente`);
 }
 
 console.log("PM13 P08 Cargos y permisos: contrato de UI OK");

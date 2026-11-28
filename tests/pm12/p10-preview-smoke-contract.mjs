@@ -69,6 +69,12 @@ assert.equal(manualQaAlias.window.__modoPruebasLocal, false);
 assert.equal(manualQaAlias.window.__qaFetchProduccionBloqueado, true);
 console.log('P10_MANUAL_QA_ALIAS_BOOTSTRAP=PASS');
 
+const branchDeploy = runReset('codex-qa-suite-fixes-20261127--chic-entremet-9107cf.netlify.app');
+assert.equal(branchDeploy.window.__modoPruebasQA, true);
+assert.equal(branchDeploy.window.__modoPruebasLocal, false);
+assert.equal(branchDeploy.window.__qaFetchProduccionBloqueado, true);
+console.log('P10_BRANCH_DEPLOY_QA_BOOTSTRAP=PASS');
+
 const prodHost = resetSource.match(/var SUPABASE_PROD_HOST = "([^"]+)";/)?.[1];
 const qaHost = resetSource.match(/var SUPABASE_QA_HOST = "([^"]+)";/)?.[1];
 assert.ok(prodHost && qaHost && prodHost !== qaHost);
