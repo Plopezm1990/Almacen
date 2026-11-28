@@ -101375,6 +101375,11 @@ var PM13_CARGO_PERMISOS_LABELS = Object.freeze({
   PM13_PERSONAL_CREAR: "Crear empleados",
   PM13_PERSONAL_EDITAR: "Editar empleados"
 });
+var PM13_PANTALLA_POR_MODULO = Object.freeze({
+  PM13_PERSONAL: "ABC_PANTALLA_PERSONAL_CONSULTAR",
+  PM13_FICHAJE: "ABC_PANTALLA_FICHAJE_CONSULTAR",
+  PM13_AUSENCIAS: "ABC_PANTALLA_PERSONAL_CONSULTAR"
+});
 var CONFIG_PANTALLAS_ROL = [
   ["ABC_PANTALLA_DASHBOARD_CONSULTAR", "Panel general"], ["ABC_PANTALLA_DIRECCION_CONSULTAR", "Panel de dirección"], ["ABC_PANTALLA_BUSCAR_CONSULTAR", "Buscar"],
   ["ABC_PANTALLA_PROVEEDORES_CONSULTAR", "Proveedores"], ["ABC_PANTALLA_PEDIDOS_CONSULTAR", "Pedidos"], ["ABC_PANTALLA_RECEPCION_CONSULTAR", "Recepción"], ["ABC_PANTALLA_ALBARANES_CONSULTAR", "Albaranes"], ["ABC_PANTALLA_FACTURAS_CONSULTAR", "Facturas"],
@@ -103594,7 +103599,9 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         ...permiso,
         valor: permiso.activo ? permiso.permitido ? "permitido" : "denegado" : "sin_configurar"
       })) : [];
-      setEditorPermisos({ cargoId: cargo.id, permisos, originales: Object.fromEntries(permisos.map((permiso) => [clavePermisoEditor(permiso), permiso.valor])) });
+      const actuales = Array.isArray(cargo?.pantallas_consulta) ? cargo.pantallas_consulta : Array.isArray(cargo?.pantallasConsulta) ? cargo.pantallasConsulta : [];
+      const pantallas = Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, actuales.includes(pantalla.capacidadConsulta)]));
+      setEditorPermisos({ cargoId: cargo.id, permisos, pantallas, pantallasOriginales: { ...pantallas }, originales: Object.fromEntries(permisos.map((permiso) => [clavePermisoEditor(permiso), permiso.valor])) });
       setMotivoPermiso("");
     } catch (e2) {
       setError(configMensajeError(e2));
@@ -103603,13 +103610,30 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     }
   };
   const cambiarPermisoEditor = (permiso, valor) => {
-    setEditorPermisos((actual) => actual ? { ...actual, permisos: actual.permisos.map((item) => clavePermisoEditor(item) === clavePermisoEditor(permiso) ? { ...item, valor } : item) } : actual);
+    setEditorPermisos((actual) => {
+      if (!actual) return actual;
+      const capacidad = permiso.consulta_clave || PM13_PANTALLA_POR_MODULO[permiso.modulo] || "";
+      const pantalla = PM13_PANTALLAS_EDITOR.find((item) => item.capacidadConsulta === capacidad);
+      return {
+        ...actual,
+        permisos: actual.permisos.map((item) => clavePermisoEditor(item) === clavePermisoEditor(permiso) ? { ...item, valor } : item),
+        pantallas: valor === "permitido" && pantalla ? { ...actual.pantallas, [pantalla.id]: true } : actual.pantallas
+      };
+    });
   };
+  const cambiarPantallaEditor = (pantalla, valor) => {
+    setEditorPermisos((actual) => actual ? { ...actual, pantallas: { ...actual.pantallas, [pantalla.id]: valor } } : actual);
+  };
+  const marcarPantallasEditor = (valor) => {
+    setEditorPermisos((actual) => actual ? { ...actual, pantallas: Object.fromEntries(PM13_PANTALLAS_EDITOR.map((pantalla) => [pantalla.id, pantalla.moduloActivo !== false ? valor : false])) } : actual);
+  };
+  const pantallaDePermiso = (permiso) => permiso.consulta_clave || PM13_PANTALLA_POR_MODULO[permiso.modulo] || "";
   const guardarPermisos = async (cargo) => {
     if (!editorPermisos || editorPermisos.cargoId !== cargo.id) return;
     const cambios = editorPermisos.permisos.filter((permiso) => permiso.valor !== editorPermisos.originales[clavePermisoEditor(permiso)] && permiso.valor !== "sin_configurar");
-    if (!cambios.length) {
-      setError("Selecciona al menos un permiso permitido o denegado.");
+    const cambiosPantallas = PM13_PANTALLAS_EDITOR.filter((pantalla) => editorPermisos.pantallas[pantalla.id] !== editorPermisos.pantallasOriginales[pantalla.id]);
+    if (!cambios.length && !cambiosPantallas.length) {
+      setError("No hay cambios pendientes en las pantallas o en sus permisos.");
       return;
     }
     if (!motivoPermiso.trim()) {
@@ -103620,6 +103644,15 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
     setConfirmacion("");
     setGuardando(true);
     try {
+      if (cambiosPantallas.length) {
+        await configRpc("abc_guardar_cargo_pantallas", {
+          p_operation_id: configOperacion("cargo-pantallas-permisos"),
+          p_empresa_id: empresa?.id || "",
+          p_local_id: localId,
+          p_cargo_id: cargo.id,
+          p_capacidades: PM13_PANTALLAS_EDITOR.filter((pantalla) => pantalla.moduloActivo !== false && editorPermisos.pantallas[pantalla.id] === true).map((pantalla) => pantalla.capacidadConsulta)
+        });
+      }
       for (const permiso of cambios) {
         await configRpc("pm13_configurar_cargo_permiso_v2", {
           p_operation_id: configOperacion("cargo-permiso"),
@@ -103636,7 +103669,8 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
       }
       setEditorPermisos(null);
       setMotivoPermiso("");
-      setConfirmacion("Permisos del cargo guardados y auditados.");
+      setConfirmacion("Permisos por pantalla guardados y auditados.");
+      await cargarCargos();
     } catch (e2) {
       setError(configMensajeError(e2));
     } finally {
@@ -103829,6 +103863,62 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         editorPermisos?.cargoId === cargo.id ? h(
           "div",
           { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
+          h("div", { className: "flex flex-wrap items-start justify-between gap-2 mb-1" },
+            h("div", null,
+              h("div", { className: "font-medium" }, "Permisos por pantalla"),
+              h("div", { className: "text-[11.5px] mt-1", style: { color: C2.inkSoft } }, "Configura el acceso a cada pantalla y, dentro de ella, las acciones que puede realizar este cargo.")
+            ),
+            h("span", { className: "text-[11px] rounded-full px-2 py-1", style: { background: C2.accentSoft, color: C2.accent } }, `${PM13_PANTALLAS_EDITOR.filter((pantalla) => editorPermisos.pantallas[pantalla.id]).length} pantallas · ${editorPermisos.permisos.filter((permiso) => permiso.valor === "permitido").length} acciones`)
+          ),
+          h("div", { className: "text-[11px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Permitir una pantalla solo concede acceso de consulta. Las acciones se configuran dentro de cada pantalla y no pueden saltarse las barreras de seguridad."),
+          h("div", { className: "flex gap-2 flex-wrap mb-3" },
+            h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasEditor(true), disabled: ocupado }, "Permitir todas"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasEditor(false), disabled: ocupado }, "Denegar todas"),
+            h(Btn, { small: true, onClick: () => guardarPermisos(cargo), disabled: ocupado }, guardando ? "Guardando…" : "Guardar cambios"),
+            h(Btn, { small: true, variant: "ghost", onClick: () => { setEditorPermisos(null); setMotivoPermiso(""); }, disabled: ocupado }, "Cancelar")
+          ),
+          h(ConfigMotivo, { valor: motivoPermiso, onCambio: setMotivoPermiso, deshabilitado: ocupado }),
+          h("div", { className: "space-y-2 mt-3" }, Object.entries(gruposPantallas).map(([grupo, pantallas]) => h(
+            "details",
+            { key: grupo, open: grupo === "Inicio" || grupo === "Ventas", className: "rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+            h("summary", { className: "cursor-pointer px-3 py-2 text-[12px] font-semibold" }, grupo),
+            h("div", { className: "space-y-2 px-2 pb-2" }, pantallas.map((pantalla) => {
+              const acciones = editorPermisos.permisos.filter((permiso) => pantallaDePermiso(permiso) === pantalla.capacidadConsulta);
+              const activa = editorPermisos.pantallas[pantalla.id] === true;
+              return h(
+                "div",
+                { key: pantalla.id, className: "rounded-lg p-2", style: { border: `1px solid ${C2.line}`, background: C2.bg, opacity: pantalla.moduloActivo === false ? 0.65 : 1 } },
+                h("div", { className: "flex flex-wrap items-start justify-between gap-2" },
+                  h("label", { className: "flex items-start gap-2 min-w-0" },
+                    h("input", { type: "checkbox", checked: activa, disabled: ocupado || pantalla.moduloActivo === false, onChange: (e2) => cambiarPantallaEditor(pantalla, e2.target.checked), className: "mt-1" }),
+                    h("span", { className: "min-w-0" },
+                      h("span", { className: "block text-[12px] font-medium" }, pantalla.label),
+                      h("span", { className: "block text-[10.5px]", style: { color: C2.inkSoft } }, pantalla.descripcion)
+                    )
+                  ),
+                  h("span", { className: "text-[10.5px]", style: { color: pantalla.moduloActivo === false ? C2.amber : activa ? C2.accent : C2.inkSoft } }, pantalla.moduloActivo === false ? "No disponible" : activa ? "Puede consultar" : "No puede entrar")
+                ),
+                acciones.length ? h("div", { className: "space-y-1 mt-2 pl-6" },
+                  h("div", { className: "text-[10.5px] font-semibold", style: { color: C2.inkSoft } }, "Acciones dentro de esta pantalla"),
+                  acciones.map((permiso) => h("div", { key: clavePermisoEditor(permiso), className: "flex flex-wrap items-center justify-between gap-2 rounded-lg px-2 py-1.5", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
+                    h("div", { className: "min-w-0" },
+                      h("div", { className: "text-[11.5px] font-medium" }, PM13_CARGO_PERMISOS_LABELS[permiso.clave] || permiso.clave),
+                      h("div", { className: "text-[10px]", style: { color: C2.inkSoft } }, permiso.accion === "ANULAR_ELIMINAR" ? "Acción sensible" : permiso.accion === "CREAR" ? "Crear" : permiso.accion === "EDITAR" ? "Editar" : "Consultar")
+                    ),
+                    h("select", { value: permiso.valor, disabled: ocupado || !activa, "aria-label": `${PM13_CARGO_PERMISOS_LABELS[permiso.clave] || permiso.clave} en ${pantalla.label}`, onChange: (e2) => cambiarPermisoEditor(permiso, e2.target.value), className: "rounded-lg px-2 py-1 text-[12px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } },
+                      h("option", { value: "sin_configurar", disabled: permiso.activo }, "Usar regla por defecto"),
+                      h("option", { value: "permitido" }, "Permitido"),
+                      h("option", { value: "denegado" }, "Denegado")
+                    )
+                  ))
+                ) : h("div", { className: "text-[10.5px] mt-2 pl-6", style: { color: C2.inkSoft } }, "Esta pantalla solo controla el acceso de consulta; todavía no tiene acciones operativas configurables.")
+              );
+            }))
+          )))
+        ) : null,
+        false ? h(
+          "div",
+          { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
           h("div", { className: "font-medium mb-1" }, "Permisos protegidos del cargo"),
           h("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Solo se guardan las reglas que cambies. Las reglas requieren un motivo y quedan registradas en la auditoría."),
           h(ConfigMotivo, { valor: motivoPermiso, onCambio: setMotivoPermiso, deshabilitado: ocupado }),
@@ -103851,7 +103941,7 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
             h(Btn, { small: true, variant: "ghost", onClick: () => { setEditorPermisos(null); setMotivoPermiso(""); }, disabled: ocupado }, "Cerrar permisos")
           )
         ) : null,
-        editorCargoId === cargo.id ? h(
+        false ? h(
           "div",
           { className: "rounded-lg p-3 mt-3", style: { border: `1px solid ${C2.line}`, background: C2.bg } },
           h("div", { className: "font-medium mb-1" }, "Pantallas visibles para las personas con este cargo"),
@@ -103895,7 +103985,6 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
         ) : null,
         !cargo.eliminado ? h("div", { className: "flex gap-2 flex-wrap mt-2" },
           h(Btn, { small: true, variant: "ghost", onClick: () => setFormulario({ id: cargo.id, nombre: cargo.nombre, descripcion: cargo.descripcion || "" }), disabled: ocupado }, "Editar"),
-          h(Btn, { small: true, variant: "ghost", onClick: () => editorCargoId === cargo.id ? cerrarEditorPantallas() : abrirEditorPantallas(cargo), disabled: ocupado }, editorCargoId === cargo.id ? "Cerrar pantallas" : "Editar pantallas"),
           h(Btn, { small: true, variant: "ghost", onClick: () => abrirEditorPermisos(cargo), disabled: ocupado }, editorPermisos?.cargoId === cargo.id ? "Cerrar permisos" : "Editar permisos"),
           h(Btn, { small: true, variant: "ghost", onClick: () => duplicarCargo(cargo), disabled: ocupado }, "Duplicar"),
           h(Btn, { small: true, variant: "ghost", onClick: () => pedirCambioEstadoCargo(cargo), disabled: ocupado }, cargo.activo ? "Desactivar" : "Reactivar"),
