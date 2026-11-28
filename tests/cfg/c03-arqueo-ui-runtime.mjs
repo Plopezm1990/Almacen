@@ -11,11 +11,17 @@ if (!depsDir) {
 }
 const require = createRequire(join(resolve(depsDir), 'package.json'));
 const { JSDOM } = require('jsdom');
-const dom = new JSDOM('<!doctype html><html><body></body></html>', { url: 'https://preview.test/' });
+const dom = new JSDOM('<!doctype html><html><body><div id="raiz"></div></body></html>', { url: 'https://preview.test/', pretendToBeVisual: true });
 globalThis.window = dom.window;
 globalThis.document = dom.window.document;
 globalThis.localStorage = dom.window.localStorage;
+globalThis.IS_REACT_ACT_ENVIRONMENT = true;
+globalThis.HTMLElement = dom.window.HTMLElement;
+Object.defineProperty(globalThis, 'navigator', { value: dom.window.navigator, configurable: true });
+dom.window.matchMedia = dom.window.matchMedia || (() => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
 const React = require('react');
+const { createRoot } = require('react-dom/client');
+const act = React.act;
 
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const lineas = readFileSync(join(REPO, 'source-recovery/fuente-recuperado.js'), 'utf8').split('\n');
@@ -24,8 +30,8 @@ let fin = ini;
 while (lineas[fin + 1].startsWith('import ')) fin += 1;
 const iconos = lineas.slice(ini, fin + 1).find((l) => l.includes('lucide-react')).match(/\{([^}]*)\}/)[1].split(',').map((x) => x.trim().split(' as ').pop());
 const stubs = { React, ReactNS: React, import_client2: { createRoot: () => ({ render() {}, unmount() {} }) }, createRoot: () => ({ render() {}, unmount() {} }), createClient: () => ({}), E: function () {}, autoTable: () => {}, XLSX: { utils: {}, writeFile() {}, writeFileSync() {} } };
-const fabrica = new Function(...Object.keys(stubs), ...iconos, 'X2', lineas.slice(fin + 1).join('\n') + '\nreturn { crearLogicaCaja };');
-const { crearLogicaCaja } = fabrica(...Object.values(stubs), ...iconos.map(() => () => null), () => null);
+const fabrica = new Function(...Object.keys(stubs), ...iconos, 'X2', lineas.slice(fin + 1).join('\n') + '\nreturn { crearLogicaCaja, ArqueoCaja };');
+const { crearLogicaCaja, ArqueoCaja } = fabrica(...Object.values(stubs), ...iconos.map(() => () => null), () => null);
 
 const E = 'QA-EMP-A';
 const L = 'QA-A1';
@@ -132,6 +138,77 @@ try {
   }
 } catch (error) {
   resultados.push({ nombre: 'ERROR FATAL', ok: false, det: String(error.stack || error).slice(0, 2000) });
+}
+
+try {
+  const esperar = async (ms = 0) => { await act(async () => { await new Promise((resolveMs) => setTimeout(resolveMs, ms)); }); };
+  const texto = () => document.getElementById('raiz').textContent;
+  const boton = (label) => [...document.querySelectorAll('button')].find((b) => b.textContent.trim() === label || b.textContent.includes(label));
+  const clic = async (element) => {
+    if (!element) throw new Error(`No existe el control solicitado. Pantalla: ${texto().slice(-500)}`);
+    await act(async () => { element.dispatchEvent(new dom.window.MouseEvent('click', { bubbles: true })); });
+    await esperar(5);
+  };
+  const montar = async (props) => {
+    document.getElementById('raiz').innerHTML = '';
+    const root = createRoot(document.getElementById('raiz'));
+    await act(async () => { root.render(React.createElement(ArqueoCaja, props)); });
+    await esperar(5);
+    return root;
+  };
+  const propsBase = (addArqueo) => ({
+    movimientos: [], arqueos: [], addArqueo, deleteArqueo: async () => ({ ok: true }), encargos: [], movimientosCaja: [],
+    registrarMovimientoCaja: async () => ({ ok: true }), eliminarMovimientoCaja: async () => ({ ok: true }),
+    leerBorradorArqueo: () => null, leerBorradorMovimientoCaja: () => null
+  });
+  {
+    const guardados = [];
+    const root = await montar(propsBase(async (data) => {
+      guardados.push(data);
+      return { ok: true, arqueo: { efectivoEsperado: 0, efectivoContado: data.efectivoContado, diferencia: data.efectivoContado, ...data } };
+    }));
+    await clic(boton('Contar por denominaciones'));
+    const billete20 = document.querySelector('[data-denominacion-valor="20"]');
+    await clic(billete20); await clic(billete20); await clic(billete20);
+    const motivo = document.querySelector('input[placeholder^="Ej.: retirada"]');
+    const setter = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => { setter.call(motivo, 'Conteo de prueba'); motivo.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    ok('D1 pinta las quince imágenes oficiales locales', document.querySelectorAll('img[src^="./assets/euro/"]').length === 15, texto().slice(-500));
+    ok('D2 calcula tres billetes de 20 € como 60 €', texto().includes('Total por denominaciones: €60,00'), texto().slice(-500));
+    await clic(boton('Guardar arqueo'));
+    ok('D3 guarda denominaciones sin exigir el importe manual', guardados.length === 1 && guardados[0].efectivoContado === 60 && guardados[0].denominaciones['20'] === 3 && guardados[0].modoConteo === 'denominaciones', guardados[0]);
+    await act(async () => { root.unmount(); });
+  }
+  {
+    const guardados = [];
+    const root = await montar(propsBase(async (data) => {
+      guardados.push(data);
+      return { ok: true, arqueo: { efectivoEsperado: 0, efectivoContado: data.efectivoContado, diferencia: 0, ...data } };
+    }));
+    await clic(boton('Contar por denominaciones'));
+    await clic(boton('Guardar arqueo'));
+    ok('D4 permite guardar cero explícito en modo denominaciones', guardados.length === 1 && guardados[0].efectivoContado === 0 && Object.keys(guardados[0].denominaciones).length === 0, guardados[0]);
+    await act(async () => { root.unmount(); });
+  }
+  {
+    const guardados = [];
+    const root = await montar(propsBase(async (data) => {
+      guardados.push(data);
+      return { ok: true, arqueo: { efectivoEsperado: 0, efectivoContado: data.efectivoContado, diferencia: 0, ...data } };
+    }));
+    const entrada = document.querySelector('input[type="number"][step="0.01"]');
+    const setter = Object.getOwnPropertyDescriptor(dom.window.HTMLInputElement.prototype, 'value').set;
+    await act(async () => { setter.call(entrada, '80'); entrada.dispatchEvent(new dom.window.Event('input', { bubbles: true })); });
+    await clic(boton('Contar por denominaciones'));
+    const billete20 = document.querySelector('[data-denominacion-valor="20"]');
+    await clic(billete20);
+    await clic([...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Quitar un billete de 20 euros'));
+    await clic(boton('Guardar arqueo'));
+    ok('D5 al retirar la última denominación no recupera un importe manual anterior', guardados.length === 1 && guardados[0].efectivoContado === 0 && Object.keys(guardados[0].denominaciones).length === 0, guardados[0]);
+    await act(async () => { root.unmount(); });
+  }
+} catch (error) {
+  resultados.push({ nombre: 'ERROR FATAL UI', ok: false, det: String(error.stack || error).slice(0, 2000) });
 }
 
 const fallos = resultados.filter((r) => !r.ok);

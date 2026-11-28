@@ -8205,6 +8205,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
       efectivoBase,
       ajustesVentaEfectivo,
       efectivoContado,
+      modoConteo: data?.modoConteo === "denominaciones" ? "denominaciones" : "manual",
       denominaciones,
       notas: String(data?.notas || "").trim(),
       snapshot: data?.snapshot || {}
@@ -24764,11 +24765,12 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
 function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
+  const imagenDenominacion = (valor) => valor >= 5 ? `./assets/euro/banknotes/banknote-${valor}.jpg` : `./assets/euro/coins/coin-${valor < 1 ? valor.toFixed(2) : valor}.png`;
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
   const [contado, setContado] = (0, import_react4.useState)("");
   const [notas, setNotas] = (0, import_react4.useState)("");
   const [denominaciones, setDenominaciones] = (0, import_react4.useState)({});
-  const [mostrarDenominaciones, setMostrarDenominaciones] = (0, import_react4.useState)(false);
+  const [modoConteo, setModoConteo] = (0, import_react4.useState)("manual");
   const [error, setError] = (0, import_react4.useState)("");
   const [exito, setExito] = (0, import_react4.useState)("");
   const [enviando, setEnviando] = (0, import_react4.useState)(false);
@@ -24825,18 +24827,26 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const ajustesVentaEfectivo = redondearDineroPM08(resumenVentasCaja.reversos.Efectivo || 0);
   const efectivoEsperadoLocal = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
   const efectivoEsperado = esperadoDelServidor ? esperadoServidor.estado === "ok" ? redondearDineroPM08(esperadoServidor.esperado) : null : efectivoEsperadoLocal;
-  const denominacionesInvalidas = Object.values(denominaciones).some((cantidad) => cantidad !== "" && (!Number.isInteger(Number(cantidad)) || Number(cantidad) < 0));
+  const MAX_UNIDADES_DENOMINACION = 100000;
+  const clavesDenominacionValidas = new Set(valoresDenominacion.map((valor) => String(valor)));
+  const denominacionesInvalidas = Object.entries(denominaciones).some(([valor, cantidad]) => !clavesDenominacionValidas.has(valor) || cantidad !== "" && (!Number.isInteger(Number(cantidad)) || Number(cantidad) < 0 || Number(cantidad) > MAX_UNIDADES_DENOMINACION));
   const denominacionesLimpias = Object.fromEntries(Object.entries(denominaciones).filter(([_22, cantidad]) => Number(cantidad) > 0).map(([valor, cantidad]) => [valor, Number(cantidad)]));
-  const hayDesglose = Object.keys(denominacionesLimpias).length > 0;
-  const totalDenominaciones = redondearDineroPM08(Object.entries(denominacionesLimpias).reduce((total, [valor, cantidad]) => total + Number(valor) * Number(cantidad), 0));
+  const estaEnModoDenominaciones = modoConteo === "denominaciones";
+  const totalDenominacionesCentimos = Object.entries(denominacionesLimpias).reduce((total, [valor, cantidad]) => total + Math.round(Number(valor) * 100) * cantidad, 0);
+  const totalDenominaciones = totalDenominacionesCentimos / 100;
   const ajustarDenominacion = (valor, delta) => {
     const clave = String(valor);
     setDenominaciones((actual) => {
-      const siguiente = Math.max(0, (Number(actual[clave]) || 0) + delta);
+      const siguiente = Math.min(MAX_UNIDADES_DENOMINACION, Math.max(0, (Number(actual[clave]) || 0) + delta));
       return { ...actual, [clave]: siguiente ? String(siguiente) : "" };
     });
   };
-  const contadoNumero = hayDesglose ? totalDenominaciones : contado === "" ? NaN : redondearDineroPM08(contado);
+  const cambiarModoConteo = (siguiente) => {
+    if (siguiente === modoConteo) return;
+    setModoConteo(siguiente);
+  };
+  const contadoManualNumero = contado === "" ? NaN : Number(contado);
+  const contadoNumero = estaEnModoDenominaciones ? totalDenominaciones : Number.isFinite(contadoManualNumero) ? redondearDineroPM08(contadoManualNumero) : NaN;
   const diferencia = Number.isFinite(contadoNumero) && efectivoEsperado !== null ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
   async function abrirSesion() {
@@ -24871,11 +24881,15 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     const pendiente = typeof leerBorradorArqueo === "function" ? leerBorradorArqueo(fecha) : null;
     if (!pendiente) {
       setBorradorRecuperado(false);
+      setContado("");
+      setDenominaciones({});
+      setModoConteo("manual");
+      setNotas("");
       return;
     }
     setContado(String(pendiente.efectivoContado ?? ""));
     setDenominaciones(pendiente.denominaciones || {});
-    setMostrarDenominaciones(Object.keys(pendiente.denominaciones || {}).length > 0);
+    setModoConteo(pendiente.modoConteo === "denominaciones" || Object.keys(pendiente.denominaciones || {}).length > 0 ? "denominaciones" : "manual");
     setNotas(pendiente.notas || "");
     setBorradorRecuperado(true);
   }, [fecha]);
@@ -24884,11 +24898,11 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   }, [fecha]);
   async function submit() {
     if (enviando || yaArqueado) return;
-    if (denominacionesInvalidas) {
+    if (estaEnModoDenominaciones && denominacionesInvalidas) {
       setError("Las cantidades de billetes y monedas deben ser n\xFAmeros enteros iguales o mayores que cero.");
       return;
     }
-    if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
+    if ((!estaEnModoDenominaciones && (!Number.isFinite(contadoManualNumero) || contadoManualNumero < 0)) || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
       setError("Escribe un efectivo contado igual o mayor que cero.");
       return;
     }
@@ -24904,7 +24918,8 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         fecha,
         efectivoBase,
         efectivoContado: contadoNumero,
-        denominaciones: hayDesglose ? denominacionesLimpias : {},
+        modoConteo,
+        denominaciones: estaEnModoDenominaciones ? denominacionesLimpias : {},
         notas,
         ajustesVentaEfectivo,
         snapshot: {
@@ -24929,7 +24944,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       setExito(`Arqueo confirmado${r2.replayed ? " sin duplicar" : ""}: esperado \u20AC${fmt(r2.arqueo.efectivoEsperado)}, contado \u20AC${fmt(r2.arqueo.efectivoContado)}.`);
       setContado("");
       setDenominaciones({});
-      setMostrarDenominaciones(false);
+      setModoConteo("manual");
       setNotas("");
       setBorradorRecuperado(false);
     } finally {
@@ -25042,19 +25057,22 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         import_react4.default.Fragment,
         null,
         borradorRecuperado && h3("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft } }, "Borrador de arqueo recuperado. El reintento conserva el mismo identificador."),
-        h3(Field, { label: "Efectivo contado en caja (\u20AC)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: hayDesglose ? String(totalDenominaciones) : contado, disabled: enviando || hayDesglose, onChange: (e2) => setContado(e2.target.value), autoFocus: true })),
-        h3("div", { className: "mb-3" }, h3(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => setMostrarDenominaciones((v) => !v) }, mostrarDenominaciones ? "Ocultar denominaciones" : "Contar por denominaciones")),
-        mostrarDenominaciones && h3("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3 p-2 rounded-lg", style: { background: C2.bg }, role: "group", "aria-label": "Billetes y monedas en euros" }, valoresDenominacion.map((valor) => {
+        h3(Field, { label: estaEnModoDenominaciones ? "Efectivo contado por denominaciones (\u20AC)" : "Efectivo contado en caja (\u20AC)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: estaEnModoDenominaciones ? String(totalDenominaciones) : contado, disabled: enviando || estaEnModoDenominaciones, onChange: (e2) => setContado(e2.target.value), autoFocus: true })),
+        h3("div", { className: "mb-3" }, h3(Btn, { small: true, variant: "ghost", disabled: enviando, "aria-pressed": estaEnModoDenominaciones, onClick: () => cambiarModoConteo(estaEnModoDenominaciones ? "manual" : "denominaciones") }, estaEnModoDenominaciones ? "Volver a importe manual" : "Contar por denominaciones")),
+        estaEnModoDenominaciones && h3("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3 p-2 rounded-lg", style: { background: C2.bg }, role: "group", "aria-label": "Billetes y monedas en euros" }, valoresDenominacion.map((valor) => {
           const clave = String(valor);
           const cantidad = Number(denominaciones[clave]) || 0;
           const esMoneda = valor < 5;
           const etiqueta = valor < 1 ? valor.toFixed(2) : valor.toFixed(0);
           return h3("div", { key: clave, className: "flex flex-col items-center gap-1.5 p-1.5 rounded-lg", style: { border: `1px solid ${C2.line}` } },
-            h3("button", { type: "button", disabled: enviando, onClick: () => ajustarDenominacion(valor, 1), "aria-label": `Añadir ${esMoneda ? "una moneda" : "un billete"} de ${etiqueta} euros`, className: "flex flex-col items-center justify-center gap-1 w-full rounded-lg", style: { minHeight: 58 } }, h3("span", { className: esMoneda ? "flex items-center justify-center rounded-full font-bold mono" : "flex items-center justify-center rounded-md font-bold mono", style: { width: esMoneda ? 42 : 76, height: esMoneda ? 42 : 30, background: esMoneda ? C2.amberSoft : C2.accentSoft, border: `1px solid ${C2.accent}`, color: C2.ink } }, "\u20AC", etiqueta), h3("span", { className: "text-[10px]", style: { color: C2.inkSoft } }, esMoneda ? "Tocar para añadir moneda" : "Tocar para añadir billete")),
-            h3("div", { className: "flex items-center justify-center gap-2" }, h3("button", { type: "button", disabled: enviando || cantidad === 0, onClick: () => ajustarDenominacion(valor, -1), "aria-label": `Quitar ${esMoneda ? "una moneda" : "un billete"} de ${etiqueta} euros`, className: "rounded-md", style: { minWidth: 32, minHeight: 32, border: `1px solid ${C2.line}` } }, "−"), h3("span", { className: "mono font-semibold", "aria-live": "polite" }, cantidad), h3("button", { type: "button", disabled: enviando, onClick: () => ajustarDenominacion(valor, 1), "aria-label": `Añadir ${esMoneda ? "una moneda" : "un billete"} de ${etiqueta} euros`, className: "rounded-md", style: { minWidth: 32, minHeight: 32, border: `1px solid ${C2.line}` } }, "+"))
+            h3("button", { type: "button", disabled: enviando, onClick: () => ajustarDenominacion(valor, 1), "aria-label": `Añadir ${esMoneda ? "una moneda" : "un billete"} de ${etiqueta} euros`, className: "flex flex-col items-center justify-center gap-1 w-full rounded-lg", style: { minHeight: 74 }, "data-denominacion-valor": clave }, h3("img", { src: imagenDenominacion(valor), alt: "", "aria-hidden": "true", loading: "lazy", decoding: "async", draggable: false, onError: (e2) => {
+              e2.currentTarget.style.display = "none";
+            }, style: { width: esMoneda ? 48 : 84, height: esMoneda ? 48 : 38, objectFit: "contain" } }), h3("span", { className: "font-semibold mono", style: { color: C2.ink } }, "\u20AC", etiqueta), h3("span", { className: "text-[10px]", style: { color: C2.inkSoft } }, esMoneda ? "Tocar para añadir moneda" : "Tocar para añadir billete")),
+            h3("div", { className: "flex items-center justify-center gap-2" }, h3("button", { type: "button", disabled: enviando || cantidad === 0, onClick: () => ajustarDenominacion(valor, -1), "aria-label": `Quitar ${esMoneda ? "una moneda" : "un billete"} de ${etiqueta} euros`, className: "rounded-md", style: { minWidth: 44, minHeight: 44, border: `1px solid ${C2.line}` } }, "−"), h3("span", { className: "mono font-semibold", "aria-live": "polite" }, cantidad), h3("button", { type: "button", disabled: enviando || cantidad >= MAX_UNIDADES_DENOMINACION, onClick: () => ajustarDenominacion(valor, 1), "aria-label": `Añadir ${esMoneda ? "una moneda" : "un billete"} de ${etiqueta} euros`, className: "rounded-md", style: { minWidth: 44, minHeight: 44, border: `1px solid ${C2.line}` } }, "+")),
+            h3("div", { className: "text-[10px] mono", style: { color: C2.inkSoft } }, `Subtotal: \u20AC${fmt(Math.round(valor * 100) * cantidad / 100)}`)
           );
         })),
-        mostrarDenominaciones && h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, hayDesglose ? `Total por denominaciones: \u20AC${fmt(totalDenominaciones)}` : "Introduce la cantidad de billetes y monedas; el total se calcular\xE1 autom\xE1ticamente."),
+        estaEnModoDenominaciones && h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Total por denominaciones: \u20AC${fmt(totalDenominaciones)}`),
         diferencia !== null && h3("div", { className: "text-[12.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : Math.abs(diferencia) < 1 ? C2.amber : C2.red } }, diferencia === 0 ? "Cuadra exacto." : diferencia > 0 ? `Sobran \u20AC${fmt(diferencia)}` : `Faltan \u20AC${fmt(Math.abs(diferencia))}`),
         diferencia !== null && Math.abs(diferencia) >= 0.01 && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.amber } }, "Para confirmar un cierre con diferencia, escribe el motivo y revisa el efectivo contado."),
         h3(Field, { label: diferencia !== null && Math.abs(diferencia) >= 0.01 ? "Motivo del descuadre (obligatorio)" : "Notas (opcional)" }, h3(Input, { value: notas, disabled: enviando, onChange: (e2) => setNotas(e2.target.value), placeholder: "Ej.: retirada no registrada, cambio inicial incorrecto…" })),

@@ -4,6 +4,14 @@ const source = fs.readFileSync('source-recovery/fuente-recuperado.js', 'utf8');
 const bundle = fs.readFileSync('fuente.js', 'utf8');
 const index = fs.readFileSync('index.html', 'utf8');
 const storageBootstrap = fs.readFileSync('index-storage-bootstrap.js', 'utf8');
+const euroAssetNames = [
+  'assets/euro/banknotes/banknote-5.jpg', 'assets/euro/banknotes/banknote-10.jpg', 'assets/euro/banknotes/banknote-20.jpg',
+  'assets/euro/banknotes/banknote-50.jpg', 'assets/euro/banknotes/banknote-100.jpg', 'assets/euro/banknotes/banknote-200.jpg',
+  'assets/euro/banknotes/banknote-500.jpg', 'assets/euro/coins/coin-2.png', 'assets/euro/coins/coin-1.png',
+  'assets/euro/coins/coin-0.50.png', 'assets/euro/coins/coin-0.20.png', 'assets/euro/coins/coin-0.10.png',
+  'assets/euro/coins/coin-0.05.png', 'assets/euro/coins/coin-0.02.png', 'assets/euro/coins/coin-0.01.png'
+];
+const euroCredits = fs.readFileSync('assets/euro/README.md', 'utf8');
 
 function functionBlock(name) {
   const re = new RegExp(`(?:async\\s+)?function\\s+${name}\\s*\\(`, 'g');
@@ -111,6 +119,15 @@ const checks = {
   ui_devolucion_min_cantidad: uiDevoluciones.includes('min: "0.000001"'),
   ui_movimiento_min_importe: uiMovimientos.includes('min: "0.01"'),
   ui_arqueo_admite_cero: uiArqueo.includes('min: "0"') && uiArqueo.includes('contadoNumero < 0'),
+  ui_arqueo_modo_conteo_explicito: uiArqueo.includes('modoConteo') && uiArqueo.includes('estaEnModoDenominaciones') && uiArqueo.includes('setModoConteo("manual")'),
+  ui_arqueo_denominaciones_cero_real: uiArqueo.includes('const totalDenominaciones = totalDenominacionesCentimos / 100') && uiArqueo.includes('const contadoNumero = estaEnModoDenominaciones ? totalDenominaciones'),
+  ui_arqueo_denominaciones_limite_canonico: uiArqueo.includes('MAX_UNIDADES_DENOMINACION = 100000') && uiArqueo.includes('clavesDenominacionValidas'),
+  ui_arqueo_denominaciones_no_exige_manual: uiArqueo.includes('!estaEnModoDenominaciones && (!Number.isFinite(contadoManualNumero)'),
+  ui_arqueo_limpia_fecha_sin_borrador: uiArqueo.includes('setDenominaciones({});') && uiArqueo.includes('setModoConteo("manual");') && uiArqueo.includes('setNotas("");'),
+  ui_arqueo_imagenes_euro_locales: uiArqueo.includes('./assets/euro/banknotes/banknote-') && uiArqueo.includes('./assets/euro/coins/coin-') && uiArqueo.includes('onError'),
+  ui_arqueo_assets_euro_presentes: euroAssetNames.every((name) => fs.existsSync(name)) && euroCredits.includes('Banco Central Europeo') && euroCredits.includes('Comisión Europea'),
+  ui_arqueo_subtotal_denominacion: uiArqueo.includes('Subtotal: \\u20AC') && uiArqueo.includes('data-denominacion-valor'),
+  ui_arqueo_controles_tactiles_amplios: uiArqueo.includes('minWidth: 44') && uiArqueo.includes('minHeight: 44'),
   ui_arqueo_denominaciones_tactiles: uiArqueo.includes('Billetes y monedas en euros') && uiArqueo.includes('Tocar para añadir moneda') && uiArqueo.includes('Tocar para añadir billete'),
   ui_arqueo_desglosa_medios_pago: uiArqueo.includes('data-arqueo-medios') && uiArqueo.includes('porMedio'),
   ui_arqueo_exige_motivo_con_diferencia: uiArqueo.includes('Motivo del descuadre (obligatorio)') && uiArqueo.includes('diferencia antes de confirmar'),
