@@ -134,3 +134,36 @@ Reglas que esta sesión (Claude, cierre de #226/#225) adopta, tal como se pidier
 - Decisiones pendientes: D2, D3, D5, D6 y D8; reconciliar el historial de migraciones.
 - Siguiente acción: humo con sesión de Propietario (PM07) en la vista previa sobre los flujos críticos (cobro, cierre de caja, historial, encargos, cuentas), si el usuario la autoriza e inicia sesión.
 - Responsable de la siguiente acción: el usuario (autorizar e iniciar sesión); Claude (medir y registrar).
+
+## Registro de avance — 2026-11-28 13:08
+
+- Responsable: Claude (cierre de #226 / #225), con la sesión del usuario (Propietario PM07) y su autorización
+- Sesión/agente: Claude Code · Sonnet 5.5
+- PR: #226 / #227 (vista previa `deploy-preview-227`, mismo código que #226)
+- Rama: `correccion/ola0-tpv-2026-11-26`
+- Commit: el de este registro (documentación); código bajo prueba `5e4d0972`
+- Objetivo: humo con sesión de Propietario sobre los flujos críticos (criterio C6 del plan)
+- Estado anterior: sin humo con las correcciones de la revisión de código desplegadas
+- Cambio realizado: ninguno de código. Pruebas en QA con datos de prueba mínimos. Se reactivaron y se volvieron a apagar `QA-EMP-A`, `QA-A1` y la membresía 22; sesión cerrada al terminar.
+- Archivos modificados: este registro
+- Migraciones creadas, renombradas o eliminadas: ninguna
+- Entorno afectado:
+  - [x] Local
+  - [x] QA (operaciones de prueba: 2 ventas de 1,00 €, cierre de 2 cuentas de prueba; filas reactivadas y apagadas)
+  - [ ] Producción
+- Migraciones aplicadas: ninguna
+- Pruebas ejecutadas y resultado (todas medidas también en la base de datos):
+  1. «Cerrar cuentas sin actividad» (autorización por capacidad y local + corrección de H-50): cerró **2 cuentas** (las de prueba de H-31 y H-47, con reparto sobre línea cancelada), motivo `DIA_OPERATIVO_CERRADO`, con su evento; quedaron 82 abiertas; el aviso nuevo («…las de hoy se pueden cerrar cuando acabe el día operativo») sale correcto.
+  2. Venta rápida en **efectivo** (1,00 €): checkout COMPLETADO, pago CONFIRMADO EFECTIVO, venta fiscal CERRADA, documento EMITIDO, cuenta CERRADA. Avisa de que el piso de venta está a 0 y la venta sale del almacén (H-15).
+  3. Venta rápida con **tarjeta simulada** (1,00 €): el pago queda PENDIENTE; «Aprobar tarjeta simulada» lo confirma; «Cerrar cuenta pagada» deja cuenta CERRADA y documento EMITIDO (TPV-56).
+  4. **Caja**: «Efectivo esperado €16,87» calculado por el servidor (H-24); «Otras ventas €1,00» (la de tarjeta); «Ir al cierre de la sesión de caja» lleva al cierre (H-25).
+  5. **Ensayo de cierre** (como PM07, transacción deshecha): BLOQUEADO por EFECTOS_PENDIENTES (cola fiscal pendiente, normal en QA) y CONTEO_FALTANTE; **sin** VENTAS_SIN_DOCUMENTO (la sesión no tiene ventas sin documento): el bloqueo condicionado funciona sin error.
+  6. **Historial**: tras recargar muestra las dos ventas nuevas (Efectivo y Tarjeta).
+- Resultado: correcto en los seis puntos. Datos que quedan: 2 ventas de 1,00 € cerradas y con documento; stock del agua del almacén −2 (la venta saldría del piso, a 0); 82 cuentas abiertas (81 con pedido sin cobrar de días anteriores y 1 de reparto, a resolver por una persona).
+- Riesgos o incidencias — **observaciones nuevas** (no son regresión de este cierre; ver el punto 1):
+  1. **H-51 (P3) · venta rápida con tarjeta pendiente dice «El cobro está confirmado».** Con tarjeta, el pago queda PENDIENTE hasta que se resuelve, pero la pantalla muestra «El cobro está confirmado, pero la cuenta no se ha cerrado formalmente» y el aviso se queda aunque luego se apruebe y se cierre. **Existe igual en `release`** (el texto es anterior a esta rama): no lo introduce #226. Corrección propuesta: mensaje según el estado real del pago y limpiar el aviso al completarse.
+  2. **H-52 (P3, sin diagnosticar) · el historial no refresca tras vender hasta recargar:** justo después de las dos ventas mostraba una sola con medio «—», 133 ventas y 356,29 € de total vigente; tras recargar mostró las dos con su medio, 122 ventas y 352,14 €.
+  3. Un aviso transitorio «Este dispositivo todavía no tiene un terminal TPV asignado de forma inequívoca» apareció al elegir el terminal y no impidió operar.
+- Decisiones pendientes: si H-51 y H-52 entran en este cierre o se anotan para después; D2, D3, D5, D6 y D8.
+- Siguiente acción: decidir H-51 y H-52; ensayo en copia; comentario de fusión cuando se fusione #226.
+- Responsable de la siguiente acción: el usuario (decidir); Claude (corregir si se decide).
