@@ -5074,7 +5074,7 @@ function GestionAlmacen() {
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
   const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, cargarMapaConfiguracionSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
-  const { abrirSesionCajaA10, consultarEsperadoCajaA24 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { abrirSesionCajaA10, consultarEsperadoCajaA24, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, reabrirCierreProvisionalA10, consultarCierreCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, actorNombre: nombreActivoEmpleado || "Propietario/a" });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
@@ -13461,7 +13461,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     const sessionId = vinculos[0].session_id;
     const { data: sesion, error: sesionError } = await supabase
       .from("caja_sesiones")
-      .select("id,estado,version")
+      .select("id,estado,version,caja_id")
       .eq("empresa_id", empresaId)
       .eq("local_id", localActivoId)
       .eq("id", sessionId)
@@ -13475,7 +13475,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       operatingDay = /^\d{4}-\d{2}-\d{2}$/.test(String(dia?.operating_day || "")) ? String(dia.operating_day) : null;
       if (!operatingDay) throw new Error("operating_day_servidor_ausente");
     }
-    return { supabase, empresaId, localId: localActivoId, terminalId: terminal.terminalId, sessionId, sessionEstado: sesion.estado, operatingDay };
+    return { supabase, empresaId, localId: localActivoId, cajaId: sesion.caja_id || null, terminalId: terminal.terminalId, sessionId, sessionEstado: sesion.estado, operatingDay };
   }
 
   async function consultarCierreCajaA10({ soloEstado = false } = {}) {
@@ -13511,7 +13511,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   // de la sesión (el mismo cálculo que guarda abc_registrar_arqueo_caja). La pantalla no lo reconstruye con el historial local.
   async function consultarEsperadoCajaA24() {
     try {
-      const contexto = await contextoCierreA10({ conDia: false });
+      const contexto = await contextoCierreA10({ conDia: true });
       const { data, error } = await contexto.supabase.rpc("abc_previsualizar_arqueo_caja", {
         p_empresa_id: contexto.empresaId,
         p_local_id: contexto.localId,
@@ -13524,8 +13524,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (!data || data.ok !== true || !Number.isFinite(esperado)) return { ok: false, error: "El servidor no ha devuelto el efectivo esperado." };
       return {
         ok: true,
+        localId: contexto.localId,
+        cajaId: contexto.cajaId,
+        terminalId: contexto.terminalId,
         sessionId: contexto.sessionId,
         sessionEstado: contexto.sessionEstado,
+        operatingDay: contexto.operatingDay,
         fondoInicial: Number(data.fondo_inicial) || 0,
         entradas: Number(data.entradas_efectivo) || 0,
         salidas: Number(data.salidas_efectivo) || 0,
@@ -14961,7 +14965,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.listarPedidosTurno = listarPedidosTurnoRediseno;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, cargarMapaConfiguracionSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarEsperadoCajaA24, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, cargarMapaConfiguracionSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarEsperadoCajaA24, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, reabrirCierreProvisionalA10, consultarCierreCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -24726,18 +24730,24 @@ function esReversoVentaCajaPM09(m22) {
   if (esMovimientoNuevo(m22)) return m22.tipo === "REVERSO" && !!(m22.anulaVentaId || m22.ventaId || m22.documentoOrigenId || m22.movimientoOriginalId);
   return m22.tipo === "entrada" && Number(m22.ingresoUnitario) < 0 && !!m22.anulaVentaId;
 }
-function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
+function resumenMediosVentaCajaPM09(movs = [], fecha = "", sessionId = null) {
   const cero = () => ({ Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 });
   const ventas = cero();
   const reversos = cero();
+  const detallesMixtosAplicados = new Set();
   let ventasIncluidas = 0;
   let reversosIncluidos = 0;
-  const sumar = (destino, m22, signo) => {
+  const sumar = (destino, m22, signo, identidadVenta) => {
     const medio = String(m22.medioPago || "Efectivo").trim().toUpperCase();
     const bruto = Math.abs(Number(m22.cantidad) || 0) * Math.abs(Number(m22.ingresoUnitario) || 0) * (1 + (Number(m22.ivaVentaAplicado) || 0) / 100);
     if (medio === "MIXTO" && m22.detallePago) {
+      const claveDetalle = `${signo}:${identidadVenta}`;
+      if (detallesMixtosAplicados.has(claveDetalle)) return;
+      detallesMixtosAplicados.add(claveDetalle);
       destino.Efectivo += signo * (Number(m22.detallePago.efectivo) || 0);
       destino.Tarjeta += signo * (Number(m22.detallePago.tarjeta) || 0);
+      destino.Transferencia += signo * (Number(m22.detallePago.transferencia) || 0);
+      destino.Otro += signo * (Number(m22.detallePago.otro) || 0);
       return;
     }
     if (medio === "EFECTIVO") destino.Efectivo += signo * bruto;
@@ -24745,14 +24755,22 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
     else if (medio === "TRANSFERENCIA") destino.Transferencia += signo * bruto;
     else destino.Otro += signo * bruto;
   };
+  let ventasConSesion = 0;
+  let ventasSinSesion = 0;
   (movs || []).forEach((m22) => {
     if (!m22 || m22.fecha !== fecha || m22.encargoId) return;
+    if (sessionId && m22.sessionId && String(m22.sessionId) !== String(sessionId)) return;
+    if (sessionId) {
+      if (m22.sessionId) ventasConSesion++;
+      else ventasSinSesion++;
+    }
+    const identidadVenta = String(m22.ventaFiscalId || m22.ventaId || m22.checkoutId || m22.cuentaId || m22.operationId || m22.id || `${m22.fecha}:${m22.productoId || "linea"}`);
     if (esVenta(m22)) {
-      sumar(ventas, m22, 1);
+      sumar(ventas, m22, 1, identidadVenta);
       ventasIncluidas++;
     } else if (esReversoVentaCajaPM09(m22)) {
       // Se guarda ya con signo negativo para que el consumidor solo tenga que sumar.
-      sumar(reversos, m22, -1);
+      sumar(reversos, m22, -1, identidadVenta);
       reversosIncluidos++;
     }
   });
@@ -24760,9 +24778,9 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(neto).forEach((k) => neto[k] = redondearDineroPM08((ventas[k] || 0) + (reversos[k] || 0)));
   Object.keys(ventas).forEach((k) => ventas[k] = redondearDineroPM08(ventas[k] || 0));
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
-  return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
+  return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos, ventasConSesion, ventasSinSesion };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor, localId = "", localNombre = "" }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const imagenDenominacion = (valor) => valor >= 5 ? `./assets/euro/banknotes/banknote-${valor}.jpg` : `./assets/euro/coins/coin-${valor < 1 ? valor.toFixed(2) : valor}.png`;
@@ -24802,19 +24820,36 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       vigente = false;
     };
   }, [esperadoDelServidor, fecha, refrescoEsperado, movimientos.length, movimientosCaja.length, arqueos.length]);
-  const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
+  const sessionIdServidor = esperadoServidor.estado === "ok" ? esperadoServidor.sessionId || null : null;
+  const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha, sessionIdServidor);
   const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
+  const cobrosEncargoAplicados = new Set();
+  let cobrosEncargoSinSesion = 0;
   encargos.forEach((e2) => {
     (e2.cobros || []).forEach((c22) => {
       if (c22.fecha !== fecha) return;
+      if (sessionIdServidor && c22.sessionId && String(c22.sessionId) !== String(sessionIdServidor)) return;
+      if (sessionIdServidor && !c22.sessionId) cobrosEncargoSinSesion++;
+      const claveCobro = String(c22.id || `${e2.id || "encargo"}:${c22.concepto || "cobro"}:${c22.fecha}:${c22.importe}:${c22.medioPago || "Efectivo"}`);
+      if (cobrosEncargoAplicados.has(claveCobro)) return;
+      cobrosEncargoAplicados.add(claveCobro);
+      const signoCobro = String(c22.estado || "CONFIRMADO").toUpperCase() === "REVERSO" ? -1 : 1;
       const medioRaw = String(c22.medioPago || "Efectivo").trim().toUpperCase();
+      if (medioRaw === "MIXTO" && c22.detallePago) {
+        porMedioOtros.Efectivo += signoCobro * (Number(c22.detallePago.efectivo) || 0);
+        porMedioOtros.Tarjeta += signoCobro * (Number(c22.detallePago.tarjeta) || 0);
+        porMedioOtros.Transferencia += signoCobro * (Number(c22.detallePago.transferencia) || 0);
+        porMedioOtros.Otro += signoCobro * (Number(c22.detallePago.otro) || 0);
+        return;
+      }
       const claveMedio = medioRaw === "EFECTIVO" ? "Efectivo" : medioRaw === "TARJETA" ? "Tarjeta" : medioRaw === "TRANSFERENCIA" ? "Transferencia" : "Otro";
-      porMedioOtros[claveMedio] = (porMedioOtros[claveMedio] || 0) + (Number(c22.importe) || 0);
+      porMedioOtros[claveMedio] = (porMedioOtros[claveMedio] || 0) + signoCobro * (Number(c22.importe) || 0);
     });
   });
   const porMedio = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   Object.keys(porMedio).forEach((k) => porMedio[k] = redondearDineroPM08((resumenVentasCaja.neto[k] || 0) + (porMedioOtros[k] || 0)));
-  const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha);
+  const movimientosCajaDelDia = movimientosCaja.filter((m22) => m22.fecha === fecha && (!sessionIdServidor || String(m22.sessionId || "") === String(sessionIdServidor)));
+  const mediosVentaReconciliables = !sessionIdServidor || resumenVentasCaja.ventasSinSesion === 0 && cobrosEncargoSinSesion === 0;
   const netoCaja = movimientosCajaDelDia.reduce((acc, m22) => {
     const efecto = Number(m22.efectoEfectivo);
     if (Number.isFinite(efecto)) return acc + efecto;
@@ -25002,7 +25037,18 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       errorSesion ? h3("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesion) : null,
       exitoSesion ? h3("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesion) : null
     ) : null,
-    h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
+    h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" }, "data-arqueo-contexto": "1" },
+      h3("div", { className: "text-[12.5px] font-semibold mb-2" }, "Contexto del arqueo"),
+      h3("div", { className: "grid grid-cols-2 md:grid-cols-5 gap-2 text-[10.5px]" },
+        h3("div", null, h3("div", { style: { color: C2.inkSoft } }, "Local"), h3("div", { className: "font-semibold" }, localNombre || esperadoServidor.localId || localId || "—")),
+        h3("div", null, h3("div", { style: { color: C2.inkSoft } }, "Caja"), h3("div", { className: "font-semibold mono" }, esperadoServidor.cajaId || "Pendiente")),
+        h3("div", null, h3("div", { style: { color: C2.inkSoft } }, "Terminal"), h3("div", { className: "font-semibold mono" }, esperadoServidor.terminalId || "Pendiente")),
+        h3("div", null, h3("div", { style: { color: C2.inkSoft } }, "Sesi\xF3n"), h3("div", { className: "font-semibold mono" }, esperadoServidor.sessionId || "Pendiente")),
+        h3("div", null, h3("div", { style: { color: C2.inkSoft } }, "D\xEDa operativo"), h3("div", { className: "font-semibold" }, esperadoServidor.operatingDay || fecha))
+      ),
+      h3("div", { className: "text-[10.5px] mt-2", style: { color: C2.inkSoft } }, esperadoDelServidor ? "El servidor valida local, terminal, sesi\xF3n y d\xEDa operativo al guardar." : "Modo local: el contexto de sesi\xF3n se validar\xE1 al sincronizar.")
+    ),
+    h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El efectivo esperado se calcula con la sesi\xF3n activa y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
       Card,
       { className: "mb-4" },
@@ -25014,7 +25060,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
       ),
       h3("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-2 mb-3", "data-arqueo-medios": "1" }, Object.entries(porMedio).map(([medio, importe]) => h3("div", { key: medio, className: "p-2 rounded-lg", style: { background: C2.bg } }, h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, medio), h3("div", { className: "mono font-semibold" }, "\u20AC", fmt(importe))))),
-      h3("div", { className: "text-[10.5px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.inkSoft } }, "Solo el efectivo esperado se compara con el dinero físico. Las ventas con tarjeta, transferencia y otros medios se concilian aparte y no deben contarse como efectivo."),
+      h3("div", { className: "text-[10.5px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.inkSoft }, "data-arqueo-conciliacion-alcance": mediosVentaReconciliables ? "completo" : "informativo" }, mediosVentaReconciliables ? "Solo el efectivo esperado se compara con el dinero f\xEDsico. Las ventas con tarjeta, transferencia y otros medios se muestran como resumen del contexto cargado." : "El efectivo esperado s\xED es autoritativo para esta sesi\xF3n. El resumen de tarjetas, transferencias y otros medios es informativo del d\xEDa/local porque parte de las ventas no trae session_id; no se utiliza para aprobar el cierre."),
       esperadoDelServidor ? h3(
         "div",
         { className: "text-[10.5px] mb-3", style: { color: esperadoServidor.estado === "error" ? C2.red : C2.inkSoft }, role: esperadoServidor.estado === "error" ? "alert" : void 0 },
