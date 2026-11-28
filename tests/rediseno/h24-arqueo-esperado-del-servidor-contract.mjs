@@ -35,16 +35,16 @@ for (const [nombre, codigo] of fuentes) {
   consultas.push(consulta);
   assert.match(consulta, /rpc\("abc_previsualizar_arqueo_caja"/, `${nombre}: el esperado sale de abc_previsualizar_arqueo_caja`);
   assert.match(consulta, /expected_amount/, `${nombre}: lee el esperado del servidor`);
-  assert.match(consulta, /contextoCierreA10\(\{ conDia: false \}\)/, `${nombre}: usa la sesión y el terminal del servidor`);
+  assert.match(consulta, /contextoCierreA10\(\{ conDia: true \}\)/, `${nombre}: usa la sesión, el terminal y el día operativo del servidor`);
   assert.match(consulta, /return \{ ok: false, error: errorRpcA02\(error\) \}/, `${nombre}: un error del servidor se devuelve, no se disimula`);
-  assert.match(codigo, /listarEstacionesA10, abrirSesionCajaA10, consultarEsperadoCajaA24, consultarSesionCajaC01/, `${nombre}: la lógica la expone`);
-  assert.match(codigo, /const \{ abrirSesionCajaA10, consultarEsperadoCajaA24 \} = crearLogicaVenta\(/, `${nombre}: la pantalla la recibe`);
+  assert.match(codigo, /listarEstacionesA10, abrirSesionCajaA10, consultarEsperadoCajaA24, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, reabrirCierreProvisionalA10, consultarCierreCajaA10, consultarSesionCajaC01/, `${nombre}: la lógica expone también el flujo de cierre`);
+  assert.match(codigo, /const \{ abrirSesionCajaA10, consultarEsperadoCajaA24, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, reabrirCierreProvisionalA10, consultarCierreCajaA10 \} = crearLogicaVenta\(/, `${nombre}: la pantalla recibe la consulta y las acciones de cierre`);
   assert.match(codigo, /consultarEsperadoServidor: modoSincronizadoPM08\(\) \? consultarEsperadoCajaA24 : null/, `${nombre}: solo con la cuenta sincronizada`);
 
   // 2. La pantalla.
   const arqueo = bloque(codigo, 'function ArqueoCaja({', '\nvar PLANTILLAS_TURNO', nombre);
   arqueos.push(arqueo);
-  assert.match(arqueo, /abrirSesionCajaA10, consultarEsperadoServidor \}\) \{/, `${nombre}: ArqueoCaja recibe la consulta`);
+  assert.match(arqueo, /abrirSesionCajaA10, consultarEsperadoServidor, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, reabrirCierreProvisionalA10, consultarCierreCajaA10, localId = "", localNombre = "" \}\) \{/, `${nombre}: ArqueoCaja recibe la consulta, el cierre y el contexto opcional`);
   assert.match(arqueo,
     /const efectivoEsperado = esperadoDelServidor \? esperadoServidor\.estado === "ok" \? redondearDineroPM08\(esperadoServidor\.esperado\) : null : efectivoEsperadoLocal;/,
     `${nombre}: con el servidor, el esperado es el suyo y, si no lo da, NO hay cifra (no cae al cálculo local)`);
