@@ -167,3 +167,27 @@ Reglas que esta sesión (Claude, cierre de #226/#225) adopta, tal como se pidier
 - Decisiones pendientes: si H-51 y H-52 entran en este cierre o se anotan para después; D2, D3, D5, D6 y D8.
 - Siguiente acción: decidir H-51 y H-52; ensayo en copia; comentario de fusión cuando se fusione #226.
 - Responsable de la siguiente acción: el usuario (decidir); Claude (corregir si se decide).
+
+## Registro de avance — 2026-11-28 13:29
+
+- Responsable: Claude (cierre de #226 / #225), por decisión del usuario («Corrige H-51 ahora»)
+- Sesión/agente: Claude Code · Sonnet 5.5
+- PR: #226
+- Rama: `correccion/ola0-tpv-2026-11-26`
+- Commit: `3b13b7d0` (código y contrato); este registro va en el commit siguiente
+- Objetivo: corregir H-51 (venta rápida con tarjeta pendiente decía «El cobro está confirmado»), hallado en el humo del 28/11
+- Estado anterior: con tarjeta, el pago queda PENDIENTE hasta que se resuelve, pero la pantalla mostraba «El cobro está confirmado, pero la cuenta no se ha cerrado formalmente» y el aviso seguía aunque luego se aprobara y se cerrara la cuenta. El texto existe también en `release`.
+- Cambio realizado: ayudante nuevo `avisoVentaRapidaSinCierreTpv(medio, cobro)` (solo la tarjeta con `cobroIncierto` o saldo pendiente cuenta como pendiente); la venta rápida lo usa para el error y para `paid`; el aviso y el estado «Venta rápida en curso» se limpian al aprobar o rechazar la tarjeta simulada y al cerrar la cuenta pagada desde el cobro.
+- Archivos modificados: `fuente.js`, `source-recovery/fuente-recuperado.js`, `tests/rediseno/h51-venta-rapida-tarjeta-pendiente-contract.mjs` (nuevo), `tests/ci/manifiesto_clasificacion.json`, `.github/scripts/validar-manifiesto-ci.mjs`, `.github/workflows/puerta-ci-release.yml` (inventario 421 entradas, 404 activas, 353 en node)
+- Migraciones creadas, renombradas o eliminadas: ninguna
+- Entorno afectado:
+  - [x] Local
+  - [ ] QA
+  - [ ] Producción
+- Migraciones aplicadas: ninguna
+- Pruebas ejecutadas: contrato H-51 (falla con el código anterior con 7 comprobaciones y pasa con el nuevo); `node --check fuente.js` y `node --check source-recovery/fuente-recuperado.js`; paridad (`PARIDAD_CUERPO_EXACTA=1`, `SOURCE_RECOVERY_CHECK=PASS`); `git diff --check`; batería sin base de datos 353/353 con el árbol limpio.
+- Resultado: correcto en local. **No verificado todavía en pantalla** (hay que repetir una venta rápida con tarjeta en la vista previa cuando se despliegue este commit).
+- Riesgos o incidencias: el cambio toca `fuente.js`; el criterio de pendiente depende de que el estado del cobro traiga `cobroIncierto` o `saldo` (lo trae: lo calcula `leerEstadoCobroF4`).
+- Decisiones pendientes: H-52 (el historial no refresca tras vender hasta recargar; pista: el efectivo llama a `sincronizarStockPm07` tras cobrar y la tarjeta no); D2, D3, D5, D6 y D8.
+- Siguiente acción: verificar H-51 en la vista previa con sesión; diagnosticar H-52 si se decide.
+- Responsable de la siguiente acción: el usuario (iniciar sesión); Claude (medir).

@@ -16,7 +16,7 @@ Detalle por hallazgo: `docs/rediseno/auditoria-tpv/` (`ORDEN_DE_CORRECCIONES_Y_D
 - **Seguridad (ola 2):** encargos solo por funciones de servidor y privilegios sobrantes (H-04, H-18), funciones de QA versionadas (H-06), alta de empresa con política de segundo factor (H-17), contraseña inicial obligatoria (H-36), direcciones de producción fuera del código (H-33), guardar solo las políticas modificadas (H-45).
 - **Modo caja (ola 3):** referencia «doble banda» (H-01, H-02, H-03, H-08, H-09, H-10, H-11, H-12, H-13).
 - **Decisiones (ola 4):** venta con stock insuficiente y piso por reponer (H-15); devolución de anticipos de encargo (H-05).
-- **Resto (ola 5) y cierre:** TPV, cierre de caja visible, recarga a mitad de guardar, mensajes sin red (H-16, H-25, H-30, H-32, H-34, H-41), cuentas abiertas sin actividad (H-28, H-29), «Deshacer reparto» (H-47), historial con reembolsos (H-35), repartos de líneas canceladas (H-50).
+- **Resto (ola 5) y cierre:** TPV, cierre de caja visible, recarga a mitad de guardar, mensajes sin red (H-16, H-25, H-30, H-32, H-34, H-41), cuentas abiertas sin actividad (H-28, H-29), «Deshacer reparto» (H-47), historial con reembolsos (H-35), repartos de líneas canceladas (H-50) y el aviso de la venta rápida con tarjeta pendiente (H-51, hallado en el humo del 28/11; el texto ya estaba en `release`).
 
 ### Migraciones (14 nuevas; ninguna aplicada en producción)
 Clasificadas por riesgo en `docs/rediseno/lanzamiento-produccion/README.md` y `VUELTA_ATRAS_POR_MIGRACION.md`:
@@ -31,7 +31,7 @@ Clasificadas por riesgo en `docs/rediseno/lanzamiento-produccion/README.md` y `V
 - **Historial de migraciones:** en QA tres migraciones de #225 existen como objeto pero no constan en el historial; reconciliar antes de `db push`.
 
 ### Cómo se probó
-- Batería sin base de datos: **352/352**; PGlite: **17/17**; CI de la puerta en el último commit: 40 comprobaciones correctas, 0 fallos.
+- Batería sin base de datos: **353/353**; PGlite: **17/17**; CI de la puerta en el último commit con código verificado: 40 comprobaciones correctas, 0 fallos.
 - Cada corrección tiene contrato propio que **falla con el código anterior** y verificación en QA con sesión real (ver las actas `CORRECCION_*` y `VERIFICACION_QA_*`).
 - Revisión de código independiente (nivel alto): 7 hallazgos; los 5 primeros corregidos con contrato nuevo, 2 menores anotados (permiso propio de «Deshacer reparto»; neto del historial con reembolso económico independiente).
 - Higiene: `git diff --check` limpio, índice en LF, paridad `fuente.js` ↔ `source-recovery/fuente-recuperado.js`, sin secretos; CSP de producción solo con el host de producción.
