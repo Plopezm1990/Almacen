@@ -103667,10 +103667,10 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
           p_version_esperada: Number.isSafeInteger(Number(permiso.version)) ? Number(permiso.version) : 0
         });
       }
-      await cargarCargos();
       setEditorPermisos(null);
       setMotivoPermiso("");
-      setConfirmacion("Permisos por pantalla guardados y auditados.");
+      setConfirmacion("Cambios guardados y auditados. El editor se ha cerrado.");
+      await cargarCargos();
     } catch (e2) {
       setError(configMensajeError(e2));
     } finally {
@@ -103872,14 +103872,14 @@ function ConfigCargos({ empresa = null, empleados = [], localId = "", localNombr
             h("span", { className: "text-[11px] rounded-full px-2 py-1", style: { background: cambiosPendientesEditor ? C2.amberSoft : C2.accentSoft, color: cambiosPendientesEditor ? C2.amber : C2.accent } }, `${PM13_PANTALLAS_EDITOR.filter((pantalla) => editorPermisos.pantallas[pantalla.id]).length} pantallas · ${editorPermisos.permisos.filter((permiso) => permiso.valor === "permitido").length} acciones${cambiosPendientesEditor ? ` · ${cambiosPendientesEditor} cambios pendientes` : ""}`)
           ),
           h("div", { className: "text-[11px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Permitir una pantalla solo concede acceso de consulta. Las acciones se configuran dentro de cada pantalla y no pueden saltarse las barreras de seguridad."),
+          h(ConfigMotivo, { valor: motivoPermiso, onCambio: setMotivoPermiso, deshabilitado: ocupado }),
+          error ? h("div", { role: "alert", className: "mt-2 mb-3 p-2 rounded-lg text-[12px]", style: { background: C2.redSoft, color: C2.red } }, error) : null,
           h("div", { className: "flex gap-2 flex-wrap mb-3" },
             h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasEditor(true), disabled: ocupado }, "Permitir todas"),
             h(Btn, { small: true, variant: "ghost", onClick: () => marcarPantallasEditor(false), disabled: ocupado }, "Denegar todas"),
             h(Btn, { small: true, onClick: () => guardarPermisos(cargo), disabled: ocupado || cambiosPendientesEditor === 0 }, guardando ? "Guardando…" : "Guardar cambios"),
             h(Btn, { small: true, variant: "ghost", onClick: () => { setEditorPermisos(null); setMotivoPermiso(""); }, disabled: ocupado }, "Cancelar")
           ),
-          h(ConfigMotivo, { valor: motivoPermiso, onCambio: setMotivoPermiso, deshabilitado: ocupado }),
-          error ? h("div", { role: "alert", className: "mt-2 p-2 rounded-lg text-[12px]", style: { background: C2.redSoft, color: C2.red } }, error) : null,
           h("div", { className: "space-y-2 mt-3" }, Object.entries(gruposPantallas).map(([grupo, pantallas]) => h(
             "details",
             { key: grupo, open: grupo === "Inicio" || grupo === "Ventas", className: "rounded-lg", style: { border: `1px solid ${C2.line}`, background: C2.surface } },
