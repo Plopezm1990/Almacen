@@ -3542,7 +3542,7 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
         );
       }) : null
     ),
-    !mapa && !cargando ? h(Card, null, "No hay mapa de sala cargado. Comprueba que el local tenga un terminal con sesión de caja abierta.") : null,
+    !mapa && !cargando ? h(Card, null, "No se pudo cargar el plano de este local. Comprueba la conexión y pulsa Actualizar.") : null,
     zonas.map((zona) => h(
       Card,
       { key: zona.zona_id || zona.id, className: "mb-3" },
