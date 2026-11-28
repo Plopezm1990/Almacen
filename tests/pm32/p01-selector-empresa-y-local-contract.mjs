@@ -145,6 +145,9 @@ const empresasDos = [
   const opciones = aplanar(selects(nodos)[0].children).filter((n) => n.type === 'option').map((o) => o.children[0]);
   assert.deepEqual(opciones, ['Todos los locales', 'Chocoloyos S.L'],
     'ni locales de baja ni fusionados, y el texto de siempre');
+  const tarjetaSelector = nodos.find((n) => n.type === 'Card');
+  assert.equal(tarjetaSelector?.props?.style?.display, 'none',
+    'la tarjeta inferior debe quedar oculta; la cabecera reutiliza su selector funcional');
   assert.ok(aplanar(nodos).some((n) => n.texto === 'Mostrando solo Chocoloyos S.L.'),
     'con una sola empresa el texto no debe nombrar empresa alguna');
   console.log('P01_UNA_EMPRESA_SIN_CAMBIOS=PASS');

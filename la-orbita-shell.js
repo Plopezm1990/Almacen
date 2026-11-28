@@ -126,6 +126,11 @@
   }
 
   function contextoActual() {
+    var selector = selectorsContexto()[0];
+    if (selector && selector.options && selector.selectedIndex >= 0) {
+      var seleccionado = textoVisible(selector.options[selector.selectedIndex]);
+      if (seleccionado) return seleccionado;
+    }
     var sidebar = marco && marco.querySelector(".la-orbita-sidebar");
     if (!sidebar) return ultimoContexto || "Selecciona empresa y local";
     var candidato = Array.prototype.slice.call(sidebar.querySelectorAll("div,span"))
@@ -135,13 +140,15 @@
   }
 
   function selectorsContexto() {
-    return Array.prototype.slice.call((root || document).querySelectorAll("select")).filter(function (select) {
+    var superficie = root || document;
+    var fuenteMarcada = superficie.querySelector("[data-la-orbita-context-source] select");
+    if (fuenteMarcada) return [fuenteMarcada];
+    return Array.prototype.slice.call(superficie.querySelectorAll("select")).filter(function (select) {
       var options = Array.prototype.slice.call(select.options || []).map(function (option) { return textoVisible(option); });
       var texto = options.join(" ").toLowerCase();
       /* El resto de formularios también usa <select>. Solo el selector de
          contexto tiene una opción «Todos los locales» y opciones de locales. */
       return options.some(function (label) { return /todos los locales/i.test(label); }) &&
-        options.some(function (label) { return /^(?:local|sala|terraza|interior|zona)\b/i.test(label); }) &&
         texto.length > 0;
     });
   }
@@ -649,7 +656,9 @@
     ultimoContexto = contexto;
     var texto = cabecera.querySelector("[data-la-orbita-context-label]");
     var partesContexto = String(contexto || "Selecciona empresa y local").split(/\s*[·|/]\s*/).map(function (parte) { return parte.trim(); }).filter(Boolean);
-    var localContexto = partesContexto.find(function (parte) { return /^local\b|^sala\b|^terraza\b/i.test(parte); }) || partesContexto[0] || "Local";
+    var selectorLocal = selectorsContexto()[0];
+    var localSeleccionado = selectorLocal && selectorLocal.options && selectorLocal.selectedIndex >= 0 ? textoVisible(selectorLocal.options[selectorLocal.selectedIndex]) : "";
+    var localContexto = localSeleccionado || partesContexto.find(function (parte) { return /^local\b|^sala\b|^terraza\b/i.test(parte); }) || partesContexto[0] || "Local";
     var empresaContexto = partesContexto.filter(function (parte) { return parte !== localContexto; }).join(" · ") || "Empresa";
     var contextoEmpresa = texto && texto.querySelector("[data-la-orbita-context-empresa]");
     var contextoLocal = texto && texto.querySelector("[data-la-orbita-context-local]");
