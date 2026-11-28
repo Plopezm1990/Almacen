@@ -2,7 +2,7 @@ import fs from "node:fs";
 import assert from "node:assert/strict";
 
 const sql = fs.readFileSync("supabase/migrations/20261017150000_pm13_p08_proteccion_propietario.sql", "utf8");
-const correction = fs.readFileSync("supabase/migrations/20261128150000_abc_f6_cargos_nombres_navegacion_excepciones.sql", "utf8");
+const correction = fs.readFileSync("supabase/migrations/20261129110000_abc_f6_cargos_nombres_navegacion_excepciones.sql", "utf8");
 const ui = fs.readFileSync("fuente.js", "utf8");
 
 assert.match(sql, /pm13_cargo_guard_nombre/);

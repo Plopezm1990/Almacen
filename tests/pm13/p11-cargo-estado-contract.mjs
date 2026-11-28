@@ -1,7 +1,7 @@
 import fs from "node:fs";
 import assert from "node:assert/strict";
 
-const sql = fs.readFileSync("supabase/migrations/20261128160000_abc_f6_cargos_estado_eliminacion.sql", "utf8");
+const sql = fs.readFileSync("supabase/migrations/20261129120000_abc_f6_cargos_estado_eliminacion.sql", "utf8");
 const ui = fs.readFileSync("fuente.js", "utf8");
 
 assert.match(sql, /create or replace function public\.abc_desactivar_cargo\(/);

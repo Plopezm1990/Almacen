@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 
-const sql = fs.readFileSync("supabase/migrations/20261128160000_abc_f6_cargos_estado_eliminacion.sql", "utf8");
+const sql = fs.readFileSync("supabase/migrations/20261129120000_abc_f6_cargos_estado_eliminacion.sql", "utf8");
 const files = ["fuente.js", "source-recovery/fuente-recuperado.js"];
 
 assert.match(sql, /add column if not exists eliminado boolean not null default false/);

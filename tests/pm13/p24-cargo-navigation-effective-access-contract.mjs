@@ -3,8 +3,8 @@ import fs from "node:fs";
 import path from "node:path";
 
 const root = process.cwd();
-const migration = fs.readFileSync(path.join(root, "supabase/migrations/20261128150000_abc_f6_cargos_nombres_navegacion_excepciones.sql"), "utf8");
-const lifecycle = fs.readFileSync(path.join(root, "supabase/migrations/20261128160000_abc_f6_cargos_estado_eliminacion.sql"), "utf8");
+const migration = fs.readFileSync(path.join(root, "supabase/migrations/20261129110000_abc_f6_cargos_nombres_navegacion_excepciones.sql"), "utf8");
+const lifecycle = fs.readFileSync(path.join(root, "supabase/migrations/20261129120000_abc_f6_cargos_estado_eliminacion.sql"), "utf8");
 const source = fs.readFileSync(path.join(root, "fuente.js"), "utf8");
 const recovered = fs.readFileSync(path.join(root, "source-recovery/fuente-recuperado.js"), "utf8");
 

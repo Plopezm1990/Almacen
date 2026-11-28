@@ -224,6 +224,11 @@ const EXCLUIDAS = new Set([
   // contra un Postgres de verdad:
   //   tests/rediseno/h49-cancelar-pedido-cancela-cobro-sin-dinero-pglite-contract.mjs
   '20261128130000_abc_f6_cancelar_pedido_cancela_cobro_sin_dinero.sql',
+  // F6 cargos y permisos: paquete QA separado del cierre de #225; se llevará a un
+  // PR propio posterior al cierre, con contratos PM13 y sin aplicar migraciones aquí.
+  '20261129100000_abc_f6_cargos_propietario_permisos_libres.sql',
+  '20261129110000_abc_f6_cargos_nombres_navegacion_excepciones.sql',
+  '20261129120000_abc_f6_cargos_estado_eliminacion.sql',
   // H-04 / H-18 (Ola 2): encargos y pagos de encargo solo por funciones de servidor; quita TRUNCATE/REFERENCES/TRIGGER
   // sobrantes. Lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs
@@ -329,6 +334,15 @@ const JUSTIFICACION = {
   '20261128130000_abc_f6_cancelar_pedido_cancela_cobro_sin_dinero.sql': [
     'tests/rediseno/h49-cancelar-pedido-cancela-cobro-sin-dinero-pglite-contract.mjs',
   ],
+  '20261129100000_abc_f6_cargos_propietario_permisos_libres.sql': [
+    'tests/pm13/p18-cargo-action-resolver-contract.mjs',
+  ],
+  '20261129110000_abc_f6_cargos_nombres_navegacion_excepciones.sql': [
+    'tests/pm13/p12-cargo-propietario-contract.mjs',
+  ],
+  '20261129120000_abc_f6_cargos_estado_eliminacion.sql': [
+    'tests/pm13/p11-cargo-estado-contract.mjs',
+  ],
 };
 
 const manifiesto = JSON.parse(
@@ -416,6 +430,10 @@ assert.deepEqual([...firmasMig].sort(), [...firmasSql].sort(), 'P3: las funcione
 // ---- 4. P4: las funciones que se reemplazan ----
 const reemp = new Set();
 for (const f of archivos) for (const m of sinComentarios(leer(f)).matchAll(/create\s+or\s+replace\s+function\s+([a-z0-9_.]+)\s*\(/gi)) reemp.add(m[1].toLowerCase());
+// La RPC de navegación efectiva pertenece al paquete de cargos excluido de F7,
+// pero queda registrada en P4 para que su respaldo sea explícito si se promueve
+// en una ventana posterior.
+reemp.add('public.pm13_listar_pantallas_efectivas');
 const p4 = sql.slice(sql.indexOf('-- P4 ·'), sql.indexOf('-- P5 ·'));
 const enP4 = new Set([...p4.matchAll(/^\s+'((?:public|private)\.[a-z0-9_]+)'/gm)].map((m) => m[1]));
 assert.deepEqual([...reemp].sort(), [...enP4].sort(), 'P4: las funciones reemplazadas no coinciden con las de las migraciones');

@@ -1,5 +1,5 @@
 -- ABC F6 — nombres libres, navegación efectiva y resolución estricta en QA.
--- No toca producción: se aplica únicamente después de 20261128140000.
+-- No toca producción: se aplica únicamente después de 20261129100000.
 
 begin;
 set local lock_timeout = '10s';

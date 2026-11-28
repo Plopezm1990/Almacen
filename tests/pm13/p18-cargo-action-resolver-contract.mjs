@@ -5,7 +5,7 @@ import path from "node:path";
 const root = process.cwd();
 const migration = fs.readFileSync(path.join(root, "supabase/migrations/20261017193000_pm13_p05_cargo_action_resolver.sql"), "utf8");
 const doc = fs.readFileSync(path.join(root, "docs/plan-empresas/PM13_P05_05_PERSISTENCIA_PERMISOS_2026-10-17.md"), "utf8");
-const f6 = fs.readFileSync(path.join(root, "supabase/migrations/20261128140000_abc_f6_cargos_propietario_permisos_libres.sql"), "utf8");
+const f6 = fs.readFileSync(path.join(root, "supabase/migrations/20261129100000_abc_f6_cargos_propietario_permisos_libres.sql"), "utf8");
 
 assert.match(migration, /create table if not exists public\.abc_cargo_permisos/);
 assert.match(migration, /private\.pm13_p05_acciones_catalogo/);

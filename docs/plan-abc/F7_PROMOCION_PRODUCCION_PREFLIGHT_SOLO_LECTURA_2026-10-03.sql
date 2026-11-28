@@ -245,7 +245,7 @@ select e.migracion, e.firma,
  order by e.migracion, e.firma;
 
 -- ============================================================================================================================
--- P4 · Copia de seguridad de las 80 funciones que las migraciones candidatas REEMPLAZAN (create or replace). Es la base de la recuperación:
+-- P4 · Copia de seguridad de las 81 funciones registradas para las migraciones candidatas y ventanas posteriores (create or replace). Es la base de la recuperación:
 --      guardar la salida completa (definición incluida) ANTES de aplicar nada. Solo lectura de catálogo.
 -- ============================================================================================================================
 select n.nspname as esquema, p.proname as funcion, pg_get_function_identity_arguments(p.oid) as argumentos,
@@ -330,6 +330,7 @@ select n.nspname as esquema, p.proname as funcion, pg_get_function_identity_argu
     'public.pm13_corte_dia_operativo',
     'public.pm13_listar_cargo_permisos',
     'public.pm13_listar_excepciones_empleado',
+    'public.pm13_listar_pantallas_efectivas',
     'public.pm13_anular_ausencia',
     'public.pm13_registrar_ausencia',
     'public.pm13_resolver_cargo_permiso'
