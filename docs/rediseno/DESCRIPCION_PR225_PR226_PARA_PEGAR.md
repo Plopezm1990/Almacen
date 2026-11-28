@@ -38,7 +38,7 @@ Clasificadas por riesgo en `docs/rediseno/lanzamiento-produccion/README.md` y `V
 
 ### Lo que NO incluye
 - El paquete de **cargos y permisos personalizados** (PR #228, otra sesión): queda fuera de este cierre y se integra aparte tras fusionar este PR.
-- Verificación por cargo de H-34, H-41, H-32 y H-46 con sesiones de Cajero/a y Camarero/a (pendiente de restablecer sus contraseñas de QA).
+- Verificación **en vivo** del camino negativo por cargo de H-34, H-41, H-32 y H-46 con sesiones de Cajero/a y Camarero/a: **riesgo aceptado** (28/11) por no restablecer sus contraseñas de QA; la barrera real está en el servidor y tiene contrato (PGlite y estáticos).
 - Funciones que solo existen en QA (`supabase/qa-only`): vale regalo, ticket por correo, tipo de negocio, simuladores; no se llevan a producción.
 
 ### Coordinación

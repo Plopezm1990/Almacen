@@ -106,3 +106,31 @@ Reglas que esta sesión (Claude, cierre de #226/#225) adopta, tal como se pidier
 - Decisiones pendientes: reconciliar el historial de migraciones antes de `db push` (las 3 anteriores); D2, D3, D5, D6 y D8 del plan.
 - Siguiente acción: el usuario pega las descripciones y los comentarios; verificación por cargo con sesiones; ensayo en la copia.
 - Responsable de la siguiente acción: el usuario (pegar, restablecer contraseñas de QA, copia con el esquema de producción); Claude (verificación por cargo y ensayo cuando haya copia).
+
+## Registro de avance — 2026-11-28 12:58
+
+- Responsable: Claude (cierre de #226 / #225), por decisión del usuario
+- Sesión/agente: Claude Code · Sonnet 5.5
+- PR: #226 / #225 (solo documentación)
+- Rama: `correccion/ola0-tpv-2026-11-26`
+- Commit: el de este registro (documentación)
+- Objetivo: dejar escrita la decisión sobre la verificación por cargo
+- Estado anterior: pendiente de que el usuario restableciera las contraseñas iniciales de las cuentas de QA de Encargado, Cajero/a y Camarero/a (H-36)
+- Cambio realizado: **el usuario decide seguir sin restablecer esas contraseñas** (28/11/2026). Se cierra #226 **sin** la verificación en vivo de los caminos negativos por cargo.
+  Queda registrado como **riesgo aceptado**, con lo que sí cubre y lo que no:
+  - Cubierto: los contratos (PGlite y estáticos) comprueban que el servidor rechaza lo que cada cargo no puede (H-34, H-41, H-04/H-18, H-47 en la función de servidor), y la auditoría del 26/11 ya verificó en vivo la matriz por cargo anterior (Encargado, Cajero/a y Camarero/a entran sin segundo factor y el servidor rechaza lo que su cargo no puede).
+  - **No** verificado en vivo con sesión: el camino negativo en pantalla de H-34 (anular venta sin permiso) y H-41 (caja no autorizada), H-32 (mensaje sin red) y H-46, y «Deshacer reparto» con un cargo sin permiso; ni el efecto de la contraseña inicial obligatoria (H-36) en un alta real.
+  Si más adelante se restablecen las contraseñas, se hace la verificación y se anota aquí.
+- Archivos modificados: este registro y `DESCRIPCION_PR225_PR226_PARA_PEGAR.md` (apartado «Lo que NO incluye»)
+- Migraciones creadas, renombradas o eliminadas: ninguna
+- Entorno afectado:
+  - [x] Local
+  - [ ] QA
+  - [ ] Producción
+- Migraciones aplicadas: ninguna
+- Pruebas ejecutadas: ninguna nueva (documentación)
+- Resultado: decisión registrada
+- Riesgos o incidencias: un fallo de presentación en el camino negativo por cargo no se vería hasta el uso real; mitigado porque la barrera real está en el servidor y tiene contrato.
+- Decisiones pendientes: D2, D3, D5, D6 y D8; reconciliar el historial de migraciones.
+- Siguiente acción: humo con sesión de Propietario (PM07) en la vista previa sobre los flujos críticos (cobro, cierre de caja, historial, encargos, cuentas), si el usuario la autoriza e inicia sesión.
+- Responsable de la siguiente acción: el usuario (autorizar e iniciar sesión); Claude (medir y registrar).
