@@ -81,3 +81,28 @@ Reglas que esta sesión (Claude, cierre de #226/#225) adopta, tal como se pidier
 - Decisiones pendientes: las de la entrada anterior.
 - Siguiente acción: seguir con la descripción de #226; avisar con el comentario acordado cuando #226 se fusione en `rediseno/f0-base-qa`.
 - Responsable de la siguiente acción: Claude (descripción); el usuario fusiona #226 y yo dejo el comentario de fusión.
+
+## Registro de avance — 2026-11-28 12:47
+
+- Responsable: Claude (cierre de #226 / #225), por encargo del usuario («has lo más recomendado, actúa como experto»)
+- Sesión/agente: Claude Code · Sonnet 5.5
+- PR: #226 / #225 (solo documentación; no se tocó ningún PR)
+- Rama: `correccion/ola0-tpv-2026-11-26`
+- Commit: el de este registro (documentación)
+- Objetivo: preparar los guiones de producción, la vuelta atrás y las descripciones de #225 y #226 (pasos 1.5 y 5 del plan)
+- Estado anterior: sin guiones de lanzamiento; el token de GitHub no permite editar PR ni comentar
+- Cambio realizado: solo documentación y guiones SQL (en `docs/`, no en `supabase/migrations`: ningún despliegue los aplica).
+  `docs/rediseno/lanzamiento-produccion/` (README, informes 01, 02, 03, 04 y 05 de solo lectura, 02b que ESCRIBE y exige autorización, y VUELTA_ATRAS_POR_MIGRACION) y `docs/rediseno/DESCRIPCION_PR225_PR226_PARA_PEGAR.md`.
+- Archivos modificados: los anteriores y este registro
+- Migraciones creadas, renombradas o eliminadas: ninguna
+- Entorno afectado:
+  - [x] Local
+  - [x] QA (solo lectura: se validaron los guiones con consultas SELECT; no se cambió nada)
+  - [ ] Producción
+- Migraciones aplicadas: ninguna
+- Pruebas ejecutadas: los informes 01, 03 y 04 y las consultas de 02 y 05 se ejecutaron contra QA (solo lectura); el 01 además contra funciones sin parchear en PGlite (clasifica `LISTA_PARA_MIGRAR`, `DERIVA` y `FALTA_FUNCION`, y no da por aplicada una función que solo menciona la capacidad en un comentario). Sin cambios de código: no se tocaron las fuentes.
+- Resultado: correcto. Hallazgos de la validación: 17 de las 20 migraciones constan en el historial de QA con su objeto; 3 (`rediseno_apariencia_empresa`, `rediseno_apariencia_delegaciones`, `rediseno_org33_tarifas_horario`) existen como objeto pero no en el historial; en QA-A1 hay 4 ventas cobradas en 30 días sin documento emitido; `m03_server_aal2_gate` está aplicada en QA.
+- Riesgos o incidencias: el token de GitHub no permite publicar las descripciones ni los comentarios; hay que pegarlos a mano.
+- Decisiones pendientes: reconciliar el historial de migraciones antes de `db push` (las 3 anteriores); D2, D3, D5, D6 y D8 del plan.
+- Siguiente acción: el usuario pega las descripciones y los comentarios; verificación por cargo con sesiones; ensayo en la copia.
+- Responsable de la siguiente acción: el usuario (pegar, restablecer contraseñas de QA, copia con el esquema de producción); Claude (verificación por cargo y ensayo cuando haya copia).
