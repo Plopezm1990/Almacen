@@ -3,7 +3,7 @@
 **Fecha:** 2026-11-28  
 **Ámbito:** QA únicamente  
 **Worktree:** `Almacen-qa-cargos-permisos`  
-**Estado:** fase 1 implementada y verificada en código; pendiente la prueba funcional en el navegador de QA y la integración completa del cierre
+**Estado:** fase de conteo, contexto y separación del flujo implementada y verificada en código; pendiente la prueba funcional en el navegador de QA y las ampliaciones de servidor indicadas en los límites
 
 ## Objetivo de esta fase
 
@@ -39,6 +39,18 @@ El commit `57b10b74` (`fix(qa): make denomination cash counts explicit`) aplica 
 - Mantiene el identificador y el payload económico de la operación sin añadir el modo de conteo al payload pendiente que se compara para reintentos; el modo solo acompaña al borrador local.
 
 La corrección no cambia la firma de la RPC ni requiere una migración de base de datos.
+
+## Correcciones de ámbito y conciliación aplicadas en QA
+
+Además de la fiabilidad del conteo, esta fase corrige varios problemas de coherencia visibles en el arqueo:
+
+- Se corrigió el duplicado de pagos mixtos cuando un mismo checkout aparece representado por varias líneas de producto. El desglose del pago se contabiliza una sola vez por pago, no una vez por cada línea, evitando inflar simultáneamente efectivo, tarjeta u otros medios.
+- El arqueo muestra el contexto operativo que se está utilizando: local, caja, sesión, terminal, moneda y día operativo cuando están disponibles desde el servidor.
+- La sesión observada en la previsualización queda asociada al borrador y se valida de nuevo antes de guardar. Si la sesión, la caja o su estado han cambiado entre ambos momentos, el guardado se detiene para que el usuario revise el contexto, en lugar de registrar un conteo sobre otra sesión.
+- El detalle de movimientos de caja se filtra por `sessionId` además de los datos de empresa, local y moneda disponibles. De este modo, el detalle que acompaña al esperado no mezcla automáticamente operaciones de otras sesiones del mismo local.
+- La interfaz separa las acciones y los estados del flujo: **Guardar arqueo** registra el conteo; **Cierre provisional** inicia o confirma el cierre provisional; y **Cierre definitivo** finaliza la sesión. Las dos últimas acciones utilizan las funciones C04 existentes y no se presentan como si fueran un simple guardado de arqueo.
+
+Estas correcciones mejoran la coherencia del cliente y hacen explícito el ámbito del arqueo. El cálculo económico autoritativo y las transiciones de cierre continúan dependiendo del servidor.
 
 ## Canon y límites de denominaciones
 
@@ -85,22 +97,28 @@ La investigación de Astra 6.0 se ha aplicado mediante recursos locales, sin dep
 
 La corrección y los recursos ya cuentan con estas comprobaciones:
 
-- Runtime de interacción añadido al test existente `tests/cfg/c03-arqueo-ui-runtime.mjs`: **12/12 comprobaciones superadas**.
-- Contrato frontend PM08: **64 checks superados**.
+- Runtime de interacción añadido al test existente `tests/cfg/c03-arqueo-ui-runtime.mjs`: **13/13 comprobaciones superadas**.
+- Contrato frontend PM08: **68 checks superados**.
+- Contrato H-24 del esperado del arqueo desde el servidor: **OK**.
+- Contrato de migración PM08: **51 checks superados**.
 - Comprobación de sintaxis JavaScript superada.
 - `python -I source-recovery/recuperar_candidato.py --check`: paridad exacta del cuerpo de aplicación superada.
 - `git diff --check`: sin errores de espacios o formato.
 
 El runtime cubre, entre otros casos, guardar desde denominaciones sin introducir importe manual, cero explícito, cambio de modo, cálculo de céntimos, límites y recuperación del formulario. Estas comprobaciones son de contrato/runtime; no sustituyen todavía la prueba manual de la aplicación desplegada en el navegador de QA.
 
-## Pendiente real
+## Límites pendientes explícitos
 
-La fase de fiabilidad del conteo y la incorporación local de imágenes están realizadas. Solo queda pendiente en esta fase:
+La fase de fiabilidad del conteo, la incorporación local de imágenes, la mejora de contexto y la separación de acciones del flujo están realizadas en el código de QA. Siguen pendientes estos límites, que no deben darse por resueltos:
 
 - Probar el flujo completo en el navegador desplegado de QA, incluyendo carga visual de las 15 imágenes y guardado contra el entorno compartido.
 - Confirmar en QA el comportamiento ante timeout, reintento y doble pulsación con datos controlados.
-- Revisar la conciliación completa por la misma sesión/caja para efectivo, tarjetas, transferencias, pagos mixtos, devoluciones y propinas.
-- Completar las fases posteriores del objetivo: contexto local/caja/terminal/sesión, separación de arqueo y cierre, diferencias y permisos de servidor, bloqueo tras cierre, resguardo y persistencia del desglose cuando corresponda.
+- Los pagos no efectivos no tienen un `session_id` directo en el modelo actual. Por ello, tarjetas, transferencias, otros medios, pagos mixtos y sus reembolsos todavía no pueden presentarse como una conciliación completa y autoritativa por sesión únicamente desde el cliente.
+- En C04 las denominaciones todavía no se persisten como el desglose real de billetes y monedas; el cierre conserva actualmente el dato compatible con el esquema existente, por lo que la persistencia completa requiere una decisión y cambio de servidor coordinados.
+- La unicidad activa del arqueo continúa siendo por empresa/local/día, aunque el esperado económico se calcula por sesión. Esto limita tener varios arqueos activos independientes para distintas sesiones del mismo local y día.
+- La sincronización del detalle de caja continúa limitada a `2000` operaciones; el filtro por `sessionId` mejora el ámbito de los datos cargados, pero no sustituye una lectura paginada o un agregado autoritativo para sesiones con más operaciones.
+- No se han aplicado migraciones nuevas ni se ha consultado producción. La validación realizada corresponde al código y a los contratos preparados para QA.
+- Siguen pendientes las fases de diferencias, permisos de servidor, bloqueo tras cierre, resguardo y persistencia coordinada del desglose.
 
 No se marca como pendiente ningún test ya ejecutado ni la incorporación de imágenes, porque ambos trabajos están verificados en el estado actual.
 
@@ -114,13 +132,17 @@ No se marca como pendiente ningún test ya ejecutado ni la incorporación de im�
 - El servidor mantiene la autoridad sobre permisos, sesión abierta, terminal vinculado, día operativo y cálculo del esperado.
 - Esta fase no resuelve todavía la restricción de un arqueo activo por día/local frente al cálculo esperado por sesión.
 - La validación de motivo de descuadre en pantalla no equivale todavía a una garantía completa en servidor.
+- Los pagos no efectivos siguen sin una vinculación directa a `session_id`; no deben interpretarse como conciliados por sesión hasta completar el modelo de servidor.
+- C04 aún no guarda el desglose completo de denominaciones de billetes y monedas.
+- La lectura de movimientos mantiene el límite de `2000` registros.
 
 ## Siguientes fases
 
 1. Probar en el navegador de QA las imágenes locales, el conteo táctil, el guardado, el cero explícito y los reintentos.
-2. Aclarar local, caja, terminal, sesión y día operativo, diferenciando guardar arqueo, cierre provisional y cierre definitivo.
-3. Revisar la conciliación por el mismo ámbito de sesión/caja: efectivo esperado, entradas, retiradas, devoluciones, tarjetas, transferencias, otros medios, pagos mixtos y propinas.
+2. Completar en servidor el vínculo de pagos no efectivos y reembolsos con la sesión/caja, diferenciando pagos únicos, pagos mixtos, tarjetas, transferencias, otros medios y propinas.
+3. Revisar la unicidad del arqueo para permitir, si el modelo operativo lo exige, sesiones independientes del mismo local y día.
 4. Completar diferencias, permisos, auditoría, reapertura controlada y bloqueo después del cierre definitivo.
-5. Completar el resguardo del arqueo/cierre y decidir cómo persistir el desglose en el cierre sin romper históricos.
-6. Ejecutar la validación completa en QA, documentar resultados y preparar el PR para revisión sin tocar producción.
+5. Persistir el desglose de denominaciones en C04 sin romper históricos y ampliar la lectura de movimientos más allá del límite actual de `2000`.
+6. Completar el resguardo del arqueo/cierre.
+7. Ejecutar la validación completa en QA, documentar resultados y preparar el PR para revisión sin tocar producción.
 
