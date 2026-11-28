@@ -24829,6 +24829,13 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const denominacionesLimpias = Object.fromEntries(Object.entries(denominaciones).filter(([_22, cantidad]) => Number(cantidad) > 0).map(([valor, cantidad]) => [valor, Number(cantidad)]));
   const hayDesglose = Object.keys(denominacionesLimpias).length > 0;
   const totalDenominaciones = redondearDineroPM08(Object.entries(denominacionesLimpias).reduce((total, [valor, cantidad]) => total + Number(valor) * Number(cantidad), 0));
+  const ajustarDenominacion = (valor, delta) => {
+    const clave = String(valor);
+    setDenominaciones((actual) => {
+      const siguiente = Math.max(0, (Number(actual[clave]) || 0) + delta);
+      return { ...actual, [clave]: siguiente ? String(siguiente) : "" };
+    });
+  };
   const contadoNumero = hayDesglose ? totalDenominaciones : contado === "" ? NaN : redondearDineroPM08(contado);
   const diferencia = Number.isFinite(contadoNumero) && efectivoEsperado !== null ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
@@ -24883,6 +24890,10 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
     }
     if (contado === "" || !Number.isFinite(contadoNumero) || contadoNumero < 0) {
       setError("Escribe un efectivo contado igual o mayor que cero.");
+      return;
+    }
+    if (Number.isFinite(diferencia) && Math.abs(diferencia) >= 0.01 && !notas.trim()) {
+      setError("Indica el motivo de la diferencia antes de confirmar el arqueo.");
       return;
     }
     setError("");
@@ -24987,6 +24998,8 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono", "data-arqueo-esperado": esperadoDelServidor ? esperadoServidor.estado : "local" }, efectivoEsperado === null ? esperadoServidor.estado === "cargando" ? "Calculando\u2026" : "No disponible" : ["\u20AC", fmt(efectivoEsperado)])),
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
       ),
+      h3("div", { className: "grid grid-cols-2 md:grid-cols-4 gap-2 mb-3", "data-arqueo-medios": "1" }, Object.entries(porMedio).map(([medio, importe]) => h3("div", { key: medio, className: "p-2 rounded-lg", style: { background: C2.bg } }, h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, medio), h3("div", { className: "mono font-semibold" }, "\u20AC", fmt(importe))))),
+      h3("div", { className: "text-[10.5px] mb-3 p-2 rounded-lg", style: { background: C2.accentSoft, color: C2.inkSoft } }, "Solo el efectivo esperado se compara con el dinero físico. Las ventas con tarjeta, transferencia y otros medios se concilian aparte y no deben contarse como efectivo."),
       esperadoDelServidor ? h3(
         "div",
         { className: "text-[10.5px] mb-3", style: { color: esperadoServidor.estado === "error" ? C2.red : C2.inkSoft }, role: esperadoServidor.estado === "error" ? "alert" : void 0 },
@@ -25031,17 +25044,21 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         borradorRecuperado && h3("div", { className: "text-[11.5px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft } }, "Borrador de arqueo recuperado. El reintento conserva el mismo identificador."),
         h3(Field, { label: "Efectivo contado en caja (\u20AC)" }, h3(Input, { type: "number", min: "0", step: "0.01", value: hayDesglose ? String(totalDenominaciones) : contado, disabled: enviando || hayDesglose, onChange: (e2) => setContado(e2.target.value), autoFocus: true })),
         h3("div", { className: "mb-3" }, h3(Btn, { small: true, variant: "ghost", disabled: enviando, onClick: () => setMostrarDenominaciones((v) => !v) }, mostrarDenominaciones ? "Ocultar denominaciones" : "Contar por denominaciones")),
-        mostrarDenominaciones && h3("div", { className: "grid grid-cols-3 gap-2 mb-3 p-2 rounded-lg", style: { background: C2.bg } }, valoresDenominacion.map((valor) => {
+        mostrarDenominaciones && h3("div", { className: "grid grid-cols-2 sm:grid-cols-3 gap-2 mb-3 p-2 rounded-lg", style: { background: C2.bg }, role: "group", "aria-label": "Billetes y monedas en euros" }, valoresDenominacion.map((valor) => {
           const clave = String(valor);
-          return h3(Field, { key: clave, label: `\u20AC${clave}` }, h3(Input, { type: "number", min: "0", step: "1", value: denominaciones[clave] ?? "", disabled: enviando, onChange: (e2) => {
-            const siguiente = e2.target.value;
-            setDenominaciones((actual) => ({ ...actual, [clave]: siguiente }));
-          } }));
+          const cantidad = Number(denominaciones[clave]) || 0;
+          const esMoneda = valor < 5;
+          const etiqueta = valor < 1 ? valor.toFixed(2) : valor.toFixed(0);
+          return h3("div", { key: clave, className: "flex flex-col items-center gap-1.5 p-1.5 rounded-lg", style: { border: `1px solid ${C2.line}` } },
+            h3("button", { type: "button", disabled: enviando, onClick: () => ajustarDenominacion(valor, 1), "aria-label": `Añadir ${esMoneda ? "una moneda" : "un billete"} de ${etiqueta} euros`, className: "flex flex-col items-center justify-center gap-1 w-full rounded-lg", style: { minHeight: 58 } }, h3("span", { className: esMoneda ? "flex items-center justify-center rounded-full font-bold mono" : "flex items-center justify-center rounded-md font-bold mono", style: { width: esMoneda ? 42 : 76, height: esMoneda ? 42 : 30, background: esMoneda ? C2.amberSoft : C2.accentSoft, border: `1px solid ${C2.accent}`, color: C2.ink } }, "\u20AC", etiqueta), h3("span", { className: "text-[10px]", style: { color: C2.inkSoft } }, esMoneda ? "Tocar para añadir moneda" : "Tocar para añadir billete")),
+            h3("div", { className: "flex items-center justify-center gap-2" }, h3("button", { type: "button", disabled: enviando || cantidad === 0, onClick: () => ajustarDenominacion(valor, -1), "aria-label": `Quitar ${esMoneda ? "una moneda" : "un billete"} de ${etiqueta} euros`, className: "rounded-md", style: { minWidth: 32, minHeight: 32, border: `1px solid ${C2.line}` } }, "−"), h3("span", { className: "mono font-semibold", "aria-live": "polite" }, cantidad), h3("button", { type: "button", disabled: enviando, onClick: () => ajustarDenominacion(valor, 1), "aria-label": `Añadir ${esMoneda ? "una moneda" : "un billete"} de ${etiqueta} euros`, className: "rounded-md", style: { minWidth: 32, minHeight: 32, border: `1px solid ${C2.line}` } }, "+"))
+          );
         })),
         mostrarDenominaciones && h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, hayDesglose ? `Total por denominaciones: \u20AC${fmt(totalDenominaciones)}` : "Introduce la cantidad de billetes y monedas; el total se calcular\xE1 autom\xE1ticamente."),
         diferencia !== null && h3("div", { className: "text-[12.5px] mb-2", style: { color: diferencia === 0 ? C2.accent : Math.abs(diferencia) < 1 ? C2.amber : C2.red } }, diferencia === 0 ? "Cuadra exacto." : diferencia > 0 ? `Sobran \u20AC${fmt(diferencia)}` : `Faltan \u20AC${fmt(Math.abs(diferencia))}`),
-        h3(Field, { label: "Notas (opcional)" }, h3(Input, { value: notas, disabled: enviando, onChange: (e2) => setNotas(e2.target.value), placeholder: "Motivo del descuadre, si lo sabes" })),
-        h3(Btn, { disabled: enviando, onClick: submit }, enviando ? "Confirmando\u2026" : "Guardar arqueo")
+        diferencia !== null && Math.abs(diferencia) >= 0.01 && h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.amber } }, "Para confirmar un cierre con diferencia, escribe el motivo y revisa el efectivo contado."),
+        h3(Field, { label: diferencia !== null && Math.abs(diferencia) >= 0.01 ? "Motivo del descuadre (obligatorio)" : "Notas (opcional)" }, h3(Input, { value: notas, disabled: enviando, onChange: (e2) => setNotas(e2.target.value), placeholder: "Ej.: retirada no registrada, cambio inicial incorrecto…" })),
+        h3(Btn, { disabled: enviando || Number.isFinite(diferencia) && Math.abs(diferencia) >= 0.01 && !notas.trim(), onClick: submit }, enviando ? "Confirmando\u2026" : "Guardar arqueo")
       ),
       error && h3("div", { className: "text-[12px] mt-2", style: { color: C2.red } }, error),
       exito && h3("div", { className: "text-[12px] mt-2", style: { color: C2.accent } }, exito)
@@ -29405,7 +29422,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           className: "rounded-lg px-3 py-2 text-[12px] font-semibold",
           style: { minHeight: 44, background: !esRapida ? C2.chrome : "transparent", color: !esRapida ? "#fff" : C2.ink, border: `1px solid ${!esRapida ? C2.chrome : C2.line}` }
         }, "Sala / restaurante")
-      )
+      ),
+      typeof irACaja === "function" ? h3("button", { type: "button", "data-tpv-arqueo": "1", onClick: irACaja, className: "w-full rounded-lg px-3 py-2 mt-2 text-[12px] font-semibold", style: { minHeight: 44, background: C2.accentSoft, color: C2.ink, border: `1px solid ${C2.accent}` } }, "Abrir arqueo y cierre") : null
     );
   }
 

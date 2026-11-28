@@ -111,6 +111,10 @@ const checks = {
   ui_devolucion_min_cantidad: uiDevoluciones.includes('min: "0.000001"'),
   ui_movimiento_min_importe: uiMovimientos.includes('min: "0.01"'),
   ui_arqueo_admite_cero: uiArqueo.includes('min: "0"') && uiArqueo.includes('contadoNumero < 0'),
+  ui_arqueo_denominaciones_tactiles: uiArqueo.includes('Billetes y monedas en euros') && uiArqueo.includes('Tocar para añadir moneda') && uiArqueo.includes('Tocar para añadir billete'),
+  ui_arqueo_desglosa_medios_pago: uiArqueo.includes('data-arqueo-medios') && uiArqueo.includes('porMedio'),
+  ui_arqueo_exige_motivo_con_diferencia: uiArqueo.includes('Motivo del descuadre (obligatorio)') && uiArqueo.includes('diferencia antes de confirmar'),
+  ui_tpv_acceso_arqueo_desde_venta_y_sala: source.includes('data-tpv-arqueo') && bundle.includes('data-tpv-arqueo') && source.includes('Abrir arqueo y cierre'),
   ui_reverso_no_eliminar: uiMovimientos.includes('Revertir con motivo') && !uiMovimientos.includes('aria-label": "Eliminar movimiento'),
   ui_arqueo_anular_no_borrar: uiArqueo.includes('Anular cierre con motivo') && !uiArqueo.includes('Borrar y repetir'),
 
