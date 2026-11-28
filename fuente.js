@@ -112492,6 +112492,17 @@ function etiquetaReembolsoVentaTpv(venta) {
   if (importe <= 0) return "";
   return (venta?.reembolsadaTotal ? "Reembolsada " : "Reembolso parcial ") + fmt(importe) + " \u20AC";
 }
+// H-51 (verificacion en QA, 28/11/2026): en la venta rapida con tarjeta el pago queda PENDIENTE hasta que se resuelve, pero la pantalla decia «El cobro esta confirmado» y el aviso se quedaba aunque
+// luego se aprobara y se cerrara la cuenta. El texto existia ya en `release`. Ahora el aviso sigue el estado real del pago (`cobroIncierto` o saldo pendiente) y se limpia al completarse el cobro.
+function avisoVentaRapidaSinCierreTpv(medio, cobro) {
+  const pendiente = String(medio || "").toUpperCase() === "TARJETA" && (cobro?.cobroIncierto === true || Number(cobro?.saldo) > 0);
+  return {
+    pendiente,
+    error: pendiente
+      ? "El pago con tarjeta queda pendiente de confirmar: todav\u00eda no est\u00e1 cobrado. Resu\u00e9lvelo en Sala (Cobro) y no vuelvas a cobrar."
+      : "El cobro est\u00e1 confirmado, pero la cuenta no se ha cerrado formalmente. Contin\u00faa en Sala; no vuelvas a cobrar."
+  };
+}
 var FILAS_REJILLA_TPV = 4;
 // Cuantas columnas esta pintando .tpv-rejilla ahora mismo. Se pregunta al
 // navegador en vez de medir el nodo: los cortes son los mismos que en el CSS de
@@ -129718,6 +129729,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     sincronizarImporteCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
     if (medio === "EFECTIVO") setPropinaCambioF4(false);
+    // H-51: si el cobro se completa desde aquí (p. ej. cerrar la cuenta ya pagada), el aviso de la venta rápida deja de describir la situación.
+    if (String(resultado.cuentaEstado || "").toUpperCase() === "CERRADA") {
+      setErrorVenta("");
+      setResultadoVentaRapida(null);
+    }
   }
   // H-27: resolver el intento de tarjeta simulado desde la pantalla (solo en QA).
   async function resolverTarjetaQaUI(intento, resultado) {
@@ -129738,6 +129754,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       sincronizarImporteCobroF4(refrescado);
     }
     setMensajeCobroF4(resultado === "APROBAR" ? "Tarjeta simulada aprobada en QA. Cierra la cuenta pagada para emitir el documento." : "Tarjeta simulada rechazada en QA. Puedes volver a cobrar.");
+    setErrorVenta("");
   }
   async function recuperarCobroF4UI() {
     if (procesandoCobroF4 || typeof reintentarCobroF4 !== "function") return;
@@ -130952,18 +130969,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         || `venta-rapida-${Date.now()}`;
       const cuentaCerradaRapida = String(cobro.cuentaEstado || "").toUpperCase() === "CERRADA" || cobro.cuentaCierre?.ok === true;
       if (!cuentaCerradaRapida) {
+        const avisoRapida = avisoVentaRapidaSinCierreTpv(pagoRapida, cobro);
         setEstadoCobroF4(cobro);
         setMensajeCobroF4(cobro.mensaje || "Pago confirmado, pero la cuenta sigue abierta. No repitas el cobro: continúa en Sala para completar el cierre.");
         setResultadoVentaRapida({
           ok: false,
-          paid: true,
+          paid: !avisoRapida.pendiente,
           total: importe,
           medio: pagoRapida,
           cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
           cuentaCerrada: false,
           fiscal: cobro.fiscal || null
         });
-        setErrorVenta("El cobro está confirmado, pero la cuenta no se ha cerrado formalmente. Continúa en Sala; no vuelvas a cobrar.");
+        setErrorVenta(avisoRapida.error);
         setEfectivoRecibidoRapida("");
         return;
       }

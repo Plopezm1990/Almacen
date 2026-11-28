@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 420,
+  "total_inventory": 421,
   "expected_counts": {
-    "active_contract": 403,
+    "active_contract": 404,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 352,
+      "active_contract": 353,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -2047,6 +2047,11 @@
     },
     {
       "path": "tests/rediseno/ola5-resto-tpv-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h51-venta-rapida-tarjeta-pendiente-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
