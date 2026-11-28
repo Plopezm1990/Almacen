@@ -190,8 +190,21 @@
     }
     return lista;
   }
+  // Además de la copia del programa, son de la CUENTA el borrador del ticket y los pendientes del TPV
+  // (cobro por reintentar, venta rápida y última cuenta): llevan empresa y local pero no usuario, y
+  // otra persona que entrara en el mismo navegador los encontraba (hallazgos H-40 y H-31 de la auditoría
+  // del TPV, 26/11/2026). La identidad del terminal (la_suite_abc_terminal_id_v1) NO está aquí: es del
+  // equipo, no de quien lo use. Mantener esta lista igual que en edge-auth-patch.js.
+  var PREFIJOS_COPIA_TPV = [
+    "la_suite_abc_tpv_borrador_v1:",
+    "la_suite_f4_b02_b03_pago_v1:",
+    "la_suite_a02_1_pendiente_v1:",
+    "la_suite_a02_1_ultima_cuenta_v1:"
+  ];
   function esClaveDeCopiaLocal(k) {
-    return k.indexOf("almacen:") === 0 || k.indexOf("almacen__") === 0 || k === CLAVE_CONTEXTO_SEGURO_COPIA;
+    if (k.indexOf("almacen:") === 0 || k.indexOf("almacen__") === 0 || k === CLAVE_CONTEXTO_SEGURO_COPIA) return true;
+    for (var i = 0; i < PREFIJOS_COPIA_TPV.length; i++) if (k.indexOf(PREFIJOS_COPIA_TPV[i]) === 0) return true;
+    return false;
   }
   function leerIndiceCopias() {
     try {

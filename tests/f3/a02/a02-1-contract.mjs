@@ -484,7 +484,7 @@ assert.ok(guardarPedidoStart >= 0 && guardarPedidoEnd > guardarPedidoStart, "A02
 const guardarPedidoHandler = recovered.slice(guardarPedidoStart, guardarPedidoEnd);
 
 assert.ok(
-  recovered.includes("lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }"),
+  recovered.includes("lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04, claseExtra: cajaOrbita ? \"tpv-caja-principal\" : void 0 }"),
   "A02.1 P12: el CTA visible no guarda el pedido directamente"
 );
 assert.ok(recovered.includes("Guardar pedido"), "A02.1 P12: falta el CTA Guardar pedido");

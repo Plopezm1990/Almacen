@@ -10,9 +10,8 @@ const quick = source.slice(quickStart, quickEnd);
 for (const required of [
   "const guardada = await venderRapida(lineas, { modalidad: \"BARRA\" });",
   "await enviarPedidoA05()",
-  "INICIAR_PREPARACION",
-  "MARCAR_PREPARADA",
-  "SERVIR",
+  // H-37 (27/11/2026): los tres pasos de cocina los hace el servidor en una sola operacion con el permiso de cobro.
+  'accionPedidoA05("COMPLETAR_VENTA_RAPIDA"',
   "await iniciarCobroCuentaF4(pagoRapida",
   "setTicketVenta({",
   "lineasTicketRapida",
@@ -26,6 +25,8 @@ for (const required of [
 ]) {
   assert.ok(quick.includes(required), `Falta en venta rápida: ${required}`);
 }
+
+assert.ok(!quick.includes('["INICIAR_PREPARACION", "MARCAR_PREPARADA", "SERVIR"]'), "La venta rápida ya no encadena los pasos de cocina línea a línea desde el cliente (H-37)");
 
 const statusStart = source.indexOf("function renderVentaRapidaStatus()");
 const statusEnd = source.indexOf("\n  return /* @__PURE__ */", statusStart);

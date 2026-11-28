@@ -493,9 +493,13 @@
   // Preferencias de interfaz del dispositivo. No contienen datos de negocio
   // ni deben viajar a Supabase: sincronizarlas provoca avisos al cambiar de
   // usuario en una sesión abierta, aunque el cambio local se haya guardado.
+  // El historial de respaldos también: sus instantáneas son del equipo (se guardan en IndexedDB) y,
+  // si IndexedDB falla, el respaldo en localStorage no puede acabar en la empresa de quien tenga la
+  // sesión (hallazgo H-19 de la auditoría del TPV, 26/11/2026).
   var CLAVES_SOLO_DISPOSITIVO = {
     modoEmpleado: true,
-    usuarioActivoId: true
+    usuarioActivoId: true,
+    historialRespaldos: true
   };
   function esClaveSoloDispositivo(key) {
     return !!CLAVES_SOLO_DISPOSITIVO[key];
@@ -1280,7 +1284,7 @@
         return { key: key, value: leerLocalOpcional(cacheKey), shared: false };
       }
       var pendienteActual = pendientes().indexOf(key) !== -1 && pendienteEsDelContexto(key);
-      if (window.__nubeActiva && window.__nubeCliente && !pendienteActual && !tieneMarcaDenegado(key)) {
+      if (window.__nubeActiva && window.__nubeCliente && !pendienteActual && !tieneMarcaDenegado(key) && !esClaveSoloDispositivo(key)) {
         try {
           var lista;
           if (esPagosFactura) {

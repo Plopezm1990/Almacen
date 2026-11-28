@@ -296,6 +296,84 @@ const COPIA_A = {
   ok('8c. la función usa SOLO las primitivas originales (la barrera temprana devolvería null y descartaría escrituras)', !/localStorage\.(getItem|setItem|removeItem)\(/.test(cuerpo) && /leerNativo\(/.test(cuerpo) && /quitarNativo\(/.test(cuerpo));
 }
 
+// ---- 9. El borrador del ticket y los pendientes del TPV son de la cuenta (H-40, H-31 de la auditoría del TPV, 26/11/2026) ----
+// Antes solo viajaban con la cuenta las claves almacen:* y almacen__*. El borrador del carrito
+// (la_suite_abc_tpv_borrador_v1:<empresa>:<local>) y los pendientes de cobro y de venta rápida no llevaban
+// usuario: el Camarero/a que entraba en el mismo navegador encontraba el agua sin guardar del Cajero/a.
+{
+  const TPV = {
+    'la_suite_abc_tpv_borrador_v1:EMP-A:LOC-A1': JSON.stringify({ lineas: [{ productoId: 'p1', cantidad: 1 }] }),
+    'la_suite_f4_b02_b03_pago_v1:EMP-A:LOC-A1:cuenta-1': JSON.stringify({ version: 1, medio: 'TARJETA', pagoId: 'pago-1' }),
+    'la_suite_a02_1_pendiente_v1:EMP-A:LOC-A1': JSON.stringify({ version: 1, operationId: 'op-1' }),
+    'la_suite_a02_1_ultima_cuenta_v1:EMP-A:LOC-A1': JSON.stringify({ cuentaId: 'cuenta-1' })
+  };
+  const DISPOSITIVO = { 'la_suite_abc_terminal_id_v1:EMP-A:LOC-A1': 'terminal-del-equipo' };
+  const todas = () => ({ ...COPIA_A, ...TPV });
+  const viva = (p) => { const t = p.crudo.todo(); return Object.keys(TPV).filter((k) => t[k] !== undefined); };
+  const p = await pagina({ almacenInicial: { ...todas(), ...DISPOSITIVO, la_suite_copia_cuenta_dueno_v1: A } });
+  await p.entrar(B);
+  ok('9a. entra B (otro usuario del mismo equipo): no hereda el borrador, ni los pendientes de cobro ni los de venta rápida', viva(p).length === 0, viva(p));
+  ok('9b. lo de A queda apartado entero y sin cambiar un byte', Object.keys(TPV).every((k) => p.crudo.apartadas(A)[k] === TPV[k]), Object.keys(p.crudo.apartadas(A)));
+  ok('9c. la identidad del terminal es del EQUIPO, no de la cuenta: no se aparta', p.crudo.get('la_suite_abc_terminal_id_v1:EMP-A:LOC-A1') === 'terminal-del-equipo' && p.crudo.apartadas(A)['la_suite_abc_terminal_id_v1:EMP-A:LOC-A1'] === undefined);
+  await p.entrar(B);
+  await p.entrar(A);
+  ok('9d. vuelve A: recupera su borrador y sus pendientes intactos (un cobro por reintentar no se pierde)', Object.keys(TPV).every((k) => p.crudo.get(k) === TPV[k]), viva(p));
+  ok('9e. y B no deja nada suyo mezclado con lo de A', Object.keys(p.crudo.apartadas(B)).every((k) => !(k in TPV)));
+
+  // Un reinicio de instalación (generación nueva) tampoco deja el borrador ni los pendientes de la copia anterior.
+  const q = await pagina({ almacenInicial: { ...todas(), ...DISPOSITIVO, la_suite_copia_cuenta_dueno_v1: A }, generacionServidor: 'gen-2' });
+  await q.entrar(B);
+  ok('9f. con una generación nueva no sobrevive el borrador ni los pendientes de la instalación anterior', viva(q).length === 0 && Object.keys(TPV).every((k) => q.crudo.apartadas(A)[k] === undefined), viva(q));
+}
+
+// ---- 10. La copia local cambia mientras se aparta: se reintenta solo (H-46) ----
+// Con un pendiente local de la sesión anterior, el arranque mostraba «La copia local cambió mientras se
+// archivaba» y obligaba a pulsar «Reintentar comprobación» (que lo resolvía). El candado compara lo apartado
+// con lo vivo para no perder una escritura; si cambió, basta volver a apartar.
+{
+  const crear = (veces) => {
+    const real = new IDBFactory();
+    const estado = { hechas: 0, hook: null };
+    const envoltorio = {
+      open(...a) {
+        const req = real.open(...a);
+        req.addEventListener('success', () => {
+          const db = req.result;
+          const original = db.transaction.bind(db);
+          db.transaction = (...x) => {
+            if (estado.hook && estado.hechas < veces) { estado.hechas++; estado.hook(); }
+            return original(...x);
+          };
+        });
+        return req;
+      }
+    };
+    return { envoltorio, estado };
+  };
+
+  // 10a. Una escritura en mitad del apartado: se reintenta y termina sin que nadie pulse nada.
+  const a1 = crear(1);
+  const p = await pagina({ almacenInicial: { ...COPIA_A, la_suite_copia_cuenta_dueno_v1: A }, archivo: a1.envoltorio });
+  a1.estado.hook = () => p.crudo.set('almacen:conteos', JSON.stringify([{ id: 'c1', total: 13 }]));
+  const r = await p.entrar(B).then((x) => x, (e) => e);
+  ok('10a. una escritura a mitad del apartado se resuelve sola (sin «Reintentar comprobación»)', !(r instanceof Error) && r.copiaLocalCambiada === true, r && r.message);
+  const huboVivas = Object.keys(p.crudo.vivas()).length;
+  await p.entrar(B);
+  await p.entrar(A);
+  ok('10b. y no se pierde nada: B arranca limpia y, al volver, A recupera su copia con la escritura de última hora',
+    huboVivas === 0 && p.crudo.get('almacen:conteos') === JSON.stringify([{ id: 'c1', total: 13 }]) && p.crudo.get('almacen:productos') === COPIA_A['almacen:productos'], Object.keys(p.crudo.vivas()));
+
+  // 10c. Si la copia no deja de cambiar, falla cerrado tras un número acotado de intentos.
+  const a2 = crear(99);
+  const q = await pagina({ almacenInicial: { ...COPIA_A, la_suite_copia_cuenta_dueno_v1: A }, archivo: a2.envoltorio });
+  let n = 0;
+  a2.estado.hook = () => q.crudo.set('almacen:conteos', JSON.stringify([{ n: ++n }]));
+  const e2 = await q.entrar(B).then(() => null, (e) => e);
+  ok('10c. si sigue cambiando, falla cerrado tras unos pocos intentos: error, sincronización cerrada y nada perdido',
+    !!e2 && /cambió mientras se archivaba/.test(e2.message) && q.w.__instalacionSyncPermitida !== true && a2.estado.hechas >= 2 && a2.estado.hechas <= 5 && q.crudo.get('almacen:productos') === COPIA_A['almacen:productos'],
+    JSON.stringify({ error: e2 && e2.message, intentos: a2.estado.hechas }));
+}
+
 const fallos = resultados.filter((r) => !r.ok);
 for (const r of resultados) console.log(`${r.ok ? 'OK ' : 'FALLO'} ${r.nombre}${r.ok ? '' : ' → ' + (typeof r.det === 'string' ? r.det : JSON.stringify(r.det))}`);
 console.log(`PLATAFORMA_P08_COPIA_LOCAL: ${resultados.length - fallos.length}/${resultados.length}`);

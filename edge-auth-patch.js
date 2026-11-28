@@ -9,7 +9,11 @@
   "use strict";
 
   var fetchOriginal = window.fetch.bind(window);
-  var ORIGEN_FUNCTIONS = "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/";
+  // H-33: mismo proyecto que la base de datos, leído en cada llamada (window.NUBE_URL lo fija el arranque).
+  function origenFunctions() {
+    var base = typeof window.NUBE_URL === "string" ? window.NUBE_URL.replace(/\/+$/, "") : "";
+    return base ? base + "/functions/v1/" : "";
+  }
   var PROTEGIDAS = {
     "importar-albaran": true,
     "importar-nomina": true,
@@ -26,7 +30,8 @@
 
   window.fetch = async function (input, init) {
     var url = typeof input === "string" ? input : (input && input.url) || "";
-    if (url.indexOf(ORIGEN_FUNCTIONS) !== 0) return fetchOriginal(input, init);
+    var ORIGEN_FUNCTIONS = origenFunctions();
+    if (!ORIGEN_FUNCTIONS || url.indexOf(ORIGEN_FUNCTIONS) !== 0) return fetchOriginal(input, init);
 
     var nombreFuncion = url.slice(ORIGEN_FUNCTIONS.length).split(/[?#]/)[0];
     if (!PROTEGIDAS[nombreFuncion]) return fetchOriginal(input, init);
@@ -88,6 +93,12 @@
           clave.indexOf("almacen__borrados:") === 0 ||
           // Con una generación nueva no debe sobrevivir nada de la copia anterior (marcas de rechazo, semilla del contexto...).
           clave.indexOf("almacen__") === 0 ||
+          // Borrador del ticket y pendientes del TPV (H-40, H-31): son de la copia anterior. Misma lista que
+          // PREFIJOS_COPIA_TPV en owner-bootstrap-prelock.js; el terminal (la_suite_abc_terminal_id_v1) es del equipo y se conserva.
+          clave.indexOf("la_suite_abc_tpv_borrador_v1:") === 0 ||
+          clave.indexOf("la_suite_f4_b02_b03_pago_v1:") === 0 ||
+          clave.indexOf("la_suite_a02_1_pendiente_v1:") === 0 ||
+          clave.indexOf("la_suite_a02_1_ultima_cuenta_v1:") === 0 ||
           clave === CLAVE_CONTEXTO_SEGURO ||
           // Las copias apartadas de otras cuentas pertenecen a la instalación anterior: tampoco pueden volver.
           clave.indexOf("la_suite_copia_cuenta_v1:") === 0 ||
@@ -160,6 +171,24 @@
     }
   }
 
+  // H-46 (auditoría del TPV, 26/11/2026): si el programa escribe una clave local mientras se aparta la copia,
+  // el candado lo detecta y se niega a seguir para no perder esa escritura («La copia local cambió mientras se
+  // archivaba»). Bastaba volver a apartar, pero el arranque se quedaba bloqueado hasta pulsar «Reintentar
+  // comprobación». Se reintenta solo, pocas veces; si la copia no deja de cambiar, falla cerrado como antes.
+  var INTENTOS_SEPARAR_COPIA = 4;
+  async function separarCopiaLocalConReintento(userId) {
+    var ultimo = null;
+    for (var intento = 0; intento < INTENTOS_SEPARAR_COPIA; intento++) {
+      try {
+        return await window.__laOwnerBootstrapSepararCopiaLocal(userId);
+      } catch (e) {
+        ultimo = e;
+        if (!/cambió mientras se archivaba/.test(String(e && e.message ? e.message : e))) throw e;
+      }
+    }
+    throw ultimo;
+  }
+
   async function prepararSesionPostReset(supabase, sesion) {
     if (!supabase || !sesion || !sesion.user || !sesion.user.id) {
       throw new Error("Sesión no disponible para validar la instalación");
@@ -188,7 +217,7 @@
     // barrera de sincronización no se abre en esta pasada.
     var copiaCambiada = false;
     if (typeof window.__laOwnerBootstrapSepararCopiaLocal === "function") {
-      copiaCambiada = (await window.__laOwnerBootstrapSepararCopiaLocal(sesion.user.id)).cambio === true;
+      copiaCambiada = (await separarCopiaLocalConReintento(sesion.user.id)).cambio === true;
     }
 
     // Este punto solo decide si la copia local pertenece a la instalación

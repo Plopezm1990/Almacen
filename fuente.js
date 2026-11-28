@@ -43516,7 +43516,11 @@ var init_index_es = __esm({
 (function() {
   "use strict";
   var fetchOriginal = window.fetch.bind(window);
-  var ORIGEN_FUNCTIONS = "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/";
+  // H-33: mismo proyecto que la base de datos, leído en cada llamada (window.NUBE_URL lo fija el arranque).
+  function origenFunctions() {
+    var base = typeof window.NUBE_URL === "string" ? window.NUBE_URL.replace(/\/+$/, "") : "";
+    return base ? base + "/functions/v1/" : "";
+  }
   var PROTEGIDAS = {
     "importar-albaran": true,
     "importar-nomina": true,
@@ -43531,7 +43535,8 @@ var init_index_es = __esm({
   }
   window.fetch = async function(input, init) {
     var url = typeof input === "string" ? input : input && input.url || "";
-    if (url.indexOf(ORIGEN_FUNCTIONS) !== 0) return fetchOriginal(input, init);
+    var ORIGEN_FUNCTIONS = origenFunctions();
+    if (!ORIGEN_FUNCTIONS || url.indexOf(ORIGEN_FUNCTIONS) !== 0) return fetchOriginal(input, init);
     var nombreFuncion = url.slice(ORIGEN_FUNCTIONS.length).split(/[?#]/)[0];
     if (!PROTEGIDAS[nombreFuncion]) return fetchOriginal(input, init);
     try {
@@ -104648,6 +104653,15 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
     requiere_doble_aprobacion: false,
     activa: true
   });
+  // H-45 (auditoría del TPV, lote L5): guardar enviaba TODAS las políticas del formulario y el servidor reescribía también las
+  // que no habían cambiado (cambiaba su fecha de actualización y llenaba el historial de «cambios» sin cambio). Una política
+  // solo se envía si algún valor es distinto del que el servidor devolvió al cargar. Un cargo que aún no tiene fila en el servidor
+  // se compara con la política vacía (sin descuentos ni permisos): si sigue vacío no hay nada que guardar y no se crea una fila de ceros.
+  const politicaCambiadaA09 = (actual, servidor) => {
+    if (!servidor) servidor = { max_percent: "0", permite_cortesia: false, puede_solicitar: false, puede_aplicar: false, puede_autorizar: false, permite_escalado: false, requiere_doble_aprobacion: false, activa: true };
+    if (Number(actual.max_percent) !== Number(servidor.max_percent)) return true;
+    return ["permite_cortesia", "puede_solicitar", "puede_aplicar", "puede_autorizar", "permite_escalado", "requiere_doble_aprobacion", "activa"].some((k22) => !!actual[k22] !== !!servidor[k22]);
+  };
   const politicaInicial = {
     Propietario: {
       rol: "Propietario",
@@ -104741,6 +104755,20 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
     if (p3.puede_autorizar && max === 0) return `${rol}: una autorizaci\xF3n necesita un l\xEDmite mayor que 0%.`;
     return "";
   };
+  // H-39 (auditoría del TPV, 26/11/2026; decisión del usuario el 27/11): «máximo 0 %» significa SIN descuentos. El servidor
+  // comprueba el límite y «puede aplicar» ANTES de crear la solicitud de escalado, así que las casillas no son independientes:
+  // el escalado de un Encargado solo funciona con límite mayor que 0, «solicitar», «aplicar» y «escalado» a la vez. La pantalla
+  // avisa de las combinaciones que no funcionan en vez de presentarlas como opciones libres.
+  const avisosPolitica = (p3) => {
+    const max = Number(p3.max_percent);
+    const avisos = [];
+    if (Number.isFinite(max) && max === 0 && (p3.puede_solicitar || p3.puede_aplicar || p3.permite_escalado)) {
+      avisos.push("Con un máximo de 0 % este cargo no puede dar descuentos: «Puede solicitar», «Puede aplicar» y «Permite escalado» no tienen efecto. Sube el máximo para usarlos.");
+    } else if (Number.isFinite(max) && max > 0 && (p3.puede_solicitar || p3.permite_escalado) && !p3.puede_aplicar) {
+      avisos.push("«Puede solicitar» o «Permite escalado» sin «Puede aplicar»: el servidor rechaza el descuento antes de crear la solicitud de autorización. Marca también «Puede aplicar».");
+    }
+    return avisos;
+  };
   const anadirRol = () => {
     setError("");
     setConfirmacion("");
@@ -104782,11 +104810,16 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
         return;
       }
     }
+    const rolesAGuardar = Object.keys(form).filter((rol) => politicaCambiadaA09(form[rol], politicas.find((s22) => s22?.rol === rol && !s22?.user_id)));
+    if (rolesAGuardar.length === 0) {
+      setConfirmacion("No hay cambios que guardar: las pol\xEDticas son iguales a las del servidor.");
+      return;
+    }
     setGuardando(true);
     try {
       const supabase = await obtenerCliente();
       if (!supabase) throw new Error("No hay una sesi\xF3n sincronizada.");
-      for (const rol of Object.keys(form)) {
+      for (const rol of rolesAGuardar) {
         const p3 = form[rol];
         const { error: rpcError } = await supabase.rpc("abc_configurar_descuento_politica", {
           p_operation_id: `a09.configurar.politica.${empresaId}.${localId}.${rol}.${Date.now()}`,
@@ -104807,7 +104840,7 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
         });
         if (rpcError) throw rpcError;
       }
-      setConfirmacion("Pol\xEDticas guardadas correctamente en el servidor.");
+      setConfirmacion(rolesAGuardar.length === 1 ? "Pol\xEDtica guardada correctamente en el servidor (solo la que cambi\xF3: " + rolesAGuardar[0] + ")." : "Pol\xEDticas guardadas correctamente en el servidor (" + rolesAGuardar.length + " modificadas).");
       await cargar();
     } catch (e2) {
       setError(e2?.message || "No se pudieron guardar las pol\xEDticas.");
@@ -104842,7 +104875,8 @@ function PoliticasDescuentos({ empresa = null, localId = "", localNombre = "", e
         campo(rol, "puede_autorizar", "Puede autorizar"),
         campo(rol, "permite_escalado", "Permite escalado"),
         campo(rol, "requiere_doble_aprobacion", "Requiere doble aprobaci\xF3n")
-      )
+      ),
+      avisosPolitica(p3).map((aviso2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: aviso2, role: "note", "data-h39-aviso": "1", className: "text-[11.5px] mt-2", style: { color: C2.amber } }, aviso2))
     );
   };
   const rolesConfigurados = Object.keys(form);
@@ -106076,10 +106110,10 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
-  const { abrirSesionCajaA10 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, cerrarCuentasSinActividadA06, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { abrirSesionCajaA10, consultarEsperadoCajaA24 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, actorNombre: nombreActivoEmpleado || "Propietario/a" });
-  const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
+  const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, devolverAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
   const { traspasarStock, traspasarEntreLocales } = crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales });
   const { addArqueo, deleteArqueo, leerBorradorArqueo } = crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosCaja, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
   const { registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorMovimientoCaja } = crearLogicaMovimientosCaja({ movimientosCaja, setMovimientosCaja, arqueos, setArqueos, registrarAuditoria, localActivoId, empresaId: empresaDelLocalActivo?.id || null });
@@ -106275,6 +106309,56 @@ function GestionAlmacen() {
     () => productos.filter((p22) => p22.tipo !== "elaborado" && Number(p22.stockMinimoPisoVenta) > 0 && (Number(p22.stockPisoVenta) || 0) <= Number(p22.stockMinimoPisoVenta)),
     [productos]
   );
+  // H-15 (E2): lo vendido hoy desde el almacen por falta de piso, para que el Encargado y el Propietario lo vean en pendientes.
+  const [pisoPorReponerTpv, setPisoPorReponerTpv] = (0, import_react4.useState)([]);
+  // Se lleva la lista actual en una referencia para NO llamar a setState cuando no cambia nada: con un setState al montar (aunque devolviera el mismo valor) la carga
+  // inicial se quedaba en «Cargando almacén…» en el modo local (comprobado en el navegador el 27/11/2026).
+  const pisoPorReponerRef = (0, import_react4.useRef)([]);
+  const firmaPisoTpv = (0, import_react4.useMemo)(() => productosDelLocalActivo.map((p22) => String(p22.id) + ":" + (Number(p22.stockPisoVenta) || 0) + ":" + (Number(p22.stock) || 0)).join("|"), [productosDelLocalActivo]);
+  (0, import_react4.useEffect)(() => {
+    const rolServidor = typeof window !== "undefined" && window.__nubeActiva ? miPerfil?.rol : null;
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId || !localActivoId || !["Propietario", "Encargado"].includes(String(rolServidor || "")) || typeof window.getSupabaseClient !== "function") {
+      if (pisoPorReponerRef.current.length) {
+        pisoPorReponerRef.current = [];
+        setPisoPorReponerTpv([]);
+      }
+      return;
+    }
+    let vigente = true;
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const inicio = /* @__PURE__ */ new Date();
+        inicio.setHours(0, 0, 0, 0);
+        // Revision de codigo de #226: antes .limit(2e3) sin orden; con mas de 2000 movimientos al dia caia un subconjunto arbitrario. Ahora se pagina por id hasta agotar.
+        const data = [];
+        const tamanoPagina = 1e3;
+        for (let desde = 0; desde < 5e4; desde += tamanoPagina) {
+          const pagina = await supabase.from("movimientos_stock").select("id,producto_id,tipo,delta_almacen,movimiento_original_id").eq("empresa_id", empresaId).eq("local_id", localActivoId).in("tipo", ["VENTA", "REVERSO"]).gte("created_at", inicio.toISOString()).order("id", { ascending: true }).range(desde, desde + tamanoPagina - 1);
+          if (pagina.error) throw pagina.error;
+          const filas = Array.isArray(pagina.data) ? pagina.data : [];
+          data.push(...filas);
+          if (filas.length < tamanoPagina) break;
+        }
+        if (vigente) {
+          const lista = pisoPorReponerDeMovimientosTpv(data, productos);
+          if (lista.length || pisoPorReponerRef.current.length) {
+            pisoPorReponerRef.current = lista;
+            setPisoPorReponerTpv(lista);
+          }
+        }
+      } catch (error) {
+        if (vigente && pisoPorReponerRef.current.length) {
+          pisoPorReponerRef.current = [];
+          setPisoPorReponerTpv([]);
+        }
+      }
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [empresaDelLocalActivo?.id, localActivoId, miPerfil?.rol, firmaPisoTpv]);
   const analisisABC = (0, import_react4.useMemo)(() => {
     const hace12meses = /* @__PURE__ */ new Date();
     hace12meses.setMonth(hace12meses.getMonth() - 12);
@@ -106533,7 +106617,7 @@ function GestionAlmacen() {
     const nuevos = urgentes.filter((l22) => !yaAvisados.includes(l22.id));
     if (nuevos.length === 0) return;
     nuevos.forEach((l22) => {
-      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+      fetch(urlFuncionNubeA("enviar-notificacion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -106933,6 +107017,7 @@ function GestionAlmacen() {
       fichajesAbiertos: fichajesAbiertosInforme,
       encargosUrgentes: encargosUrgentesInforme,
       pisoVentaBajo: pisoVentaBajoInforme,
+      pisoPorReponer: pisoPorReponerTpv,
       sugerenciasPedido: sugerenciasPedidoInforme,
       setTab: cambiarTabPM15,
       recordatorioConteo: recordatorioConteoInforme,
@@ -107171,7 +107256,7 @@ function GestionAlmacen() {
       movimientos: movimientosDelLocalActivo,
       setTab: cambiarTabPM15
     }
-  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino: mesaDestinoTpv, cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06, unirCuentasA08 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "", pedidoDestino: pedidoDestinoCocina, limpiarPedidoDestino: () => setPedidoDestinoCocina(null) }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "venta" && (localInformeId && localActivoId === localInformeId ? /* @__PURE__ */ import_react4.default.createElement(VentaRapida, { productos: productosDelLocalActivo, venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07: miPerfil?.nombre || nombreActivoEmpleado || "", anularVenta, puedeAnularVenta: !(typeof window !== "undefined" && window.__nubeActiva === true) || ["Propietario", "Encargado"].includes(String(miPerfil?.rol || "")), movimientos: movimientosDelLocalActivo, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja: () => setTab("caja"), aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, temaOscuro, setTemaOscuro, local: locales.find((l22) => l22.id === localActivoId) || null, configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino: mesaDestinoTpv, cerrarCuentasSinActividadA06, puedeLimpiarCuentasA06: typeof window !== "undefined" && window.__nubeActiva === true && ["Propietario", "Encargado"].includes(String(miPerfil?.rol || "")), cargarSalaDestino: () => cargarMapaSalaA07({ paraPanel: true }), listarCuentasAparcadasA06, unirCuentasA08 }) : /* @__PURE__ */ import_react4.default.createElement("div", null, /* @__PURE__ */ import_react4.default.createElement(Card, { className: "p-5 mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[16px] font-semibold mb-2" }, "TPV"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]", style: { color: C2.inkSoft } }, "El TPV no puede abrirse en Todos los locales. Selecciona un local concreto: cada venta, stock y caja pertenecen a un único local.")), /* @__PURE__ */ import_react4.default.createElement(SelectorLocalInformes, { locales: localesEmpresaActiva, empresas, empresaActivaId: empresaDelLocalActivo?.id || "", onCambiarEmpresa: seleccionarContextoEmpresaPM32, valor: localInformeId, onChange: seleccionarContextoLocal }))), tab === "cocina" && /* @__PURE__ */ import_react4.default.createElement(CocinaA10, { productos: productosDelLocalActivo, local: localActivoId ? locales.find((l22) => l22.id === localActivoId) || null : null, configEmpresa: empresaDelLocalActivo, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil: miPerfil?.rol || "", pedidoDestino: pedidoDestinoCocina, limpiarPedidoDestino: () => setPedidoDestinoCocina(null) }), tab === "encargos" && /* @__PURE__ */ import_react4.default.createElement(
     Encargos,
     {
       encargosPendientes: encargosPendientesDelLocalActivo,
@@ -107186,6 +107271,8 @@ function GestionAlmacen() {
       devolverEncargo,
       registrarAnticipoEncargo,
       revertirAnticipoEncargo,
+      devolverAnticipoEncargo,
+      puedeDevolverAnticipoEncargo: typeof window !== "undefined" && window.__nubeActiva === true && ["Propietario", "Encargado"].includes(String(miPerfil?.rol || "")),
       addCliente,
       contextoActivoPM15,
       marcarFormularioAbiertoPM15
@@ -107237,7 +107324,13 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor: modoSincronizadoPM08() ? consultarEsperadoCajaA24 : null, irACierreCaja: () => {
+      try {
+        window.sessionStorage.setItem("la_suite_abrir_gestion_cocina_v1", "1");
+      } catch (error) {
+      }
+      setTab("cocina");
+    } }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -110266,7 +110359,7 @@ avisosStockBajo.push({ producto: productoBase, teoricoDespues });
     }
     if (typeof window !== "undefined" && window.__nubeActiva) {
       for (const aviso of avisosStockBajo) {
-        try { fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        try { fetch(urlFuncionNubeA("enviar-notificacion"), {
 method: "POST",
 headers: { "Content-Type": "application/json" },
 body: JSON.stringify({ titulo: "Stock bajo", cuerpo: `${aviso.producto.nombre} bajó del mínimo (quedan ${fmt(Math.max(0, aviso.teoricoDespues))}).`, localId: aviso.producto.localId || null, url: "/" })
@@ -112136,7 +112229,27 @@ function crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, produc
       return { ok: false, codigo: "error_reverso", error: "No se pudo confirmar la anulaci\xF3n con el servidor." };
     }
   }
-  return { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo };
+  // H-05 (auditoria del TPV, decision E3 del 26/11/2026): devolver la señal de un encargo SIN cancelarlo. Antes solo se reembolsaba al cancelar o devolver el
+  // encargo entero y no habia camino para el resto de casos (el riesgo era resolverlo con movimientos manuales de caja, con doble contabilizacion).
+  // Usa el mismo reverso que ya usan esos flujos (`revertir_pago_encargo`, solo Propietario y Encargado, con motivo): el identificador de operacion es
+  // fijo por pago, asi que repetir la peticion no duplica la devolucion; el servidor responde «ya revertido» o repite el resultado.
+  async function devolverAnticipoEncargo(encargoOrId, motivo) {
+    const id = typeof encargoOrId === "string" ? encargoOrId : encargoOrId && encargoOrId.id;
+    const actual = encargos.find((e2) => e2.id === id);
+    if (!actual) return { ok: false, codigo: "referencia_inexistente", error: "El encargo no existe o ya no est\u00e1 disponible." };
+    if (!encargoEsDelLocalActivo(actual)) return { ok: false, codigo: "contexto_no_autorizado", error: "El encargo no pertenece al local activo." };
+    const importeSenal = Number(actual.se\u00F1al) || 0;
+    if (importeSenal <= 0) return { ok: false, codigo: "sin_anticipo", error: "Este encargo no tiene ninguna se\u00f1al cobrada que devolver." };
+    const motivoTexto = String(motivo || "").trim();
+    if (!motivoTexto) return { ok: false, codigo: "motivo_requerido", error: "Indica el motivo de la devoluci\u00f3n." };
+    const reverso = await revertirAnticipoEncargo(`pago-encargo:${actual.id}:senal`, "Devoluci\u00f3n de anticipo: " + motivoTexto);
+    if (!reverso.ok) return reverso;
+    const actualizado = updateEncargo(actual.id, { se\u00F1al: 0 });
+    if (actualizado !== true) return { ok: false, codigo: "devuelto_sin_actualizar", error: "El anticipo se devolvi\u00f3 en el servidor, pero no se pudo actualizar la ficha del encargo. Recarga la pantalla para verlo." };
+    registrarAuditoria("Devolver anticipo", `Encargo ${actual.numero || actual.id} \u00b7 \u20AC${importeSenal.toFixed(2)} \u00b7 ${motivoTexto}`);
+    return { ok: true, importe: importeSenal, replayed: !!reverso.replayed };
+  }
+  return { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, devolverAnticipoEncargo };
 }
 // Los estados del servidor son constantes en mayusculas y con guion bajo. En
 // pantalla se traducen: el camarero lee "En preparacion", no EN_PREPARACION.
@@ -112247,6 +112360,149 @@ function claveColorDerivadaTpv(nombre) {
   for (let i = 0; i < texto.length; i += 1) suma = (suma * 31 + texto.charCodeAt(i)) % 1e5;
   return CLAVES_COLOR_CATEGORIA_TPV[suma % CLAVES_COLOR_CATEGORIA_TPV.length];
 }
+// H-08 (auditoria del TPV): el texto de la categoria activa era siempre blanco; sobre el naranja de «Todos» da 3,33:1 y no llega a 4,5:1.
+// Se elige, entre blanco y oscuro, el que mejor contraste da con el fondo (los colores de categoria son hexadecimales fijos; «Todos»
+// usa la variable del tema, cuyo color de texto ya esta definido por el tema).
+function textoLegibleSobreFondoTpv(fondo) {
+  const hex = /^#([0-9a-f]{6})$/i.exec(String(fondo || "").trim());
+  if (!hex) return "var(--c-on-accent, #17191C)";
+  const canal = (desde) => {
+    const c22 = parseInt(hex[1].slice(desde, desde + 2), 16) / 255;
+    return c22 <= 0.03928 ? c22 / 12.92 : Math.pow((c22 + 0.055) / 1.055, 2.4);
+  };
+  const luz = 0.2126 * canal(0) + 0.7152 * canal(2) + 0.0722 * canal(4);
+  return 1.05 / (luz + 0.05) >= (luz + 0.05) / 0.0596 ? "#FFFFFF" : "#17191C";
+}
+// H-09 (auditoria del TPV, E5): reparte las categorias en paginas segun el ancho que ocupa cada una (con su hueco). «disponible» es el
+// ancho de la fila. Cada pagina empieza donde acaba la anterior; una categoria mas ancha que la fila ocupa una pagina para ella sola.
+// Devuelve el indice de la primera categoria de cada pagina.
+function paginasCategoriasTpv(anchos, disponible) {
+  const inicios = [];
+  let usado = 0;
+  for (let i22 = 0; i22 < anchos.length; i22 += 1) {
+    const ancho = Math.max(0, Number(anchos[i22]) || 0);
+    if (inicios.length === 0 || usado > 0 && usado + ancho > disponible) {
+      inicios.push(i22);
+      usado = 0;
+    }
+    usado += ancho;
+  }
+  return inicios;
+}
+// H-15 (auditoria del TPV, decision E2 del 26/11/2026): un producto sin piso de venta SE PUEDE vender si hay en el almacen (el servidor
+// toma primero del piso y despues del almacen, y deja cada venta anotada en movimientos_stock con delta_almacen < 0), pero el aviso del
+// ticket miraba el stock TOTAL y no avisaba. Reparte lo pedido entre piso, almacen y lo que no hay (que el servidor rechaza).
+function repartoStockDeVentaTpv(producto, cantidad) {
+  const pedida = Number(cantidad) || 0;
+  const servidor = !!producto?._pm07Servidor;
+  if (!producto || pedida <= 0) return { pedida: 0, servidor, total: 0, piso: 0, delPiso: 0, delAlmacen: 0, sinStock: 0 };
+  const total = Math.max(0, Number(servidor ? producto.stock : producto.stockPisoVenta) || 0);
+  const piso = Math.min(total, Math.max(0, Number(producto.stockPisoVenta) || 0));
+  const delPiso = Math.min(piso, pedida);
+  const delAlmacen = servidor ? Math.min(Math.max(0, total - delPiso), pedida - delPiso) : 0;
+  const sinStock = Math.max(0, Math.round((pedida - delPiso - delAlmacen) * 1e6) / 1e6);
+  return { pedida, servidor, total, piso, delPiso, delAlmacen, sinStock };
+}
+function textoAvisoStockVentaTpv(nombre, reparto) {
+  const n = (valor) => Number(valor).toLocaleString("es-ES", { maximumFractionDigits: 3 });
+  if (reparto.sinStock > 0) return nombre + ": solo hay " + n(reparto.total) + " en total (piso y almacén) y pides " + n(reparto.pedida) + ". El servidor no dejará guardar este pedido.";
+  if (reparto.delAlmacen > 0) return nombre + ": el piso de venta tiene " + n(reparto.piso) + " y " + n(reparto.delAlmacen) + " saldrá del almacén. La venta queda anotada para reponer el piso.";
+  return "";
+}
+// H-15: lo vendido HOY que salio del almacen porque el piso no alcanzaba (VENTA con delta_almacen < 0, menos los reversos de esas ventas),
+// por producto. Es el «deficit del piso» que el Encargado ve en pendientes para reponerlo con un traspaso.
+function pisoPorReponerDeMovimientosTpv(movimientos, productos) {
+  const lista = Array.isArray(movimientos) ? movimientos : [];
+  const idsVenta = new Set(lista.filter((m22) => m22 && m22.tipo === "VENTA").map((m22) => String(m22.id)));
+  const neto = new Map();
+  for (const m22 of lista) {
+    if (!m22) continue;
+    const esVenta = m22.tipo === "VENTA";
+    const esReversoDeVenta = m22.tipo === "REVERSO" && m22.movimiento_original_id != null && idsVenta.has(String(m22.movimiento_original_id));
+    if (!esVenta && !esReversoDeVenta) continue;
+    neto.set(m22.producto_id, (neto.get(m22.producto_id) || 0) - (Number(m22.delta_almacen) || 0));
+  }
+  const resultado = [];
+  neto.forEach((cantidad, id) => {
+    const redondeada = Math.round(cantidad * 1e6) / 1e6;
+    if (redondeada <= 0) return;
+    const producto = (Array.isArray(productos) ? productos : []).find((p22) => String(p22?.id) === String(id));
+    resultado.push({ id, nombre: producto?.nombre || String(id), cantidad: redondeada });
+  });
+  return resultado.sort((a22, b2) => b2.cantidad - a22.cantidad);
+}
+// H-30 (auditoria del TPV): «Mostrar operaciones de cuenta» se reiniciaba al recargar y obligaba a volver a abrirlo para llegar al cobro de una cuenta enviada.
+// Se recuerda por empresa y local en este navegador (es una preferencia de pantalla, no un dato de la cuenta).
+function claveOperacionesCuentaTpv(empresaId, localId) {
+  return empresaId && localId ? "la_suite_tpv_operaciones_cuenta_v1:" + empresaId + ":" + localId : null;
+}
+function leerOperacionesCuentaTpv(empresaId, localId) {
+  try {
+    const clave = claveOperacionesCuentaTpv(empresaId, localId);
+    return !!clave && typeof window !== "undefined" && window.localStorage.getItem(clave) === "1";
+  } catch (error) {
+    return false;
+  }
+}
+function guardarOperacionesCuentaTpv(empresaId, localId, abiertas) {
+  try {
+    const clave = claveOperacionesCuentaTpv(empresaId, localId);
+    if (!clave || typeof window === "undefined") return;
+    if (abiertas) window.localStorage.setItem(clave, "1");
+    else window.localStorage.removeItem(clave);
+  } catch (error) {
+  }
+}
+// H-32 (auditoria del TPV): sin red, el navegador lanza «TypeError: Failed to fetch» y la pantalla lo mostraba tal cual, tras unos 15 s. Se reconoce y se explica;
+// no se afirma que no haya cambiado nada porque la peticion pudo llegar antes de caerse la conexion.
+function esErrorDeRedTpv(valor) {
+  return /failed to fetch|networkerror|network request failed|load failed|fetch failed/i.test(String(valor?.message || valor || ""));
+}
+var MENSAJE_SIN_RED_TPV = "Sin conexi\u00f3n con el servidor. No se pudo confirmar la operaci\u00f3n: cuando vuelva la red, actualiza la pantalla y comprueba antes de repetirla.";
+// H-47 (auditoria del TPV): no habia forma de deshacer un reparto. «Deshacer» es devolver a la cuenta que tenia el pedido la parte que se movio; el servidor ya lo permite con la misma funcion de mover cantidad. Estas son las lineas de la cuenta actual que vienen de otra cuenta, con lo que se puede devolver (la parte ya fiscalizada no se mueve) y si la cuenta de origen admite recibirla.
+function lineasRecibidasRepartoTpv(estado) {
+  const lineas = Array.isArray(estado?.origen?.reparto?.lineas) ? estado.origen.reparto.lineas : [];
+  const destinos = Array.isArray(estado?.destinos) ? estado.destinos : [];
+  const actual = String(estado?.origen?.cuenta_id || "");
+  if (!actual) return [];
+  return lineas.filter((linea) => {
+    const origen = String(linea?.cuenta_origen_pedido || "");
+    return origen && origen !== actual && String(linea?.cuenta_reparto_id || "") === actual && !["BORRADOR", "CANCELADA"].includes(String(linea?.estado_linea || ""));
+  }).map((linea) => {
+    const cantidad = Number(linea.cantidad) || 0;
+    const fiscalizada = Number(linea.cantidad_fiscalizada) || 0;
+    const devolvible = Math.max(0, cantidad - fiscalizada);
+    const destino = destinos.find((cuenta) => String(cuenta?.cuenta_id || "") === String(linea.cuenta_origen_pedido)) || null;
+    return { linea, cantidad, fiscalizada, devolvible, destino };
+  }).filter((item) => item.devolvible > 0);
+}
+// H-35 (auditoria del TPV): el historial no reflejaba los reembolsos economicos (B08): una venta con 1,00 EUR devueltos figuraba ACTIVA, su ticket no lo decia y el importe seguia en «Total vigente».
+// Lo realmente devuelto por venta fiscal lo suma el servidor (abc_reembolsos_por_venta: solo reembolsos CONFIRMADOS); la pantalla no puede leer esas tablas directamente.
+function reembolsoPorVentaDeRespuestaTpv(respuesta) {
+  const ventas = respuesta && respuesta.ok === true && respuesta.ventas && typeof respuesta.ventas === "object" ? respuesta.ventas : {};
+  const porVenta = {};
+  Object.keys(ventas).forEach((clave) => {
+    const importe = Number(ventas[clave]) || 0;
+    if (clave && importe > 0) porVenta[clave] = Math.round(importe * 100) / 100;
+  });
+  return porVenta;
+}
+function etiquetaReembolsoVentaTpv(venta) {
+  const importe = Number(venta?.reembolsadoEconomico) || 0;
+  if (importe <= 0) return "";
+  return (venta?.reembolsadaTotal ? "Reembolsada " : "Reembolso parcial ") + fmt(importe) + " \u20AC";
+}
+// H-51 (verificacion en QA, 28/11/2026): en la venta rapida con tarjeta el pago queda PENDIENTE hasta que se resuelve, pero la pantalla decia «El cobro esta confirmado» y el aviso se quedaba aunque
+// luego se aprobara y se cerrara la cuenta. El texto existia ya en `release`. Ahora el aviso sigue el estado real del pago (`cobroIncierto` o saldo pendiente) y se limpia al completarse el cobro.
+function avisoVentaRapidaSinCierreTpv(medio, cobro) {
+  const pendiente = String(medio || "").toUpperCase() === "TARJETA" && (cobro?.cobroIncierto === true || Number(cobro?.saldo) > 0);
+  return {
+    pendiente,
+    error: pendiente
+      ? "El pago con tarjeta queda pendiente de confirmar: todav\u00eda no est\u00e1 cobrado. Resu\u00e9lvelo en Sala (Cobro) y no vuelvas a cobrar."
+      : "El cobro est\u00e1 confirmado, pero la cuenta no se ha cerrado formalmente. Contin\u00faa en Sala; no vuelvas a cobrar."
+  };
+}
 var FILAS_REJILLA_TPV = 4;
 // Cuantas columnas esta pintando .tpv-rejilla ahora mismo. Se pregunta al
 // navegador en vez de medir el nodo: los cortes son los mismos que en el CSS de
@@ -112269,6 +112525,24 @@ var MODALIDADES_ETIQUETA_A02 = { BARRA: "Barra", MESA: "Mesa", TERRAZA: "Terraza
 // pantalla no vuelva a prometer ni a negar algo distinto de lo que hace el
 // servidor.
 var ESTADOS_PEDIDO_COBRABLE_F4 = ["ENVIADO", "EN_PREPARACION", "PARCIALMENTE_PREPARADO", "PREPARADO", "SERVIDO", "CERRADO"];
+// H-12 (auditoria del TPV, E4): ¿hay ahora una cuenta abierta, con el pedido en un estado cobrable y saldo por cobrar? Es lo que decide
+// si «Cobrar» es la accion principal del modo caja. Usa el mismo saldo que la capa de cobro (el del servidor si ya hay cobro iniciado).
+function cuentaConSaldoParaCobrarTpv(pedidoOperativo, estadoCobro) {
+  if (!pedidoOperativo?.cuentaId) return false;
+  if (String(estadoCobro?.cuentaEstado || "").toUpperCase() === "CERRADA") return false;
+  if (["CERRADA", "CANCELADO"].includes(String(pedidoOperativo.pedidoEstado || ""))) return false;
+  if (!ESTADOS_PEDIDO_COBRABLE_F4.includes(String(pedidoOperativo.pedidoEstado || pedidoOperativo.estado || ""))) return false;
+  const tieneCheckout = Array.isArray(estadoCobro?.checkouts) && estadoCobro.checkouts.length > 0;
+  const totalPedido = (pedidoOperativo.lineas || []).reduce((acc, linea) => acc + (Number(linea.total) || 0), 0);
+  const saldo = tieneCheckout ? Number(estadoCobro?.saldo) || 0 : Math.max(0, totalPedido - (Number(estadoCobro?.confirmado) || 0));
+  return saldo > 0;
+}
+// H-43 (auditoria del TPV): abc_aplicar_descuento_cuenta recorre TODAS las lineas de la cuenta, tambien las recibidas por reparto, y si alguna
+// esta en BORRADOR rechaza todo el descuento con descuento_linea_no_apta. La pantalla lo traducia como «sin lineas aptas», que parecia culpar
+// a la linea recibida. Cuenta las lineas en borrador del pedido de la cuenta para avisar antes de intentarlo.
+function lineasEnBorradorParaDescuentoA09(pedido) {
+  return (Array.isArray(pedido?.lineas) ? pedido.lineas : []).filter((linea) => String(linea?.estado || "") === "BORRADOR").length;
+}
 async function leerTodasLasFilasConPaginacionA09(construirConsulta, tamanoPagina = 200) {
   const filas = [];
   for (let desde = 0; ; desde += tamanoPagina) {
@@ -112737,6 +113011,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function errorRpcA02(error) {
     const msg = String(error?.message || error || "");
+    if (typeof esErrorDeRedTpv === "function" && esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;
     if (msg.includes("terminal_no_configurado")) return "No hay ningún terminal TPV activo configurado para este local.";
     if (msg.includes("terminal_contexto_ambiguo")) return "Este dispositivo todavía no tiene un terminal TPV asignado de forma inequívoca.";
     if (msg.includes("persistencia_terminal_no_disponible")) return "Este navegador no puede guardar de forma segura el terminal asignado. Activa el almacenamiento local antes de operar.";
@@ -112820,7 +113095,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("descuento_linea_fiscalizada")) return "Hay líneas ya fiscalizadas; el descuento no puede modificarlas.";
     if (msg.includes("descuento_operating_day_incompatible")) return "La cuenta pertenece a otro día operativo.";
     if (msg.includes("descuento_cuenta_no_encontrada") || msg.includes("descuento_cuenta_no_abierta")) return "La cuenta ya no está abierta o no está disponible.";
-    if (msg.includes("descuento_cuenta_sin_lineas") || msg.includes("descuento_linea_no_apta")) return "La cuenta no tiene líneas aptas para aplicar el descuento.";
+    if (msg.includes("descuento_cuenta_sin_lineas")) return "La cuenta no tiene productos a los que aplicar el descuento.";
+    if (msg.includes("descuento_linea_no_apta")) return "Alguna línea de la cuenta todavía está en borrador (sin enviar) o sin importe calculado, y el servidor no aplica descuentos mientras tanto. Envía o cancela ese pedido y vuelve a intentarlo. Los productos recibidos por reparto sí admiten descuento.";
     if (msg.includes("descuento_autorizacion_version_obsoleta") || msg.includes("descuento_autorizacion_contexto_cambiado") || msg.includes("descuento_autorizacion_configuracion_cambiada")) return "La autorización quedó obsoleta porque cambió la cuenta, la política o el contexto. Solicita una nueva.";
     if (msg.includes("descuento_autoaprobacion_rechazada")) return "La misma persona que solicitó el descuento no puede aprobarlo.";
     if (msg.includes("descuento_aprobador_sin_permiso")) return "Tu perfil no tiene capacidad suficiente para autorizar este descuento.";
@@ -112836,6 +113112,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     if (msg.includes("producto_preparacion_clasificacion_pendiente")) return "Hay productos sin clasificar como preparación o entrega directa. Completa su clasificación antes de enviarlos.";
     if (msg.includes("producto_preparacion_sin_ruta")) return "Hay un producto que requiere preparación pero no tiene una ruta activa a cocina. Configura la ruta y vuelve a intentarlo.";
     if (msg.includes("transicion_linea_no_autorizada")) return "Tu perfil no tiene permiso para realizar esta transición del pedido.";
+    if (msg.includes("venta_rapida_no_autorizada")) return "Tu perfil no tiene permiso para cobrar ventas rápidas.";
+    if (msg.includes("venta_rapida_modalidad_no_permitida")) return "Esta cuenta no es de venta rápida (barra): se sirve desde Sala.";
     if (msg.includes("linea_cancelar_no_autorizada")) return "Tu perfil no tiene permiso para cancelar esta línea.";
     if (msg.includes("cancelacion_sensible_no_autorizada")) return "Esta cancelación requiere autorización sensible de Encargado o Propietario.";
     if (msg.includes("pedido_cancelar_no_autorizado")) return "Tu perfil no tiene permiso para cancelar el pedido completo.";
@@ -113024,6 +113302,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   }
   function mensajeErrorCobroF4(error) {
     const msg = String(error?.message || error || "");
+    if (typeof esErrorDeRedTpv === "function" && esErrorDeRedTpv(msg)) return MENSAJE_SIN_RED_TPV;
     if (msg.includes("pago_pedido_no_listo")) return "Envía el pedido antes de iniciar el cobro.";
     if (msg.includes("pago_estado_incierto_existente") || msg.includes("cuenta_con_cobro_incierto")) return "Hay un cobro pendiente o incierto. Resuélvelo antes de iniciar otro.";
     if (msg.includes("checkout_cuenta_modificada")) return "La cuenta cambió después de preparar el cobro. Recarga antes de continuar.";
@@ -113110,6 +113389,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         p_cuenta_id: contextoCuenta.cuentaId
       });
       if (Array.isArray(incidenciasData)) incidencias = incidenciasData;
+      const resumenServidor = detalleB05 || resumen;
+      if (Array.isArray(detalleB05?.pagos)) pagos = detalleB05.pagos;
+      if (Array.isArray(detalleB05?.intentos)) intentos = detalleB05.intentos;
+      // H-31: el pendiente local se comprueba contra la lista de pagos COMPLETA del servidor (abc_estado_pago_mixto_cuenta,
+      // todos los checkouts de la cuenta). Antes se comprobaba contra la lectura directa de la tabla (solo los 10 últimos
+      // checkouts y sujeta a permisos), y un pendiente cuyo pago ya estaba resuelto en el servidor se quedaba para siempre.
       let pendienteLocal = leerPendienteCobroF4(empresaId, localActivoId, contextoCuenta.cuentaId);
       if (pendienteLocal?.pagoId) {
         const pago = pagos.find((x3) => String(x3.id) === String(pendienteLocal.pagoId));
@@ -113118,9 +113403,6 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           pendienteLocal = null;
         }
       }
-      const resumenServidor = detalleB05 || resumen;
-      if (Array.isArray(detalleB05?.pagos)) pagos = detalleB05.pagos;
-      if (Array.isArray(detalleB05?.intentos)) intentos = detalleB05.intentos;
       return {
         ok: true, disponible: true, cuentaId: contextoCuenta.cuentaId,
         currencyCode: String(contextoCuenta.currencyCode || "EUR"),
@@ -113171,6 +113453,36 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       if (error) throw error;
       return data?.ok ? data : { ok: false, error: "El servidor no confirmó la emisión fiscal." };
     } catch (error) {
+      return { ok: false, error: mensajeErrorCobroF4(error) };
+    }
+  }
+  // H-27 (auditoría del TPV, 26/11/2026): «Iniciar tarjeta simulada» dejaba el pago y el intento en PENDIENTE y la pantalla no
+  // ofrecía ningún modo de resolverlos (solo se pudo desde la consola del navegador). Solo en QA, el Propietario puede
+  // aprobar o rechazar el intento simulado. Las dos funciones de servidor (abc_qa_confirmar_pago_simulado y
+  // abc_qa_rechazar_pago_simulado, ver supabase/qa-only) se limitan por su cuenta a QA-EMP-A / QA-A1 y a Propietario.
+  async function resolverTarjetaSimuladaQa({ intentoId, importe = null, resultado = "APROBAR", motivo = "" } = {}) {
+    if (!c07dActivoEnEntornoQa()) return { ok: false, error: "El simulador de tarjeta solo está disponible en la vista previa de QA." };
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para resolver la tarjeta simulada." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId || !intentoId) return { ok: false, error: "Falta el intento de tarjeta que se quiere resolver." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "Resolver la tarjeta simulada necesita conexión con el servidor." };
+    const aprobar = String(resultado).toUpperCase() !== "RECHAZAR";
+    const importeNumero = Number(importe);
+    if (aprobar && (!Number.isFinite(importeNumero) || importeNumero <= 0)) return { ok: false, error: "No se conoce el importe del intento de tarjeta." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = aprobar
+        ? await supabase.rpc("abc_qa_confirmar_pago_simulado", { p_empresa_id: empresaId, p_local_id: localActivoId, p_intento_id: intentoId, p_importe: importeNumero })
+        : await supabase.rpc("abc_qa_rechazar_pago_simulado", { p_empresa_id: empresaId, p_local_id: localActivoId, p_intento_id: intentoId, p_motivo: String(motivo || "").trim() || "Rechazo desde la interfaz de QA" });
+      if (error) throw error;
+      return data?.ok ? { ...data, ok: true, resultado: aprobar ? "APROBADO" : "RECHAZADO" } : { ok: false, error: "El servidor no confirmó la resolución de la tarjeta simulada." };
+    } catch (error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("abc_qa_simulador_propietario_requerido")) return { ok: false, error: "Solo el Propietario puede resolver la tarjeta simulada." };
+      if (msg.includes("abc_qa_simulador_solo_qa")) return { ok: false, error: "El simulador de tarjeta solo funciona en el local de pruebas de QA." };
+      if (msg.includes("abc_qa_simulador_pago_no_pendiente")) return { ok: false, error: "Ese pago ya no está pendiente." };
+      if (msg.includes("abc_qa_simulador_importe_distinto")) return { ok: false, error: "El importe no coincide con el del intento." };
       return { ok: false, error: mensajeErrorCobroF4(error) };
     }
   }
@@ -113393,6 +113705,21 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
           estadoCerrado.cuentaEstado = "CERRADA";
           estadoCerrado.cuentaVersion = Number(cierreCuenta.cuenta_version);
           estadoCerrado.mensaje = "Cuenta pagada cerrada formalmente por el servidor.";
+          // H-23 (auditoría del TPV, 26/11/2026): este camino (cerrar una cuenta cuyo saldo ya está pagado, por ejemplo una venta
+          // mixta cuya última parte, la tarjeta, se resolvió después) cerraba la cuenta pero NO emitía el documento fiscal: solo el
+          // camino de cobro normal lo hacía. La emisión es idempotente por cuenta y checkout, así que repetirla no duplica.
+          const fiscalCierre = await emitirCheckoutFiscalC07D(recuperada.cuentaId, {
+            checkoutId: checkoutCompletado.id,
+            tipoDocumento: opciones?.tipoDocumento || "FACTURA",
+            codigoSerie: opciones?.codigoSerie || "TPV"
+          });
+          estadoCerrado.fiscal = fiscalCierre;
+          if (fiscalCierre?.ok) {
+            estadoCerrado.fiscal = {
+              ...fiscalCierre,
+              qr: await prepararTicketFiscalQa(recuperada.cuentaId, fiscalCierre, checkoutCompletado.id)
+            };
+          }
         } else {
           estadoCerrado.mensaje = `Efectivo confirmado, pero la cuenta sigue abierta: ${cierreCuenta?.error || "el cierre requiere revisión"}`;
         }
@@ -113960,13 +114287,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const contexto = leerContextoCuentaA02(empresaId, localActivoId);
       if (!contexto) throw new Error("contexto_cuenta_persistido_invalido");
       if (contexto.pedidoEstado === "ENVIADO") {
-        return {
-          ok: true,
-          pedidoId: contexto.pedidoId,
-          pedidoVersion: contexto.pedidoVersion,
-          pedidoEstado: contexto.pedidoEstado,
-          lineas: contexto.lineas
-        };
+        // H-22: el resultado sustituye al pedido operativo de la pantalla, así que lleva el contexto completo (con la cuenta).
+        return { ok: true, ...contexto };
       }
       if (contexto.pedidoEstado !== "ABIERTO" && contexto.pedidoEstado !== "BORRADOR") {
         throw new Error("pedido_no_enviable");
@@ -114051,12 +114373,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       contexto.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
       const guardado = guardarContextoCuentaA02(empresaId, localActivoId, contexto);
 
+      // H-22: antes devolvía solo pedido y líneas, sin cuentaId. «Enviar pedido» lo guarda como pedido operativo de la pantalla
+      // y, sin cuenta, el panel de cobro se sustituía por «Caja del TPV» hasta recargar. Ahora lleva el contexto completo,
+      // igual que accionPedidoA05 y recuperarCuentaA06.
       return {
         ok: true,
-        pedidoId: guardado.pedidoId,
-        pedidoVersion: guardado.pedidoVersion,
-        pedidoEstado: guardado.pedidoEstado,
-        lineas: guardado.lineas,
+        ...guardado,
         lineasEnviadas: Number(enviado?.lineas_enviadas) || guardado.lineas.filter((l22) => l22.estado === "ENVIADA").length
       };
     } catch (error) {
@@ -114253,6 +114575,33 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
         return { ok: true, ...guardado };
       }
 
+      // H-37 (auditoría del TPV, 26/11/2026): «Cobrar ahora» ya no encadena iniciar, preparar y servir línea a línea con los
+      // permisos de cocina de quien cobra (el Cajero/a no los tiene y la venta se quedaba a medias). El servidor hace los tres
+      // pasos de todas las líneas en UNA operación con el permiso de cobro, solo para cuentas de barra.
+      if (accion === "COMPLETAR_VENTA_RAPIDA") {
+        const operationId = "a05.3.venta_rapida." + contexto.pedidoId + "." + contexto.pedidoVersion;
+        const resultado = await rpcA02ConRecuperacion(supabase, "abc_completar_venta_rapida", {
+          p_operation_id: operationId,
+          p_empresa_id: empresaId,
+          p_local_id: localActivoId,
+          p_pedido_id: contexto.pedidoId,
+          p_expected_pedido_version: versionServidorA02(contexto.pedidoVersion, "a05.venta_rapida.pedido_version"),
+          p_terminal_id: contexto.terminalId,
+          p_session_id: contexto.sessionId,
+          p_operating_day: contexto.operatingDay
+        }, empresaId, localActivoId, operationId);
+        const porId = new Map((Array.isArray(resultado?.lineas) ? resultado.lineas : []).map((l22) => [String(l22.linea_id), l22]));
+        contexto.lineas = contexto.lineas.map((linea) => {
+          const nueva = porId.get(String(linea.lineaId));
+          return nueva ? { ...linea, estado: String(nueva.estado), lineaVersion: versionServidorA02(nueva.linea_version, "a05.venta_rapida.linea_version") } : linea;
+        });
+        contexto.pedidoVersion = versionServidorA02(resultado?.pedido_version, "a05.venta_rapida.result.pedido_version");
+        contexto.pedidoEstado = String(resultado?.pedido_estado || contexto.pedidoEstado);
+        contexto.updatedAt = (/* @__PURE__ */ new Date()).toISOString();
+        const guardado = guardarContextoCuentaA02(empresaId, localActivoId, contexto);
+        return { ok: true, ...guardado };
+      }
+
       const linea = contexto.lineas.find((l22) => l22.lineaId === lineaId);
       if (!linea) throw new Error("linea_no_encontrada");
       const mapa = {
@@ -114389,6 +114738,61 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  // H-24 (auditoría del TPV, 26/11/2026): el efectivo esperado del arqueo lo calcula el servidor con las operaciones de caja
+  // de la sesión (el mismo cálculo que guarda abc_registrar_arqueo_caja). La pantalla no lo reconstruye con el historial local.
+  async function consultarEsperadoCajaA24() {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      const { data, error } = await contexto.supabase.rpc("abc_previsualizar_arqueo_caja", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId,
+        p_terminal_id: contexto.terminalId,
+        p_currency_code: "EUR"
+      });
+      if (error) return { ok: false, error: errorRpcA02(error) };
+      const esperado = Number(data?.expected_amount);
+      if (!data || data.ok !== true || !Number.isFinite(esperado)) return { ok: false, error: "El servidor no ha devuelto el efectivo esperado." };
+      return {
+        ok: true,
+        sessionId: contexto.sessionId,
+        sessionEstado: contexto.sessionEstado,
+        fondoInicial: Number(data.fondo_inicial) || 0,
+        entradas: Number(data.entradas_efectivo) || 0,
+        salidas: Number(data.salidas_efectivo) || 0,
+        esperado,
+        movimientos: Number(data.movimientos) || 0
+      };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
+  // H-38b (auditoría del TPV, 26/11/2026): el cierre bloquea las ventas cobradas sin documento fiscal; estas dos funciones
+  // permiten ver cuáles son y emitir su documento desde la pantalla de cierre. La emisión es la de siempre
+  // (abc_c07d_emitir_checkout, idempotente por cuenta y checkout): si el documento ya existía, no se duplica.
+  async function listarVentasSinDocumentoH38b() {
+    try {
+      const contexto = await contextoCierreA10({ conDia: false });
+      const { data, error } = await contexto.supabase.rpc("abc_c04_listar_ventas_sin_documento", {
+        p_empresa_id: contexto.empresaId,
+        p_local_id: contexto.localId,
+        p_session_id: contexto.sessionId
+      });
+      if (error) return { ok: false, error: errorRpcA02(error) };
+      return { ok: true, ventas: Array.isArray(data) ? data : [] };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+  async function emitirDocumentoPendienteH38b({ cuentaId, checkoutId } = {}) {
+    if (!cuentaId || !checkoutId) return { ok: false, error: "Faltan datos de la venta para emitir su documento." };
+    const emitido = await emitirCheckoutFiscalC07D(cuentaId, { checkoutId, tipoDocumento: "FACTURA", codigoSerie: "TPV" });
+    if (!emitido?.ok) return { ok: false, error: emitido?.error || "No se ha podido emitir el documento." };
+    const documento = Array.isArray(emitido.documentos) ? emitido.documentos[0] : null;
+    return { ok: true, numero: documento?.numero ?? null, codigoSerie: documento?.codigo_serie || emitido.codigo_serie || null };
+  }
+
   async function registrarDiferenciaCajaA10({ motivo = "" } = {}) {
     try {
       const contexto = await contextoCierreA10({ conDia: false });
@@ -114443,6 +114847,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
     listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
     listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
+    listarEstacionesA10.listarVentasSinDocumentoH38b = listarVentasSinDocumentoH38b;
+    listarEstacionesA10.emitirDocumentoPendienteH38b = emitirDocumentoPendienteH38b;
     listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
     listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
     try {
@@ -115234,6 +115640,33 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  // H-28 / H-29 (auditoria del TPV): cierra las cuentas abiertas SIN actividad (de un dia operativo ya cerrado, o sin pedido ni cobro desde hace mas de una hora). Solo
+  // Propietario y Encargado. El servidor decide cuales son (no cierra ninguna con un pedido vivo, con dinero en juego o con un reparto vivo) y repetir la operacion no
+  // duplica nada.
+  async function cerrarCuentasSinActividadA06() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local antes de cerrar cuentas." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "Cerrar cuentas necesita conexi\u00f3n con el servidor. No se ha tocado nada." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_cerrar_cuentas_sin_actividad", {
+        p_operation_id: "abc.cerrar_sin_actividad." + uid(),
+        p_empresa_id: empresaId,
+        p_local_id: localActivoId,
+        p_sin_pedido_minutos: 60
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error("cuentas_limpieza_respuesta_invalida");
+      return { ok: true, cerradas: Number(data.cerradas) || 0, omitidas: Number(data.omitidas) || 0 };
+    } catch (error) {
+      const msg = String(error?.message || error || "");
+      if (msg.includes("cuentas_limpieza_no_autorizada")) return { ok: false, error: "Solo el Propietario y el Encargado pueden cerrar cuentas sin actividad." };
+      if (typeof esErrorDeRedTpv === "function" && esErrorDeRedTpv(msg)) return { ok: false, error: MENSAJE_SIN_RED_TPV };
+      return { ok: false, error: "No se pudieron cerrar las cuentas. No se ha dado nada por hecho: actualiza la lista y vuelve a mirar." };
+    }
+  }
   async function listarCuentasAparcadasA06({ abandonoMinutos = 30 } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local antes de buscar cuentas abiertas." };
     const empresaId = empresaDelLocalActivo?.id || null;
@@ -115274,6 +115707,8 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       })).sort((a22, b2) => String(b2.last_activity_at || "").localeCompare(String(a22.last_activity_at || "")));
       return { ok: true, cuentas, operatingDay };
     } catch (error) {
+      // H-41 (auditoria del TPV): al Camarero/a el servidor le niega la lista y el aviso hablaba de abrir la caja. La lista no esta disponible para su cargo.
+      if (String(error?.message || error || "").includes("abc_caja_no_autorizado")) return { ok: false, error: "Tu cargo no puede ver la lista de cuentas abiertas de este local. Las mesas con cuenta se abren desde \u00abSala y mesas\u00bb." };
       return respuestaErrorA06(error);
     }
   }
@@ -115443,6 +115878,18 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     }
   }
 
+  // H-44 (auditoría del TPV, 26/11/2026): el servidor compara la petición de un descuento con un resumen de su TEXTO, y un
+  // número con otra escala ("10" frente a "10.00000000") es otro texto. La autorización guarda el valor normalizado a 8
+  // decimales; «Reintentar aplicación» lo reenviaba así y el servidor respondía operation_id_conflict. El valor se envía
+  // siempre en su forma más corta, tanto al pedir como al reintentar, para que sea idéntico.
+  function valorDescuentoCanonicoA09(texto) {
+    const s = String(texto ?? "").trim();
+    if (!/^\d+(?:\.\d{1,8})?$/.test(s)) return s;
+    const [entero, decimales = ""] = s.split(".");
+    const e2 = entero.replace(/^0+(?=\d)/, "");
+    const d2 = decimales.replace(/0+$/, "");
+    return d2 ? e2 + "." + d2 : e2;
+  }
   async function aplicarDescuentoCuentaA09({ tipo, valor = null, motivo, solicitud = null } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local antes de aplicar un descuento." };
     const empresaId = empresaDelLocalActivo?.id || null;
@@ -115450,7 +115897,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     const kind = String(solicitud?.tipo || tipo || "").trim().toUpperCase();
     const reason = String(solicitud?.motivo || motivo || "").trim();
     const rawValue = solicitud ? solicitud.valor : valor;
-    const valueText = kind === "COURTESY" ? null : String(rawValue ?? "").trim();
+    const valueText = kind === "COURTESY" ? null : valorDescuentoCanonicoA09(rawValue);
     if (!["PERCENT", "AMOUNT", "COURTESY"].includes(kind) || reason.length < 1 || reason.length > 500) {
       return { ok: false, error: "Selecciona el tipo de descuento y escribe un motivo." };
     }
@@ -115693,7 +116140,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     const fechaVenta = lineas[0]?.fecha;
     const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
     if (arqueoDelDia && typeof window !== "undefined" && window.__nubeActiva) {
-      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+      fetch(urlFuncionNubeA("enviar-notificacion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -115723,7 +116170,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
       const fechaVenta = lineasOriginales[0]?.fecha;
       const arqueoDelDia = fechaVenta && (arqueos || []).find((a22) => a22.fecha === fechaVenta && (!localActivoId || a22.localId === localActivoId));
       if (arqueoDelDia) {
-        fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+        fetch(urlFuncionNubeA("enviar-notificacion"), {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ titulo: "Caja cerrada, ahora desactualizada", cuerpo: `Se anul\xF3 una venta del ${fechaVenta}, d\xEDa que ya ten\xEDa la caja cerrada \u2014 revisa ese arqueo, puede que ya no cuadre.`, localId: r2.data?.localId || lineasOriginales[0]?.localId || null, url: "/" })
@@ -115752,10 +116199,12 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.finalizarCierreSesionCajaA10 = finalizarCierreSesionCajaA10;
   listarEstacionesA10.reabrirCierreProvisionalA10 = reabrirCierreProvisionalA10;
   listarEstacionesA10.consultarCierreCajaA10 = consultarCierreCajaA10;
+  listarEstacionesA10.listarVentasSinDocumentoH38b = listarVentasSinDocumentoH38b;
+  listarEstacionesA10.emitirDocumentoPendienteH38b = emitirDocumentoPendienteH38b;
   listarEstacionesA10.listarPedidosTurno = listarPedidosTurnoRediseno;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarEsperadoCajaA24, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, cerrarCuentasSinActividadA06, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {
@@ -118073,7 +118522,7 @@ function Card({ children, className = "", style = {} }) {
 function SectionTitle({ children, action }) {
   return /* @__PURE__ */ import_react4.default.createElement("div", { className: "la-ui-section-title flex items-center justify-between mb-4" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "la-ui-section-title-heading text-[18px] font-semibold" }, children), action);
 }
-function Btn({ children, onClick, variant = "primary", type = "button", small, disabled = false, ariaLabel }) {
+function Btn({ children, onClick, variant = "primary", type = "button", small, disabled = false, ariaLabel, claseExtra }) {
   const styles = {
     primary: { background: C2.accentFill, color: C2.onAccent },
     ghost: { background: "transparent", color: C2.ink, border: `1px solid ${C2.line}` },
@@ -118086,7 +118535,7 @@ function Btn({ children, onClick, variant = "primary", type = "button", small, d
       onClick,
       disabled,
       "aria-label": ariaLabel,
-      className: `la-ui-button la-ui-button-${variant} inline-flex items-center gap-1.5 rounded-lg font-medium ${small ? "la-ui-button-small px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}`,
+      className: `la-ui-button la-ui-button-${variant} inline-flex items-center gap-1.5 rounded-lg font-medium ${small ? "la-ui-button-small px-2.5 py-1.5 text-[12px]" : "px-3.5 py-2 text-[13px]"}${claseExtra ? " " + claseExtra : ""}`,
       "data-ui-variant": variant,
       style: { ...styles[variant], minHeight: small ? void 0 : 44, opacity: disabled ? 0.45 : 1, cursor: disabled ? "not-allowed" : "pointer" }
     },
@@ -118290,7 +118739,7 @@ const ACCESOS_PANEL_REDISENO = {
   reportes: ["Ver Informes", ChartColumn],
   resultados: ["Consultar resultados", TrendingUp]
 };
-function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPendientes = [], stockBajo = [], puedeConsultar, navegar, abrirIndicador }) {
+function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPendientes = [], stockBajo = [], pisoPorReponer = [], puedeConsultar, navegar, abrirIndicador }) {
   const h = import_react4.default.createElement;
   const panelRef = (0, import_react4.useRef)(null);
   (0, import_react4.useEffect)(() => {
@@ -118320,6 +118769,13 @@ function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPend
     .slice(-7) : [];
   const maxVentaReciente = Math.max(1, ...ventasRecientes);
   const pendientesOrbita = [
+    // H-15 (E2): lo vendido hoy desde el almacen por falta de piso va primero: es lo que hay que reponer con un traspaso.
+    ...(Array.isArray(pisoPorReponer) ? pisoPorReponer.slice(0, 2).map((p22) => ({
+      clave: `piso-${p22.id}`,
+      titulo: "Piso por reponer",
+      detalle: `${p22.nombre} · ${fmt(p22.cantidad)} servida(s) desde el almacén hoy`,
+      tab: "traspasos"
+    })) : []),
     ...(Array.isArray(pedidosPendientes) ? pedidosPendientes.slice(0, 3).map((pedido) => ({
       clave: `pedido-${pedido.id}`,
       titulo: "Recepción pendiente",
@@ -118428,7 +118884,7 @@ function PanelDiseno({ diseno, contexto, tarjetas, movimientos = [], pedidosPend
     )
   );
 }
-function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, almacenCongelado = false, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null, diseno, contexto, puedeVerPanelRediseno, cargarMapaSala, listarPedidosTurno }) {
+function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendientes, margenPromedio, movimientos, productos, caducanPronto = [], proveedorPorId, vencenPronto = [], totalPendientePago = 0, documentosPersonalPronto = [], fichajesAbiertos = [], encargosUrgentes = [], pisoVentaBajo = [], pisoPorReponer = [], sugerenciasPedido = [], setTab, recordatorioConteo = [], alertasAppcc = { pendientes: [], desviaciones: [] }, fallosGuardado = [], fallosCarga = [], diagnosticoStock = [], registrarSalida, almacenCongelado = false, itemsPermitidos = null, empresa = null, estadoCargaDatosPM12 = null, diseno, contexto, puedeVerPanelRediseno, cargarMapaSala, listarPedidosTurno }) {
   const entradas30 = movimientos.filter((m22) => esEntrada(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const salidas30 = movimientos.filter((m22) => esSalida(m22)).reduce((a22, m22) => a22 + Math.abs(cantidadConSigno(m22)), 0);
   const [abierta, setAbierta] = (0, import_react4.useState)(null);
@@ -118762,7 +119218,7 @@ function Dashboard({ valorInventario, valorUtillaje = 0, stockBajo, pedidosPendi
   const tarjetasVisibles = Array.isArray(itemsPermitidos) ? tarjetas.filter((t22) => itemsPermitidos.includes(t22.tab)) : tarjetas;
   const tarjetaAbierta = tarjetasVisibles.find((t22) => t22.id === abierta);
   const panelDiseno = diseno && puedeVerPanelRediseno ? /* @__PURE__ */ import_react4.default.createElement(PanelDiseno, {
-    diseno, contexto, tarjetas: tarjetasVisibles, movimientos, pedidosPendientes, stockBajo,
+    diseno, contexto, tarjetas: tarjetasVisibles, movimientos, pedidosPendientes, stockBajo, pisoPorReponer,
     puedeConsultar: puedeVerPanelRediseno, navegar: setTab,
     abrirIndicador: (item) => {
       setAbierta(item.id);
@@ -121813,7 +122269,7 @@ function Albaranes({
     setAvisosIA([]);
     try {
       const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-albaran",
+        urlFuncionNubeA("importar-albaran"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -122805,7 +123261,7 @@ function SeleccionPersonal({ entrevistas, crearEntrevista, actualizarEntrevista,
     setError("");
     try {
       const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/entrevista-personal",
+        urlFuncionNubeA("entrevista-personal"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -122923,6 +123379,13 @@ function etiquetaContextoPM15(local, empresa) {
   const nombreEmpresa = empresa && (empresa.razonSocial || empresa.marca) ? empresa.razonSocial || empresa.marca : "";
   if (nombreLocal && nombreEmpresa) return `${nombreLocal} \xB7 ${nombreEmpresa}`;
   return nombreLocal || nombreEmpresa || "";
+}
+// H-33 (auditoría del TPV): las funciones Edge se llaman en el mismo proyecto que la base de datos (window.NUBE_URL: producción
+// por defecto, QA en una Deploy Preview, vacío en modo local), no a una dirección de producción escrita en el código. Si no hay
+// nube configurada devuelve una dirección que no resuelve (.invalid), nunca otra del mismo origen ni de producción.
+function urlFuncionNubeA(nombre) {
+  var base = typeof window !== "undefined" && typeof window.NUBE_URL === "string" ? window.NUBE_URL.replace(/\/+$/, "") : "";
+  return (base || "https://sin-nube.invalid") + "/functions/v1/" + nombre;
 }
 function Personal({ empleados, addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, documentosPersonalCaducan, fichajes = [], nominas = [], entrevistas = [], crearEntrevista, actualizarEntrevista, finalizarEntrevista, eliminarEntrevista, crearPrefiltro, listarPrefiltros, eliminarPrefiltro, crearCuentaEmpleado, estadoCuentasPM11 = {}, estadoCargaDatos = "cargado_con_datos", pendienteSincronizacion = false, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {}, empresa = null, localId = "" }) {
   const [vista, setVista] = (0, import_react4.useState)("empleados");
@@ -123625,7 +124088,7 @@ Generado el ${(/* @__PURE__ */ new Date()).toLocaleString("es-ES")}`;
 function lineaEncargo() {
   return { productoId: "", descripcion: "", cantidad: 1, precioUnitario: "" };
 }
-function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, addCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
+function Encargos({ encargosPendientes, encargos, clientes, productos, addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo, devolverAnticipoEncargo, puedeDevolverAnticipoEncargo = false, addCliente, contextoActivoPM15 = "", marcarFormularioAbiertoPM15 = () => {} }) {
   const submitBloqueadoEncargoPM10 = import_react4.default.useRef(false);
   const entregaBloqueadaPM14 = import_react4.default.useRef(false);
   const [showForm, setShowForm] = (0, import_react4.useState)(false);
@@ -123645,6 +124108,11 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   const [errorEntrega, setErrorEntrega] = (0, import_react4.useState)("");
   const [medioPagoEntrega, setMedioPagoEntrega] = (0, import_react4.useState)("Efectivo");
   const [reembolsoPendiente, setReembolsoPendiente] = (0, import_react4.useState)(null);
+  // H-05 (E3): «Devolver anticipo» (la señal de un encargo pendiente, sin cancelarlo).
+  const [devolverAnticipoId, setDevolverAnticipoId] = (0, import_react4.useState)(null);
+  const [motivoAnticipo, setMotivoAnticipo] = (0, import_react4.useState)("");
+  const [errorAnticipo, setErrorAnticipo] = (0, import_react4.useState)("");
+  const [procesandoAnticipo, setProcesandoAnticipo] = (0, import_react4.useState)(false);
   const [errorReembolso, setErrorReembolso] = (0, import_react4.useState)("");
   const [verEntregados, setVerEntregados] = (0, import_react4.useState)(false);
   const [verHistorial, setVerHistorial] = (0, import_react4.useState)(false);
@@ -123793,7 +124261,11 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
     setErrorEntrega("");
     setEntregarId(e2.id);
     setMedioPagoEntrega("Efectivo");
-  } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 13 }), " Entregar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(e2) }, "Editar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => {
+  } }, /* @__PURE__ */ import_react4.default.createElement(CircleCheck, { size: 13 }), " Entregar"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => abrirEdicion(e2) }, "Editar"), puedeDevolverAnticipoEncargo && devolverAnticipoEncargo && Number(e2.se\u00F1al) > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => {
+    setErrorAnticipo("");
+    setMotivoAnticipo("");
+    setDevolverAnticipoId(e2.id);
+  } }, "Devolver anticipo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: () => {
     setErrorEliminar("");
     setMotivoCancelar("");
     setConfirmDeleteId(e2.id);
@@ -123808,7 +124280,23 @@ function Encargos({ encargosPendientes, encargos, clientes, productos, addEncarg
   })), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => setVerHistorial((s22) => !s22), className: "text-[12.5px] font-medium mt-2 mb-2", style: { color: C2.accent } }, verHistorial ? "Ocultar" : "Ver", " historial (cancelados y devueltos) (", historial.length, ")"), verHistorial && /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5" }, historial.length === 0 ? /* @__PURE__ */ import_react4.default.createElement(Empty, { text: "Todav\xEDa no hay encargos cancelados ni devueltos." }) : historial.map((e2) => {
     const cliente = clientes.find((c22) => c22.id === e2.clienteId);
     return /* @__PURE__ */ import_react4.default.createElement(Card, { key: e2.id, style: { background: C2.bg } }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between text-[12.5px]" }, /* @__PURE__ */ import_react4.default.createElement("span", null, cliente ? cliente.nombre : "—", e2.numero && ` \xB7 ${e2.numero}`), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono" }, "€", fmt(e2.total))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mt-1 text-[11.5px]" }, /* @__PURE__ */ import_react4.default.createElement(Pill2, { color: e2.estado === "Cancelado" ? C2.red : C2.amber }, /* @__PURE__ */ import_react4.default.createElement(e2.estado === "Cancelado" ? X2 : ArrowLeftRight, { size: 11, style: { verticalAlign: "middle", marginRight: 3 } }), e2.estado, e2.fechaHistorial && ` \xB7 ${e2.fechaHistorial}`), null), e2.motivoHistorial && /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-1 text-[11.5px]", style: { color: C2.inkSoft } }, e2.motivoHistorial));
-  })), devolverId && (() => {
+  })), devolverAnticipoId && (() => {
+    const e2 = encargos.find((x3) => x3.id === devolverAnticipoId);
+    if (!e2) return null;
+    const importeSenal = Number(e2.se\u00F1al) || 0;
+    return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => !procesandoAnticipo && setDevolverAnticipoId(null), title: "Devolver anticipo" }, contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Local: ", contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Se devuelve al cliente la se\u00f1al cobrada de este encargo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono" }, "\u20AC", fmt(importeSenal)), ". El encargo sigue pendiente y el cobro queda anulado con su motivo. Solo se puede devolver una vez."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de la devoluci\u00f3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoAnticipo, onChange: (ev) => setMotivoAnticipo(ev.target.value), placeholder: "El cliente cancela la fecha, error de importe\u2026" })), errorAnticipo && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, errorAnticipo), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", disabled: procesandoAnticipo || !motivoAnticipo.trim(), onClick: async () => {
+      if (procesandoAnticipo) return;
+      setProcesandoAnticipo(true);
+      setErrorAnticipo("");
+      const resultado = await devolverAnticipoEncargo(devolverAnticipoId, motivoAnticipo);
+      setProcesandoAnticipo(false);
+      if (!resultado || resultado.ok === false) {
+        setErrorAnticipo(resultado?.error || "No se pudo devolver el anticipo.");
+        return;
+      }
+      setDevolverAnticipoId(null);
+    } }, procesandoAnticipo ? "Devolviendo\u2026" : "S\u00ed, devolver anticipo"), /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", disabled: procesandoAnticipo, onClick: () => setDevolverAnticipoId(null) }, "Volver")));
+  })(), devolverId && (() => {
     const e2 = encargos.find((x3) => x3.id === devolverId);
     if (!e2) return null;
     return /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setDevolverId(null), title: "Devolver encargo" }, contextoActivoPM15 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.inkSoft } }, "Local: ", contextoActivoPM15), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3" }, "Se devuelve el stock de los productos del cat\xE1logo. El encargo no se borra: queda marcado como devuelto."), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Motivo de la devoluci\xF3n" }, /* @__PURE__ */ import_react4.default.createElement(Input, { value: motivoDevolver, onChange: (ev) => setMotivoDevolver(ev.target.value), placeholder: "Producto defectuoso, cliente insatisfecho…" })), errorDevolver && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px] mb-2", role: "alert", style: { color: C2.red } }, errorDevolver), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 mt-2" }, /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "danger", onClick: async () => {
@@ -124447,7 +124935,7 @@ function FacturasLegacy({ albaranes, facturasDirectas, pagosFacturas = [], prove
     if (archivosIA.length === 0) { setError("Añade al menos una imagen o un PDF con páginas legibles."); return; }
     setLeyendoIA(true); setError(""); setMensaje("");
     try {
-      const resp = await fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-albaran", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagenes: archivosIA.map((f22) => ({ base64: f22.base64, mediaType: f22.mediaType })) }) });
+      const resp = await fetch(urlFuncionNubeA("importar-albaran"), { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ imagenes: archivosIA.map((f22) => ({ base64: f22.base64, mediaType: f22.mediaType })) }) });
       const r2 = await resp.json();
       if (!r2.ok) throw new Error(r2.error || "No se ha podido leer la factura.");
       const d2 = r2.datos || {};
@@ -125549,7 +126037,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "") {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10 }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor, irACierreCaja = null }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const [fecha, setFecha] = (0, import_react4.useState)(todayISO());
@@ -125570,6 +126058,24 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const [exitoSesion, setExitoSesion] = (0, import_react4.useState)("");
   const [mostrarMovimientosCaja, setMostrarMovimientosCaja] = (0, import_react4.useState)(false);
   const [mostrarHistorialCaja, setMostrarHistorialCaja] = (0, import_react4.useState)(false);
+  // H-24: con la cuenta sincronizada el esperado es el del servidor; sin él no se enseña ninguna cifra estimada.
+  const esperadoDelServidor = typeof consultarEsperadoServidor === "function";
+  const [esperadoServidor, setEsperadoServidor] = (0, import_react4.useState)({ estado: esperadoDelServidor ? "cargando" : "local" });
+  const [refrescoEsperado, setRefrescoEsperado] = (0, import_react4.useState)(0);
+  (0, import_react4.useEffect)(() => {
+    if (!esperadoDelServidor) return void 0;
+    let vigente = true;
+    setEsperadoServidor({ estado: "cargando" });
+    Promise.resolve().then(() => consultarEsperadoServidor()).then((r2) => {
+      if (!vigente) return;
+      setEsperadoServidor(r2?.ok ? { estado: "ok", ...r2 } : { estado: "error", error: r2?.error || "No se ha podido consultar el efectivo esperado al servidor." });
+    }).catch((e2) => {
+      if (vigente) setEsperadoServidor({ estado: "error", error: String(e2?.message || "No se ha podido consultar el efectivo esperado al servidor.") });
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [esperadoDelServidor, fecha, refrescoEsperado, movimientos.length, movimientosCaja.length, arqueos.length]);
   const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha);
   const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
   encargos.forEach((e2) => {
@@ -125593,13 +126099,14 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   // Los REVERSO se muestran/aplican aparte, igual que hará el servidor PM09.
   const efectivoBase = redondearDineroPM08((resumenVentasCaja.ventas.Efectivo || 0) + efectivoOtros);
   const ajustesVentaEfectivo = redondearDineroPM08(resumenVentasCaja.reversos.Efectivo || 0);
-  const efectivoEsperado = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
+  const efectivoEsperadoLocal = redondearDineroPM08(efectivoBase + ajustesVentaEfectivo + netoCaja);
+  const efectivoEsperado = esperadoDelServidor ? esperadoServidor.estado === "ok" ? redondearDineroPM08(esperadoServidor.esperado) : null : efectivoEsperadoLocal;
   const denominacionesInvalidas = Object.values(denominaciones).some((cantidad) => cantidad !== "" && (!Number.isInteger(Number(cantidad)) || Number(cantidad) < 0));
   const denominacionesLimpias = Object.fromEntries(Object.entries(denominaciones).filter(([_22, cantidad]) => Number(cantidad) > 0).map(([valor, cantidad]) => [valor, Number(cantidad)]));
   const hayDesglose = Object.keys(denominacionesLimpias).length > 0;
   const totalDenominaciones = redondearDineroPM08(Object.entries(denominacionesLimpias).reduce((total, [valor, cantidad]) => total + Number(valor) * Number(cantidad), 0));
   const contadoNumero = hayDesglose ? totalDenominaciones : contado === "" ? NaN : redondearDineroPM08(contado);
-  const diferencia = Number.isFinite(contadoNumero) ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
+  const diferencia = Number.isFinite(contadoNumero) && efectivoEsperado !== null ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
   async function abrirSesion() {
     if (abriendoSesion || typeof abrirSesionCajaA10 !== "function") return;
@@ -125618,6 +126125,7 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         return;
       }
       setExitoSesion(`Sesión de caja abierta${r2.caja_nombre ? ` en ${r2.caja_nombre}` : ""}. Ya puedes operar en el TPV.`);
+      setRefrescoEsperado((n2) => n2 + 1);
     } catch (e2) {
       setErrorSesion(String(e2?.message || "No se pudo abrir la sesión de caja."));
     } finally {
@@ -125744,6 +126252,12 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       errorSesion ? h3("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesion) : null,
       exitoSesion ? h3("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesion) : null
     ) : null,
+    // H-25 (auditoria del TPV): el cierre de la sesion de caja estaba solo en Cocina y comandas > gestion avanzada. Una entrada «Cerrar caja» desde aqui.
+    typeof irACierreCaja === "function" ? h3(Card, { className: "mb-4", "data-cierre-caja-entrada": "1" },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cerrar caja"),
+      h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "El cierre de la sesi\u00f3n de caja del turno (contar, justificar diferencias y cerrar) se hace en Cocina y comandas, en la gesti\u00f3n avanzada. Este bot\u00f3n te lleva directo."),
+      h3(Btn, { small: true, variant: "ghost", onClick: irACierreCaja }, "Ir al cierre de la sesi\u00f3n de caja")
+    ) : null,
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" } }, h3("div", { className: "text-[12.5px]" }, "El cierre es diario y pertenece a un solo local. El servidor calcula el efectivo esperado con la base declarada y el libro de caja; el contado admite 0 \u20AC y nunca se borra f\xEDsicamente.")),
     h3(
       Card,
@@ -125752,10 +126266,16 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       h3(
         "div",
         { className: "grid grid-cols-2 gap-3 my-3" },
-        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono" }, "\u20AC", fmt(efectivoEsperado))),
+        h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Efectivo esperado"), h3("div", { className: "text-xl font-semibold mono", "data-arqueo-esperado": esperadoDelServidor ? esperadoServidor.estado : "local" }, efectivoEsperado === null ? esperadoServidor.estado === "cargando" ? "Calculando\u2026" : "No disponible" : ["\u20AC", fmt(efectivoEsperado)])),
         h3("div", null, h3("div", { className: "text-[11px]", style: { color: C2.inkSoft } }, "Otras ventas"), h3("div", { className: "text-xl font-semibold mono", style: { color: C2.inkSoft } }, "\u20AC", fmt((porMedio.Tarjeta || 0) + (porMedio.Transferencia || 0) + (porMedio.Otro || 0))))
       ),
-      h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · anulaciones venta €${fmt(ajustesVentaEfectivo)} · ajustes/reembolsos caja €${fmt(netoCaja)}`),
+      esperadoDelServidor ? h3(
+        "div",
+        { className: "text-[10.5px] mb-3", style: { color: esperadoServidor.estado === "error" ? C2.red : C2.inkSoft }, role: esperadoServidor.estado === "error" ? "alert" : void 0 },
+        esperadoServidor.estado === "ok" ? `Calculado por el servidor para la sesión de caja abierta: fondo inicial €${fmt(esperadoServidor.fondoInicial)} · entradas €${fmt(esperadoServidor.entradas)} · salidas €${fmt(esperadoServidor.salidas)}.` : esperadoServidor.estado === "error" ? `No se ha podido obtener el efectivo esperado del servidor: ${esperadoServidor.error} No se muestra ninguna cifra estimada.` : "Consultando al servidor el efectivo esperado\u2026",
+        " ",
+        h3("button", { type: "button", className: "underline", disabled: esperadoServidor.estado === "cargando", onClick: () => setRefrescoEsperado((n2) => n2 + 1) }, "Actualizar")
+      ) : h3("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, `Base efectivo €${fmt(efectivoBase)} · anulaciones venta €${fmt(ajustesVentaEfectivo)} · ajustes/reembolsos caja €${fmt(netoCaja)}`),
       h3(
         "div",
         { className: "mb-3" },
@@ -126651,7 +127171,7 @@ function TerminalNavegadorTpv({ empresaId, localId }) {
     error ? h("p", { role: "alert" }, error) : null
   );
 }
-function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null, unirCuentasA08 = null }) {
+function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, nombreResponsableActualA07 = "", anularVenta, puedeAnularVenta = true, movimientos = [], aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, registrarAuditoria, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, abrirSesionCajaA10, irACaja = null, listarCategoriasTpv = null, configurarCategoriasTpv = null, temaOscuro = false, setTemaOscuro = null, cerrarCuentasSinActividadA06 = null, puedeLimpiarCuentasA06 = false, local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino, cargarSalaDestino, listarCuentasAparcadasA06 = null, unirCuentasA08 = null }) {
   function ticketQrQaFixtureInicial(listaProductos) {
     try {
       const host = window.location.hostname;
@@ -126762,7 +127282,35 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [filtroVentasPago, setFiltroVentasPago] = (0, import_react4.useState)("Todos");
   const [filtroVentasEstado, setFiltroVentasEstado] = (0, import_react4.useState)("Todas");
   const [historialVentasAbierto, setHistorialVentasAbierto] = (0, import_react4.useState)(false);
-  const [operacionesCuentaAbiertas, setOperacionesCuentaAbiertas] = (0, import_react4.useState)(false);
+  const [reembolsosPorVentaTpv, setReembolsosPorVentaTpv] = (0, import_react4.useState)({});
+  const reembolsosFirmaRef = (0, import_react4.useRef)("");
+  (0, import_react4.useEffect)(() => {
+    const empresaId = configEmpresa?.id || null;
+    const localId = local?.id || null;
+    if (!empresaId || !localId || typeof window === "undefined" || !window.__nubeActiva || typeof window.getSupabaseClient !== "function") return;
+    let vigente = true;
+    (async () => {
+      try {
+        const supabase = await window.getSupabaseClient();
+        const { data, error } = await supabase.rpc("abc_reembolsos_por_venta", { p_empresa_id: empresaId, p_local_id: localId });
+        if (error) throw error;
+        const mapa = reembolsoPorVentaDeRespuestaTpv(data);
+        const firma = JSON.stringify(mapa);
+        if (vigente && firma !== reembolsosFirmaRef.current) {
+          reembolsosFirmaRef.current = firma;
+          setReembolsosPorVentaTpv(mapa);
+        }
+      } catch (error) {
+      }
+    })();
+    return () => {
+      vigente = false;
+    };
+  }, [configEmpresa?.id, local?.id, historialVentasAbierto, (movimientos || []).length]);
+  const [operacionesCuentaAbiertas, setOperacionesCuentaAbiertas] = (0, import_react4.useState)(() => leerOperacionesCuentaTpv(configEmpresa?.id, local?.id));
+  (0, import_react4.useEffect)(() => {
+    if (leerOperacionesCuentaTpv(configEmpresa?.id, local?.id)) setOperacionesCuentaAbiertas(true);
+  }, [configEmpresa?.id, local?.id]);
   function datoCorreccionHistorialPM09(m22, clave) {
     if (!m22) return void 0;
     if (m22[clave] !== void 0 && m22[clave] !== null) return m22[clave];
@@ -126830,7 +127378,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         const iva = Number(datoCorreccionHistorialPM09(m22, "ivaVentaAplicado")) || 0;
         return a22 + cantidad * ingreso * (1 + iva / 100);
       }, 0);
-      const importeNetoGestion = anulada ? 0 : Math.max(0, importeOriginal - importeAsociadoDevuelto);
+      const ventaFiscalRefReembolso = lineas.find((l22) => l22.ventaFiscalId)?.ventaFiscalId || ventaId;
+      const reembolsadoEconomico = typeof reembolsosPorVentaTpv !== "undefined" && reembolsosPorVentaTpv ? Math.max(0, Number(reembolsosPorVentaTpv[ventaFiscalRefReembolso]) || 0) : 0;
+      const importeNetoGestion = anulada ? 0 : Math.max(0, importeOriginal - Math.max(importeAsociadoDevuelto, reembolsadoEconomico));
       const reembolsoAcumulado = devolucionesCliente.reduce((a22, m22) => a22 + Math.max(0, Number(datoCorreccionHistorialPM09(m22, "reembolso")) || 0), 0);
       const estado = anulada ? "ANULADA" : unidadesDevueltas <= 1e-9 ? "ACTIVA" : unidadesOriginales > 0 && unidadesDevueltas >= unidadesOriginales - 1e-9 ? "DEVUELTA_TOTAL" : "DEVUELTA_PARCIAL";
       const trazabilidad = correcciones.map((m22) => {
@@ -126852,9 +127402,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const usuario = lineas[0]?.usuario || lineas[0]?.empleado || "";
       const referencia = `V-${(fecha || "SINFECHA").replaceAll("-", "")}-${String(ventaId).replace(/[^a-zA-Z0-9]/g, "").slice(-6).toUpperCase()}`;
       const lineaConTicket = lineas.find((l22) => l22.numeroFiscal || l22.numeroFactura || l22.qrFiscal || l22.cuentaId || l22.ventaFiscalId) || lineas[0];
-      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineaConTicket?.mesa || lineaConTicket?.mesaNumero || "", zona: lineaConTicket?.zona || lineaConTicket?.sala || lineaConTicket?.ubicacion || "", cuentaId: lineaConTicket?.cuentaId || null, checkoutId: lineaConTicket?.checkoutId || null, ventaFiscalId: lineaConTicket?.ventaFiscalId || null, numeroFiscal: lineaConTicket?.numeroFiscal || lineaConTicket?.numeroFactura || "", qrFiscal: lineaConTicket?.qrFiscal || null, entregado: lineaConTicket?.importeEntregado ?? lineaConTicket?.entregado ?? null, cambio: lineaConTicket?.cambioEntregado ?? lineaConTicket?.cambio ?? null };
+      return { ventaId, referencia, fecha, marcaTiempo, lineas, resumen: nombres.slice(0, 3).join(", ") + (nombres.length > 3 ? ` y ${nombres.length - 3} más` : ""), importe: importeOriginal, importeOriginal, importeNetoGestion, importeAsociadoDevuelto, reembolsoAcumulado, reembolsadoEconomico, reembolsadaTotal: !anulada && reembolsadoEconomico > 0 && reembolsadoEconomico >= importeOriginal - 0.005, unidadesOriginales, unidadesDevueltas, unidadesNetas, estado, trazabilidad, medioPago: medioPago2, detallePago, usuario, anulada, mesa: lineaConTicket?.mesa || lineaConTicket?.mesaNumero || "", zona: lineaConTicket?.zona || lineaConTicket?.sala || lineaConTicket?.ubicacion || "", cuentaId: lineaConTicket?.cuentaId || null, checkoutId: lineaConTicket?.checkoutId || null, ventaFiscalId: lineaConTicket?.ventaFiscalId || null, numeroFiscal: lineaConTicket?.numeroFiscal || lineaConTicket?.numeroFactura || "", qrFiscal: lineaConTicket?.qrFiscal || null, entregado: lineaConTicket?.importeEntregado ?? lineaConTicket?.entregado ?? null, cambio: lineaConTicket?.cambioEntregado ?? lineaConTicket?.cambio ?? null };
     }).sort((a22, b2) => `${b2.fecha} ${b2.marcaTiempo}`.localeCompare(`${a22.fecha} ${a22.marcaTiempo}`));
-  }, [movimientos, productos]);
+  }, [movimientos, productos, reembolsosPorVentaTpv]);
   const ventasFiltradas = (0, import_react4.useMemo)(() => {
     const q2 = filtroVentasTexto.trim().toLowerCase();
     return historialVentas.filter((v22) => {
@@ -126872,7 +127422,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     });
   }, [historialVentas, filtroVentasTexto, filtroVentasDesde, filtroVentasHasta, filtroVentasPago, filtroVentasEstado, productos]);
   const resumenHistorialVentas = (0, import_react4.useMemo)(() => {
-    const vigentes = ventasFiltradas.filter((v22) => v22.estado === "ACTIVA" || v22.estado === "DEVUELTA_PARCIAL");
+    const vigentes = ventasFiltradas.filter((v22) => (v22.estado === "ACTIVA" || v22.estado === "DEVUELTA_PARCIAL") && !v22.reembolsadaTotal);
     const total2 = ventasFiltradas.reduce((a22, v22) => a22 + (Number(v22.importeNetoGestion) || 0), 0);
     return { n: ventasFiltradas.length, activas: vigentes.length, total: total2, ticketMedio: vigentes.length ? total2 / vigentes.length : 0 };
   }, [ventasFiltradas]);
@@ -127004,6 +127554,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           h3("div", { className: "mt-1 font-semibold" }, `LOCAL: ${nombreLocal}`)
         ),
         h3("div", { className: "text-center text-[12px] font-bold my-3" }, tieneNumeroFiscal && estadoNifEmpresa === "sin_verificar" ? "FACTURA SIMPLIFICADA" : "TICKET / RECIBO INTERNO"),
+        v22.reembolsadoEconomico > 0 ? h3("div", { className: "text-center text-[11px] font-bold rounded-lg py-2 mb-3", "data-ticket-reembolsada": "1", style: { background: C2.amberSoft || C2.surface2, color: C2.amber || C2.ink } }, etiquetaReembolsoVentaTpv(v22)) : null,
         v22.estado !== "ACTIVA" ? h3("div", { className: "text-center text-[11px] font-bold rounded-lg py-2 mb-3", style: { background: v22.estado === "ANULADA" ? C2.redSoft || "#FCE8E6" : C2.amberSoft || C2.surface2, color: colorEstadoVentaHistorialPM09(v22.estado) } }, etiquetaEstadoVentaHistorialPM09(v22.estado)) : null,
         h3(
           "div",
@@ -127127,7 +127678,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         h3(
           "div",
           { className: "flex items-center justify-between gap-2" },
-          h3("div", null, h3("div", { className: "text-[12.5px] font-semibold" }, v23.referencia, h3(Pill2, { color: colorEstadoVentaHistorialPM09(v23.estado) }, etiquetaEstadoVentaHistorialPM09(v23.estado))), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${v23.fecha || "Sin fecha"} \xB7 ${v23.medioPago}${v23.usuario ? " \xB7 " + v23.usuario : ""}`)),
+          h3("div", null, h3("div", { className: "text-[12.5px] font-semibold" }, v23.referencia, h3(Pill2, { color: colorEstadoVentaHistorialPM09(v23.estado) }, etiquetaEstadoVentaHistorialPM09(v23.estado)), etiquetaReembolsoVentaTpv(v23) ? h3(Pill2, { color: C2.amber || C2.inkSoft }, etiquetaReembolsoVentaTpv(v23)) : null), h3("div", { className: "text-[10.5px]", style: { color: C2.inkSoft } }, `${v23.fecha || "Sin fecha"} \xB7 ${v23.medioPago}${v23.usuario ? " \xB7 " + v23.usuario : ""}`)),
           h3("div", { className: "text-right" }, h3("div", { className: "mono font-bold text-[13px]" }, "\u20AC", fmt(v23.importeNetoGestion)), v23.estado !== "ACTIVA" ? h3("div", { className: "text-[9.5px]", style: { color: C2.inkSoft } }, `Original \u20AC${fmt(v23.importeOriginal)}`) : null)
         ),
         h3("div", { className: "text-[11px] mt-1", style: { color: C2.inkSoft } }, v23.resumen)
@@ -127173,7 +127724,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const detalle = h3(
       Modal,
       { onClose: () => setVentaDetalle(null), title: `Venta ${v22.referencia}` },
-      h3("div", { className: "flex items-center justify-between mb-3" }, h3("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, `${v22.fecha || "Sin fecha"} \xB7 ${v22.medioPago}`), h3(Pill2, { color: colorEstadoVentaHistorialPM09(v22.estado) }, etiquetaEstadoVentaHistorialPM09(v22.estado))),
+      h3("div", { className: "flex items-center justify-between mb-3" }, h3("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, `${v22.fecha || "Sin fecha"} \xB7 ${v22.medioPago}`), h3("div", { className: "flex gap-1.5 flex-wrap justify-end" }, h3(Pill2, { color: colorEstadoVentaHistorialPM09(v22.estado) }, etiquetaEstadoVentaHistorialPM09(v22.estado)), etiquetaReembolsoVentaTpv(v22) ? h3(Pill2, { color: C2.amber || C2.inkSoft }, etiquetaReembolsoVentaTpv(v22)) : null)),
       h3("div", { className: "space-y-2 mb-3" }, v22.lineas.map((l22) => {
         const p22 = productos.find((x3) => x3.id === l22.productoId);
         const cant = Math.abs(cantidadConSigno(l22));
@@ -127182,7 +127733,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       })),
       h3("div", { className: "py-2 mb-2", style: { borderTop: `1px solid ${C2.line}` } },
         h3("div", { className: "flex justify-between font-bold" }, h3("span", null, "Total original"), h3("span", { className: "mono" }, "\u20AC", fmt(v22.importeOriginal))),
-        v22.estado !== "ACTIVA" ? h3("div", { className: "flex justify-between mt-1 text-[12px]" }, h3("span", null, "Neto de gestión"), h3("span", { className: "mono font-semibold" }, "\u20AC", fmt(v22.importeNetoGestion))) : null,
+        v22.reembolsadoEconomico > 0 ? h3("div", { className: "flex justify-between mt-1 text-[12px]", "data-venta-reembolso-economico": "1" }, h3("span", null, "Reembolsado (dinero devuelto)"), h3("span", { className: "mono font-semibold" }, "\u20AC", fmt(v22.reembolsadoEconomico))) : null,
+        (v22.estado !== "ACTIVA" || v22.reembolsadoEconomico > 0) ? h3("div", { className: "flex justify-between mt-1 text-[12px]" }, h3("span", null, "Neto de gestión"), h3("span", { className: "mono font-semibold" }, "\u20AC", fmt(v22.importeNetoGestion))) : null,
         v22.unidadesDevueltas > 0 ? h3("div", { className: "flex justify-between mt-1 text-[11px]", style: { color: C2.inkSoft } }, h3("span", null, `Unidades: ${fmt(v22.unidadesNetas)} netas de ${fmt(v22.unidadesOriginales)}`), h3("span", null, `Reembolso: \u20AC${fmt(v22.reembolsoAcumulado)}`)) : null
       ),
       v22.trazabilidad && v22.trazabilidad.length ? h3("div", { className: "rounded-lg p-2.5 mb-3", style: { background: C2.surface2 || C2.surface, border: `1px solid ${C2.line}` } },
@@ -127196,10 +127748,10 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       v22.medioPago === "Mixto" && (v22.detallePago.efectivo > 0 || v22.detallePago.tarjeta > 0) ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, `Tarjeta \u20AC${fmt(v22.detallePago.tarjeta)} + Efectivo \u20AC${fmt(v22.detallePago.efectivo)}`) : null,
       h3("div", { className: "text-[10px] mb-3 break-all", style: { color: C2.inkSoft } }, `ID interno: ${v22.ventaId}`),
       h3("div", { className: "flex gap-2 flex-wrap mb-3" }, h3(Btn, { onClick: () => abrirTicketHistorial(v22) }, "Ver ticket / reimprimir")),
-      v22.estado === "ACTIVA" && anularVenta ? h3(Btn, { variant: "danger", onClick: () => {
+      v22.estado === "ACTIVA" && anularVenta && puedeAnularVenta ? h3(Btn, { variant: "danger", onClick: () => {
         setVentaDetalle(null);
         setConfirmAnular(v22);
-      } }, "Anular venta") : null
+      } }, "Anular venta") : v22.estado === "ACTIVA" && anularVenta ? h3("div", { role: "status", "data-anular-sin-permiso": "1", className: "text-[11.5px]", style: { color: C2.inkSoft } }, "Solo el Propietario y el Encargado pueden anular una venta.") : null
     );
     return h3(import_react4.default.Fragment, null, controles, detalle, renderTicketVenta());
   }
@@ -127248,7 +127800,11 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       ),
       h3("div", { className: "flex gap-2 flex-wrap" },
         h3(Btn, { small: true, onClick: () => setHistorialVentasAbierto(true), "aria-label": "Abrir historial completo de ventas" }, "Ver historial completo"),
-        h3(Btn, { small: true, variant: "ghost", onClick: () => setOperacionesCuentaAbiertas((actual) => !actual), "aria-expanded": operacionesCuentaAbiertas }, operacionesCuentaAbiertas ? "Ocultar operaciones de cuenta" : "Mostrar operaciones de cuenta")
+        h3(Btn, { small: true, variant: "ghost", onClick: () => {
+          const nuevo = !operacionesCuentaAbiertas;
+          setOperacionesCuentaAbiertas(nuevo);
+          guardarOperacionesCuentaTpv(configEmpresa?.id, local?.id, nuevo);
+        }, "aria-expanded": operacionesCuentaAbiertas }, operacionesCuentaAbiertas ? "Ocultar operaciones de cuenta" : "Mostrar operaciones de cuenta")
       )
     );
   }
@@ -127506,6 +128062,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   const [cuentaDestinoA08, setCuentaDestinoA08] = (0, import_react4.useState)("");
   const [comensalRepartoA08, setComensalRepartoA08] = (0, import_react4.useState)("");
   const [moviendoLineaA08, setMoviendoLineaA08] = (0, import_react4.useState)(false);
+  const puedeDeshacerRepartoA08 = puedeLimpiarCuentasA06 === true; // H-47: mismo criterio que el cierre de cuentas (Propietario o Encargado con la nube activa); es la capacidad ABC_REPARTO_REVERTIR por defecto
   const [errorRepartoA08, setErrorRepartoA08] = (0, import_react4.useState)("");
   const [mensajeRepartoA08, setMensajeRepartoA08] = (0, import_react4.useState)("");
   const [cuentasAparcadasA06, setCuentasAparcadasA06] = (0, import_react4.useState)(null);
@@ -127570,6 +128127,40 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     };
     window.addEventListener("keydown", alPulsar);
     return () => window.removeEventListener("keydown", alPulsar);
+  }, [capaCajaOrbita]);
+  // H-03 (auditoria del TPV): la capa abierta se comporta como un dialogo. El foco entra en «Volver al pedido», Tab no sale de la
+  // capa y, al cerrarla, el foco vuelve al boton que la abrio (o al buscador si ese boton ya no existe).
+  (0, import_react4.useEffect)(() => {
+    if (!capaCajaOrbita || typeof document === "undefined") return;
+    const origen = document.activeElement;
+    const capaAbierta = () => document.querySelector('.tpv-capa[data-abierta="1"]');
+    capaAbierta()?.querySelector(".tpv-capa-volver")?.focus();
+    function alTabular(evento) {
+      if (evento.key !== "Tab" || document.querySelector(".la-ui-modal-backdrop")) return;
+      const capa = capaAbierta();
+      if (!capa) return;
+      const enfocables = Array.from(capa.querySelectorAll('a[href], button, input, select, textarea, [tabindex]')).filter((el) => !el.disabled && el.getAttribute("tabindex") !== "-1" && el.type !== "hidden" && el.getClientRects().length > 0);
+      if (enfocables.length === 0) return;
+      const primero = enfocables[0];
+      const ultimo = enfocables[enfocables.length - 1];
+      const actual = document.activeElement;
+      if (!capa.contains(actual)) {
+        evento.preventDefault();
+        primero.focus();
+      } else if (evento.shiftKey && actual === primero) {
+        evento.preventDefault();
+        ultimo.focus();
+      } else if (!evento.shiftKey && actual === ultimo) {
+        evento.preventDefault();
+        primero.focus();
+      }
+    }
+    document.addEventListener("keydown", alTabular, true);
+    return () => {
+      document.removeEventListener("keydown", alTabular, true);
+      const destino = origen && origen !== document.body && document.contains(origen) ? origen : document.querySelector("[data-tpv-buscar] input");
+      destino?.focus?.();
+    };
   }, [capaCajaOrbita]);
   (0, import_react4.useEffect)(() => {
     if (typeof document === "undefined") return;
@@ -127981,6 +128572,33 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const modalidad = String(cuenta?.modalidad || "TPV");
     const total = Number(cuenta?.total_comercial) || 0;
     return sitio + " · " + modalidad + " · €" + fmt(total);
+  }
+
+  async function deshacerRepartoLineaA08(item) {
+    if (typeof moverCantidadLineaCuentaA08 !== "function" || moviendoLineaA08 || !puedeDeshacerRepartoA08) return;
+    const linea = item?.linea;
+    const destino = item?.destino;
+    const origenVersion = estadoRepartoA08?.origen?.version;
+    if (!linea || !destino || !(item.devolvible > 0)) {
+      setErrorRepartoA08("La cuenta de origen ya no admite recibir el producto (cerrada o de otro día), así que no se puede devolver desde aquí.");
+      return;
+    }
+    setMoviendoLineaA08(true);
+    setErrorRepartoA08("");
+    setMensajeRepartoA08("");
+    const resultado = await moverCantidadLineaCuentaA08(linea.source_line_id, item.devolvible, destino.cuenta_id, origenVersion, destino.version, linea.linea_version, "");
+    setMoviendoLineaA08(false);
+    if (!resultado?.ok) {
+      if (resultado?.conflict && typeof listarCuentasRepartoA08 === "function") {
+        const fresco = await listarCuentasRepartoA08();
+        if (fresco?.ok) aplicarEstadoRepartoA08(fresco);
+      }
+      setErrorRepartoA08(resultado?.error || "No se pudo deshacer el reparto.");
+      return;
+    }
+    if (resultado.cuenta?.pedidoId) setPedidoOperativoA05(resultado.cuenta);
+    if (resultado.estado?.ok) aplicarEstadoRepartoA08(resultado.estado);
+    setMensajeRepartoA08("Reparto deshecho: el producto ha vuelto a su cuenta de origen. Ambas cuentas se han recargado desde el servidor.");
   }
 
   async function listarDescuentosAplicadosA09() {
@@ -128411,7 +129029,8 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       const hueco = parseFloat(getComputedStyle(el).rowGap) || 8;
       /* Alto mínimo de una fila: lo que necesita la tarjeta más alta (nombre en
          dos líneas, precio y «sin stock»), medido en vivo el 25/11/2026. */
-      const minimo = 96;
+      /* H-11 (auditoria del TPV): por debajo de 360 px de ancho (320 × 640) la tarjeta compacta mide 68 px y caben mas filas. */
+      const minimo = typeof window !== "undefined" && window.innerWidth < 360 ? 68 : 96;
       const filas = Math.max(1, Math.floor((alto + hueco) / (minimo + hueco)));
       setFilasRejillaCaja((previas) => previas === filas ? previas : filas);
     };
@@ -128420,7 +129039,28 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     observador.observe(el);
     return () => observador.disconnect();
   }, [modoCajaTpv, vendibles.length > 0]);
-  const porPaginaRejilla = Math.max(1, columnasRejilla * (modoCajaTpv && filasRejillaCaja ? filasRejillaCaja : FILAS_REJILLA_TPV));
+  /* H-16 (auditoria del TPV): fuera del modo caja el numero de columnas salia del ancho de la VENTANA (5 desde 1280 px), pero en Orbita la zona de productos
+     es mucho mas estrecha (comparte espacio con el lateral y con el ticket): las tarjetas quedaban de ~135 px y los nombres se salian. Se calcula con el ancho
+     real de la rejilla (tarjetas de 140 px como minimo) y la paginacion usa el mismo numero. En modo caja la rejilla sigue como estaba. */
+  const [columnasContenedorTpv, setColumnasContenedorTpv] = (0, import_react4.useState)(null);
+  (0, import_react4.useEffect)(() => {
+    const el = refRejillaTpv.current;
+    if (modoCajaTpv || !el || typeof ResizeObserver !== "function") {
+      setColumnasContenedorTpv(null);
+      return;
+    }
+    const medir = () => {
+      const hueco = parseFloat(getComputedStyle(el).columnGap) || 8;
+      const columnas = Math.max(2, Math.min(6, Math.floor((el.clientWidth + hueco) / (140 + hueco))));
+      setColumnasContenedorTpv((previas) => previas === columnas ? previas : columnas);
+    };
+    medir();
+    const observador = new ResizeObserver(medir);
+    observador.observe(el);
+    return () => observador.disconnect();
+  }, [modoCajaTpv, vendibles.length > 0]);
+  const columnasPorPaginaTpv = !modoCajaTpv && columnasContenedorTpv ? columnasContenedorTpv : columnasRejilla;
+  const porPaginaRejilla = Math.max(1, columnasPorPaginaTpv * (modoCajaTpv && filasRejillaCaja ? filasRejillaCaja : FILAS_REJILLA_TPV));
   const [paginaRejilla, setPaginaRejilla] = (0, import_react4.useState)(0);
   const paginasRejilla = Math.max(1, Math.ceil(visibles.length / porPaginaRejilla));
   // Si cambia el filtro, la categoria o el ancho, la pagina actual puede dejar
@@ -128475,6 +129115,46 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const resto = disponibles.filter((c22) => !puestas.includes(c22));
     return ["Todos", ...puestas, ...resto];
   }, [categorias, presentacionCategorias]);
+  // H-09 (auditoria del TPV, E5): en el modo caja de Órbita las categorias no se desplazan: se reparten en paginas segun el ancho de cada
+  // una y se avanza con flechas de 44 × 44 px. Fuera de ese modo la fila es la de siempre.
+  const refCategoriasTpv = (0, import_react4.useRef)(null);
+  const [paginasCategoriasCaja, setPaginasCategoriasCaja] = (0, import_react4.useState)([0]);
+  const [paginaCategoriasCaja, setPaginaCategoriasCaja] = (0, import_react4.useState)(0);
+  const paginaCategoriasSegura = Math.min(paginaCategoriasCaja, paginasCategoriasCaja.length - 1);
+  (0, import_react4.useEffect)(() => {
+    const lista = refCategoriasTpv.current;
+    if (!modoCajaTpv || leerDisenoNavegacion() !== "orbita" || !lista) {
+      setPaginasCategoriasCaja((previas) => previas.length === 1 && previas[0] === 0 ? previas : [0]);
+      return;
+    }
+    const medir = () => {
+      const hueco = parseFloat(getComputedStyle(lista).columnGap) || 8;
+      const inicios = paginasCategoriasTpv(Array.from(lista.children).map((boton) => boton.offsetWidth + hueco), lista.clientWidth + hueco);
+      const nuevas = inicios.length > 0 ? inicios : [0];
+      setPaginasCategoriasCaja((previas) => previas.length === nuevas.length && previas.every((valor, i22) => valor === nuevas[i22]) ? previas : nuevas);
+    };
+    medir();
+    if (typeof ResizeObserver !== "function") return;
+    const observador = new ResizeObserver(medir);
+    observador.observe(lista);
+    Array.from(lista.children).forEach((boton) => observador.observe(boton));
+    return () => observador.disconnect();
+  }, [modoCajaTpv, categoriasTpvOrdenadas, vendibles.length > 0]);
+  (0, import_react4.useEffect)(() => {
+    const posicion = categoriasTpvOrdenadas.indexOf(categoria);
+    if (posicion < 0) return;
+    let pagina = 0;
+    paginasCategoriasCaja.forEach((inicio, p22) => {
+      if (posicion >= inicio) pagina = p22;
+    });
+    setPaginaCategoriasCaja(pagina);
+  }, [categoria, categoriasTpvOrdenadas, paginasCategoriasCaja]);
+  (0, import_react4.useEffect)(() => {
+    const lista = refCategoriasTpv.current;
+    if (!lista || !modoCajaTpv || leerDisenoNavegacion() !== "orbita") return;
+    const primera = lista.children[paginasCategoriasCaja[paginaCategoriasSegura]];
+    lista.scrollLeft = primera ? primera.offsetLeft : 0;
+  }, [modoCajaTpv, paginasCategoriasCaja, paginaCategoriasSegura, categoriasTpvOrdenadas]);
   function abrirEditorCategorias() {
     const guardadas = presentacionCategorias.categorias.map((f2) => String(f2?.categoria || "")).filter(Boolean);
     const disponibles = categorias.filter((c22) => c22 !== "Todos");
@@ -128536,6 +129216,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
   }
   function manejarEnterEscaneo(e2) {
     if (e2.key !== "Enter") return;
+    if (capaCajaOrbita) return;
     const q2 = busqueda.trim().toLowerCase();
     if (!q2) return;
     const exacto = vendibles.find((p22) => (p22.codigoBarras || "").toLowerCase() === q2);
@@ -128792,6 +129473,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     function alPulsar(evento) {
       if (evento.key === "F2") {
         evento.preventDefault();
+        if (capaCajaOrbita) return;
         inputEscaneoRef.current?.focus();
         inputEscaneoRef.current?.select?.();
         return;
@@ -128801,20 +129483,26 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       if (escribiendo) return;
       if (evento.key === "F9") {
         evento.preventDefault();
+        if (capaCajaOrbita) return;
         if (lineasCarrito.length > 0 && !enviandoVenta && !cargandoA04) confirmarCobro();
       }
     }
     window.addEventListener("keydown", alPulsar);
     return () => window.removeEventListener("keydown", alPulsar);
-  }, [lineasCarrito.length, enviandoVenta, cargandoA04, confirmarCobro]);
+  }, [lineasCarrito.length, enviandoVenta, cargandoA04, confirmarCobro, capaCajaOrbita]);
   const cantidadesProductoA04 = lineasCarrito.reduce((mapa, l22) => {
     mapa.set(l22.productoId, (mapa.get(l22.productoId) || 0) + l22.cantidadNum);
     return mapa;
   }, /* @__PURE__ */ new Map());
+  // Productos locales (sin servidor): el aviso de siempre. Productos del servidor (H-15, E2): se avisa del reparto entre piso y almacen.
   const faltaStock = [...cantidadesProductoA04.entries()].map(([productoId, cantidadNum]) => {
     const producto = productos.find((p22) => p22.id === productoId);
     return producto ? { producto, cantidadNum } : null;
-  }).filter((l22) => l22 && l22.cantidadNum > (l22.producto._pm07Servidor ? Number(l22.producto.stock) || 0 : Number(l22.producto.stockPisoVenta) || 0));
+  }).filter((l22) => l22 && !l22.producto._pm07Servidor && l22.cantidadNum > (Number(l22.producto.stockPisoVenta) || 0));
+  const avisosStockServidorTpv = [...cantidadesProductoA04.entries()].map(([productoId, cantidadNum]) => {
+    const producto = productos.find((p22) => p22.id === productoId);
+    return producto && producto._pm07Servidor ? { producto, reparto: repartoStockDeVentaTpv(producto, cantidadNum) } : null;
+  }).filter((l22) => l22 && (l22.reparto.delAlmacen > 0 || l22.reparto.sinStock > 0));
   const restoEfectivoMixto = medioPago === "Mixto" ? Math.max(0, total - (Number(importeTarjetaMixto) || 0)) : null;
   const baseParaCambio = medioPago === "Mixto" ? restoEfectivoMixto : total;
   const cambio = (medioPago === "Efectivo" || medioPago === "Mixto") && efectivoRecibido !== "" ? Number(efectivoRecibido) - baseParaCambio : null;
@@ -129041,6 +129729,32 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     sincronizarImporteCobroF4(resultado);
     setMensajeCobroF4(resultado.mensaje || (medio === "EFECTIVO" ? "Cobro en efectivo confirmado por el servidor." : "Intento de tarjeta registrado."));
     if (medio === "EFECTIVO") setPropinaCambioF4(false);
+    // H-51: si el cobro se completa desde aquí (p. ej. cerrar la cuenta ya pagada), el aviso de la venta rápida deja de describir la situación.
+    if (String(resultado.cuentaEstado || "").toUpperCase() === "CERRADA") {
+      setErrorVenta("");
+      setResultadoVentaRapida(null);
+    }
+  }
+  // H-27: resolver el intento de tarjeta simulado desde la pantalla (solo en QA).
+  async function resolverTarjetaQaUI(intento, resultado) {
+    if (procesandoCobroF4 || typeof resolverTarjetaSimuladaQa !== "function") return;
+    setProcesandoCobroF4(true);
+    setErrorCobroF4("");
+    setMensajeCobroF4("");
+    const r2 = await resolverTarjetaSimuladaQa({ intentoId: intento.id, importe: intento.requested_amount, resultado, motivo: "Rechazo desde la interfaz de QA" });
+    if (!r2?.ok) {
+      setProcesandoCobroF4(false);
+      setErrorCobroF4(r2?.error || "No se pudo resolver la tarjeta simulada.");
+      return;
+    }
+    const refrescado = typeof leerEstadoCobroF4 === "function" ? await leerEstadoCobroF4() : null;
+    setProcesandoCobroF4(false);
+    if (refrescado?.ok) {
+      setEstadoCobroF4(await adjuntarEstadoFiscalC07D(refrescado));
+      sincronizarImporteCobroF4(refrescado);
+    }
+    setMensajeCobroF4(resultado === "APROBAR" ? "Tarjeta simulada aprobada en QA. Cierra la cuenta pagada para emitir el documento." : "Tarjeta simulada rechazada en QA. Puedes volver a cobrar.");
+    setErrorVenta("");
   }
   async function recuperarCobroF4UI() {
     if (procesandoCobroF4 || typeof reintentarCobroF4 !== "function") return;
@@ -129188,6 +129902,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const saldoVisible = tieneCheckout ? Number(estado?.saldo) || 0 : Math.max(0,totalPedido-confirmadoVisible);
     const ultimoIntento = Array.isArray(estado?.intentos) ? estado.intentos[0] : null;
     const bloqueado = !!estado?.cobroIncierto;
+    // H-27: los intentos simulados de tarjeta o Bizum que esperan resolución; solo se ofrecen en la vista previa de QA.
+    const tarjetaSimuladaQaDisponible = typeof resolverTarjetaSimuladaQa === "function" && typeof window !== "undefined" && window.__modoPruebasQA === true && /^(?:localhost|127\.0\.0\.1|deploy-preview-\d+--|[a-f0-9]{24}--chic-entremet-9107cf\.netlify\.app$)/iu.test(window.location.hostname || "");
+    const intentosSimuladosPendientes = tarjetaSimuladaQaDisponible ? (Array.isArray(estado?.intentos) ? estado.intentos : []).filter((intento2) => String(intento2.estado || "") === "PENDIENTE" && ["TARJETA", "BIZUM"].includes(String((Array.isArray(estado?.pagos) ? estado.pagos : []).find((pago2) => String(pago2.id) === String(intento2.pago_id))?.medio || "").toUpperCase())) : [];
     const importeVisible = importeCobroF4 === "" ? saldoVisible : Number(importeCobroF4);
     const recibidoVisible = efectivoRecibidoCobroF4 === "" ? null : Number(efectivoRecibidoCobroF4);
     const cambioVisible = recibidoVisible !== null && Number.isFinite(recibidoVisible) && Number.isFinite(importeVisible)
@@ -129321,6 +130038,15 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement(Btn, { variant: "ghost", onClick: () => setRectificacionAbiertaP1(false), disabled: procesandoRectificacionP1 }, "Cancelar")
         )
       ) : null,
+      tarjetaSimuladaQaDisponible && intentosSimuladosPendientes.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2 p-2 rounded-lg", "data-h27-tarjeta-simulada": String(intentosSimuladosPendientes.length), style: { background: C2.amberSoft } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Tarjeta simulada pendiente (solo QA)"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-2", style: { color: C2.inkSoft } }, "No hay terminal de tarjeta real en QA: el Propietario resuelve aquí el intento. El servidor solo lo permite en el local de pruebas."),
+        intentosSimuladosPendientes.map((intento2) => /* @__PURE__ */ import_react4.default.createElement("div", { key: String(intento2.id), className: "flex items-center gap-2 flex-wrap mb-1" },
+          /* @__PURE__ */ import_react4.default.createElement("span", { className: "text-[11px]" }, `€${Number(intento2.requested_amount || 0).toFixed(2)}`),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: () => resolverTarjetaQaUI(intento2, "APROBAR"), disabled: procesandoCobroF4 }, "Aprobar tarjeta simulada"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => resolverTarjetaQaUI(intento2, "RECHAZAR"), disabled: procesandoCobroF4 }, "Rechazar tarjeta simulada")
+        ))
+      ) : null,
       estado?.pendienteLocal ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mt-2" },
         /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: recuperarCobroF4UI, disabled: procesandoCobroF4 }, "Recuperar/reintentar mismo intento")
       ) : null
@@ -129453,6 +130179,9 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         lineas: Array.isArray(resultado.lineas) ? resultado.lineas : actual.lineas
       } : actual);
       setPedidoOperativoA05(resultado);
+      // H-22: en venta rápida el cobro de una cuenta enviada vive en la vista de Sala. Se lleva allí en vez de dejar
+      // «Venta rápida en curso» sin cobro y obligar a retomar la cuenta desde «Buscar cuentas abiertas».
+      if (modoTPV === "RAPIDA") setModoTPV("SALA");
     } finally {
       setProcesandoA05(false);
     }
@@ -129659,6 +130388,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setDescuentoAbiertoA09(false), disabled: procesandoDescuentoA09 }, "Cerrar")
         )
       ),
+      lineasEnBorradorParaDescuentoA09(pedido) > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", "data-descuento-borrador": "1", className: "text-[11px] mb-2 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, "Esta cuenta tiene " + lineasEnBorradorParaDescuentoA09(pedido) + (lineasEnBorradorParaDescuentoA09(pedido) === 1 ? " producto" : " productos") + " en borrador (sin enviar). El servidor no aplica descuentos mientras haya productos en borrador: envía o cancela el pedido antes.") : null,
       /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Tipo" },
         /* @__PURE__ */ import_react4.default.createElement("select", { value: tipoDescuentoA09, onChange: (e2) => setTipoDescuentoA09(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } },
           /* @__PURE__ */ import_react4.default.createElement("option", { value: "PERCENT" }, "Porcentaje"),
@@ -129754,6 +130484,24 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     );
   }
 
+  // H-28 / H-29: confirmacion y resultado de «Cerrar cuentas sin actividad».
+  const [confirmarLimpiezaA06, setConfirmarLimpiezaA06] = (0, import_react4.useState)(false);
+  const [limpiandoA06, setLimpiandoA06] = (0, import_react4.useState)(false);
+  async function cerrarCuentasSinActividadDesdePantallaA06() {
+    if (limpiandoA06 || typeof cerrarCuentasSinActividadA06 !== "function") return;
+    setLimpiandoA06(true);
+    setErrorAparcadasA06("");
+    setMensajeAparcadasA06("");
+    const resultado = await cerrarCuentasSinActividadA06();
+    setLimpiandoA06(false);
+    setConfirmarLimpiezaA06(false);
+    if (!resultado?.ok) {
+      setErrorAparcadasA06(resultado?.error || "No se pudieron cerrar las cuentas.");
+      return;
+    }
+    await cargarCuentasAparcadasA06();
+    setMensajeAparcadasA06(resultado.cerradas > 0 ? `Se ${resultado.cerradas === 1 ? "cerr\u00f3 1 cuenta" : "cerraron " + resultado.cerradas + " cuentas"} sin actividad. ${resultado.omitidas > 0 ? resultado.omitidas + " siguen abiertas: las que tienen un pedido sin cobrar, dinero pendiente o un reparto hay que resolverlas una a una, y las de hoy se pueden cerrar cuando acabe el d\u00eda operativo." : ""}` : `No hab\u00eda ninguna cuenta que cerrar de forma segura. ${resultado.omitidas > 0 ? resultado.omitidas + " siguen abiertas: las que tienen un pedido sin cobrar, dinero pendiente o un reparto hay que resolverlas una a una, y las de hoy se pueden cerrar cuando acabe el d\u00eda operativo." : ""}`);
+  }
   async function cargarCuentasAparcadasA06() {
     if (typeof listarCuentasAparcadasA06 !== "function") return;
     setCargandoAparcadasA06(true);
@@ -129815,13 +130563,24 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-semibold" }, "Cuentas abiertas y aparcadas"),
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mt-1", style: { color: C2.inkSoft } }, "Todo lo que sigue abierto en este local. La lista la lleva el servidor; aqu\xED se ve y, cuando se puede, se retoma.")
         ),
-        /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: cargarCuentasAparcadasA06, disabled: cargandoAparcadasA06 || !!retomandoCuentaA06 }, cargandoAparcadasA06 ? (cargado ? "Actualizando\u2026" : "Buscando\u2026") : (cargado ? "Actualizar" : "Buscar cuentas abiertas"))
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 shrink-0" },
+          cargado && cuentas.length > 0 && puedeLimpiarCuentasA06 && typeof cerrarCuentasSinActividadA06 === "function" ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarLimpiezaA06(true), disabled: cargandoAparcadasA06 || limpiandoA06 || !!retomandoCuentaA06 }, "Cerrar cuentas sin actividad") : null,
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, onClick: cargarCuentasAparcadasA06, disabled: cargandoAparcadasA06 || !!retomandoCuentaA06 }, cargandoAparcadasA06 ? (cargado ? "Actualizando\u2026" : "Buscando\u2026") : (cargado ? "Actualizar" : "Buscar cuentas abiertas"))
+        )
       ),
+      confirmarLimpiezaA06 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alertdialog", "aria-label": "Cerrar cuentas sin actividad", "data-cerrar-cuentas-confirmacion": "1", className: "text-[11.5px] mt-3 p-3 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "font-semibold mb-1" }, "\u00bfCerrar las cuentas sin actividad?"),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-2" }, "Solo se cierran las cuentas que no tienen ning\u00fan pedido sin cobrar, ni dinero pendiente, ni un reparto, y que son de un d\u00eda operativo ya cerrado o llevan m\u00e1s de una hora sin pedido. Las dem\u00e1s no se tocan. Queda anotado en la auditor\u00eda de cada cuenta."),
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" },
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "danger", onClick: cerrarCuentasSinActividadDesdePantallaA06, disabled: limpiandoA06 }, limpiandoA06 ? "Cerrando\u2026" : "S\u00ed, cerrar"),
+          /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setConfirmarLimpiezaA06(false), disabled: limpiandoA06 }, "Volver")
+        )
+      ) : null,
       errorAparcadasA06 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12px] mt-2 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorAparcadasA06) : null,
       mensajeAparcadasA06 ? /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", className: "text-[12px] mt-2 p-2 rounded-lg", style: { background: C2.bg, color: C2.ink } }, mensajeAparcadasA06) : null,
       !cargado ? null : cuentas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-3", style: { color: C2.inkSoft } }, "No hay ninguna cuenta abierta en este local.") : /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mt-3 mb-2" }, /* @__PURE__ */ import_react4.default.createElement("b", null, cuentas.length, " cuenta(s) abierta(s)"), " \xB7 \u20AC", fmt(suma(cuentas)), " en total"),
-        paradas.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("b", null, paradas.length, " son de d\xEDas operativos ya cerrados"), ", por \u20AC", fmt(suma(paradas)), ". Desde aqu\xED no se retoman y tampoco se cierran solas: esa resoluci\xF3n la hace el servidor.") : null,
+        paradas.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-3 p-2 rounded-lg", style: { background: C2.amberSoft, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("b", null, paradas.length, " son de d\xEDas operativos ya cerrados"), ", por \u20AC", fmt(suma(paradas)), ". Desde aqu\xED no se retoman y tampoco se cierran solas: esa resoluci\xF3n la hace el servidor. Las que no tienen pedido sin cobrar ni dinero pendiente las puede cerrar el Propietario o el Encargado con \u00abCerrar cuentas sin actividad\u00bb; las que tienen un pedido sin cobrar hay que resolverlas una a una.") : null,
         /* @__PURE__ */ import_react4.default.createElement("div", { className: "space-y-1.5 max-h-72 overflow-y-auto" }, cuentas.map((cuenta) => /* @__PURE__ */ import_react4.default.createElement("div", { key: String(cuenta.cuenta_id), className: "flex items-start justify-between gap-2 py-1.5 border-b last:border-0", style: { borderColor: C2.divider } },
           /* @__PURE__ */ import_react4.default.createElement("div", { className: "pr-2" },
             /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px]" }, dondeEstaCuentaA06(cuenta)),
@@ -129921,6 +130680,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
     const seleccion = lineas.find((item) => String(item.source_line_id || "") === String(lineaSeleccionadaA08 || "")) || null;
     const disponible = cantidadMovibleA08(seleccion);
     const fiscalizada = Number(seleccion?.cantidad_fiscalizada) || 0;
+    const recibidasA08 = typeof lineasRecibidasRepartoTpv === "function" ? lineasRecibidasRepartoTpv(estadoRepartoA08) : [];
 
     if (!repartoAbiertoA08) {
       return /* @__PURE__ */ import_react4.default.createElement(
@@ -129948,6 +130708,16 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         )
       ),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10.5px] mb-3", style: { color: C2.inkSoft } }, "Las cantidades disponibles, versiones de cuenta y parte fiscalizada se leen del servidor justo antes del reparto."),
+      recibidasA08.length > 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "mb-3 p-2 rounded-lg", "data-deshacer-reparto": "1", style: { border: "1px solid " + C2.line } },
+        /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] font-semibold mb-1" }, "Productos recibidos de otra cuenta"),
+        recibidasA08.map((item) => {
+          const producto = productos.find((p22) => String(p22.id) === String(item.linea.producto_id));
+          return /* @__PURE__ */ import_react4.default.createElement("div", { key: item.linea.source_line_id, className: "flex items-center justify-between gap-2 text-[11.5px] py-1", style: { color: C2.ink } },
+            /* @__PURE__ */ import_react4.default.createElement("span", null, producto?.nombre || "Producto", " · ", fmt(item.devolvible), item.fiscalizada > 0 ? " (la parte ya fiscalizada se queda)" : "", item.destino ? " · viene de " + etiquetaCuentaDestinoA08(item.destino) : " · su cuenta de origen ya no admite recibirlo"),
+            puedeDeshacerRepartoA08 && item.destino ? /* @__PURE__ */ import_react4.default.createElement("span", { "data-deshacer-reparto-linea": String(item.linea.source_line_id) }, /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", ariaLabel: "Deshacer reparto de " + (producto?.nombre || "producto"), onClick: () => deshacerRepartoLineaA08(item), disabled: moviendoLineaA08 }, moviendoLineaA08 ? "Moviendo…" : "Deshacer reparto")) : null
+          );
+        })
+      ) : null,
       lineas.length === 0 ? /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "No hay productos repartibles en esta cuenta.") : /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Producto / línea" },
         /* @__PURE__ */ import_react4.default.createElement("select", { value: lineaSeleccionadaA08, onChange: (e2) => seleccionarLineaRepartoA08(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[12px]", style: { border: "1px solid " + C2.line, background: C2.surface, color: C2.ink } },
           /* @__PURE__ */ import_react4.default.createElement("option", { value: "" }, "Selecciona…"),
@@ -130100,30 +130870,30 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
 
       const enviada = await enviarPedidoA05();
       if (!enviada || enviada.ok === false) {
-        setErrorVenta(enviada?.error || "No se pudo confirmar la venta rápida.");
+        // H-20 (auditoría del TPV, 26/11/2026): si el envío falla (por ejemplo un producto sin ruta a cocina) la cuenta quedaba
+        // abierta y el terminal no dejaba iniciar otra venta rápida. Nada se ha enviado ni cobrado: se cancela el pedido (el
+        // servidor cierra la cuenta vacía) y el carrito se conserva para reintentar.
+        let liberada = false;
+        try {
+          const cancelada = await accionPedidoA05("CANCELAR_PEDIDO", null, "Venta rápida no enviada: " + String(enviada?.error || "error").slice(0, 200));
+          if (cancelada && cancelada.ok !== false) {
+            setPedidoOperativoA05(cancelada);
+            liberada = true;
+          }
+        } catch (e2) {
+        }
+        setErrorVenta((enviada?.error || "No se pudo confirmar la venta rápida.") + (liberada ? " La venta no se ha enviado ni cobrado y su cuenta se ha cancelado: puedes volver a intentarlo." : ""));
         return;
       }
       setPedidoOperativoA05(enviada);
 
-      let estadoServidor = enviada;
-      for (const linea of Array.isArray(enviada.lineas) ? enviada.lineas : []) {
-        if (["SERVIDA", "CANCELADA"].includes(String(linea.estado || ""))) continue;
-        for (const accion of ["INICIAR_PREPARACION", "MARCAR_PREPARADA", "SERVIR"]) {
-          const actual = leerPedidoOperativoA05 ? await Promise.resolve(leerPedidoOperativoA05()) : estadoServidor;
-          const lineaActual = (actual?.lineas || []).find((l22) => String(l22.lineaId || "") === String(linea.lineaId || ""));
-          if (!lineaActual || ["SERVIDA", "CANCELADA"].includes(String(lineaActual.estado || ""))) break;
-          if ((accion === "INICIAR_PREPARACION" && lineaActual.estado !== "ENVIADA")
-              || (accion === "MARCAR_PREPARADA" && lineaActual.estado !== "EN_PREPARACION")
-              || (accion === "SERVIR" && lineaActual.estado !== "PREPARADA")) continue;
-          const paso = await accionPedidoA05(accion, linea.lineaId, "");
-          if (!paso || paso.ok === false) {
-            setErrorVenta(paso?.error || "No se pudo dejar la línea lista para cobrar.");
-            return;
-          }
-          estadoServidor = paso;
-          setPedidoOperativoA05(paso);
-        }
+      // H-37: una sola operación de servidor (con el permiso de cobro) deja servidas todas las líneas.
+      const servida = await accionPedidoA05("COMPLETAR_VENTA_RAPIDA", null, "");
+      if (!servida || servida.ok === false) {
+        setErrorVenta(servida?.error || "No se pudo dejar la venta lista para cobrar.");
+        return;
       }
+      setPedidoOperativoA05(servida);
 
       const importe = Number(guardada.totalServidor ?? totalEsperado);
       const cobro = await iniciarCobroCuentaF4(pagoRapida, {
@@ -130199,18 +130969,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
         || `venta-rapida-${Date.now()}`;
       const cuentaCerradaRapida = String(cobro.cuentaEstado || "").toUpperCase() === "CERRADA" || cobro.cuentaCierre?.ok === true;
       if (!cuentaCerradaRapida) {
+        const avisoRapida = avisoVentaRapidaSinCierreTpv(pagoRapida, cobro);
         setEstadoCobroF4(cobro);
         setMensajeCobroF4(cobro.mensaje || "Pago confirmado, pero la cuenta sigue abierta. No repitas el cobro: continúa en Sala para completar el cierre.");
         setResultadoVentaRapida({
           ok: false,
-          paid: true,
+          paid: !avisoRapida.pendiente,
           total: importe,
           medio: pagoRapida,
           cambio: pagoRapida === "EFECTIVO" ? Math.max(0, recibido - importe) : 0,
           cuentaCerrada: false,
           fiscal: cobro.fiscal || null
         });
-        setErrorVenta("El cobro está confirmado, pero la cuenta no se ha cerrado formalmente. Continúa en Sala; no vuelvas a cobrar.");
+        setErrorVenta(avisoRapida.error);
         setEfectivoRecibidoRapida("");
         return;
       }
@@ -130284,12 +131055,19 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
      del ticket, así que moverla no cambia su estado ni su lógica. */
   const bloqueSalaCaja = modoCajaTpv && modoTPV !== "RAPIDA" && leerDisenoNavegacion() === "orbita" ? renderSalaA07() : null;
   const cajaOrbita = modoCajaTpv && leerDisenoNavegacion() === "orbita";
+  // H-12 (E4): la accion principal (naranja) es la que corresponde al estado real de la cuenta: «Guardar pedido» con lineas y «Cobrar» solo
+  // con una cuenta abierta con saldo por cobrar. Con el ticket vacio y nada que cobrar no se destaca ninguna.
+  const cobroPrincipalCaja = !!(cajaOrbita && lineasCarrito.length === 0 && cuentaConSaldoParaCobrarTpv(pedidoOperativoA05, estadoCobroF4));
+  // H-09: pagina visible de categorias (indices de la primera categoria de esta pagina y de la siguiente) y flechas.
+  const inicioPaginaCategorias = paginasCategoriasCaja[paginaCategoriasSegura] ?? 0;
+  const finPaginaCategorias = paginasCategoriasCaja[paginaCategoriasSegura + 1] ?? Infinity;
+  const flechaCategoriasCaja = (sentido) => cajaOrbita && paginasCategoriasCaja.length > 1 ? import_react4.default.createElement("button", { type: "button", className: "tpv-cat-flecha", "aria-label": sentido < 0 ? "Categor\u00edas anteriores" : "Categor\u00edas siguientes", disabled: sentido < 0 ? paginaCategoriasSegura <= 0 : paginaCategoriasSegura >= paginasCategoriasCaja.length - 1, onClick: () => setPaginaCategoriasCaja(Math.min(paginasCategoriasCaja.length - 1, Math.max(0, paginaCategoriasSegura + sentido))) }, sentido < 0 ? "\u2039" : "\u203A") : null;
   /* Envoltorio de capa: fuera del modo caja de Órbita es display:contents
      (no cambia nada); dentro, se oculta y se abre a pantalla completa. Los
      render* que envuelve se siguen llamando siempre y en el mismo orden. */
-  const capaCaja = (id, titulo, ...contenidos) => import_react4.default.createElement("div", { className: "tpv-capa", "data-capa": id, "data-activa": cajaOrbita ? "1" : void 0, "data-abierta": cajaOrbita && capaCajaOrbita === id ? "1" : void 0 }, cajaOrbita ? import_react4.default.createElement("div", { className: "tpv-capa-cabecera" }, import_react4.default.createElement("button", { type: "button", className: "tpv-capa-volver", onClick: () => setCapaCajaOrbita(null) }, "\u2039 Volver al pedido"), import_react4.default.createElement("strong", null, titulo)) : null, ...contenidos);
+  const capaCaja = (id, titulo, ...contenidos) => import_react4.default.createElement("div", { className: "tpv-capa", "data-capa": id, "data-activa": cajaOrbita ? "1" : void 0, "data-abierta": cajaOrbita && capaCajaOrbita === id ? "1" : void 0, role: cajaOrbita && capaCajaOrbita === id ? "dialog" : void 0, "aria-modal": cajaOrbita && capaCajaOrbita === id ? "true" : void 0, "aria-labelledby": cajaOrbita && capaCajaOrbita === id ? "tpv-capa-titulo-" + id : void 0 }, cajaOrbita ? import_react4.default.createElement("div", { className: "tpv-capa-cabecera" }, import_react4.default.createElement("button", { type: "button", className: "tpv-capa-volver", onClick: () => setCapaCajaOrbita(null) }, "\u2039 Volver al pedido"), import_react4.default.createElement("strong", { id: "tpv-capa-titulo-" + id }, titulo)) : null, ...contenidos);
   const botonCaja = (id, texto, extra = {}) => import_react4.default.createElement("button", { type: "button", className: "tpv-caja-boton", "aria-pressed": capaCajaOrbita === id, onClick: () => setCapaCajaOrbita(capaCajaOrbita === id ? null : id), ...extra }, texto);
-  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-raiz" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3 tpv-cabecera" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: () => setModoCajaTpv(!modoCajaTpv) }, modoCajaTpv ? "Salir del modo caja" : "Modo caja"), typeof setTemaOscuro === "function" ? /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }) : null, cajaOrbita ? renderSelectorModoTPV() : null, cajaOrbita ? import_react4.default.createElement("div", { className: "tpv-caja-herramientas" }, bloqueSalaCaja ? botonCaja("mesas", "Mesas") : null, botonCaja("ventas", "Ventas del d\xEDa"), local?.id && configEmpresa?.id && typeof window.getSupabaseClient === "function" ? botonCaja("terminal", "Terminal") : null) : null), cajaOrbita ? null : renderSelectorModoTPV(),
+  return /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-raiz" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between mb-3 tpv-cabecera" }, /* @__PURE__ */ import_react4.default.createElement("h2", { className: "text-[16px] font-semibold" }, "TPV"), carrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: vaciarCarrito }, "Vaciar carrito"), /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", claseExtra: modoCajaTpv ? "tpv-caja-salir" : void 0, onClick: () => setModoCajaTpv(!modoCajaTpv) }, modoCajaTpv ? "Salir del modo caja" : "Modo caja"), typeof setTemaOscuro === "function" && !cajaOrbita ? /* @__PURE__ */ import_react4.default.createElement(BotonTema, { temaOscuro, setTemaOscuro }) : null, cajaOrbita ? renderSelectorModoTPV() : null, cajaOrbita ? import_react4.default.createElement("div", { className: "tpv-caja-herramientas" }, bloqueSalaCaja ? botonCaja("mesas", "Mesas") : null, botonCaja("ventas", "Ventas del d\xEDa"), local?.id && configEmpresa?.id && typeof window.getSupabaseClient === "function" ? botonCaja("terminal", "Terminal") : null) : null), cajaOrbita ? null : renderSelectorModoTPV(),
   capaCaja("terminal", "Terminal de este navegador", local?.id && configEmpresa?.id && typeof window.getSupabaseClient === "function" ? import_react4.default.createElement(TerminalNavegadorTpv, { key: `${configEmpresa.id}:${local.id}`, empresaId: configEmpresa.id, localId: local.id }) : null),
   estadoMesaDestino && (mesaDestinoId || cuentaDestinoId) ? /* @__PURE__ */ import_react4.default.createElement(Card, { className: "mb-4" },
     /* @__PURE__ */ import_react4.default.createElement("div", { role: "status" },
@@ -130343,7 +131121,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "absolute right-3 top-1/2 -translate-y-1/2"
     },
     /* @__PURE__ */ import_react4.default.createElement(X2, { size: 16, color: C2.inkSoft })
-  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 mb-3", "data-tpv-categorias": "1" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2 overflow-x-auto flex-1 min-w-0" }, categoriasTpvOrdenadas.map((c22) => /* @__PURE__ */ import_react4.default.createElement(
+  )), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center gap-2 mb-3", "data-tpv-categorias": "1" }, flechaCategoriasCaja(-1), /* @__PURE__ */ import_react4.default.createElement("div", { ref: refCategoriasTpv, className: cajaOrbita ? "tpv-cat-lista flex gap-2 flex-1 min-w-0" : "flex gap-2 overflow-x-auto flex-1 min-w-0", style: cajaOrbita ? { position: "relative", overflow: "hidden" } : void 0 }, categoriasTpvOrdenadas.map((c22, i22) => /* @__PURE__ */ import_react4.default.createElement(
     "button",
     {
       key: c22,
@@ -130351,13 +131129,14 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "text-[12px] font-medium px-3 py-1.5 rounded-full whitespace-nowrap shrink-0",
       style: {
         background: categoria === c22 ? colorCategoriaTpv(c22, colorPorCategoriaTpv) : C2.surface,
-        color: categoria === c22 ? "#fff" : C2.inkSoft,
+        color: categoria === c22 ? textoLegibleSobreFondoTpv(colorCategoriaTpv(c22, colorPorCategoriaTpv)) : C2.inkSoft,
+        visibility: cajaOrbita && (i22 < inicioPaginaCategorias || i22 >= finPaginaCategorias) ? "hidden" : void 0,
         border: `1px solid ${categoria === c22 ? colorCategoriaTpv(c22, colorPorCategoriaTpv) : C2.line}`,
         borderLeft: `4px solid ${colorCategoriaTpv(c22, colorPorCategoriaTpv)}`
       }
     },
     c22
-  ))), presentacionCategorias.puedeConfigurar ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrirEditorCategorias }, "Categor\u00edas") : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla mb-3", ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : void 0 }, visiblesPagina.map((p22) => {
+  ))), flechaCategoriasCaja(1), presentacionCategorias.puedeConfigurar ? /* @__PURE__ */ import_react4.default.createElement(Btn, { small: true, variant: "ghost", onClick: abrirEditorCategorias }, "Categor\u00edas") : null), /* @__PURE__ */ import_react4.default.createElement("div", { className: "tpv-rejilla mb-3", ref: refRejillaTpv, style: filasRejillaCaja ? { "--tpv-filas": filasRejillaCaja } : !modoCajaTpv && columnasContenedorTpv ? { gridTemplateColumns: `repeat(${columnasContenedorTpv}, minmax(0, 1fr))` } : void 0 }, visiblesPagina.map((p22) => {
     const precioConIva = precioNeto(p22) * (1 + ivaDe(p22) / 100);
     const cantidadEnCarrito = carrito.filter((l22) => l22.productoId === p22.id).reduce((acc, l22) => acc + (Number(l22.cantidad) || 0), 0);
     const sinStock = (Number(p22.stockPisoVenta) || 0) <= 0;
@@ -130372,7 +131151,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       },
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] font-medium leading-tight mb-1" }, p22.nombre),
       /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[14px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(precioConIva)),
-      sinStock && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: C2.red } }, "sin stock"),
+      sinStock && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[10px] mt-0.5", style: { color: p22._pm07Servidor && (Number(p22.stock) || 0) > 0 ? C2.amber : C2.red } }, p22._pm07Servidor && (Number(p22.stock) || 0) > 0 ? "sin piso · sale del almac\u00e9n" : "sin stock"),
       cantidadEnCarrito > 0 && /* @__PURE__ */ import_react4.default.createElement(
         "span",
         {
@@ -130397,7 +131176,7 @@ function VentaRapida({ productos, venderCarrito, enviarPedidoA05, leerPedidoOper
       className: "mono text-center rounded-md py-1",
       style: { width: 54, border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink, fontSize: 13, minHeight: 44 }
     }
-  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), "aria-label": "Añadir una unidad", className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", "data-tpv-total": "1", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), capaCaja("modalidad", "Modalidad del pedido", lineasCarrito.length > 0 && renderSelectorModalidadA02()), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04 }, enviandoVenta ? "Guardando pedido\u2026" : `F9 · Guardar pedido \u20AC${fmt(total)}`), capaCaja("cuenta", "Cuenta", renderCuentasAparcadasA06(), bloqueSalaCaja ? null : renderSalaA07(), renderRepartoProductosA08(), renderUnirCuentasA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09()), capaCaja("cobro", "Cobro", renderCobroF4()), cajaOrbita && lineasCarrito.length > 0 ? import_react4.default.createElement("div", { className: "tpv-caja-total" }, import_react4.default.createElement("span", null, "Total"), import_react4.default.createElement("strong", { className: "mono" }, "\u20AC", fmt(total))) : null, cajaOrbita && lineasCarrito.length === 0 ? import_react4.default.createElement("button", { type: "button", className: "tpv-caja-cobrar", onClick: () => setCapaCajaOrbita("cobro") }, "Cobrar") : null)), renderEditorCategoriasTpv(), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
+  ), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => cambiarCantidad(l22.claveCarrito || l22.productoId, 1), "aria-label": "Añadir una unidad", className: "rounded-md p-1 flex items-center justify-center", style: { border: `1px solid ${C2.line}`, minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(Plus, { size: 12 })), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-semibold w-16 text-right" }, "\u20AC", fmt(l22.subtotal)), /* @__PURE__ */ import_react4.default.createElement("button", { onClick: () => quitar(l22.claveCarrito || l22.productoId), "aria-label": "Quitar producto", className: "flex items-center justify-center", style: { minWidth: 44, minHeight: 44 } }, /* @__PURE__ */ import_react4.default.createElement(X2, { size: 14, color: C2.inkSoft })))))), faltaStock.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[11px] mb-2", style: { color: C2.red } }, "Vas a dejar en negativo: ", faltaStock.map((l22) => l22.producto.nombre).join(", "), "."), avisosStockServidorTpv.length > 0 && /* @__PURE__ */ import_react4.default.createElement("div", { role: "status", "data-aviso-stock-piso": "1", className: "text-[11px] mb-2" }, avisosStockServidorTpv.map((l22) => /* @__PURE__ */ import_react4.default.createElement("div", { key: l22.producto.id, style: { color: l22.reparto.sinStock > 0 ? C2.red : C2.amber } }, textoAvisoStockVentaTpv(l22.producto.nombre, l22.reparto)))), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex items-center justify-between pt-2", style: { borderTop: `1px solid ${C2.line}` } }, /* @__PURE__ */ import_react4.default.createElement("span", { className: "font-semibold" }, "Total"), /* @__PURE__ */ import_react4.default.createElement("span", { className: "mono font-bold text-[19px]", "data-tpv-total": "1", style: { color: C2.accent } }, "\u20AC", fmt(total)))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", "data-error-venta": "1", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: C2.redSoft, color: C2.red } }, "\u26A0 ", errorVenta), capaCaja("modalidad", "Modalidad del pedido", lineasCarrito.length > 0 && renderSelectorModalidadA02()), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro, disabled: enviandoVenta || cargandoA04, claseExtra: cajaOrbita ? "tpv-caja-principal" : void 0 }, enviandoVenta ? "Guardando pedido\u2026" : `F9 · Guardar pedido \u20AC${fmt(total)}`), capaCaja("cuenta", "Cuenta", renderCuentasAparcadasA06(), bloqueSalaCaja ? null : renderSalaA07(), renderRepartoProductosA08(), renderUnirCuentasA08(), renderPedidoOperativoA05(), renderDescuentoCuentaA09()), capaCaja("cobro", "Cobro", renderCobroF4()), cajaOrbita && lineasCarrito.length > 0 ? import_react4.default.createElement("div", { className: "tpv-caja-total" }, import_react4.default.createElement("span", null, "Total"), import_react4.default.createElement("strong", { className: "mono" }, "\u20AC", fmt(total))) : null, cajaOrbita && lineasCarrito.length === 0 ? import_react4.default.createElement("button", { type: "button", className: cobroPrincipalCaja ? "tpv-caja-cobrar tpv-caja-principal" : "tpv-caja-cobrar", onClick: () => setCapaCajaOrbita("cobro") }, "Cobrar") : null)), renderEditorCategoriasTpv(), renderConfiguradorA04(), false && showCobro && /* @__PURE__ */ import_react4.default.createElement(Modal, { onClose: () => setShowCobro(false), title: "Cobrar" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-center mb-4" }, /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12px]", style: { color: C2.inkSoft } }, "Total"), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[28px] font-bold mono", style: { color: C2.accent } }, "\u20AC", fmt(total))), /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Medio de pago" }, /* @__PURE__ */ import_react4.default.createElement("select", { value: medioPago, onChange: (e2) => setMedioPago(e2.target.value), className: "w-full rounded-lg px-3 py-2 text-[13px]", style: { border: `1px solid ${C2.line}`, background: C2.surface, color: C2.ink } }, /* @__PURE__ */ import_react4.default.createElement("option", null, "Efectivo"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Tarjeta"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Mixto"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Transferencia"), /* @__PURE__ */ import_react4.default.createElement("option", null, "Otro"))), medioPago === "Efectivo" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value), autoFocus: true })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`)), medioPago === "Mixto" && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Paga con tarjeta (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", min: "0", max: total, value: importeTarjetaMixto, onChange: (e2) => setImporteTarjetaMixto(e2.target.value), autoFocus: true })), /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[12.5px] mb-3", style: { color: C2.inkSoft } }, "Resto en efectivo: ", /* @__PURE__ */ import_react4.default.createElement("b", { className: "mono", style: { color: C2.ink } }, "\u20AC", fmt(restoEfectivoMixto))), restoEfectivoMixto > 0 && /* @__PURE__ */ import_react4.default.createElement(import_react4.default.Fragment, null, /* @__PURE__ */ import_react4.default.createElement(Field, { label: "Efectivo entregado por el cliente (\u20AC)" }, /* @__PURE__ */ import_react4.default.createElement(Input, { type: "number", step: "0.01", value: efectivoRecibido, onChange: (e2) => setEfectivoRecibido(e2.target.value) })), cambio !== null && /* @__PURE__ */ import_react4.default.createElement("div", { className: "text-[13px] mb-3", style: { color: cambio < 0 ? C2.red : C2.accent } }, cambio < 0 ? `Faltan \u20AC${fmt(Math.abs(cambio))}` : `Cambio a devolver: \u20AC${fmt(cambio)}`))), errorVenta && /* @__PURE__ */ import_react4.default.createElement("div", { role: "alert", className: "text-[12.5px] mb-3 p-2 rounded-lg", style: { background: "#FCE8E6", color: C2.red } }, "\u26A0 ", errorVenta), /* @__PURE__ */ import_react4.default.createElement("div", { className: "flex gap-2" }, /* @__PURE__ */ import_react4.default.createElement(
     Btn,
     {
       onClick: confirmarCobro,
@@ -130423,6 +131202,23 @@ function infoCierreA10(r2) {
     bloqueos: Array.isArray(r2?.bloqueos) ? r2.bloqueos : []
   };
 }
+// H-26 (auditoría del TPV, 26/11/2026): el servidor devuelve los bloqueos del cierre como una lista de códigos de texto
+// (por ejemplo «EFECTOS_PENDIENTES») y la pantalla buscaba `detalle`, `tipo` o `codigo` en un objeto, así que mostraba
+// «Pendiente operativo». Una sola traducción para el ensayo C12 y para el cierre provisional.
+const ETIQUETAS_BLOQUEO_CIERRE = {
+  CONTEO_FALTANTE: "Falta el conteo de efectivo.",
+  DIFERENCIA_EFECTIVO: "El efectivo contado no coincide con el esperado.",
+  PAGOS_PENDIENTES: "Hay pagos pendientes de resolver (por ejemplo, un cobro con tarjeta sin confirmar).",
+  EFECTOS_PENDIENTES: "Hay efectos pendientes del proveedor (por ejemplo, un reembolso de tarjeta sin resolver).",
+  CONCILIACIONES_DOCUMENTALES_PENDIENTES: "Hay documentos de esta sesión pendientes de conciliación.",
+  SESION_NO_REVISABLE: "La sesión ya no está en un estado revisable.",
+  VENTAS_SIN_DOCUMENTO: "Hay ventas cobradas sin documento fiscal. Emite los documentos pendientes."
+};
+function etiquetaBloqueoCierre(bloqueo) {
+  if (typeof bloqueo === "string") return ETIQUETAS_BLOQUEO_CIERRE[bloqueo] || bloqueo;
+  const clave = String(bloqueo?.codigo || bloqueo?.tipo || "");
+  return String(bloqueo?.detalle || ETIQUETAS_BLOQUEO_CIERRE[clave] || clave || "Pendiente operativo");
+}
 function CocinaA10({ productos = [], local = null, configEmpresa = null, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, rolPerfil = "", pedidoDestino, limpiarPedidoDestino }) {
   const h3 = import_react4.default.createElement;
   const abrirSesionCajaA10 = typeof listarEstacionesA10?.abrirSesionCajaA10 === "function" ? listarEstacionesA10.abrirSesionCajaA10 : null;
@@ -130436,6 +131232,8 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
   const finalizarCierreSesionCajaA10 = typeof listarEstacionesA10?.finalizarCierreSesionCajaA10 === "function" ? listarEstacionesA10.finalizarCierreSesionCajaA10 : null;
   const reabrirCierreProvisionalA10 = typeof listarEstacionesA10?.reabrirCierreProvisionalA10 === "function" ? listarEstacionesA10.reabrirCierreProvisionalA10 : null;
   const consultarCierreCajaA10 = typeof listarEstacionesA10?.consultarCierreCajaA10 === "function" ? listarEstacionesA10.consultarCierreCajaA10 : null;
+  const listarVentasSinDocumento = typeof listarEstacionesA10?.listarVentasSinDocumentoH38b === "function" ? listarEstacionesA10.listarVentasSinDocumentoH38b : null;
+  const emitirDocumentoPendiente = typeof listarEstacionesA10?.emitirDocumentoPendienteH38b === "function" ? listarEstacionesA10.emitirDocumentoPendienteH38b : null;
   const registrarDiferenciaCajaA10 = typeof listarEstacionesA10?.registrarDiferenciaCajaA10 === "function" ? listarEstacionesA10.registrarDiferenciaCajaA10 : null;
   const decidirDiferenciaCajaA10 = typeof listarEstacionesA10?.decidirDiferenciaCajaA10 === "function" ? listarEstacionesA10.decidirDiferenciaCajaA10 : null;
   const [estaciones, setEstaciones] = (0, import_react4.useState)([]);
@@ -130485,11 +131283,24 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     };
   }, [configEmpresa?.id, local?.id, rolPerfil]);
   const [bloqueosCierre, setBloqueosCierre] = (0, import_react4.useState)([]);
+  const [ventasSinDocumento, setVentasSinDocumento] = (0, import_react4.useState)(null);
   const [cierreInfo, setCierreInfo] = (0, import_react4.useState)(null);
   const [ensayoCierre, setEnsayoCierre] = (0, import_react4.useState)(null);
   const [motivoDiferencia, setMotivoDiferencia] = (0, import_react4.useState)("");
   const [motivoDecision, setMotivoDecision] = (0, import_react4.useState)("");
-  const [mostrarGestionCocina, setMostrarGestionCocina] = (0, import_react4.useState)(false);
+  const [mostrarGestionCocina, setMostrarGestionCocina] = (0, import_react4.useState)(() => {
+    try {
+      return window.sessionStorage.getItem("la_suite_abrir_gestion_cocina_v1") === "1";
+    } catch (error) {
+      return false;
+    }
+  });
+  (0, import_react4.useEffect)(() => {
+    try {
+      window.sessionStorage.removeItem("la_suite_abrir_gestion_cocina_v1");
+    } catch (error) {
+    }
+  }, []);
   const [mostrarTodasComandas, setMostrarTodasComandas] = (0, import_react4.useState)(false);
   const bloqueosDiferencia = Array.isArray(cierreInfo?.bloqueos) ? cierreInfo.bloqueos : [];
   const gestionCocinaVisible = mostrarGestionCocina || requiereApertura || estadoCierre !== "ABIERTA";
@@ -130527,6 +131338,33 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     setEnsayoCierre(null);
     return sincronizarCierre();
   }
+
+  // H-38b: ventas cobradas de esta sesión sin documento fiscal (las que bloquean el cierre definitivo).
+  async function cargarVentasSinDocumento() {
+    if (typeof listarVentasSinDocumento !== "function") return;
+    const r2 = await listarVentasSinDocumento();
+    setVentasSinDocumento(r2?.ok ? r2.ventas : null);
+  }
+  async function emitirPendiente(venta) {
+    if (procesando || typeof emitirDocumentoPendiente !== "function") return;
+    setProcesando("emitir-" + String(venta.checkout_id));
+    setError("");
+    setMensaje("");
+    const resultado = await emitirDocumentoPendiente({ cuentaId: venta.cuenta_id, checkoutId: venta.checkout_id });
+    setProcesando("");
+    if (!resultado?.ok) {
+      setError(resultado?.error || "No se ha podido emitir el documento pendiente.");
+      return;
+    }
+    setMensaje(`Documento emitido${resultado.numero != null ? `: ${resultado.codigoSerie ? resultado.codigoSerie + " " : ""}n.º ${resultado.numero}` : ""}.`);
+    setEnsayoCierre(null);
+    await cargarVentasSinDocumento();
+  }
+  (0, import_react4.useEffect)(() => {
+    if (!gestionCocinaVisible || requiereApertura || !local?.id || !configEmpresa?.id) return void 0;
+    cargarVentasSinDocumento();
+    return void 0;
+  }, [gestionCocinaVisible, requiereApertura, estadoCierre, local?.id, configEmpresa?.id]);
 
   async function refrescarSesionCajaC01() {
     if (typeof consultarSesionCajaC01 !== "function") return null;
@@ -130911,14 +131749,6 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     const documentos = informe.documentos || {};
     const bloqueos = Array.isArray(informe.bloqueos) ? informe.bloqueos : [];
     const apto = ensayoCierre.resultado === "APTO_CIERRE";
-    const etiquetaBloqueo = {
-      CONTEO_FALTANTE: "Falta el conteo de efectivo.",
-      DIFERENCIA_EFECTIVO: "El efectivo contado no coincide con el esperado.",
-      PAGOS_PENDIENTES: "Hay pagos pendientes.",
-      EFECTOS_PENDIENTES: "Hay efectos pendientes.",
-      CONCILIACIONES_DOCUMENTALES_PENDIENTES: "Hay documentos de esta sesión pendientes de conciliación.",
-      SESION_NO_REVISABLE: "La sesión ya no está en un estado revisable."
-    };
     return h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: apto ? C2.accentSoft : C2.redSoft || "#FCE8E6" }, "data-c12-ensayo": String(ensayoCierre.resultado || "") },
       h3("div", { className: "text-[12px] font-semibold mb-1", style: { color: apto ? C2.accent : C2.red } }, "Ensayo C12: ", String(ensayoCierre.resultado || "SIN_RESULTADO")),
       h3("div", { className: "text-[11px] mb-1" }, String(informe.explicacion || "El servidor no devolvió una explicación.")),
@@ -130929,7 +131759,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
         " · documentos conciliados ", Number(documentos.documentos_conciliados || 0),
         " · pendientes ", Number(documentos.documentos_pendientes || 0)
       ),
-      bloqueos.length > 0 ? h3("ul", { className: "list-disc pl-4 text-[11px] mt-1" }, bloqueos.map((bloqueo) => h3("li", { key: String(bloqueo) }, etiquetaBloqueo[bloqueo] || String(bloqueo)))) : null
+      bloqueos.length > 0 ? h3("ul", { className: "list-disc pl-4 text-[11px] mt-1" }, bloqueos.map((bloqueo) => h3("li", { key: String(bloqueo) }, etiquetaBloqueoCierre(bloqueo)))) : null
     );
   }
 
@@ -131046,6 +131876,14 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
     ),
     gestionCocinaVisible && !requiereApertura && iniciarCierreSesionCajaA10 ? h3(Card, { className: "mb-4", style: { background: C2.amberSoft, border: "none" } },
       h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Cierre de sesión de caja · ", estadoCierre),
+      ventasSinDocumento && ventasSinDocumento.length > 0 ? h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6" }, "data-h38b-ventas-sin-documento": String(ventasSinDocumento.length) },
+        h3("div", { className: "text-[11.5px] font-semibold mb-1", style: { color: C2.red } }, `Ventas cobradas sin documento fiscal (${ventasSinDocumento.length})`),
+        h3("div", { className: "text-[11px] mb-2" }, "El cierre definitivo no se puede completar hasta emitir el documento de cada una."),
+        h3("div", { className: "space-y-1" }, ventasSinDocumento.map((venta) => h3("div", { key: String(venta.checkout_id), className: "flex items-center justify-between gap-2" },
+          h3("span", { className: "text-[11.5px]" }, `€${Number(venta.importe || 0).toFixed(2)} · cobrada ${String(venta.completed_at || "").slice(11, 16) || "sin hora"}`),
+          h3(Btn, { small: true, onClick: () => emitirPendiente(venta), disabled: !!procesando || !emitirDocumentoPendiente }, procesando === "emitir-" + String(venta.checkout_id) ? "Emitiendo…" : "Emitir documento pendiente")
+        )))
+      ) : null,
       estadoCierre === "ABIERTA" ? h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Inicia el cierre cuando dejes de operar. El servidor comprobará los pagos y efectos pendientes antes de permitir el cierre provisional.") : null,
       estadoCierre === "EN_CIERRE" ? h3("div", null,
         h3("div", { className: "text-[11.5px] mb-3", style: { color: C2.inkSoft } }, "Introduce el efectivo contado para registrar el arqueo provisional. Todavía podrás reabrirlo con un motivo."),
@@ -131069,7 +131907,7 @@ function CocinaA10({ productos = [], local = null, configEmpresa = null, listarE
         ) : null,
         bloqueosCierre.length > 0 ? h3("div", { className: "mb-3 p-2 rounded-lg", style: { background: C2.redSoft || "#FCE8E6", color: C2.red } },
           h3("div", { className: "text-[11.5px] font-semibold mb-1" }, "Bloqueos que impiden el cierre definitivo"),
-          h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, String(bloqueo?.detalle || bloqueo?.tipo || bloqueo?.codigo || "Pendiente operativo"))))
+          h3("ul", { className: "list-disc pl-4 text-[11px]" }, bloqueosCierre.map((bloqueo, indice) => h3("li", { key: String(bloqueo?.tipo || bloqueo?.codigo || indice) }, etiquetaBloqueoCierre(bloqueo))))
         ) : null,
         h3("div", { className: "flex gap-2 flex-wrap" },
           h3(Btn, { small: true, variant: "danger", onClick: finalizarCierre, disabled: !!procesando || bloqueosDiferencia.length > 0 }, procesando === "finalizar-cierre" ? "Finalizando…" : "Finalizar cierre"),
@@ -131471,7 +132309,7 @@ function CostePersonal({ empleados, nominas, addNomina, updateNomina, deleteNomi
     setAvisosIA([]);
     try {
       const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-nomina",
+        urlFuncionNubeA("importar-nomina"),
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -131909,7 +132747,7 @@ function PrefiltroPublico({ token }) {
     (async () => {
       try {
         const resp = await fetch(
-          "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/prefiltro-candidato",
+          urlFuncionNubeA("prefiltro-candidato"),
           { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "comprobar", token }) }
         );
         const r2 = await resp.json();
@@ -131934,7 +132772,7 @@ function PrefiltroPublico({ token }) {
     setEstado("enviando");
     try {
       const resp = await fetch(
-        "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/prefiltro-candidato",
+        urlFuncionNubeA("prefiltro-candidato"),
         { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ accion: "enviar", token, respuestas: form }) }
       );
       const r2 = await resp.json();
@@ -131990,7 +132828,7 @@ async function registrarErrorSistema(mensaje, pantalla, pila) {
     const ultimoAviso = ultimosErroresAvisados.get(clave);
     if (!ultimoAviso || ahora - ultimoAviso > 10 * 60 * 1e3) {
       ultimosErroresAvisados.set(clave, ahora);
-      fetch("https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/enviar-notificacion", {
+      fetch(urlFuncionNubeA("enviar-notificacion"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

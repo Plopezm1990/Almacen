@@ -1,15 +1,15 @@
 {
   "schema": "la-suite-puerta-ci-inventario-v1",
-  "total_inventory": 392,
+  "total_inventory": 421,
   "expected_counts": {
-    "active_contract": 375,
+    "active_contract": 404,
     "historical_expected_fail": 1,
     "utility": 11,
     "diagnostic": 5
   },
   "expected_environment_counts": {
     "node": {
-      "active_contract": 336,
+      "active_contract": 353,
       "historical_expected_fail": 0,
       "utility": 10,
       "diagnostic": 5
@@ -21,7 +21,7 @@
       "diagnostic": 0
     },
     "pglite": {
-      "active_contract": 5,
+      "active_contract": 17,
       "historical_expected_fail": 0,
       "utility": 1,
       "diagnostic": 0
@@ -156,6 +156,11 @@
     },
     {
       "path": "tests/cfg/cfg6d-ui-runtime.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/cfg/h38b-h24-ui-runtime.mjs",
       "classification": "active_contract",
       "environment": "node"
     },
@@ -1881,6 +1886,21 @@
       "environment": "node"
     },
     {
+      "path": "tests/rediseno/h38b-emitir-documento-pendiente-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h24-arqueo-esperado-del-servidor-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h31-pendiente-cobro-contra-servidor-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
       "path": "tests/rediseno/fallar-cerrado-sin-mentir-contract.mjs",
       "classification": "active_contract",
       "environment": "node"
@@ -1962,6 +1982,131 @@
     },
     {
       "path": "tests/rediseno/p04-mfa-politica-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/c07d-emision-cobro-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h06-funciones-qa-versionadas-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h21-cancelar-pedido-cierra-cuenta-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h36-cuenta-empleado-password-inicial-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h45-guardar-solo-politicas-cambiadas-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h33-funciones-edge-del-mismo-proyecto-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/ola3-modo-caja-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h43-descuento-linea-en-borrador-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h15-venta-sin-piso-aviso-y-pendiente-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h05-devolver-anticipo-encargo-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/ola5-resto-tpv-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h51-venta-rapida-tarjeta-pendiente-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h35-historial-refleja-reembolsos-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h47-deshacer-reparto-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h28-h29-cerrar-cuentas-ui-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h35-reembolsos-por-venta-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h50-repartos-de-lineas-canceladas-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h28-h29-cerrar-cuentas-sin-actividad-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h17-empresa-nueva-politica-mfa-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h49-cancelar-pedido-cancela-cobro-sin-dinero-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/h22-enviar-pedido-conserva-la-cuenta-contract.mjs",
+      "classification": "active_contract",
+      "environment": "node"
+    },
+    {
+      "path": "tests/rediseno/h37-venta-rapida-por-cobro-pglite-contract.mjs",
+      "classification": "active_contract",
+      "environment": "pglite"
+    },
+    {
+      "path": "tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs",
       "classification": "active_contract",
       "environment": "pglite"
     },

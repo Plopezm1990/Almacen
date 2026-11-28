@@ -285,10 +285,27 @@ html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-vacio { align-s
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-total { grid-area: total; align-self: end; display: flex; align-items: baseline; justify-content: space-between; gap: 12px; background: transparent !important; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-total strong { font-size: 34px; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > :is(.la-ui-button, .tpv-caja-cobrar) {
-  grid-area: accion; align-self: end; width: 100%; min-height: 64px; justify-content: center;
+  grid-area: accion; align-self: end; width: 100%; min-height: 64px !important; justify-content: center;
   border-radius: 12px !important; font-size: 18px; font-weight: 700;
 }
-html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-cobrar { border: 0 !important; background: var(--c-accent-fill, #FF4B32) !important; color: #fff; cursor: pointer; }
+/* H-01 / H-12 (auditoría del TPV): una única acción principal (naranja) por estado. La regla general del TPV de Órbita
+   (`.tpv-side > *`, fondo de superficie con !important) ganaba a la del botón: la principal la lleva con la especificidad de
+   Órbita + caja + #root + main del TPV. «Cobrar» sin nada que cobrar queda neutro. */
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-cobrar { border: 1px solid var(--c-line, #343941) !important; background: var(--c-surface, #202328) !important; color: var(--c-ink, #F1F3F6); cursor: pointer; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root main[data-la-orbita-module="tpv"] .tpv-side > .tpv-caja-principal { border: 0 !important; background: var(--c-accent-fill, #FF4B32) !important; color: var(--c-on-accent, #17191C) !important; cursor: pointer; }
+/* H-02: el aviso de sincronización (position: fixed) ya no tapa el cobro: en modo caja se pega abajo a la derecha y la pantalla
+   reserva su franja mientras está visible. */
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #estado-guardado { top: auto !important; bottom: 6px !important; right: 12px !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"]:has(#estado-guardado:not([style*="display: none"])) #root main.la-orbita-main { padding-bottom: 40px !important; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"]:has(#estado-guardado:not([style*="display: none"])) #root .tpv-capa[data-abierta="1"] { padding-bottom: 48px; }
+/* H-09 (E5): categorías paginadas con flechas de 44 × 44 px, sin barra de desplazamiento. */
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cat-lista { overflow: hidden; scrollbar-width: none; }
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cat-flecha {
+  flex: none; display: inline-flex; align-items: center; justify-content: center; width: 44px; min-width: 44px; height: 44px; min-height: 44px; padding: 0;
+  border-radius: 10px; cursor: pointer; font-size: 22px; line-height: 1; border: 1px solid var(--c-line, #343941) !important;
+  background: var(--c-surface, #202328) !important; color: var(--c-ink, #F1F3F6);
+}
+html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cat-flecha:disabled { opacity: .4; cursor: not-allowed; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa[data-activa="1"] { display: none; }
 html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa[data-abierta="1"] {
   display: flex; flex-direction: column; gap: 12px; position: fixed; inset: 0; z-index: 40;
@@ -312,6 +329,17 @@ html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa-volver {
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: thin; }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > * { flex: none; white-space: nowrap; }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-herramientas { flex-wrap: nowrap; }
+  /* H-10: «Salir del modo caja» va el primero de la barra (siempre a la vista, sin tapar nada) y, cuando la barra se desliza, una sombra en el
+     borde indica que hay más a ese lado (Terminal). Sombras de desplazamiento solo con CSS: las de «local» tapan la sombra cuando la barra ya
+     está en ese extremo. */
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera > button.tpv-caja-salir.la-ui-button { order: 0; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-cabecera {
+    background:
+      linear-gradient(to right, var(--c-bg, #17191C), transparent) left center / 28px 100% no-repeat local,
+      linear-gradient(to left, var(--c-bg, #17191C), transparent) right center / 28px 100% no-repeat local,
+      radial-gradient(farthest-side at 0 50%, color-mix(in srgb, var(--c-ink, #F1F3F6) 45%, transparent), transparent) left center / 14px 100% no-repeat scroll,
+      radial-gradient(farthest-side at 100% 50%, color-mix(in srgb, var(--c-ink, #F1F3F6) 45%, transparent), transparent) right center / 14px 100% no-repeat scroll;
+  }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-main > [data-tpv-paginas] {
     display: grid !important; grid-template-columns: auto minmax(0, 1fr) auto; text-align: center; gap: 8px !important; font-size: 11px;
   }
@@ -327,7 +355,13 @@ html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-capa-volver {
   }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-total { flex-direction: column; align-items: flex-start; gap: 0; }
   html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-caja-total strong { font-size: 26px; }
-  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > :is(.la-ui-button, .tpv-caja-cobrar) { min-height: 56px; }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root .tpv-side > :is(.la-ui-button, .tpv-caja-cobrar) { min-height: 56px !important; }
+}
+/* H-11: por debajo de 360 px de ancho (320 × 640) la banda de cuenta y las tarjetas son más compactas, para que quepan más productos por
+   página (VentaRapida mide las filas con el alto real; ver «minimo» allí). */
+@media (max-width: 359px) {
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root { --tpv-caja-banda: clamp(168px, 26dvh, 240px); }
+  html[data-la-diseno="orbita"][data-tpv-caja="1"] #root main.la-orbita-main .tpv-layout .tpv-rejilla > button { padding: 6px 8px !important; gap: 2px !important; }
 }
 .la-orbita-sidebar {
   grid-column: 1;
@@ -3402,6 +3436,15 @@ html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout textare
 }
 html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-layout .tpv-rejilla > button {
   min-height: 104px !important;
+}
+/* H-16 (auditoría del TPV): en el TPV normal el nombre del producto se salía de su tarjeta (tarjetas de ~135 px, nombres de hasta 247 px, overflow visible).
+   La tarjeta se puede encoger (min-width: 0) y el nombre se corta en dos líneas con puntos suspensivos. El botón NO oculta su desbordamiento: la insignia de
+   cantidad del carrito sale a propósito por su esquina. */
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button { min-width: 0; }
+html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-rejilla > button > :first-child {
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; overflow-wrap: anywhere; min-width: 0;
+  /* La tarjeta hereda `white-space: nowrap` (comprobado en el navegador): sin esto el nombre se cortaba en una sola línea en vez de pasar a dos. */
+  white-space: normal;
 }
 html[data-la-diseno] #root main[data-la-orbita-module="tpv"] .tpv-side .la-ui-card,
 html[data-la-diseno] #root main[data-la-orbita-module="tpv"] [data-tpv-history-screen="1"] .la-ui-card {

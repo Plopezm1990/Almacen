@@ -45,6 +45,11 @@ const HUECOS_CONOCIDOS = new Map([
   // tests/rediseno/org33-tarifas-pglite-contract.mjs. El trinquete se aprieta solo:
   // si alguien las vuelve a sacar de las migraciones, esto se pone rojo.
   ['abc_preparar_ticket_fiscal_qa', 'C07-D, ensayo fiscal de QA: vive solo en el proyecto de pruebas'],
+  // H-27 (27/11/2026): simulador de tarjeta de QA. Solo QA por diseno (barrera QA-EMP-A / QA-A1 y Propietario) y solo se
+  // llaman desde resolverTarjetaSimuladaQa, bajo el interruptor de QA. Versionadas en supabase/qa-only (NO son migraciones) y
+  // vigiladas por tests/rediseno/h06-funciones-qa-versionadas-contract.mjs.
+  ['abc_qa_confirmar_pago_simulado', 'simulador de tarjeta de QA (H-27): vive solo en el proyecto de pruebas, versionada en supabase/qa-only'],
+  ['abc_qa_rechazar_pago_simulado', 'simulador de tarjeta de QA (H-27): vive solo en el proyecto de pruebas, versionada en supabase/qa-only'],
 ]);
 
 // Tablas que el programa lee y que tampoco crea ninguna migración. Aquí no se

@@ -185,6 +185,67 @@ const EXCLUIDAS = new Set([
   // exclusion lo prueba, contra un Postgres de verdad y partiendo de cero:
   //   tests/rediseno/org33-tarifas-pglite-contract.mjs
   '20261120120000_rediseno_org33_tarifas_horario.sql',
+  // Emision del documento fiscal por capacidad de cobro (26/11/2026, hallazgo H-38 de la
+  // auditoria del TPV): quien puede iniciar un cobro puede emitir el documento de ese cobro y
+  // leer el estado de la emision. Antes lo exigian ABC_EMISOR_CAMBIAR (Propietario y
+  // Encargado) y un cobro del Cajero/a se cerraba sin documento. Es posterior a la foto F7 del
+  // 3/10 y cambia quien puede emitir, asi que se promueve aparte. Lo que promete esta
+  // exclusion lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/c07d-emision-cobro-pglite-contract.mjs
+  '20261126120000_abc_f7_c07d_emision_por_capacidad_de_cobro.sql',
+  // Segunda parte de H-38: la entrada de emision llama a tres primitivos de numeracion que
+  // volvian a exigir ABC_EMISOR_CAMBIAR. La entrada marca la transaccion y solo esa marca
+  // abre los primitivos; llamados directamente siguen cerrados al Cajero/a. Mismo contrato.
+  '20261126130000_abc_f7_c07d_emision_cobro_acceso_interno.sql',
+  // H-38b: el cierre de caja no detectaba ventas cobradas sin documento fiscal. Anade el
+  // bloqueo VENTAS_SIN_DOCUMENTO al punto unico de bloqueos del cierre y lo clasifica como
+  // BLOQUEADO en el ensayo C12. Lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs
+  '20261126140000_abc_f5_c04_bloqueo_ventas_sin_documento.sql',
+  // H-38b: lectura de las ventas que producen ese bloqueo, para el boton «Emitir documento
+  // pendiente» del cierre. Solo lectura. Mismo contrato que la anterior.
+  '20261126150000_abc_f5_c04_listar_ventas_sin_documento.sql',
+  // H-21 / H-42 (decision del 27/11): cancelar el ultimo pedido vivo de una cuenta sin nada mas
+  // la cierra. Parchea abc_cancelar_pedido; lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h21-cancelar-pedido-cierra-cuenta-pglite-contract.mjs
+  '20261127100000_abc_f5_cancelar_pedido_cierra_cuenta_vacia.sql',
+  // H-37 (decision del 27/11): la venta rapida del Cajero/a se completa por una entrada unica con el
+  // permiso de cobro (solo cuentas de BARRA); las transiciones directas siguen cerradas. Contrato:
+  //   tests/rediseno/h37-venta-rapida-por-cobro-pglite-contract.mjs
+  '20261127110000_abc_f5_venta_rapida_completar_por_cobro.sql',
+  // H-48 (verificacion en el navegador de QA, 27/11): «Cerrar cuenta pagada» no cerraba una cuenta cobrada
+  // si el checkout conservaba un pago RECHAZADO o CANCELADO (tarjeta rechazada y repetida). Parchea
+  // abc_cerrar_cuenta_pagada; lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs
+  '20261127120000_abc_f4_cerrar_cuenta_ignora_pagos_rechazados.sql',
+  // H-49 (verificacion en el navegador de QA, 27/11): cancelar el pedido tras iniciar el cobro dejaba la cuenta ABIERTA para siempre
+  // (H-21 exigia que no hubiera ningun checkout y no existe funcion para cancelarlo). Parchea abc_cancelar_pedido: un checkout sin
+  // dinero (sin pagos o solo RECHAZADO/CANCELADO, sin incidencia abierta) deja de bloquear y se cancela con la cuenta. Lo prueba,
+  // contra un Postgres de verdad:
+  //   tests/rediseno/h49-cancelar-pedido-cancela-cobro-sin-dinero-pglite-contract.mjs
+  '20261128130000_abc_f6_cancelar_pedido_cancela_cobro_sin_dinero.sql',
+  // H-28 / H-29: cerrar las cuentas abiertas sin actividad (dia operativo cerrado, o sin pedido ni cobro desde hace mas de una hora) sin tocar las que tienen un
+  // pedido vivo, dinero en juego o un reparto. Lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h28-h29-cerrar-cuentas-sin-actividad-pglite-contract.mjs
+  '20261128140000_abc_f6_cerrar_cuentas_sin_actividad.sql',
+  // H-50 (hallado al probar H-47): un reparto sobre una linea cancelada ya no retiene la cuenta abierta ni al cancelar el pedido ni en la limpieza de cuentas sin
+  // actividad. Lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h50-repartos-de-lineas-canceladas-pglite-contract.mjs
+  '20261128150000_abc_f6_repartos_de_lineas_canceladas_no_retienen_cuenta.sql',
+  // H-35: funcion de solo lectura con lo reembolsado por venta fiscal (el navegador no puede leer reembolso_aplicaciones). Lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h35-reembolsos-por-venta-pglite-contract.mjs
+  '20261128160000_abc_f6_reembolsos_por_venta.sql',
+  // H-04 / H-18 (Ola 2): encargos y pagos de encargo solo por funciones de servidor; quita TRUNCATE/REFERENCES/TRIGGER
+  // sobrantes. Lo prueba, contra un Postgres de verdad:
+  //   tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs
+  '20261128100000_abc_f6_encargos_solo_funciones_y_privilegios.sql',
+  // H-36 (Ola 2): la cuenta de empleado nueva queda con la contraseña inicial pendiente. Parchea
+  // pm11_finalizar_creacion_cuenta_empleado; lo prueba:
+  //   tests/rediseno/h36-cuenta-empleado-password-inicial-pglite-contract.mjs
+  '20261128110000_abc_f6_cuenta_empleado_password_inicial_pendiente.sql',
+  // H-17 (Ola 2): un disparador siembra la politica de segundo factor del Propietario en cada empresa nueva. Lo prueba:
+  //   tests/rediseno/h17-empresa-nueva-politica-mfa-pglite-contract.mjs
+  '20261128120000_abc_f6_empresa_nueva_con_politica_mfa_propietario.sql',
 ]);
 
 // ---- La justificación de cada exclusión, comprobable ----
@@ -247,6 +308,46 @@ const JUSTIFICACION = {
   ],
   '20261120120000_rediseno_org33_tarifas_horario.sql': [
     'tests/rediseno/org33-tarifas-pglite-contract.mjs',
+  ],
+  '20261126120000_abc_f7_c07d_emision_por_capacidad_de_cobro.sql': [
+    'tests/rediseno/c07d-emision-cobro-pglite-contract.mjs',
+  ],  '20261126130000_abc_f7_c07d_emision_cobro_acceso_interno.sql': [
+    'tests/rediseno/c07d-emision-cobro-pglite-contract.mjs',
+  ],
+  '20261126140000_abc_f5_c04_bloqueo_ventas_sin_documento.sql': [
+    'tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs',
+  ],  '20261126150000_abc_f5_c04_listar_ventas_sin_documento.sql': [
+    'tests/rediseno/c04-bloqueo-ventas-sin-documento-pglite-contract.mjs',
+  ],
+  '20261127100000_abc_f5_cancelar_pedido_cierra_cuenta_vacia.sql': [
+    'tests/rediseno/h21-cancelar-pedido-cierra-cuenta-pglite-contract.mjs',
+  ],
+  '20261127110000_abc_f5_venta_rapida_completar_por_cobro.sql': [
+    'tests/rediseno/h37-venta-rapida-por-cobro-pglite-contract.mjs',
+  ],
+  '20261127120000_abc_f4_cerrar_cuenta_ignora_pagos_rechazados.sql': [
+    'tests/rediseno/h48-cerrar-cuenta-ignora-pagos-rechazados-pglite-contract.mjs',
+  ],
+  '20261128100000_abc_f6_encargos_solo_funciones_y_privilegios.sql': [
+    'tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs',
+  ],
+  '20261128110000_abc_f6_cuenta_empleado_password_inicial_pendiente.sql': [
+    'tests/rediseno/h36-cuenta-empleado-password-inicial-pglite-contract.mjs',
+  ],
+  '20261128120000_abc_f6_empresa_nueva_con_politica_mfa_propietario.sql': [
+    'tests/rediseno/h17-empresa-nueva-politica-mfa-pglite-contract.mjs',
+  ],
+  '20261128130000_abc_f6_cancelar_pedido_cancela_cobro_sin_dinero.sql': [
+    'tests/rediseno/h49-cancelar-pedido-cancela-cobro-sin-dinero-pglite-contract.mjs',
+  ],
+  '20261128140000_abc_f6_cerrar_cuentas_sin_actividad.sql': [
+    'tests/rediseno/h28-h29-cerrar-cuentas-sin-actividad-pglite-contract.mjs',
+  ],
+  '20261128150000_abc_f6_repartos_de_lineas_canceladas_no_retienen_cuenta.sql': [
+    'tests/rediseno/h50-repartos-de-lineas-canceladas-pglite-contract.mjs',
+  ],
+  '20261128160000_abc_f6_reembolsos_por_venta.sql': [
+    'tests/rediseno/h35-reembolsos-por-venta-pglite-contract.mjs',
   ],
 };
 
