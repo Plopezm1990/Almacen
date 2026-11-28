@@ -46,7 +46,12 @@ const cuerpo = src.slice(iniComponente, finComponente);
 // ---- Textos introductorios: neutrales, sin "sustituye/descartar" ni "puntuado". ----
 {
   assert.match(cuerpo, /No punt\\xFAa, no recomienda y no sustituye la entrevista\./, 'intro de prefiltro debe llevar el texto neutral');
-  assert.match(cuerpo, /No debe punt\\xFAar, clasificar ni decidir una contrataci\\xF3n\./, 'intro de entrevista debe llevar el texto neutral');
+  // Lo que este contrato defiende es que la IA no puntúe, no clasifique y no
+  // decida. La frase llevaba además una errata, "puntúar", corregida el
+  // 16/11/2026: el infinitivo no lleva tilde. "No puntúa", de la línea de
+  // arriba, sí la lleva, y por eso no se toca.
+  assert.match(cuerpo, /No debe puntuar, clasificar ni decidir una contrataci\\xF3n\./, 'intro de entrevista debe llevar el texto neutral');
+  assert.doesNotMatch(cuerpo, /punt\\xFAar/, 'y sin la errata: "puntuar" en infinitivo no lleva tilde');
   assert.doesNotMatch(cuerpo, /genera un informe puntuado/, 'no debe quedar el texto antiguo que anuncia un informe puntuado');
   console.log('P02_PM17_TEXTOS_INTRO_NEUTRALES=PASS');
 }

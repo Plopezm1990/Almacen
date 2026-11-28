@@ -1,0 +1,131 @@
+{
+  "version": 1,
+  "leido_en": "2026-11-27",
+  "origen": "Proyecto Supabase de QA (qjqorixtkilwsndqayyx); md5 de pg_get_functiondef sin los retornos de carro",
+  "nota": "No son migraciones. Ver supabase/qa-only/README.md. Producción no se ha comprobado.",
+  "tablas_sin_migracion": [
+    {
+      "tabla": "public.abc_vales_regalo",
+      "referencia": "tablas/abc_vales_regalo.sql",
+      "usada_por": [
+        "abc_emitir_vale_regalo",
+        "abc_consultar_vale_regalo",
+        "abc_confirmar_pago_vale_regalo"
+      ]
+    }
+  ],
+  "funciones": [
+    {
+      "nombre": "private.abc_qa_c04_propietario",
+      "archivo": "funciones/private.abc_qa_c04_propietario.sql",
+      "md5": "6efa3f684c5a7e6666dc7d363e456454",
+      "clase": "solo_qa_barrera",
+      "nota": "Devuelve falso salvo Propietario activo de QA-EMP-A / QA-A1. Apoyo de las abc_qa_*."
+    },
+    {
+      "nombre": "public.abc_confirmar_pago_vale_regalo",
+      "archivo": "funciones/public.abc_confirmar_pago_vale_regalo.sql",
+      "md5": "5ee60a74236cb63fbac5ce68dd94f241",
+      "clase": "producto_sin_migracion",
+      "nota": "Vale regalo: canje contra un intento de pago PENDIENTE (medio OTRO) con ABC_COBRO_INICIAR."
+    },
+    {
+      "nombre": "public.abc_consultar_vale_regalo",
+      "archivo": "funciones/public.abc_consultar_vale_regalo.sql",
+      "md5": "561cb237c5a2fcb9531e0288e21619c4",
+      "clase": "producto_sin_migracion",
+      "nota": "Vale regalo: lectura por codigo con ABC_COBRO_INICIAR."
+    },
+    {
+      "nombre": "public.abc_datos_ticket_correo",
+      "archivo": "funciones/public.abc_datos_ticket_correo.sql",
+      "md5": "42015cc3b4936dcfd6636c027d6b90b7",
+      "clase": "producto_sin_migracion",
+      "nota": "Ticket por correo: lectura de los datos del cobro con ABC_COBRO_INICIAR."
+    },
+    {
+      "nombre": "public.abc_emitir_vale_regalo",
+      "archivo": "funciones/public.abc_emitir_vale_regalo.sql",
+      "md5": "ead0804681c84a2783942b4b914db542",
+      "clase": "producto_sin_migracion",
+      "nota": "Vale regalo: exige ABC_COBRO_INICIAR y ABC_COBRO_EFECTIVO; crea el vale y su entrada de caja. Necesita la tabla abc_vales_regalo (sin migracion)."
+    },
+    {
+      "nombre": "public.abc_guardar_tipo_negocio",
+      "archivo": "funciones/public.abc_guardar_tipo_negocio.sql",
+      "md5": "b043965718672fd65badcb5c82b46805",
+      "clase": "producto_sin_migracion",
+      "nota": "Configuracion: guarda el tipo de negocio de la empresa y crea grupos de opciones de ejemplo; exige poder configurar la empresa."
+    },
+    {
+      "nombre": "public.abc_preparar_bizum_qa",
+      "archivo": "funciones/public.abc_preparar_bizum_qa.sql",
+      "md5": "87a067c597baa86f441abb6379065a2f",
+      "clase": "solo_qa_sin_escritura",
+      "nota": "SECURITY INVOKER, sin barrera propia: no lee ni escribe tablas, solo devuelve constantes marcadas PREPARADO_QA."
+    },
+    {
+      "nombre": "public.abc_preparar_ticket_fiscal_qa",
+      "archivo": "funciones/public.abc_preparar_ticket_fiscal_qa.sql",
+      "md5": "9959b4690260e1908c29a120da024706",
+      "clase": "solo_qa_barrera",
+      "nota": "Barrera explicita QA-EMP-A / QA-A1 y entidad fiscal simulada. Prepara el QR del simulador (sin presentar a la AEAT). Parcheada el 26/11 para aceptar ABC_COBRO_INICIAR (H-38)."
+    },
+    {
+      "nombre": "public.abc_qa_cancelar_pago_cierre",
+      "archivo": "funciones/public.abc_qa_cancelar_pago_cierre.sql",
+      "md5": "028d9d71c4cd6dfa25f9a3a883093ff2",
+      "clase": "solo_qa_barrera",
+      "nota": "Solo Propietario de QA-EMP-A / QA-A1, con la sesion en CIERRE_PROVISIONAL y un pago de tarjeta simulado PENDIENTE."
+    },
+    {
+      "nombre": "public.abc_qa_compensar_efecto_cierre",
+      "archivo": "funciones/public.abc_qa_compensar_efecto_cierre.sql",
+      "md5": "e8c27ef01f239bc552f45c1645d9daac",
+      "clase": "solo_qa_barrera",
+      "nota": "Solo Propietario de QA-EMP-A / QA-A1, sesion en CIERRE_PROVISIONAL; solo efectos de comanda de cocina."
+    },
+    {
+      "nombre": "public.abc_qa_confirmar_pago_simulado",
+      "archivo": "funciones/public.abc_qa_confirmar_pago_simulado.sql",
+      "md5": "7a82f1d25cfd5b28a3a374590f05d626",
+      "clase": "solo_qa_barrera",
+      "nota": "Solo QA-EMP-A / QA-A1 y Propietario; solo tarjeta o Bizum; el importe debe coincidir. Resuelve un intento como CONFIRMADO."
+    },
+    {
+      "nombre": "public.abc_qa_listar_pendientes_cierre",
+      "archivo": "funciones/public.abc_qa_listar_pendientes_cierre.sql",
+      "md5": "f46df1c14db616046fe95069a857e637",
+      "clase": "solo_qa_barrera",
+      "nota": "Solo lectura; solo Propietario de QA-EMP-A / QA-A1 con la sesion en CIERRE_PROVISIONAL."
+    },
+    {
+      "nombre": "public.abc_qa_rechazar_pago_simulado",
+      "archivo": "funciones/public.abc_qa_rechazar_pago_simulado.sql",
+      "md5": "a54496dcf04c10419dedb3948184c7e8",
+      "clase": "solo_qa_barrera",
+      "nota": "H-27 (27/11): contraparte de confirmar. Solo Propietario de QA-EMP-A / QA-A1 (por abc_qa_c04_propietario); tarjeta o Bizum con el pago PENDIENTE; lo resuelve como RECHAZADO con motivo. Creada en QA solo con SQL (sin migracion); privilegios: authenticated si, anon no."
+    },
+    {
+      "nombre": "public.abc_registrar_ticket_correo_enviado",
+      "archivo": "funciones/public.abc_registrar_ticket_correo_enviado.sql",
+      "md5": "77b3935bd14aabd90e2a2c67572b0a2a",
+      "clase": "producto_sin_migracion",
+      "nota": "Ticket por correo: registra el evento de envio, idempotente, con ABC_COBRO_INICIAR."
+    },
+    {
+      "nombre": "public.abc_simular_apertura_cajon",
+      "archivo": "funciones/public.abc_simular_apertura_cajon.sql",
+      "md5": "7257b9850c5fc6e6ec21e03e7e466122",
+      "clase": "producto_sin_migracion",
+      "nota": "Dispositivo simulado: registra el evento CAJON_ABIERTO_SIMULADO con ABC_CAJA_OPERAR; no hay aparato real."
+    },
+    {
+      "nombre": "public.abc_simular_impresion_ticket",
+      "archivo": "funciones/public.abc_simular_impresion_ticket.sql",
+      "md5": "f3472c35fe45e3560a8533cbc567e174",
+      "clase": "producto_sin_migracion",
+      "nota": "Dispositivo simulado: registra TRABAJO_IMPRESION_SIMULADO con ABC_COBRO_INICIAR; no hay aparato real."
+    }
+  ]
+}

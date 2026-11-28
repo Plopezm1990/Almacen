@@ -14,8 +14,9 @@ import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
-const REPO = resolve(new URL('../../', import.meta.url).pathname);
+const REPO = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const ruta = process.env.PM07_FIX_MIGRACION || join(REPO, 'supabase/migrations/20261003130000_abc_pm07_correccion_numero_catalogo.sql');
 const fix = readFileSync(ruta, 'utf8');
 const original = readFileSync(join(REPO, 'supabase/migrations/20260928170000_pm07_bootstrap_stock_desde_productos.sql'), 'utf8');

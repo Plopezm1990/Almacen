@@ -39,6 +39,36 @@ for (const rel of ficheros) {
       assert.ok(pos > inicioComponente, `${nombre} debe estar dentro de VentaRapida, no antes`);
     }
   });
+
+  test(`${rel}: el ticket de sala usa las líneas fiscales y los pagos del checkout`, () => {
+    const inicio = src.indexOf("function ticketCobroFiscalC07D()");
+    const fin = src.indexOf("async function refrescarCobroF4()", inicio);
+    assert.ok(inicio >= 0 && fin > inicio);
+    const construir = new Function("estadoCobroF4", "pedidoOperativoA05", "productos", "ivaTicketDesdeImportes",
+      `${src.slice(inicio, fin)}\nreturn ticketCobroFiscalC07D();`);
+    const pedido = { cuentaId: "cuenta-qa", ubicacion: { mesa_nombre: "Interior QA", zona_nombre: "Sala QA" }, lineas: [{ total: 99 }] };
+    const fiscal = {
+      checkoutIdTicket: "checkout-qa",
+      documentos: [{ numero: 36, venta_fiscal_id: "venta-qa", created_at: "2026-11-16T20:29:00Z" }],
+      qr: { ok: true, qr_url: "https://example.test/qr", fecha_expedicion: "2026-11-16" },
+      lineasTicket: [{ id: "linea-fiscal", cantidad: "1", base: "1.40", impuesto: "0.14", total: "1.54",
+        pedido_lineas: { producto_id: "cafe", snapshot_comercial: { nombre: "Café con leche (QA)" } } }]
+    };
+    const efectivo = { checkout_id: "checkout-qa", estado: "CONFIRMADO", medio: "EFECTIVO", importe_objetivo: "1.54", importe_recibido: "5.00", cambio_entregado: "3.46" };
+    const rechazado = { ...efectivo, estado: "RECHAZADO", importe_recibido: 10, cambio_entregado: 8.46 };
+    const otroCheckout = { ...efectivo, checkout_id: "otro-checkout" };
+    const ticket = construir({ fiscal, pagos: [efectivo, rechazado, otroCheckout] }, pedido, [], ivaTicketDesdeImportes);
+    assert.deepEqual([ticket.importe, ticket.entregado, ticket.cambio], [1.54, 5, 3.46]);
+    assert.deepEqual([ticket.lineas[0].baseFiscal, ticket.lineas[0].impuestosFiscales, ticket.lineas[0].ivaVentaAplicado], [1.4, 0.14, 10]);
+    assert.equal(ticket.mesa, "Interior QA");
+    assert.equal(ticket.resumen, "Café con leche (QA)");
+    const tarjeta = { checkout_id: "checkout-qa", estado: "CONFIRMADO", medio: "TARJETA", importe_objetivo: "1.54" };
+    const ticketTarjeta = construir({ fiscal, pagos: [tarjeta] }, pedido, [], ivaTicketDesdeImportes);
+    assert.deepEqual([ticketTarjeta.medioPago, ticketTarjeta.entregado, ticketTarjeta.cambio], ["Tarjeta", null, null]);
+    const ticketMixto = construir({ fiscal, pagos: [{ ...efectivo, importe_objetivo: "1" }, { ...tarjeta, importe_objetivo: "0.54" }] }, pedido, [], ivaTicketDesdeImportes);
+    assert.deepEqual([ticketMixto.medioPago, ticketMixto.detallePago], ["Mixto", { efectivo: 1, tarjeta: 0.54 }]);
+    assert.equal(construir({ fiscal: { ...fiscal, lineasTicket: [] }, pagos: [efectivo] }, pedido, [], ivaTicketDesdeImportes), null);
+  });
 }
 
 // Replica exacta de la logica que quedo en el cliente.

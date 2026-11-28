@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
 import { readFile, readdir } from "node:fs/promises";
 
+// tpv-09: listarCuentasAparcadasA06 entra en estas cuatro listas. El final y el
+// principio se siguen fijando igual de literalmente; solo se ha anotado el nombre
+// nuevo para que el contrato siga leyendo el cableado real.
+
 // Contrato estático de pantalla de la PIEZA 6e (modalidad al abrir cuenta en el TPV):
 //  - la lógica de apertura (`venderCarritoA02`) decide la modalidad al crear el registro pendiente: la elegida o, si no,
 //    Barra cuando está habilitada y, si no, la primera habilitada; si no se puede leer la lista, Barra como antes;
@@ -55,13 +59,13 @@ for (const k of Object.keys(R)) assert.equal(R[k], B[k], `el bloque «${k}» es 
 // 2. Cableado en los dos archivos.
 for (const [nombre, t] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
   const cuenta = (s) => t.split(s).length - 1;
-  assert.equal(cuenta("local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 }) {"), 1, nombre + ": el TPV recibe la lectura de modalidades (al final de sus propiedades, sin tocar el orden de las anteriores)");
+  assert.equal(cuenta("local = null, configEmpresa, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino"), 1, nombre + ": el TPV recibe la lectura de modalidades");
   assert.equal(cuenta("function VentaRapida({ productos, venderCarrito, enviarPedidoA05,"), 1, nombre + ": el TPV conserva el inicio de su firma (lo exigen los contratos A05.2 y A06.1)");
-  assert.equal(cuenta("configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06 })"), 1, nombre + ": la aplicación se la pasa (al final)");
+  assert.equal(cuenta("configEmpresa: empresaDelLocalActivo, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, mesaDestino: mesaDestinoTpv"), 1, nombre + ": la aplicación se la pasa");
   assert.equal(cuenta("venderCarrito: venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05"), 1, nombre + ": el montaje conserva su inicio (lo exige el contrato P07)");
   assert.equal(cuenta("  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta,"), 1, nombre + ": la aplicación la obtiene de la lógica (la primera de la lista: el final lo exige el contrato A08.1)");
-  assert.equal(cuenta("listarCuentasRepartoA08, moverCantidadLineaCuentaA08 } = crearLogicaVenta("), 1, nombre + ": la lista que obtiene la aplicación conserva su final (lo exige el contrato A08.1)");
-  assert.equal(cuenta("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, ensayarCierreSesionCajaC12 };"), 1, nombre + ": la lógica ofrece las ayudas del TPV y el ensayo C12 (al final de la lista)");
+  assert.equal(cuenta("listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta("), 1, nombre + ": la lista que obtiene la aplicación conserva su final (lo exige el contrato A08.1)");
+  assert.equal(cuenta("moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };"), 1, nombre + ": la lógica ofrece las ayudas del TPV y el ensayo C12 (al final de la lista)");
   assert.equal(cuenta("  return { venderCarrito, venderLocal, anularVenta,"), 1, nombre + ": la lista que devuelve la lógica conserva su inicio (lo exige el contrato A06.1)");
   assert.equal(cuenta('modalidad: "BARRA",'), 0, nombre + ": ya no hay una modalidad fija «BARRA» en el registro pendiente");
   assert.equal(cuenta("modalidad: modalidadApertura,"), 1, nombre + ": el registro pendiente usa la modalidad decidida");
@@ -145,7 +149,13 @@ assert.match(g, /if \(resultado\?\.modalidadNoHabilitada\) await cargarModalidad
 assert.match(g, /modalidad: resultado\.modalidad \|\| null\s+\}\);/, "la confirmación guarda la modalidad");
 for (const [nombre, tx] of [["fuente recuperado", recuperado], ["bundle", bundle]]) {
   assert.equal(tx.split('"Cuenta ", confirmacion.cuentaId || "", " · Pedido ", confirmacion.pedidoId || "", confirmacion.modalidad ? " · Modalidad: " + (MODALIDADES_ETIQUETA_A02[confirmacion.modalidad] || confirmacion.modalidad) : ""').length - 1, 1, nombre + ": la confirmación dice la modalidad");
-  const i = tx.indexOf("lineasCarrito.length > 0 && renderSelectorModalidadA02(), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro");
+  // 25/11/2026: el selector va dentro de capaCaja("modalidad", ...). Fuera del
+  // modo caja de Órbita ese envoltorio es display:contents, así que en
+  // pantalla sigue justo encima de «Guardar pedido»; en el modo caja de
+  // Órbita se abre desde el botón de la modalidad, en la banda de la cuenta.
+  // Que el envoltorio no altera el diseño fuera del modo caja lo fija
+  // tests/rediseno/tpv-caja-orbita-contract.mjs.
+  const i = tx.indexOf('capaCaja("modalidad", "Modalidad del pedido", lineasCarrito.length > 0 && renderSelectorModalidadA02()), lineasCarrito.length > 0 && /* @__PURE__ */ import_react4.default.createElement(Btn, { onClick: confirmarCobro');
   assert.ok(i > 0, nombre + ": el selector va justo encima de «Guardar pedido»");
   const a = tx.lastIndexOf('"data-error-venta": "1"', i);
   assert.ok(a > 0 && i - a < 400, nombre + ": el aviso de error de «Guardar pedido» está en el carrito, justo antes del selector (no solo dentro de la ventana desactivada)");

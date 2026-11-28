@@ -14,7 +14,7 @@
 //   · interrupciones a medias, falta de espacio (se descarta la copia apartada más antigua, nunca la viva), cambio de generación;
 //   · fallar cerrado: si no se puede separar, no se abre la sincronización ni se pierde nada.
 //
-// Necesita jsdom: CFG6_UI_DEPS (o CFG6E_UI_DEPS) = carpeta con node_modules que contenga jsdom.
+// Necesita jsdom y fake-indexeddb en CFG6_UI_DEPS (o CFG6E_UI_DEPS).
 //   CFG6_UI_DEPS=/tmp/cfg6deps node tests/plataforma/p08-copia-local-por-cuenta-runtime.mjs
 // PLATAFORMA_PRELOCK y PLATAFORMA_EDGE (opcionales) permiten probar variantes rotas (mutantes).
 import { createRequire } from 'node:module';
@@ -29,6 +29,7 @@ if (!depsDir) {
 }
 const require = createRequire(join(resolve(depsDir), 'package.json'));
 const { JSDOM, VirtualConsole } = require('jsdom');
+const { IDBFactory } = require('fake-indexeddb');
 
 const REPO = fileURLToPath(new URL('../../', import.meta.url));
 const leer = (f) => readFileSync(resolve(REPO, f), 'utf8');
@@ -46,12 +47,13 @@ const C = 'cccccccc-0000-4000-8000-00000000000c';
 const GENERACION = 'gen-1';
 
 // Una «página»: candado previo → barrera temprana real → parche de generación real, sobre un localStorage de jsdom.
-async function pagina({ url = 'https://app.cliente.test/', almacenInicial = {}, cuota = null, generacionLocal = GENERACION } = {}) {
+async function pagina({ url = 'https://app.cliente.test/', almacenInicial = {}, cuota = null, generacionLocal = GENERACION, generacionServidor = GENERACION, archivo = null } = {}) {
   const consola = new VirtualConsole();
   const dom = new JSDOM('<!doctype html><html><head></head><body><div id="root"></div></body></html>',
     { url, runScripts: 'outside-only', pretendToBeVisual: true, virtualConsole: consola, ...(cuota ? { storageQuota: cuota } : {}) });
   const w = dom.window;
   ventanas.push(w);
+  if (archivo) Object.defineProperty(w, 'indexedDB', { value: archivo });
   // Primitivas del navegador ANTES de cargar ningún script: así el test lee lo que hay de verdad, sin pasar por la barrera.
   const crudoGet = w.Storage.prototype.getItem;
   const crudoSet = w.Storage.prototype.setItem;
@@ -65,7 +67,7 @@ async function pagina({ url = 'https://app.cliente.test/', almacenInicial = {}, 
   w.eval(BARRERA);
   w.getSupabaseClient = async () => ({ auth: { getSession: async () => ({ data: { session: null } }), onAuthStateChange() { return { data: { subscription: { unsubscribe() {} } } }; } } });
   w.eval(EDGE);
-  const supabase = { rpc: async (n) => (n === 'obtener_generacion_instalacion' ? { data: { generation: GENERACION }, error: null } : { data: null, error: { message: 'no previsto' } }) };
+  const supabase = { rpc: async (n) => (n === 'obtener_generacion_instalacion' ? { data: { generation: generacionServidor }, error: null } : { data: null, error: { message: 'no previsto' } }) };
   const crudo = {
     todo: () => { const o = {}; for (let i = 0; i < w.localStorage.length; i++) { const k = w.localStorage.key(i); o[k] = crudoGet.call(w.localStorage, k); } return o; },
     get: (k) => crudoGet.call(w.localStorage, k),
@@ -204,7 +206,12 @@ const COPIA_A = {
     JSON.stringify({ B: Object.keys(p.crudo.apartadas(B)), C: Object.keys(p.crudo.apartadas(C)), A: Object.keys(p.crudo.apartadas(A)) }));
 
   // Si no hay nada que descartar y no cabe, falla cerrado: no se abre la sincronización y la copia viva sigue intacta.
-  const q = await pagina({ almacenInicial: { 'almacen:productos': grande('z'), la_suite_copia_cuenta_dueno_v1: A }, cuota: 1300 + 60, generacionLocal: GENERACION });
+  const sinMargen = {
+    'almacen:productos': grande('z'), la_suite_copia_cuenta_dueno_v1: A,
+    la_suite_installation_generation_v1: GENERACION
+  };
+  const cuotaSinMargen = Object.entries(sinMargen).reduce((n, [k, v]) => n + k.length + v.length, 0);
+  const q = await pagina({ almacenInicial: sinMargen, cuota: cuotaSinMargen, generacionLocal: GENERACION });
   let error = null;
   try { await q.entrar(B); } catch (e) { error = e; }
   ok('7b. si no cabe y no hay nada que descartar, falla cerrado: error, sincronización cerrada y la copia de A intacta', !!error && q.w.__instalacionSyncPermitida !== true && q.crudo.vivas()['almacen:productos'] === grande('z') && q.crudo.get('la_suite_copia_cuenta_dueno_v1') === A, error && error.message);
@@ -227,6 +234,56 @@ const COPIA_A = {
     JSON.stringify({ A: Object.keys(p.crudo.apartadas(A)), C: Object.keys(p.crudo.apartadas(C)) }));
 }
 
+// ---- 7d. La copia se puede separar aunque localStorage esté lleno ----
+{
+  const archivo = new IDBFactory();
+  const gastos = `almacen:gastosGenerales::usuario:${B}`;
+  const pendientes = 'almacen__pendientes';
+  const apartadoB = `la_suite_copia_cuenta_v1:${B}:almacen:productos`;
+  const apartadoA = `la_suite_copia_cuenta_v1:${A}:almacen:auditoria`;
+  const base = {
+    [gastos]: 'g'.repeat(2200), [pendientes]: '["gastosGenerales"]',
+    [apartadoB]: '[{"id":"p-b"}]', [apartadoA]: 'a'.repeat(1200),
+    la_suite_copia_cuenta_dueno_v1: A,
+    la_suite_installation_generation_v1: GENERACION
+  };
+  const cuota = Object.entries(base).reduce((n, [k, v]) => n + k.length + v.length, 0);
+  const p = await pagina({ almacenInicial: base, cuota, archivo });
+  const entrada = await p.entrar(B);
+  ok('7d. con cuota al límite, B solo recupera lo suyo y las copias antiguas salen de localStorage',
+    entrada.copiaLocalCambiada && p.crudo.get('almacen:productos') === base[apartadoB] && !p.crudo.get(gastos) &&
+    !p.crudo.get(pendientes) && !p.crudo.get(apartadoB) && !p.crudo.get(apartadoA));
+
+  const q = await pagina({ almacenInicial: p.crudo.todo(), cuota, archivo });
+  const vuelta = await q.entrar(A);
+  ok('7e. tras otra carga, A recupera gastos, pendientes y auditoría byte a byte sin ver los productos de B',
+    vuelta.copiaLocalCambiada && q.crudo.get(gastos) === base[gastos] && q.crudo.get(pendientes) === base[pendientes] &&
+    q.crudo.get('almacen:auditoria') === base[apartadoA] && q.crudo.get('almacen:productos') === null);
+
+  const r = await pagina({ almacenInicial: q.crudo.todo(), cuota, archivo, generacionServidor: 'gen-2' });
+  const reset = await r.entrar(B);
+  const cantidadArchivada = await new Promise((resolve, reject) => {
+    const apertura = archivo.open('la_suite_copias_cuenta');
+    apertura.onerror = () => reject(apertura.error);
+    apertura.onsuccess = () => {
+      const bd = apertura.result;
+      const tx = bd.transaction('copias');
+      const cuenta = tx.objectStore('copias').count();
+      tx.oncomplete = () => { bd.close(); resolve(cuenta.result); };
+      tx.onabort = () => { bd.close(); reject(tx.error); };
+    };
+  });
+  ok('7f. la generación nueva borra archivos anteriores sin volver a cargar copias',
+    reset.generacionCambiada && !reset.copiaLocalCambiada && !cantidadArchivada && Object.keys(r.crudo.vivas()).length === 0);
+
+  const sinArchivo = { open() { throw new Error('Archivo del navegador no disponible'); } };
+  const s = await pagina({ almacenInicial: base, cuota, archivo: sinArchivo });
+  const rechazo = await s.entrar(B).then(() => null, (e) => e);
+  ok('7g. un fallo al abrir el archivo conserva originales y mantiene cerrada la sincronización',
+    rechazo?.message === 'Archivo del navegador no disponible' && s.w.__instalacionSyncPermitida !== true &&
+    s.crudo.get(gastos) === base[gastos] && s.crudo.get(pendientes) === base[pendientes] && s.crudo.get(apartadoA) === base[apartadoA]);
+}
+
 // ---- 8. Entradas no válidas y contrato del candado ----
 {
   const p = await pagina({});
@@ -237,6 +294,84 @@ const COPIA_A = {
   const prelockFuente = PRELOCK;
   const cuerpo = prelockFuente.slice(prelockFuente.indexOf('window.__laOwnerBootstrapSepararCopiaLocal = function'), prelockFuente.indexOf('// Canal estrecho que conserva acceso a fetch'));
   ok('8c. la función usa SOLO las primitivas originales (la barrera temprana devolvería null y descartaría escrituras)', !/localStorage\.(getItem|setItem|removeItem)\(/.test(cuerpo) && /leerNativo\(/.test(cuerpo) && /quitarNativo\(/.test(cuerpo));
+}
+
+// ---- 9. El borrador del ticket y los pendientes del TPV son de la cuenta (H-40, H-31 de la auditoría del TPV, 26/11/2026) ----
+// Antes solo viajaban con la cuenta las claves almacen:* y almacen__*. El borrador del carrito
+// (la_suite_abc_tpv_borrador_v1:<empresa>:<local>) y los pendientes de cobro y de venta rápida no llevaban
+// usuario: el Camarero/a que entraba en el mismo navegador encontraba el agua sin guardar del Cajero/a.
+{
+  const TPV = {
+    'la_suite_abc_tpv_borrador_v1:EMP-A:LOC-A1': JSON.stringify({ lineas: [{ productoId: 'p1', cantidad: 1 }] }),
+    'la_suite_f4_b02_b03_pago_v1:EMP-A:LOC-A1:cuenta-1': JSON.stringify({ version: 1, medio: 'TARJETA', pagoId: 'pago-1' }),
+    'la_suite_a02_1_pendiente_v1:EMP-A:LOC-A1': JSON.stringify({ version: 1, operationId: 'op-1' }),
+    'la_suite_a02_1_ultima_cuenta_v1:EMP-A:LOC-A1': JSON.stringify({ cuentaId: 'cuenta-1' })
+  };
+  const DISPOSITIVO = { 'la_suite_abc_terminal_id_v1:EMP-A:LOC-A1': 'terminal-del-equipo' };
+  const todas = () => ({ ...COPIA_A, ...TPV });
+  const viva = (p) => { const t = p.crudo.todo(); return Object.keys(TPV).filter((k) => t[k] !== undefined); };
+  const p = await pagina({ almacenInicial: { ...todas(), ...DISPOSITIVO, la_suite_copia_cuenta_dueno_v1: A } });
+  await p.entrar(B);
+  ok('9a. entra B (otro usuario del mismo equipo): no hereda el borrador, ni los pendientes de cobro ni los de venta rápida', viva(p).length === 0, viva(p));
+  ok('9b. lo de A queda apartado entero y sin cambiar un byte', Object.keys(TPV).every((k) => p.crudo.apartadas(A)[k] === TPV[k]), Object.keys(p.crudo.apartadas(A)));
+  ok('9c. la identidad del terminal es del EQUIPO, no de la cuenta: no se aparta', p.crudo.get('la_suite_abc_terminal_id_v1:EMP-A:LOC-A1') === 'terminal-del-equipo' && p.crudo.apartadas(A)['la_suite_abc_terminal_id_v1:EMP-A:LOC-A1'] === undefined);
+  await p.entrar(B);
+  await p.entrar(A);
+  ok('9d. vuelve A: recupera su borrador y sus pendientes intactos (un cobro por reintentar no se pierde)', Object.keys(TPV).every((k) => p.crudo.get(k) === TPV[k]), viva(p));
+  ok('9e. y B no deja nada suyo mezclado con lo de A', Object.keys(p.crudo.apartadas(B)).every((k) => !(k in TPV)));
+
+  // Un reinicio de instalación (generación nueva) tampoco deja el borrador ni los pendientes de la copia anterior.
+  const q = await pagina({ almacenInicial: { ...todas(), ...DISPOSITIVO, la_suite_copia_cuenta_dueno_v1: A }, generacionServidor: 'gen-2' });
+  await q.entrar(B);
+  ok('9f. con una generación nueva no sobrevive el borrador ni los pendientes de la instalación anterior', viva(q).length === 0 && Object.keys(TPV).every((k) => q.crudo.apartadas(A)[k] === undefined), viva(q));
+}
+
+// ---- 10. La copia local cambia mientras se aparta: se reintenta solo (H-46) ----
+// Con un pendiente local de la sesión anterior, el arranque mostraba «La copia local cambió mientras se
+// archivaba» y obligaba a pulsar «Reintentar comprobación» (que lo resolvía). El candado compara lo apartado
+// con lo vivo para no perder una escritura; si cambió, basta volver a apartar.
+{
+  const crear = (veces) => {
+    const real = new IDBFactory();
+    const estado = { hechas: 0, hook: null };
+    const envoltorio = {
+      open(...a) {
+        const req = real.open(...a);
+        req.addEventListener('success', () => {
+          const db = req.result;
+          const original = db.transaction.bind(db);
+          db.transaction = (...x) => {
+            if (estado.hook && estado.hechas < veces) { estado.hechas++; estado.hook(); }
+            return original(...x);
+          };
+        });
+        return req;
+      }
+    };
+    return { envoltorio, estado };
+  };
+
+  // 10a. Una escritura en mitad del apartado: se reintenta y termina sin que nadie pulse nada.
+  const a1 = crear(1);
+  const p = await pagina({ almacenInicial: { ...COPIA_A, la_suite_copia_cuenta_dueno_v1: A }, archivo: a1.envoltorio });
+  a1.estado.hook = () => p.crudo.set('almacen:conteos', JSON.stringify([{ id: 'c1', total: 13 }]));
+  const r = await p.entrar(B).then((x) => x, (e) => e);
+  ok('10a. una escritura a mitad del apartado se resuelve sola (sin «Reintentar comprobación»)', !(r instanceof Error) && r.copiaLocalCambiada === true, r && r.message);
+  const huboVivas = Object.keys(p.crudo.vivas()).length;
+  await p.entrar(B);
+  await p.entrar(A);
+  ok('10b. y no se pierde nada: B arranca limpia y, al volver, A recupera su copia con la escritura de última hora',
+    huboVivas === 0 && p.crudo.get('almacen:conteos') === JSON.stringify([{ id: 'c1', total: 13 }]) && p.crudo.get('almacen:productos') === COPIA_A['almacen:productos'], Object.keys(p.crudo.vivas()));
+
+  // 10c. Si la copia no deja de cambiar, falla cerrado tras un número acotado de intentos.
+  const a2 = crear(99);
+  const q = await pagina({ almacenInicial: { ...COPIA_A, la_suite_copia_cuenta_dueno_v1: A }, archivo: a2.envoltorio });
+  let n = 0;
+  a2.estado.hook = () => q.crudo.set('almacen:conteos', JSON.stringify([{ n: ++n }]));
+  const e2 = await q.entrar(B).then(() => null, (e) => e);
+  ok('10c. si sigue cambiando, falla cerrado tras unos pocos intentos: error, sincronización cerrada y nada perdido',
+    !!e2 && /cambió mientras se archivaba/.test(e2.message) && q.w.__instalacionSyncPermitida !== true && a2.estado.hechas >= 2 && a2.estado.hechas <= 5 && q.crudo.get('almacen:productos') === COPIA_A['almacen:productos'],
+    JSON.stringify({ error: e2 && e2.message, intentos: a2.estado.hechas }));
 }
 
 const fallos = resultados.filter((r) => !r.ok);

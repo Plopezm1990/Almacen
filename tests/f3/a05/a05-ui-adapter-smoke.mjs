@@ -54,6 +54,8 @@ function crearHarness(source, { respuesta }) {
         'setConflictoA06',
         'setConfirmacion',
         'setPedidoOperativoA05',
+        'modoTPV',
+        'setModoTPV',
         `return (${extraerAccionEnviar(source)});`,
       )(
         estado.procesandoA05,
@@ -65,6 +67,9 @@ function crearHarness(source, { respuesta }) {
         (value) => { estado.conflicto = value; },
         setConfirmacion,
         (value) => { estado.pedidoOperativo = value; },
+        // H-22: el manejador cambia a Sala si se envía desde venta rápida; aquí se simula la vista de Sala.
+        'SALA',
+        () => {},
       );
       await runtime();
     },

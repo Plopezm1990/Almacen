@@ -1,0 +1,14 @@
+{
+ "bloque": "Nomina de ensayo y correccion sobre el codigo de acceso",
+ "correccion": {
+  "consecuencia": "No hay ningun hueco de seguridad que reportar, y el codigo de ensayo ya no esta puesto.",
+  "lo_que_dije": "Que vaciar el campo «Codigo de acceso» y guardar NO retiraba el codigo, y que por tanto no habia forma de quitarlo desde la interfaz.",
+  "lo_que_es": "Falso. Si lo retira. Al volver a entrar, el panel «Quien eres?» mostraba su estado vacio, «Todavia no hay ningun empleado con codigo de acceso».",
+  "por_que_me_equivoque": "Lo comprobe en la misma sesion, inmediatamente despues de guardar, y el selector seguia mostrando a la persona con datos ya cargados. Mire demasiado pronto y donde no tocaba."
+ },
+ "fecha": "2026-11-15",
+ "per18": "Creada y anulada una nomina de ensayo. Queda marcada ANULADA y el coste del mes vuelve a 0,00 EUR.",
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-A1, a 1440x900. Con una nomina de ensayo creada y anulada.",
+ "sha": "006122a7; https://deploy-preview-225--chic-entremet-9107cf.netlify.app",
+ "sin_verificar": "El arreglo de las cabeceras de seccion vacias esta en el paquete desplegado y la bateria pasa, pero no se ha visto pulsando en modo empleado: al ir a comprobarlo el panel del navegador cambio de ancho y se perdio la emulacion."
+}

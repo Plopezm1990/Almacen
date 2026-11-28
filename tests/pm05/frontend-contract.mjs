@@ -30,8 +30,15 @@ ok(/const nuevo = \{ id: uid\(\), \.\.\.[\w.]+, empresaId \};/.test(source), 'al
 // (nunca solo id) -- el empaquetador ya ha renombrado esta variable más
 // de una vez (p2->p22, c2->x3).
 ok(/(\w+)\.id === id && \1\.empresaId === empresaId/.test(source), 'edición proveedor no limita empresa');
-ok(source.includes('crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId })'), 'lógica de clientes sin empresa');
-ok(source.includes('fechaAlta: todayISO(), ...data, empresaId'), 'alta cliente no fija empresa');
+// Lo que importa es que la lógica de clientes reciba una empresa, no cómo se
+// escriba. El 18/11/2026 ese argumento dejó de ser el atajo `empresaId` y pasó
+// a `empresaId: empresaDelLocalActivo?.id || null`, y de paso entró
+// `actorNombre`. La garantía es la misma; el texto literal ya no.
+ok(/crearLogicaClientes\(\{[^}]*\bempresaId\b/.test(source), 'lógica de clientes sin empresa');
+// Igual aquí: lo que se exige es que el alta ponga `empresaId`, no cómo se
+// llame la variable que se esparce antes. Pasó de `...data` a `...normalizado`
+// cuando el alta empezó a sanear la entrada.
+ok(/fechaAlta: todayISO\(\), \.\.\.\w+, empresaId\b/.test(source), 'alta cliente no fija empresa');
 ok(/(\w+)\.id === id && \1\.empresaId === empresaId/.test(source), 'edición cliente no limita empresa');
 ok(source.includes('empresaId: empresaDelLocalActivo?.id || null, localId: localActivoId || null'), 'evento auditoría sin contexto empresa/local');
 ok(source.includes('p_empresa_id: entrada.empresaId'), 'RPC auditoría no recibe empresa');

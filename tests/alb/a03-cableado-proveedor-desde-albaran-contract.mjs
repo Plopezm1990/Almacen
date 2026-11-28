@@ -34,7 +34,7 @@ for (const archivo of ['fuente.js', 'source-recovery/fuente-recuperado.js']) {
   }
 
   // la función que lee la foto no cambia de destino ni de cuerpo (el cambio es solo del lado de la aplicación)
-  unico('"https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/importar-albaran",\n        {\n          method: "POST",\n          headers: { "Content-Type": "application/json" },\n          body: JSON.stringify({ imagenes: fotosIA.map((f22) => ({ base64: f22.base64, mediaType: f22.mediaType })) })', 'la llamada a importar-albaran (dirección y cuerpo)');
+  unico('urlFuncionNubeA("importar-albaran"),\n        {\n          method: "POST",\n          headers: { "Content-Type": "application/json" },\n          body: JSON.stringify({ imagenes: fotosIA.map((f22) => ({ base64: f22.base64, mediaType: f22.mediaType })) })', 'la llamada a importar-albaran (función y cuerpo; la dirección sale de la nube configurada, H-33)');
 
   // el solapado lo borra deleteProveedor y lo rellena el alta; el resolver recibe las empresas propias
   for (const campoIA of ['proveedorNombre', 'proveedorCif', 'proveedorDireccion', 'proveedorTelefono', 'proveedorEmail', 'proveedorWeb', 'condicionesPago', 'diasPago', 'clienteCif']) {

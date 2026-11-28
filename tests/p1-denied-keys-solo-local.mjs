@@ -226,4 +226,36 @@ const claveEvento = (events) => events.filter((e) => e.type === "clave-solo-loca
   assert.equal(t.indicador().textContent, "Subiendo 1… · 1 solo en este equipo");
 }
 
+// 10) H-19 (auditoría del TPV, 26/11/2026): el historial de respaldos es local al dispositivo. Si IndexedDB
+//     falla (aquí no existe), el «fallback a localStorage» seguía por el camino general y lo SUBÍA a la
+//     empresa de quien tuviera la sesión (y lo dejaba en la cola de pendientes). Una preferencia o un
+//     historial del dispositivo nunca viaja a la nube, falle lo que falle en el equipo.
+{
+  const t = setup({ modo: "acepta" });
+  const historial = JSON.stringify([{ id: "r1", fecha: "2026-11-13" }, { id: "r2", fecha: "2026-11-17" }]);
+  const res = await t.context.storage.set("historialRespaldos", historial);
+  assert.equal(t.cloud.calls.upsert.length, 0, "H-19: el historial de respaldos no se sube a la empresa aunque IndexedDB falle");
+  assert.deepEqual(t.pendientes(), [], "H-19: ni queda en la cola de pendientes");
+  assert.equal(res.confirmadoServidor, false);
+  assert.equal(res.pendienteSincronizacion, false);
+  assert.equal(t.localStorage.getItem("almacen:historialRespaldos"), historial, "se conserva en este equipo");
+  const lecturas = t.cloud.calls.lecturaKv;
+  const leido = await t.context.storage.get("historialRespaldos");
+  assert.equal(leido.value, historial, "se lee lo guardado en este equipo");
+  assert.equal(t.cloud.calls.lecturaKv, lecturas, "H-19: el historial del dispositivo tampoco se lee del servidor");
+  assert.equal(t.indicador().style.display, "none", "sin aviso de subida por un historial local");
+
+  // Y una cola antigua que ya lo tuviera se limpia sin subirlo.
+  const t2 = setup({
+    modo: "acepta",
+    initial: {
+      "almacen__pendientes": JSON.stringify(["historialRespaldos"]),
+      "almacen:historialRespaldos": historial,
+    },
+  });
+  await t2.context.subirPendientes();
+  assert.equal(t2.cloud.calls.upsert.length, 0, "H-19: una cola antigua con el historial no lo sube");
+  assert.deepEqual(t2.pendientes(), [], "y la cola queda limpia");
+}
+
 console.log("p1-denied-keys-solo-local: OK");

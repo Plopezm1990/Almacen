@@ -14,6 +14,7 @@
 import { createRequire } from 'node:module';
 import { readFileSync } from 'node:fs';
 import { join, resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { crearServidorFalso } from './lib/servidor-caja-falso.mjs';
 
 const depsDir = process.env.CFG6E_UI_DEPS || process.env.CFG6_UI_DEPS;
@@ -33,7 +34,7 @@ globalThis.IS_REACT_ACT_ENVIRONMENT = true;
 dom.window.matchMedia = dom.window.matchMedia || (() => ({ matches: false, addEventListener() {}, removeEventListener() {}, addListener() {}, removeListener() {} }));
 const React = require('react');
 
-const REPO = resolve(new URL('../../', import.meta.url).pathname);
+const REPO = resolve(fileURLToPath(new URL('../../', import.meta.url)));
 const origen = process.env.CFG_A09AC_FUENTE || join(REPO, 'source-recovery/fuente-recuperado.js');
 
 // ---------- carga del módulo real ----------

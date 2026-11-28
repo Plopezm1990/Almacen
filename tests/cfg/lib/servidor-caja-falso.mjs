@@ -18,6 +18,7 @@ export function crearServidorFalso(opciones = {}) {
     umbral: opciones.umbral ?? 0,
     esperado: opciones.esperado ?? 0,
     ensayoBloqueos: Array.isArray(opciones.ensayoBloqueos) ? opciones.ensayoBloqueos.slice() : [],
+    bloqueosProvisional: Array.isArray(opciones.bloqueosProvisional) ? opciones.bloqueosProvisional.slice() : [],   // lo que el servidor devuelve como `blockers` al confirmar el cierre provisional
     ensayoDocumentosPendientes: Number(opciones.ensayoDocumentosPendientes || 0),
     rolesReabrir: opciones.rolesReabrir || ['Propietario'],
     sesionEstado: opciones.sesionEstado || 'ABIERTA',
@@ -151,7 +152,7 @@ export function crearServidorFalso(opciones = {}) {
       c.expected_snapshot = { ...c.expected_snapshot, operating_day: p.p_operating_day };
       se.estado = 'CIERRE_PROVISIONAL'; se.version += 1;
       const difference = Math.round((c.counted - s.esperado) * 100) / 100;
-      return ok({ ok: true, session_id: se.id, estado: 'CIERRE_PROVISIONAL', blockers: [], expected_amount: s.esperado, counted_amount: c.counted, difference });
+      return ok({ ok: true, session_id: se.id, estado: 'CIERRE_PROVISIONAL', blockers: s.bloqueosProvisional, expected_amount: s.esperado, counted_amount: c.counted, difference });
     },
     abc_obtener_diferencia_caja: () => {
       if (!puedeOperarCaja()) return err('abc_caja_no_autorizado');

@@ -1,0 +1,50 @@
+{
+ "bloque": "Siembra de datos de ensayo autorizada por el propietario",
+ "cosas_bien_hechas_del_producto": [
+  "El alta de producto rechaza el guardado y lo dice con role=alert, en vez de guardar a medias.",
+  "La freidora ensena de que aceite descuenta y cuantos litros quedan, en la propia tarjeta.",
+  "El boton se llama «Registrar y descontar del almacen»: dice las dos cosas que hace.",
+  "Eliminar un registro de aceite devuelve los litros al stock, lo anuncia antes y lo cumple.",
+  "Eliminar una freidora conserva su historico de cambios y rellenos, y lo dice."
+ ],
+ "defecto_mayor": {
+  "arreglo": "Darle a la gemela local los mismos campos calculados, sin tocar su filtro ni su alcance. +469 caracteres en cada copia, paridad exacta.",
+  "causa_real": "El montaje pasa `encargosPendientes: encargosPendientesDelLocalActivo`, y esa lista local es un filtro pelado sobre los encargos del local, sin los campos calculados. La lista enriquecida con dias, total y cliente existe en el mismo componente padre, pero es la global y ya no se le pasa a nadie. Tiene la forma del trabajo multilocal: se crearon gemelas *DelLocalActivo y se fueron migrando los consumidores, y en este montaje se cambio la lista por su gemela local sin llevarse el enriquecido con ella.",
+  "comprobado": [
+   "alcance-static-contract OK, que es el que detectaria un identificador fuera de ambito",
+   "PM14 P05 encargos devolucion OK",
+   "PM33 P03 frontend multilocal OK"
+  ],
+  "primer_diagnostico_mio": "Equivocado por incompleto. Arregle textoDias para que no imprima «undefined», y eso hacia falta, pero era un parche: habria cambiado una mentira por otra, diciendo «Sin fecha» de un encargo que si tiene fecha.",
+  "sin_verificar": "No se ha visto en el preview: Netlify no ha reconstruido todavia con este arreglo.",
+  "sintomas": [
+   "«En undefined dias» en los 5 encargos, incluido uno creado hoy CON fecha de entrega.",
+   "«Sin cliente» en los 5 encargos, incluido uno creado hoy eligiendo explicitamente QA Cliente SOLO A."
+  ]
+ },
+ "fecha": "2026-11-15",
+ "lo_que_queda_en_qa": {
+  "el aceite": "Se deja a proposito. Es la semilla que desbloquea las cuatro vistas de freidoras, esta nombrada como ensayo, y retirarla devolveria a QA al estado en el que no se podian medir. Los productos se pueden retirar -la pantalla tiene «Ver 2 productos eliminados»-, asi que quitarla es trivial cuando se quiera.",
+  "el encargo": "Se deja. Cancelarlo no lo borra, lo manda al historial, y al cancelar un encargo con senal salta el dialogo de reembolso, que es uno de los dos que mueven dinero. No lo toco sin decision del propietario.",
+  "el stock del aceite": "Intacto, 50,00 L: el relleno de 2 L se registro y se deshizo con su propia pantalla, que devuelve los litros."
+ },
+ "otros_defectos": [
+  {
+   "arreglo": "Quitado el «(opcional)» de la etiqueta. Se corrige el texto y no la validacion porque el resto de registros trazables del programa exige el responsable -el control APPCC pide quien lo realiza, el conteo ciego quien conto, la cancelacion quien cancela-, asi que lo obligatorio es la norma de la casa; y hacer anonimo un registro de seguridad alimentaria seria el cambio arriesgado.",
+   "donde": "Aceite de freidoras, cambio y relleno",
+   "que": "El campo se etiqueta «Quien lo hace (opcional)» y el validador lo exige: «Indica quien hace el cambio o relleno». Una de las dos miente."
+  },
+  {
+   "arreglo": "No tocado. Es un patron de mensajes que conviene revisar entero, no un parche de una linea.",
+   "donde": "Alta de producto",
+   "que": "Al guardar sin stock minimo, el aviso dice «stockMinimo es obligatorio»: el nombre interno del campo, no su etiqueta «Stock minimo (reorden)». Funciona -avisa y bloquea, con role=alert- pero habla en jerga."
+  }
+ ],
+ "que_se_sembro_y_por_que": {
+  "QA Aceite ensayo 20261115": "Producto de catalogo, materia prima, litro, 50 L a 2,00 EUR, IVA 10 %, almacen seco, stock minimo 5. Era la pieza que faltaba: sin ningun aceite en el catalogo, el selector de la freidora solo traia el marcador y las cuatro vistas de freidoras eran inalcanzables.",
+  "QA freidora ensayo 20261115": "Creada, usada para medir cambio y relleno, y RETIRADA al terminar con su propia pantalla de eliminacion. No queda.",
+  "QA-ENSAYO-SENAL-20261115": "Encargo de 1,00 EUR para QA Cliente SOLO A, con 1,00 EUR de senal cobrada en efectivo y entrega el 2026-11-16. Sembrado para alcanzar revertir anticipo."
+ },
+ "sesion": "Propietario pm07.smoke@qa.invalid, QA-EMP-A / QA-A1; medida a 1440x900. Con dos datos de ensayo sembrados a proposito: el producto «QA Aceite ensayo 20261115» y el encargo «QA-ENSAYO-SENAL-20261115».",
+ "sha": "13d9de04; https://deploy-preview-225--chic-entremet-9107cf.netlify.app"
+}

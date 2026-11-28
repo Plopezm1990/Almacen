@@ -9,7 +9,11 @@
   "use strict";
 
   var fetchOriginal = window.fetch.bind(window);
-  var ORIGEN_FUNCTIONS = "https://flqercbgpgmmfaakrwkc.supabase.co/functions/v1/";
+  // H-33: mismo proyecto que la base de datos, leído en cada llamada (window.NUBE_URL lo fija el arranque).
+  function origenFunctions() {
+    var base = typeof window.NUBE_URL === "string" ? window.NUBE_URL.replace(/\/+$/, "") : "";
+    return base ? base + "/functions/v1/" : "";
+  }
   var PROTEGIDAS = {
     "importar-albaran": true,
     "importar-nomina": true,
@@ -26,7 +30,8 @@
 
   window.fetch = async function (input, init) {
     var url = typeof input === "string" ? input : (input && input.url) || "";
-    if (url.indexOf(ORIGEN_FUNCTIONS) !== 0) return fetchOriginal(input, init);
+    var ORIGEN_FUNCTIONS = origenFunctions();
+    if (!ORIGEN_FUNCTIONS || url.indexOf(ORIGEN_FUNCTIONS) !== 0) return fetchOriginal(input, init);
 
     var nombreFuncion = url.slice(ORIGEN_FUNCTIONS.length).split(/[?#]/)[0];
     if (!PROTEGIDAS[nombreFuncion]) return fetchOriginal(input, init);
@@ -88,6 +93,12 @@
           clave.indexOf("almacen__borrados:") === 0 ||
           // Con una generación nueva no debe sobrevivir nada de la copia anterior (marcas de rechazo, semilla del contexto...).
           clave.indexOf("almacen__") === 0 ||
+          // Borrador del ticket y pendientes del TPV (H-40, H-31): son de la copia anterior. Misma lista que
+          // PREFIJOS_COPIA_TPV en owner-bootstrap-prelock.js; el terminal (la_suite_abc_terminal_id_v1) es del equipo y se conserva.
+          clave.indexOf("la_suite_abc_tpv_borrador_v1:") === 0 ||
+          clave.indexOf("la_suite_f4_b02_b03_pago_v1:") === 0 ||
+          clave.indexOf("la_suite_a02_1_pendiente_v1:") === 0 ||
+          clave.indexOf("la_suite_a02_1_ultima_cuenta_v1:") === 0 ||
           clave === CLAVE_CONTEXTO_SEGURO ||
           // Las copias apartadas de otras cuentas pertenecen a la instalación anterior: tampoco pueden volver.
           clave.indexOf("la_suite_copia_cuenta_v1:") === 0 ||
@@ -124,7 +135,7 @@
   // sesión. No puede validar la generación ni abrir la sincronización con una
   // sesión AAL1, porque prepararSesionPostReset() puede habilitar la cola y
   // subirPendientes() puede alcanzar RPC protegidas antes del desafío MFA.
-  async function mfaAutorizadaParaAplicacion(supabase) {
+  async function mfaAutorizadaParaAplicacion(supabase, sesion) {
     if (!supabase || !supabase.auth || !supabase.auth.mfa) return false;
     var aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
     if (aal && aal.error) throw aal.error;
@@ -135,7 +146,47 @@
     var hayFactorVerificado = totp.concat(phone).some(function (factor) {
       return factor && factor.status === "verified";
     });
-    return hayFactorVerificado && aal && aal.data && aal.data.currentLevel === "aal2";
+    // Quien tiene un factor inscrito completa su desafio siempre: se lo puso
+    // porque quiere que se le pida.
+    if (hayFactorVerificado) return aal && aal.data && aal.data.currentLevel === "aal2";
+    // Sin factor inscrito, desde el 15/11/2026 solo se cierra la cola si el
+    // servidor exige el segundo factor a esta persona. Por defecto no lo exige
+    // a nadie, y entonces no hay nada que esperar antes de sincronizar.
+    return !(await mfaExigidaPorElServidorEdge(supabase, sesion));
+  }
+
+  // Si el servidor todavia no tiene la politica -cliente desplegado antes que
+  // la migracion- se mantiene la conducta de M-03 y se sigue exigiendo. Fallar
+  // hacia "no se exige" abriria la cola, durante esa ventana, a quien hoy la
+  // tiene cerrada.
+  async function mfaExigidaPorElServidorEdge(supabase, sesion) {
+    try {
+      var r = await supabase.rpc("mfa_politica_leer");
+      if (r && r.error) throw r.error;
+      return !!(r && r.data && r.data.exigida_para_mi);
+    } catch (e) {
+      var m = String(e && e.message ? e.message : e || "");
+      if (/could not find the function|PGRST202|HTTP 404/i.test(m)) return true;
+      throw e;
+    }
+  }
+
+  // H-46 (auditoría del TPV, 26/11/2026): si el programa escribe una clave local mientras se aparta la copia,
+  // el candado lo detecta y se niega a seguir para no perder esa escritura («La copia local cambió mientras se
+  // archivaba»). Bastaba volver a apartar, pero el arranque se quedaba bloqueado hasta pulsar «Reintentar
+  // comprobación». Se reintenta solo, pocas veces; si la copia no deja de cambiar, falla cerrado como antes.
+  var INTENTOS_SEPARAR_COPIA = 4;
+  async function separarCopiaLocalConReintento(userId) {
+    var ultimo = null;
+    for (var intento = 0; intento < INTENTOS_SEPARAR_COPIA; intento++) {
+      try {
+        return await window.__laOwnerBootstrapSepararCopiaLocal(userId);
+      } catch (e) {
+        ultimo = e;
+        if (!/cambió mientras se archivaba/.test(String(e && e.message ? e.message : e))) throw e;
+      }
+    }
+    throw ultimo;
   }
 
   async function prepararSesionPostReset(supabase, sesion) {
@@ -166,7 +217,7 @@
     // barrera de sincronización no se abre en esta pasada.
     var copiaCambiada = false;
     if (typeof window.__laOwnerBootstrapSepararCopiaLocal === "function") {
-      copiaCambiada = window.__laOwnerBootstrapSepararCopiaLocal(sesion.user.id).cambio === true;
+      copiaCambiada = (await separarCopiaLocalConReintento(sesion.user.id)).cambio === true;
     }
 
     // Este punto solo decide si la copia local pertenece a la instalación
@@ -199,7 +250,7 @@
     async function validar(sesion) {
       if (!sesion || recargar) return;
       try {
-        if (!(await mfaAutorizadaParaAplicacion(supabase))) {
+        if (!(await mfaAutorizadaParaAplicacion(supabase, sesion))) {
           window.__instalacionSyncPermitida = false;
           return;
         }
@@ -376,6 +427,28 @@
     "usuarioActivoId", "localActivoId", "movimientos", "fichajes"
   ];
 
+  // Claves que cualquier cargo puede LEER, aunque no pueda escribirlas.
+  //
+  // `locales` estaba solo en CLAVES_ENCARGADO, y Camarero/a no figura en
+  // ninguna de las cuatro listas de cargo, así que Camarero/a, Cajero/a y
+  // Churrero/a tenían negada la lista de los locales de su propia membresía.
+  // Negarla no protegía nada —el servidor la da de buen grado, ya filtrada a la
+  // membresía de quien pregunta, en `obtener_contexto_instalacion_ui`— y en
+  // cambio desencadenaba el «Local principal» fantasma: la lectura respondía
+  // vacío, `loadKey` lo convertía en `[]` sin reintento y el arranque lo leía
+  // como una instalación antigua de un solo local, así que se inventaba uno.
+  // Medido en vivo el 20/11/2026 con la cuenta `qa.permisos.20261116` en el
+  // Deploy Preview #225; el contrato está en
+  // tests/rediseno/locales-visibles-para-su-cargo-contract.mjs.
+  //
+  // Saber en qué local se está es lo primero que condiciona todo lo demás, así
+  // que es lectura para todos. La ESCRITURA no se toca: sigue siendo del
+  // Propietario (y del Encargado, que ya la tenía), y además el puente la
+  // enruta por una RPC reservada.
+  var CLAVES_LECTURA_CUALQUIER_CARGO = [
+    "locales"
+  ];
+
   var CLAVES_ENCARGADO = [
     "proveedores", "pedidos", "conteos", "fichasCosto", "albaranes",
     "catalogoProv", "registrosAppcc", "puntosControl", "arqueos", "turnos",
@@ -421,6 +494,7 @@
   function puedeLeer(rol, key) {
     if (rol === "Propietario") return !!CLAVES_CONTROLADAS[key];
     if (estaEn(CLAVES_COMUNES, key)) return true;
+    if (estaEn(CLAVES_LECTURA_CUALQUIER_CARGO, key)) return true;
     if (rol === "Encargado" && estaEn(CLAVES_ENCARGADO, key)) return true;
     if (rol === "Cajero/a" && estaEn(CLAVES_CAJERO, key)) return true;
     if (rol === "Churrero/a" && estaEn(CLAVES_CHURRERO, key)) return true;
@@ -709,12 +783,58 @@ function modoLocalNoReclamado() {
     try { contexto = await obtenerContexto(false); } catch (e) {}
     var rol = contexto && contexto.rol;
 
-    // Si hay una sesión pero no se ha podido verificar su rol, se falla
-    // cerrado para las colecciones empresariales controladas. loadKey aplicará
-    // el fallback del módulo sin borrar la copia local.
+    // Si hay una sesión pero todavía no se ha podido verificar su cargo, se
+    // falla cerrado para las colecciones empresariales controladas. Pero se
+    // falla DICIÉNDOLO, no devolviendo un valor vacío.
+    //
+    // Hasta el 20/11/2026 esta rama respondía `respuestaVacia(key)`, es decir
+    // `{ value: "" }`, confiando en que `loadKey` aplicara su valor por
+    // defecto. Y lo aplica, pero eso es justo el problema: quien recibe un
+    // vacío no puede distinguir «todavía no sé quién eres» de «no tienes
+    // ninguno». Medido en el Deploy Preview #225 con la cuenta de ensayo
+    // `qa.permisos.20261116` (Camarero/a, membresía QA-A1 correcta): `locales`
+    // se pide a los 4081 ms, cuando el contexto aún no está resuelto, y esta
+    // rama devolvía ""; `fuente.js:101783` lo convertía en `[]` y
+    // `fuente.js:105556` leía cero locales como una instalación antigua de un
+    // solo local e inventaba uno. Ése era el «Local principal» fantasma, con
+    // identificador nuevo en cada arranque. Las lecturas tardías de `empresas`
+    // y `localActivoId` (15385 y 15567 ms) salían bien, y por eso el síntoma
+    // parecía ser de una clave concreta cuando era del momento de la lectura.
+    //
+    // Lanzar es lo que el propio `loadKey` espera para este caso: reintenta
+    // tres veces con 350 ms de espera, pero SOLO si la lectura lanza —un vacío
+    // se da por bueno al primer golpe—, y para el segundo intento el contexto
+    // ya está resuelto. Si tras los tres sigue sin resolverse, `loadKey` aplica
+    // el mismo valor por defecto de antes: el peor caso no empeora. Y lanzar es
+    // más cerrado que devolver vacío, no menos: no entrega ningún dato y además
+    // lo dice. Fallar cerrado y fallar callado no son lo mismo.
+    //
+    // Contrato: tests/rediseno/fallar-cerrado-sin-mentir-contract.mjs
     if (!rol) {
     if (modoLocalNoReclamado()) return key === "empleados" ? empleadosPropietarioSinSecretos(null, shared) : getOriginal(key, shared);
-    return respuestaVacia(key);
+      // Y hay que distinguir dos nulos que no significan lo mismo, cosa que
+      // este arreglo no hacia en su primera version y que destapo el contrato
+      // tests/pm33/p03-frontend-multilocal-contract.mjs:
+      //
+      //   - SIN SESION: no hay nada que dar, y es definitivo. Un vacio ahi es
+      //     honesto, y ademas no tiene sentido que loadKey reintente tres veces
+      //     algo que no va a cambiar.
+      //   - CON SESION pero sin cargo resuelto todavia: eso es «no lo se», y es
+      //     lo que hay que decir lanzando.
+      //
+      // La sesion se consulta aqui, en la rama rara, para no gravar el camino
+      // normal.
+    var haySesionAhora = false;
+    try {
+      var sbSesion = await clienteSupabase();
+      var sesionAhora = await sesionActual(sbSesion);
+      haySesionAhora = !!(sesionAhora && sesionAhora.user && sesionAhora.user.id);
+    } catch (e) {}
+    if (!haySesionAhora) return respuestaVacia(key);
+    var sinCargo = new Error("Cargo sin verificar todavía para «" + key + "»: reintentable");
+    sinCargo.code = "CARGO_SIN_VERIFICAR";
+    sinCargo.reintentable = true;
+    throw sinCargo;
   }
 
     if (rol === "Propietario") {
@@ -852,16 +972,45 @@ function modoLocalNoReclamado() {
   if (window.__laM03MfaGateInstalada) return;
   window.__laM03MfaGateInstalada = true;
 
+  // Desde el 15/11/2026 la exigencia del segundo factor NO la decide esta
+  // lista: la decide el servidor, en `private.mfa_politica`, y por defecto no
+  // se exige a nadie. El propietario puede exigirla por cargo desde
+  // Configuración.
+  //
+  // Esta lista se queda como respaldo para un caso concreto: que el cliente se
+  // despliegue antes que la migración. Mientras `mfa_politica_leer` no exista
+  // en el servidor se mantiene la conducta de M-03, que exige el segundo factor
+  // a estos tres cargos. Fallar hacia "no se exige" dejaría sin protección,
+  // durante esa ventana, justo a quien hoy la tiene.
   var ROLES_MFA_OBLIGATORIA = {
     "Propietario": true,
     "Encargado": true,
     "Cajero/a": true
   };
+
+  function esFuncionInexistente(e) {
+    var m = String(e && e.message ? e.message : e || "");
+    return /could not find the function|PGRST202|HTTP 404/i.test(m);
+  }
+
+  async function mfaExigidaPorElServidor(cliente, rol) {
+    try {
+      var r = await cliente.rpc("mfa_politica_leer");
+      if (r.error) throw r.error;
+      return !!(r.data && r.data.exigida_para_mi);
+    } catch (e) {
+      if (esFuncionInexistente(e)) return !!ROLES_MFA_OBLIGATORIA[rol];
+      throw e;
+    }
+  }
+
   var overlay = null;
   var supabase = null;
   var ejecucion = 0;
   var factorActual = null;
   var challengeActual = null;
+  var enrolamientoEnCurso = false;
+  var observadorMfaReact = null;
 
   function nodo(tag, texto) {
     var el = document.createElement(tag);
@@ -874,6 +1023,7 @@ function modoLocalNoReclamado() {
     overlay = null;
     factorActual = null;
     challengeActual = null;
+    enrolamientoEnCurso = false;
   }
 
   function crearOverlay() {
@@ -897,6 +1047,28 @@ function modoLocalNoReclamado() {
     overlay.appendChild(tarjeta);
     document.body.appendChild(overlay);
     return tarjeta;
+  }
+
+  // AppConSesion/MfaGate is the canonical visible MFA flow. The historical
+  // edge gate still validates the server policy, but must not place a second
+  // modal over the QR that React is already rendering.
+  function mfaGateReactActivo() {
+    var root = document.getElementById("root");
+    if (!root) return false;
+    var texto = String(root.textContent || "");
+    return /segundo factor/i.test(texto) && !!root.querySelector('input[autocomplete="one-time-code"]');
+  }
+
+  function observarMfaReact() {
+    if (observadorMfaReact || typeof MutationObserver !== "function" || !document.body) return;
+    observadorMfaReact = new MutationObserver(function () {
+      if (mfaGateReactActivo() && overlay) {
+        limpiarOverlay();
+        observadorMfaReact.disconnect();
+        observadorMfaReact = null;
+      }
+    });
+    observadorMfaReact.observe(document.body, { childList: true, subtree: true });
   }
 
   function boton(texto) {
@@ -962,6 +1134,7 @@ function modoLocalNoReclamado() {
       });
       if (verificacion.error) throw verificacion.error;
       challengeActual = null;
+      enrolamientoEnCurso = false;
       await comprobarMfa();
     } catch (e) {
       botonVerificar.disabled = false;
@@ -1006,17 +1179,23 @@ function modoLocalNoReclamado() {
 
   async function prepararEnrolamiento(tarjeta, rol) {
     try {
-      var alta = await supabase.auth.mfa.enroll({ factorType: "totp", friendlyName: "LA Suite - " + rol });
+      var alta = await supabase.auth.mfa.enroll({ factorType: "totp", issuer: "L&A Suite", friendlyName: "LA Suite - " + rol });
       if (alta.error || !alta.data || !alta.data.id) throw alta.error || new Error("No se pudo iniciar el alta MFA");
       factorActual = alta.data;
       renderEnrolamiento(tarjeta, rol, alta.data);
     } catch (e) {
+      enrolamientoEnCurso = false;
       mensajeError(tarjeta, "No se pudo iniciar el alta del autenticador. Revisa la configuración MFA del proyecto.");
     }
   }
 
   async function comprobarMfa() {
     var esta = ++ejecucion;
+    if (mfaGateReactActivo()) {
+      if (overlay) limpiarOverlay();
+      return;
+    }
+    if (enrolamientoEnCurso && overlay) return;
     if (!window.__nubeActiva || typeof window.getSupabaseClient !== "function") {
       limpiarOverlay();
       return;
@@ -1034,7 +1213,9 @@ function modoLocalNoReclamado() {
         return;
       }
       var rol = perfil.data.rol;
-      if (!ROLES_MFA_OBLIGATORIA[rol]) { limpiarOverlay(); return; }
+      var exigida = await mfaExigidaPorElServidor(supabase, rol);
+      if (esta !== ejecucion) return;
+      if (!exigida) { limpiarOverlay(); return; }
       var aal = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
       if (aal.error) throw aal.error;
       if (aal.data && aal.data.currentLevel === "aal2") { limpiarOverlay(); return; }
@@ -1042,11 +1223,17 @@ function modoLocalNoReclamado() {
       if (factores.error) throw factores.error;
       var totp = factores.data && Array.isArray(factores.data.totp) ? factores.data.totp : [];
       var verificados = totp.filter(function (factor) { return factor && factor.status === "verified"; });
+      if (mfaGateReactActivo()) {
+        if (overlay) limpiarOverlay();
+        return;
+      }
+      if (enrolamientoEnCurso && overlay) return;
       var tarjeta = crearOverlay();
       if (verificados.length === 0) {
         encabezado(tarjeta, "El rol " + rol + " requiere configurar un autenticador TOTP.");
         var iniciar = boton("Configurar autenticador TOTP");
         iniciar.addEventListener("click", function () {
+          enrolamientoEnCurso = true;
           iniciar.disabled = true;
           tarjeta.textContent = "Preparando configuración segura…";
           prepararEnrolamiento(tarjeta, rol);
@@ -1076,6 +1263,7 @@ function modoLocalNoReclamado() {
         if (evento === "SIGNED_OUT") limpiarOverlay();
         else if (evento === "SIGNED_IN" || evento === "PASSWORD_RECOVERY" || evento === "TOKEN_REFRESHED" || evento === "MFA_CHALLENGE_VERIFIED") comprobarMfa();
       });
+      observarMfaReact();
       comprobarMfa();
     } catch (e) {}
   })();

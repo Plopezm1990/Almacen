@@ -179,11 +179,20 @@ const empresasDos = [
   assert.ok(finH > iniH, 'no se pudo acotar el manejador');
   const fuenteHandler = src.slice(iniH, finH);
 
-  const ejecutar = (empresaId, locales) => {
+  // Desde el 16/11/2026 el manejador consulta la guarda de borrador antes de
+  // mover el contexto, asi que el banco de pruebas tiene que darsela. `permitir`
+  // es lo que contesta la persona al aviso.
+  const ejecutar = (empresaId, locales, opciones = {}) => {
     const cambios = [];
     const informes = [];
+    const preguntas = [];
     const ctx = {
       locales,
+      localActivoId: 'localActivoId' in opciones ? opciones.localActivoId : 'loc1',
+      confirmarCambioDeContextoPM15: () => {
+        preguntas.push(true);
+        return opciones.permitir !== false;
+      },
       cambiarLocalActivo: (id) => cambios.push(id),
       setLocalInformeId: (v) => informes.push(v),
       String,
@@ -191,7 +200,7 @@ const empresasDos = [
     };
     vm.createContext(ctx);
     vm.runInContext(fuenteHandler + '\nseleccionarContextoEmpresaPM32(ELEGIDA);', ctx);
-    return { cambios, informes };
+    return { cambios, informes, preguntas };
   };
 
   const locales = [
@@ -210,6 +219,19 @@ const empresasDos = [
   const sinLocales = ejecutar('emp3', locales);
   assert.deepEqual(sinLocales.cambios, [], 'sin local al que ir, no se toca el contexto');
   console.log('P01_ELEGIR_EMPRESA_MUEVE_EL_CONTEXTO=PASS');
+
+  // Con un formulario abierto, cambiar de empresa mueve el local activo por
+  // debajo: lo que se estuviera escribiendo pasaria a pertenecer al nuevo. Se
+  // pregunta, y un "no" tiene que dejarlo todo como estaba.
+  const dijoQueNo = ejecutar('emp2', locales, { permitir: false });
+  assert.deepEqual(dijoQueNo.preguntas, [true], 'tiene que preguntar antes de mover el contexto');
+  assert.deepEqual(dijoQueNo.cambios, [], 'si la persona dice que no, el local activo no se toca');
+  assert.deepEqual(dijoQueNo.informes, [], 'si dice que no, tampoco se toca la vista de informes');
+
+  // Y si ya se esta en el destino no hay nada que avisar: no se pregunta.
+  const mismoSitio = ejecutar('emp2', locales, { localActivoId: 'loc2' });
+  assert.deepEqual(mismoSitio.preguntas, [], 'si el destino es el local en uso, no se molesta a nadie');
+  console.log('P01_CAMBIO_DE_EMPRESA_RESPETA_EL_BORRADOR=PASS');
 }
 
 // --------------------------------------------------------------------------

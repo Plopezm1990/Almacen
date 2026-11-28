@@ -1,0 +1,259 @@
+{
+ "bloque": "3 - Organizacion",
+ "fecha": "2026-11-14",
+ "guardas_de_configuracion_local": [
+  "Solo un usuario con rol Propietario puede ver y cambiar la configuracion.",
+  "Selecciona un local concreto para configurarlo. (misma pared que dejo fuera a las cuentas sin local)"
+ ],
+ "medicion_barata_prevista": "Leer window.__laPlataformaActiva: dice si hay algun administrador de plataforma registrado en QA. No escribe nada.",
+ "metodo": "Preparacion sin sesion: enrutador, cuerpos de componente y sondas de texto sobre fuente.js, mas las migraciones para las guardas de servidor",
+ "recuento": {
+  "alcanzables": 19,
+  "bloqueadas_por_acceso": 10,
+  "escriben": 3,
+  "no_construidas": 5,
+  "objetivo": 34,
+  "pestanas_del_enrutador": 3,
+  "secciones_de_configuracion": 7
+ },
+ "vistas": [
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-18",
+   "nota": "El indice en si: barra de siete botones de ConfiguracionLocal",
+   "via": "pestana configuracion"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-19",
+   "nota": "Dia y cajas",
+   "via": "configuracion > seccion dia"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-20",
+   "nota": "Modalidades",
+   "via": "configuracion > seccion modalidades"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-21",
+   "nota": "Equipos, lista",
+   "via": "configuracion > seccion equipos"
+  },
+  {
+   "escribe": true,
+   "estado_previsto": "alcanzable",
+   "id": "org-22",
+   "nota": "Anadir un equipo / Editar",
+   "via": "configuracion > seccion equipos"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-24",
+   "nota": "Terminales TPV y cajas fisicas, lista",
+   "via": "configuracion > seccion terminales"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-25",
+   "nota": "Vincular terminal, caja y equipo",
+   "via": "configuracion > seccion terminales"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-26",
+   "nota": "Fiscalidad y AEAT",
+   "via": "configuracion > seccion fiscalidad"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-27",
+   "nota": "Roles y cargos actuales",
+   "via": "configuracion > seccion cargos"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-28",
+   "nota": "Nuevo cargo / duplicar / editar",
+   "via": "configuracion > seccion cargos"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-29",
+   "nota": "Personas asignadas, Quitar y Heredar del cargo",
+   "via": "configuracion > seccion cargos"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-30",
+   "nota": "Editar permisos y pantallas",
+   "via": "configuracion > seccion cargos"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-31",
+   "nota": "Permisos por rol y Pantallas del modo empleado",
+   "via": "configuracion > seccion permisos"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-02",
+   "nota": "FichaDatosLocal, con Guardar y Cerrar",
+   "via": "pestana locales"
+  },
+  {
+   "escribe": true,
+   "estado_previsto": "alcanzable",
+   "id": "org-03",
+   "nota": "+ Anadir local nuevo, luego Crear local. Local de ensayo",
+   "via": "pestana locales"
+  },
+  {
+   "escribe": true,
+   "estado_previsto": "alcanzable",
+   "id": "org-04",
+   "nota": "Desactivar y Locales desactivados. Solo el de ensayo, nunca QA-A1",
+   "via": "pestana locales"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-05",
+   "nota": "FichaEmpresaBasica, Ficha de empresa",
+   "via": "pestana locales"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-06",
+   "nota": "GestorEmpresas. No se pulsa + Anadir empresa",
+   "via": "pestana locales"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "alcanzable",
+   "id": "org-07",
+   "nota": "ConfirmarConContrasenaPM29, pide la contrasena del propietario",
+   "via": "confirmacion"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-08",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-09",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-10",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-11",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-12",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-13",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-14",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-15",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-16",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "bloqueada por acceso",
+   "id": "org-17",
+   "nota": "Exige fila en private.plataforma_admins mas perfil Propietario activo. El esquema private no se alcanza desde el navegador: decision del propietario",
+   "via": "plataforma-panel.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "no construida",
+   "id": "org-23",
+   "nota": "ConfigEquipos avisa: solo es un registro, no los conecta ni los configura. Cero apariciones de prueba, probar o imprimir en la seccion",
+   "via": "sonda sobre fuente.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "no construida",
+   "id": "org-33",
+   "nota": "tarifa aparece cero veces; no hay pantalla de crear o editar mesas ni zonas de sala, el mapa se lee con cargarMapaSalaA07",
+   "via": "sonda sobre fuente.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "no construida",
+   "id": "org-34",
+   "nota": "tipo de negocio, cero apariciones",
+   "via": "sonda sobre fuente.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "no construida",
+   "id": "org-35",
+   "nota": "teclas solo aparece en mensajes internos de React",
+   "via": "sonda sobre fuente.js"
+  },
+  {
+   "escribe": false,
+   "estado_previsto": "no construida",
+   "id": "org-36",
+   "nota": "puente de impresion e integracion, cero apariciones",
+   "via": "sonda sobre fuente.js"
+  }
+ ]
+}

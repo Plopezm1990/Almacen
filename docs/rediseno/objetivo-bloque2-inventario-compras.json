@@ -1,0 +1,492 @@
+[
+ {
+  "id": "com-02",
+  "area": "Compras",
+  "pantalla": "Alta y edición de proveedor",
+  "tipo": "form",
+  "ubicacion": "Proveedores → nuevo/editar",
+  "referencia": "Proveedores:117123",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-03",
+  "area": "Compras",
+  "pantalla": "Ficha de proveedor",
+  "tipo": "detalle",
+  "ubicacion": "Proveedores → abrir",
+  "referencia": "Proveedores",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-04",
+  "area": "Compras",
+  "pantalla": "Eliminar proveedor",
+  "tipo": "confirmar",
+  "ubicacion": "Proveedor → eliminar",
+  "referencia": "Proveedores:117140",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-06",
+  "area": "Compras",
+  "pantalla": "Crear o editar pedido",
+  "tipo": "form",
+  "ubicacion": "Pedidos → nuevo/editar",
+  "referencia": "Pedidos",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-07",
+  "area": "Compras",
+  "pantalla": "Crear producto desde el pedido",
+  "tipo": "form",
+  "ubicacion": "Editor de pedido → nuevo producto",
+  "referencia": "Pedidos",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-08",
+  "area": "Compras",
+  "pantalla": "Ficha de pedido",
+  "tipo": "detalle",
+  "ubicacion": "Pedidos → abrir",
+  "referencia": "Pedidos",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-09",
+  "area": "Compras",
+  "pantalla": "Opciones de envío del pedido",
+  "tipo": "detalle",
+  "ubicacion": "Pedido recién creado",
+  "referencia": "Pedidos:117917",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-10",
+  "area": "Compras",
+  "pantalla": "Enviar pedido por correo",
+  "tipo": "form",
+  "ubicacion": "Pedido → enviar",
+  "referencia": "Pedidos:117908",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-11",
+  "area": "Compras",
+  "pantalla": "Eliminar pedido",
+  "tipo": "confirmar",
+  "ubicacion": "Pedido → eliminar",
+  "referencia": "Pedidos:117905",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-13",
+  "area": "Compras",
+  "pantalla": "Recibir líneas y diferencias",
+  "tipo": "recibir",
+  "ubicacion": "Recepción → abrir pedido",
+  "referencia": "Recepcion",
+  "origen": "Código",
+  "condicion": "Pedido abierto"
+ },
+ {
+  "id": "com-14",
+  "area": "Compras",
+  "pantalla": "Recibir mediante albarán o foto",
+  "tipo": "asistente",
+  "ubicacion": "Recepción → albarán/foto",
+  "referencia": "Recepcion",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-15",
+  "area": "Compras",
+  "pantalla": "Cerrar pedido incompleto",
+  "tipo": "confirmar",
+  "ubicacion": "Recepción → cerrar pedido",
+  "referencia": "Recepcion:118010",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-17",
+  "area": "Compras",
+  "pantalla": "Editor y ficha de albarán",
+  "tipo": "form",
+  "ubicacion": "Albaranes → editor",
+  "referencia": "Albaranes:119811",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-18",
+  "area": "Compras",
+  "pantalla": "Pegar texto de albarán",
+  "tipo": "asistente",
+  "ubicacion": "Editor de albarán → pegar texto",
+  "referencia": "Albaranes:120243",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-19",
+  "area": "Compras",
+  "pantalla": "Anular entrada de un albarán",
+  "tipo": "confirmar",
+  "ubicacion": "Albarán recibido → editar",
+  "referencia": "Albaranes:120334",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-20",
+  "area": "Compras",
+  "pantalla": "Eliminar albarán",
+  "tipo": "confirmar",
+  "ubicacion": "Albarán → eliminar",
+  "referencia": "Albaranes:120343",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-22",
+  "area": "Compras",
+  "pantalla": "Leer factura de compra",
+  "tipo": "asistente",
+  "ubicacion": "Facturas → importar PDF o imagen",
+  "referencia": "Facturas",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-23",
+  "area": "Compras",
+  "pantalla": "Revisar lectura y conciliar albaranes",
+  "tipo": "form",
+  "ubicacion": "Facturas → revisión",
+  "referencia": "Facturas",
+  "origen": "Código",
+  "condicion": "Revisión humana"
+ },
+ {
+  "id": "com-24",
+  "area": "Compras",
+  "pantalla": "Histórico de facturas y detalle",
+  "tipo": "detalle",
+  "ubicacion": "Facturas → histórico",
+  "referencia": "FacturasLegacy",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-26",
+  "area": "Compras",
+  "pantalla": "Registrar devolución a proveedor",
+  "tipo": "form",
+  "ubicacion": "Devoluciones → proveedor → registrar",
+  "referencia": "Devoluciones",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-28",
+  "area": "Compras",
+  "pantalla": "Factura directa",
+  "tipo": "form",
+  "ubicacion": "Cuentas por pagar → añadir",
+  "referencia": "CuentasPorPagar",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-29",
+  "area": "Compras",
+  "pantalla": "Registrar pago a proveedor",
+  "tipo": "form",
+  "ubicacion": "Cuentas por pagar → marcar pagada",
+  "referencia": "CuentasPorPagar",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "com-30",
+  "area": "Compras",
+  "pantalla": "Eliminar factura directa",
+  "tipo": "confirmar",
+  "ubicacion": "Cuentas por pagar → factura directa",
+  "referencia": "CuentasPorPagar",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-03",
+  "area": "Inventario",
+  "pantalla": "Alta y edición de producto",
+  "tipo": "producto",
+  "ubicacion": "Productos → nuevo/editar",
+  "referencia": "Productos:117446",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-04",
+  "area": "Inventario",
+  "pantalla": "Salida y ajuste entre productos",
+  "tipo": "form",
+  "ubicacion": "Producto → movimientos/ajuste",
+  "referencia": "Productos:117477",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-05",
+  "area": "Inventario",
+  "pantalla": "Kardex de producto",
+  "tipo": "detalle",
+  "ubicacion": "Producto → Kardex",
+  "referencia": "Productos:117476",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-06",
+  "area": "Inventario",
+  "pantalla": "Confirmar cambio de envase",
+  "tipo": "confirmar",
+  "ubicacion": "Producto → guardar cambio de contenido",
+  "referencia": "Productos:117497",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-07",
+  "area": "Inventario",
+  "pantalla": "Baja y reactivación de producto",
+  "tipo": "confirmar",
+  "ubicacion": "Productos → eliminar/reactivar",
+  "referencia": "Productos:117497",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-08",
+  "area": "Inventario",
+  "pantalla": "Escanear código de barras",
+  "tipo": "asistente",
+  "ubicacion": "Producto → escanear",
+  "referencia": "EscanerCodigoBarras",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-11",
+  "area": "Inventario",
+  "pantalla": "Iniciar conteo y asignar responsable",
+  "tipo": "form",
+  "ubicacion": "Inventario ciego → iniciar",
+  "referencia": "InventarioCiego",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-12",
+  "area": "Inventario",
+  "pantalla": "Contar por proveedor o producto",
+  "tipo": "form",
+  "ubicacion": "Inventario ciego → conteo activo",
+  "referencia": "InventarioCiego",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-13",
+  "area": "Inventario",
+  "pantalla": "Crear producto durante el conteo",
+  "tipo": "producto",
+  "ubicacion": "Conteo activo → nuevo producto",
+  "referencia": "InventarioCiego",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-14",
+  "area": "Inventario",
+  "pantalla": "Diferencias y motivos",
+  "tipo": "form",
+  "ubicacion": "Conteo → revisar diferencias",
+  "referencia": "InventarioCiego",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-15",
+  "area": "Inventario",
+  "pantalla": "Cerrar o aplicar ajustes de conteo",
+  "tipo": "confirmar",
+  "ubicacion": "Conteo → cerrar/aplicar",
+  "referencia": "BloqueAplicarAjustes",
+  "origen": "Código",
+  "condicion": "Permiso de ajuste"
+ },
+ {
+  "id": "inv-16",
+  "area": "Inventario",
+  "pantalla": "Revertir aplicación duplicada",
+  "tipo": "confirmar",
+  "ubicacion": "Conteo cerrado → revertir",
+  "referencia": "InventarioCiego:118327",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-17",
+  "area": "Inventario",
+  "pantalla": "Resultado de la reversión",
+  "tipo": "estado",
+  "ubicacion": "Conteo → resultado",
+  "referencia": "InventarioCiego:118337",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-18",
+  "area": "Inventario",
+  "pantalla": "Cancelar o eliminar conteo",
+  "tipo": "confirmar",
+  "ubicacion": "Inventario ciego → cancelar",
+  "referencia": "InventarioCiego:118364",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-20",
+  "area": "Inventario",
+  "pantalla": "Vista de conteo y clasificación ABC",
+  "tipo": "informe",
+  "ubicacion": "Saldo → conteo/ABC",
+  "referencia": "SaldoAlmacen:119628",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-23",
+  "area": "Inventario",
+  "pantalla": "Traspasar a otra ubicación",
+  "tipo": "form",
+  "ubicacion": "Traspasos → interno",
+  "referencia": "Traspasos",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-24",
+  "area": "Inventario",
+  "pantalla": "Traspasar entre locales",
+  "tipo": "form",
+  "ubicacion": "Traspasos → entre locales",
+  "referencia": "Traspasos",
+  "origen": "Código",
+  "condicion": "Misma empresa y acceso a destino"
+ },
+ {
+  "id": "inv-26",
+  "area": "Inventario",
+  "pantalla": "Movimientos en discrepancia",
+  "tipo": "detalle",
+  "ubicacion": "Reconciliación → movimientos",
+  "referencia": "DiagnosticoStock:123986",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-27",
+  "area": "Inventario",
+  "pantalla": "Confirmar corrección de stock",
+  "tipo": "confirmar",
+  "ubicacion": "Reconciliación → corregir",
+  "referencia": "DiagnosticoStock:123986",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-29",
+  "area": "Inventario",
+  "pantalla": "Catálogo y alérgenos",
+  "tipo": "lista",
+  "ubicacion": "etiquetas → catálogo",
+  "referencia": "EtiquetasCatalogo:124297",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-30",
+  "area": "Inventario",
+  "pantalla": "Fichas de coste y recetas",
+  "tipo": "lista",
+  "ubicacion": "fichas",
+  "referencia": "FichasCosto",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-31",
+  "area": "Inventario",
+  "pantalla": "Editar receta, ingredientes y coste",
+  "tipo": "form",
+  "ubicacion": "Fichas → nueva/editar",
+  "referencia": "FichasCosto",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-32",
+  "area": "Inventario",
+  "pantalla": "Detalle e impresión de receta",
+  "tipo": "detalle",
+  "ubicacion": "Fichas → abrir",
+  "referencia": "FichasCosto",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-34",
+  "area": "Inventario",
+  "pantalla": "Registrar merma",
+  "tipo": "form",
+  "ubicacion": "Mermas → nueva",
+  "referencia": "Mermas",
+  "origen": "Código",
+  "condicion": ""
+ },
+ {
+  "id": "inv-35",
+  "area": "Inventario",
+  "pantalla": "Biblioteca de opciones",
+  "tipo": "lista",
+  "ubicacion": "Configuración TPV → biblioteca",
+  "referencia": "Plan maestro p. 6; Informe de estado §10",
+  "origen": "QA",
+  "condicion": "QA"
+ },
+ {
+  "id": "inv-36",
+  "area": "Inventario",
+  "pantalla": "Editor de opciones reutilizables",
+  "tipo": "form",
+  "ubicacion": "Biblioteca → crear/editar",
+  "referencia": "Plan maestro pp. 18–19; T8",
+  "origen": "Plan",
+  "condicion": "Plan"
+ }
+]

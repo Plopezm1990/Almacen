@@ -13,7 +13,7 @@ const src = fs.readFileSync('fuente.js', 'utf8');
 // diseño establecido (mismo criterio que crearLogicaProveedores/crearLogicaClientes, no
 // una inconsistencia nueva) -- no se filtran por local porque no les corresponde. ----
 {
-  assert.match(src, /createElement\(BusquedaGlobal, \{ productos: productosDelLocalActivo, proveedores, clientes, fichasCosto: fichasCostoDelLocalActivo, empleados: empleadosDelLocalActivo, setTab: cambiarTabPM15 \}\)/, 'BusquedaGlobal debe recibir productos/fichasCosto/empleados ya filtrados por local activo');
+  assert.match(src, /createElement\(BusquedaGlobal, \{ productos: productosDelLocalActivo, proveedores, clientes, fichasCosto: fichasCostoDelLocalActivo, empleados: empleadosDelLocalActivo, puedeConsultar: puedeNavegarRediseno, setTab: cambiarTabPM15 \}\)/, 'BusquedaGlobal debe recibir datos filtrados por local y verificar permisos por destino');
   console.log('P05_PM20_BUSQUEDA_GLOBAL_ALCANCE_CORRECTO=PASS');
 }
 

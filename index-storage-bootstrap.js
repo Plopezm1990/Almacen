@@ -62,6 +62,65 @@
     }
   };
 
+  // El historial de respaldos contiene snapshots completos y puede superar
+  // con facilidad el límite de localStorage. Se mantiene local al dispositivo,
+  // pero se guarda en IndexedDB para no competir con la caché operativa. La
+  // migración es conservadora: primero escribe y verifica IndexedDB, y solo
+  // después retira la copia antigua de localStorage.
+  var HISTORIAL_RESPALDOS_IDB = "la_suite_respaldos_v1";
+  function abrirIndexedDbRespaldos() {
+    return new Promise(function (resolve, reject) {
+      if (!window.indexedDB) {
+        reject(new Error("indexedDB_no_disponible"));
+        return;
+      }
+      var solicitud;
+      try { solicitud = window.indexedDB.open(HISTORIAL_RESPALDOS_IDB, 1); }
+      catch (e) { reject(e); return; }
+      solicitud.onupgradeneeded = function () {
+        var db = solicitud.result;
+        if (!db.objectStoreNames.contains("estado")) db.createObjectStore("estado");
+      };
+      solicitud.onsuccess = function () { resolve(solicitud.result); };
+      solicitud.onerror = function () { reject(solicitud.error || new Error("indexedDB_error")); };
+      solicitud.onblocked = function () { reject(new Error("indexedDB_bloqueada")); };
+    });
+  }
+  function leerHistorialRespaldosIndexedDb() {
+    return abrirIndexedDbRespaldos().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction("estado", "readonly");
+        var req = tx.objectStore("estado").get("historial");
+        req.onsuccess = function () { resolve(req.result == null ? null : String(req.result)); };
+        req.onerror = function () { reject(req.error || new Error("indexedDB_lectura_error")); };
+        tx.oncomplete = function () { try { db.close(); } catch (e) {} };
+        tx.onerror = function () { reject(tx.error || new Error("indexedDB_transaccion_error")); };
+      });
+    });
+  }
+  function guardarHistorialRespaldosIndexedDb(value) {
+    return abrirIndexedDbRespaldos().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction("estado", "readwrite");
+        tx.objectStore("estado").put(String(value), "historial");
+        tx.oncomplete = function () { try { db.close(); } catch (e) {} resolve(true); };
+        tx.onerror = function () { reject(tx.error || new Error("indexedDB_escritura_error")); };
+        tx.onabort = function () { reject(tx.error || new Error("indexedDB_abortada")); };
+      });
+    });
+  }
+  function borrarHistorialRespaldosIndexedDb() {
+    return abrirIndexedDbRespaldos().then(function (db) {
+      return new Promise(function (resolve, reject) {
+        var tx = db.transaction("estado", "readwrite");
+        tx.objectStore("estado").delete("historial");
+        tx.oncomplete = function () { try { db.close(); } catch (e) {} resolve(true); };
+        tx.onerror = function () { reject(tx.error || new Error("indexedDB_borrado_error")); };
+        tx.onabort = function () { reject(tx.error || new Error("indexedDB_abortada")); };
+      });
+    });
+  }
+
   // La marca de solo-local de productos procede de una versión anterior que
   // no enviaba empresa/local a la RPC. Se invalida una sola vez al instalar la
   // corrección PM10; no se borra ningún producto ni se toca la nube.
@@ -434,9 +493,13 @@
   // Preferencias de interfaz del dispositivo. No contienen datos de negocio
   // ni deben viajar a Supabase: sincronizarlas provoca avisos al cambiar de
   // usuario en una sesión abierta, aunque el cambio local se haya guardado.
+  // El historial de respaldos también: sus instantáneas son del equipo (se guardan en IndexedDB) y,
+  // si IndexedDB falla, el respaldo en localStorage no puede acabar en la empresa de quien tenga la
+  // sesión (hallazgo H-19 de la auditoría del TPV, 26/11/2026).
   var CLAVES_SOLO_DISPOSITIVO = {
     modoEmpleado: true,
-    usuarioActivoId: true
+    usuarioActivoId: true,
+    historialRespaldos: true
   };
   function esClaveSoloDispositivo(key) {
     return !!CLAVES_SOLO_DISPOSITIVO[key];
@@ -453,7 +516,15 @@
   }
 
   async function leerColeccionEmpresa(tabla) {
-    var r = await window.__nubeCliente.from(tabla).select("id,empresa_id,datos").order("updated_at", { ascending: true });
+    // clientes_empresa y proveedores_empresa son tablas legacy con solo
+    // id/empresa_id/datos. No se puede ordenar por updated_at porque esa
+    // columna no existe en QA y PostgREST devuelve un error; en ese caso el
+    // bootstrap caía a la caché local vacía y ocultaba registros válidos.
+    var consulta = window.__nubeCliente.from(tabla).select("id,empresa_id,datos");
+    if (tabla !== "clientes_empresa" && tabla !== "proveedores_empresa") {
+      consulta = consulta.order("updated_at", { ascending: true });
+    }
+    var r = await consulta;
     if (r.error) throw r.error;
     return (r.data || []).map(function (fila) {
       var d = fila.datos || {};
@@ -470,7 +541,11 @@
     if (rLee.error) throw rLee.error;
     var remotos = rLee.data || [];
     var porId = {}; remotos.forEach(function (r) { porId[r.id] = r; });
-    var filas = listaLocal.map(function (x) { return { id: x.id, empresa_id: x.empresaId, datos: x, updated_at: new Date().toISOString() }; });
+    var filas = listaLocal.map(function (x) {
+      var fila = { id: x.id, empresa_id: x.empresaId, datos: x };
+      if (tabla !== "clientes_empresa" && tabla !== "proveedores_empresa") fila.updated_at = new Date().toISOString();
+      return fila;
+    });
     if (filas.length) {
       var rUp = await window.__nubeCliente.from(tabla).upsert(filas);
       if (rUp.error) throw rUp.error;
@@ -1173,6 +1248,28 @@
     // Leer: si hay nube, se prefiere (trae lo que hayan hecho en otro
     // dispositivo) y se deja copia local. Si no, se lee de local.
     async get(key) {
+      if (key === "historialRespaldos") {
+        try {
+          // IndexedDB puede quedarse en estado `blocked` si otra pestaña
+          // conserva una conexión antigua. El historial es auxiliar y nunca
+          // debe impedir la hidratación del resto de la suite: acotamos esta
+          // lectura y volvemos a la copia local si no responde rápido.
+          var historialIndexedDb = await conTiempoLimite(leerHistorialRespaldosIndexedDb(), 1200);
+          if (historialIndexedDb !== null) {
+            try { localStorage.removeItem("almacen:" + key); } catch (e) {}
+            return { key: key, value: historialIndexedDb, shared: false };
+          }
+          var historialLocal = leerLocalOpcional(key);
+          if (historialLocal !== null) {
+            await guardarHistorialRespaldosIndexedDb(historialLocal);
+            try { localStorage.removeItem("almacen:" + key); } catch (e) {}
+          }
+          return { key: key, value: historialLocal, shared: false };
+        } catch (e) {
+          // Navegadores sin IndexedDB siguen usando el mecanismo anterior.
+          // El error de cuota se tratará como antes y no se oculta.
+        }
+      }
       var tablaEmpresa = TABLAS_EMPRESA[key];
       var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
@@ -1187,7 +1284,7 @@
         return { key: key, value: leerLocalOpcional(cacheKey), shared: false };
       }
       var pendienteActual = pendientes().indexOf(key) !== -1 && pendienteEsDelContexto(key);
-      if (window.__nubeActiva && window.__nubeCliente && !pendienteActual && !tieneMarcaDenegado(key)) {
+      if (window.__nubeActiva && window.__nubeCliente && !pendienteActual && !tieneMarcaDenegado(key) && !esClaveSoloDispositivo(key)) {
         try {
           var lista;
           if (esPagosFactura) {
@@ -1228,6 +1325,21 @@
     // Guardar: primero en el dispositivo (instantáneo y sin fallo posible),
     // y después se intenta subir. Si no sube, queda en la cola de pendientes.
     async set(key, value, _shared, opcionesP3c) {
+      if (key === "historialRespaldos") {
+        try {
+          await guardarHistorialRespaldosIndexedDb(value);
+          try { localStorage.removeItem("almacen:" + key); } catch (e) {}
+          // Una versión anterior podía dejar esta clave en la cola después
+          // de agotar la cuota de localStorage. IndexedDB ya la confirmó en
+          // este equipo, así que retirar la marca evita que reaparezca el
+          // aviso antiguo en cada recarga.
+          quitarPendiente(key);
+          quitarDenegado(key);
+          return { key: key, value: value, shared: false, confirmadoServidor: false, pendienteSincronizacion: false };
+        } catch (e) {
+          // Se continúa con localStorage como fallback explícito.
+        }
+      }
       var tablaEmpresa = TABLAS_EMPRESA[key];
       var tablaEmpresaLocal = TABLAS_EMPRESA_LOCAL[key];
       var tablaEspecial = TABLAS_POR_FILA[key];
@@ -1339,6 +1451,11 @@
     },
 
     async delete(key) {
+      if (key === "historialRespaldos") {
+        try { await borrarHistorialRespaldosIndexedDb(); } catch (e) {}
+        try { localStorage.removeItem("almacen:" + key); } catch (e) {}
+        return { key: key, deleted: true, shared: false };
+      }
       var cacheKey = await claveCacheLocal(key);
       LOCAL.delete(cacheKey);
       if (window.__nubeActiva && window.__nubeCliente) {
