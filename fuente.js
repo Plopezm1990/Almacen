@@ -102216,6 +102216,7 @@ function mensajeErrorPM08(error, fallback = "No se ha podido confirmar la operac
     ["movimiento_caja_no_reversible_por_abc", "Solo se pueden revertir movimientos manuales creados por la v\xEDa ABC."],
     ["abc_arqueo_caja_no_autorizado", "Tu rol no tiene permiso para registrar arqueos de caja."],
     ["arqueo_caja_dia_no_operativo", "El arqueo solo se puede registrar en el d\xEDa operativo actual del servidor."],
+    ["contexto_arqueo_cambio", "La sesi\xF3n de caja ha cambiado mientras contabas. Revisa el contexto y vuelve a confirmar el arqueo."],
     ["denominaciones_caja_invalidas", "El desglose por denominaciones no es v\xE1lido."],
     ["denominaciones_no_coinciden_contado", "El total de las denominaciones no coincide con el efectivo contado."],
     ["efectivo_contado_invalido", "El efectivo contado debe ser cero o un importe positivo con dos decimales."],
@@ -107401,7 +107402,7 @@ function GestionAlmacen() {
         setTab("pagos");
       }
     }
-  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor: modoSincronizadoPM08() ? consultarEsperadoCajaA24 : null }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
+  ), tab === "libroiva" && /* @__PURE__ */ import_react4.default.createElement(LibroIva, { movimientos: movimientosInforme, productos: productosInforme, albaranes: albaranesInforme, proveedorPorId, facturasDirectas: facturasDirectasInforme }), tab === "caja" && /* @__PURE__ */ import_react4.default.createElement(ArqueoCaja, { key: localActivoId || "todos", movimientos: movimientosDelLocalActivo, arqueos: arqueosDelLocalActivo, addArqueo, deleteArqueo, encargos: encargosDelLocalActivo, movimientosCaja: movimientosCajaDelLocalActivo, registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor: modoSincronizadoPM08() ? consultarEsperadoCajaA24 : null, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, reabrirCierreProvisionalA10, consultarCierreCajaA10 }), tab === "tesoreria" && /* @__PURE__ */ import_react4.default.createElement(Tesoreria, { proyeccionTesoreria, promedioDiarioVentas }), tab === "estacionalidad" && /* @__PURE__ */ import_react4.default.createElement(Estacionalidad, { ingresosPorMes }), tab === "turnos" && /* @__PURE__ */ import_react4.default.createElement(
     Turnos,
     {
       empleados: empleadosDelLocalActivo,
@@ -109359,6 +109360,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
     const ajustesVentaEfectivo = redondearDineroPM08(data?.ajustesVentaEfectivo ?? 0);
     const efectivoContado = redondearDineroPM08(data?.efectivoContado ?? data?.efectivoReal);
     const denominaciones = data?.denominaciones && typeof data.denominaciones === "object" && !Array.isArray(data.denominaciones) ? data.denominaciones : {};
+    const contextoEsperado = data?.contextoCaja && typeof data.contextoCaja === "object" ? data.contextoCaja : null;
     if (!Number.isFinite(efectivoBase) || efectivoBase < 0) return { ok: false, error: "El efectivo base no es v\xE1lido." };
     if (!Number.isFinite(ajustesVentaEfectivo)) return { ok: false, error: "El ajuste de anulaciones de venta no es v\xE1lido." };
     if (!Number.isFinite(efectivoContado) || efectivoContado < 0) return { ok: false, error: "El efectivo contado debe ser cero o un importe positivo." };
@@ -109374,6 +109376,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
       efectivoContado,
       modoConteo: data?.modoConteo === "denominaciones" ? "denominaciones" : "manual",
       denominaciones,
+      contextoCaja: contextoEsperado,
       notas: String(data?.notas || "").trim(),
       snapshot: data?.snapshot || {}
     };
@@ -109388,6 +109391,7 @@ function crearLogicaCaja({ arqueos, setArqueos, movimientosCaja, setMovimientosC
         }
         try {
           const contexto = await contextoArqueoCajaC03(window.__nubeCliente);
+          if (contextoEsperado && ["localId", "cajaId", "terminalId", "sessionId", "operatingDay"].some((clave) => contextoEsperado[clave] && String(contextoEsperado[clave]) !== String(contexto[clave]))) throw new Error("contexto_arqueo_cambio");
           if (String(fecha) !== contexto.operatingDay) throw new Error("arqueo_caja_dia_no_operativo");
           const r2 = await Promise.race([
             window.__nubeCliente.rpc("abc_registrar_arqueo_caja", {
@@ -125947,7 +125951,7 @@ function resumenMediosVentaCajaPM09(movs = [], fecha = "", sessionId = null) {
   Object.keys(reversos).forEach((k) => reversos[k] = redondearDineroPM08(reversos[k] || 0));
   return { ventas, reversos, neto, ventasIncluidas, reversosIncluidos, ventasConSesion, ventasSinSesion };
 }
-function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor, localId = "", localNombre = "" }) {
+function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, encargos = [], movimientosCaja = [], registrarMovimientoCaja, eliminarMovimientoCaja, leerBorradorArqueo, leerBorradorMovimientoCaja, abrirSesionCajaA10, consultarEsperadoServidor, iniciarCierreSesionCajaA10, confirmarCierreProvisionalA10, finalizarCierreSesionCajaA10, reabrirCierreProvisionalA10, consultarCierreCajaA10, localId = "", localNombre = "" }) {
   const h3 = import_react4.default.createElement;
   const valoresDenominacion = [500, 200, 100, 50, 20, 10, 5, 2, 1, 0.5, 0.2, 0.1, 0.05, 0.02, 0.01];
   const imagenDenominacion = (valor) => valor >= 5 ? `./assets/euro/banknotes/banknote-${valor}.jpg` : `./assets/euro/coins/coin-${valor < 1 ? valor.toFixed(2) : valor}.png`;
@@ -125969,6 +125973,8 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const [exitoSesion, setExitoSesion] = (0, import_react4.useState)("");
   const [mostrarMovimientosCaja, setMostrarMovimientosCaja] = (0, import_react4.useState)(false);
   const [mostrarHistorialCaja, setMostrarHistorialCaja] = (0, import_react4.useState)(false);
+  const [estadoCierre, setEstadoCierre] = (0, import_react4.useState)(null);
+  const [accionCierre, setAccionCierre] = (0, import_react4.useState)(false);
   // H-24: con la cuenta sincronizada el esperado es el del servidor; sin él no se enseña ninguna cifra estimada.
   const esperadoDelServidor = typeof consultarEsperadoServidor === "function";
   const [esperadoServidor, setEsperadoServidor] = (0, import_react4.useState)({ estado: esperadoDelServidor ? "cargando" : "local" });
@@ -125987,6 +125993,18 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       vigente = false;
     };
   }, [esperadoDelServidor, fecha, refrescoEsperado, movimientos.length, movimientosCaja.length, arqueos.length]);
+  (0, import_react4.useEffect)(() => {
+    if (typeof consultarCierreCajaA10 !== "function") return void 0;
+    let vigente = true;
+    Promise.resolve().then(() => consultarCierreCajaA10()).then((r2) => {
+      if (vigente) setEstadoCierre(r2?.ok ? r2 : { estado: "ERROR", error: r2?.error || "No se ha podido consultar el estado del cierre." });
+    }).catch((e2) => {
+      if (vigente) setEstadoCierre({ estado: "ERROR", error: String(e2?.message || "No se ha podido consultar el estado del cierre.") });
+    });
+    return () => {
+      vigente = false;
+    };
+  }, [typeof consultarCierreCajaA10 === "function" ? refrescoEsperado : 0]);
   const sessionIdServidor = esperadoServidor.estado === "ok" ? esperadoServidor.sessionId || null : null;
   const resumenVentasCaja = resumenMediosVentaCajaPM09(movimientos, fecha, sessionIdServidor);
   const porMedioOtros = { Efectivo: 0, Tarjeta: 0, Transferencia: 0, Otro: 0 };
@@ -126051,6 +126069,26 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
   const contadoNumero = estaEnModoDenominaciones ? totalDenominaciones : Number.isFinite(contadoManualNumero) ? redondearDineroPM08(contadoManualNumero) : NaN;
   const diferencia = Number.isFinite(contadoNumero) && efectivoEsperado !== null ? redondearDineroPM08(contadoNumero - efectivoEsperado) : null;
   const yaArqueado = arqueos.find((a22) => a22.fecha === fecha && a22.estado !== "ANULADO");
+  async function ejecutarAccionCierre(nombre, accion) {
+    if (accionCierre || typeof accion !== "function") return;
+    setError("");
+    setExito("");
+    setAccionCierre(true);
+    try {
+      const r2 = await accion();
+      if (!r2?.ok) {
+        setError(r2?.error || `No se pudo ${nombre}.`);
+        return;
+      }
+      setEstadoCierre(r2);
+      setExito(`${nombre.charAt(0).toUpperCase()}${nombre.slice(1)} confirmado.`);
+      setRefrescoEsperado((n2) => n2 + 1);
+    } catch (e2) {
+      setError(String(e2?.message || `No se pudo ${nombre}.`));
+    } finally {
+      setAccionCierre(false);
+    }
+  }
   async function abrirSesion() {
     if (abriendoSesion || typeof abrirSesionCajaA10 !== "function") return;
     setErrorSesion("");
@@ -126124,6 +126162,13 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
         denominaciones: estaEnModoDenominaciones ? denominacionesLimpias : {},
         notas,
         ajustesVentaEfectivo,
+        contextoCaja: esperadoServidor.estado === "ok" ? {
+          localId: esperadoServidor.localId || localId,
+          cajaId: esperadoServidor.cajaId || null,
+          terminalId: esperadoServidor.terminalId || null,
+          sessionId: esperadoServidor.sessionId || null,
+          operatingDay: esperadoServidor.operatingDay || fecha
+        } : null,
         snapshot: {
           porMedio,
           ventasIncluidas: resumenVentasCaja.ventasIncluidas,
@@ -126203,6 +126248,14 @@ function ArqueoCaja({ movimientos = [], arqueos = [], addArqueo, deleteArqueo, e
       h3(Btn, { small: true, onClick: abrirSesion, disabled: abriendoSesion || !String(fondoInicialSesion).trim() }, abriendoSesion ? "Abriendo…" : "Abrir sesión de caja"),
       errorSesion ? h3("div", { role: "alert", className: "text-[12px] mt-2", style: { color: C2.red } }, errorSesion) : null,
       exitoSesion ? h3("div", { role: "status", className: "text-[12px] mt-2", style: { color: C2.accent } }, exitoSesion) : null
+    ) : null,
+    typeof iniciarCierreSesionCajaA10 === "function" ? h3(Card, { className: "mb-4", "data-arqueo-cierre-flujo": "1", style: { background: C2.bg } },
+      h3("div", { className: "text-[12.5px] font-semibold mb-1" }, "Flujo de cierre de sesión"),
+      h3("div", { className: "text-[11.5px] mb-2", style: { color: C2.inkSoft } }, "Guardar arqueo registra el conteo. El cierre provisional bloquea la sesión para revisión y el definitivo la deja cerrada; son acciones distintas."),
+      h3("div", { className: "text-[11.5px] mb-2", "data-arqueo-cierre-estado": estadoCierre?.sessionEstado || "cargando" }, estadoCierre?.sessionEstado === "ABIERTA" ? "Sesión abierta: inicia el cierre cuando hayas terminado de operar." : estadoCierre?.sessionEstado === "EN_CIERRE" ? "Cierre iniciado: confirma el provisional con el importe contado." : estadoCierre?.sessionEstado === "CIERRE_PROVISIONAL" ? "Cierre provisional: revisa diferencias y finaliza cuando esté autorizado." : estadoCierre?.sessionEstado === "CERRADA_FINAL" ? "Sesión cerrada definitivamente. El arqueo queda bloqueado." : estadoCierre?.estado === "ERROR" ? `Estado no disponible: ${estadoCierre.error}` : "Consultando el estado de la sesión…"),
+      estadoCierre?.sessionEstado === "ABIERTA" && h3(Btn, { small: true, disabled: accionCierre, onClick: () => ejecutarAccionCierre("inicio del cierre", iniciarCierreSesionCajaA10) }, accionCierre ? "Procesando…" : "Iniciar cierre provisional"),
+      estadoCierre?.sessionEstado === "EN_CIERRE" && h3(Btn, { small: true, disabled: accionCierre || !Number.isFinite(contadoNumero), onClick: () => ejecutarAccionCierre("cierre provisional", () => confirmarCierreProvisionalA10({ efectivoContado: contadoNumero })) }, accionCierre ? "Procesando…" : "Confirmar cierre provisional"),
+      estadoCierre?.sessionEstado === "CIERRE_PROVISIONAL" && h3("div", { className: "flex flex-wrap gap-2" }, h3(Btn, { small: true, disabled: accionCierre, onClick: () => ejecutarAccionCierre("cierre definitivo", finalizarCierreSesionCajaA10) }, accionCierre ? "Procesando…" : "Finalizar cierre definitivo"), typeof reabrirCierreProvisionalA10 === "function" && h3(Btn, { small: true, variant: "ghost", disabled: accionCierre, onClick: () => ejecutarAccionCierre("reapertura", () => reabrirCierreProvisionalA10({ motivo: "Revisión solicitada desde Arqueo de caja" })) }, "Reabrir para revisar"))
     ) : null,
     h3(Card, { className: "mb-4", style: { background: C2.accentSoft, border: "none" }, "data-arqueo-contexto": "1" },
       h3("div", { className: "text-[12.5px] font-semibold mb-2" }, "Contexto del arqueo"),

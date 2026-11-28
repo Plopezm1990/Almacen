@@ -156,10 +156,10 @@ try {
     await esperar(5);
     return root;
   };
-  const propsBase = (addArqueo) => ({
+  const propsBase = (addArqueo, overrides = {}) => ({
     movimientos: [], arqueos: [], addArqueo, deleteArqueo: async () => ({ ok: true }), encargos: [], movimientosCaja: [],
     registrarMovimientoCaja: async () => ({ ok: true }), eliminarMovimientoCaja: async () => ({ ok: true }),
-    leerBorradorArqueo: () => null, leerBorradorMovimientoCaja: () => null
+    leerBorradorArqueo: () => null, leerBorradorMovimientoCaja: () => null, ...overrides
   });
   {
     const guardados = [];
@@ -205,6 +205,18 @@ try {
     await clic([...document.querySelectorAll('button')].find((b) => b.getAttribute('aria-label') === 'Quitar un billete de 20 euros'));
     await clic(boton('Guardar arqueo'));
     ok('D5 al retirar la última denominación no recupera un importe manual anterior', guardados.length === 1 && guardados[0].efectivoContado === 0 && Object.keys(guardados[0].denominaciones).length === 0, guardados[0]);
+    await act(async () => { root.unmount(); });
+  }
+  {
+    const hoy = new Date().toISOString().slice(0, 10);
+    const root = await montar(propsBase(async (data) => ({ ok: true, arqueo: { efectivoEsperado: 0, efectivoContado: data.efectivoContado, diferencia: 0, ...data } }), {
+      movimientos: [
+        { operationId: 'linea-1', ventaId: 'venta-mixta-1', fecha: hoy, tipo: 'VENTA', cantidad: 1, ingresoUnitario: 25, medioPago: 'Mixto', detallePago: { efectivo: 20, tarjeta: 30 } },
+        { operationId: 'linea-2', ventaId: 'venta-mixta-1', fecha: hoy, tipo: 'VENTA', cantidad: 1, ingresoUnitario: 25, medioPago: 'Mixto', detallePago: { efectivo: 20, tarjeta: 30 } }
+      ]
+    }));
+    const textoMixto = texto();
+    ok('D6 no duplica el desglose mixto repetido por línea de venta', textoMixto.includes('€20,00') && textoMixto.includes('€30,00') && !textoMixto.includes('€40,00'), textoMixto.slice(-900));
     await act(async () => { root.unmount(); });
   }
 } catch (error) {
