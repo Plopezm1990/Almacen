@@ -56,8 +56,8 @@ for (const forbidden of [
   "abc_mover_cuenta_mesa",
   "abc_liberar_cuenta_mesa",
   "abc_cambiar_responsable_cuenta",
-  "abc_crear_mesa",
-  "abc_crear_zona"
+  "abc_config_crear_mesa",
+  "abc_config_crear_zona"
 ]) {
   assert.ok(!assign.includes(forbidden), `A07.1 invadió A07.2/configuración: ${forbidden}`);
 }

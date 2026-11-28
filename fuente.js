@@ -102439,6 +102439,23 @@ var CONFIG_CAPACIDADES = [
 ];
 var CONFIG_ERRORES = {
   abc_config_no_autorizado: "Solo el Propietario puede cambiar esta configuración en este local.",
+  sala_configurar_no_autorizada: "Solo el Propietario puede configurar las salas y mesas de este local.",
+  mapa_configuracion_sala_respuesta_invalida: "El servidor devolvió un plano de sala no válido.",
+  zona_parametros_requeridos: "Faltan datos obligatorios de la zona.",
+  zona_codigo_nombre_requeridos: "Indica código y nombre para la zona.",
+  zona_datos_invalidos: "Revisa los datos de la zona.",
+  zona_tipo_invalido: "El tipo de zona no es válido.",
+  zona_orden_invalido: "El orden de la zona no es válido.",
+  zona_no_encontrada: "No se encontró la zona solicitada.",
+  zona_version_conflict: "La zona cambió en otra sesión. Actualiza antes de volver a guardar.",
+  zona_con_ocupacion_activa: "No se puede cambiar esa zona mientras haya una cuenta asignada a sus mesas.",
+  zona_con_mesas_activas: "Desactiva primero las mesas activas de esta zona.",
+  mesa_parametros_requeridos: "Faltan datos obligatorios de la mesa.",
+  mesa_datos_invalidos: "Revisa los datos de la mesa.",
+  mesa_no_encontrada: "No se encontró la mesa solicitada.",
+  mesa_version_conflict: "La mesa cambió en otra sesión. Actualiza antes de volver a guardar.",
+  mesa_ocupada_no_reconfigurable: "No se puede desactivar o trasladar una mesa con una cuenta asignada.",
+  zona_no_activa: "La zona seleccionada no está activa.",
   abc_no_autenticado: "Tu sesión ha caducado. Vuelve a entrar.",
   contexto_no_autorizado: "No tienes acceso a este local.",
   operation_id_conflict: "Esta operación ya se había enviado con otros datos. Inténtalo de nuevo.",
@@ -104568,12 +104585,6 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
     }
   };
   (0, import_react4.useEffect)(() => { cargar(); }, [empresaId, localId]);
-  const contextoOperativo = () => {
-    if (!mapa?.terminalId || !mapa?.sessionId || !/^\d{4}-\d{2}-\d{2}$/.test(String(mapa?.operatingDay || ""))) {
-      throw new Error("La sala necesita un terminal con sesión de caja abierta y día operativo.");
-    }
-    return { p_terminal_id: mapa.terminalId, p_session_id: mapa.sessionId, p_operating_day: mapa.operatingDay };
-  };
   const abrirNuevaZona = () => {
     setZonaForm({ id: "", codigo: "", nombre: "", tipo: "SALA", orden: String(zonas.length), activo: true, version: 1 });
     setModalZona("crear");
@@ -104619,12 +104630,11 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
     if (!codigo || !nombre || !Number.isInteger(orden) || orden < 0) { setError("Indica código, nombre y un orden válido para la zona."); return; }
     setGuardando(true); setError(""); setConfirmacion("");
     try {
-      const contexto = contextoOperativo();
-      const parametros = { p_operation_id: configOperacion(`sala.zona.${modalZona}`), p_empresa_id: empresaId, p_local_id: localId, p_codigo: codigo, p_nombre: nombre, p_tipo: zonaForm.tipo, p_orden: orden, ...contexto };
+      const parametros = { p_operation_id: configOperacion(`sala.zona.${modalZona}`), p_empresa_id: empresaId, p_local_id: localId, p_codigo: codigo, p_nombre: nombre, p_tipo: zonaForm.tipo, p_orden: orden };
       if (modalZona === "crear") {
-        await configRpc("abc_crear_zona", { ...parametros, p_zona_id: configUuid() });
+        await configRpc("abc_config_crear_zona", { ...parametros, p_zona_id: configUuid() });
       } else {
-        await configRpc("abc_actualizar_zona", { ...parametros, p_zona_id: zonaForm.id, p_activo: zonaForm.activo, p_expected_version: Number(zonaForm.version) });
+        await configRpc("abc_config_actualizar_zona", { ...parametros, p_zona_id: zonaForm.id, p_activo: zonaForm.activo, p_expected_version: Number(zonaForm.version) });
       }
       setModalZona(null); setConfirmacion(modalZona === "crear" ? "Zona creada en el servidor." : "Zona actualizada en el servidor."); await cargar();
     } catch (e2) { setError(configMensajeError(e2)); } finally { setGuardando(false); }
@@ -104638,12 +104648,11 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
     if (!mesaForm.zonaId || !codigo || !nombre || !Number.isInteger(capacidad) || capacidad < 1 || capacidad > 999 || !Number.isInteger(orden) || orden < 0) { setError("Indica zona, código, nombre, capacidad y orden válidos para la mesa."); return; }
     setGuardando(true); setError(""); setConfirmacion("");
     try {
-      const contexto = contextoOperativo();
-      const parametros = { p_operation_id: configOperacion(`sala.mesa.${modalMesa}`), p_empresa_id: empresaId, p_local_id: localId, p_zona_id: mesaForm.zonaId, p_codigo: codigo, p_nombre: nombre, p_capacidad: capacidad, p_orden: orden, ...contexto };
+      const parametros = { p_operation_id: configOperacion(`sala.mesa.${modalMesa}`), p_empresa_id: empresaId, p_local_id: localId, p_zona_id: mesaForm.zonaId, p_codigo: codigo, p_nombre: nombre, p_capacidad: capacidad, p_orden: orden };
       if (modalMesa === "crear") {
-        await configRpc("abc_crear_mesa", { ...parametros, p_mesa_id: configUuid() });
+        await configRpc("abc_config_crear_mesa", { ...parametros, p_mesa_id: configUuid() });
       } else {
-        await configRpc("abc_actualizar_mesa", { ...parametros, p_mesa_id: mesaForm.id, p_activo: mesaForm.activo, p_notas: String(mesaForm.notas || "").trim() || null, p_expected_version: Number(mesaForm.version) });
+        await configRpc("abc_config_actualizar_mesa", { ...parametros, p_mesa_id: mesaForm.id, p_activo: mesaForm.activo, p_notas: String(mesaForm.notas || "").trim() || null, p_expected_version: Number(mesaForm.version) });
       }
       setModalMesa(null); setConfirmacion(modalMesa === "crear" ? "Mesa creada en el servidor." : "Mesa actualizada en el servidor."); await cargar();
     } catch (e2) { setError(configMensajeError(e2)); } finally { setGuardando(false); }
@@ -104677,7 +104686,7 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
     h(ConfigAviso, { error, confirmacion }),
     h(Card, { className: "mb-4", style: { background: C2.accentSoft } },
       h("div", { className: "text-[13px] font-semibold" }, "Configuración de sala"),
-      h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "Las zonas y mesas se guardan en el servidor y alimentan Pase y TPV. Cada edición usa versión esperada para evitar pisar cambios de otro terminal."),
+      h("div", { className: "text-[12px] mt-1", style: { color: C2.inkSoft } }, "Las zonas y mesas se guardan en el servidor y alimentan Pase y TPV. Puedes preparar el plano antes de abrir caja; cada edición usa versión esperada para evitar pisar cambios de otra sesión."),
       h("div", { className: "flex flex-wrap gap-2 mt-3" }, h(Btn, { small: true, onClick: abrirNuevaZona, disabled: cargando || !mapa }, "Nueva zona"), h("span", { className: "inline-flex items-center rounded-lg px-2.5 py-1.5 text-[12px]", style: { border: `1px solid ${C2.line}`, color: C2.inkSoft } }, `${zonas.length} zona(s) · día ${mapa?.operatingDay || "—"}`))
     ),
     h(Card, { className: "mb-4" },
@@ -104700,7 +104709,7 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
         );
       }) : null
     ),
-    !mapa && !cargando ? h(Card, null, "No hay mapa de sala cargado. Comprueba que el local tenga un terminal con sesión de caja abierta.") : null,
+    !mapa && !cargando ? h(Card, null, "No se pudo cargar el plano de este local. Comprueba la conexión y pulsa Actualizar.") : null,
     zonas.map((zona) => h(
       Card,
       { key: zona.zona_id || zona.id, className: "mb-3" },
@@ -104737,7 +104746,7 @@ function ConfigSala({ empresaId = "", localId = "", cargarMapaSala = null }) {
   );
 }
 // ==== FIN CONFIG_SALA ====
-function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [], procesarColaFiscalQaC07D = null, cargarMapaSala = null }) {
+function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", esPropietario = false, empleados = [], procesarColaFiscalQaC07D = null, cargarMapaConfiguracionSala = null }) {
   const h = import_react4.default.createElement;
   const empresaId = empresa?.id || "";
   const [seccion, setSeccion] = (0, import_react4.useState)("dia");
@@ -104750,7 +104759,7 @@ function ConfiguracionLocal({ empresa = null, localId = "", localNombre = "", es
     null,
     h("div", { className: "flex gap-2 flex-wrap mb-4" }, secciones.map(([id, texto]) => h(Btn, { key: id, small: true, variant: seccion === id ? "primary" : "ghost", onClick: () => setSeccion(id) }, texto))),
     seccion === "dia" ? h(ConfigDia, { empresaId, localId }) : null,
-    seccion === "sala" ? h(ConfigSala, { empresaId, localId, cargarMapaSala }) : null,
+    seccion === "sala" ? h(ConfigSala, { empresaId, localId, cargarMapaSala: cargarMapaConfiguracionSala }) : null,
     seccion === "modalidades" ? h(ConfigModalidades, { empresaId, localId }) : null,
     seccion === "equipos" ? h(ConfigEquipos, { empresaId, localId }) : null,
     seccion === "terminales" ? h(ConfigTerminalesCajas, { empresaId, localId }) : null,
@@ -106231,7 +106240,7 @@ function GestionAlmacen() {
   const { addEmpleado, updateEmpleado, deleteEmpleado, reactivarEmpleado, anonimizarEmpleado, registrarAusencia, eliminarAusencia, registrarEpi, eliminarEpi, crearCuentaEmpleado } = crearLogicaPersonal({ empleados, setEmpleados, registrarAuditoria, setNominas, setEstadoCuentasPM11, localActivoId, locales, empresaId: empresaDelLocalActivo?.id || null });
   const { addTurno, updateTurno, deleteTurno, copiarSemana } = crearLogicaTurnos({ turnos, setTurnos, empleados, localActivoId });
   const { producir, anularProduccion } = crearLogicaProduccion({ fichasCosto, productos, setProductos, movimientos, setMovimientos, setOrdenesProduccion, registrarAuditoria, localActivoId, locales });
-  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
+  const { listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, cargarMapaConfiguracionSalaA07, asignarMesaCuentaA07, listarResponsablesCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, prepararTicketFiscalQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarCuentasAparcadasA06, unirCuentasA08 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { abrirSesionCajaA10, consultarEsperadoCajaA24 } = crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos, arqueos, localActivoId, empresaDelLocalActivo, registrarAuditoria });
   const { addCliente, updateCliente, deleteCliente, anonimizarCliente } = crearLogicaClientes({ clientes, setClientes, registrarAuditoria, empresaId: empresaDelLocalActivo?.id || null, actorNombre: nombreActivoEmpleado || "Propietario/a" });
   const { addEncargo, updateEncargo, deleteEncargo, cancelarEncargo, entregarEncargo, devolverEncargo, registrarAnticipoEncargo, revertirAnticipoEncargo } = crearLogicaEncargos({ encargos, setEncargos, registrarAuditoria, productos, clientes, setProductos, setMovimientos, venderLote, devolverLote, localActivoId, empresaId: empresaDelLocalActivo?.id || null, locales });
@@ -107435,7 +107444,7 @@ function GestionAlmacen() {
       establecerPin,
       activarModoEmpleado
     }
-  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria, cargarPaginaAuditoria, auditoriaDesdeServidor, auditoriaHayMas, auditoriaCargando, auditoriaError }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D, cargarMapaSala: cargarMapaSalaA07 }));
+  ), tab === "auditoria" && /* @__PURE__ */ import_react4.default.createElement(Auditoria, { auditoria, cargarPaginaAuditoria, auditoriaDesdeServidor, auditoriaHayMas, auditoriaCargando, auditoriaError }), tab === "diagnostico" && /* @__PURE__ */ import_react4.default.createElement(DiagnosticoStock, { diagnostico: diagnosticoStockDelLocalActivo, corregirProducto, movimientosParaReconciliar }), tab === "notificaciones" && /* @__PURE__ */ import_react4.default.createElement(Notificaciones, { localActivoId }), tab === "errores_sistema" && /* @__PURE__ */ import_react4.default.createElement(ErroresSistema, { diagnosticoLegadosPM10 }), tab === "locales" && /* @__PURE__ */ import_react4.default.createElement(Locales, { locales, localActivoId, esPropietario: esPropietarioPM29, fallosGuardado, registrarAuditoria, crearLocal, actualizarLocal, desactivarLocal, cambiarLocalActivo: cambiarLocalActivoConVista, configEmpresa, empresas, setEmpresas, marcarFormularioAbiertoPM15 }), tab === "descuentos" && /* @__PURE__ */ import_react4.default.createElement(PoliticasDescuentos, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29 }), tab === "configuracion" && /* @__PURE__ */ import_react4.default.createElement(ConfiguracionLocal, { empresa: empresaDelLocalActivo, localId: localActivoId, localNombre: locales.find((l22) => l22.id === localActivoId)?.nombre || "", esPropietario: esPropietarioPM29, empleados, procesarColaFiscalQaC07D, cargarMapaConfiguracionSala: cargarMapaConfiguracionSalaA07 }));
   // PM13-P04.2: claves estables de capacidad de consulta, separadas del texto visible y de la navegacion.
   const CAPACIDADES_CONSULTA_PANTALLA = Object.freeze({
     dashboard: "ABC_PANTALLA_DASHBOARD_CONSULTAR",
@@ -115194,6 +115203,23 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
     });
   }
 
+  async function cargarMapaConfiguracionSalaA07() {
+    if (!localActivoId) return { ok: false, error: "Selecciona un local para configurar la sala." };
+    const empresaId = empresaDelLocalActivo?.id || null;
+    if (!empresaId) return { ok: false, error: "No se pudo determinar la empresa activa." };
+    const hayConexion = typeof window !== "undefined" && window.__nubeActiva && typeof window.getSupabaseClient === "function";
+    if (!hayConexion) return { ok: false, error: "La configuración de sala necesita conexión con el servidor." };
+    try {
+      const supabase = await window.getSupabaseClient();
+      const { data, error } = await supabase.rpc("abc_config_listar_plano_sala", { p_empresa_id: empresaId, p_local_id: localActivoId });
+      if (error) throw error;
+      if (!data?.ok || !Array.isArray(data.zonas)) throw new Error("mapa_configuracion_sala_respuesta_invalida");
+      return { ok: true, configuracion: true, zonas: data.zonas, operatingDay: data.operating_day || null };
+    } catch (error) {
+      return respuestaErrorA06(error);
+    }
+  }
+
   async function cargarMapaSalaA07({ paraPanel = false } = {}) {
     if (!localActivoId) return { ok: false, error: "Selecciona un local para ver la sala." };
     const empresaId = empresaDelLocalActivo?.id || null;
@@ -116101,7 +116127,7 @@ function crearLogicaVenta({ productos, setProductos, movimientos, setMovimientos
   listarEstacionesA10.listarPedidosTurno = listarPedidosTurnoRediseno;
   listarEstacionesA10.registrarDiferenciaCajaA10 = registrarDiferenciaCajaA10;
   listarEstacionesA10.decidirDiferenciaCajaA10 = decidirDiferenciaCajaA10;
-  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarEsperadoCajaA24, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };
+  return { venderCarrito, venderLocal, anularVenta, venderLineas, venderLote, devolverLote, venderCarritoA02, enviarPedidoA05, leerPedidoOperativoA05, accionPedidoA05, recuperarCuentaA06, cargarMapaSalaA07, cargarMapaConfiguracionSalaA07, listarResponsablesCuentaA07, asignarMesaCuentaA07, moverMesaCuentaA07, cambiarResponsableCuentaA07, listarEstacionesA10, abrirSesionCajaA10, consultarEsperadoCajaA24, consultarSesionCajaC01, vincularTerminalCajaC01, desvincularTerminalCajaC01, listarComandasA10, crearEstacionA10, actualizarEstacionA10, asignarProductoEstacionA10, enviarCambioComandaA10, reimprimirComandaA10, resolverMermaComandaA10, iniciarCobroCuentaF4, reintentarCobroF4, leerEstadoCobroF4, emitirCheckoutFiscalC07D, cerrarCuentaPagadaF4, resolverTarjetaSimuladaQa, leerConfiguracionEmisionC07D, leerEstadoFiscalC07D, procesarColaFiscalQaC07D, abrirIncidenciaCobroF4, resolverIncidenciaCobroF4, aplicarDescuentoCuentaA09, listarAutorizacionesDescuentoA09, resolverAutorizacionDescuentoA09, listarCategoriasTpv, configurarCategoriasTpv, listarCuentasRepartoA08, moverCantidadLineaCuentaA08, listarModalidadesA02, leerContextoCuentaA02, respuestaErrorA06, listarCuentasAparcadasA06, unirCuentasA08, ensayarCierreSesionCajaC12 };
 }
 function crearLogicaTraspasos({ productos, setProductos, movimientos, setMovimientos, setTraspasos, registrarAuditoria, localActivoId, locales = [] }) {
   function productoEsDelLocalActivoTraspaso(prod) {

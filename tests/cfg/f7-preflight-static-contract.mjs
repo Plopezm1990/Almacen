@@ -229,6 +229,9 @@ const EXCLUIDAS = new Set([
   '20261129100000_abc_f6_cargos_propietario_permisos_libres.sql',
   '20261129110000_abc_f6_cargos_nombres_navegacion_excepciones.sql',
   '20261129120000_abc_f6_cargos_estado_eliminacion.sql',
+  // Configuración administrativa de salas y mesas sin sesión: QA únicamente,
+  // con contrato propio; se promocionará después de decidir el paquete F6.
+  '20261129130000_abc_f6_sala_configuracion_sin_sesion.sql',
   // H-04 / H-18 (Ola 2): encargos y pagos de encargo solo por funciones de servidor; quita TRUNCATE/REFERENCES/TRIGGER
   // sobrantes. Lo prueba, contra un Postgres de verdad:
   //   tests/rediseno/h04-h18-encargos-solo-funciones-pglite-contract.mjs
@@ -342,6 +345,9 @@ const JUSTIFICACION = {
   ],
   '20261129120000_abc_f6_cargos_estado_eliminacion.sql': [
     'tests/pm13/p11-cargo-estado-contract.mjs',
+  ],
+  '20261129130000_abc_f6_sala_configuracion_sin_sesion.sql': [
+    'tests/rediseno/org33-sala-contract.mjs',
   ],
 };
 
